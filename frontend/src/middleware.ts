@@ -4,7 +4,7 @@ import { createServerClient } from '@supabase/ssr'
 /**
  * Middleware to protect routes and handle role-based redirects
  */
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Create response object
@@ -45,10 +45,38 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  // Get user session
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Get user session with error handling
+  let user = null
+  try {
+    const { data, error } = await supabase.auth.getUser()
+    
+    if (error) {
+      // If refresh token is invalid, clear cookies and redirect to login
+      if (error.message.includes('refresh_token_not_found') || 
+          error.message.includes('Invalid Refresh Token')) {
+        console.log('🔄 Refresh token expired, clearing session')
+        // Clear all auth cookies
+        const cookiesToClear = [
+          'sb-access-token',
+          'sb-refresh-token',
+          `sb-${process.env.NEXT_PUBLIC_SUPABASE_URL?.split('//')[1]?.split('.')[0]}-auth-token`
+        ]
+        cookiesToClear.forEach(cookie => {
+          response.cookies.delete(cookie)
+        })
+        
+        // Redirect to login if not already there
+        if (!pathname.startsWith('/auth/login')) {
+          return NextResponse.redirect(new URL('/auth/login?error=session_expired', request.url))
+        }
+      }
+    } else {
+      user = data.user
+    }
+  } catch (error) {
+    console.error('❌ Auth error in middleware:', error)
+    user = null
+  }
 
   // Get user profile if user exists
   let profile = null
