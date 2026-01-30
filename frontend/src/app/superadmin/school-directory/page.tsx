@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
-import { Search, Filter, Building2, Mail, Globe, MapPin, Calendar, Edit, Trash2, RefreshCw, User, Shield } from "lucide-react";
+import { GitBranch, ChevronRight, ChevronDown, ChevronUp, Search, Filter, Building2, Mail, Globe, MapPin, Calendar, Edit, Trash2, RefreshCw, User, Shield } from "lucide-react";
 import EditSchoolModal from "@/components/super-admin/EditSchoolModal";
 import EditAdminModal from "@/components/super-admin/EditAdminModal";
 import ConfirmationDialog from "@/components/super-admin/ConfirmationDialog";
@@ -17,59 +17,80 @@ import { PaginationWrapper } from "@/components/ui/pagination";
 import { useSchools, School } from "@/hooks/useSchools";
 
 export default function SchoolDirectoryPage() {
-  // Use SWR hook for efficient data fetching
   const { schools, stats, loading, error, refreshSchools, mutate, isValidating } = useSchools();
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "suspended">("all");
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
   const [editingAdmin, setEditingAdmin] = useState<{ schoolId: string; schoolName: string } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(6); // Show 6 schools per page
+  const [itemsPerPage] = useState(6);
   const [statusChangeDialog, setStatusChangeDialog] = useState<{
     open: boolean;
     school: School | null;
     newStatus: "active" | "suspended";
   }>({ open: false, school: null, newStatus: "active" });
   const [isChangingStatus, setIsChangingStatus] = useState(false);
+  const [expandedNetworks, setExpandedNetworks] = useState<Record<string, boolean>>({});
 
-  // Filter schools based on search and status
-  const filteredSchools = useMemo(() => {
-    let filtered = schools;
+  const schoolNetworks = useMemo(() => {
+    const networks: Record<string, { root: School; branches: School[] }> = {};
+    const roots = schools.filter(s => !s.parent_school_id);
+    const branches = schools.filter(s => s.parent_school_id);
 
-    // Filter by status
+    roots.forEach(root => {
+      networks[root.id] = { root, branches: [] };
+    });
+
+    branches.forEach(branch => {
+      if (branch.parent_school_id && networks[branch.parent_school_id]) {
+        networks[branch.parent_school_id].branches.push(branch);
+      } else {
+        networks[branch.id] = { root: branch, branches: [] };
+      }
+    });
+
+    return Object.values(networks);
+  }, [schools]);
+
+  const filteredNetworks = useMemo(() => {
+    let filtered = schoolNetworks;
+
     if (statusFilter !== "all") {
-      filtered = filtered.filter(school => school.status === statusFilter);
+      filtered = filtered.filter(network =>
+        network.root.status === statusFilter ||
+        network.branches.some(b => b.status === statusFilter)
+      );
     }
 
-    // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(school =>
-        school.name.toLowerCase().includes(query) ||
-        school.slug.toLowerCase().includes(query) ||
-        school.contact_email.toLowerCase().includes(query) ||
-        school.address?.toLowerCase().includes(query)
+      filtered = filtered.filter(network =>
+        network.root.name.toLowerCase().includes(query) ||
+        network.root.slug.toLowerCase().includes(query) ||
+        network.branches.some(b => b.name.toLowerCase().includes(query))
       );
     }
 
     return filtered;
-  }, [searchQuery, statusFilter, schools]);
+  }, [schoolNetworks, searchQuery, statusFilter]);
 
-  // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [filteredSchools.length]);
+  }, [filteredNetworks.length]);
 
-  // Calculate pagination inline
-  const totalPages = Math.ceil(filteredSchools.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredNetworks.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const displayedSchools = filteredSchools.slice(startIndex, endIndex);
+  const displayedNetworks = filteredNetworks.slice(startIndex, endIndex);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const toggleNetwork = (id: string) => {
+    setExpandedNetworks(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   const handleStatusChange = async () => {
@@ -81,56 +102,28 @@ export default function SchoolDirectoryPage() {
         statusChangeDialog.school.id,
         statusChangeDialog.newStatus
       );
-      
+
       if (response.success) {
         toast.success(
           `School ${statusChangeDialog.newStatus === "suspended" ? "suspended" : "activated"} successfully`
         );
-        // Refresh SWR data
         mutate();
         setStatusChangeDialog({ open: false, school: null, newStatus: "active" });
       } else {
-        toast.error("Failed to update status", {
-          description: response.error
-        });
+        toast.error("Failed to update status", { description: response.error });
       }
     } catch (error: any) {
-      toast.error("Error updating status", {
-        description: error.message
-      });
+      toast.error("Error updating status", { description: error.message });
     } finally {
       setIsChangingStatus(false);
     }
   };
 
-  const handleDelete = async (schoolId: string, schoolName: string) => {
-    if (!confirm(`Are you sure you want to suspend ${schoolName}?`)) return;
-
-    try {
-      const response = await schoolApi.delete(schoolId);
-      
-      if (response.success) {
-        toast.success("School suspended successfully");
-        // Refresh SWR data
-        mutate();
-      } else {
-        toast.error("Failed to suspend school", {
-          description: response.error
-        });
-      }
-    } catch (error: any) {
-      toast.error("Error suspending school", {
-        description: error.message
-      });
-    }
-  };
-
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-brand-blue">
+          <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">
             School Directory
           </h1>
           <p className="text-sm text-gray-500 mt-1">
@@ -148,8 +141,8 @@ export default function SchoolDirectoryPage() {
         </Button>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Stats Cards (Same as before) */}
         <Card className="gradient-blue text-white hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-3">
@@ -179,7 +172,6 @@ export default function SchoolDirectoryPage() {
         </Card>
       </div>
 
-      {/* Filters Bar */}
       <Card className="border-l-4 border-l-[#57A3CC] shadow-md">
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -211,7 +203,6 @@ export default function SchoolDirectoryPage() {
         </CardContent>
       </Card>
 
-      {/* Schools Grid */}
       {loading ? (
         <Card className="border-gray-200">
           <CardContent className="p-12 flex flex-col items-center justify-center">
@@ -220,7 +211,7 @@ export default function SchoolDirectoryPage() {
             <p className="text-sm text-gray-500">Please wait while we fetch the school directory...</p>
           </CardContent>
         </Card>
-      ) : filteredSchools.length === 0 ? (
+      ) : filteredNetworks.length === 0 ? (
         <Card className="border-2 border-dashed border-gray-300">
           <CardContent className="p-12 text-center">
             <div className="w-20 h-20 gradient-blue rounded-full flex items-center justify-center mx-auto mb-4">
@@ -236,30 +227,29 @@ export default function SchoolDirectoryPage() {
         </Card>
       ) : (
         <>
-          {/* Schools count and pagination info */}
           <div className="flex items-center justify-between text-sm text-gray-600 mb-4">
             <div>
-              Showing <span className="font-semibold text-brand-blue">{((currentPage - 1) * itemsPerPage) + 1}</span> to <span className="font-semibold text-brand-blue">{Math.min(currentPage * itemsPerPage, filteredSchools.length)}</span> of <span className="font-semibold text-brand-blue">{filteredSchools.length}</span> schools
+              Showing <span className="font-semibold text-brand-blue">{startIndex + 1}</span> to <span className="font-semibold text-brand-blue">{Math.min(endIndex, filteredNetworks.length)}</span> of <span className="font-semibold text-brand-blue">{filteredNetworks.length}</span> networks
             </div>
             <div className="text-gray-500">
               Page {currentPage} of {totalPages}
             </div>
           </div>
 
+          {/* GRID LAYOUT for Networks */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {displayedSchools.map((school) => (
-            <Card 
-              key={school.id} 
-              className="group hover:shadow-2xl transition-all duration-300 hover:scale-[1.02] border-gray-200 hover:border-[#57A3CC] overflow-hidden"
-            >
-              <CardContent className="p-0">
-                {/* Header with gradient overlay */}
+            {displayedNetworks.map(({ root, branches }) => (
+              <Card
+                key={root.id}
+                className="group flex flex-col overflow-hidden border-gray-200 hover:border-[#57A3CC] transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
+              >
+                {/* Standard Vertical Card Header */}
                 <div className="relative h-24 gradient-blue p-6 flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    {school.logo_url ? (
+                    {root.logo_url ? (
                       <img
-                        src={school.logo_url}
-                        alt={`${school.name} logo`}
+                        src={root.logo_url}
+                        alt={`${root.name} logo`}
                         className="w-14 h-14 object-cover rounded-lg border-2 border-white shadow-lg bg-white"
                       />
                     ) : (
@@ -268,148 +258,141 @@ export default function SchoolDirectoryPage() {
                       </div>
                     )}
                     <div>
-                      <h3 className="font-bold text-lg text-white line-clamp-1">{school.name}</h3>
-                      <p className="text-sm text-white/80">@{school.slug}</p>
+                      <h3 className="font-bold text-lg text-white line-clamp-1">{root.name}</h3>
+                      <p className="text-sm text-white/80">@{root.slug}</p>
                     </div>
                   </div>
-                  <Badge
-                    variant={school.status === "active" ? "default" : "destructive"}
-                    className={`${
-                      school.status === "active" 
-                        ? "bg-green-500 hover:bg-green-600" 
-                        : "bg-red-500 hover:bg-red-600"
-                    } text-white border-0`}
+                  <Badge variant={root.status === 'active' ? 'default' : 'destructive'}
+                    className={`${root.status === 'active' ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"} text-white border-0`}
                   >
-                    {school.status}
+                    {root.status}
                   </Badge>
                 </div>
 
-                {/* Content */}
-                <div className="p-6 space-y-3">
+                <div className="p-6 space-y-3 flex-1">
                   <div className="flex items-center gap-2 text-gray-700 hover:text-[#57A3CC] transition-colors">
                     <Mail className="h-4 w-4 shrink-0 text-[#57A3CC]" />
-                    <span className="truncate text-sm">{school.contact_email}</span>
+                    <span className="truncate text-sm">{root.contact_email}</span>
                   </div>
-                  {school.website && (
+                  {root.website && (
                     <div className="flex items-center gap-2 text-gray-700 hover:text-[#57A3CC] transition-colors">
                       <Globe className="h-4 w-4 shrink-0 text-[#57A3CC]" />
-                      <a
-                        href={school.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="truncate text-sm hover:underline"
-                      >
-                        {school.website.replace(/^https?:\/\//, '')}
+                      <a href={root.website} target="_blank" className="truncate text-sm hover:underline">
+                        {root.website.replace(/^https?:\/\//, '')}
                       </a>
                     </div>
                   )}
-                  {school.address && (
+                  {root.address && (
                     <div className="flex items-center gap-2 text-gray-700">
                       <MapPin className="h-4 w-4 shrink-0 text-[#57A3CC]" />
-                      <span className="truncate text-sm">{school.address}</span>
+                      <span className="truncate text-sm">{root.address}</span>
                     </div>
                   )}
                   <div className="flex items-center gap-2 text-gray-600">
                     <Calendar className="h-4 w-4 shrink-0 text-[#57A3CC]" />
                     <span className="text-sm">
-                      Joined {new Date(school.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                      Joined {new Date(root.created_at).toLocaleDateString()}
                     </span>
                   </div>
                 </div>
 
-                {/* Actions */}
-                <div className="flex flex-col gap-2 p-4 bg-gray-50 border-t">
+                {/* Actions Footer */}
+                <div className="p-4 bg-gray-50 border-t flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <Button size="sm" className="flex-1 gradient-blue text-white hover:shadow-md transition-all border-0" onClick={() => setEditingSchool(root)}>
+                      <Edit className="h-3 w-3 mr-2" /> Edit Info
+                    </Button>
+                    <Button size="sm" className="flex-1 gradient-orange text-white hover:shadow-md transition-all border-0" onClick={() => setEditingAdmin({ schoolId: root.id, schoolName: root.name })}>
+                      <User className="h-3 w-3 mr-2" /> Admin
+                    </Button>
+                  </div>
                   <Button
                     size="sm"
-                    className="w-full gradient-blue hover:shadow-lg hover:scale-105 active:scale-95 justify-start text-white transition-all duration-300"
-                    onClick={() => setEditingSchool(school)}
+                    className={`w-full h-8 text-white border-0 ${root.status === 'active' ? 'gradient-red' : 'gradient-green'}`}
+                    onClick={() => setStatusChangeDialog({ open: true, school: root, newStatus: root.status === 'active' ? 'suspended' : 'active' })}
                   >
-                    <Building2 className="h-4 w-4 mr-2" />
-                    Edit School Info
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="w-full gradient-orange hover:shadow-lg hover:scale-105 active:scale-95 justify-start text-white transition-all duration-300"
-                    onClick={() => setEditingAdmin({ schoolId: school.id, schoolName: school.name })}
-                  >
-                    <User className="h-4 w-4 mr-2" />
-                    Edit Admin Info
-                  </Button>
-                  <Button
-                    size="sm"
-                    className={`w-full justify-start text-white hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300 ${
-                      school.status === "active" 
-                        ? "gradient-red" 
-                        : "gradient-green"
-                    }`}
-                    onClick={() =>
-                      setStatusChangeDialog({
-                        open: true,
-                        school,
-                        newStatus: school.status === "active" ? "suspended" : "active"
-                      })
-                    }
-                  >
-                    <Shield className="h-4 w-4 mr-2" />
-                    {school.status === "active" ? "Suspend School" : "Activate School"}
+                    <Shield className="h-3 w-3 mr-2" />
+                    {root.status === 'active' ? 'Suspend School Access' : 'Activate School Access'}
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+
+                {/* Branches Section (Collapsible within card) */}
+                {branches.length > 0 && (
+                  <div className="bg-slate-50 border-t border-gray-200">
+                    <button
+                      onClick={() => toggleNetwork(root.id)}
+                      className="w-full h-10 flex items-center justify-between px-4 text-xs font-bold text-gray-700 hover:text-brand-blue hover:bg-white transition-colors uppercase tracking-wide"
+                    >
+                      <div className="flex items-center gap-2">
+                        <GitBranch className="h-3 w-3" />
+                        <span>{branches.length} Branch Campus{branches.length !== 1 ? 'es' : ''}</span>
+                      </div>
+                      {expandedNetworks[root.id] ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                    </button>
+
+                    {expandedNetworks[root.id] && (
+                      <div className="px-4 pb-4 pt-2 grid grid-cols-1 gap-3">
+                        {branches.map(branch => (
+                          <div key={branch.id} className="bg-white rounded-lg border-l-4 border-l-[#57A3CC] border-y border-r border-gray-200 shadow-sm p-3 flex flex-col gap-2 group hover:shadow-md transition-all">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <h4 className="font-bold text-[#022172] text-sm leading-tight group-hover:text-[#57A3CC] transition-colors">{branch.name}</h4>
+                                <span className="text-xs text-slate-500 font-mono">@{branch.slug}</span>
+                              </div>
+                              <Badge variant={branch.status === 'active' ? 'secondary' : 'destructive'} className="text-[10px] px-1.5 h-5">
+                                {branch.status}
+                              </Badge>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 text-xs text-gray-500 pt-1 border-t border-gray-50 mt-1">
+                              <MapPin className="h-3 w-3 text-[#57A3CC]" />
+                              <span className="truncate">{branch.address || 'No address provided'}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </Card>
+            ))}
           </div>
 
-          {/* Pagination Controls */}
           {totalPages > 1 && (
             <PaginationWrapper
               currentPage={currentPage}
               totalPages={totalPages}
-              totalItems={filteredSchools.length}
+              totalItems={filteredNetworks.length}
               itemsPerPage={itemsPerPage}
               onPageChange={handlePageChange}
               variant="gradient"
             />
           )}
+
         </>
       )}
 
-      {/* Edit Modal */}
+      {/* Modals remain the same */}
       {editingSchool && (
         <EditSchoolModal
           school={editingSchool}
           onClose={() => setEditingSchool(null)}
-          onSuccess={() => {
-            setEditingSchool(null);
-            mutate();
-          }}
+          onSuccess={() => { setEditingSchool(null); mutate(); }}
         />
       )}
-
-      {/* Edit Admin Modal */}
       {editingAdmin && (
         <EditAdminModal
           schoolId={editingAdmin.schoolId}
           schoolName={editingAdmin.schoolName}
           onClose={() => setEditingAdmin(null)}
-          onSuccess={() => {
-            setEditingAdmin(null);
-            mutate();
-          }}
+          onSuccess={() => { setEditingAdmin(null); mutate(); }}
         />
       )}
-
-      {/* Status Change Confirmation Dialog */}
       <ConfirmationDialog
         open={statusChangeDialog.open}
-        onOpenChange={(open) =>
-          setStatusChangeDialog({ open, school: null, newStatus: "active" })
-        }
+        onOpenChange={(open) => setStatusChangeDialog({ open, school: null, newStatus: "active" })}
         title={`${statusChangeDialog.newStatus === "suspended" ? "Suspend" : "Activate"} School?`}
-        description={
-          statusChangeDialog.school
-            ? `Are you sure you want to ${statusChangeDialog.newStatus === "suspended" ? "suspend" : "activate"} "${statusChangeDialog.school.name}"? ${statusChangeDialog.newStatus === "suspended" ? "This will restrict access for all users in this school." : "This will restore access for all users in this school."}`
-            : ""
-        }
+        description={statusChangeDialog.school ? `Are you sure you want to ${statusChangeDialog.newStatus === "suspended" ? "suspend" : "activate"} "${statusChangeDialog.school.name}"?` : ""}
         confirmText={statusChangeDialog.newStatus === "suspended" ? "Suspend" : "Activate"}
         onConfirm={handleStatusChange}
         variant={statusChangeDialog.newStatus === "suspended" ? "destructive" : "default"}

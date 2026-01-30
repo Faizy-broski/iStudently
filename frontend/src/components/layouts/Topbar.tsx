@@ -2,6 +2,8 @@
 
 import * as React from 'react'
 import { useAuth } from '@/context/AuthContext'
+import { useTheme } from '@/context/ThemeContext'
+import { useAcademic, Quarter } from '@/context/AcademicContext'
 import { useRouter } from 'next/navigation'
 import { useSidebarContext } from '@/components/layouts/AppSidebar'
 import { Button } from '@/components/ui/button'
@@ -14,7 +16,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Bell, Search, LogOut, User, Settings, Menu } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Bell, Search, LogOut, Settings, Menu, Moon, Sun } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface TopbarProps {
@@ -23,6 +32,7 @@ interface TopbarProps {
 
 export function Topbar({ className }: TopbarProps) {
   const { profile, signOut } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const router = useRouter()
   const { setIsMobileOpen } = useSidebarContext()
 
@@ -49,7 +59,7 @@ export function Topbar({ className }: TopbarProps) {
   return (
     <header
       className={cn(
-        'sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm',
+        'sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm transition-colors',
         className
       )}
     >
@@ -70,23 +80,39 @@ export function Topbar({ className }: TopbarProps) {
           {/* Search Bar */}
           <div className="hidden md:flex items-center">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
               <input
                 type="text"
                 placeholder="Search..."
-                className="h-10 w-64 lg:w-80 pl-10 pr-4 rounded-lg border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-[#57A3CC] focus:border-transparent transition-all"
+                className="h-10 w-64 lg:w-80 pl-10 pr-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#57A3CC] focus:border-transparent transition-all"
               />
             </div>
           </div>
         </div>
 
-        {/* Right Side - Notifications & Profile */}
+        {/* Right Side - Theme Toggle, Notifications & Profile */}
         <div className="flex items-center gap-3">
+          {/* Theme Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
+            title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+          >
+            {theme === 'light' ? (
+              <Moon className="h-5 w-5" />
+            ) : (
+              <Sun className="h-5 w-5" />
+            )}
+            <span className="sr-only">Toggle Theme</span>
+          </Button>
+
           {/* Notifications */}
           <Button
             variant="ghost"
             size="icon"
-            className="relative text-gray-600 hover:text-gray-900"
+            className="relative text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
           >
             <Bell className="h-5 w-5" />
             <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
@@ -98,19 +124,22 @@ export function Topbar({ className }: TopbarProps) {
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="flex items-center gap-3 px-2 py-1.5 h-auto hover:bg-gray-100 rounded-lg"
+                className="flex items-center gap-3 px-2 py-1.5 h-auto hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
               >
                 <Avatar className="h-9 w-9">
-                  <AvatarImage src="" alt={profile?.first_name || 'User'} />
+                  <AvatarImage
+                    src={profile?.profile_photo_url || profile?.avatar_url || ''}
+                    alt={profile?.first_name || 'User'}
+                  />
                   <AvatarFallback className="bg-[#022172] text-white text-sm">
                     {getInitials()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="hidden md:flex flex-col items-start">
-                  <span className="text-sm font-medium text-gray-900">
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                     {profile?.first_name} {profile?.last_name}
                   </span>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
                     {getRoleDisplayName()}
                   </span>
                 </div>
@@ -120,7 +149,7 @@ export function Topbar({ className }: TopbarProps) {
               <DropdownMenuLabel>
                 <div className="flex flex-col">
                   <span>{profile?.first_name} {profile?.last_name}</span>
-                  <span className="text-xs font-normal text-gray-500">
+                  <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
                     {profile?.email}
                   </span>
                 </div>

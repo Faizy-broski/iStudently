@@ -26,8 +26,6 @@ interface AdminDashboardData {
 
 // Combined fetcher for all admin dashboard data
 const fetchAdminDashboardData = async (): Promise<AdminDashboardData> => {
-  console.log('📊 Fetching admin dashboard data with SWR...')
-  
   // TODO: Replace with actual API calls
   // const [statsRes, studentsRes, teachersRes, eventsRes] = await Promise.all([
   //   adminDashboardApi.getStats(),
@@ -93,7 +91,6 @@ export const useAdminDashboard = () => {
 
   // Manual refresh function
   const refreshDashboard = useCallback(() => {
-    console.log('🔄 Manual admin dashboard refresh triggered')
     mutate()
   }, [mutate])
 

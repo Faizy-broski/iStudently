@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import { billingPlansApi, BillingPlan, calculateBillingAmount } from "@/lib/api/billing";
+import { billingPlansApi, BillingPlan, BillingRecord, calculateBillingAmount } from "@/lib/api/billing";
 
 const billingFormSchema = z.object({
   school_id: z.string().min(1, "School ID is required"),
@@ -34,24 +34,10 @@ const billingFormSchema = z.object({
 
 type BillingFormData = z.infer<typeof billingFormSchema>;
 
-interface BillingRecord {
-  id: string;
-  school_id: string;
-  school_name: string;
-  billing_plan_id: string;
-  billing_cycle: string;
-  amount: number;
-  due_date: string;
-  payment_status: "paid" | "unpaid" | "overdue" | "pending";
-  payment_date: string | null;
-  invoice_number: string;
-  subscription_plan: string;
-}
-
 interface BillingFormModalProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: Omit<BillingRecord, "id">) => void;
+  onSubmit: (data: any) => Promise<void> | void;
   editingRecord: BillingRecord | null;
 }
 

@@ -16,6 +16,7 @@ export interface School {
   website: string | null;
   contact_email: string;
   address: string | null;
+  parent_school_id: string | null;
   status: "active" | "suspended";
   created_at: string;
   updated_at: string;
@@ -24,15 +25,15 @@ export interface School {
 // Fetcher for schools data
 const fetchSchools = async (): Promise<School[]> => {
   console.log('🏫 Fetching schools with SWR...')
-  
+
   const response = await schoolApi.getAll()
-  
+
   if (response.success && response.data) {
     const schools = response.data as School[]
     console.log('🏫 Schools fetched:', schools.length)
     return schools
   }
-  
+
   throw new Error(response.error || 'Failed to fetch schools')
 }
 

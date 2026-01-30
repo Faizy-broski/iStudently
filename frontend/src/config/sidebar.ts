@@ -15,6 +15,13 @@ import {
   Building2,
   CreditCard,
   School,
+  DollarSign,
+  Receipt,
+  Plus,
+  FolderOpen,
+  CheckSquare,
+  Award,
+  Upload,
   type LucideIcon,
 } from 'lucide-react'
 import { UserRole } from '@/types'
@@ -24,6 +31,7 @@ export interface SidebarMenuItem {
   href: string
   icon: LucideIcon
   badge?: string | number
+  subItems?: SidebarMenuItem[]
 }
 
 export interface SidebarConfig {
@@ -43,47 +51,188 @@ const superAdminMenuItems: SidebarMenuItem[] = [
 // Admin Menu Items (School Admin)
 const adminMenuItems: SidebarMenuItem[] = [
   { title: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
-  { title: 'Students', href: '/admin/students', icon: GraduationCap },
-  { title: 'Teachers', href: '/admin/teachers', icon: Users },
-  { title: 'Parents', href: '/admin/parents', icon: UserCheck },
-  { title: 'Academics', href: '/admin/academics', icon: BookOpen },
+  {
+    title: 'Students',
+    href: '/admin/students',
+    icon: GraduationCap,
+    subItems: [
+      { title: 'Student Info', href: '/admin/students/student-info', icon: GraduationCap },
+      { title: 'Add Student', href: '/admin/students/add-student', icon: Users },
+      { title: 'Advanced Report', href: '/admin/students/advanced-report', icon: FileText },
+      { title: 'Custom Fields', href: '/admin/students/custom-fields', icon: Settings },
+    ]
+  },
+  {
+    title: 'Teachers',
+    href: '/admin/teachers',
+    icon: Users,
+    subItems: [
+      { title: 'All Teachers', href: '/admin/teachers', icon: Users },
+      { title: 'Add Teacher', href: '/admin/teachers/add', icon: Plus },
+      { title: 'Workload', href: '/admin/teachers/workload', icon: ClipboardList },
+      { title: 'Custom Fields', href: '/admin/teachers/custom-fields', icon: Settings },
+    ]
+  },
+  {
+    title: 'Staff',
+    href: '/admin/staff',
+    icon: Users,
+    subItems: [
+      { title: 'All Staff', href: '/admin/staff', icon: Users },
+      { title: 'Add Staff', href: '/admin/staff/add-staff', icon: Plus },
+      { title: 'Settings', href: '/admin/staff/settings', icon: Settings },
+    ]
+  },
+  {
+    title: 'Parents',
+    href: '/admin/parents',
+    icon: UserCheck,
+    subItems: [
+      { title: 'Parent Info', href: '/admin/parents/parent-info', icon: UserCheck },
+      { title: 'Add Parent', href: '/admin/parents/add-parent', icon: UserCheck },
+      { title: 'Associate Parent', href: '/admin/parents/associate-parent', icon: Users },
+      { title: 'Custom Fields', href: '/admin/parents/custom-fields', icon: Settings },
+    ]
+  },
+  {
+    title: 'Academics',
+    href: '/admin/academics',
+    icon: BookOpen,
+    subItems: [
+      { title: 'Overview', href: '/admin/academics', icon: LayoutDashboard },
+      { title: 'Grade Levels', href: '/admin/academics/grades', icon: GraduationCap },
+      { title: 'Sections', href: '/admin/academics/sections', icon: Users },
+      { title: 'Subjects', href: '/admin/academics/subjects', icon: BookOpen },
+    ]
+  },
   { title: 'Attendance', href: '/admin/attendance', icon: CalendarCheck },
   { title: 'Exams', href: '/admin/exams', icon: FileText },
   { title: 'Assignments', href: '/admin/assignments', icon: ClipboardList },
-  { title: 'Fees', href: '/admin/fees', icon: CreditCard },
+  {
+    title: 'Fees',
+    href: '/admin/fees',
+    icon: CreditCard,
+    subItems: [
+      { title: 'Dashboard', href: '/admin/fees', icon: LayoutDashboard },
+      { title: 'Generate Fees', href: '/admin/fees/generate', icon: FileText },
+      { title: 'Settings', href: '/admin/fees/settings', icon: Settings },
+    ]
+  },
+  {
+    title: 'Salary',
+    href: '/admin/salary',
+    icon: DollarSign,
+    subItems: [
+      { title: 'Dashboard', href: '/admin/salary', icon: LayoutDashboard },
+      { title: 'Generate Salaries', href: '/admin/salary/generate', icon: FileText },
+      { title: 'Advances', href: '/admin/salary/advances', icon: CreditCard },
+      { title: 'Settings', href: '/admin/salary/settings', icon: Settings },
+    ]
+  },
   { title: 'Timetable', href: '/admin/timetable', icon: Clock },
-  { title: 'Library', href: '/admin/library', icon: Library },
+  {
+    title: 'Library',
+    href: '/admin/library',
+    icon: Library,
+    subItems: [
+      { title: 'Overview', href: '/admin/library', icon: BookOpen },
+      { title: 'Settings', href: '/admin/library/settings', icon: Settings },
+    ]
+  },
   { title: 'Events', href: '/admin/events', icon: Calendar },
   { title: 'Reports', href: '/admin/reports', icon: BarChart3 },
-  { title: 'Settings', href: '/admin/settings', icon: Settings },
+  {
+    title: 'Settings',
+    href: '/admin/settings',
+    icon: Settings,
+    subItems: [
+      { title: 'General', href: '/admin/settings', icon: Settings },
+      { title: 'Campuses', href: '/admin/settings/campuses', icon: Building2 },
+      { title: 'Academic Years', href: '/admin/settings/academic-years', icon: Calendar },
+      { title: 'Services', href: '/admin/settings/services', icon: Settings },
+    ]
+  },
 ]
 
 // Teacher Menu Items
 const teacherMenuItems: SidebarMenuItem[] = [
   { title: 'Dashboard', href: '/teacher/dashboard', icon: LayoutDashboard },
+  {
+    title: 'Academic Management',
+    href: '/teacher/timetable',
+    icon: Clock,
+    subItems: [
+      { title: 'My Timetable', href: '/teacher/timetable', icon: Clock },
+      { title: 'Attendance', href: '/teacher/attendance', icon: CalendarCheck },
+      { title: 'Subjects', href: '/teacher/subjects', icon: BookOpen },
+    ]
+  },
+  {
+    title: 'Student Learning',
+    href: '/teacher/assignments',
+    icon: ClipboardList,
+    subItems: [
+      { title: 'Assignments', href: '/teacher/assignments', icon: ClipboardList },
+      { title: 'Submissions', href: '/teacher/submissions', icon: CheckSquare },
+      { title: 'Exams & Grading', href: '/teacher/exams', icon: Award },
+    ]
+  },
+  {
+    title: 'Resources',
+    href: '/teacher/learning-resources',
+    icon: FolderOpen,
+    subItems: [
+      { title: 'Learning Resources', href: '/teacher/learning-resources', icon: Upload },
+      // { title: 'Content Library', href: '/teacher/library', icon: Library },
+      { title: 'Class Reports', href: '/teacher/reports', icon: BarChart3 },
+    ]
+  },
   { title: 'Students', href: '/teacher/students', icon: GraduationCap },
-  { title: 'Academics', href: '/teacher/academics', icon: BookOpen },
-  { title: 'Attendance', href: '/teacher/attendance', icon: CalendarCheck },
-  { title: 'Exams', href: '/teacher/exams', icon: FileText },
-  { title: 'Assignments', href: '/teacher/assignments', icon: ClipboardList },
-  { title: 'Timetable', href: '/teacher/timetable', icon: Clock },
-  { title: 'Library', href: '/teacher/library', icon: Library },
-  { title: 'Events', href: '/teacher/events', icon: Calendar },
-  { title: 'Reports', href: '/teacher/reports', icon: BarChart3 },
   { title: 'Settings', href: '/teacher/settings', icon: Settings },
 ]
 
 // Student Menu Items
 const studentMenuItems: SidebarMenuItem[] = [
   { title: 'Dashboard', href: '/student/dashboard', icon: LayoutDashboard },
-  { title: 'Academics', href: '/student/academics', icon: BookOpen },
-  { title: 'Attendance', href: '/student/attendance', icon: CalendarCheck },
-  { title: 'Exams', href: '/student/exams', icon: FileText },
-  { title: 'Assignments', href: '/student/assignments', icon: ClipboardList },
-  { title: 'Timetable', href: '/student/timetable', icon: Clock },
-  { title: 'Library', href: '/student/library', icon: Library },
-  { title: 'Events', href: '/student/events', icon: Calendar },
-  { title: 'Settings', href: '/student/settings', icon: Settings },
+  {
+    title: 'My Classes',
+    href: '/student/timetable',
+    icon: BookOpen,
+    subItems: [
+      { title: 'Timetable', href: '/student/timetable', icon: Clock },
+      { title: 'Attendance', href: '/student/attendance', icon: CalendarCheck },
+    ]
+  },
+  {
+    title: 'Work & Grades',
+    href: '/student/assignments',
+    icon: ClipboardList,
+    subItems: [
+      { title: 'Assignments', href: '/student/assignments', icon: ClipboardList },
+      { title: 'Exams', href: '/student/exams', icon: FileText },
+      { title: 'Report Cards', href: '/student/report-cards', icon: Award },
+    ]
+  },
+  {
+    title: 'Resources',
+    href: '/student/learning-resources',
+    icon: FolderOpen,
+    subItems: [
+      { title: 'Learning Resources', href: '/student/learning-resources', icon: Upload },
+      { title: 'Syllabus', href: '/student/syllabus', icon: BookOpen },
+      { title: 'Learning Materials', href: '/student/materials', icon: Library },
+    ]
+  },
+  {
+    title: 'Profile',
+    href: '/student/profile',
+    icon: UserCheck,
+    subItems: [
+      { title: 'ID Card', href: '/student/id-card', icon: CreditCard },
+      { title: 'My Profile', href: '/student/profile', icon: UserCheck },
+    ]
+  },
+  { title: 'Fees', href: '/student/fees', icon: Receipt },
 ]
 
 // Parent Menu Items
@@ -94,14 +243,38 @@ const parentMenuItems: SidebarMenuItem[] = [
   { title: 'Attendance', href: '/parent/attendance', icon: CalendarCheck },
   { title: 'Exams', href: '/parent/exams', icon: FileText },
   { title: 'Assignments', href: '/parent/assignments', icon: ClipboardList },
-  { title: 'Fees', href: '/parent/fees', icon: CreditCard },
+  {
+    title: 'Fees',
+    href: '/parent/fees',
+    icon: CreditCard,
+    subItems: [
+      { title: 'View Fees', href: '/parent/fees', icon: CreditCard },
+    ]
+  },
+  {
+    title: 'Library',
+    href: '/parent/library',
+    icon: Library,
+    subItems: [
+      { title: 'Books & Fines', href: '/parent/library', icon: Library },
+    ]
+  },
   { title: 'Timetable', href: '/parent/timetable', icon: Clock },
   { title: 'Events', href: '/parent/events', icon: Calendar },
   { title: 'Settings', href: '/parent/settings', icon: Settings },
 ]
 
+// Librarian Menu Items
+const librarianMenuItems: SidebarMenuItem[] = [
+  { title: 'Dashboard', href: '/librarian/dashboard', icon: LayoutDashboard },
+  { title: 'Books', href: '/librarian/books', icon: BookOpen },
+  { title: 'Loan Directory', href: '/librarian/loans', icon: ClipboardList },
+  // Reuse Profile/Settings
+  { title: 'My Profile', href: '/profile', icon: UserCheck },
+]
+
 // Get menu items based on user role
-export function getMenuItemsByRole(role: UserRole): SidebarMenuItem[] {
+export const getSidebarConfig = (role: UserRole): SidebarMenuItem[] => {
   switch (role) {
     case 'super_admin':
       return superAdminMenuItems
@@ -113,6 +286,8 @@ export function getMenuItemsByRole(role: UserRole): SidebarMenuItem[] {
       return studentMenuItems
     case 'parent':
       return parentMenuItems
+    case 'librarian':
+      return librarianMenuItems
     default:
       return []
   }

@@ -1,6 +1,7 @@
 "use client";
 
 import { DashboardLayout } from "@/components/layouts";
+import { RoleGuard } from "@/components/auth/RoleGuard";
 
 export default function SuperAdminLayout({
   children,
@@ -8,8 +9,10 @@ export default function SuperAdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <DashboardLayout role="super_admin">
-      {children}
-    </DashboardLayout>
+    <RoleGuard allowedRoles={['super_admin']}>
+      <DashboardLayout role="super_admin">
+        {children}
+      </DashboardLayout>
+    </RoleGuard>
   );
 }

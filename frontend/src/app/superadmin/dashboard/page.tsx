@@ -162,7 +162,7 @@ export default function SuperAdminDashboard() {
     <>
       {/* Page Header */}
       <div className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-brand-blue">
+        <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">
           Welcome back, <span className="text-brand-green">Super Admin</span>
         </h1>
         <p className="text-sm text-gray-500 mt-1">

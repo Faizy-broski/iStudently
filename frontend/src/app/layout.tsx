@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { AcademicProvider } from "@/context/AcademicContext";
 import { SWRProvider } from "@/lib/swr-config";
+import { ThemeProvider } from "@/context/ThemeContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,15 +27,43 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                function getCookie(name) {
+                  const value = '; ' + document.cookie;
+                  const parts = value.split('; ' + name + '=');
+                  if (parts.length === 2) return parts.pop().split(';').shift();
+                }
+                
+                const theme = getCookie('studently-theme') || 
+                              (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+                
+                if (theme === 'dark') {
+                  document.documentElement.classList.add('dark');
+                } else {
+                  document.documentElement.classList.remove('dark');
+                }
+              })();
+            `,
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AuthProvider>
-          <SWRProvider>
-            {children}
-          </SWRProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <AcademicProvider>
+              <SWRProvider>
+                {children}
+              </SWRProvider>
+            </AcademicProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

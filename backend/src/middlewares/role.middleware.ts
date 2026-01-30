@@ -9,16 +9,16 @@ import { UserRole } from '../types'
 export const requireRole = (...allowedRoles: UserRole[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.profile) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         success: false,
-        error: 'Unauthorized: No profile found' 
+        error: 'Unauthorized: No profile found'
       })
     }
 
     const userRole = req.profile.role as UserRole
 
     if (!allowedRoles.includes(userRole)) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         success: false,
         error: 'Forbidden: Insufficient permissions',
         details: {
@@ -37,6 +37,8 @@ export const requireSuperAdmin = requireRole('super_admin')
 export const requireAdmin = requireRole('super_admin', 'admin')
 export const requireTeacher = requireRole('super_admin', 'admin', 'teacher')
 export const requireStudent = requireRole('super_admin', 'admin', 'teacher', 'student')
+// For routes that staff/librarians can also read (like academic years)
+export const requireStaff = requireRole('super_admin', 'admin', 'teacher', 'librarian', 'staff')
 
 /**
  * Check if user belongs to specific school (for school-level admins)

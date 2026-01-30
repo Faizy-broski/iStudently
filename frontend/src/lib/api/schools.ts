@@ -1,4 +1,7 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+import { createClient } from '@/lib/supabase/client'
+import { API_URL } from '@/config/api'
+import { abortableFetch } from './abortable-fetch'
+import { handleSessionExpiry } from '@/context/AuthContext'
 
 interface ApiResponse<T = unknown> {
   success: boolean
@@ -7,301 +10,231 @@ interface ApiResponse<T = unknown> {
   message?: string
 }
 
-/**
- * Get auth token from Supabase session with retry logic
- * Properly handles session restoration from refresh token
- */
-export async function getAuthToken(retryCount = 0): Promise<string | null> {
-  if (typeof window === 'undefined') return null
-  
-  const { createClient } = await import('@/lib/supabase/client')
-  const supabase = createClient()
-  
-  // First, try getUser() which properly waits for session restoration
-  // This is important when refresh token is being used
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  
-  if (userError) {
-    console.warn('⚠️ Auth error:', userError.message)
-    // If there's an auth error, don't retry - session is invalid
-    return null
-  }
-  
-  // If we have a user, get the session which should now be ready
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-  
-  // If we have a valid session, return the token
-  if (session?.access_token) {
-    console.log('✅ Auth token obtained successfully')
-    return session.access_token
-  }
-  
-  // If no session and we haven't retried, wait a bit and try again
-  // This handles edge cases where session is still being set up
-  if (retryCount < 5) {
-    const delay = 200 * (retryCount + 1) // Progressive delay: 200ms, 400ms, 600ms, 800ms, 1000ms
-    console.log(`⏳ Waiting for session... retry ${retryCount + 1}/5 (${delay}ms)`)
-    await new Promise(resolve => setTimeout(resolve, delay))
-    return getAuthToken(retryCount + 1)
-  }
-  
-  console.warn('⚠️ No auth token available after retries')
-  return null
+export interface School {
+  id: string
+  name: string
+  slug: string
+  status: 'active' | 'suspended'
+  contact_email: string
+  parent_school_id: string | null
+  logo_url?: string
 }
 
-/**
- * Make authenticated API request with retry logic
- */
+export interface CreateSchoolDTO {
+  name: string
+  slug: string
+  contact_email: string
+  parent_school_id?: string
+}
+
+export async function getAuthToken(): Promise<string | null> {
+  const supabase = createClient()
+  const { data } = await supabase.auth.getSession()
+  return data.session?.access_token || null
+}
+
 async function apiRequest<T = unknown>(
   endpoint: string,
-  options: RequestInit = {},
-  retryOnAuthFailure = true
+  options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
   const token = await getAuthToken()
 
-  console.log('🔐 API Request Debug:', {
-    endpoint,
-    hasToken: !!token,
-    tokenPreview: token ? `${token.substring(0, 20)}...` : 'No token'
-  })
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  }
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
+  if (!token) {
+    return {
+      success: false,
+      error: 'Authentication required'
+    }
   }
 
   try {
-    const response = await fetch(`${API_URL}${endpoint}`, {
+    const response = await abortableFetch(`${API_URL}${endpoint}`, {
       ...options,
-      headers,
-      // Add cache control to prevent stale data
-      cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        ...options.headers
+      },
+      timeout: 30000 // 30 second timeout
     })
-
-    // Handle 401/403 - authentication/authorization issues
-    if ((response.status === 401 || response.status === 403) && retryOnAuthFailure && token) {
-      console.warn('⚠️ Auth failed, retrying with fresh token...')
-      // Wait a moment and retry with a fresh token
-      await new Promise(resolve => setTimeout(resolve, 500))
-      return apiRequest<T>(endpoint, options, false) // Don't retry again
-    }
 
     const data = await response.json()
-    
-    console.log('📡 API Response:', {
-      endpoint,
-      status: response.status,
-      success: data.success,
-      error: data.error
-    })
-    
+
+    // Handle 401 Unauthorized - token expired or invalid
+    if (response.status === 401) {
+      console.error('🔒 Unauthorized - Session expired in schools API')
+      await handleSessionExpiry()
+      
+      return {
+        success: false,
+        error: 'Session expired. Please login again.'
+      }
+    }
+
+    // Handle 403 Forbidden - insufficient permissions
+    if (response.status === 403) {
+      console.error('🚫 Forbidden - Insufficient permissions')
+      return {
+        success: false,
+        error: 'You do not have permission to perform this action'
+      }
+    }
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data.error || `Request failed with status ${response.status}`
+      }
+    }
+
     return data
-  } catch (error: unknown) {
-    console.error('❌ API Request Failed:', error)
+  } catch (error) {
+    // Handle aborted requests gracefully
+    if (error instanceof Error && error.message === 'Request was cancelled') {
+      console.log('ℹ️ API request cancelled:', endpoint)
+      return {
+        success: false,
+        error: 'Request cancelled'
+      }
+    }
+    
+    console.error('API Request Error:', error)
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Network error'
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
     }
   }
 }
 
-// School API endpoints
-export const schoolApi = {
-  /**
-   * Onboard a new school with admin credentials and billing
-   */
-  onboard: async (data: {
-    school: {
-      name: string
-      slug: string
-      contact_email: string
-      address: string
-      website?: string | null
-      logo_url?: string | null
-      settings?: {
-        grading_scale: number
-        currency: string
-        library: {
-          max_books: number
-          fine_per_day: number
-        }
-      }
-      modules?: {
-        food_service: boolean
-        discipline: boolean
-        billing: boolean
-        activities: boolean
-      }
-    }
-    admin: {
-      email: string
-      password: string
-      first_name: string
-      last_name: string
-    }
-    billing?: {
-      billing_plan_id: string
-      billing_cycle: "Monthly" | "Quarterly" | "Yearly"
-      amount: number
-      start_date: string
-      due_date: string
-      payment_status: "paid" | "unpaid" | "pending"
-    }
-  }) => {
-    return apiRequest('/schools/onboard', {
-      method: 'POST',
-      body: JSON.stringify(data)
-    })
-  },
-
-  /**
-   * Get all schools
-   */
-  getAll: async (filters?: { status?: string }) => {
-    const query = filters?.status ? `?status=${filters.status}` : ''
-    return apiRequest(`/schools${query}`)
-  },
-
-  /**
-   * Get school by ID
-   */
-  getById: async (id: string) => {
-    return apiRequest(`/schools/${id}`)
-  },
-
-  /**
-   * Get school by slug
-   */
-  getBySlug: async (slug: string) => {
-    return apiRequest(`/schools/slug/${slug}`)
-  },
-
-  /**
-   * Create new school
-   */
-  create: async (data: {
-    name: string
-    slug: string
-    contact_email: string
-    address?: string
-    website?: string
-    logo_url?: string
-  }) => {
-    return apiRequest('/schools', {
-      method: 'POST',
-      body: JSON.stringify(data)
-    })
-  },
-
-  /**
-   * Update school
-   */
-  update: async (id: string, data: Partial<{
-    name: string
-    contact_email: string
-    address: string
-    website: string
-    logo_url: string
-    status: 'active' | 'suspended'
-  }>) => {
-    return apiRequest(`/schools/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data)
-    })
-  },
-
-  /**
-   * Update school status
-   */
-  updateStatus: async (id: string, status: 'active' | 'suspended') => {
-    return apiRequest(`/schools/${id}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status })
-    })
-  },
-
-  /**
-   * Get school admin information
-   */
-  getAdmin: async (schoolId: string) => {
-    return apiRequest(`/schools/${schoolId}/admin`)
-  },
-
-  /**
-   * Update school admin information
-   */
-  updateAdmin: async (schoolId: string, data: {
-    admin_name?: string
-    admin_email?: string
-    password?: string
-  }) => {
-    return apiRequest(`/schools/${schoolId}/admin`, {
-      method: 'PATCH',
-      body: JSON.stringify(data)
-    })
-  },
-
-  /**
-   * Delete (suspend) school
-   */
-  delete: async (id: string) => {
-    return apiRequest(`/schools/${id}`, {
-      method: 'DELETE'
-    })
-  },
-
-  /**
-   * Get school statistics
-   */
-  getStats: async () => {
-    return apiRequest('/schools/stats')
-  },
-
-  /**
-   * Get count by status
-   */
-  getCountByStatus: async () => {
-    return apiRequest('/schools/count-by-status')
-  }
+export async function getMySchools(): Promise<School[]> {
+  const result = await apiRequest<School[]>('/schools/my-schools')
+  return result.data || []
 }
 
-/**
- * Simplified onboard school function
- */
-export async function onboardSchool(data: {
+export async function switchSchoolContext(schoolId: string): Promise<School> {
+  const result = await apiRequest<School>('/schools/switch-context', {
+    method: 'POST',
+    body: JSON.stringify({ schoolId })
+  })
+
+  if (!result.success || !result.data) {
+    throw new Error(result.error || 'Failed to switch school context')
+  }
+
+  return result.data
+}
+
+export async function createSchool(data: CreateSchoolDTO): Promise<School> {
+  // Try to use the onboarding route if normal create fails, or assume admin can use normal create if permitted
+  const result = await apiRequest<School>('/schools', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
+
+  // If endpoint doesn't exist or forbidden (403), we might need a different approach.
+  // But for now we assume the backend endpoint exists and user has permission (Super Admin or via new RLS)
+
+  if (!result.success || !result.data) {
+    throw new Error(result.error || 'Failed to create school')
+  }
+
+  return result.data
+}
+
+export interface OnboardSchoolData {
   school: {
     name: string
     slug: string
     contact_email: string
-    address: string
     website?: string | null
     logo_url?: string | null
-    settings?: any
-    modules?: any
+    address: string
   }
   admin: {
-    email: string
-    password: string
     first_name: string
     last_name: string
+    email: string
+    password: string
   }
-  billing?: {
-    subscription_plan: string
+  billing: {
+    billing_plan_id: string
     billing_cycle: string
     amount: number
     start_date: string
     due_date: string
     payment_status: string
   }
-}) {
-  const response = await schoolApi.onboard(data)
-  
-  if (!response.success) {
-    throw new Error(response.error || 'Failed to onboard school')
+}
+
+export async function onboardSchool(data: OnboardSchoolData): Promise<School> {
+  const result = await apiRequest<School>('/schools/onboard', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
+
+  if (!result.success || !result.data) {
+    throw new Error(result.error || 'Failed to onboard school')
   }
-  
-  return response.data
+
+  return result.data
+}
+
+
+
+export async function getAllSchoolsData(filters?: { status?: string }): Promise<ApiResponse<School[]>> {
+  const queryParams = new URLSearchParams()
+  if (filters?.status && filters.status !== 'all') {
+    queryParams.append('status', filters.status)
+  }
+
+  const queryString = queryParams.toString() ? `?${queryParams.toString()}` : ''
+  return await apiRequest<School[]>(`/schools${queryString}`)
+}
+
+export async function updateSchool(id: string, data: Partial<School>): Promise<ApiResponse<School>> {
+  return await apiRequest<School>(`/schools/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data)
+  })
+}
+
+export async function updateSchoolStatus(id: string, status: 'active' | 'suspended'): Promise<ApiResponse<School>> {
+  return await apiRequest<School>(`/schools/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status })
+  })
+}
+
+
+export async function deleteSchool(id: string): Promise<ApiResponse<void>> {
+  return await apiRequest<void>(`/schools/${id}`, {
+    method: 'DELETE'
+  })
+}
+
+export async function getAdmin(schoolId: string): Promise<ApiResponse<any>> {
+  return await apiRequest<any>(`/schools/${schoolId}/admin`)
+}
+
+export async function updateAdmin(schoolId: string, data: any): Promise<ApiResponse<any>> {
+  return await apiRequest<any>(`/schools/${schoolId}/admin`, {
+    method: 'PATCH',
+    body: JSON.stringify(data)
+  })
+}
+
+export async function getStats(): Promise<ApiResponse<any>> {
+  return await apiRequest<any>('/schools/stats')
+}
+
+export const schoolApi = {
+  getMySchools,
+  switchSchoolContext,
+  createSchool,
+  getAll: getAllSchoolsData,
+  update: updateSchool,
+  updateStatus: updateSchoolStatus,
+  delete: deleteSchool,
+  getAdmin,
+  updateAdmin,
+  getStats
 }

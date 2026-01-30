@@ -1,13 +1,15 @@
 'use client'
 
 import * as React from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { AppSidebar, SidebarProvider } from '@/components/layouts/AppSidebar'
 import { Topbar } from '@/components/layouts/Topbar'
-import { getMenuItemsByRole } from '@/config/sidebar'
+import { getSidebarConfig } from '@/config/sidebar'
 import { cn } from '@/lib/utils'
 import { UserRole } from '@/types'
 import { Toaster } from '@/components/ui/sonner'
+import { getSetupStatus } from '@/lib/api/setup-status'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -17,40 +19,70 @@ interface DashboardLayoutProps {
 }
 
 function DashboardContent({ children, className, role: overrideRole }: DashboardLayoutProps) {
+  const router = useRouter()
+  const pathname = usePathname()
   const { profile, loading } = useAuth()
-  
+  const [checkingSetup, setCheckingSetup] = React.useState(false)
+  const [setupChecked, setSetupChecked] = React.useState(false)
+
   // Use override role if provided, otherwise use profile role
   const effectiveRole = overrideRole || profile?.role
-  const menuItems = effectiveRole ? getMenuItemsByRole(effectiveRole) : []
 
-  // Show loading skeleton for sidebar while auth is loading
-  if (loading) {
-    return (
-      <div className="flex min-h-screen bg-gray-50">
-        <div className="hidden lg:flex w-64 sidebar-gradient" />
-        <div className="flex-1 flex flex-col">
-          <div className="h-16 bg-white border-b" />
-          <main className="flex-1 p-8">
-            <div className="animate-pulse space-y-4">
-              <div className="h-8 bg-gray-200 rounded w-1/4" />
-              <div className="h-4 bg-gray-200 rounded w-1/2" />
-            </div>
-          </main>
-        </div>
-      </div>
-    )
-  }
+  // Check setup status for admin users
+  React.useEffect(() => {
+    const checkSetup = async () => {
+      // Only check for admin role
+      if (effectiveRole !== 'admin') {
+        setSetupChecked(true)
+        return
+      }
+
+      // Don't check if already on setup page
+      if (pathname?.startsWith('/admin/setup')) {
+        setSetupChecked(true)
+        return
+      }
+
+      // Skip if already checked or still loading auth
+      if (loading || setupChecked || checkingSetup) return
+
+      setCheckingSetup(true)
+      try {
+        const status = await getSetupStatus()
+        if (!status.isComplete) {
+          // Redirect to setup wizard
+          router.replace('/admin/setup')
+          return
+        }
+      } catch (error) {
+        console.error('Error checking setup status:', error)
+        // On error, allow access (don't block the user)
+      } finally {
+        setCheckingSetup(false)
+        setSetupChecked(true)
+      }
+    }
+
+    if (!loading && profile) {
+      checkSetup()
+    }
+  }, [loading, profile, effectiveRole, pathname, router, setupChecked, checkingSetup])
+
+  const menuItems = effectiveRole ? getSidebarConfig(effectiveRole) : []
+
+  // Render dashboard immediately - no loading screens after auth
+  // Setup check happens in background and redirects if needed
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
       <AppSidebar menuItems={menuItems} />
-      
+
       <div className={cn(
         'flex-1 flex flex-col transition-all duration-300',
         'lg:ml-0'
       )}>
         <Topbar />
-        
+
         <main className={cn(
           'flex-1 p-4 md:p-6 lg:p-8',
           className

@@ -181,8 +181,6 @@ export const billingRecordsApi = {
   async markAsPaid(id: string): Promise<{ success: true; payment_date: string }> {
     const paymentDate = new Date().toISOString().split("T")[0];
     
-    console.log('💳 Marking billing record as paid:', id);
-    
     const { error } = await supabase
       .from("billing_records")
       .update({
@@ -192,11 +190,8 @@ export const billingRecordsApi = {
       .eq("id", id);
 
     if (error) {
-      console.error('❌ Mark as paid error:', error);
       throw new Error(error.message || 'Failed to update payment status');
     }
-
-    console.log('✅ Payment status updated successfully');
 
     return {
       success: true,

@@ -15,18 +15,11 @@ interface BillingData {
 
 // Combined fetcher for billing data
 const fetchBillingData = async (): Promise<BillingData> => {
-  console.log('💰 Fetching billing data with SWR...')
-  
   // Fetch both in parallel
   const [records, plans] = await Promise.all([
     billingRecordsApi.getAll(),
     billingPlansApi.getAll()
   ])
-  
-  console.log('💰 Billing data fetched:', {
-    records: records.length,
-    plans: plans.length
-  })
 
   return {
     records,
@@ -48,7 +41,6 @@ export const useBilling = () => {
 
   // Manual refresh function
   const refreshBilling = useCallback(() => {
-    console.log('🔄 Manual billing refresh triggered')
     mutate()
   }, [mutate])
 

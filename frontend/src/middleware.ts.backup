@@ -14,7 +14,7 @@ export async function middleware(request: NextRequest) {
     },
   })
 
-  // Create Supabase client
+  // Create Supabase client             
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -111,29 +111,41 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/auth/login?error=account_inactive', request.url))
     }
 
-    // Define role-based route mappings
-    const roleRoutes: Record<string, string> = {
-      '/superadmin': 'super_admin',
-      '/admin': 'admin',
-      '/teacher': 'teacher',
-      '/student': 'student',
-      '/parent': 'parent',
-    }
+    // Define role-based route mappings (order matters - check longer paths first!)
+    const roleRoutes: [string, string][] = [
+      ['/superadmin', 'super_admin'],  // Check /superadmin BEFORE /admin
+      ['/admin', 'admin'],
+      ['/teacher', 'teacher'],
+      ['/student', 'student'],
+      ['/parent', 'parent'],
+    ]
 
     // Check if accessing a role-specific route
-    for (const [route, requiredRole] of Object.entries(roleRoutes)) {
+    for (const [route, requiredRole] of roleRoutes) {
       if (pathname.startsWith(route) && profile.role !== requiredRole) {
         return NextResponse.redirect(new URL('/auth/login?error=unauthorized', request.url))
       }
     }
   }
 
-  // Redirect root to appropriate dashboard or login
+  // Root redirect - only if we have full auth info from middleware
+  // (This is a fallback; normally login page handles direct redirect)
   if (pathname === '/') {
-    if (user && profile) {
-      return NextResponse.redirect(new URL(getDashboardPath(profile.role), request.url))
+    if (user && profile?.role) {
+      const roleRoutes: Record<string, string> = {
+        'super_admin': '/superadmin/dashboard',
+        'admin': '/admin/dashboard',
+        'teacher': '/teacher/dashboard',
+        'student': '/student/dashboard',
+        'parent': '/parent/dashboard',
+      }
+      const url = roleRoutes[profile.role] || '/auth/login?error=role_not_supported'
+      return NextResponse.redirect(new URL(url, request.url))
     }
-    return NextResponse.redirect(new URL('/auth/login', request.url))
+    
+    // Not logged in, let the page component handle it
+    // (it will redirect to login if needed)
+    return response
   }
 
   return response

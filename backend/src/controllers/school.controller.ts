@@ -72,7 +72,10 @@ export class SchoolController {
         })
       }
 
-      const school = await schoolService.createSchool(schoolData)
+
+      // Pass the creator's ID to automatically link them as admin
+      const creatorId = req.user?.id
+      const school = await schoolService.createSchool(schoolData, creatorId)
 
       res.status(201).json({
         success: true,
@@ -96,7 +99,7 @@ export class SchoolController {
   async getAllSchools(req: AuthRequest, res: Response) {
     try {
       const { status } = req.query
-      
+
       const filters = status ? { status: status as string } : undefined
       const schools = await schoolService.getAllSchools(filters)
 
@@ -355,6 +358,157 @@ export class SchoolController {
       res.status(400).json({
         success: false,
         error: error.message || 'Failed to update admin information'
+      })
+    }
+  }
+
+  /**
+   * Get school settings for the admin's school
+   * GET /api/schools/settings
+   */
+  async getSchoolSettings(req: AuthRequest, res: Response) {
+    try {
+      const schoolId = req.profile?.school_id;
+
+      if (!schoolId) {
+        return res.status(400).json({
+          success: false,
+          error: 'School ID is required'
+        });
+      }
+
+      const settings = await schoolService.getSchoolSettings(schoolId);
+
+      res.json({
+        success: true,
+        data: settings
+      });
+    } catch (error: any) {
+      console.error('Get school settings error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to get school settings'
+      });
+    }
+  }
+
+  /**
+   * Update school settings for the admin's school
+   * PUT /api/schools/settings
+   */
+  async updateSchoolSettings(req: AuthRequest, res: Response) {
+    try {
+      const schoolId = req.profile?.school_id;
+
+      if (!schoolId) {
+        return res.status(400).json({
+          success: false,
+          error: 'School ID is required'
+        });
+      }
+
+      const settings = await schoolService.updateSchoolSettings(schoolId, req.body);
+
+      res.json({
+        success: true,
+        data: settings,
+        message: 'Settings updated successfully'
+      });
+    } catch (error: any) {
+      console.error('Update school settings error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to update school settings'
+      })
+    }
+  }
+
+  /**
+   * Get schools for the current user
+   * GET /api/schools/my-schools
+   */
+  async getMySchools(req: AuthRequest, res: Response) {
+    try {
+      if (!req.user || !req.user.id) {
+        return res.status(401).json({ success: false, error: 'Unauthorized' })
+      }
+
+      const schools = await schoolService.getMySchools(req.user.id)
+
+      res.status(200).json({
+        success: true,
+        data: schools
+      })
+    } catch (error: any) {
+      console.error('Get my schools error:', error)
+      res.status(400).json({
+        success: false,
+        error: error.message || 'Failed to fetch your schools'
+      })
+    }
+  }
+
+  /**
+   * Switch active school context
+   * POST /api/schools/switch-context
+   */
+  async switchSchool(req: AuthRequest, res: Response) {
+    try {
+      const { schoolId } = req.body
+
+      if (!req.user || !req.user.id) {
+        return res.status(401).json({ success: false, error: 'Unauthorized' })
+      }
+
+      if (!schoolId) {
+        return res.status(400).json({ success: false, error: 'School ID is required' })
+      }
+
+      const result = await schoolService.switchSchoolContext(req.user.id, schoolId)
+
+      res.status(200).json({
+        success: true,
+        data: result.school,
+        message: 'School context switched successfully'
+      })
+    } catch (error: any) {
+      console.error('Switch school error:', error)
+      res.status(400).json({
+        success: false,
+        error: error.message || 'Failed to switch school'
+      })
+    }
+  }
+
+  /**
+   * Toggle user active status (deactivate/reactivate)
+   * PATCH /api/schools/users/:userId/toggle-status
+   */
+  async toggleUserStatus(req: AuthRequest, res: Response) {
+    try {
+      const { userId } = req.params
+      const { isActive } = req.body
+
+      if (!userId) {
+        return res.status(400).json({ success: false, error: 'User ID is required' })
+      }
+
+      if (typeof isActive !== 'boolean') {
+        return res.status(400).json({ success: false, error: 'isActive must be a boolean' })
+      }
+
+      const result = await schoolService.toggleUserActiveStatus(userId, isActive)
+
+      res.status(200).json({
+        success: true,
+        data: result,
+        message: result.message
+      })
+    } catch (error: any) {
+      console.error('Toggle user status error:', error)
+      res.status(400).json({
+        success: false,
+        error: error.message || 'Failed to toggle user status'
       })
     }
   }

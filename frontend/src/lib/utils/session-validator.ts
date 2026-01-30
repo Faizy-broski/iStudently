@@ -12,7 +12,6 @@ let refreshPromise: Promise<boolean> | null = null
 export async function validateAndRefreshSession(): Promise<boolean> {
   // If already refreshing, wait for that operation to complete
   if (isRefreshing && refreshPromise) {
-    console.log('⏳ Refresh already in progress, waiting...')
     return refreshPromise
   }
 
@@ -22,7 +21,6 @@ export async function validateAndRefreshSession(): Promise<boolean> {
     const { data: { session }, error } = await supabase.auth.getSession()
     
     if (error) {
-      console.error('❌ Session validation error:', error)
       return false
     }
     
@@ -43,7 +41,6 @@ export async function validateAndRefreshSession(): Promise<boolean> {
         return refreshPromise || Promise.resolve(true)
       }
       
-      console.log('🔄 Session expiring soon, refreshing...')
       isRefreshing = true
       
       // Store the refresh promise so concurrent calls can await it
@@ -52,11 +49,9 @@ export async function validateAndRefreshSession(): Promise<boolean> {
           const { error: refreshError } = await supabase.auth.refreshSession()
           
           if (refreshError) {
-            console.error('❌ Failed to refresh session:', refreshError)
             return false
           }
           
-          console.log('✅ Session refreshed successfully')
           return true
         } finally {
           isRefreshing = false
@@ -69,7 +64,6 @@ export async function validateAndRefreshSession(): Promise<boolean> {
     
     return true
   } catch (error) {
-    console.error('❌ Unexpected error during session validation:', error)
     isRefreshing = false
     refreshPromise = null
     return false

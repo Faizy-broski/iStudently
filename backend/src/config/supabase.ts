@@ -4,6 +4,11 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('❌ CRITICAL ERROR: Missing Supabase environment variables!')
+  console.error('Required variables:')
+  console.error('  - SUPABASE_URL:', process.env.SUPABASE_URL ? '✓ Set' : '✗ MISSING')
+  console.error('  - SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? '✓ Set' : '✗ MISSING')
+  console.error('\nPlease check your .env file or cPanel environment variables.')
   throw new Error('Missing Supabase environment variables')
 }
 
@@ -27,8 +32,14 @@ export const supabase = createClient(
   }
 )
 
-// Auth client for token verification (uses ANON_KEY)
+// Auth client for token verification - use SERVICE_ROLE_KEY for server-side verification
 export const supabaseAuth = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
 )

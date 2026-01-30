@@ -2,11 +2,13 @@
   "name": "studently-backend",
   "version": "1.0.0",
   "description": "Backend API for Studently - School Management SaaS",
-  "main": "dist/app.js",
+  "main": "app.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
     "build": "tsc",
-    "start": "node dist/app.js",
+    "start": "node app.js",
+    "start:passenger": "node app.js",
+    "create-rsc-aliases": "node create-rsc-aliases.js",
     "test": "jest",
     "lint": "eslint src/**/*.ts"
   },
@@ -26,6 +28,7 @@
     "express-validator": "^7.0.1",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
+    "node-cron": "^3.0.3",
     "swr": "^2.3.8"
   },
   "devDependencies": {
@@ -35,6 +38,7 @@
     "@types/jest": "^29.5.11",
     "@types/jsonwebtoken": "^9.0.5",
     "@types/node": "^20.10.5",
+    "@types/node-cron": "^3.0.11",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
     "eslint": "^8.56.0",

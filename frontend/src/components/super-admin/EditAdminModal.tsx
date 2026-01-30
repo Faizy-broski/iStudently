@@ -105,9 +105,9 @@ export default function EditAdminModal({ schoolId, schoolName, onClose, onSucces
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 dark:border dark:border-gray-700 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white">
+        <div className="flex items-center justify-between p-6 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800">
           <div>
             <h2 className="text-xl font-bold text-gray-900">Edit Admin Information</h2>
             <p className="text-sm text-gray-600 mt-1">{schoolName}</p>
