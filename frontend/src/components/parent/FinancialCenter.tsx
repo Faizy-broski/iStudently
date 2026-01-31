@@ -1,15 +1,15 @@
 'use client'
 
-import { useStudentDashboard } from '@/hooks/useParentDashboard'
+import { useParentDashboard } from '@/context/ParentDashboardContext'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { DollarSign, Download, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
+import { DollarSign, CheckCircle2, Download } from 'lucide-react'
 
 export function FinancialCenter() {
-  const { dashboardData, isLoading, error } = useStudentDashboard()
+  const { dashboardData, isLoadingDashboard, dashboardError } = useParentDashboard()
 
-  if (isLoading) {
+  if (isLoadingDashboard && !dashboardData) {
     return (
       <Card>
         <CardHeader>
@@ -19,20 +19,26 @@ export function FinancialCenter() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="animate-pulse space-y-4">
-            <div className="h-24 bg-gray-200 rounded" />
-            <div className="h-16 bg-gray-200 rounded" />
+          <div className="space-y-4">
+            <Skeleton className="h-24 w-full rounded-lg" />
+            <Skeleton className="h-16 w-full rounded-lg" />
           </div>
         </CardContent>
       </Card>
     )
   }
 
-  if (error || !dashboardData) {
+  if (dashboardError || !dashboardData) {
     return (
-      <Card className="border-red-200 bg-red-50">
-        <CardContent className="p-6 text-center text-red-600">
-          Failed to load financial data
+      <Card className="border-dashed">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5" />
+            Financial Center
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          Financial data unavailable
         </CardContent>
       </Card>
     )

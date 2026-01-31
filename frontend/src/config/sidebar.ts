@@ -235,32 +235,15 @@ const studentMenuItems: SidebarMenuItem[] = [
   { title: 'Fees', href: '/student/fees', icon: Receipt },
 ]
 
-// Parent Menu Items
+// Parent Menu Items - Separate pages for each feature
 const parentMenuItems: SidebarMenuItem[] = [
   { title: 'Dashboard', href: '/parent/dashboard', icon: LayoutDashboard },
-  { title: 'Students', href: '/parent/students', icon: GraduationCap },
-  { title: 'Academics', href: '/parent/academics', icon: BookOpen },
+  { title: 'Academics', href: '/parent/academics', icon: GraduationCap },
   { title: 'Attendance', href: '/parent/attendance', icon: CalendarCheck },
-  { title: 'Exams', href: '/parent/exams', icon: FileText },
-  { title: 'Assignments', href: '/parent/assignments', icon: ClipboardList },
-  {
-    title: 'Fees',
-    href: '/parent/fees',
-    icon: CreditCard,
-    subItems: [
-      { title: 'View Fees', href: '/parent/fees', icon: CreditCard },
-    ]
-  },
-  {
-    title: 'Library',
-    href: '/parent/library',
-    icon: Library,
-    subItems: [
-      { title: 'Books & Fines', href: '/parent/library', icon: Library },
-    ]
-  },
   { title: 'Timetable', href: '/parent/timetable', icon: Clock },
-  { title: 'Events', href: '/parent/events', icon: Calendar },
+  { title: 'Homework', href: '/parent/homework', icon: ClipboardList },
+  { title: 'Fees', href: '/parent/fees', icon: CreditCard },
+  { title: 'ID Card', href: '/parent/id-card', icon: CreditCard },
   { title: 'Settings', href: '/parent/settings', icon: Settings },
 ]
 

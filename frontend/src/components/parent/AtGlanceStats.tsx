@@ -1,34 +1,24 @@
 'use client'
 
-import { useStudentDashboard } from '@/hooks/useParentDashboard'
 import { useParentDashboard } from '@/context/ParentDashboardContext'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle2, XCircle, Clock, DollarSign, Calendar, TrendingUp, AlertCircle } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
+import { CheckCircle2, XCircle, Clock, DollarSign, Calendar, TrendingUp } from 'lucide-react'
 
 export function AtGlanceStats() {
-  const { selectedStudent, students } = useParentDashboard()
-  const { dashboardData, isLoading, error } = useStudentDashboard()
+  const { dashboardData, isLoadingDashboard, dashboardError } = useParentDashboard()
 
-  // Don't render if no student selected or students not loaded yet
-  if (!selectedStudent || students.length === 0) {
-    return (
-      <Card className="border-yellow-200 bg-yellow-50">
-        <CardContent className="p-6 flex items-center gap-3">
-          <AlertCircle className="h-5 w-5 text-yellow-600" />
-          <p className="text-yellow-800">Please select a student to view dashboard</p>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (isLoading) {
+  // Loading state
+  if (isLoadingDashboard && !dashboardData) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[...Array(4)].map((_, i) => (
-          <Card key={i} className="animate-pulse">
+          <Card key={i}>
             <CardContent className="p-6">
-              <div className="h-20 bg-gray-200 rounded" />
+              <Skeleton className="h-5 w-24 mb-3" />
+              <Skeleton className="h-12 w-full rounded-lg" />
+              <Skeleton className="h-4 w-20 mt-2" />
             </CardContent>
           </Card>
         ))}
@@ -36,13 +26,19 @@ export function AtGlanceStats() {
     )
   }
 
-  if (error || !dashboardData) {
+  // Error state - show placeholder cards
+  if (dashboardError || !dashboardData) {
     return (
-      <Card className="border-red-200 bg-red-50">
-        <CardContent className="p-6 text-center text-red-600">
-          Failed to load dashboard data
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {['Attendance', 'Fee Status', 'Next Exam', 'Recent Grade'].map((label) => (
+          <Card key={label} className="border-dashed">
+            <CardContent className="p-6">
+              <p className="text-sm text-muted-foreground mb-1">{label}</p>
+              <p className="text-sm text-muted-foreground/60 mt-3">Data unavailable</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     )
   }
 

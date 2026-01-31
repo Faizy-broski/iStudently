@@ -25,7 +25,6 @@ async function apiRequest<T = unknown>(endpoint: string): Promise<T> {
 
     // Handle 401 Unauthorized - session expired
     if (response.status === 401) {
-      console.error('🔒 Session expired in parent-dashboard API')
       await handleSessionExpiry()
       throw new Error('Session expired. Please login again.')
     }
@@ -49,7 +48,6 @@ async function apiRequest<T = unknown>(endpoint: string): Promise<T> {
   } catch (error: any) {
     // Handle aborted requests gracefully
     if (error instanceof Error && error.message === 'Request was cancelled') {
-      console.log('ℹ️ Parent dashboard request cancelled:', endpoint)
       throw new Error('Request cancelled')
     }
     throw error
@@ -139,6 +137,115 @@ export interface HomeworkAssignment {
   teacher_name: string
 }
 
+export interface TimetableEntry {
+  id: string
+  day_of_week: string
+  subject_name: string
+  subject_code?: string
+  teacher_name: string
+  period_number: number
+  period_name?: string
+  start_time: string
+  end_time: string
+  is_break: boolean
+  room_number: string
+}
+
+export interface SubjectAttendance {
+  subject: string
+  present: number
+  absent: number
+  late: number
+  excused: number
+  total: number
+  attendance_rate: number
+}
+
+export interface SubjectWiseAttendanceData {
+  month: string
+  subjects: SubjectAttendance[]
+  overall: {
+    present: number
+    absent: number
+    late: number
+    excused: number
+    total: number
+    attendance_rate: number
+  }
+}
+
+export interface FeePayment {
+  id: string
+  amount: number
+  payment_method: string
+  payment_reference?: string
+  payment_date: string
+  notes?: string
+  received_by?: string
+}
+
+export interface FeeWithPayments {
+  id: string
+  fee_name: string
+  category: string
+  academic_year: string
+  base_amount: number
+  final_amount: number
+  amount_paid: number
+  balance: number
+  status: string
+  due_date: string
+  payments: FeePayment[]
+}
+
+export interface StudentIdCardData {
+  id?: string
+  name?: string
+  description?: string
+  template_config?: {
+    fields: any[]
+    layout: { width: number; height: number; orientation: string }
+    design: { backgroundColor: string; borderColor: string; borderWidth: number; borderRadius: number; backgroundImage?: string }
+    qrCode?: { enabled: boolean; position: { x: number; y: number }; size: number; data: string }
+  }
+  student_data: Record<string, string>
+}
+
+export interface ExamResult {
+  exam_name: string
+  exam_type: string
+  marks_obtained: number
+  total_marks: number
+  date: string
+}
+
+export interface SubjectReport {
+  subject: string
+  exams: ExamResult[]
+  total_obtained: number
+  total_possible: number
+  percentage: number
+  grade: string
+}
+
+export interface ReportCardData {
+  student: {
+    name: string
+    student_number: string
+    grade_level: string
+    section: string
+    school_name: string
+  }
+  subjects: SubjectReport[]
+  overall: {
+    total_obtained: number
+    total_possible: number
+    percentage: number
+    grade: string
+  }
+  generated_at: string
+}
+
 // API Functions
 export async function getStudents(): Promise<ParentStudent[]> {
   return apiRequest<ParentStudent[]>('/api/parent-dashboard/students')
@@ -178,4 +285,35 @@ export async function getHomework(studentId: string, days = 7): Promise<Homework
 
 export async function getHomeworkDiary(studentId: string, days = 7): Promise<HomeworkAssignment[]> {
   return apiRequest<HomeworkAssignment[]>(`/api/parent-dashboard/homework/${studentId}?days=${days}`)
+}
+
+export async function getTimetable(studentId: string): Promise<TimetableEntry[]> {
+  return apiRequest<TimetableEntry[]>(`/api/parent-dashboard/timetable/${studentId}`)
+}
+
+export async function getSubjectWiseAttendance(studentId: string, month?: string): Promise<SubjectWiseAttendanceData> {
+  const params = month ? `?month=${month}` : ''
+  return apiRequest<SubjectWiseAttendanceData>(`/api/parent-dashboard/attendance/${studentId}/subject-wise${params}`)
+}
+
+export async function getDetailedAttendance(studentId: string, month?: number, year?: number, subjectName?: string): Promise<any[]> {
+  const params = new URLSearchParams()
+  if (month) params.append('month', month.toString())
+  if (year) params.append('year', year.toString())
+  if (subjectName) params.append('subject_name', subjectName)
+  const queryString = params.toString() ? `?${params.toString()}` : ''
+  return apiRequest<any[]>(`/api/parent-dashboard/attendance/${studentId}/detailed${queryString}`)
+}
+
+export async function getPaymentHistory(studentId: string): Promise<FeeWithPayments[]> {
+  return apiRequest<FeeWithPayments[]>(`/api/parent-dashboard/fees/${studentId}/payment-history`)
+}
+
+export async function getStudentIdCard(studentId: string): Promise<StudentIdCardData> {
+  return apiRequest<StudentIdCardData>(`/api/parent-dashboard/id-card/${studentId}`)
+}
+
+export async function getReportCard(studentId: string, academicYear?: string): Promise<ReportCardData> {
+  const params = academicYear ? `?academic_year=${academicYear}` : ''
+  return apiRequest<ReportCardData>(`/api/parent-dashboard/report-card/${studentId}${params}`)
 }

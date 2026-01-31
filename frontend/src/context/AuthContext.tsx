@@ -34,7 +34,6 @@ export async function handleSessionExpiry() {
   
   // If we already handled expiry in the last 5 seconds, skip
   if (isHandlingExpiry || (now - expiryHandledAt < EXPIRY_LOCK_DURATION)) {
-    console.log('⏭️ Session expiry already being handled, skipping...')
     return
   }
 
@@ -42,8 +41,6 @@ export async function handleSessionExpiry() {
   expiryHandledAt = now
 
   try {
-    console.log('🔒 Session expired - cleaning up and redirecting to login')
-    
     // Clear all caches
     profileCache = null
     isRefreshing = false
@@ -82,15 +79,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * Instead of showing error UI, retry silently or redirect if truly failed
    */
   const handleAuthTimeout = async (retryCount: number) => {
-    console.log(`⏰ Auth attempt ${retryCount + 1} timed out, ${retryCount < MAX_RETRIES ? 'retrying...' : 'giving up'}`)
-    
     if (retryCount < MAX_RETRIES) {
       // Silent retry - don't show any error to user
       return false // Signal to retry
     }
     
     // After max retries, silently redirect to login without showing error
-    console.log('🔄 Max retries reached, redirecting to login...')
     profileCache = null
     
     // Only redirect if not already on login page
@@ -105,7 +99,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * Called when user manually wants to retry
    */
   const recoverFromError = async () => {
-    console.log('🔄 Recovering from auth error...')
     setLoading(false)
     setUser(null)
     setProfile(null)
@@ -139,7 +132,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error || !session) {
         // Session is invalid, use centralized handler
-        console.log('❌ Session invalid or expired in validateSession')
         setUser(null)
         setProfile(null)
         setAccessToken(null)
@@ -159,7 +151,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return refreshPromise || Promise.resolve(true)
         }
 
-        console.log('🔄 Session expiring in', Math.round((expiresAt - now) / 60000), 'minutes, refreshing...')
         isRefreshing = true
 
         // Store the refresh promise so other calls can wait for it
@@ -183,7 +174,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (data.session.user as any).access_token = data.session.access_token
               }
-              console.log('✅ Session refreshed successfully, new expiry:', new Date(data.session.expires_at! * 1000))
               return true
             }
             return false
@@ -198,7 +188,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Check if token has already expired
       if (expiresAt <= now) {
-        console.log('⚠️ Token already expired, attempting refresh...')
         isRefreshing = true
         
         refreshPromise = (async () => {
@@ -225,7 +214,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (data.session.user as any).access_token = data.session.access_token
             }
-            console.log('✅ Expired session refreshed successfully')
             return true
           } finally {
             isRefreshing = false
@@ -281,7 +269,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const getUser = async () => {
       try {
-        console.log('🔐 Initializing auth...')
         // First try to get the session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
 
@@ -300,7 +287,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             sessionError.message.includes('Invalid Refresh Token')
 
           if (isRefreshTokenError) {
-            console.log('🔄 Refresh token expired or invalid, clearing session')
             await supabase.auth.signOut()
             if (isMounted) {
               setUser(null)
@@ -330,7 +316,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // If no user, set loading to false immediately
         if (!user) {
-          console.log('ℹ️ No authenticated user')
           if (isMounted) {
             setUser(null)
             setProfile(null)
@@ -372,14 +357,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .select('*')
             .eq('id', user.id)
             .single()
-
-          console.log('🔍 Profile fetch result:', {
-            hasProfile: !!profile,
-            role: profile?.role,
-            email: profile?.email,
-            hasError: !!profileError,
-            errorMsg: profileError?.message
-          })
 
           // Check for error OR missing profile (406 error may not set profileError correctly)
           if (profileError || !profile) {
@@ -445,21 +422,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               }
             }
             
-            console.log('✅ Profile loaded successfully:', {
-              userId: profile.id,
-              role: profile.role,
-              email: profile.email,
-              school_id: profile.school_id,
-              is_active: profile.is_active,
-              staff_id: profile.staff_id,
-              student_id: profile.student_id,
-              parent_id: profile.parent_id
-            })
             if (isMounted) {
               setProfile(profile)
               // Cache the profile with timestamp
               profileCache = { profile, userId: user.id, timestamp: now }
-              console.log('💾 Profile cached for', PROFILE_CACHE_TTL / 1000, 'seconds')
               
               // CRITICAL: Only set loading false after profile is loaded
               setLoading(false)
@@ -498,7 +464,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const handleStorageChange = (event: StorageEvent) => {
       // Supabase stores auth data in localStorage with a specific key pattern
       if (event.key?.includes('auth-token') || event.key?.includes('supabase.auth.token')) {
-        console.log('🔄 Auth state changed in another tab, syncing...')
         // Trigger a session check to sync with the new state
         supabase.auth.getSession().then(({ data: { session } }) => {
           if (!session) {
@@ -514,7 +479,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check session when user returns to the tab after being away
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        console.log('👀 Tab became visible, validating session...')
         validateSession()
       }
     }
@@ -522,16 +486,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
-        console.log('🔄 Auth state changed:', _event)
-
         // Handle different auth events
         if (_event === 'TOKEN_REFRESHED') {
-          console.log('✅ Token refreshed successfully')
           // Reset the refresh lock since Supabase handled it
           isRefreshing = false
           refreshPromise = null
         } else if (_event === 'SIGNED_OUT') {
-          console.log('👋 User signed out')
           setUser(null)
           setProfile(null)
           profileCache = null // Clear cache on sign out
@@ -618,6 +578,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
+    // Immediately clear local state to prevent UI issues
+    setUser(null)
+    setProfile(null)
+    setAccessToken(null)
+    profileCache = null
+    
     // Abort any pending API requests
     try {
       const { abortAllRequests } = await import('@/lib/api/abortable-fetch')
@@ -634,15 +600,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Ignore if module not found
     }
     
-    await supabase.auth.signOut()
-    setUser(null)
-    setProfile(null)
-    setAccessToken(null)
-    profileCache = null // Clear cache on manual sign out
+    // Clear context caches from sessionStorage
+    try {
+      sessionStorage.removeItem('studently_campus_cache')
+      sessionStorage.removeItem('studently_academic_cache')
+    } catch {
+      // Ignore if sessionStorage not available
+    }
     
     // Clear Remember Me credentials on logout
     localStorage.removeItem('studentlyRememberEmail')
     localStorage.removeItem('studentlyRememberPassword')
+    
+    // Sign out from Supabase
+    await supabase.auth.signOut()
+    
+    // Force redirect to login page
+    if (typeof window !== 'undefined') {
+      window.location.href = '/auth/login'
+    }
   }
 
   return (

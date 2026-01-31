@@ -24,8 +24,7 @@ export function useParentStudents() {
         setStudents(data || [])
         setIsLoading(false)
       },
-      onError: (err) => {
-        console.error('Failed to fetch parent students:', err)
+      onError: () => {
         setIsLoading(false)
       }
     }
@@ -237,6 +236,200 @@ export function useRecentGrades(limit = 5) {
 
   return {
     grades: data || [],
+    isLoading,
+    error,
+    refresh
+  }
+}
+
+/**
+ * Hook to fetch class timetable
+ */
+export function useTimetable() {
+  const { user, profile, loading: authLoading } = useAuth()
+  const { selectedStudent } = useParentDashboard()
+
+  const swrKey = !authLoading && user && profile?.role === 'parent' && selectedStudent
+    ? ['timetable', selectedStudent]
+    : null
+
+  const { data, error, isLoading, mutate } = useSWR(
+    swrKey,
+    () => api.getTimetable(selectedStudent!),
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 300000, // 5 minutes
+      refreshInterval: 30 * 60 * 1000 // Refresh every 30 minutes
+    }
+  )
+
+  const refresh = useCallback(() => {
+    mutate()
+  }, [mutate])
+
+  return {
+    timetable: data || [],
+    isLoading,
+    error,
+    refresh
+  }
+}
+
+/**
+ * Hook to fetch subject-wise attendance
+ */
+export function useSubjectWiseAttendance(month?: string) {
+  const { user, profile, loading: authLoading } = useAuth()
+  const { selectedStudent } = useParentDashboard()
+
+  const swrKey = !authLoading && user && profile?.role === 'parent' && selectedStudent
+    ? ['subject-attendance', selectedStudent, month || 'current']
+    : null
+
+  const { data, error, isLoading, mutate } = useSWR(
+    swrKey,
+    () => api.getSubjectWiseAttendance(selectedStudent!, month),
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 120000
+    }
+  )
+
+  const refresh = useCallback(() => {
+    mutate()
+  }, [mutate])
+
+  return {
+    attendanceData: data,
+    isLoading,
+    error,
+    refresh
+  }
+}
+
+/**
+ * Hook to fetch detailed attendance records for a subject
+ */
+export function useDetailedAttendance(month?: number, year?: number, subjectName?: string) {
+  const { user, profile, loading: authLoading } = useAuth()
+  const { selectedStudent } = useParentDashboard()
+
+  const swrKey = !authLoading && user && profile?.role === 'parent' && selectedStudent && subjectName
+    ? ['detailed-attendance', selectedStudent, month, year, subjectName]
+    : null
+
+  const { data, error, isLoading, mutate } = useSWR(
+    swrKey,
+    () => api.getDetailedAttendance(selectedStudent!, month, year, subjectName),
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 60000
+    }
+  )
+
+  const refresh = useCallback(() => {
+    mutate()
+  }, [mutate])
+
+  return {
+    records: data || [],
+    isLoading,
+    error,
+    refresh
+  }
+}
+
+/**
+ * Hook to fetch payment history
+ */
+export function usePaymentHistory() {
+  const { user, profile, loading: authLoading } = useAuth()
+  const { selectedStudent } = useParentDashboard()
+
+  const swrKey = !authLoading && user && profile?.role === 'parent' && selectedStudent
+    ? ['payment-history', selectedStudent]
+    : null
+
+  const { data, error, isLoading, mutate } = useSWR(
+    swrKey,
+    () => api.getPaymentHistory(selectedStudent!),
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 120000,
+      refreshInterval: 10 * 60 * 1000 // Refresh every 10 minutes
+    }
+  )
+
+  const refresh = useCallback(() => {
+    mutate()
+  }, [mutate])
+
+  return {
+    fees: data || [],
+    isLoading,
+    error,
+    refresh
+  }
+}
+
+/**
+ * Hook to fetch student ID card
+ */
+export function useStudentIdCard() {
+  const { user, profile, loading: authLoading } = useAuth()
+  const { selectedStudent } = useParentDashboard()
+
+  const swrKey = !authLoading && user && profile?.role === 'parent' && selectedStudent
+    ? ['student-id-card', selectedStudent]
+    : null
+
+  const { data, error, isLoading, mutate } = useSWR(
+    swrKey,
+    () => api.getStudentIdCard(selectedStudent!),
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 300000 // 5 minutes - ID cards don't change often
+    }
+  )
+
+  const refresh = useCallback(() => {
+    mutate()
+  }, [mutate])
+
+  return {
+    idCard: data,
+    isLoading,
+    error,
+    refresh
+  }
+}
+
+/**
+ * Hook to fetch report card
+ */
+export function useReportCard(academicYear?: string) {
+  const { user, profile, loading: authLoading } = useAuth()
+  const { selectedStudent } = useParentDashboard()
+
+  const swrKey = !authLoading && user && profile?.role === 'parent' && selectedStudent
+    ? ['report-card', selectedStudent, academicYear || 'current']
+    : null
+
+  const { data, error, isLoading, mutate } = useSWR(
+    swrKey,
+    () => api.getReportCard(selectedStudent!, academicYear),
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 300000 // 5 minutes
+    }
+  )
+
+  const refresh = useCallback(() => {
+    mutate()
+  }, [mutate])
+
+  return {
+    reportCard: data,
     isLoading,
     error,
     refresh

@@ -445,6 +445,300 @@ export class ParentDashboardController {
       })
     }
   }
+
+  /**
+   * GET /api/parent-dashboard/timetable/:studentId
+   * Get class timetable for a student's section
+   */
+  async getTimetable(req: AuthRequest, res: Response) {
+    try {
+      const profileId = req.profile?.id
+      const { studentId } = req.params
+
+      if (!profileId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Parent authentication required'
+        })
+      }
+
+      const parentId = await this.getParentId(profileId)
+      if (!parentId) {
+        return res.status(404).json({
+          success: false,
+          error: 'Parent record not found'
+        })
+      }
+
+      // Verify parent owns this student
+      const students = await parentDashboardService.getStudentsList(parentId)
+      if (!students.find(s => s.id === studentId)) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied to this student'
+        })
+      }
+
+      const timetable = await parentDashboardService.getTimetable(studentId)
+
+      return res.json({
+        success: true,
+        data: timetable
+      })
+    } catch (error: any) {
+      console.error('Error fetching timetable:', error)
+      return res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to fetch timetable'
+      })
+    }
+  }
+
+  /**
+   * GET /api/parent-dashboard/attendance/:studentId/subject-wise
+   * Get subject-wise monthly attendance summary
+   */
+  async getSubjectWiseAttendance(req: AuthRequest, res: Response) {
+    try {
+      const profileId = req.profile?.id
+      const { studentId } = req.params
+      const month = req.query.month as string | undefined
+
+      if (!profileId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Parent authentication required'
+        })
+      }
+
+      const parentId = await this.getParentId(profileId)
+      if (!parentId) {
+        return res.status(404).json({
+          success: false,
+          error: 'Parent record not found'
+        })
+      }
+
+      // Verify parent owns this student
+      const students = await parentDashboardService.getStudentsList(parentId)
+      if (!students.find(s => s.id === studentId)) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied to this student'
+        })
+      }
+
+      const attendance = await parentDashboardService.getSubjectWiseAttendance(studentId, month)
+
+      return res.json({
+        success: true,
+        data: attendance
+      })
+    } catch (error: any) {
+      console.error('Error fetching subject-wise attendance:', error)
+      return res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to fetch attendance'
+      })
+    }
+  }
+
+  /**
+   * GET /api/parent-dashboard/attendance/:studentId/detailed
+   * Get detailed attendance records for a specific month/subject
+   */
+  async getDetailedAttendance(req: AuthRequest, res: Response) {
+    try {
+      const profileId = req.profile?.id
+      const { studentId } = req.params
+      const month = req.query.month ? parseInt(req.query.month as string) : undefined
+      const year = req.query.year ? parseInt(req.query.year as string) : undefined
+      // Accept both subject_name and subject_id for backwards compatibility
+      const subjectName = (req.query.subject_name || req.query.subject_id) as string | undefined
+
+      if (!profileId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Parent authentication required'
+        })
+      }
+
+      const parentId = await this.getParentId(profileId)
+      if (!parentId) {
+        return res.status(404).json({
+          success: false,
+          error: 'Parent record not found'
+        })
+      }
+
+      // Verify parent owns this student
+      const students = await parentDashboardService.getStudentsList(parentId)
+      if (!students.find(s => s.id === studentId)) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied to this student'
+        })
+      }
+
+      const records = await parentDashboardService.getDetailedAttendance(studentId, month, year, subjectName)
+
+      return res.json({
+        success: true,
+        data: records
+      })
+    } catch (error: any) {
+      console.error('Error fetching detailed attendance:', error)
+      return res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to fetch detailed attendance'
+      })
+    }
+  }
+
+  /**
+   * GET /api/parent-dashboard/fees/:studentId/payment-history
+   * Get fee payment history for a student
+   */
+  async getPaymentHistory(req: AuthRequest, res: Response) {
+    try {
+      const profileId = req.profile?.id
+      const { studentId } = req.params
+
+      if (!profileId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Parent authentication required'
+        })
+      }
+
+      const parentId = await this.getParentId(profileId)
+      if (!parentId) {
+        return res.status(404).json({
+          success: false,
+          error: 'Parent record not found'
+        })
+      }
+
+      // Verify parent owns this student
+      const students = await parentDashboardService.getStudentsList(parentId)
+      if (!students.find(s => s.id === studentId)) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied to this student'
+        })
+      }
+
+      const history = await parentDashboardService.getPaymentHistory(studentId)
+
+      return res.json({
+        success: true,
+        data: history
+      })
+    } catch (error: any) {
+      console.error('Error fetching payment history:', error)
+      return res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to fetch payment history'
+      })
+    }
+  }
+
+  /**
+   * GET /api/parent-dashboard/id-card/:studentId
+   * Get student's ID card data
+   */
+  async getStudentIdCard(req: AuthRequest, res: Response) {
+    try {
+      const profileId = req.profile?.id
+      const { studentId } = req.params
+
+      if (!profileId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Parent authentication required'
+        })
+      }
+
+      const parentId = await this.getParentId(profileId)
+      if (!parentId) {
+        return res.status(404).json({
+          success: false,
+          error: 'Parent record not found'
+        })
+      }
+
+      // Verify parent owns this student
+      const students = await parentDashboardService.getStudentsList(parentId)
+      if (!students.find(s => s.id === studentId)) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied to this student'
+        })
+      }
+
+      const idCard = await parentDashboardService.getStudentIdCard(studentId)
+
+      return res.json({
+        success: true,
+        data: idCard
+      })
+    } catch (error: any) {
+      console.error('Error fetching student ID card:', error)
+      return res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to fetch ID card'
+      })
+    }
+  }
+
+  /**
+   * GET /api/parent-dashboard/report-card/:studentId
+   * Get student's report card for download
+   */
+  async getReportCard(req: AuthRequest, res: Response) {
+    try {
+      const profileId = req.profile?.id
+      const { studentId } = req.params
+      const academicYear = req.query.academic_year as string | undefined
+
+      if (!profileId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Parent authentication required'
+        })
+      }
+
+      const parentId = await this.getParentId(profileId)
+      if (!parentId) {
+        return res.status(404).json({
+          success: false,
+          error: 'Parent record not found'
+        })
+      }
+
+      // Verify parent owns this student
+      const students = await parentDashboardService.getStudentsList(parentId)
+      if (!students.find(s => s.id === studentId)) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied to this student'
+        })
+      }
+
+      const reportCard = await parentDashboardService.getReportCard(studentId, academicYear)
+
+      return res.json({
+        success: true,
+        data: reportCard
+      })
+    } catch (error: any) {
+      console.error('Error fetching report card:', error)
+      return res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to fetch report card'
+      })
+    }
+  }
 }
 
 export const parentDashboardController = new ParentDashboardController()

@@ -26,7 +26,6 @@ if (typeof window !== 'undefined') {
  * Clear all SWR cache - useful when session becomes stale
  */
 export async function clearAllSWRCache() {
-  console.log('🧹 Clearing all SWR cache...')
   // Mutate all keys to undefined to clear cache
   await mutate(() => true, undefined, { revalidate: false })
 }
@@ -35,7 +34,6 @@ export async function clearAllSWRCache() {
  * Revalidate all SWR data - useful after returning from idle
  */
 export async function revalidateAllSWRData() {
-  console.log('🔄 Revalidating all SWR data...')
   await mutate(() => true)
 }
 
@@ -52,10 +50,6 @@ export function SWRProvider({ children }: { children: ReactNode }) {
         
         // If tab was hidden for more than 5 minutes OR user was idle
         if (wasHiddenDuration > IDLE_THRESHOLD || wasIdle) {
-          console.log('👀 Returning after idle period, revalidating data...', {
-            hiddenDuration: Math.round(wasHiddenDuration / 1000) + 's',
-            wasIdle
-          })
           // Trigger revalidation of all cached data
           await revalidateAllSWRData()
         }
@@ -88,13 +82,10 @@ export function SWRProvider({ children }: { children: ReactNode }) {
         errorRetryCount: 3,
         // Global error handler
         onError: (error, key) => {
-          console.error('🔴 SWR Error:', { key, error: error?.message || error })
-          
           // Handle session expiry errors from any API call
           if (error?.message?.includes('Session expired') ||
               error?.message?.includes('session_expired') ||
               error?.message?.includes('401')) {
-            console.log('🔒 Session expired detected in SWR, clearing cache...')
             clearAllSWRCache()
           }
         },

@@ -47,7 +47,6 @@ export async function abortableFetch(
   } catch (error: any) {
     // Handle abort errors gracefully
     if (error.name === 'AbortError') {
-      console.log('ℹ️ Request aborted:', url)
       throw new Error('Request was cancelled')
     }
     throw error
@@ -61,7 +60,6 @@ export async function abortableFetch(
  * Abort all active requests (useful during navigation or logout)
  */
 export function abortAllRequests(reason?: string) {
-  console.log(`🛑 Aborting ${activeControllers.size} active requests`, reason ? `(${reason})` : '')
   activeControllers.forEach(controller => {
     try {
       controller.abort(reason || 'Navigation or context change')
