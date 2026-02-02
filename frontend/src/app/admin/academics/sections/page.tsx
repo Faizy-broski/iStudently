@@ -58,6 +58,7 @@ export default function SectionsPage() {
   const [grades, setGrades] = useState<academicsApi.GradeLevel[]>([])
   const [filterGrade, setFilterGrade] = useState<string>('')
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [editingSection, setEditingSection] = useState<academicsApi.Section | null>(null)
@@ -150,21 +151,26 @@ export default function SectionsPage() {
       return
     }
 
-    // Include campus_id for new sections
-    const submitData = editingSection
-      ? { name: formData.name, capacity: formData.capacity }
-      : { ...formData, campus_id: selectedCampus?.id }
+    setSaving(true)
+    try {
+      // Include campus_id for new sections
+      const submitData = editingSection
+        ? { name: formData.name, capacity: formData.capacity }
+        : { ...formData, campus_id: selectedCampus?.id }
 
-    const result = editingSection
-      ? await academicsApi.updateSection(editingSection.id, submitData)
-      : await academicsApi.createSection(submitData)
+      const result = editingSection
+        ? await academicsApi.updateSection(editingSection.id, submitData)
+        : await academicsApi.createSection(submitData)
 
-    if (result.success) {
-      toast.success(`Section ${editingSection ? 'updated' : 'created'} successfully`)
-      handleCloseDialog()
-      fetchSections()
-    } else {
-      toast.error(result.error || `Failed to ${editingSection ? 'update' : 'create'} section`)
+      if (result.success) {
+        toast.success(`Section ${editingSection ? 'updated' : 'created'} successfully`)
+        handleCloseDialog()
+        fetchSections()
+      } else {
+        toast.error(result.error || `Failed to ${editingSection ? 'update' : 'create'} section`)
+      }
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -369,10 +375,12 @@ export default function SectionsPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={handleCloseDialog}>
+              <Button type="button" variant="outline" onClick={handleCloseDialog} disabled={saving}>
                 Cancel
               </Button>
-              <Button type="submit">{editingSection ? 'Update' : 'Create'}</Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? (editingSection ? 'Updating...' : 'Creating...') : (editingSection ? 'Update' : 'Create')}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

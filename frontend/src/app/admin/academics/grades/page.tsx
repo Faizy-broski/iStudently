@@ -49,6 +49,7 @@ export default function GradeLevelsPage() {
   
   const [grades, setGrades] = useState<academicsApi.GradeLevel[]>([])
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [editingGrade, setEditingGrade] = useState<academicsApi.GradeLevel | null>(null)
@@ -120,21 +121,26 @@ export default function GradeLevelsPage() {
       return
     }
 
-    // Include campus_id for new grade levels
-    const submitData = editingGrade
-      ? formData
-      : { ...formData, campus_id: selectedCampus?.id }
+    setSaving(true)
+    try {
+      // Include campus_id for new grade levels
+      const submitData = editingGrade
+        ? formData
+        : { ...formData, campus_id: selectedCampus?.id }
 
-    const result = editingGrade
-      ? await academicsApi.updateGradeLevel(editingGrade.id, formData)
-      : await academicsApi.createGradeLevel(submitData)
+      const result = editingGrade
+        ? await academicsApi.updateGradeLevel(editingGrade.id, formData)
+        : await academicsApi.createGradeLevel(submitData)
 
-    if (result.success) {
-      toast.success(`Grade level ${editingGrade ? 'updated' : 'created'} successfully`)
-      handleCloseDialog()
-      fetchGrades()
-    } else {
-      toast.error(result.error || `Failed to ${editingGrade ? 'update' : 'create'} grade level`)
+      if (result.success) {
+        toast.success(`Grade level ${editingGrade ? 'updated' : 'created'} successfully`)
+        handleCloseDialog()
+        fetchGrades()
+      } else {
+        toast.error(result.error || `Failed to ${editingGrade ? 'update' : 'create'} grade level`)
+      }
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -311,10 +317,12 @@ export default function GradeLevelsPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={handleCloseDialog}>
+              <Button type="button" variant="outline" onClick={handleCloseDialog} disabled={saving}>
                 Cancel
               </Button>
-              <Button type="submit">{editingGrade ? 'Update' : 'Create'}</Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? (editingGrade ? 'Updating...' : 'Creating...') : (editingGrade ? 'Update' : 'Create')}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

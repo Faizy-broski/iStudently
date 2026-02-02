@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react'
 import { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { Profile, AuthContextType } from '@/types'
@@ -22,14 +22,26 @@ const EXPIRY_LOCK_DURATION = 5000 // Prevent multiple expiry handlers within 5s
 // Profile cache to avoid redundant fetches across pages
 let profileCache: { profile: Profile | null, userId: string, timestamp: number } | null = null
 const PROFILE_CACHE_TTL = 10 * 1000 // 10 seconds - short TTL to prevent stale role data causing loops
-const SESSION_CHECK_INTERVAL = 1 * 60 * 1000 // Check every 1 minute (more responsive)
-const REFRESH_THRESHOLD = 10 * 60 * 1000 // Refresh 10 min before expiry (was 5 min)
+const SESSION_CHECK_INTERVAL = 2 * 60 * 1000 // Check every 2 minutes (balanced between responsiveness and efficiency)
+const REFRESH_THRESHOLD = 10 * 60 * 1000 // Refresh 10 min before expiry
+
+/**
+ * Check if user is on an authentication page
+ * Used to prevent redirect loops and unnecessary session validation
+ */
+function isOnAuthPage(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.location.pathname.startsWith('/auth/')
+}
 
 /**
  * Centralized session expiry handler
  * Prevents multiple API calls from triggering simultaneous redirects
  */
 export async function handleSessionExpiry() {
+  // Skip if already on auth pages (prevents redirect loop)
+  if (isOnAuthPage()) return
+  
   const now = Date.now()
   
   // If we already handled expiry in the last 5 seconds, skip
@@ -67,7 +79,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   // Store raw access token to use for API calls
   const [accessToken, setAccessToken] = useState<string | null>(null)
-  const [sessionCheckInterval, setSessionCheckInterval] = useState<NodeJS.Timeout | null>(null)
+  
+  // Use ref for interval to avoid state updates and allow cleanup
+  const sessionIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const visibilityHandlerRef = useRef<(() => void) | null>(null)
 
   // Loading timeout configuration
   const AUTH_INIT_TIMEOUT = 30000 // 30 seconds - increased for slow connections
@@ -121,7 +136,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   // Validate and refresh session periodically with race condition prevention
-  const validateSession = async (): Promise<boolean> => {
+  const validateSession = useCallback(async (): Promise<boolean> => {
+    // Skip validation if on auth pages or no user (prevents redirect loop and wasted calls)
+    if (isOnAuthPage()) return false
+    
     // If already refreshing, wait for that operation to complete
     if (isRefreshing && refreshPromise) {
       return refreshPromise
@@ -131,11 +149,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: { session }, error } = await supabase.auth.getSession()
 
       if (error || !session) {
-        // Session is invalid, use centralized handler
+        // Session is invalid - only handle if we were previously authenticated
         setUser(null)
         setProfile(null)
         setAccessToken(null)
-        await handleSessionExpiry()
+        // Don't redirect if on auth pages
+        if (!isOnAuthPage()) {
+          await handleSessionExpiry()
+        }
         return false
       }
 
@@ -202,7 +223,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setAccessToken(null)
               profileCache = null
               
-              if (typeof window !== 'undefined') {
+              // Only redirect if not on auth pages
+              if (!isOnAuthPage()) {
                 window.location.href = '/auth/login?error=session_expired'
               }
               return false
@@ -231,7 +253,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       refreshPromise = null
       return false
     }
-  }
+  }, [])
 
   useEffect(() => {
     // Track retry count for timeout handling
@@ -449,15 +471,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Start loading with timeout and fetch user
     setLoadingWithTimeout()
-    getUser().finally(() => {
+    getUser().then(async () => {
+      // After initial user check, start session interval if we have a session
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session && !sessionIntervalRef.current && !isOnAuthPage()) {
+        sessionIntervalRef.current = setInterval(() => {
+          if (!isOnAuthPage()) {
+            validateSession()
+          }
+        }, SESSION_CHECK_INTERVAL)
+      }
+    }).finally(() => {
       clearLoadingTimeout()
     })
-
-    // Set up session validation interval (check every 2 minutes for more responsive token refresh)
-    const interval = setInterval(() => {
-      validateSession()
-    }, SESSION_CHECK_INTERVAL) // Use constant - check every 1 minute
-    setSessionCheckInterval(interval)
 
     // Multi-tab synchronization: Listen for storage events
     // When another tab signs out or updates the session, sync this tab
@@ -469,6 +495,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (!session) {
             setUser(null)
             setProfile(null)
+            // Clear interval when session is gone
+            if (sessionIntervalRef.current) {
+              clearInterval(sessionIntervalRef.current)
+              sessionIntervalRef.current = null
+            }
           }
         })
       }
@@ -477,12 +508,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener('storage', handleStorageChange)
 
     // Check session when user returns to the tab after being away
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
+    // Only validates if not on auth pages (handled inside validateSession)
+    visibilityHandlerRef.current = () => {
+      if (!document.hidden && !isOnAuthPage()) {
         validateSession()
       }
     }
-    document.addEventListener('visibilitychange', handleVisibilityChange)
+    document.addEventListener('visibilitychange', visibilityHandlerRef.current)
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
@@ -495,10 +527,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(null)
           setProfile(null)
           profileCache = null // Clear cache on sign out
-          if (sessionCheckInterval) {
-            clearInterval(sessionCheckInterval)
+          // Clear session check interval on sign out
+          if (sessionIntervalRef.current) {
+            clearInterval(sessionIntervalRef.current)
+            sessionIntervalRef.current = null
           }
           return
+        }
+        
+        // Start session validation interval when user signs in
+        if (_event === 'SIGNED_IN' && session && !sessionIntervalRef.current) {
+          sessionIntervalRef.current = setInterval(() => {
+            // Only validate if not on auth pages
+            if (!isOnAuthPage()) {
+              validateSession()
+            }
+          }, SESSION_CHECK_INTERVAL)
         }
 
         // Set access token and user when session changes
@@ -560,11 +604,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isMounted = false
       clearLoadingTimeout()
       subscription.unsubscribe()
-      if (interval) {
-        clearInterval(interval)
+      // Clear session check interval
+      if (sessionIntervalRef.current) {
+        clearInterval(sessionIntervalRef.current)
+        sessionIntervalRef.current = null
       }
       window.removeEventListener('storage', handleStorageChange)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (visibilityHandlerRef.current) {
+        document.removeEventListener('visibilitychange', visibilityHandlerRef.current)
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -583,6 +631,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null)
     setAccessToken(null)
     profileCache = null
+    
+    // Clear session check interval
+    if (sessionIntervalRef.current) {
+      clearInterval(sessionIntervalRef.current)
+      sessionIntervalRef.current = null
+    }
     
     // Abort any pending API requests
     try {

@@ -35,6 +35,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { StaffPhotoUpload } from '@/components/ui/staff-photo-upload'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
+import { useStaffDesignations } from '@/hooks/useStaffDesignations'
 
 // Helper to generate a random password
 function generatePassword(firstName: string): string {
@@ -69,17 +70,18 @@ export default function AddStaffPage() {
         base_salary: undefined,
     })
 
-    // Predefined Designations
-    const DESIGNATIONS = [
-        'Librarian',
-        'Accountant',
-        'Clerk',
-        'Driver',
-        'Security Guard',
-        'Nurse',
-        'Receptionist',
-        'Other'
-    ]
+    // Fetch designations from database based on selected campus
+    const { designations, isLoading: designationsLoading } = useStaffDesignations(campusContext?.selectedCampus?.id)
+    
+    // Map designations to names for the dropdown
+    // Always ensure "Librarian" is available as it's a system role with dashboard access
+    const designationNames = designations.map(d => d.name)
+    const hasLibrarian = designationNames.some(name => name.toLowerCase() === 'librarian')
+    
+    // Build final list: database designations + ensure Librarian (no "Other")
+    const DESIGNATIONS = designations.length > 0 
+        ? [...designationNames, ...(hasLibrarian ? [] : ['Librarian'])]
+        : ['Librarian', 'Accountant', 'Clerk', 'Driver', 'Security Guard', 'Nurse', 'Receptionist']
 
     const isLibrarian = formData.title?.toLowerCase() === 'librarian'
 
@@ -264,16 +266,44 @@ export default function AddStaffPage() {
                                 <Select
                                     value={formData.title}
                                     onValueChange={val => handleChange('title', val)}
+                                    disabled={designationsLoading}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Select Designation" />
+                                        <SelectValue placeholder={designationsLoading ? "Loading designations..." : "Select Designation"} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {DESIGNATIONS.map(role => (
-                                            <SelectItem key={role} value={role}>{role}</SelectItem>
-                                        ))}
+                                        {/* Always show Librarian first with special badge */}
+                                        <SelectItem value="Librarian">
+                                            <div className="flex items-center gap-2">
+                                                Librarian
+                                                <span className="text-[10px] px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded">
+                                                    Has Login
+                                                </span>
+                                            </div>
+                                        </SelectItem>
+                                        {/* Show other designations from database */}
+                                        {designations
+                                            .filter(d => d.name.toLowerCase() !== 'librarian')
+                                            .map(d => (
+                                                <SelectItem key={d.id} value={d.name}>
+                                                    {d.name}
+                                                </SelectItem>
+                                            ))
+                                        }
+                                        {/* Show fallback designations if no database designations */}
+                                        {designations.length === 0 && DESIGNATIONS
+                                            .filter(role => role.toLowerCase() !== 'librarian')
+                                            .map(role => (
+                                                <SelectItem key={role} value={role}>{role}</SelectItem>
+                                            ))
+                                        }
                                     </SelectContent>
                                 </Select>
+                                {formData.title?.toLowerCase() === 'librarian' && (
+                                    <p className="text-xs text-purple-600">
+                                        💡 Librarian will get login credentials for dashboard access
+                                    </p>
+                                )}
                             </div>
 
                             <div className="space-y-2">

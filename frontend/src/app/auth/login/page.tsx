@@ -14,7 +14,7 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react'
 function LoginForm() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { signIn, profile, user } = useAuth()
+  const { signIn, profile, user, loading: authLoading } = useAuth()
 
   // Animation States
   const [isExpanded, setIsExpanded] = useState(false)
@@ -29,6 +29,28 @@ function LoginForm() {
   const [rememberMe, setRememberMe] = useState(false)
 
   const error = searchParams.get('error')
+
+  // Redirect already logged-in users to their dashboard
+  useEffect(() => {
+    // Don't redirect if there's an error param (like session_expired)
+    if (error) return
+    // Don't redirect while still checking auth
+    if (authLoading) return
+    // Only redirect if user AND profile are loaded
+    if (user && profile?.role) {
+      const dashboardMap: Record<string, string> = {
+        'super_admin': '/superadmin/dashboard',
+        'admin': '/admin/dashboard',
+        'teacher': '/teacher/dashboard',
+        'student': '/student/dashboard',
+        'parent': '/parent/dashboard',
+        'librarian': '/librarian/dashboard',
+        'staff': '/staff/dashboard',
+      }
+      const dashboardUrl = dashboardMap[profile.role] || '/admin/dashboard'
+      router.replace(dashboardUrl)
+    }
+  }, [user, profile, authLoading, error, router])
 
   // Load saved credentials on mount
   useEffect(() => {
@@ -96,6 +118,12 @@ function LoginForm() {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    
+    // Prevent submission if auth is still loading or user is already logged in
+    if (authLoading || (user && profile)) {
+      return
+    }
+    
     setLoading(true)
     setJustLoggedIn(false)
 
@@ -230,7 +258,7 @@ function LoginForm() {
                 onChange={(e) => setEmail(e.target.value)}
                 className="h-12 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:bg-white/20 focus:border-white transition-all"
                 required
-                disabled={loading}
+                disabled={loading || authLoading}
                 autoComplete="email"
               />
             </div>
@@ -246,7 +274,7 @@ function LoginForm() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="h-12 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:bg-white/20 focus:border-white transition-all pr-10"
                   required
-                  disabled={loading}
+                  disabled={loading || authLoading}
                   autoComplete="current-password"
                 />
                 <button
@@ -266,7 +294,7 @@ function LoginForm() {
                 id="rememberMe"
                 checked={rememberMe}
                 onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                disabled={loading}
+                disabled={loading || authLoading}
                 className="border-white/30 data-[state=checked]:bg-white data-[state=checked]:text-brand-blue"
               />
               <label
@@ -281,10 +309,10 @@ function LoginForm() {
             <div className={getAnimClass('delay-400')}>
               <Button
                 type="submit"
-                disabled={loading}
+                disabled={loading || authLoading}
                 className="w-full h-12 bg-white text-brand-blue hover:bg-white/90 font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all"
               >
-                {loading ? <Loader2 className="animate-spin" /> : "Sign In"}
+                {loading || authLoading ? <Loader2 className="animate-spin" /> : "Sign In"}
               </Button>
             </div>
 

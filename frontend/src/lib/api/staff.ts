@@ -1,6 +1,8 @@
 import { API_URL } from '@/config/api'
 import { getAuthToken } from './schools'
 import { Staff, Profile, EmploymentType } from './teachers' // Reuse types
+import { handleSessionExpiry } from '@/context/AuthContext'
+import { abortableFetch } from './abortable-fetch'
 
 interface ApiResponse<T = unknown> {
     success: boolean
@@ -69,9 +71,10 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
         body: options.body
     })
 
-    const response = await fetch(`${API_URL}${endpoint}`, {
+    const response = await abortableFetch(`${API_URL}${endpoint}`, {
         ...options,
         headers,
+        timeout: 30000
     })
 
     console.log('📡 Staff API Response:', {
@@ -79,6 +82,13 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
         statusText: response.statusText,
         ok: response.ok
     })
+
+    // Handle session expiry
+    if (response.status === 401) {
+        console.warn('🔐 Staff API: Session expired, triggering re-authentication')
+        handleSessionExpiry()
+        throw new Error('Session expired. Please log in again.')
+    }
 
     let data
     try {

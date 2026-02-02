@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +24,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
 import { createStudent } from "@/lib/api/students";
 import { searchParents, createParent, type Parent, type CreateParentDTO } from "@/lib/api/parents";
-import * as academicsApi from "@/lib/api/academics";
+import { useGradeLevels, useSections } from "@/hooks/useAcademics";
 import { generateFeeForNewStudent } from "@/lib/api/fees";
 import * as servicesApi from "@/lib/api/services";
 import { getFieldDefinitions, CustomFieldDefinition } from "@/lib/api/custom-fields";
@@ -153,11 +153,27 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
   const [parentSearchQuery, setParentSearchQuery] = useState("");
   const [parentOptions, setParentOptions] = useState<ComboboxOption[]>([]);
   const [isLoadingParents, setIsLoadingParents] = useState(false);
-  const [grades, setGrades] = useState<academicsApi.GradeLevel[]>([]);
-  const [sections, setSections] = useState<academicsApi.Section[]>([]);
+  
+  // Use SWR hooks for grades and sections (cached, no refetch on navigation)
+  const { gradeLevels: allGrades, loading: isLoadingGrades } = useGradeLevels();
+  const { sections: allSections, loading: isLoadingSections } = useSections();
   const [selectedGradeId, setSelectedGradeId] = useState<string>("");
-  const [isLoadingGrades, setIsLoadingGrades] = useState(false);
-  const [isLoadingSections, setIsLoadingSections] = useState(false);
+  
+  // Filter grades and sections based on active status
+  const grades = useMemo(() => 
+    allGrades.filter((g) => g.is_active), 
+    [allGrades]
+  );
+  
+  // Filter sections by selected grade and available seats
+  const sections = useMemo(() => 
+    allSections.filter((s) => 
+      s.is_active && 
+      s.grade_level_id === selectedGradeId && 
+      (s.available_seats ?? 0) > 0
+    ), 
+    [allSections, selectedGradeId]
+  );
 
   // Services State
   const [services, setServices] = useState<servicesApi.SchoolService[]>([]);
@@ -273,61 +289,21 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
     }
   }, []);
 
-  // Fetch grades when campus is selected
+  // Reset section when grade changes (since sections are filtered by useMemo)
   useEffect(() => {
-    if (selectedCampus?.id) {
-      fetchGrades();
-    } else {
-      setGrades([]);
-      setSelectedGradeId("");
-      updateFormData("grade_level_id", "");
-    }
-  }, [selectedCampus]);
-
-  // Fetch sections when grade changes
-  useEffect(() => {
-    if (selectedGradeId && selectedCampus?.id) {
-      fetchSections(selectedGradeId);
-    } else {
-      setSections([]);
+    if (!selectedGradeId) {
       updateFormData("section_id", "");
     }
-  }, [selectedGradeId, selectedCampus]);
+  }, [selectedGradeId]);
 
-  const fetchGrades = async () => {
+  // Reset grade and section when campus changes
+  useEffect(() => {
     if (!selectedCampus?.id) {
-      toast.error("Please select a campus first");
-      setIsLoadingGrades(false);
-      return;
+      setSelectedGradeId("");
+      updateFormData("grade_level_id", "");
+      updateFormData("section_id", "");
     }
-    
-    setIsLoadingGrades(true);
-    const result = await academicsApi.getGradeLevels(selectedCampus.id);
-    if (result.success && result.data) {
-      setGrades(result.data.filter((g) => g.is_active));
-    } else {
-      toast.error(result.error || "Failed to fetch grade levels");
-    }
-    setIsLoadingGrades(false);
-  };
-
-  const fetchSections = async (gradeId: string) => {
-    if (!selectedCampus?.id) {
-      toast.error("Please select a campus first");
-      setIsLoadingSections(false);
-      return;
-    }
-    
-    setIsLoadingSections(true);
-    const result = await academicsApi.getSections(gradeId, selectedCampus.id);
-    if (result.success && result.data) {
-      // Only show sections with available seats
-      setSections(result.data.filter((s) => s.is_active && (s.available_seats ?? 0) > 0));
-    } else {
-      toast.error(result.error || "Failed to fetch sections");
-    }
-    setIsLoadingSections(false);
-  };
+  }, [selectedCampus?.id]);
 
   const fetchServices = async () => {
     try {

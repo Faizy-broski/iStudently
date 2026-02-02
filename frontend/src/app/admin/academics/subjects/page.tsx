@@ -58,6 +58,7 @@ export default function SubjectsPage() {
   const [grades, setGrades] = useState<academicsApi.GradeLevel[]>([])
   const [filterGrade, setFilterGrade] = useState<string>('')
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [editingSubject, setEditingSubject] = useState<academicsApi.Subject | null>(null)
@@ -154,21 +155,26 @@ export default function SubjectsPage() {
       return
     }
 
-    // Include campus_id for new subjects
-    const submitData = editingSubject
-      ? { name: formData.name, code: formData.code, subject_type: formData.subject_type }
-      : { ...formData, campus_id: selectedCampus?.id }
+    setSaving(true)
+    try {
+      // Include campus_id for new subjects
+      const submitData = editingSubject
+        ? { name: formData.name, code: formData.code, subject_type: formData.subject_type }
+        : { ...formData, campus_id: selectedCampus?.id }
 
-    const result = editingSubject
-      ? await academicsApi.updateSubject(editingSubject.id, submitData)
-      : await academicsApi.createSubject(submitData)
+      const result = editingSubject
+        ? await academicsApi.updateSubject(editingSubject.id, submitData)
+        : await academicsApi.createSubject(submitData)
 
-    if (result.success) {
-      toast.success(`Subject ${editingSubject ? 'updated' : 'created'} successfully`)
-      handleCloseDialog()
-      fetchSubjects()
-    } else {
-      toast.error(result.error || `Failed to ${editingSubject ? 'update' : 'create'} subject`)
+      if (result.success) {
+        toast.success(`Subject ${editingSubject ? 'updated' : 'created'} successfully`)
+        handleCloseDialog()
+        fetchSubjects()
+      } else {
+        toast.error(result.error || `Failed to ${editingSubject ? 'update' : 'create'} subject`)
+      }
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -393,10 +399,12 @@ export default function SubjectsPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={handleCloseDialog}>
+              <Button type="button" variant="outline" onClick={handleCloseDialog} disabled={saving}>
                 Cancel
               </Button>
-              <Button type="submit">{editingSubject ? 'Update' : 'Create'}</Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? (editingSubject ? 'Updating...' : 'Creating...') : (editingSubject ? 'Update' : 'Create')}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

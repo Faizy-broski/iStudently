@@ -127,14 +127,21 @@ export function StaffPhotoUpload({
             />
 
             <div className="flex flex-col items-center gap-4">
-                {/* Avatar Preview */}
+                {/* Photo Preview - Square/Cube shape */}
                 <div className="relative">
-                    <Avatar className="h-28 w-28 border-4 border-gray-100 shadow-md">
-                        <AvatarImage src={preview || ''} alt="Staff photo" />
-                        <AvatarFallback className="bg-[#022172] text-white text-2xl">
-                            {getInitials()}
-                        </AvatarFallback>
-                    </Avatar>
+                    <div className="h-28 w-28 border-4 border-gray-100 shadow-md rounded-lg overflow-hidden bg-[#022172]">
+                        {preview ? (
+                            <img 
+                                src={preview} 
+                                alt="Staff photo" 
+                                className="h-full w-full object-cover"
+                            />
+                        ) : (
+                            <div className="h-full w-full flex items-center justify-center text-white text-2xl font-semibold">
+                                {getInitials()}
+                            </div>
+                        )}
+                    </div>
 
                     {preview && !isUploading && (
                         <button
@@ -147,7 +154,7 @@ export function StaffPhotoUpload({
                     )}
 
                     {isUploading && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
                             <Loader2 className="h-6 w-6 text-white animate-spin" />
                         </div>
                     )}

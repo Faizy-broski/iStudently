@@ -9,6 +9,17 @@ import * as academicsApi from '@/lib/api/academics'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 
+// SWR cache configuration for academics - longer cache times since this data rarely changes
+const ACADEMICS_SWR_CONFIG = {
+  keepPreviousData: true,
+  revalidateOnFocus: false,
+  revalidateOnReconnect: false,
+  dedupingInterval: 60000, // 1 minute deduplication
+  refreshInterval: 0, // Disable auto-refresh, only refresh on demand
+  revalidateIfStale: false, // Don't auto-revalidate stale data
+  errorRetryCount: 2,
+}
+
 // Fetchers for different resources
 const fetchGradeLevels = async (schoolId?: string): Promise<academicsApi.GradeLevel[]> => {
   const response = await academicsApi.getGradeLevels(schoolId)
@@ -31,18 +42,22 @@ const fetchSubjects = async (gradeId?: string, schoolId?: string): Promise<acade
 export const useGradeLevels = () => {
   const { user, loading: authLoading, profile } = useAuth()
   const campusContext = useCampus()
-  const selectedCampusId = campusContext?.selectedCampus?.id || profile?.school_id
-  const swrKey = user && !authLoading && profile ? ['grade-levels', user.id, profile.school_id, campusContext?.selectedCampus?.id] : null
+  
+  // Stabilize the campus ID to prevent key changes
+  const selectedCampusId = useMemo(() => {
+    return campusContext?.selectedCampus?.id || profile?.school_id || null
+  }, [campusContext?.selectedCampus?.id, profile?.school_id])
+  
+  // Only create SWR key when we have stable values
+  const swrKey = useMemo(() => {
+    if (!user || authLoading || !profile || !selectedCampusId) return null
+    return ['grade-levels', selectedCampusId]
+  }, [user, authLoading, profile, selectedCampusId])
 
   const { data, error, isLoading, isValidating, mutate } = useSWR(
     swrKey,
-    () => fetchGradeLevels(selectedCampusId),
-    {
-      keepPreviousData: true,
-      revalidateOnFocus: false,
-      dedupingInterval: 30000,
-      refreshInterval: 10 * 60 * 1000,
-    }
+    () => fetchGradeLevels(selectedCampusId || undefined),
+    ACADEMICS_SWR_CONFIG
   )
 
   const createGradeLevel = useCallback(async (gradeData: academicsApi.CreateGradeLevelDTO) => {
@@ -90,18 +105,22 @@ export const useGradeLevels = () => {
 export const useSections = () => {
   const { user, loading: authLoading, profile } = useAuth()
   const campusContext = useCampus()
-  const selectedCampusId = campusContext?.selectedCampus?.id || profile?.school_id
-  const swrKey = user && !authLoading && profile ? ['sections', user.id, profile.school_id, campusContext?.selectedCampus?.id] : null
+  
+  // Stabilize the campus ID to prevent key changes
+  const selectedCampusId = useMemo(() => {
+    return campusContext?.selectedCampus?.id || profile?.school_id || null
+  }, [campusContext?.selectedCampus?.id, profile?.school_id])
+  
+  // Only create SWR key when we have stable values
+  const swrKey = useMemo(() => {
+    if (!user || authLoading || !profile || !selectedCampusId) return null
+    return ['sections', selectedCampusId]
+  }, [user, authLoading, profile, selectedCampusId])
 
   const { data, error, isLoading, isValidating, mutate } = useSWR(
     swrKey,
-    () => fetchSections(undefined, selectedCampusId),
-    {
-      keepPreviousData: true,
-      revalidateOnFocus: false,
-      dedupingInterval: 30000,
-      refreshInterval: 10 * 60 * 1000,
-    }
+    () => fetchSections(undefined, selectedCampusId || undefined),
+    ACADEMICS_SWR_CONFIG
   )
 
   const createSection = useCallback(async (sectionData: academicsApi.CreateSectionDTO) => {
@@ -145,18 +164,22 @@ export const useSections = () => {
 export const useSubjects = () => {
   const { user, loading: authLoading, profile } = useAuth()
   const campusContext = useCampus()
-  const selectedCampusId = campusContext?.selectedCampus?.id || profile?.school_id
-  const swrKey = user && !authLoading && profile ? ['subjects', user.id, profile.school_id, campusContext?.selectedCampus?.id] : null
+  
+  // Stabilize the campus ID to prevent key changes
+  const selectedCampusId = useMemo(() => {
+    return campusContext?.selectedCampus?.id || profile?.school_id || null
+  }, [campusContext?.selectedCampus?.id, profile?.school_id])
+  
+  // Only create SWR key when we have stable values
+  const swrKey = useMemo(() => {
+    if (!user || authLoading || !profile || !selectedCampusId) return null
+    return ['subjects', selectedCampusId]
+  }, [user, authLoading, profile, selectedCampusId])
 
   const { data, error, isLoading, isValidating, mutate } = useSWR(
     swrKey,
-    () => fetchSubjects(undefined, selectedCampusId),
-    {
-      keepPreviousData: true,
-      revalidateOnFocus: false,
-      dedupingInterval: 30000,
-      refreshInterval: 10 * 60 * 1000,
-    }
+    () => fetchSubjects(undefined, selectedCampusId || undefined),
+    ACADEMICS_SWR_CONFIG
   )
 
   const createSubject = useCallback(async (subjectData: academicsApi.CreateSubjectDTO) => {

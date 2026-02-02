@@ -25,6 +25,7 @@ import examsRoutes from './routes/exams.routes'
 import studentDashboardRoutes from './routes/student-dashboard.routes'
 import parentDashboardRoutes from './routes/parent-dashboard.routes'
 import learningResourcesRoutes from './routes/learning-resources.routes'
+import staffDesignationRoutes from './routes/staff-designation.routes'
 
 const app = express()
 
@@ -176,6 +177,7 @@ registerRoutes('/exams', examsRoutes)
 registerRoutes('/learning-resources', learningResourcesRoutes)
 registerRoutes('/student-dashboard', studentDashboardRoutes)
 registerRoutes('/parent-dashboard', parentDashboardRoutes)
+registerRoutes('/staff-designations', staffDesignationRoutes)
 
 // 404 handler
 app.use((req: Request, res: Response) => {
