@@ -1,5 +1,7 @@
 import { getAuthToken } from './schools'
+import { simpleFetch } from './abortable-fetch'
 import { API_URL } from '@/config/api'
+import { handleSessionExpiry } from '@/context/AuthContext'
 
 interface ApiResponse<T = unknown> {
   success: boolean
@@ -11,19 +13,44 @@ async function apiRequest<T = unknown>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
-  const token = await getAuthToken()
+  try {
+    const token = await getAuthToken()
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-      ...options.headers
-    },
-    credentials: 'include'
-  })
+    if (!token) {
+      return {
+        success: false,
+        error: 'Authentication required'
+      }
+    }
 
-  return response.json()
+    const response = await simpleFetch(`${API_URL}${endpoint}`, {
+      ...options,
+      timeout: 25000,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        ...options.headers
+      },
+      credentials: 'include'
+    })
+
+    // Handle 401 - session expired or invalid token
+    if (response.status === 401) {
+      await handleSessionExpiry()
+      return {
+        success: false,
+        error: 'Session expired'
+      }
+    }
+
+    return response.json()
+  } catch {
+    // Silent fail - no logging
+    return {
+      success: false,
+      error: 'Network error'
+    }
+  }
 }
 
 // ============================================================================
@@ -249,8 +276,9 @@ export interface SubjectAttendance {
   percentage: number
 }
 
-export async function getSubjectWiseAttendance() {
-  return apiRequest<SubjectAttendance[]>('/student-dashboard/attendance/subjects')
+export async function getSubjectWiseAttendance(month?: string) {
+  const params = month ? `?month=${month}` : ''
+  return apiRequest<SubjectAttendance[]>(`/student-dashboard/attendance/subjects${params}`)
 }
 
 /**

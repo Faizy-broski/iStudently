@@ -1,5 +1,5 @@
 import { getAuthToken } from './schools'
-import { abortableFetch } from './abortable-fetch'
+import { simpleFetch } from './abortable-fetch'
 import { handleSessionExpiry } from '@/context/AuthContext'
 import { API_URL } from '@/config/api'
 
@@ -126,6 +126,7 @@ export interface Period {
   id: string
   school_id: string
   campus_id?: string | null
+  // Legacy fields (still supported for backward compatibility)
   period_number: number
   start_time: string
   end_time: string
@@ -133,6 +134,12 @@ export interface Period {
   is_break: boolean
   is_active: boolean
   created_at: string
+  // New global period fields
+  title?: string
+  short_name?: string
+  sort_order?: number
+  length_minutes?: number
+  block?: string
 }
 
 export interface CreatePeriodDTO {
@@ -346,50 +353,60 @@ export async function getAllTeachers(params?: {
   if (params?.campus_id) queryParams.append('campus_id', params.campus_id)
 
   const query = queryParams.toString()
-  const response = await abortableFetch(`${API_URL}/teachers${query ? `?${query}` : ''}`, {
-    headers: { Authorization: `Bearer ${token}` },
-    timeout: 30000
-  })
 
-  if (response.status === 401) {
-    console.error('🔒 Session expired in teachers API (getTeachers)')
-    await handleSessionExpiry()
-    throw new Error('Session expired')
+  try {
+    const response = await simpleFetch(`${API_URL}/teachers${query ? `?${query}` : ''}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 30000
+    })
+
+    if (response.status === 401) {
+      await handleSessionExpiry()
+      throw new Error('Session expired')
+    }
+
+    const result: ApiResponse<{ data: Staff[], total: number, page: number, totalPages: number }> = await response.json()
+    if (!result.success || !result.data) {
+      throw new Error(result.error || 'Failed to fetch teachers')
+    }
+
+    return result.data
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expired') throw error
+    throw new Error('Failed to fetch teachers')
   }
-
-  const result: ApiResponse<{ data: Staff[], total: number, page: number, totalPages: number }> = await response.json()
-  if (!result.success || !result.data) {
-    throw new Error(result.error || 'Failed to fetch teachers')
-  }
-
-  return result.data
 }
 
 export async function getTeacherById(id: string): Promise<Staff> {
   const token = await getAuthToken()
-  const response = await abortableFetch(`${API_URL}/teachers/${id}`, {
-    headers: { Authorization: `Bearer ${token}` },
-    timeout: 30000
-  })
 
-  if (response.status === 401) {
-    console.error('🔒 Session expired in teachers API (getTeacherById)')
-    await handleSessionExpiry()
-    throw new Error('Session expired')
+  try {
+    const response = await simpleFetch(`${API_URL}/teachers/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 30000
+    })
+
+    if (response.status === 401) {
+      await handleSessionExpiry()
+      throw new Error('Session expired')
+    }
+
+    const result: ApiResponse<Staff> = await response.json()
+    if (!result.success || !result.data) {
+      throw new Error(result.error || 'Failed to fetch teacher')
+    }
+
+    return result.data
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expired') throw error
+    throw new Error('Failed to fetch teacher')
   }
-
-  const result: ApiResponse<Staff> = await response.json()
-  if (!result.success || !result.data) {
-    throw new Error(result.error || 'Failed to fetch teacher')
-  }
-
-  return result.data
 }
 
 export async function createTeacher(data: CreateStaffDTO): Promise<Staff> {
   console.log('🔧 API: Creating teacher with data:', data)
   console.log('💰 API: base_salary =', data.base_salary, 'Type:', typeof data.base_salary)
-  
+
   const token = await getAuthToken()
   const response = await fetch(`${API_URL}/teachers`, {
     method: 'POST',
@@ -402,7 +419,7 @@ export async function createTeacher(data: CreateStaffDTO): Promise<Staff> {
 
   const result: ApiResponse<Staff> = await response.json()
   console.log('🔧 API: Create teacher result:', result)
-  
+
   if (!result.success || !result.data) {
     throw new Error(result.error || 'Failed to create teacher')
   }
@@ -447,13 +464,28 @@ export async function deleteTeacher(id: string): Promise<void> {
 // ============================================================================
 
 export async function getTeacherAssignments(
-  teacherId?: string,
-  academicYearId?: string
+  campusIdOrTeacherId?: string,
+  academicYearIdOrOptions?: string | { teacher_id?: string, academic_year_id?: string }
 ): Promise<TeacherSubjectAssignment[]> {
   const token = await getAuthToken()
   const params = new URLSearchParams()
-  if (teacherId) params.append('teacher_id', teacherId)
-  if (academicYearId) params.append('academic_year_id', academicYearId)
+
+  // Support both old signature (teacherId, academicYearId) and new (campusId)
+  // If the first param looks like a UUID and there's no second param or second is an object, treat as campus_id
+  if (campusIdOrTeacherId) {
+    if (typeof academicYearIdOrOptions === 'object' || academicYearIdOrOptions === undefined) {
+      // New signature: (campusId, {teacher_id?, academic_year_id?})
+      params.append('campus_id', campusIdOrTeacherId)
+      if (typeof academicYearIdOrOptions === 'object') {
+        if (academicYearIdOrOptions.teacher_id) params.append('teacher_id', academicYearIdOrOptions.teacher_id)
+        if (academicYearIdOrOptions.academic_year_id) params.append('academic_year_id', academicYearIdOrOptions.academic_year_id)
+      }
+    } else {
+      // Old signature: (teacherId, academicYearId)
+      params.append('teacher_id', campusIdOrTeacherId)
+      if (academicYearIdOrOptions) params.append('academic_year_id', academicYearIdOrOptions)
+    }
+  }
 
   const response = await fetch(`${API_URL}/teachers/assignments?${params}`, {
     headers: { Authorization: `Bearer ${token}` }
@@ -638,4 +670,43 @@ export async function deletePeriod(id: string): Promise<void> {
   if (!result.success) {
     throw new Error(result.error || 'Failed to delete period')
   }
+}
+
+// ============================================================================
+// GLOBAL PERIODS API (from /periods endpoint - the global period definitions)
+// ============================================================================
+
+export interface GlobalPeriod {
+  id: string
+  school_id: string
+  campus_id?: string | null
+  title: string
+  short_name: string
+  sort_order: number
+  length_minutes: number
+  block?: string
+  is_active?: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+export async function getGlobalPeriods(campusId?: string): Promise<GlobalPeriod[]> {
+  const token = await getAuthToken()
+  const params = new URLSearchParams()
+  if (campusId) {
+    params.append('campus_id', campusId)
+  }
+  const queryString = params.toString() ? `?${params.toString()}` : ''
+
+  const response = await fetch(`${API_URL}/periods${queryString}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+
+  const result: ApiResponse<GlobalPeriod[]> = await response.json()
+  if (!result.success || !result.data) {
+    throw new Error(result.error || 'Failed to fetch global periods')
+  }
+
+  // Sort by sort_order
+  return result.data.sort((a, b) => a.sort_order - b.sort_order)
 }

@@ -12,7 +12,7 @@ export function AuthLoadingGuard({ children }: { children: React.ReactNode }) {
   const { loading, recoverFromError } = useAuth()
   const [showRecoveryOption, setShowRecoveryOption] = useState(false)
 
-  // Show recovery option after 25 seconds of loading (before the 30s timeout triggers redirect)
+  // Show recovery option after 8 seconds of loading (faster feedback)
   useEffect(() => {
     if (!loading) {
       setShowRecoveryOption(false)
@@ -23,7 +23,7 @@ export function AuthLoadingGuard({ children }: { children: React.ReactNode }) {
       if (loading) {
         setShowRecoveryOption(true)
       }
-    }, 25000) // 25 seconds
+    }, 8000) // 8 seconds - faster recovery option
 
     return () => clearTimeout(timeout)
   }, [loading])

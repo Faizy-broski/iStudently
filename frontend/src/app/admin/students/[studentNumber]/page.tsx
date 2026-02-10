@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useCampus } from "@/context/CampusContext";
+import { useProfileView } from "@/context/ProfileViewContext";
 import { type Student } from "@/lib/api/students";
 import { useStudents } from "@/hooks/useStudents";
 import { getParentById, type Parent } from "@/lib/api/parents";
@@ -75,6 +76,7 @@ export default function StudentDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const campusContext = useCampus();
+  const { setViewedProfile, clearViewedProfile } = useProfileView();
   
   // Get student number from URL (URL-encoded, so decode it)
   const studentNumber = decodeURIComponent(params.studentNumber as string);
@@ -106,6 +108,15 @@ export default function StudentDetailsPage() {
         if (student) {
           setCurrentStudent(student);
           
+          // Update profile view context for sidebar indicator
+          const studentFullName = `${student.profile?.first_name || ""} ${student.profile?.father_name || ""}`.trim() || student.student_number;
+          setViewedProfile({
+            id: student.student_number,
+            name: studentFullName,
+            type: 'student',
+            backUrl: '/admin/students/student-info'
+          });
+          
           // Fetch linked parent if exists
           const parentId = student.custom_fields?.family?.linked_parent_id;
           if (parentId) {
@@ -133,7 +144,12 @@ export default function StudentDetailsPage() {
     if (students.length > 0) {
       fetchStudent();
     }
-  }, [studentNumber, students]);
+    
+    // Clear profile view when leaving the page
+    return () => {
+      clearViewedProfile();
+    };
+  }, [studentNumber, students, setViewedProfile, clearViewedProfile]);
 
   // Navigate using student_number for readable URLs
   const navigateToStudent = (student: Student) => {

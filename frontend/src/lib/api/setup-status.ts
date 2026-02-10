@@ -1,9 +1,6 @@
-import { createClient } from '@/lib/supabase/client'
+import { getAuthToken } from './schools'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
-
-// Initialize supabase client once
-const supabase = createClient()
 
 interface ApiResponse<T> {
     success?: boolean
@@ -11,10 +8,8 @@ interface ApiResponse<T> {
     error?: string
 }
 
-async function getAuthToken(): Promise<string | null> {
-    const { data } = await supabase.auth.getSession()
-    return data.session?.access_token || null
-}
+// NOTE: Using centralized getAuthToken from schools.ts which includes
+// session validation wait logic to prevent race conditions on tab focus
 
 async function apiRequest<T = unknown>(
     endpoint: string,
@@ -49,11 +44,11 @@ async function apiRequest<T = unknown>(
         }
 
         return { success: true, data }
-    } catch (error) {
-        console.error('API Request Error:', error)
+    } catch {
+        // Silent fail - return error response without logging
         return {
             success: false,
-            error: error instanceof Error ? error.message : 'Unknown error occurred'
+            error: 'Network error'
         }
     }
 }

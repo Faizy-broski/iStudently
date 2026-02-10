@@ -101,6 +101,41 @@ class SetupStatusController {
             res.status(500).json({ error: 'Failed to delete campus' })
         }
     }
+
+    /**
+     * Get a specific campus by ID
+     */
+    async getCampusById(req: AuthRequest, res: Response) {
+        try {
+            const { id } = req.params
+
+            const campus = await setupStatusService.getCampusById(id)
+            
+            if (!campus) {
+                return res.status(404).json({ success: false, error: 'Campus not found' })
+            }
+
+            res.json({ success: true, data: campus })
+        } catch (error) {
+            console.error('Error getting campus:', error)
+            res.status(500).json({ success: false, error: 'Failed to get campus' })
+        }
+    }
+
+    /**
+     * Get campus statistics
+     */
+    async getCampusStats(req: AuthRequest, res: Response) {
+        try {
+            const { id } = req.params
+
+            const stats = await setupStatusService.getCampusStats(id)
+            res.json({ success: true, data: stats })
+        } catch (error) {
+            console.error('Error getting campus stats:', error)
+            res.status(500).json({ success: false, error: 'Failed to get campus stats' })
+        }
+    }
 }
 
 export const setupStatusController = new SetupStatusController()

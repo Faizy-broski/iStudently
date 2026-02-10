@@ -3,8 +3,8 @@
 import * as React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { usePathname } from 'next/navigation'
-import { Menu, X, ChevronLeft, ChevronRight, ChevronDown, Calendar, GraduationCap } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import { Menu, X, ChevronLeft, ChevronRight, ChevronDown, Calendar, GraduationCap, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SidebarMenuItem } from '@/config/sidebar'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/s
 import { useAuth } from '@/context/AuthContext'
 import { useAcademic, type Quarter } from '@/context/AcademicContext'
 import { useCampus } from '@/context/CampusContext'
+import { ProfileViewContext } from '@/context/ProfileViewContext'
 import {
   Select,
   SelectContent,
@@ -188,6 +189,71 @@ function CampusSelector() {
   )
 }
 
+// Viewed Profile Indicator Component
+function ViewedProfileIndicator() {
+  const router = useRouter()
+  
+  // Try to use profile view context
+  let viewedProfile = null;
+  let clearViewedProfile = () => {};
+  
+  try {
+    const context = React.useContext(ProfileViewContext);
+    if (context) {
+      viewedProfile = context.viewedProfile;
+      clearViewedProfile = context.clearViewedProfile;
+    }
+  } catch {
+    // Context not available
+  }
+  
+  if (!viewedProfile) return null
+  
+  const handleClose = () => {
+    clearViewedProfile();
+    router.push(viewedProfile.backUrl)
+  }
+  
+  const getIcon = () => {
+    switch (viewedProfile.type) {
+      case 'student': return <GraduationCap className="h-4 w-4 text-[#EEA831] shrink-0" />
+      case 'teacher': return <User className="h-4 w-4 text-[#EEA831] shrink-0" />
+      case 'staff': return <User className="h-4 w-4 text-[#EEA831] shrink-0" />
+      case 'parent': return <User className="h-4 w-4 text-[#EEA831] shrink-0" />
+      default: return <User className="h-4 w-4 text-[#EEA831] shrink-0" />
+    }
+  }
+  
+  const getLabel = () => {
+    switch (viewedProfile.type) {
+      case 'student': return 'Viewing Student'
+      case 'teacher': return 'Viewing Teacher'
+      case 'staff': return 'Viewing Staff'
+      case 'parent': return 'Viewing Parent'
+      default: return 'Viewing Profile'
+    }
+  }
+  
+  return (
+    <div className="px-3 mb-2">
+      <div className="flex items-center gap-2 px-3 py-2.5 bg-gradient-to-r from-[#EEA831]/30 to-[#F59E0B]/20 rounded-lg border-2 border-[#EEA831] shadow-lg shadow-[#EEA831]/20">
+        {getIcon()}
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] uppercase tracking-wider text-[#EEA831] font-semibold">{getLabel()}</p>
+          <p className="text-white text-sm font-bold truncate">{viewedProfile.name}</p>
+        </div>
+        <button
+          onClick={handleClose}
+          className="p-1.5 bg-red-500 hover:bg-red-600 rounded-full transition-colors shadow-md"
+          title="Close profile view"
+        >
+          <X className="h-4 w-4 text-white" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [isCollapsed, setIsCollapsed] = React.useState(false)
   const [isMobileOpen, setIsMobileOpen] = React.useState(false)
@@ -219,7 +285,9 @@ function SidebarItem({
   const pathname = usePathname()
   const [isExpanded, setIsExpanded] = React.useState(() => {
     // Auto-expand if current path matches any subitem
-    return item.subItems?.some(subItem => pathname.startsWith(subItem.href)) ?? false
+    return item.subItems?.some(subItem => 
+      !subItem.isLabel && pathname.startsWith(subItem.href)
+    ) ?? false
   })
 
   const Icon = item.icon
@@ -227,7 +295,7 @@ function SidebarItem({
 
   // Check if any subitem is active
   const hasActiveSubItem = item.subItems?.some(subItem =>
-    pathname === subItem.href || pathname.startsWith(subItem.href + '/')
+    !subItem.isLabel && (pathname === subItem.href || pathname.startsWith(subItem.href + '/'))
   )
 
   if (hasSubItems && !isCollapsed) {
@@ -267,6 +335,23 @@ function SidebarItem({
             {item.subItems.map((subItem) => {
               const subItemActive = pathname === subItem.href || pathname.startsWith(subItem.href + '/')
               const SubIcon = subItem.icon
+
+              // Render label (non-clickable separator)
+              if (subItem.isLabel) {
+                return (
+                  <div
+                    key={subItem.title}
+                    className="mt-4 mb-2 px-4"
+                  >
+                    <div className="flex items-center gap-2 pb-1 border-b border-[#EEA831]/50">
+                      <SubIcon className="h-3.5 w-3.5 shrink-0 text-[#EEA831]" />
+                      <span className="text-xs font-semibold text-[#EEA831] uppercase tracking-wider">
+                        {subItem.title}
+                      </span>
+                    </div>
+                  </div>
+                )
+              }
 
               return (
                 <Link
@@ -390,6 +475,9 @@ function DesktopSidebar({ menuItems, className }: AppSidebarProps) {
 
         {/* Academic Year & Quarter Selectors */}
         {!isCollapsed && <AcademicSelectors />}
+
+        {/* Currently Viewed Profile Indicator */}
+        {!isCollapsed && <ViewedProfileIndicator />}
 
         {/* Navigation Menu - IMPORTANT: pr-0 allows active item to touch right edge */}
         <nav className="flex-1 overflow-y-auto overflow-x-visible py-2 pl-3 pr-0 space-y-2 scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-transparent">

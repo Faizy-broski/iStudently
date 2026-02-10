@@ -1,5 +1,5 @@
 import { getAuthToken } from './schools'
-import { abortableFetch } from './abortable-fetch'
+import { simpleFetch } from './abortable-fetch'
 import { handleSessionExpiry } from '@/context/AuthContext'
 import { API_URL } from '@/config/api'
 
@@ -25,7 +25,7 @@ async function apiRequest<T = unknown>(
   if (!token) {
     return {
       success: false,
-      error: 'Authentication required. Please sign in.'
+      error: 'Authentication required'
     }
   }
 
@@ -35,7 +35,7 @@ async function apiRequest<T = unknown>(
   }
 
   try {
-    const response = await abortableFetch(`${API_URL}${endpoint}`, {
+    const response = await simpleFetch(`${API_URL}${endpoint}`, {
       ...options,
       headers: {
         ...headers,
@@ -48,35 +48,26 @@ async function apiRequest<T = unknown>(
 
     // Handle 401 Unauthorized
     if (response.status === 401) {
-      console.error('🔒 Session expired in students API')
       await handleSessionExpiry()
       return {
         success: false,
-        error: 'Session expired. Please login again.'
+        error: 'Session expired'
       }
     }
 
     if (!response.ok) {
       return {
         success: false,
-        error: data.error || `Request failed with status ${response.status}`
+        error: data.error || 'Request failed'
       }
     }
 
     return data
-  } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-    // Handle aborted requests gracefully
-    if (error instanceof Error && error.message === 'Request was cancelled') {
-      console.log('ℹ️ Request cancelled:', endpoint)
-      return {
-        success: false,
-        error: 'Request cancelled'
-      }
-    }
-    console.error('API request error:', error)
+  } catch {
+    // Silent fail - no logging, no abort checks
     return {
       success: false,
-      error: error.message || 'Network error occurred'
+      error: 'Network error'
     }
   }
 }
@@ -145,6 +136,7 @@ export interface UpdateStudentDTO {
   phone?: string
   profile_photo_url?: string // NEW
   password?: string // NEW: Optional password update
+  is_active?: boolean // NEW: Toggle student active/inactive status
   medical_info?: Student['medical_info']
   custom_fields?: Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 }
@@ -174,7 +166,7 @@ export async function getStudents(params?: {
 export async function getStudentById(id: string, campusId?: string) {
   const queryParams = new URLSearchParams()
   if (campusId) queryParams.append('campus_id', campusId)
-  
+
   const query = queryParams.toString()
   return apiRequest<Student>(`/students/${id}${query ? `?${query}` : ''}`)
 }
@@ -193,7 +185,7 @@ export async function createStudent(data: CreateStudentDTO) {
 export async function updateStudent(id: string, data: UpdateStudentDTO, campusId?: string) {
   const queryParams = new URLSearchParams()
   if (campusId) queryParams.append('campus_id', campusId)
-  
+
   const query = queryParams.toString()
   return apiRequest<Student>(`/students/${id}${query ? `?${query}` : ''}`, {
     method: 'PUT',
@@ -218,4 +210,61 @@ export async function getStudentStats() {
     inactive: number
     byGrade: Record<string, number>
   }>('/students/stats')
+}
+
+// ============================================================================
+// PRINT STUDENT INFO
+// ============================================================================
+
+export interface StudentPrintInfo {
+  id: string
+  student_number: string
+  profile: {
+    first_name: string
+    father_name: string
+    grandfather_name: string
+    last_name: string
+    email: string
+    phone: string
+    profile_photo_url: string | null
+    is_active: boolean
+  }
+  academic: {
+    grade_level: string
+    section: string
+    admission_date: string
+  }
+  medical_info: Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
+  custom_fields: Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
+  parent_links: Array<{
+    parent: {
+      id: string
+      profile: {
+        first_name: string
+        last_name: string
+        email: string
+        phone: string
+      }
+    }
+    relationship: string
+    relation_type: string
+  }>
+  created_at: string
+}
+
+export interface PrintInfoResponse {
+  students: StudentPrintInfo[]
+  categories: { id: string; name: string }[]
+  campus: { id: string; name: string } | null
+}
+
+export async function getStudentsPrintInfo(params: {
+  studentIds: string[]
+  categoryIds: string[]
+  campusId?: string
+}) {
+  return apiRequest<PrintInfoResponse>('/students/print-info', {
+    method: 'POST',
+    body: JSON.stringify(params)
+  })
 }

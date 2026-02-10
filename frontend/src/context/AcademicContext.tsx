@@ -1,8 +1,9 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react'
 import { useAuth } from './AuthContext'
 import * as academicsApi from '@/lib/api/academics'
+import { useVisibilityRefetch } from '@/hooks/useVisibilityRefetch'
 
 export type Quarter = 'Quarter 1' | 'Quarter 2' | 'Quarter 3' | 'Quarter 4'
 
@@ -98,21 +99,21 @@ interface AcademicProviderProps {
 
 export function AcademicProvider({ children }: AcademicProviderProps) {
   const { user, profile } = useAuth()
-  
+
   // Initialize from cache if available (lazy initialization)
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>(() => {
     const cached = getCachedAcademicYears()
     return cached?.years || []
   })
-  
+
   const [selectedAcademicYear, setSelectedAcademicYearState] = useState<string | null>(() => {
     return getStoredSelectedYear()
   })
-  
+
   const [selectedQuarter, setSelectedQuarterState] = useState<Quarter>(() => {
     return getStoredSelectedQuarter()
   })
-  
+
   // Start with loading=false if we have cached data
   const [loading, setLoading] = useState(() => {
     const cached = getCachedAcademicYears()
@@ -141,42 +142,44 @@ export function AcademicProvider({ children }: AcademicProviderProps) {
 
   // Fetch academic years when user is available
   useEffect(() => {
+    let isMounted = true
+
     const fetchAcademicYears = async () => {
       if (!user || !profile) {
-        setLoading(false)
+        if (isMounted) setLoading(false)
         return
       }
 
       // Check if we have valid cached data for this user
       const cached = getCachedAcademicYears()
       const now = Date.now()
-      
+
       if (
-        cached && 
+        cached &&
         cached.userId === user.id &&
         now - cached.timestamp < CACHE_DURATION &&
         cached.years.length > 0
       ) {
         // Use cached data - already initialized via useState
-        if (academicYears.length === 0) {
+        if (academicYears.length === 0 && isMounted) {
           setAcademicYears(cached.years)
         }
-        
+
         // Auto-select if not already selected
-        if (!selectedAcademicYear) {
+        if (!selectedAcademicYear && isMounted) {
           const currentYear = cached.years.find(y => y.is_current)
           if (currentYear) {
             setSelectedAcademicYear(currentYear.id)
           }
         }
-        
-        setLoading(false)
+
+        if (isMounted) setLoading(false)
         return
       }
 
       try {
         let years: AcademicYear[] = []
-        
+
         // Parents and students should only see the current academic year
         if (profile.role === 'parent' || profile.role === 'student') {
           const currentYear = await academicsApi.getCurrentAcademicYear()
@@ -187,7 +190,9 @@ export function AcademicProvider({ children }: AcademicProviderProps) {
           // For staff/admin/teachers, fetch all academic years
           years = await academicsApi.getAcademicYears()
         }
-        
+
+        if (!isMounted) return
+
         setAcademicYears(years)
         setAcademicYearCache(years, user.id)
 
@@ -199,18 +204,45 @@ export function AcademicProvider({ children }: AcademicProviderProps) {
           }
         }
       } catch {
-        // Silent fail - don't spam console
-        // Keep existing data if available, otherwise empty array
-        if (academicYears.length === 0) {
+        // Silent fail - keep existing data if available
+        if (isMounted && academicYears.length === 0) {
           setAcademicYears([])
         }
       } finally {
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+        }
       }
     }
 
     fetchAcademicYears()
+
+    return () => {
+      isMounted = false
+    }
   }, [user?.id, profile?.role]) // Only depend on stable values
+
+  // Refetch data when tab becomes visible again
+  useVisibilityRefetch(
+    useCallback(async () => {
+      if (!user || !profile) return
+
+      try {
+        let years: AcademicYear[] = []
+        if (profile.role === 'parent' || profile.role === 'student') {
+          const currentYear = await academicsApi.getCurrentAcademicYear()
+          if (currentYear) years = [currentYear]
+        } else {
+          years = await academicsApi.getAcademicYears()
+        }
+        setAcademicYears(years)
+        setAcademicYearCache(years, user.id)
+      } catch {
+        // Silent fail
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?.id, profile?.role])
+  )
 
   const currentAcademicYear = academicYears.find(y => y.id === selectedAcademicYear) || null
 

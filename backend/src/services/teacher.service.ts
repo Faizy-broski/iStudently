@@ -52,7 +52,15 @@ export const getAllTeachers = async (
         *,
         profile:profiles!staff_profile_id_fkey(*),
         grade_level:grade_levels(id, name),
-        section:sections(id, name, capacity)
+        section:sections(id, name, capacity),
+        assigned_subjects:teacher_subject_assignments!teacher_id(
+          id,
+          is_primary,
+          assigned_at,
+          subject:subjects(id, name, code),
+          section:sections(id, name, grade_level:grade_levels(id, name)),
+          academic_year:academic_years(id, name)
+        )
       `, { count: 'exact' })
     
     // Filter by campus_id if provided, otherwise use admin's school_id
@@ -537,7 +545,7 @@ export const getTeacherAssignments = async (
         section:sections(id, name, grade_level:grade_levels(id, name)),
         academic_year:academic_years(name)
       `)
-      .eq('school_id', schoolId)
+      .eq('campus_id', schoolId) // Use campus_id for campus-specific filtering
 
     if (teacherId) query = query.eq('teacher_id', teacherId)
     if (academicYearId) query = query.eq('academic_year_id', academicYearId)
@@ -599,6 +607,7 @@ export const createTeacherAssignment = async (
       .from('teacher_subject_assignments')
       .insert({
         school_id: dto.school_id,
+        campus_id: dto.school_id, // campus_id = school_id for campus-specific records
         teacher_id: dto.teacher_id,
         subject_id: dto.subject_id,
         section_id: dto.section_id,
@@ -809,6 +818,8 @@ export const getPeriods = async (schoolId: string, campusId?: string): Promise<A
       .select('*')
       .eq('school_id', mainSchoolId)
       .eq('is_active', true)
+      // Order by sort_order first (new schema), then period_number (old schema) as fallback
+      .order('sort_order', { ascending: true, nullsFirst: false })
       .order('period_number', { ascending: true })
 
     // Filter by campus - include campus-specific periods AND school-wide periods (null campus_id)
@@ -821,9 +832,16 @@ export const getPeriods = async (schoolId: string, campusId?: string): Promise<A
 
     if (error) throw error
 
+    // Ensure backward compatibility: populate period_number from sort_order if missing
+    const normalizedData = (data || []).map(period => ({
+      ...period,
+      period_number: period.period_number || period.sort_order || 0,
+      period_name: period.period_name || period.title || null,
+    }))
+
     return {
       success: true,
-      data: data as Period[]
+      data: normalizedData as Period[]
     }
   } catch (error: any) {
     console.error('Error fetching periods:', error)

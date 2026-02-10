@@ -1,5 +1,5 @@
 import { getAuthToken } from './schools'
-
+import { simpleFetch } from './abortable-fetch'
 import { API_URL } from '@/config/api'
 
 interface ApiResponse<T = unknown> {
@@ -17,10 +17,9 @@ async function apiRequest<T = unknown>(
 
   // If no token after retries, return auth error
   if (!token) {
-    console.error('❌ No authentication token available')
     return {
       success: false,
-      error: 'Authentication required. Please sign in.'
+      error: 'Authentication required'
     }
   }
 
@@ -30,26 +29,25 @@ async function apiRequest<T = unknown>(
   }
 
   try {
-    const response = await fetch(`${API_URL}${endpoint}`, {
+    const response = await simpleFetch(`${API_URL}${endpoint}`, {
       ...options,
       headers,
-      // Add cache control to prevent stale data
+      timeout: 25000,
       cache: 'no-store',
     })
 
     // Handle 401/403 - authentication/authorization issues
     if ((response.status === 401 || response.status === 403) && retryOnAuthFailure) {
-      console.warn('⚠️ Dashboard auth failed, retrying with fresh token...')
       await new Promise(resolve => setTimeout(resolve, 500))
       return apiRequest<T>(endpoint, options, false)
     }
 
     return await response.json()
-  } catch (error: unknown) {
-    console.error('❌ Dashboard API Request Failed:', error)
+  } catch {
+    // Silent fail - no logging
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Network error'
+      error: 'Network error'
     }
   }
 }

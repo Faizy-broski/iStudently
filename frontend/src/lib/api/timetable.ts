@@ -1,4 +1,6 @@
 import { getAuthToken } from './schools'
+import { handleSessionExpiry } from '@/context/AuthContext'
+import { simpleFetch } from './abortable-fetch'
 import {
   TimetableEntry,
   CreateTimetableEntryDTO,
@@ -45,7 +47,7 @@ export async function getTimetableBySection(
 ): Promise<TimetableEntry[]> {
   const token = await getAuthToken()
   const params = new URLSearchParams({ section_id: sectionId, academic_year_id: academicYearId })
-  
+
   const response = await fetch(`${API_URL}/timetable/section?${params}`, {
     headers: { Authorization: `Bearer ${token}` }
   })
@@ -64,7 +66,7 @@ export async function getTimetableByTeacher(
 ): Promise<TimetableEntry[]> {
   const token = await getAuthToken()
   const params = new URLSearchParams({ teacher_id: teacherId, academic_year_id: academicYearId })
-  
+
   const response = await fetch(`${API_URL}/timetable/teacher?${params}`, {
     headers: { Authorization: `Bearer ${token}` }
   })
@@ -83,7 +85,7 @@ export async function getAvailableSubjectsForSection(
 ): Promise<any[]> {
   const token = await getAuthToken()
   const params = new URLSearchParams({ section_id: sectionId, academic_year_id: academicYearId })
-  
+
   const response = await fetch(`${API_URL}/timetable/available-subjects?${params}`, {
     headers: { Authorization: `Bearer ${token}` }
   })
@@ -111,7 +113,7 @@ export async function checkTeacherConflict(
     academic_year_id: academicYearId
   })
   if (excludeEntryId) params.append('exclude_entry_id', excludeEntryId)
-  
+
   const response = await fetch(`${API_URL}/timetable/check-conflict?${params}`, {
     headers: { Authorization: `Bearer ${token}` }
   })
@@ -189,17 +191,28 @@ export async function getTeacherSchedule(
   const token = await getAuthToken()
   const params = new URLSearchParams({ teacher_id: teacherId })
   if (date) params.append('date', date)
-  
-  const response = await fetch(`${API_URL}/timetable/teacher-schedule?${params}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  })
 
-  const result: ApiResponse<TeacherSchedule[]> = await response.json()
-  if (!result.success || !result.data) {
-    throw new Error(result.error || 'Failed to fetch teacher schedule')
+  try {
+    const response = await simpleFetch(`${API_URL}/timetable/teacher-schedule?${params}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 30000
+    })
+
+    if (response.status === 401) {
+      await handleSessionExpiry()
+      throw new Error('Session expired')
+    }
+
+    const result: ApiResponse<TeacherSchedule[]> = await response.json()
+    if (!result.success || !result.data) {
+      throw new Error(result.error || 'Failed to fetch teacher schedule')
+    }
+
+    return result.data
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Session expired') throw error
+    throw new Error('Failed to fetch teacher schedule')
   }
-
-  return result.data
 }
 
 export async function getTeacherTimetable(
@@ -211,7 +224,7 @@ export async function getTeacherTimetable(
     teacher_id: teacherId,
     academic_year_id: academicYearId
   })
-  
+
   const response = await fetch(`${API_URL}/timetable/teacher-timetable?${params}`, {
     headers: { Authorization: `Bearer ${token}` }
   })
@@ -227,7 +240,7 @@ export async function getTeacherTimetable(
 export async function getCurrentClass(teacherId: string): Promise<TimetableEntry | null> {
   const token = await getAuthToken()
   const params = new URLSearchParams({ teacher_id: teacherId })
-  
+
   const response = await fetch(`${API_URL}/timetable/current-class?${params}`, {
     headers: { Authorization: `Bearer ${token}` }
   })
@@ -239,7 +252,7 @@ export async function getCurrentClass(teacherId: string): Promise<TimetableEntry
 export async function getNextClass(teacherId: string): Promise<TimetableEntry | null> {
   const token = await getAuthToken()
   const params = new URLSearchParams({ teacher_id: teacherId })
-  
+
   const response = await fetch(`${API_URL}/timetable/next-class?${params}`, {
     headers: { Authorization: `Bearer ${token}` }
   })
@@ -284,7 +297,7 @@ export async function getAttendanceForClass(
 ): Promise<AttendanceRecord[]> {
   const token = await getAuthToken()
   const params = new URLSearchParams({ timetable_entry_id: timetableEntryId, date })
-  
+
   const response = await fetch(`${API_URL}/timetable/attendance/class?${params}`, {
     headers: { Authorization: `Bearer ${token}` }
   })
@@ -303,7 +316,7 @@ export async function getAttendanceForSectionDate(
 ): Promise<{ data: AttendanceRecord[], error?: string }> {
   const token = await getAuthToken()
   const params = new URLSearchParams({ section_id: sectionId, date })
-  
+
   const response = await fetch(`${API_URL}/timetable/attendance/section-date?${params}`, {
     headers: { Authorization: `Bearer ${token}` }
   })
@@ -367,7 +380,7 @@ export async function getAttendanceStats(
 ): Promise<AttendanceStats> {
   const token = await getAuthToken()
   const params = new URLSearchParams({ timetable_entry_id: timetableEntryId, date })
-  
+
   const response = await fetch(`${API_URL}/timetable/attendance/stats?${params}`, {
     headers: { Authorization: `Bearer ${token}` }
   })
@@ -389,7 +402,7 @@ export async function getStudentAttendanceHistory(
   const params = new URLSearchParams({ student_id: studentId })
   if (startDate) params.append('start_date', startDate)
   if (endDate) params.append('end_date', endDate)
-  
+
   const response = await fetch(`${API_URL}/timetable/attendance/student-history?${params}`, {
     headers: { Authorization: `Bearer ${token}` }
   })
@@ -409,7 +422,7 @@ export async function getClassAttendanceSummary(
 ): Promise<any[]> {
   const token = await getAuthToken()
   const params = new URLSearchParams({ section_id: sectionId, start_date: startDate, end_date: endDate })
-  
+
   const response = await fetch(`${API_URL}/timetable/attendance/class-summary?${params}`, {
     headers: { Authorization: `Bearer ${token}` }
   })
@@ -428,7 +441,7 @@ export async function getTeacherAttendanceOverview(
 ): Promise<any[]> {
   const token = await getAuthToken()
   const params = new URLSearchParams({ teacher_id: teacherId, date })
-  
+
   const response = await fetch(`${API_URL}/timetable/attendance/teacher-overview?${params}`, {
     headers: { Authorization: `Bearer ${token}` }
   })

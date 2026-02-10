@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/client'
 import { API_URL } from '@/config/api'
-import { abortableFetch } from './abortable-fetch'
-import { handleSessionExpiry } from '@/context/AuthContext'
+import { simpleFetch } from './abortable-fetch'
+import { handleSessionExpiry, waitForSessionValidation } from '@/context/AuthContext'
 
 interface ApiResponse<T = unknown> {
   success: boolean
@@ -27,7 +27,16 @@ export interface CreateSchoolDTO {
   parent_school_id?: string
 }
 
+/**
+ * Get auth token for API requests
+ * Waits for any ongoing session validation to complete before returning token
+ * This prevents race conditions when tab becomes visible and fetches start
+ */
 export async function getAuthToken(): Promise<string | null> {
+  // Wait for any ongoing session validation (e.g., after tab becomes visible)
+  // This ensures we don't use a stale token during refresh
+  await waitForSessionValidation()
+  
   const supabase = createClient()
   const { data } = await supabase.auth.getSession()
   return data.session?.access_token || null
@@ -47,7 +56,7 @@ async function apiRequest<T = unknown>(
   }
 
   try {
-    const response = await abortableFetch(`${API_URL}${endpoint}`, {
+    const response = await simpleFetch(`${API_URL}${endpoint}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -61,18 +70,16 @@ async function apiRequest<T = unknown>(
 
     // Handle 401 Unauthorized - token expired or invalid
     if (response.status === 401) {
-      console.error('🔒 Unauthorized - Session expired in schools API')
       await handleSessionExpiry()
-      
+
       return {
         success: false,
-        error: 'Session expired. Please login again.'
+        error: 'Session expired'
       }
     }
 
     // Handle 403 Forbidden - insufficient permissions
     if (response.status === 403) {
-      console.error('🚫 Forbidden - Insufficient permissions')
       return {
         success: false,
         error: 'You do not have permission to perform this action'
@@ -82,25 +89,16 @@ async function apiRequest<T = unknown>(
     if (!response.ok) {
       return {
         success: false,
-        error: data.error || `Request failed with status ${response.status}`
+        error: data.error || 'Request failed'
       }
     }
 
     return data
-  } catch (error) {
-    // Handle aborted requests gracefully
-    if (error instanceof Error && error.message === 'Request was cancelled') {
-      console.log('ℹ️ API request cancelled:', endpoint)
-      return {
-        success: false,
-        error: 'Request cancelled'
-      }
-    }
-    
-    console.error('API Request Error:', error)
+  } catch {
+    // Silent fail
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
+      error: 'Network error'
     }
   }
 }

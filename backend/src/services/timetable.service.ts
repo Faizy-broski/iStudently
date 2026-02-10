@@ -356,9 +356,12 @@ export const updateTimetableEntry = async (
 
 export const deleteTimetableEntry = async (entryId: string): Promise<ApiResponse<void>> => {
   try {
+    // Use hard delete instead of soft delete to avoid unique constraint conflicts
+    // The unique constraint (unique_teacher_period_campus) doesn't account for is_active,
+    // so soft-deleted records would block new assignments for the same teacher/period/day
     const { error } = await supabase
       .from('timetable_entries')
-      .update({ is_active: false })
+      .delete()
       .eq('id', entryId)
 
     if (error) throw error

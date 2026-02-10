@@ -44,7 +44,11 @@ export default function ParentAttendancePage() {
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear())
 
   const { selectedStudent, students, isLoading: studentsLoading } = useParentDashboard()
-  const { attendanceData, isLoading: subjectsLoading, error: subjectsError } = useSubjectWiseAttendance()
+  
+  // Format month as YYYY-MM for the API
+  const monthParam = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`
+  
+  const { attendanceData, isLoading: subjectsLoading, error: subjectsError } = useSubjectWiseAttendance(monthParam)
   const { records, isLoading: recordsLoading } = useDetailedAttendance(
     expandedSubject ? selectedMonth : undefined,
     expandedSubject ? selectedYear : undefined,
@@ -140,14 +144,49 @@ export default function ParentAttendancePage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Attendance</h1>
           <p className="text-muted-foreground mt-1">
             {student ? `${student.first_name} ${student.last_name}'s attendance summary` : 'View attendance summary and records'}
           </p>
         </div>
-        <StudentSelector />
+        <div className="flex items-center gap-3">
+          {/* Month/Year Selector */}
+          <div className="flex items-center gap-2">
+            <Select
+              value={selectedMonth.toString()}
+              onValueChange={(v) => setSelectedMonth(parseInt(v))}
+            >
+              <SelectTrigger className="w-[130px]">
+                <SelectValue placeholder="Month" />
+              </SelectTrigger>
+              <SelectContent>
+                {MONTHS.map(m => (
+                  <SelectItem key={m.value} value={m.value.toString()}>
+                    {m.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={selectedYear.toString()}
+              onValueChange={(v) => setSelectedYear(parseInt(v))}
+            >
+              <SelectTrigger className="w-[100px]">
+                <SelectValue placeholder="Year" />
+              </SelectTrigger>
+              <SelectContent>
+                {[currentDate.getFullYear() - 1, currentDate.getFullYear()].map(y => (
+                  <SelectItem key={y} value={y.toString()}>
+                    {y}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <StudentSelector />
+        </div>
       </div>
 
       {/* Overall Stats */}

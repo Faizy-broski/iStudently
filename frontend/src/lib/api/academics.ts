@@ -1,4 +1,5 @@
 import { getAuthToken } from './schools'
+import { handleSessionExpiry } from '@/context/AuthContext'
 
 import { API_URL } from '@/config/api'
 
@@ -131,10 +132,19 @@ async function apiRequest<T = unknown>(
 
     const data = await response.json()
 
+    // Handle 401 - session expired or invalid token
+    if (response.status === 401) {
+      await handleSessionExpiry()
+      return {
+        success: false,
+        error: 'Session expired'
+      }
+    }
+
     if (!response.ok) {
       // Handle specific error messages
       let errorMessage = data.error || `Request failed with status ${response.status}`
-      
+
       // Provide user-friendly error messages for common issues
       if (errorMessage.includes('Cannot coerce') || errorMessage.includes('JSON')) {
         errorMessage = 'Unable to complete the operation. Please try refreshing the page and trying again.'
@@ -142,7 +152,7 @@ async function apiRequest<T = unknown>(
       if (errorMessage.includes('not found') || errorMessage.includes('access denied')) {
         errorMessage = 'Access denied or item not found. Please check your permissions.'
       }
-      
+
       return {
         success: false,
         error: errorMessage
@@ -150,24 +160,11 @@ async function apiRequest<T = unknown>(
     }
 
     return data
-  } catch (error) {
-    console.error('API Request Error:', error)
-    
-    // Provide user-friendly error messages
-    let errorMessage = 'Unknown error occurred'
-    if (error instanceof Error) {
-      if (error.message.includes('JSON') || error.message.includes('coerce')) {
-        errorMessage = 'Data format error. Please refresh the page and try again.'
-      } else if (error.message.includes('network') || error.message.includes('fetch')) {
-        errorMessage = 'Network error. Please check your connection and try again.'
-      } else {
-        errorMessage = error.message
-      }
-    }
-    
+  } catch {
+    // Silent fail - return generic error
     return {
       success: false,
-      error: errorMessage
+      error: 'Network error. Please check your connection.'
     }
   }
 }
@@ -322,11 +319,11 @@ export interface UpdateAcademicYearDTO {
 
 export async function getAcademicYears(): Promise<AcademicYear[]> {
   const result = await apiRequest<AcademicYear[]>('/academics/academic-years')
-  
+
   if (!result.success) {
     throw new Error(result.error || 'Failed to fetch academic years')
   }
-  
+
   return result.data || []
 }
 

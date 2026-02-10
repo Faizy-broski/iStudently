@@ -302,6 +302,7 @@ export interface UpdateStudentDTO {
   phone?: string
   profile_photo_url?: string // NEW
   password?: string // NEW: Optional password update
+  is_active?: boolean // NEW: Student active status
 }
 
 // ============================================================================

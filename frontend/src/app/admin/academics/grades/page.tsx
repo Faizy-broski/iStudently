@@ -223,7 +223,7 @@ export default function GradeLevelsPage() {
                         {grade.name}
                       </div>
                     </TableCell>
-                    <TableCell>PKR {grade.base_fee.toLocaleString()}</TableCell>
+                    <TableCell> {grade.base_fee.toLocaleString()}</TableCell>
                     <TableCell>{grade.sections_count || 0}</TableCell>
                     <TableCell>{grade.subjects_count || 0}</TableCell>
                     <TableCell>
@@ -298,12 +298,12 @@ export default function GradeLevelsPage() {
                 </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="base_fee">Base Fee (PKR) *</Label>
+                <Label htmlFor="base_fee">Base Fee  *</Label>
                 <Input
                   id="base_fee"
-                  type="number"
+                  type="number"      
                   min="0"
-                  step="0.01"
+                  step="0.01"          
                   placeholder="5000"
                   value={formData.base_fee || ''}
                   onChange={(e) =>

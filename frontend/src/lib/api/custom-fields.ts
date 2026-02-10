@@ -3,8 +3,8 @@
  * Handles CRUD operations for custom field definitions
  */
 
-import { createClient } from '@/lib/supabase/client'
 import { API_URL } from '@/config/api'
+import { getAuthToken } from './schools'
 
 // Types
 export type CustomFieldType = 'text' | 'long-text' | 'number' | 'date' | 'checkbox' | 'select' | 'multi-select' | 'file'
@@ -72,12 +72,8 @@ export interface BranchSchool {
     name: string
 }
 
-// Helper to get auth token
-async function getAuthToken(): Promise<string | null> {
-    const supabase = createClient()
-    const { data } = await supabase.auth.getSession()
-    return data.session?.access_token || null
-}
+// NOTE: Using centralized getAuthToken from schools.ts which includes
+// session validation wait logic to prevent race conditions on tab focus
 
 // API request helper
 async function apiRequest<T>(

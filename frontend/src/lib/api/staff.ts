@@ -2,7 +2,7 @@ import { API_URL } from '@/config/api'
 import { getAuthToken } from './schools'
 import { Staff, Profile, EmploymentType } from './teachers' // Reuse types
 import { handleSessionExpiry } from '@/context/AuthContext'
-import { abortableFetch } from './abortable-fetch'
+import { simpleFetch } from './abortable-fetch'
 
 interface ApiResponse<T = unknown> {
     success: boolean
@@ -64,54 +64,45 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
         ...options.headers,
     }
 
-    console.log('📡 Staff API Request:', {
-        url: `${API_URL}${endpoint}`,
-        method: options.method || 'GET',
-        headers,
-        body: options.body
-    })
-
-    const response = await abortableFetch(`${API_URL}${endpoint}`, {
-        ...options,
-        headers,
-        timeout: 30000
-    })
-
-    console.log('📡 Staff API Response:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok
-    })
-
-    // Handle session expiry
-    if (response.status === 401) {
-        console.warn('🔐 Staff API: Session expired, triggering re-authentication')
-        handleSessionExpiry()
-        throw new Error('Session expired. Please log in again.')
-    }
-
-    let data
     try {
-        data = await response.json()
-        console.log('📡 Response Data:', data)
-    } catch (e) {
-        console.error('❌ Failed to parse response JSON:', e)
-        throw new Error(`API request failed: ${response.status} ${response.statusText} - Invalid JSON response`)
-    }
-
-    if (!response.ok) {
-        const errorMsg = data.error || data.message || `API request failed: ${response.status} ${response.statusText}`
-        console.error('❌ Staff API Error Details:', {
-            endpoint,
-            status: response.status,
-            statusText: response.statusText,
-            responseData: data,
-            errorMsg
+        const response = await simpleFetch(`${API_URL}${endpoint}`, {
+            ...options,
+            headers,
+            timeout: 30000
         })
-        throw new Error(errorMsg)
-    }
 
-    return data
+        // Handle session expiry
+        if (response.status === 401) {
+            handleSessionExpiry()
+            throw new Error('Session expired. Please log in again.')
+        }
+
+        let data
+        try {
+            data = await response.json()
+        } catch {
+            throw new Error(`API request failed: ${response.status} ${response.statusText} - Invalid JSON response`)
+        }
+
+        if (!response.ok) {
+            const errorMsg = data.error || data.message || `API request failed: ${response.status} ${response.statusText}`
+            throw new Error(errorMsg)
+        }
+
+        return data
+    } catch (e) {
+        if (e instanceof Error && e.message === 'Session expired. Please log in again.') {
+            throw e
+        }
+        // For other errors, we rethrow but could consider silent failure here too if completely matching others.
+        // However, staff.ts throws errors which are likely caught by UI. 
+        // To be consistent with the "Silence Abort Errors" plan, we should ensure abort/network errors are silent or generic.
+        // But staff.ts seems to return T directly or throw. The pattern in students.ts was returning { success: false }. 
+        // staff.ts returns T. So we MUST throw or return a default.
+        // Since the signature returns Promise<T>, we can't easily return { success: false } without changing return type.
+        // Let's keep throwing but ensure NO abort errors are logged or thrown as AbortError.
+        throw new Error(e instanceof Error ? e.message : 'Network error')
+    }
 }
 
 // ============================================================================

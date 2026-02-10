@@ -1,8 +1,9 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { getCampuses, Campus } from '@/lib/api/setup-status'
+import { useVisibilityRefetch } from '@/hooks/useVisibilityRefetch'
 
 interface CampusContextType {
     campuses: Campus[]
@@ -49,13 +50,13 @@ function setCampusCache(campuses: Campus[], schoolId: string) {
 
 export function CampusProvider({ children }: { children: ReactNode }) {
     const { profile } = useAuth()
-    
+
     // Initialize from cache if available
     const [campuses, setCampuses] = useState<Campus[]>(() => {
         const cached = getCachedCampuses()
         return cached?.campuses || []
     })
-    
+
     const [selectedCampus, setSelectedCampus] = useState<Campus | null>(() => {
         if (typeof window === 'undefined') return null
         const cached = getCachedCampuses()
@@ -65,13 +66,13 @@ export function CampusProvider({ children }: { children: ReactNode }) {
         }
         return null
     })
-    
+
     // Start with loading=false if we have cached data
     const [loading, setLoading] = useState(() => {
         const cached = getCachedCampuses()
         return !cached?.campuses?.length
     })
-    
+
     // Update selected campus and save to localStorage
     const handleSetSelectedCampus = (campus: Campus | null) => {
         if (campus) {
@@ -91,10 +92,10 @@ export function CampusProvider({ children }: { children: ReactNode }) {
         // Check if we have valid cached data
         const cached = getCachedCampuses()
         const now = Date.now()
-        
+
         if (
             !forceRefresh &&
-            cached && 
+            cached &&
             cached.schoolId === profile.school_id &&
             now - cached.timestamp < CACHE_DURATION &&
             cached.campuses.length > 0
@@ -103,21 +104,30 @@ export function CampusProvider({ children }: { children: ReactNode }) {
             if (campuses.length === 0) {
                 setCampuses(cached.campuses)
             }
-            
+
             // Ensure selected campus is set
             if (!selectedCampus && cached.campuses.length > 0) {
                 const savedCampusId = localStorage.getItem(SELECTED_CAMPUS_KEY)
                 const savedCampus = savedCampusId ? cached.campuses.find(c => c.id === savedCampusId) : null
                 setSelectedCampus(savedCampus || cached.campuses[0])
             }
-            
+
             setLoading(false)
             return
         }
 
+        // CRITICAL: Only show loading state if we have NO data yet
+        // If we already have campuses, do a SILENT background refresh to avoid flicker
+        const hasExistingData = campuses.length > 0 || (cached?.campuses?.length ?? 0) > 0
+        
         try {
-            setLoading(true)
+            if (!hasExistingData) {
+                setLoading(true)
+            }
+            // If we have existing data, continue showing it while fetching fresh data
+            
             const data = await getCampuses()
+
             setCampuses(data)
             setCampusCache(data, profile.school_id)
 
@@ -129,21 +139,45 @@ export function CampusProvider({ children }: { children: ReactNode }) {
                     setSelectedCampus(savedCampus || data[0])
                 }
             }
-        } catch (error) {
-            // Silent fail
+        } catch {
+            // Silent fail - don't show errors to user
         } finally {
             setLoading(false)
         }
     }
 
     useEffect(() => {
-        if (profile?.school_id && profile?.role === 'admin') {
-            refreshCampuses()
-        } else {
-            setLoading(false)
+        let isMounted = true
+
+        const loadCampuses = async () => {
+            if (profile?.school_id && profile?.role === 'admin') {
+                try {
+                    await refreshCampuses(false)
+                } catch {
+                    // Silently ignore errors
+                }
+            } else {
+                if (isMounted) setLoading(false)
+            }
+        }
+
+        loadCampuses()
+
+        return () => {
+            isMounted = false
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [profile?.school_id, profile?.role])
+
+    // Refetch data when tab becomes visible again
+    useVisibilityRefetch(
+        useCallback(() => {
+            if (profile?.school_id && profile?.role === 'admin') {
+                refreshCampuses(true) // Force refresh when returning to tab
+            }
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [profile?.school_id, profile?.role])
+    )
 
     return (
         <CampusContext.Provider value={{

@@ -22,6 +22,7 @@ import {
   CheckSquare,
   Award,
   Upload,
+  Megaphone,
   type LucideIcon,
 } from 'lucide-react'
 import { UserRole } from '@/types'
@@ -32,6 +33,7 @@ export interface SidebarMenuItem {
   icon: LucideIcon
   badge?: string | number
   subItems?: SidebarMenuItem[]
+  isLabel?: boolean
 }
 
 export interface SidebarConfig {
@@ -52,14 +54,35 @@ const superAdminMenuItems: SidebarMenuItem[] = [
 const adminMenuItems: SidebarMenuItem[] = [
   { title: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
   {
+    title: 'School',
+    href: '/admin/academics',
+    icon: School,
+    subItems: [
+      { title: 'School Details', href: '/admin/school-details', icon: Building2 },
+      { title: 'Overview', href: '/admin/academics', icon: LayoutDashboard },
+      { title: 'Grade Levels', href: '/admin/academics/grades', icon: GraduationCap },
+      { title: 'Sections', href: '/admin/academics/sections', icon: Users },
+      { title: 'Subjects', href: '/admin/academics/subjects', icon: BookOpen },
+      { title: 'Periods', href: '/admin/periods', icon: Clock },
+      { title: 'Timetable', href: '/admin/timetable', icon: Clock },
+      { title: 'Calendar', href: '/admin/events', icon: Calendar },
+      { title: 'Portal Notes', href: '/admin/portal/notes', icon: FileText },
+      { title: 'Portal Polls', href: '/admin/portal/polls', icon: BarChart3 },
+    ]
+  },
+  {
     title: 'Students',
     href: '/admin/students',
     icon: GraduationCap,
     subItems: [
       { title: 'Student Info', href: '/admin/students/student-info', icon: GraduationCap },
       { title: 'Add Student', href: '/admin/students/add-student', icon: Users },
-      { title: 'Advanced Report', href: '/admin/students/advanced-report', icon: FileText },
       { title: 'Custom Fields', href: '/admin/students/custom-fields', icon: Settings },
+      { title: 'Reports', href: '#', icon: BarChart3, isLabel: true },
+      { title: 'Print Student Info', href: '/admin/students/print-info', icon: FileText },
+      { title: 'Print Letters', href: '/admin/students/print-letters', icon: FileText },
+      { title: 'Student Breakdown', href: '/admin/students/breakdown', icon: BarChart3 },
+      { title: 'Advanced Report', href: '/admin/students/advanced-report', icon: FileText },
     ]
   },
   {
@@ -94,17 +117,6 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: 'Custom Fields', href: '/admin/parents/custom-fields', icon: Settings },
     ]
   },
-  {
-    title: 'Academics',
-    href: '/admin/academics',
-    icon: BookOpen,
-    subItems: [
-      { title: 'Overview', href: '/admin/academics', icon: LayoutDashboard },
-      { title: 'Grade Levels', href: '/admin/academics/grades', icon: GraduationCap },
-      { title: 'Sections', href: '/admin/academics/sections', icon: Users },
-      { title: 'Subjects', href: '/admin/academics/subjects', icon: BookOpen },
-    ]
-  },
   { title: 'Attendance', href: '/admin/attendance', icon: CalendarCheck },
   { title: 'Exams', href: '/admin/exams', icon: FileText },
   { title: 'Assignments', href: '/admin/assignments', icon: ClipboardList },
@@ -129,7 +141,6 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: 'Settings', href: '/admin/salary/settings', icon: Settings },
     ]
   },
-  { title: 'Timetable', href: '/admin/timetable', icon: Clock },
   {
     title: 'Library',
     href: '/admin/library',
@@ -139,7 +150,6 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: 'Settings', href: '/admin/library/settings', icon: Settings },
     ]
   },
-  { title: 'Events', href: '/admin/events', icon: Calendar },
   { title: 'Reports', href: '/admin/reports', icon: BarChart3 },
   {
     title: 'Settings',
@@ -157,6 +167,15 @@ const adminMenuItems: SidebarMenuItem[] = [
 // Teacher Menu Items
 const teacherMenuItems: SidebarMenuItem[] = [
   { title: 'Dashboard', href: '/teacher/dashboard', icon: LayoutDashboard },
+  {
+    title: 'Portal',
+    href: '/teacher/portal/notes',
+    icon: Megaphone,
+    subItems: [
+      { title: 'Announcements', href: '/teacher/portal/notes', icon: FileText },
+      { title: 'Polls', href: '/teacher/portal/polls', icon: BarChart3 },
+    ]
+  },
   {
     title: 'Academic Management',
     href: '/teacher/timetable',
@@ -194,6 +213,15 @@ const teacherMenuItems: SidebarMenuItem[] = [
 // Student Menu Items
 const studentMenuItems: SidebarMenuItem[] = [
   { title: 'Dashboard', href: '/student/dashboard', icon: LayoutDashboard },
+  {
+    title: 'Portal',
+    href: '/student/portal/notes',
+    icon: Megaphone,
+    subItems: [
+      { title: 'Announcements', href: '/student/portal/notes', icon: FileText },
+      { title: 'Polls', href: '/student/portal/polls', icon: BarChart3 },
+    ]
+  },
   {
     title: 'My Classes',
     href: '/student/timetable',
@@ -238,6 +266,15 @@ const studentMenuItems: SidebarMenuItem[] = [
 // Parent Menu Items - Separate pages for each feature
 const parentMenuItems: SidebarMenuItem[] = [
   { title: 'Dashboard', href: '/parent/dashboard', icon: LayoutDashboard },
+  {
+    title: 'Portal',
+    href: '/parent/portal/notes',
+    icon: Megaphone,
+    subItems: [
+      { title: 'Announcements', href: '/parent/portal/notes', icon: FileText },
+      { title: 'Polls', href: '/parent/portal/polls', icon: BarChart3 },
+    ]
+  },
   { title: 'Academics', href: '/parent/academics', icon: GraduationCap },
   { title: 'Attendance', href: '/parent/attendance', icon: CalendarCheck },
   { title: 'Timetable', href: '/parent/timetable', icon: Clock },

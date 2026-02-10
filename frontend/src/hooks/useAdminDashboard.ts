@@ -69,8 +69,8 @@ export const useAdminDashboard = () => {
     swrKey,
     fetchAdminDashboardData,
     {
-      // Revalidate on window focus
-      revalidateOnFocus: true,
+      // Revalidate handled by global visibility handler
+      revalidateOnFocus: false,
       // Revalidate when network reconnects
       revalidateOnReconnect: true,
       // Deduplicate requests within 5 seconds

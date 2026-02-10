@@ -231,10 +231,12 @@ export class StudentDashboardController {
   /**
    * GET /api/student-dashboard/attendance/subjects
    * Get subject-wise attendance breakdown
+   * Query params: ?month=2026-01 (optional, defaults to current month)
    */
   async getSubjectWiseAttendance(req: AuthRequest, res: Response): Promise<void> {
     try {
       const studentId = req.profile?.student_id
+      const month = req.query.month as string | undefined
 
       if (!studentId) {
         res.status(403).json({
@@ -244,7 +246,7 @@ export class StudentDashboardController {
         return
       }
 
-      const attendance = await dashboardService.getSubjectWiseAttendance(studentId)
+      const attendance = await dashboardService.getSubjectWiseAttendance(studentId, month)
 
       res.json({
         success: true,

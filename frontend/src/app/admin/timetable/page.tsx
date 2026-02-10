@@ -7,10 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import { Calendar, Loader2, RefreshCw, Settings, ChevronLeft, ChevronRight, LayoutGrid, Maximize2, Download, FileText } from "lucide-react"
+import { Calendar, Loader2, RefreshCw, Settings, ChevronLeft, ChevronRight, LayoutGrid, Maximize2, Download, FileText, ExternalLink, Pencil } from "lucide-react"
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { SectionTimetableCard, AssignSlotDialog, PeriodConfigModal } from "@/components/timetable"
+import { SectionTimetableCard, AssignSlotDialog, TimetableBuilder } from "@/components/timetable"
+import Link from "next/link"
 import * as timetableApi from "@/lib/api/timetable"
 import * as teachersApi from "@/lib/api/teachers"
 import * as academicsApi from "@/lib/api/academics"
@@ -36,8 +37,8 @@ export default function TimetablePage() {
   const { gradeLevels, loading: gradeLevelsLoading } = useGradeLevels()
   const { sections, loading: sectionsLoading } = useSections()
   
-  // Other data state
-  const [periods, setPeriods] = useState<teachersApi.Period[]>([])
+  // Other data state - using GlobalPeriod from the /periods endpoint
+  const [periods, setPeriods] = useState<teachersApi.GlobalPeriod[]>([])
   const [academicYears, setAcademicYears] = useState<teachersApi.AcademicYear[]>([])
   const [assignments, setAssignments] = useState<teachersApi.TeacherSubjectAssignment[]>([])
 
@@ -102,12 +103,12 @@ export default function TimetablePage() {
     try {
       setLoading(true)
       const [periodsRes, yearsRes, assignmentsRes] = await Promise.all([
-        teachersApi.getPeriods(selectedCampus?.id),
+        teachersApi.getGlobalPeriods(selectedCampus?.id),
         teachersApi.getAcademicYears(),
         teachersApi.getTeacherAssignments()
       ])
 
-      setPeriods(periodsRes.sort((a, b) => a.period_number - b.period_number))
+      setPeriods(periodsRes) // Already sorted by sort_order
       setAcademicYears(yearsRes)
       setAssignments(assignmentsRes)
 
@@ -125,8 +126,8 @@ export default function TimetablePage() {
 
   const loadPeriods = async () => {
     try {
-      const periodsRes = await teachersApi.getPeriods(selectedCampus?.id)
-      setPeriods(periodsRes.sort((a, b) => a.period_number - b.period_number))
+      const periodsRes = await teachersApi.getGlobalPeriods(selectedCampus?.id)
+      setPeriods(periodsRes) // Already sorted by sort_order
     } catch (error: any) {
       toast.error(error.message || "Failed to load periods")
     }
@@ -213,7 +214,8 @@ export default function TimetablePage() {
     }
 
     const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-    const sortedPeriods = [...periods].sort((a, b) => a.period_number - b.period_number)
+    // Sort by sort_order (global periods)
+    const sortedPeriods = [...periods].sort((a, b) => a.sort_order - b.sort_order)
 
     let csvContent = 'data:text/csv;charset=utf-8,'
 
@@ -225,23 +227,22 @@ export default function TimetablePage() {
       const entries = sectionEntries[section.id] || []
 
       csvContent += `\nSection: ${section.name}\n`
-      csvContent += 'Period,Time,' + DAYS.join(',') + '\n'
+      csvContent += 'Period,Duration,' + DAYS.join(',') + '\n'
 
       sortedPeriods.forEach(period => {
-        if (period.is_break) {
-          csvContent += `Break,${period.start_time}-${period.end_time},` + DAYS.map(() => 'Break').join(',') + '\n'
-        } else {
-          const row = [period.period_name || `P${period.period_number}`, `${period.start_time}-${period.end_time}`]
-          DAYS.forEach((day, idx) => {
-            const entry = entries.find(e => e.day_of_week === idx && e.period_id === period.id)
-            if (entry) {
-              row.push(`${entry.subject_name} (${entry.teacher_name})`)
-            } else {
-              row.push('-')
-            }
-          })
-          csvContent += row.join(',') + '\n'
-        }
+        const periodName = period.title || period.short_name || `P${period.sort_order}`
+        const periodDuration = period.length_minutes ? `${period.length_minutes}min` : ''
+        
+        const row = [periodName, periodDuration]
+        DAYS.forEach((day, idx) => {
+          const entry = entries.find(e => e.day_of_week === idx && e.period_id === period.id)
+          if (entry) {
+            row.push(`${entry.subject_name} (${entry.teacher_name})`)
+          } else {
+            row.push('-')
+          }
+        })
+        csvContent += row.join(',') + '\n'
       })
     })
 
@@ -262,7 +263,8 @@ export default function TimetablePage() {
     }
 
     const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-    const sortedPeriods = [...periods].sort((a, b) => a.period_number - b.period_number)
+    // Sort by sort_order (global periods)
+    const sortedPeriods = [...periods].sort((a, b) => a.sort_order - b.sort_order)
 
     // Determine which sections to include based on view mode
     const sectionsToExport = viewMode === 'grid'
@@ -318,20 +320,18 @@ export default function TimetablePage() {
 
       sortedPeriods.forEach(period => {
         const row: string[] = []
-        row.push(`${period.start_time?.slice(0, 5) || ''} - ${period.end_time?.slice(0, 5) || ''}\n${period.period_name || `P${period.period_number}`}`)
+        const periodName = period.title || period.short_name || `P${period.sort_order}`
+        const periodDuration = period.length_minutes ? `${period.length_minutes}min` : ''
+        row.push(`${periodDuration}\n${periodName}`)
 
-        if (period.is_break) {
-          DAYS.forEach(() => row.push('BREAK'))
-        } else {
-          DAYS.forEach((_, dayIdx) => {
-            const entry = entries.find(e => e.day_of_week === dayIdx && e.period_id === period.id)
-            if (entry) {
-              row.push(`${entry.subject_name}\n${entry.teacher_name}`)
-            } else {
-              row.push('-')
-            }
-          })
-        }
+        DAYS.forEach((_, dayIdx) => {
+          const entry = entries.find(e => e.day_of_week === dayIdx && e.period_id === period.id)
+          if (entry) {
+            row.push(`${entry.subject_name}\n${entry.teacher_name}`)
+          } else {
+            row.push('-')
+          }
+        })
         tableBody.push(row)
       })
 
@@ -388,17 +388,13 @@ export default function TimetablePage() {
             <Download className="h-4 w-4 mr-2" />
             CSV
           </Button>
-          <PeriodConfigModal
-            periods={periods}
-            academicYearId={selectedAcademicYear}
-            onPeriodsChange={loadInitialData}
-            trigger={
-              <Button variant="outline" size="sm">
-                <Settings className="h-4 w-4 mr-2" />
-                Periods
-              </Button>
-            }
-          />
+          <Link href="/admin/periods">
+            <Button variant="outline" size="sm">
+              <Settings className="h-4 w-4 mr-2" />
+              Manage Periods
+              <ExternalLink className="h-3 w-3 ml-1" />
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
@@ -462,16 +458,16 @@ export default function TimetablePage() {
                   onClick={() => setViewMode('grid')}
                 >
                   <LayoutGrid className="h-4 w-4 mr-1" />
-                  Grid
+                  Overview
                 </Button>
                 <Button
                   variant={viewMode === 'single' ? 'default' : 'outline'}
                   size="sm"
-                  className={viewMode === 'single' ? 'bg-[#022172]' : ''}
+                  className={viewMode === 'single' ? 'bg-green-600' : ''}
                   onClick={() => setViewMode('single')}
                 >
-                  <Maximize2 className="h-4 w-4 mr-1" />
-                  Single
+                  <Pencil className="h-4 w-4 mr-1" />
+                  Builder
                 </Button>
               </div>
             </div>
@@ -523,6 +519,23 @@ export default function TimetablePage() {
             </p>
           </CardContent>
         </Card>
+      ) : periods.length === 0 ? (
+        /* No Periods Configured */
+        <Card>
+          <CardContent className="py-16 text-center">
+            <Settings className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
+            <h3 className="text-lg font-medium text-muted-foreground">No Periods Configured</h3>
+            <p className="text-sm text-muted-foreground mt-1 mb-4">
+              Configure periods in the Periods management page before creating timetables
+            </p>
+            <Link href="/admin/periods">
+              <Button variant="default" className="bg-[#022172]">
+                <Settings className="h-4 w-4 mr-2" />
+                Configure Periods
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
       ) : (
         /* Multi-Section Calendar Grid */
         <div>
@@ -552,8 +565,8 @@ export default function TimetablePage() {
               </div>
             </div>
           ) : (
-            /* Single View - One section at a time with navigation */
-            <div ref={singleTimetableRef} className="bg-white p-2">
+            /* Builder View - Interactive timetable builder for one section */
+            <div ref={singleTimetableRef}>
               {/* Section Navigator */}
               <div className="flex items-center justify-center gap-4 mb-4">
                 <Button
@@ -572,12 +585,14 @@ export default function TimetablePage() {
                   value={expandedSection || filteredSections[0]?.id || ''}
                   onValueChange={setExpandedSection}
                 >
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Select section" />
+                  <SelectTrigger className="w-[250px]">
+                    <SelectValue placeholder="Select section to build timetable" />
                   </SelectTrigger>
                   <SelectContent>
                     {filteredSections.map(s => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name} ({(sectionEntries[s.id] || []).length} classes)
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -595,20 +610,23 @@ export default function TimetablePage() {
                 </Button>
               </div>
 
-              {/* Full size section card */}
-              {(expandedSection || filteredSections[0]) && (
-                <SectionTimetableCard
-                  sectionId={expandedSection || filteredSections[0].id}
-                  sectionName={sections.find(s => s.id === (expandedSection || filteredSections[0].id))?.name || ''}
-                  gradeName={selectedGradeName}
-                  periods={periods}
-                  entries={sectionEntries[expandedSection || filteredSections[0].id] || []}
-                  isLoading={loadingEntries}
-                  isCompact={false}
-                  onSlotClick={handleSlotClick}
-                  onDeleteEntry={handleDeleteEntry}
-                />
-              )}
+              {/* Timetable Builder Component */}
+              {(expandedSection || filteredSections[0]) && (() => {
+                const currentSection = sections.find(s => s.id === (expandedSection || filteredSections[0].id))
+                return (
+                  <TimetableBuilder
+                    sectionId={expandedSection || filteredSections[0].id}
+                    sectionName={currentSection?.name || ''}
+                    gradeName={selectedGradeName}
+                    gradeId={currentSection?.grade_level_id}
+                    periods={periods}
+                    entries={sectionEntries[expandedSection || filteredSections[0].id] || []}
+                    academicYearId={selectedAcademicYear}
+                    isLoading={loadingEntries}
+                    onEntriesChange={loadAllSectionTimetables}
+                  />
+                )
+              })()}
             </div>
           )}
         </div>

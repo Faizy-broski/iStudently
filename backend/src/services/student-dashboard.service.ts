@@ -458,7 +458,7 @@ export class StudentDashboardService {
   /**
    * Get subject-wise attendance breakdown for student
    */
-  async getSubjectWiseAttendance(studentId: string) {
+  async getSubjectWiseAttendance(studentId: string, month?: string) {
     const { data: student } = await supabase
       .from('students')
       .select('school_id, section_id')
@@ -467,6 +467,25 @@ export class StudentDashboardService {
 
     if (!student) {
       return []
+    }
+
+    // Calculate date range based on month parameter or default to current month
+    let startDate: string
+    let endDate: string
+    
+    if (month) {
+      // month is in format 'YYYY-MM'
+      startDate = `${month}-01`
+      const endDateObj = new Date(month + '-01')
+      endDateObj.setMonth(endDateObj.getMonth() + 1)
+      endDateObj.setDate(0)
+      endDate = endDateObj.toISOString().split('T')[0]
+    } else {
+      // Default to current month
+      const now = new Date()
+      startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+      const endDateObj = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      endDate = endDateObj.toISOString().split('T')[0]
     }
 
     // Get attendance records with timetable entry (subject) details
@@ -482,8 +501,8 @@ export class StudentDashboardService {
         )
       `)
       .eq('student_id', studentId)
-      .gte('attendance_date', new Date(new Date().getFullYear(), 0, 1).toISOString())
-      .lte('attendance_date', new Date().toISOString())
+      .gte('attendance_date', startDate)
+      .lte('attendance_date', endDate)
 
     if (error) {
       console.error('Error fetching subject-wise attendance:', error)

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
     Users,
     Plus,
@@ -16,7 +17,8 @@ import {
     DollarSign,
     Save,
     Loader2,
-    Lock
+    Lock,
+    Eye
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -60,6 +62,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 
 export default function StaffPage() {
+    const router = useRouter()
     const [page, setPage] = useState(1)
     const [search, setSearch] = useState('')
     const [roleFilter, setRoleFilter] = useState<'staff' | 'librarian' | 'all'>('all')
@@ -245,7 +248,11 @@ export default function StaffPage() {
                             </TableRow>
                         ) : (
                             staff.map((member: Staff) => (
-                                <TableRow key={member.id} className="hover:bg-blue-50/30 dark:hover:bg-gray-700/30 transition-colors">
+                                <TableRow 
+                                    key={member.id} 
+                                    className="hover:bg-blue-50/30 dark:hover:bg-gray-700/30 transition-colors cursor-pointer"
+                                    onClick={() => router.push(`/admin/staff/${encodeURIComponent(member.employee_number)}`)}
+                                >
                                     <TableCell>
                                         <div className="flex items-center gap-3">
                                             <div className="h-9 w-9 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center text-[#022172] dark:text-blue-300 font-semibold text-sm">
@@ -300,7 +307,7 @@ export default function StaffPage() {
                                             {member.is_active ? 'Active' : 'Inactive'}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="text-right">
+                                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -309,6 +316,9 @@ export default function StaffPage() {
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                <DropdownMenuItem onClick={() => router.push(`/admin/staff/${encodeURIComponent(member.employee_number)}`)}>
+                                                    <Eye className="mr-2 h-4 w-4" /> View Details
+                                                </DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => handleEdit(member)}>
                                                     <Edit className="mr-2 h-4 w-4" /> Edit
                                                 </DropdownMenuItem>

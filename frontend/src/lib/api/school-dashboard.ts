@@ -16,10 +16,9 @@ async function apiRequest<T = unknown>(
   const token = await getAuthToken()
 
   if (!token) {
-    console.error('❌ No authentication token available')
     return {
       success: false,
-      error: 'Authentication required. Please sign in.'
+      error: 'Authentication required'
     }
   }
 
@@ -28,43 +27,32 @@ async function apiRequest<T = unknown>(
     'Authorization': `Bearer ${token}`
   }
 
-  // Create AbortController with timeout
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 30000) // 30s timeout
+  // Simple timeout using Promise.race (no AbortController)
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error('TIMEOUT')), 30000)
+  })
 
   try {
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      ...options,
-      headers,
-      cache: 'no-store',
-      signal: controller.signal
-    })
-
-    clearTimeout(timeoutId)
+    const response = await Promise.race([
+      fetch(`${API_URL}${endpoint}`, {
+        ...options,
+        headers,
+        cache: 'no-store'
+      }),
+      timeoutPromise
+    ])
 
     if ((response.status === 401 || response.status === 403) && retryOnAuthFailure) {
-      console.warn('⚠️ School dashboard auth failed, retrying with fresh token...')
       await new Promise(resolve => setTimeout(resolve, 500))
       return apiRequest<T>(endpoint, options, false)
     }
 
     return await response.json()
-  } catch (error: unknown) {
-    clearTimeout(timeoutId)
-    
-    // Handle abort errors gracefully
-    if (error instanceof Error && error.name === 'AbortError') {
-      console.warn('⚠️ Request aborted (timeout or cancelled)')
-      return {
-        success: false,
-        error: 'Request timeout. Please try again.'
-      }
-    }
-    
-    console.error('❌ School Dashboard API Request Failed:', error)
+  } catch {
+    // Silent fail - return error without logging
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Network error'
+      error: 'Network error'
     }
   }
 }

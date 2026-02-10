@@ -201,7 +201,11 @@ export const deleteTeacher = async (req: Request, res: Response) => {
 
 export const getTeacherAssignments = async (req: Request, res: Response) => {
   try {
-    const schoolId = (req as AuthRequest).profile?.school_id
+    const userSchoolId = (req as AuthRequest).profile?.school_id
+    // Support campus_id query param for campus-specific filtering
+    const campusId = req.query.campus_id as string
+    const schoolId = campusId || userSchoolId
+    
     if (!schoolId) {
       return res.status(400).json({
         success: false,
@@ -229,19 +233,21 @@ export const getTeacherAssignments = async (req: Request, res: Response) => {
 
 export const createTeacherAssignment = async (req: Request, res: Response) => {
   try {
-    const schoolId = (req as AuthRequest).profile?.school_id
+    const userSchoolId = (req as AuthRequest).profile?.school_id
     const userId = (req as AuthRequest).profile?.id
+    // Use campus_id from request body if provided, otherwise use user's school_id
+    const campusId = req.body.campus_id || userSchoolId
 
-    if (!schoolId) {
+    if (!campusId) {
       return res.status(400).json({
         success: false,
-        error: 'School ID is required'
+        error: 'Campus ID or School ID is required'
       } as ApiResponse)
     }
 
     const result = await teacherService.createTeacherAssignment({
       ...req.body,
-      school_id: schoolId,
+      school_id: campusId, // For campus-specific, school_id = campus_id
       assigned_by: userId
     })
 

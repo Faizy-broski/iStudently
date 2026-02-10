@@ -38,6 +38,11 @@ interface ParentDashboardContextType {
 
 const ParentDashboardContext = createContext<ParentDashboardContextType | undefined>(undefined)
 
+// Safe hook that returns null when used outside provider (for sidebar)
+export function useParentDashboardSafe() {
+  return useContext(ParentDashboardContext)
+}
+
 export function ParentDashboardProvider({ children }: { children: ReactNode }) {
   const { user, profile, loading: authLoading } = useAuth()
   

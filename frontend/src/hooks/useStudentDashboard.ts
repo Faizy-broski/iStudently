@@ -31,9 +31,16 @@ export const useStudentDashboard = () => {
     swrKey,
     fetchDashboardOverview,
     {
-      revalidateOnFocus: true,
+      revalidateOnFocus: false, // Handled by global visibility handler
       revalidateOnReconnect: true,
-      dedupingInterval: 30000 // 30 seconds
+      dedupingInterval: 30000, // 30 seconds
+      keepPreviousData: true, // Prevent loading flicker on remount
+      errorRetryCount: 2,
+      errorRetryInterval: 1000,
+      shouldRetryOnError: (err) => {
+        const msg = err?.message || '';
+        return !msg.includes('401') && !msg.includes('Session expired');
+      },
     }
   )
   
@@ -154,15 +161,15 @@ export const useUpcomingExams = () => {
 /**
  * Hook for subject-wise attendance
  */
-export const useSubjectWiseAttendance = () => {
+export const useSubjectWiseAttendance = (month?: string) => {
   const { user, loading: authLoading } = useAuth()
   
-  const swrKey = user && !authLoading ? ['student-attendance-subjects', user.id] : null
+  const swrKey = user && !authLoading ? ['student-attendance-subjects', user.id, month || 'current'] : null
   
   const { data, error, isLoading, mutate } = useSWR(
     swrKey,
     async () => {
-      const response = await studentDashboardApi.getSubjectWiseAttendance()
+      const response = await studentDashboardApi.getSubjectWiseAttendance(month)
       if (!response.success) throw new Error(response.error)
       return response.data
     }

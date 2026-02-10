@@ -60,7 +60,7 @@ export function useStudentDashboard(studentId?: string) {
     swrKey,
     () => api.getDashboardData(targetStudentId!),
     {
-      revalidateOnFocus: true,
+      revalidateOnFocus: false, // Handled by global visibility handler
       refreshInterval: 5 * 60 * 1000, // Refresh every 5 minutes
       dedupingInterval: 30000 // 30 seconds
     }
@@ -158,7 +158,7 @@ export function useHomework(days = 7) {
     swrKey,
     () => api.getHomework(selectedStudent!, days),
     {
-      revalidateOnFocus: true,
+      revalidateOnFocus: false, // Handled by global visibility handler
       dedupingInterval: 60000,
       refreshInterval: 5 * 60 * 1000 // Refresh every 5 minutes
     }

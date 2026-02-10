@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, User, X, Loader2 } from "lucide-react";
 import { TimetableEntry } from "@/lib/api/timetable";
-import { Period } from "@/lib/api/teachers";
+import { GlobalPeriod } from "@/lib/api/teachers";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const DAY_MAP: Record<string, number> = {
@@ -17,13 +17,31 @@ interface SectionTimetableCardProps {
     sectionId: string;
     sectionName: string;
     gradeName?: string;
-    periods: Period[];
+    periods: GlobalPeriod[];
     entries: TimetableEntry[];
     isLoading?: boolean;
     isCompact?: boolean;
-    onSlotClick?: (sectionId: string, day: string, period: Period) => void;
+    onSlotClick?: (sectionId: string, day: string, period: GlobalPeriod) => void;
     onDeleteEntry?: (entryId: string) => void;
 }
+
+// Helper to get period display name
+const getPeriodDisplayName = (period: GlobalPeriod): string => {
+    return period.title || period.short_name || `Period ${period.sort_order}`;
+};
+
+// Helper to get period short label
+const getPeriodShortLabel = (period: GlobalPeriod): string => {
+    return period.short_name || `P${period.sort_order}`;
+};
+
+// Helper to get period duration info
+const getPeriodDurationInfo = (period: GlobalPeriod): string => {
+    if (period.length_minutes) {
+        return `${period.length_minutes}min`;
+    }
+    return '';
+};
 
 export function SectionTimetableCard({
     sectionId,
@@ -37,14 +55,15 @@ export function SectionTimetableCard({
     onDeleteEntry
 }: SectionTimetableCardProps) {
 
-    const getEntryForSlot = (day: string, period: Period): TimetableEntry | undefined => {
+    const getEntryForSlot = (day: string, period: GlobalPeriod): TimetableEntry | undefined => {
         const dayNumber = DAY_MAP[day];
         return entries.find(
             e => e.day_of_week === dayNumber && e.period_id === period.id
         );
     };
 
-    const sortedPeriods = [...periods].sort((a, b) => a.period_number - b.period_number);
+    // Sort periods by sort_order
+    const sortedPeriods = [...periods].sort((a, b) => a.sort_order - b.sort_order);
 
     if (isLoading) {
         return (
@@ -97,24 +116,15 @@ export function SectionTimetableCard({
                             {sortedPeriods.map(period => (
                                 <tr key={period.id}>
                                     <td className="border p-1.5 bg-muted/30 text-center">
-                                        <div className="font-medium">P{period.period_number}</div>
+                                        <div className="font-medium" title={getPeriodDisplayName(period)}>
+                                            {getPeriodShortLabel(period)}
+                                        </div>
                                         <div className="text-[10px] text-muted-foreground whitespace-nowrap">
-                                            {period.start_time?.slice(0, 5)}
+                                            {getPeriodDurationInfo(period)}
                                         </div>
                                     </td>
                                     {DAYS.map(day => {
                                         const entry = getEntryForSlot(day, period);
-
-                                        if (period.is_break) {
-                                            return (
-                                                <td
-                                                    key={`${day}-${period.id}`}
-                                                    className="border p-1 bg-amber-50 text-center text-muted-foreground"
-                                                >
-                                                    ☕
-                                                </td>
-                                            );
-                                        }
 
                                         return (
                                             <td

@@ -15,9 +15,11 @@ import * as teachersApi from "@/lib/api/teachers"
 import * as academicsApi from "@/lib/api/academics"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAcademic } from "@/context/AcademicContext"
+import { useCampus } from "@/context/CampusContext"
 
 export default function WorkloadPage() {
   const { selectedAcademicYear, currentAcademicYear } = useAcademic()
+  const { selectedCampus } = useCampus()
   const [assignments, setAssignments] = useState<teachersApi.TeacherSubjectAssignment[]>([])
   const [teachers, setTeachers] = useState<teachersApi.Staff[]>([])
   const [gradeLevels, setGradeLevels] = useState<academicsApi.GradeLevel[]>([])
@@ -42,9 +44,12 @@ export default function WorkloadPage() {
   const [filteredSections, setFilteredSections] = useState<academicsApi.Section[]>([])
   const [filteredSubjects, setFilteredSubjects] = useState<academicsApi.Subject[]>([])
 
+  // Load data when campus changes
   useEffect(() => {
-    loadData()
-  }, [])
+    if (selectedCampus?.id) {
+      loadData()
+    }
+  }, [selectedCampus?.id])
 
   // Cascade effect: When grade changes, filter sections and subjects
   useEffect(() => {
@@ -89,12 +94,14 @@ export default function WorkloadPage() {
   const loadData = async () => {
     try {
       setLoading(true)
+      const campusId = selectedCampus?.id
+      
       const [assignmentsRes, teachersRes, gradesRes, sectionsRes, subjectsRes] = await Promise.all([
-        teachersApi.getTeacherAssignments(),
-        teachersApi.getAllTeachers({ limit: 1000 }), // Get all teachers without pagination for workload page
-        academicsApi.getGradeLevels(),
-        academicsApi.getSections(),
-        academicsApi.getSubjects()
+        teachersApi.getTeacherAssignments(campusId),
+        teachersApi.getAllTeachers({ limit: 1000, campus_id: campusId }), // Filter by campus
+        academicsApi.getGradeLevels(campusId),
+        academicsApi.getSections(undefined, campusId),
+        academicsApi.getSubjects(undefined, campusId)
       ])
       
       setAssignments(assignmentsRes)
@@ -136,14 +143,21 @@ export default function WorkloadPage() {
       return
     }
     
+    if (!selectedCampus?.id) {
+      toast.error("Please select a campus from the top menu")
+      return
+    }
+    
     try {
       const assignmentData = {
         ...formData,
-        academic_year_id: selectedAcademicYear
+        academic_year_id: selectedAcademicYear,
+        campus_id: selectedCampus.id // Include selected campus ID
       }
       
       console.log('Submitting assignment data:', assignmentData)
       console.log('Selected academic year:', selectedAcademicYear)
+      console.log('Selected campus:', selectedCampus.id)
       
       await teachersApi.createTeacherAssignment(assignmentData as any)
       toast.success("Assignment created successfully")
@@ -202,13 +216,33 @@ export default function WorkloadPage() {
     return acc
   }, {} as Record<string, typeof assignments>)
 
+  // Show message if no campus selected
+  if (!selectedCampus) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-brand-blue dark:text-white">Teacher Workload</h1>
+            <p className="text-muted-foreground">Assign teachers to subjects and sections</p>
+          </div>
+        </div>
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Please select a campus from the top menu to view and manage teacher workload.
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-brand-blue dark:text-white">Teacher Workload</h1>
-          <p className="text-muted-foreground">Assign teachers to subjects and sections</p>
+          <p className="text-muted-foreground">Assign teachers to subjects and sections for {selectedCampus.name}</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open)

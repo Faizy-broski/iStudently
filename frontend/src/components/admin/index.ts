@@ -4,3 +4,4 @@ export { AddParentForm } from './AddParentForm';
 export { EventFormDialog } from './EventFormDialog';
 export { CalendarGrid } from './CalendarGrid';
 export { EventDetailsDialog } from './EventDetailsDialog';
+export { StudentInfoPrintReport } from './StudentInfoPrintReport';

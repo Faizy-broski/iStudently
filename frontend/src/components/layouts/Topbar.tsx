@@ -23,8 +23,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Bell, Search, LogOut, Settings, Menu, Moon, Sun } from 'lucide-react'
+import { Search, LogOut, Settings, Menu, Moon, Sun } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { NotificationBell } from '@/components/portal'
 
 interface TopbarProps {
   className?: string
@@ -109,15 +110,7 @@ export function Topbar({ className }: TopbarProps) {
           </Button>
 
           {/* Notifications */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
-          >
-            <Bell className="h-5 w-5" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-            <span className="sr-only">Notifications</span>
-          </Button>
+          <NotificationBell className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100" />
 
           {/* Profile Dropdown */}
           <DropdownMenu>

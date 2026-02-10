@@ -1,6 +1,6 @@
 import { getAuthToken } from './schools'
-import { handleSessionExpiry } from '@/contexts/AuthContext'
-import { abortableFetch } from './abortable-fetch'
+import { handleSessionExpiry } from '@/context/AuthContext' // Fixed import path from contexts to context
+import { simpleFetch } from './abortable-fetch'
 import { API_URL } from '@/config/api'
 
 interface ApiResponse<T = unknown> {
@@ -25,7 +25,7 @@ async function apiRequest<T = unknown>(
   if (!token) {
     return {
       success: false,
-      error: 'Authentication required. Please sign in.'
+      error: 'Authentication required'
     }
   }
 
@@ -35,29 +35,33 @@ async function apiRequest<T = unknown>(
   }
 
   try {
-    const response = await fetch(`${API_URL}${endpoint}`, {
+    const response = await simpleFetch(`${API_URL}${endpoint}`, {
       ...options,
       headers: {
         ...headers,
         ...options.headers,
       },
+      timeout: 30000
     })
 
     const data = await response.json()
 
     if (!response.ok) {
+      if (response.status === 401) {
+        handleSessionExpiry()
+      }
       return {
         success: false,
-        error: data.error || `Request failed with status ${response.status}`
+        error: data.error || `Request failed`
       }
     }
 
     return data
-  } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-    console.error('API request error:', error)
+  } catch {
+    // Silent fail
     return {
       success: false,
-      error: error.message || 'Network error occurred'
+      error: 'Network error'
     }
   }
 }

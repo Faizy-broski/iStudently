@@ -2,8 +2,10 @@
 
 import { DashboardLayout } from "@/components/layouts";
 import { CampusProvider } from "@/context/CampusContext";
+import { ProfileViewProvider } from "@/context/ProfileViewContext";
 import { AuthLoadingGuard } from "@/components/auth/AuthLoadingGuard";
 import { RoleGuard } from "@/components/auth/RoleGuard";
+import { RefreshOnReturn } from "@/components/RefreshOnReturn";
 
 export default function AdminLayout({
   children,
@@ -14,7 +16,11 @@ export default function AdminLayout({
     <AuthLoadingGuard>
       <RoleGuard allowedRoles={['admin']}>
         <CampusProvider>
-          <DashboardLayout role="admin">{children}</DashboardLayout>
+          <ProfileViewProvider>
+            <DashboardLayout role="admin">
+              <RefreshOnReturn>{children}</RefreshOnReturn>
+            </DashboardLayout>
+          </ProfileViewProvider>
         </CampusProvider>
       </RoleGuard>
     </AuthLoadingGuard>

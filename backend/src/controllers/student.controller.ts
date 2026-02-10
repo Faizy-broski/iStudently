@@ -388,4 +388,60 @@ export class StudentController {
       })
     }
   }
+
+  /**
+   * Get students info for printing with selected categories
+   * POST /api/students/print-info
+   * Requires: admin role
+   * Body: { studentIds: string[], categoryIds: string[], campusId?: string }
+   */
+  async getStudentsPrintInfo(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const schoolId = req.profile?.school_id
+      const { studentIds, categoryIds, campusId } = req.body
+
+      if (!schoolId) {
+        res.status(403).json({
+          success: false,
+          error: 'No school associated with your account'
+        })
+        return
+      }
+
+      if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
+        res.status(400).json({
+          success: false,
+          error: 'Please select at least one student'
+        })
+        return
+      }
+
+      if (!categoryIds || !Array.isArray(categoryIds) || categoryIds.length === 0) {
+        res.status(400).json({
+          success: false,
+          error: 'Please select at least one category'
+        })
+        return
+      }
+
+      const effectiveSchoolId = campusId || schoolId
+
+      const result = await studentService.getStudentsPrintInfo(
+        effectiveSchoolId,
+        studentIds,
+        categoryIds
+      )
+
+      res.json({
+        success: true,
+        data: result
+      })
+    } catch (error: any) {
+      console.error('Get students print info error:', error)
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to fetch students print info'
+      })
+    }
+  }
 }

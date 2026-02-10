@@ -56,7 +56,7 @@ function LoginForm() {
   useEffect(() => {
     const savedEmail = localStorage.getItem('studentlyRememberEmail')
     const savedPassword = localStorage.getItem('studentlyRememberPassword')
-    
+
     if (savedEmail && savedPassword) {
       setEmail(savedEmail)
       setPassword(savedPassword)
@@ -118,12 +118,12 @@ function LoginForm() {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    
+
     // Prevent submission if auth is still loading or user is already logged in
     if (authLoading || (user && profile)) {
       return
     }
-    
+
     setLoading(true)
     setJustLoggedIn(false)
 
@@ -236,14 +236,6 @@ function LoginForm() {
               <div className={`p-3 rounded-lg bg-red-500/20 border border-red-400/30 ${getAnimClass('delay-150')}`}>
                 <p className="text-sm text-white">
                   Your role is not yet supported in the system. Please contact support.
-                </p>
-              </div>
-            )}
-
-            {error === 'profile_not_found' && (
-              <div className={`p-3 rounded-lg bg-red-500/20 border border-red-400/30 ${getAnimClass('delay-150')}`}>
-                <p className="text-sm text-white">
-                  Your account profile was not found. This may happen if your school was deleted or your account was removed. Please contact your administrator.
                 </p>
               </div>
             )}

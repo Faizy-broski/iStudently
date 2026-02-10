@@ -73,6 +73,15 @@ router.post('/', requireRole('admin'), (req, res) =>
 )
 
 /**
+ * POST /api/students/print-info
+ * Get students info for printing with selected categories
+ * Admin only
+ */
+router.post('/print-info', requireRole('admin'), (req, res) =>
+  studentController.getStudentsPrintInfo(req, res)
+)
+
+/**
  * PUT /api/students/:id
  * Update a student
  * Admin only

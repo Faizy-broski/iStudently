@@ -1,11 +1,10 @@
 import { getAuthToken } from './schools'
-import { abortableFetch } from './abortable-fetch'
+import { simpleFetch } from './abortable-fetch'
 import { handleSessionExpiry } from '@/context/AuthContext'
 import { API_URL } from '@/config/api'
 
 /**
- * API request wrapper with proper timeout, abort handling, and session management
- * Matches the pattern used in students.ts, teachers.ts, schools.ts, and fees.ts
+ * API request wrapper with proper timeout
  */
 async function apiRequest<T = unknown>(endpoint: string): Promise<T> {
   const token = await getAuthToken()
@@ -15,7 +14,7 @@ async function apiRequest<T = unknown>(endpoint: string): Promise<T> {
   }
 
   try {
-    const response = await abortableFetch(`${API_URL}${endpoint}`, {
+    const response = await simpleFetch(`${API_URL}${endpoint}`, {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`
@@ -26,7 +25,7 @@ async function apiRequest<T = unknown>(endpoint: string): Promise<T> {
     // Handle 401 Unauthorized - session expired
     if (response.status === 401) {
       await handleSessionExpiry()
-      throw new Error('Session expired. Please login again.')
+      throw new Error('Session expired')
     }
 
     // Handle 403 Forbidden - permission error
@@ -36,7 +35,7 @@ async function apiRequest<T = unknown>(endpoint: string): Promise<T> {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))
-      throw new Error(error.error || `Request failed: ${response.status}`)
+      throw new Error(error.error || 'Request failed')
     }
 
     const result = await response.json()
@@ -45,12 +44,11 @@ async function apiRequest<T = unknown>(endpoint: string): Promise<T> {
     }
 
     return result.data
-  } catch (error: any) {
-    // Handle aborted requests gracefully
-    if (error instanceof Error && error.message === 'Request was cancelled') {
-      throw new Error('Request cancelled')
+  } catch (error) {
+    if (error instanceof Error && (error.message === 'Session expired' || error.message === 'Permission denied')) {
+      throw error
     }
-    throw error
+    throw new Error('Network error')
   }
 }
 

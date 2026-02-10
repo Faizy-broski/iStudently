@@ -5,19 +5,11 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { TagsInput } from "@/components/ui/tags-input"
-import { MultiSelect } from "@/components/ui/multi-select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "sonner"
-import { UserPlus, Search, Edit, Trash2, Users, GraduationCap, Loader2, RefreshCw, ChevronLeft, ChevronRight, Lock, DollarSign } from "lucide-react"
+import { UserPlus, Search, Edit, Trash2, Users, GraduationCap, Loader2, RefreshCw, ChevronLeft, ChevronRight, Lock, DollarSign, Eye } from "lucide-react"
 import { EditCredentialsModal } from "@/components/admin/EditCredentialsModal"
-import { AddTeacherForm } from "@/components/admin/AddTeacherForm"
 import * as teachersApi from "@/lib/api/teachers"
 import { useTeachers } from "@/hooks/useTeachers"
 import {
@@ -28,31 +20,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import { getFieldDefinitions, CustomFieldDefinition } from "@/lib/api/custom-fields"
 import { useCampus } from "@/context/CampusContext"
-
-// Standard Field Definitions with Sort Orders for Teachers
-const STANDARD_FIELDS = [
-  // PERSONAL INFO (Category: personal)
-  { id: 'first_name', label: 'First Name', type: 'text', category: 'personal', sort_order: 1, required: true, width: 'half' },
-  { id: 'last_name', label: 'Last Name', type: 'text', category: 'personal', sort_order: 2, required: true, width: 'half' },
-  { id: 'email', label: 'Email', type: 'email', category: 'personal', sort_order: 3, required: true, width: 'half' },
-  { id: 'phone', label: 'Phone', type: 'text', category: 'personal', sort_order: 4, required: false, width: 'half' },
-
-  // PROFESSIONAL (Category: professional)
-  { id: 'employment_type', label: 'Employment Type', type: 'select', category: 'professional', sort_order: 1, required: true, width: 'half', options: ['full_time', 'part_time', 'contract'] },
-  { id: 'date_of_joining', label: 'Date of Joining', type: 'date', category: 'professional', sort_order: 2, required: false, width: 'half' },
-  { id: 'title', label: 'Title', type: 'text', category: 'professional', sort_order: 3, required: false, width: 'half', placeholder: 'e.g., Senior Teacher' },
-  { id: 'department', label: 'Department', type: 'text', category: 'professional', sort_order: 4, required: false, width: 'half', placeholder: 'e.g., Science' },
-  { id: 'qualifications', label: 'Qualifications', type: 'text', category: 'professional', sort_order: 5, required: false, width: 'full', placeholder: 'e.g., M.Sc. Mathematics' },
-  { id: 'specialization', label: 'Specialization', type: 'text', category: 'professional', sort_order: 6, required: false, width: 'full', placeholder: 'e.g., Applied Mathematics, Algebra' },
-  { id: 'base_salary', label: 'Base Salary (Monthly)', type: 'number', category: 'professional', sort_order: 7, required: true, width: 'full', help: 'Required for payroll generation' },
-
-  // SYSTEM (Category: system) - Only for new teachers
-  { id: 'employee_number', label: 'Employee Number', type: 'text', category: 'system', sort_order: 1, required: false, width: 'half', help: 'Auto-generated if empty' },
-  { id: 'username', label: 'Username', type: 'text', category: 'system', sort_order: 2, required: false, width: 'half', help: 'Auto-generated from name' },
-  { id: 'password', label: 'Password', type: 'text', category: 'system', sort_order: 3, required: false, width: 'full', help: 'Auto-generated secure password' },
-];
 
 export default function TeachersPage() {
   const router = useRouter()
@@ -79,44 +47,10 @@ export default function TeachersPage() {
     totalPages,
     loading: dataLoading,
     error: dataError,
-    createTeacher,
-    updateTeacher,
     deleteTeacher,
     refreshTeachers,
     isValidating
   } = useTeachers(currentPage, itemsPerPage, debouncedSearch)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingTeacher, setEditingTeacher] = useState<teachersApi.Staff | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-
-  // Custom fields state
-  const [customFields, setCustomFields] = useState<CustomFieldDefinition[]>([])
-  const [loadingCustomFields, setLoadingCustomFields] = useState(true)
-
-  // Form state
-  const [formData, setFormData] = useState<teachersApi.CreateStaffDTO>({
-    employee_number: "",
-    title: "",
-    department: "",
-    qualifications: "",
-    specialization: "",
-    date_of_joining: "",
-    employment_type: "full_time",
-    first_name: "",
-    last_name: "",
-    email: "",
-    phone: "",
-    username: "",
-    password: "",
-    base_salary: undefined,
-    custom_fields: {}
-  })
-  const [generatedCredentials, setGeneratedCredentials] = useState<{
-    employeeNumber: string
-    username: string
-    password: string
-  } | null>(null)
-  const [showCredentialsDialog, setShowCredentialsDialog] = useState(false)
 
   // Show error if any
   useEffect(() => {
@@ -125,152 +59,11 @@ export default function TeachersPage() {
     }
   }, [dataError])
 
-  // Load custom fields
-  useEffect(() => {
-    const loadCustomFields = async () => {
-      try {
-        const response = await getFieldDefinitions('teacher')
-        if (response.success && response.data) {
-          setCustomFields(response.data)
-        }
-      } catch (err) {
-        console.error("Error loading custom fields", err)
-      } finally {
-        setLoadingCustomFields(false)
-      }
-    }
-    loadCustomFields()
-  }, [])
-
   // Filter by active/inactive status (client-side for now)
   const filteredTeachers = useMemo(() => {
     if (showInactive) return teachers
     return teachers.filter(t => t.is_active !== false)
   }, [teachers, showInactive])
-
-  // Auto-generate employee number when creating new teacher
-  useEffect(() => {
-    if (!editingTeacher && !formData.employee_number) {
-      const timestamp = Date.now().toString().slice(-6)
-      const randomDigits = Math.floor(100 + Math.random() * 900)
-      const employeeNumber = `EMP${timestamp}${randomDigits}`
-      setFormData(prev => ({ ...prev, employee_number: employeeNumber }))
-    }
-  }, [editingTeacher, formData.employee_number])
-
-  // Set username to email when email changes (username = email)
-  useEffect(() => {
-    if (formData.email && !editingTeacher) {
-      setFormData(prev => ({ ...prev, username: formData.email }))
-    }
-  }, [formData.email, editingTeacher])
-
-  // Auto-generate password on mount for new teacher
-  useEffect(() => {
-    if (!editingTeacher && !formData.password) {
-      const newPassword = generatePassword()
-      setFormData(prev => ({ ...prev, password: newPassword }))
-    }
-  }, [editingTeacher])
-
-  const generatePassword = () => {
-    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    const lowercase = 'abcdefghijklmnopqrstuvwxyz'
-    const numbers = '0123456789'
-    const special = '!@#$%^&*'
-    const allChars = uppercase + lowercase + numbers + special
-
-    let password = ''
-    password += uppercase[Math.floor(Math.random() * uppercase.length)]
-    password += lowercase[Math.floor(Math.random() * lowercase.length)]
-    password += numbers[Math.floor(Math.random() * numbers.length)]
-    password += special[Math.floor(Math.random() * special.length)]
-
-    for (let i = password.length; i < 12; i++) {
-      password += allChars[Math.floor(Math.random() * allChars.length)]
-    }
-
-    return password.split('').sort(() => Math.random() - 0.5).join('')
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      setSubmitting(true)
-
-      // Validate required standard fields
-      const errors: string[] = [];
-      STANDARD_FIELDS.forEach(field => {
-        if (field.required) {
-          const value = formData[field.id as keyof typeof formData];
-          if (!value || (typeof value === 'string' && value.trim() === '')) {
-            errors.push(`${field.label} is required`);
-          }
-        }
-      });
-
-      // Validate required custom fields
-      customFields.forEach(field => {
-        if (field.required) {
-          const value = formData.custom_fields?.[field.field_key];
-          if (!value || (Array.isArray(value) && value.length === 0) || (typeof value === 'string' && value.trim() === '')) {
-            errors.push(`${field.label} is required`);
-          }
-        }
-      });
-
-      if (errors.length > 0) {
-        toast.error(errors.join(', '));
-        setSubmitting(false);
-        return;
-      }
-
-      if (editingTeacher) {
-        const response = await updateTeacher(editingTeacher.id, formData)
-        if (response.success) {
-          toast.success("Teacher updated successfully")
-          setIsDialogOpen(false)
-          resetForm()
-        } else {
-          toast.error(response.error || "Failed to update teacher")
-        }
-      } else {
-        // Log the data being sent
-        const dataToSend = {
-          ...formData,
-          campus_id: campusContext?.selectedCampus?.id
-        }
-        console.log('📤 Creating teacher with data:', dataToSend)
-        console.log('💰 Base salary value:', dataToSend.base_salary, 'Type:', typeof dataToSend.base_salary)
-        
-        const response = await createTeacher(dataToSend)
-        console.log('📥 Create teacher response:', response)
-        
-        if (response.success) {
-          toast.success("Teacher created successfully")
-
-          // Show credentials if they were generated (username is email)
-          if (formData.employee_number && formData.email && formData.password) {
-            setGeneratedCredentials({
-              employeeNumber: formData.employee_number,
-              username: formData.email, // Username is now email
-              password: formData.password
-            })
-            setShowCredentialsDialog(true)
-          }
-
-          setIsDialogOpen(false)
-          resetForm()
-        } else {
-          toast.error(response.error || "Failed to create teacher")
-        }
-      }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to save teacher")
-    } finally {
-      setSubmitting(false)
-    }
-  }
 
   // State for Edit Credentials Modal
   const [showEditCredentialsModal, setShowEditCredentialsModal] = useState(false)
@@ -284,35 +77,9 @@ export default function TeachersPage() {
     setShowEditCredentialsModal(true)
   }
 
-  const handleEdit = async (teacher: teachersApi.Staff) => {
-    console.log('🎯 handleEdit - Fetching fresh teacher data with base_salary for:', teacher.id)
-    
-    // Fetch fresh teacher data including base_salary
-    const freshTeacher = await teachersApi.getTeacherById(teacher.id)
-    
-    if (!freshTeacher) {
-      toast.error('Failed to load teacher details')
-      return
-    }
-    
-    console.log('🎯 handleEdit - Fresh teacher data loaded:', freshTeacher)
-    console.log('🎯 handleEdit - base_salary from fresh data:', (freshTeacher as any).base_salary)
-    
-    setEditingTeacher(freshTeacher)
-    setFormData({
-      employee_number: freshTeacher.employee_number,
-      title: freshTeacher.title || "",
-      department: freshTeacher.department || "",
-      qualifications: freshTeacher.qualifications || "",
-      specialization: freshTeacher.specialization || "",
-      employment_type: freshTeacher.employment_type,
-      first_name: freshTeacher.profile?.first_name || "",
-      last_name: freshTeacher.profile?.last_name || "",
-      email: freshTeacher.profile?.email || "",
-      phone: freshTeacher.profile?.phone || "",
-      custom_fields: freshTeacher.custom_fields || {}
-    })
-    setIsDialogOpen(true)
+  const handleEdit = (teacher: teachersApi.Staff) => {
+    // Navigate to dedicated edit page
+    router.push(`/admin/teachers/${encodeURIComponent(teacher.employee_number)}/edit`)
   }
 
   const handleDelete = async (id: string) => {
@@ -330,27 +97,8 @@ export default function TeachersPage() {
     }
   }
 
-  const resetForm = () => {
-    setFormData({
-      employee_number: "",
-      title: "",
-      department: "",
-      qualifications: "",
-      specialization: "",
-      date_of_joining: "",
-      employment_type: "full_time",
-      first_name: "",
-      last_name: "",
-      email: "",
-      phone: "",
-      username: "",
-      password: ""
-    })
-    setEditingTeacher(null)
-  }
-
   // Loading state
-  const loading = dataLoading || submitting
+  const loading = dataLoading
 
   // Helper for employment badge colors
   const getEmploymentBadge = (type: teachersApi.EmploymentType) => {
@@ -634,26 +382,6 @@ export default function TeachersPage() {
             <UserPlus className="h-4 w-4 mr-2" />
             Add Teacher
           </Button>
-          <Dialog open={isDialogOpen} onOpenChange={(open) => {
-            setIsDialogOpen(open)
-            if (!open) resetForm()
-          }}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>
-                  Edit Teacher
-                </DialogTitle>
-              </DialogHeader>
-              <AddTeacherForm 
-                onSuccess={() => {
-                  setIsDialogOpen(false)
-                  resetForm()
-                  refreshTeachers()
-                }}
-                editingTeacher={editingTeacher}
-              />
-            </DialogContent>
-          </Dialog>
         </div>
       </div>
 
@@ -739,7 +467,7 @@ export default function TeachersPage() {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-gradient-to-r from-[#57A3CC]/10 to-[#022172]/10">
+                  <TableRow className="bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10">
                     <TableHead>Employee #</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Department</TableHead>
@@ -763,7 +491,11 @@ export default function TeachersPage() {
                         `${teacher.profile?.first_name || ""} ${teacher.profile?.last_name || ""}`.trim() ||
                         "N/A"
                       return (
-                        <TableRow key={teacher.id} className="hover:bg-muted/50">
+                        <TableRow 
+                          key={teacher.id} 
+                          className="hover:bg-muted/50 cursor-pointer"
+                          onClick={() => router.push(`/admin/teachers/${encodeURIComponent(teacher.employee_number)}`)}
+                        >
                           <TableCell className="font-medium">{teacher.employee_number}</TableCell>
                           <TableCell>{fullName}</TableCell>
                           <TableCell>{teacher.department || "—"}</TableCell>
@@ -785,11 +517,20 @@ export default function TeachersPage() {
                             <div className="text-muted-foreground">{teacher.profile?.phone || "—"}</div>
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
+                            <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => router.push(`/admin/teachers/${encodeURIComponent(teacher.employee_number)}`)}
+                                title="View Details"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => handleEdit(teacher)}
+                                title="Edit Teacher"
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
@@ -882,97 +623,6 @@ export default function TeachersPage() {
           </Pagination>
         </div>
       )}
-
-      {/* Credentials Dialog */}
-      <Dialog open={showCredentialsDialog} onOpenChange={setShowCredentialsDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-green-600">✓ Teacher Created Successfully!</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm font-semibold text-yellow-800 mb-3">
-                ⚠️ Important: Please save these credentials. They won't be shown again!
-              </p>
-              <div className="space-y-3">
-                <div>
-                  <Label className="text-xs text-muted-foreground">Employee Number</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Input
-                      value={generatedCredentials?.employeeNumber || ''}
-                      readOnly
-                      className="font-mono bg-white"
-                    />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        navigator.clipboard.writeText(generatedCredentials?.employeeNumber || '')
-                        toast.success('Copied!')
-                      }}
-                    >
-                      Copy
-                    </Button>
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Email / Username</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Input
-                      value={generatedCredentials?.username || ''}
-                      readOnly
-                      className="font-mono bg-white"
-                    />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        navigator.clipboard.writeText(generatedCredentials?.username || '')
-                        toast.success('Copied!')
-                      }}
-                    >
-                      Copy
-                    </Button>
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Password</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Input
-                      value={generatedCredentials?.password || ''}
-                      readOnly
-                      className="font-mono bg-white"
-                      type="text"
-                    />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        navigator.clipboard.writeText(generatedCredentials?.password || '')
-                        toast.success('Copied!')
-                      }}
-                    >
-                      Copy
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <Button
-                onClick={() => {
-                  setShowCredentialsDialog(false)
-                  setGeneratedCredentials(null)
-                }}
-                style={{ background: 'var(--gradient-blue)' }}
-                className="text-white hover:opacity-90 transition-opacity"
-              >
-                Done
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Edit Credentials Modal */}
       {credentialsEntity && (

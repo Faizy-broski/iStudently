@@ -26,6 +26,8 @@ import studentDashboardRoutes from './routes/student-dashboard.routes'
 import parentDashboardRoutes from './routes/parent-dashboard.routes'
 import learningResourcesRoutes from './routes/learning-resources.routes'
 import staffDesignationRoutes from './routes/staff-designation.routes'
+import periodsRoutes from './routes/periods.routes'
+import portalRoutes from './routes/portal.routes'
 
 const app = express()
 
@@ -35,7 +37,10 @@ app.set('trust proxy', 1)
 // Comprehensive CORS Headers - Works across all browsers
 app.use((req: Request, res: Response, next: NextFunction) => {
   // Get allowed origins from config
-  const allowedOrigins = config.cors.origins || ['http://localhost:3000', 'http://localhost:30001']
+const allowedOrigins = config.cors.origins || [
+    'http://localhost:3000', 
+    'http://102.213.183.100:8080' 
+]
   const requestOrigin = req.headers.origin
   
   // Check if the request origin is allowed
@@ -175,6 +180,8 @@ registerRoutes('/setup', setupStatusRoutes)
 registerRoutes('/assignments', assignmentsRoutes)
 registerRoutes('/exams', examsRoutes)
 registerRoutes('/learning-resources', learningResourcesRoutes)
+registerRoutes('/periods', periodsRoutes)
+registerRoutes('/portal', portalRoutes)
 registerRoutes('/student-dashboard', studentDashboardRoutes)
 registerRoutes('/parent-dashboard', parentDashboardRoutes)
 registerRoutes('/staff-designations', staffDesignationRoutes)

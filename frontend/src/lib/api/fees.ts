@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/client'
-import { abortableFetch } from './abortable-fetch'
+import { simpleFetch } from './abortable-fetch'
 import { handleSessionExpiry } from '@/context/AuthContext'
 import { API_URL } from '@/config/api'
+import { getAuthToken } from './schools'
 
 // ============================================================================
 // TYPES
@@ -112,16 +113,13 @@ interface ApiResponse<T = unknown> {
 // HELPER FUNCTIONS
 // ============================================================================
 
-export async function getAuthToken(): Promise<string | null> {
-    const supabase = createClient()
-    const { data } = await supabase.auth.getSession()
-    return data.session?.access_token || null
-}
+// NOTE: Using centralized getAuthToken from schools.ts which includes
+// session validation wait logic to prevent race conditions on tab focus
 
 async function apiRequest<T = unknown>(
     endpoint: string,
     options: RequestInit = {}
-): Promise<T> { // Changed return type to T to match usage, or handle ApiResponse unwrapping inside
+): Promise<T> {
     const token = await getAuthToken()
 
     if (!token) {
@@ -134,32 +132,36 @@ async function apiRequest<T = unknown>(
         ...options.headers,
     }
 
-    // Ensure we don't double-slash or missing slash content
-    // API_URL should be without trailing slash, endpoint should start with /
     const url = `${API_URL}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`
 
-    const res = await abortableFetch(url, {
-        ...options,
-        headers,
-        timeout: 30000
-    })
+    try {
+        const res = await simpleFetch(url, {
+            ...options,
+            headers,
+            timeout: 30000
+        })
 
-    const json = await res.json()
+        const json = await res.json()
 
-    // Handle 401
-    if (res.status === 401) {
-        console.error('🔒 Session expired in fees API')
-        await handleSessionExpiry()
-        throw new Error('Session expired')
+        // Handle 401
+        if (res.status === 401) {
+            handleSessionExpiry()
+            throw new Error('Session expired')
+        }
+
+        if (!json.success && !res.ok) {
+            throw new Error(json.error || `Request failed: ${res.statusText}`)
+        } else if (!json.success) {
+            throw new Error(json.error || 'API Error')
+        }
+
+        return json.data as T
+    } catch {
+        // Return a safe fallback or rethrow as a generic error that won't trigger abort toasts
+        // Since this function returns T, we can't easily return { success: false }.
+        // We throw generic errors that the UI should handle gracefully.
+        throw new Error('Network error')
     }
-
-    if (!json.success && !res.ok) {
-        throw new Error(json.error || `Request failed: ${res.statusText}`)
-    } else if (!json.success) {
-        throw new Error(json.error || 'API Error')
-    }
-
-    return json.data as T
 }
 
 // Specific helper for paginated responses which have a specific structure

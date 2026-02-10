@@ -1,4 +1,5 @@
 import { getAuthToken } from './schools'
+import { handleSessionExpiry } from '@/context/AuthContext'
 import { API_URL } from '@/config/api'
 
 interface ApiResponse<T = unknown> {
@@ -6,6 +7,26 @@ interface ApiResponse<T = unknown> {
   data?: T
   error?: string
   message?: string
+}
+
+// Helper function to make authenticated requests with 401 handling
+async function authenticatedFetch(url: string, options: RequestInit = {}) {
+  const token = await getAuthToken()
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      ...options.headers,
+      Authorization: `Bearer ${token}`
+    }
+  })
+  
+  // Handle 401 - session expired
+  if (response.status === 401) {
+    await handleSessionExpiry()
+    throw new Error('Session expired')
+  }
+  
+  return response
 }
 
 // ============================================================================

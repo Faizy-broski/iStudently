@@ -44,10 +44,18 @@ export function useParents(options: UseParentsOptions = {}) {
     {
       // Cache successful responses for 10 seconds
       dedupingInterval: 10000,
-      // Revalidate on focus (when user comes back to tab)
-      revalidateOnFocus: true,
+      // Revalidate handled by global visibility handler
+      revalidateOnFocus: false,
       // Keep previous data while fetching new data (prevents loading flicker)
       keepPreviousData: true,
+      // Retry on error to handle transient failures (e.g., after idle/tab switch)
+      errorRetryCount: 2,
+      errorRetryInterval: 1000,
+      // Don't retry on auth errors
+      shouldRetryOnError: (err) => {
+        const msg = err?.message || '';
+        return !msg.includes('401') && !msg.includes('Session expired') && !msg.includes('Authentication');
+      },
     }
   );
 

@@ -148,6 +148,88 @@ class SetupStatusService {
             throw new Error('Failed to delete campus')
         }
     }
+
+    /**
+     * Get a specific campus by ID
+     */
+    async getCampusById(campusId: string): Promise<any> {
+        const { data, error } = await supabase
+            .from('schools')
+            .select('*')
+            .eq('id', campusId)
+            .single()
+
+        if (error) {
+            console.error('Error fetching campus:', error)
+            throw new Error('Failed to fetch campus')
+        }
+
+        return data
+    }
+
+    /**
+     * Get campus statistics
+     */
+    async getCampusStats(campusId: string): Promise<{
+        total_students: number
+        total_teachers: number
+        total_staff: number
+        total_parents: number
+        total_grade_levels: number
+        total_sections: number
+    }> {
+        // Get student count
+        const { count: studentCount } = await supabase
+            .from('students')
+            .select('*', { count: 'exact', head: true })
+            .eq('campus_id', campusId)
+
+        // Get teacher count
+        const { count: teacherCount } = await supabase
+            .from('teachers')
+            .select('*', { count: 'exact', head: true })
+            .eq('campus_id', campusId)
+
+        // Get staff count
+        const { count: staffCount } = await supabase
+            .from('staff')
+            .select('*', { count: 'exact', head: true })
+            .eq('campus_id', campusId)
+
+        // Get parent count (parents don't have campus_id, so count all for the school)
+        const { data: campusData } = await supabase
+            .from('schools')
+            .select('parent_school_id')
+            .eq('id', campusId)
+            .single()
+        
+        const schoolId = campusData?.parent_school_id || campusId
+        const { count: parentCount } = await supabase
+            .from('parents')
+            .select('*', { count: 'exact', head: true })
+            .eq('school_id', schoolId)
+
+        // Get grade level count
+        const { count: gradeLevelCount } = await supabase
+            .from('grade_levels')
+            .select('*', { count: 'exact', head: true })
+            .eq('campus_id', campusId)
+
+        // Get section count
+        const { count: sectionCount } = await supabase
+            .from('sections')
+            .select('*', { count: 'exact', head: true })
+            .eq('campus_id', campusId)
+
+        return {
+            total_students: studentCount || 0,
+            total_teachers: teacherCount || 0,
+            total_staff: staffCount || 0,
+            total_parents: parentCount || 0,
+            total_grade_levels: gradeLevelCount || 0,
+            total_sections: sectionCount || 0,
+        }
+    }
 }
 
 export const setupStatusService = new SetupStatusService()

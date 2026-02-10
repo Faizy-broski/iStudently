@@ -4,6 +4,7 @@ import { DashboardLayout } from '@/components/layouts'
 import { AuthLoadingGuard } from '@/components/auth/AuthLoadingGuard'
 import { RoleGuard } from '@/components/auth/RoleGuard'
 import { ParentDashboardProvider } from '@/context/ParentDashboardContext'
+import { RefreshOnReturn } from '@/components/RefreshOnReturn'
 
 export default function ParentLayout({
   children,
@@ -14,7 +15,9 @@ export default function ParentLayout({
     <AuthLoadingGuard>
       <RoleGuard allowedRoles={['parent']}>
         <ParentDashboardProvider>
-          <DashboardLayout role="parent">{children}</DashboardLayout>
+          <DashboardLayout role="parent">
+            <RefreshOnReturn>{children}</RefreshOnReturn>
+          </DashboardLayout>
         </ParentDashboardProvider>
       </RoleGuard>
     </AuthLoadingGuard>

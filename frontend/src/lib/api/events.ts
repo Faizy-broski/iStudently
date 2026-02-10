@@ -1,4 +1,5 @@
 import { getAuthToken } from './schools'
+import { handleSessionExpiry } from '@/context/AuthContext'
 
 import { API_URL } from '@/config/api'
 
@@ -43,6 +44,15 @@ async function apiRequest<T = unknown>(
     })
 
     const data = await response.json()
+
+    // Handle 401 - session expired or invalid token
+    if (response.status === 401) {
+      await handleSessionExpiry()
+      return {
+        success: false,
+        error: 'Session expired'
+      }
+    }
 
     if (!response.ok) {
       return {

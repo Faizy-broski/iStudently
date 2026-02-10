@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, BookOpen, User, Loader2 } from "lucide-react";
-import { Period, Staff, DayOfWeek } from "@/lib/api/teachers";
+import { GlobalPeriod, Staff, DayOfWeek } from "@/lib/api/teachers";
 import * as timetableApi from "@/lib/api/timetable";
 import * as academicsApi from "@/lib/api/academics";
 import * as teachersApi from "@/lib/api/teachers";
@@ -38,7 +38,7 @@ interface AssignSlotDialogProps {
     sectionId: string;
     sectionName: string;
     day: string;
-    period: Period;
+    period: GlobalPeriod;
     academicYearId: string;
     existingEntry?: timetableApi.TimetableEntry;
     onSave: () => void;
@@ -232,7 +232,7 @@ export function AssignSlotDialog({
                         </div>
                         <div>
                             <span className="text-muted-foreground">Period:</span>
-                            <span className="font-medium ml-1">{period.period_number}</span>
+                            <span className="font-medium ml-1">{period.title || period.short_name || `P${period.sort_order}`}</span>
                         </div>
                     </div>
 

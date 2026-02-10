@@ -30,41 +30,47 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
 
   // Check setup status for admin users
   React.useEffect(() => {
+    let isMounted = true
+
     const checkSetup = async () => {
       // Only check for admin role
       if (effectiveRole !== 'admin') {
-        setSetupChecked(true)
+        if (isMounted) setSetupChecked(true)
         return
       }
 
       // Don't check if already on setup page
       if (pathname?.startsWith('/admin/setup')) {
-        setSetupChecked(true)
+        if (isMounted) setSetupChecked(true)
         return
       }
 
       // Skip if already checked or still loading auth
       if (loading || setupChecked || checkingSetup) return
 
-      setCheckingSetup(true)
+      if (isMounted) setCheckingSetup(true)
       try {
         const status = await getSetupStatus()
-        if (!status.isComplete) {
-          // Redirect to setup wizard
+        if (isMounted && !status.isComplete) {
           router.replace('/admin/setup')
           return
         }
-      } catch (error) {
-        console.error('Error checking setup status:', error)
-        // On error, allow access (don't block the user)
+      } catch {
+        // Silently ignore all errors - don't block the user
       } finally {
-        setCheckingSetup(false)
-        setSetupChecked(true)
+        if (isMounted) {
+          setCheckingSetup(false)
+          setSetupChecked(true)
+        }
       }
     }
 
     if (!loading && profile) {
       checkSetup()
+    }
+
+    return () => {
+      isMounted = false
     }
   }, [loading, profile, effectiveRole, pathname, router, setupChecked, checkingSetup])
 

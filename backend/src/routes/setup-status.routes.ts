@@ -15,6 +15,8 @@ router.get('/status', setupStatusController.getSetupStatus)
 // Campus management
 router.get('/campuses', setupStatusController.getCampuses)
 router.post('/campuses', setupStatusController.createCampus)
+router.get('/campuses/:id', setupStatusController.getCampusById)
+router.get('/campuses/:id/stats', setupStatusController.getCampusStats)
 router.put('/campuses/:id', setupStatusController.updateCampus)
 router.delete('/campuses/:id', setupStatusController.deleteCampus)
 
