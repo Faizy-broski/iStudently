@@ -1329,15 +1329,16 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
   }
 
   return (
-    <form
-      onSubmit={(e) => {
-        // Always prevent default first
-        e.preventDefault();
-        
-        console.log('Form submit triggered');
-        const submitEvent = e.nativeEvent as SubmitEvent;
-        console.log('Submitter:', submitEvent?.submitter);
-        console.log('Submit button ref:', submitButtonRef.current);
+    <>
+      <form
+        onSubmit={(e) => {
+          // Always prevent default first
+          e.preventDefault();
+          
+          console.log('Form submit triggered');
+          const submitEvent = e.nativeEvent as SubmitEvent;
+          console.log('Submitter:', submitEvent?.submitter);
+          console.log('Submit button ref:', submitButtonRef.current);
         console.log('Is last tab:', isLastTab);
         console.log('Active tab:', activeTab);
 
@@ -2007,7 +2008,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
       </div>
     </form >
 
-      {/* Fee Challan Modal — shown immediately after fee generation for printing */}
+      {/* Fee Challan Modal - shown immediately after fee generation for printing */}
       {showChallanModal && generatedFeeId && (
         <FeeChallanModal
           isOpen={showChallanModal}
@@ -2021,5 +2022,6 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
           schoolId={profile?.school_id || ''}
         />
       )}
+    </>
   );
 }
