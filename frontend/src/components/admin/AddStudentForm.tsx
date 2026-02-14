@@ -1329,6 +1329,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
   }
 
   return (
+    <>
     <form
       onSubmit={(e) => {
         // Always prevent default first
@@ -2005,21 +2006,22 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
           )}
         </div>
       </div>
-    </form >
+    </form>
 
-      {/* Fee Challan Modal — shown immediately after fee generation for printing */}
-      {showChallanModal && generatedFeeId && (
-        <FeeChallanModal
-          isOpen={showChallanModal}
-          onClose={() => {
-            setShowChallanModal(false);
-            setGeneratedFeeId(null);
-            toast.success("Student added successfully!");
-            onSuccess();
-          }}
-          feeId={generatedFeeId}
-          schoolId={profile?.school_id || ''}
-        />
-      )}
+    {/* Fee Challan Modal — shown immediately after fee generation for printing */}
+    {showChallanModal && generatedFeeId && (
+      <FeeChallanModal
+        isOpen={showChallanModal}
+        onClose={() => {
+          setShowChallanModal(false);
+          setGeneratedFeeId(null);
+          toast.success("Student added successfully!");
+          onSuccess();
+        }}
+        feeId={generatedFeeId}
+        schoolId={profile?.school_id || ''}
+      />
+    )}
+    </>
   );
 }
