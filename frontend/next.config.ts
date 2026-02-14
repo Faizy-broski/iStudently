@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
   },
 
   // Static export for cPanel deployment
-  output: 'export',
+  // output: 'export',
   
   trailingSlash: true,
 
