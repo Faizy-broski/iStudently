@@ -23,13 +23,15 @@
     "@supabase/supabase-js": "^2.39.0",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
+    "dotenv": "^16.6.1",
     "express": "^4.18.2",
     "express-validator": "^7.0.1",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "node-cron": "^3.0.3",
-    "swr": "^2.3.8"
+    "nodemailer": "^8.0.1",
+    "swr": "^2.3.8",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",

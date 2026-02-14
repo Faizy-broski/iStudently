@@ -2,6 +2,7 @@ import {
   LayoutDashboard,
   Users,
   GraduationCap,
+  DoorOpen,
   UserCheck,
   BookOpen,
   CalendarCheck,
@@ -23,310 +24,445 @@ import {
   Award,
   Upload,
   Megaphone,
+  BedDouble,
+  Eye,
   type LucideIcon,
-} from 'lucide-react'
-import { UserRole } from '@/types'
+} from "lucide-react";
+import { UserRole } from "@/types";
 
 export interface SidebarMenuItem {
-  title: string
-  href: string
-  icon: LucideIcon
-  badge?: string | number
-  subItems?: SidebarMenuItem[]
-  isLabel?: boolean
+  title: string;
+  href: string;
+  icon: LucideIcon;
+  badge?: string | number;
+  subItems?: SidebarMenuItem[];
+  isLabel?: boolean;
 }
 
 export interface SidebarConfig {
-  role: UserRole
-  menuItems: SidebarMenuItem[]
+  role: UserRole;
+  menuItems: SidebarMenuItem[];
 }
 
 // Super Admin Menu Items
 const superAdminMenuItems: SidebarMenuItem[] = [
-  { title: 'Dashboard', href: '/superadmin/dashboard', icon: LayoutDashboard },
-  { title: 'School Directory', href: '/superadmin/school-directory', icon: Building2 },
-  { title: 'Onboard School', href: '/superadmin/onboard-school', icon: School },
-  { title: 'Billing Status', href: '/superadmin/billing-status', icon: CreditCard },
-  { title: 'Settings', href: '/superadmin/settings', icon: Settings },
-]
+  { title: "Dashboard", href: "/superadmin/dashboard", icon: LayoutDashboard },
+  {
+    title: "School Directory",
+    href: "/superadmin/school-directory",
+    icon: Building2,
+  },
+  { title: "Onboard School", href: "/superadmin/onboard-school", icon: School },
+  {
+    title: "Billing Status",
+    href: "/superadmin/billing-status",
+    icon: CreditCard,
+  },
+  { title: "Settings", href: "/superadmin/settings", icon: Settings },
+];
 
 // Admin Menu Items (School Admin)
 const adminMenuItems: SidebarMenuItem[] = [
-  { title: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
+  { title: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   {
-    title: 'School',
-    href: '/admin/academics',
+    title: "School",
+    href: "/admin/academics",
     icon: School,
     subItems: [
-      { title: 'School Details', href: '/admin/school-details', icon: Building2 },
-      { title: 'Overview', href: '/admin/academics', icon: LayoutDashboard },
-      { title: 'Grade Levels', href: '/admin/academics/grades', icon: GraduationCap },
-      { title: 'Sections', href: '/admin/academics/sections', icon: Users },
-      { title: 'Subjects', href: '/admin/academics/subjects', icon: BookOpen },
-      { title: 'Periods', href: '/admin/periods', icon: Clock },
-      { title: 'Timetable', href: '/admin/timetable', icon: Clock },
-      { title: 'Calendar', href: '/admin/events', icon: Calendar },
-      { title: 'Portal Notes', href: '/admin/portal/notes', icon: FileText },
-      { title: 'Portal Polls', href: '/admin/portal/polls', icon: BarChart3 },
-    ]
+      {
+        title: "School Details",
+        href: "/admin/school-details",
+        icon: Building2,
+      },
+      { title: "Overview", href: "/admin/academics", icon: LayoutDashboard },
+      {
+        title: "Grade Levels",
+        href: "/admin/academics/grades",
+        icon: GraduationCap,
+      },
+      { title: "Sections", href: "/admin/academics/sections", icon: Users },
+      { title: "Subjects", href: "/admin/academics/subjects", icon: BookOpen },
+      { title: "Periods", href: "/admin/periods", icon: Clock },
+      { title: "Timetable", href: "/admin/timetable", icon: Clock },
+      { title: "Calendar", href: "/admin/events", icon: Calendar },
+      { title: "Portal Notes", href: "/admin/portal/notes", icon: FileText },
+      { title: "Portal Polls", href: "/admin/portal/polls", icon: BarChart3 },
+    ],
   },
   {
-    title: 'Students',
-    href: '/admin/students',
+    title: "Students",
+    href: "/admin/students",
     icon: GraduationCap,
     subItems: [
-      { title: 'Student Info', href: '/admin/students/student-info', icon: GraduationCap },
-      { title: 'Add Student', href: '/admin/students/add-student', icon: Users },
-      { title: 'Custom Fields', href: '/admin/students/custom-fields', icon: Settings },
-      { title: 'Reports', href: '#', icon: BarChart3, isLabel: true },
-      { title: 'Print Student Info', href: '/admin/students/print-info', icon: FileText },
-      { title: 'Print Letters', href: '/admin/students/print-letters', icon: FileText },
-      { title: 'Student Breakdown', href: '/admin/students/breakdown', icon: BarChart3 },
-      { title: 'Advanced Report', href: '/admin/students/advanced-report', icon: FileText },
-    ]
+      {
+        title: "Student Info",
+        href: "/admin/students/student-info",
+        icon: GraduationCap,
+      },
+      {
+        title: "Add Student",
+        href: "/admin/students/add-student",
+        icon: Users,
+      },
+      {
+        title: "Custom Fields",
+        href: "/admin/students/custom-fields",
+        icon: Settings,
+      },
+      { title: "Reports", href: "#", icon: BarChart3, isLabel: true },
+      {
+        title: "Print Student Info",
+        href: "/admin/students/print-info",
+        icon: FileText,
+      },
+      {
+        title: "Print Letters",
+        href: "/admin/students/print-letters",
+        icon: FileText,
+      },
+      {
+        title: "Student Breakdown",
+        href: "/admin/students/breakdown",
+        icon: BarChart3,
+      },
+      {
+        title: "Advanced Report",
+        href: "/admin/students/advanced-report",
+        icon: FileText,
+      },
+    ],
   },
   {
-    title: 'Teachers',
-    href: '/admin/teachers',
+    title: "Teachers",
+    href: "/admin/teachers",
     icon: Users,
     subItems: [
-      { title: 'All Teachers', href: '/admin/teachers', icon: Users },
-      { title: 'Add Teacher', href: '/admin/teachers/add', icon: Plus },
-      { title: 'Workload', href: '/admin/teachers/workload', icon: ClipboardList },
-      { title: 'Custom Fields', href: '/admin/teachers/custom-fields', icon: Settings },
-    ]
+      { title: "All Teachers", href: "/admin/teachers", icon: Users },
+      { title: "Add Teacher", href: "/admin/teachers/add", icon: Plus },
+      {
+        title: "Workload",
+        href: "/admin/teachers/workload",
+        icon: ClipboardList,
+      },
+      {
+        title: "Custom Fields",
+        href: "/admin/teachers/custom-fields",
+        icon: Settings,
+      },
+    ],
   },
   {
-    title: 'Staff',
-    href: '/admin/staff',
+    title: "Staff",
+    href: "/admin/staff",
     icon: Users,
     subItems: [
-      { title: 'All Staff', href: '/admin/staff', icon: Users },
-      { title: 'Add Staff', href: '/admin/staff/add-staff', icon: Plus },
-      { title: 'Settings', href: '/admin/staff/settings', icon: Settings },
-    ]
+      { title: "All Staff", href: "/admin/staff", icon: Users },
+      { title: "Add Staff", href: "/admin/staff/add-staff", icon: Plus },
+      { title: "Settings", href: "/admin/staff/settings", icon: Settings },
+    ],
   },
   {
-    title: 'Parents',
-    href: '/admin/parents',
+    title: "Parents",
+    href: "/admin/parents",
     icon: UserCheck,
     subItems: [
-      { title: 'Parent Info', href: '/admin/parents/parent-info', icon: UserCheck },
-      { title: 'Add Parent', href: '/admin/parents/add-parent', icon: UserCheck },
-      { title: 'Associate Parent', href: '/admin/parents/associate-parent', icon: Users },
-      { title: 'Custom Fields', href: '/admin/parents/custom-fields', icon: Settings },
-    ]
+      {
+        title: "Parent Info",
+        href: "/admin/parents/parent-info",
+        icon: UserCheck,
+      },
+      {
+        title: "Add Parent",
+        href: "/admin/parents/add-parent",
+        icon: UserCheck,
+      },
+      {
+        title: "Associate Parent",
+        href: "/admin/parents/associate-parent",
+        icon: Users,
+      },
+      {
+        title: "Custom Fields",
+        href: "/admin/parents/custom-fields",
+        icon: Settings,
+      },
+    ],
   },
-  { title: 'Attendance', href: '/admin/attendance', icon: CalendarCheck },
-  { title: 'Exams', href: '/admin/exams', icon: FileText },
-  { title: 'Assignments', href: '/admin/assignments', icon: ClipboardList },
+  { title: "Attendance", href: "/admin/attendance", icon: CalendarCheck },
+  { title: "Exams", href: "/admin/exams", icon: FileText },
+  { title: "Assignments", href: "/admin/assignments", icon: ClipboardList },
   {
-    title: 'Fees',
-    href: '/admin/fees',
+    title: "Fees",
+    href: "/admin/fees",
     icon: CreditCard,
     subItems: [
-      { title: 'Dashboard', href: '/admin/fees', icon: LayoutDashboard },
-      { title: 'Generate Fees', href: '/admin/fees/generate', icon: FileText },
-      { title: 'Settings', href: '/admin/fees/settings', icon: Settings },
-    ]
+      { title: "Dashboard", href: "/admin/fees", icon: LayoutDashboard },
+      { title: "Generate Fees", href: "/admin/fees/generate", icon: FileText },
+      { title: "Settings", href: "/admin/fees/settings", icon: Settings },
+    ],
   },
   {
-    title: 'Salary',
-    href: '/admin/salary',
+    title: "Salary",
+    href: "/admin/salary",
     icon: DollarSign,
     subItems: [
-      { title: 'Dashboard', href: '/admin/salary', icon: LayoutDashboard },
-      { title: 'Generate Salaries', href: '/admin/salary/generate', icon: FileText },
-      { title: 'Advances', href: '/admin/salary/advances', icon: CreditCard },
-      { title: 'Settings', href: '/admin/salary/settings', icon: Settings },
-    ]
+      { title: "Dashboard", href: "/admin/salary", icon: LayoutDashboard },
+      {
+        title: "Generate Salaries",
+        href: "/admin/salary/generate",
+        icon: FileText,
+      },
+      { title: "Advances", href: "/admin/salary/advances", icon: CreditCard },
+      { title: "Settings", href: "/admin/salary/settings", icon: Settings },
+    ],
   },
   {
-    title: 'Library',
-    href: '/admin/library',
+    title: "Library",
+    href: "/admin/library",
     icon: Library,
     subItems: [
-      { title: 'Overview', href: '/admin/library', icon: BookOpen },
-      { title: 'Settings', href: '/admin/library/settings', icon: Settings },
-    ]
+      { title: "Overview", href: "/admin/library", icon: BookOpen },
+      { title: "Settings", href: "/admin/library/settings", icon: Settings },
+    ],
   },
-  { title: 'Reports', href: '/admin/reports', icon: BarChart3 },
+  { title: "Reports", href: "/admin/reports", icon: BarChart3 },
   {
-    title: 'Settings',
-    href: '/admin/settings',
+    title: "Entry & Exit",
+    href: "/admin/entry-exit",
+    icon: DoorOpen,
+    subItems: [
+      { title: "Dashboard", href: "/admin/entry-exit", icon: LayoutDashboard },
+      {
+        title: "Records",
+        href: "/admin/entry-exit/report",
+        icon: ClipboardList,
+      },
+      {
+        title: "Checkpoints",
+        href: "/admin/entry-exit/checkpoints",
+        icon: Building2,
+      },
+      {
+        title: "Evening Leaves",
+        href: "/admin/entry-exit/evening-leaves",
+        icon: Clock,
+      },
+      { title: "Packages", href: "/admin/entry-exit/packages", icon: FileText },
+    ],
+  },
+  {
+    title: "Hostel",
+    href: "/admin/hostel",
+    icon: BedDouble,
+    subItems: [
+      { title: "Dashboard", href: "/admin/hostel", icon: LayoutDashboard },
+      { title: "Buildings", href: "/admin/hostel/buildings", icon: Building2 },
+      { title: "Rooms", href: "/admin/hostel/rooms", icon: DoorOpen },
+      { title: "Assignments", href: "/admin/hostel/assignments", icon: Users },
+      { title: "Visits", href: "/admin/hostel/visits", icon: Eye },
+      { title: "Fees", href: "/admin/hostel/fees", icon: DollarSign },
+    ],
+  },
+  {
+    title: "Settings",
+    href: "/admin/settings",
     icon: Settings,
     subItems: [
-      { title: 'General', href: '/admin/settings', icon: Settings },
-      { title: 'Campuses', href: '/admin/settings/campuses', icon: Building2 },
-      { title: 'Academic Years', href: '/admin/settings/academic-years', icon: Calendar },
-      { title: 'Services', href: '/admin/settings/services', icon: Settings },
-    ]
+      { title: "General", href: "/admin/settings", icon: Settings },
+      { title: "Campuses", href: "/admin/settings/campuses", icon: Building2 },
+      {
+        title: "Academic Years",
+        href: "/admin/settings/academic-years",
+        icon: Calendar,
+      },
+      { title: "Services", href: "/admin/settings/services", icon: Settings },
+    ],
   },
-]
+];
 
 // Teacher Menu Items
 const teacherMenuItems: SidebarMenuItem[] = [
-  { title: 'Dashboard', href: '/teacher/dashboard', icon: LayoutDashboard },
+  { title: "Dashboard", href: "/teacher/dashboard", icon: LayoutDashboard },
   {
-    title: 'Portal',
-    href: '/teacher/portal/notes',
+    title: "Portal",
+    href: "/teacher/portal/notes",
     icon: Megaphone,
     subItems: [
-      { title: 'Announcements', href: '/teacher/portal/notes', icon: FileText },
-      { title: 'Polls', href: '/teacher/portal/polls', icon: BarChart3 },
-    ]
+      { title: "Announcements", href: "/teacher/portal/notes", icon: FileText },
+      { title: "Polls", href: "/teacher/portal/polls", icon: BarChart3 },
+    ],
   },
   {
-    title: 'Academic Management',
-    href: '/teacher/timetable',
+    title: "Academic Management",
+    href: "/teacher/timetable",
     icon: Clock,
     subItems: [
-      { title: 'My Timetable', href: '/teacher/timetable', icon: Clock },
-      { title: 'Attendance', href: '/teacher/attendance', icon: CalendarCheck },
-      { title: 'Subjects', href: '/teacher/subjects', icon: BookOpen },
-    ]
+      { title: "My Timetable", href: "/teacher/timetable", icon: Clock },
+      { title: "Attendance", href: "/teacher/attendance", icon: CalendarCheck },
+      { title: "Subjects", href: "/teacher/subjects", icon: BookOpen },
+    ],
   },
   {
-    title: 'Student Learning',
-    href: '/teacher/assignments',
+    title: "Student Learning",
+    href: "/teacher/assignments",
     icon: ClipboardList,
     subItems: [
-      { title: 'Assignments', href: '/teacher/assignments', icon: ClipboardList },
-      { title: 'Submissions', href: '/teacher/submissions', icon: CheckSquare },
-      { title: 'Exams & Grading', href: '/teacher/exams', icon: Award },
-    ]
+      {
+        title: "Assignments",
+        href: "/teacher/assignments",
+        icon: ClipboardList,
+      },
+      { title: "Submissions", href: "/teacher/submissions", icon: CheckSquare },
+      { title: "Exams & Grading", href: "/teacher/exams", icon: Award },
+    ],
   },
   {
-    title: 'Resources',
-    href: '/teacher/learning-resources',
+    title: "Resources",
+    href: "/teacher/learning-resources",
     icon: FolderOpen,
     subItems: [
-      { title: 'Learning Resources', href: '/teacher/learning-resources', icon: Upload },
+      {
+        title: "Learning Resources",
+        href: "/teacher/learning-resources",
+        icon: Upload,
+      },
       // { title: 'Content Library', href: '/teacher/library', icon: Library },
-      { title: 'Class Reports', href: '/teacher/reports', icon: BarChart3 },
-    ]
+      { title: "Class Reports", href: "/teacher/reports", icon: BarChart3 },
+    ],
   },
-  { title: 'Students', href: '/teacher/students', icon: GraduationCap },
-  { title: 'Settings', href: '/teacher/settings', icon: Settings },
-]
+  { title: "Students", href: "/teacher/students", icon: GraduationCap },
+  { title: "Settings", href: "/teacher/settings", icon: Settings },
+];
 
 // Student Menu Items
 const studentMenuItems: SidebarMenuItem[] = [
-  { title: 'Dashboard', href: '/student/dashboard', icon: LayoutDashboard },
+  { title: "Dashboard", href: "/student/dashboard", icon: LayoutDashboard },
   {
-    title: 'Portal',
-    href: '/student/portal/notes',
+    title: "Portal",
+    href: "/student/portal/notes",
     icon: Megaphone,
     subItems: [
-      { title: 'Announcements', href: '/student/portal/notes', icon: FileText },
-      { title: 'Polls', href: '/student/portal/polls', icon: BarChart3 },
-    ]
+      { title: "Announcements", href: "/student/portal/notes", icon: FileText },
+      { title: "Polls", href: "/student/portal/polls", icon: BarChart3 },
+    ],
   },
   {
-    title: 'My Classes',
-    href: '/student/timetable',
+    title: "My Classes",
+    href: "/student/timetable",
     icon: BookOpen,
     subItems: [
-      { title: 'Timetable', href: '/student/timetable', icon: Clock },
-      { title: 'Attendance', href: '/student/attendance', icon: CalendarCheck },
-    ]
+      { title: "Timetable", href: "/student/timetable", icon: Clock },
+      { title: "Attendance", href: "/student/attendance", icon: CalendarCheck },
+    ],
   },
   {
-    title: 'Work & Grades',
-    href: '/student/assignments',
+    title: "Work & Grades",
+    href: "/student/assignments",
     icon: ClipboardList,
     subItems: [
-      { title: 'Assignments', href: '/student/assignments', icon: ClipboardList },
-      { title: 'Exams', href: '/student/exams', icon: FileText },
-      { title: 'Report Cards', href: '/student/report-cards', icon: Award },
-    ]
+      {
+        title: "Assignments",
+        href: "/student/assignments",
+        icon: ClipboardList,
+      },
+      { title: "Exams", href: "/student/exams", icon: FileText },
+      { title: "Report Cards", href: "/student/report-cards", icon: Award },
+    ],
   },
   {
-    title: 'Resources',
-    href: '/student/learning-resources',
+    title: "Resources",
+    href: "/student/learning-resources",
     icon: FolderOpen,
     subItems: [
-      { title: 'Learning Resources', href: '/student/learning-resources', icon: Upload },
-      { title: 'Syllabus', href: '/student/syllabus', icon: BookOpen },
-      { title: 'Learning Materials', href: '/student/materials', icon: Library },
-    ]
+      {
+        title: "Learning Resources",
+        href: "/student/learning-resources",
+        icon: Upload,
+      },
+      { title: "Syllabus", href: "/student/syllabus", icon: BookOpen },
+      {
+        title: "Learning Materials",
+        href: "/student/materials",
+        icon: Library,
+      },
+    ],
   },
   {
-    title: 'Profile',
-    href: '/student/profile',
+    title: "Profile",
+    href: "/student/profile",
     icon: UserCheck,
     subItems: [
-      { title: 'ID Card', href: '/student/id-card', icon: CreditCard },
-      { title: 'My Profile', href: '/student/profile', icon: UserCheck },
-    ]
+      { title: "ID Card", href: "/student/id-card", icon: CreditCard },
+      { title: "My Profile", href: "/student/profile", icon: UserCheck },
+    ],
   },
-  { title: 'Fees', href: '/student/fees', icon: Receipt },
-]
+  { title: "Fees", href: "/student/fees", icon: Receipt },
+];
 
 // Parent Menu Items - Separate pages for each feature
 const parentMenuItems: SidebarMenuItem[] = [
-  { title: 'Dashboard', href: '/parent/dashboard', icon: LayoutDashboard },
+  { title: "Dashboard", href: "/parent/dashboard", icon: LayoutDashboard },
   {
-    title: 'Portal',
-    href: '/parent/portal/notes',
+    title: "Portal",
+    href: "/parent/portal/notes",
     icon: Megaphone,
     subItems: [
-      { title: 'Announcements', href: '/parent/portal/notes', icon: FileText },
-      { title: 'Polls', href: '/parent/portal/polls', icon: BarChart3 },
-    ]
+      { title: "Announcements", href: "/parent/portal/notes", icon: FileText },
+      { title: "Polls", href: "/parent/portal/polls", icon: BarChart3 },
+    ],
   },
-  { title: 'Academics', href: '/parent/academics', icon: GraduationCap },
-  { title: 'Attendance', href: '/parent/attendance', icon: CalendarCheck },
-  { title: 'Timetable', href: '/parent/timetable', icon: Clock },
-  { title: 'Homework', href: '/parent/homework', icon: ClipboardList },
-  { title: 'Fees', href: '/parent/fees', icon: CreditCard },
-  { title: 'ID Card', href: '/parent/id-card', icon: CreditCard },
-  { title: 'Settings', href: '/parent/settings', icon: Settings },
-]
+  { title: "Academics", href: "/parent/academics", icon: GraduationCap },
+  { title: "Attendance", href: "/parent/attendance", icon: CalendarCheck },
+  { title: "Timetable", href: "/parent/timetable", icon: Clock },
+  { title: "Homework", href: "/parent/homework", icon: ClipboardList },
+  { title: "Fees", href: "/parent/fees", icon: CreditCard },
+  { title: "ID Card", href: "/parent/id-card", icon: CreditCard },
+  { title: "Settings", href: "/parent/settings", icon: Settings },
+];
 
 // Librarian Menu Items
 const librarianMenuItems: SidebarMenuItem[] = [
-  { title: 'Dashboard', href: '/librarian/dashboard', icon: LayoutDashboard },
-  { title: 'Books', href: '/librarian/books', icon: BookOpen },
-  { title: 'Loan Directory', href: '/librarian/loans', icon: ClipboardList },
+  { title: "Dashboard", href: "/librarian/dashboard", icon: LayoutDashboard },
+  { title: "Books", href: "/librarian/books", icon: BookOpen },
+  { title: "Loan Directory", href: "/librarian/loans", icon: ClipboardList },
   // Reuse Profile/Settings
-  { title: 'My Profile', href: '/profile', icon: UserCheck },
-]
+  { title: "My Profile", href: "/profile", icon: UserCheck },
+];
 
 // Get menu items based on user role
 export const getSidebarConfig = (role: UserRole): SidebarMenuItem[] => {
   switch (role) {
-    case 'super_admin':
-      return superAdminMenuItems
-    case 'admin':
-      return adminMenuItems
-    case 'teacher':
-      return teacherMenuItems
-    case 'student':
-      return studentMenuItems
-    case 'parent':
-      return parentMenuItems
-    case 'librarian':
-      return librarianMenuItems
+    case "super_admin":
+      return superAdminMenuItems;
+    case "admin":
+      return adminMenuItems;
+    case "teacher":
+      return teacherMenuItems;
+    case "student":
+      return studentMenuItems;
+    case "parent":
+      return parentMenuItems;
+    case "librarian":
+      return librarianMenuItems;
     default:
-      return []
+      return [];
   }
-}
+};
 
 // Get dashboard path based on role
 export function getDashboardPathByRole(role: UserRole): string {
   switch (role) {
-    case 'super_admin':
-      return '/superadmin/dashboard'
-    case 'admin':
-      return '/admin/dashboard'
-    case 'teacher':
-      return '/teacher/dashboard'
-    case 'student':
-      return '/student/dashboard'
-    case 'parent':
-      return '/parent/dashboard'
+    case "super_admin":
+      return "/superadmin/dashboard";
+    case "admin":
+      return "/admin/dashboard";
+    case "teacher":
+      return "/teacher/dashboard";
+    case "student":
+      return "/student/dashboard";
+    case "parent":
+      return "/parent/dashboard";
     default:
-      return '/'
+      return "/";
   }
 }
