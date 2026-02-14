@@ -10,11 +10,12 @@ export class IdCardTemplateController {
    */
   async getTemplates(req: AuthRequest, res: Response) {
     try {
-      const campusId = req.profile?.campus_id;
+      // For admins, school_id is the campus they're managing
+      const campusId = req.profile?.school_id || req.profile?.campus_id;
       const { user_type } = req.query;
 
       if (!campusId) {
-        return res.status(400).json({ error: 'Campus ID not found in profile' });
+        return res.status(400).json({ error: 'School/Campus ID not found in profile' });
       }
 
       const templates = await templateService.getTemplatesByCampus(
@@ -34,11 +35,11 @@ export class IdCardTemplateController {
    */
   async getActiveTemplate(req: AuthRequest, res: Response) {
     try {
-      const campusId = req.profile?.campus_id;
+      const campusId = req.profile?.school_id || req.profile?.campus_id;
       const { user_type } = req.params;
 
       if (!campusId) {
-        return res.status(400).json({ error: 'Campus ID not found in profile' });
+        return res.status(400).json({ error: 'School/Campus ID not found in profile' });
       }
 
       const template = await templateService.getActiveTemplate(campusId, user_type);
@@ -74,12 +75,13 @@ export class IdCardTemplateController {
    */
   async createTemplate(req: AuthRequest, res: Response) {
     try {
-      const campusId = req.profile?.campus_id;
+      // For admins, school_id is the campus they're managing
+      const campusId = req.profile?.school_id || req.profile?.campus_id;
       const userId = req.profile?.id;
       const { name, description, user_type, template_config } = req.body;
 
       if (!campusId) {
-        return res.status(400).json({ error: 'Campus ID not found in profile' });
+        return res.status(400).json({ error: 'School/Campus ID not found in profile' });
       }
 
       if (!userId) {
@@ -168,14 +170,29 @@ export class IdCardTemplateController {
   async getAvailableTokens(req: AuthRequest, res: Response) {
     try {
       const { user_type } = req.params;
+      const schoolId = req.profile?.school_id;
 
       if (!['student', 'teacher', 'staff'].includes(user_type)) {
         return res.status(400).json({ error: 'Invalid user_type. Must be student, teacher, or staff' });
       }
 
-      const tokens = templateService.getAvailableTokens(user_type);
+      // If school ID is available, get tokens with custom fields
+      let tokens;
+      if (schoolId) {
+        tokens = await templateService.getAvailableTokensWithCustomFields(user_type, schoolId);
+      } else {
+        tokens = templateService.getAvailableTokens(user_type);
+      }
 
-      res.json({ tokens });
+      // Convert to array format for easier dropdown consumption
+      const tokensArray = Object.entries(tokens).map(([token, label]) => ({
+        token,
+        label,
+        isCustom: token.startsWith('{{custom_'),
+        isSeparator: token === '{{---}}'
+      }));
+
+      res.json({ tokens: tokensArray });
     } catch (error: any) {
       console.error('Error fetching available tokens:', error);
       res.status(500).json({ error: error.message });

@@ -3,39 +3,110 @@ import { supabase } from '../config/supabase';
 // Available substitution tokens by user type
 export const SUBSTITUTION_TOKENS = {
   student: {
-    // Profile fields
+    // === BASIC INFORMATION ===
     '{{first_name}}': 'First Name',
     '{{last_name}}': 'Last Name',
+    '{{full_name}}': 'Full Name',
     '{{email}}': 'Email Address',
     '{{phone}}': 'Phone Number',
-    '{{date_of_birth}}': 'Date of Birth',
-    '{{gender}}': 'Gender',
-    '{{address}}': 'Address',
     '{{photo_url}}': 'Profile Photo',
     
-    // Student-specific fields
+    // === STUDENT IDENTIFICATION ===
     '{{student_id}}': 'Student ID Number',
+    '{{student_number}}': 'Student Number',
     '{{admission_number}}': 'Admission Number',
-    '{{admission_date}}': 'Admission Date',
-    '{{section}}': 'Section Name',
-    '{{grade_level}}': 'Grade Level',
     '{{roll_number}}': 'Roll Number',
-    '{{blood_group}}': 'Blood Group',
-    '{{parent_name}}': 'Parent Name',
-    '{{parent_phone}}': 'Parent Phone',
-    '{{emergency_contact}}': 'Emergency Contact',
+    '{{registration_number}}': 'Registration Number',
     
-    // Campus fields
+    // === ACADEMIC INFORMATION ===
+    '{{grade_level}}': 'Grade Level',
+    '{{class_name}}': 'Class Name',
+    '{{section}}': 'Section Name',
+    '{{section_name}}': 'Section Name',
+    '{{academic_year}}': 'Academic Year',
+    '{{admission_date}}': 'Admission Date',
+    '{{joining_date}}': 'Joining Date',
+    
+    // === PERSONAL DETAILS ===
+    '{{date_of_birth}}': 'Date of Birth',
+    '{{age}}': 'Age',
+    '{{gender}}': 'Gender',
+    '{{blood_group}}': 'Blood Group',
+    '{{nationality}}': 'Nationality',
+    '{{religion}}': 'Religion',
+    '{{caste}}': 'Caste',
+    '{{mother_tongue}}': 'Mother Tongue',
+    
+    // === ADDRESS & CONTACT ===
+    '{{address}}': 'Address',
+    '{{street_address}}': 'Street Address',
+    '{{city}}': 'City',
+    '{{state}}': 'State',
+    '{{country}}': 'Country',
+    '{{postal_code}}': 'Postal/ZIP Code',
+    '{{permanent_address}}': 'Permanent Address',
+    '{{current_address}}': 'Current Address',
+    
+    // === PARENT/GUARDIAN INFORMATION ===
+    '{{father_name}}': 'Father\'s Name',
+    '{{mother_name}}': 'Mother\'s Name',
+    '{{parent_name}}': 'Parent Name',
+    '{{guardian_name}}': 'Guardian Name',
+    '{{parent_phone}}': 'Parent Phone',
+    '{{father_phone}}': 'Father\'s Phone',
+    '{{mother_phone}}': 'Mother\'s Phone',
+    '{{parent_email}}': 'Parent Email',
+    '{{father_occupation}}': 'Father\'s Occupation',
+    '{{mother_occupation}}': 'Mother\'s Occupation',
+    
+    // === EMERGENCY CONTACT ===
+    '{{emergency_contact}}': 'Emergency Contact',
+    '{{emergency_phone}}': 'Emergency Phone Number',
+    '{{emergency_name}}': 'Emergency Contact Name',
+    '{{emergency_relation}}': 'Emergency Contact Relation',
+    
+    // === MEDICAL INFORMATION ===
+    '{{medical_conditions}}': 'Medical Conditions',
+    '{{allergies}}': 'Allergies',
+    '{{medications}}': 'Medications',
+    '{{special_needs}}': 'Special Needs',
+    
+    // === TRANSPORT ===
+    '{{bus_route}}': 'Bus Route',
+    '{{transport_mode}}': 'Transport Mode',
+    '{{pickup_point}}': 'Pickup Point',
+    '{{drop_point}}': 'Drop Point',
+    
+    // === PREVIOUS SCHOOL ===
+    '{{previous_school}}': 'Previous School',
+    '{{previous_class}}': 'Previous Class',
+    '{{transfer_certificate}}': 'Transfer Certificate Number',
+    
+    // === CAMPUS INFORMATION ===
     '{{campus_name}}': 'Campus Name',
     '{{campus_address}}': 'Campus Address',
     '{{campus_phone}}': 'Campus Phone',
     '{{campus_code}}': 'Campus Code',
+    '{{campus_email}}': 'Campus Email',
     
-    // School fields
+    // === SCHOOL INFORMATION ===
     '{{school_name}}': 'School Name',
     '{{school_address}}': 'School Address',
     '{{school_phone}}': 'School Phone',
+    '{{school_email}}': 'School Email',
     '{{school_logo}}': 'School Logo',
+    '{{school_website}}': 'School Website',
+    '{{school_motto}}': 'School Motto',
+    
+    // === VALIDITY ===
+    '{{valid_from}}': 'Valid From',
+    '{{valid_until}}': 'Valid Until',
+    '{{issue_date}}': 'Issue Date',
+    '{{expiry_date}}': 'Expiry Date',
+    
+    // === DATES ===
+    '{{current_date}}': 'Current Date',
+    '{{current_year}}': 'Current Year',
   },
   teacher: {
     // Profile fields
@@ -366,19 +437,19 @@ export class IdCardTemplateService {
       .eq('id', student.section_id)
       .single();
 
-    // Fetch campus
+    // Fetch campus (campus is also a school record)
     const { data: campus } = await supabase
-      .from('campuses')
-      .select('*')
-      .eq('id', student.campus_id)
-      .single();
-
-    // Fetch school
-    const { data: school } = await supabase
       .from('schools')
       .select('*')
       .eq('id', student.school_id)
       .single();
+
+    // Fetch parent school if this is a campus
+    const { data: school } = campus?.parent_school_id ? await supabase
+      .from('schools')
+      .select('*')
+      .eq('id', campus.parent_school_id)
+      .single() : { data: campus };
 
     // Fetch parent info
     const { data: parentRelation } = await supabase
@@ -430,8 +501,8 @@ export class IdCardTemplateService {
       school_logo: school?.logo_url || '',
     };
 
-    // Get active template
-    const template = await this.getActiveTemplate(student.campus_id, 'student');
+    // Get active template (student.school_id is their campus)
+    const template = await this.getActiveTemplate(student.school_id, 'student');
     if (!template) {
       throw new Error('No active student ID card template found for this campus');
     }
@@ -466,19 +537,19 @@ export class IdCardTemplateService {
       .eq('id', teacher.profile_id)
       .single();
 
-    // Fetch campus
+    // Fetch campus (campus is also a school record)
     const { data: campus } = await supabase
-      .from('campuses')
-      .select('*')
-      .eq('id', teacher.campus_id)
-      .single();
-
-    // Fetch school
-    const { data: school } = await supabase
       .from('schools')
       .select('*')
       .eq('id', teacher.school_id)
       .single();
+
+    // Fetch parent school if this is a campus
+    const { data: school } = campus?.parent_school_id ? await supabase
+      .from('schools')
+      .select('*')
+      .eq('id', campus.parent_school_id)
+      .single() : { data: campus };
 
     // Fetch subjects
     const { data: assignments } = await supabase
@@ -518,8 +589,8 @@ export class IdCardTemplateService {
       school_logo: school?.logo_url || '',
     };
 
-    // Get active template
-    const template = await this.getActiveTemplate(teacher.campus_id, 'teacher');
+    // Get active template (teacher.school_id is their campus)
+    const template = await this.getActiveTemplate(teacher.school_id, 'teacher');
     if (!template) {
       throw new Error('No active teacher ID card template found for this campus');
     }
@@ -554,19 +625,19 @@ export class IdCardTemplateService {
       .eq('id', staff.profile_id)
       .single();
 
-    // Fetch campus
+    // Fetch campus (campus is also a school record)
     const { data: campus } = await supabase
-      .from('campuses')
-      .select('*')
-      .eq('id', staff.campus_id)
-      .single();
-
-    // Fetch school
-    const { data: school } = await supabase
       .from('schools')
       .select('*')
       .eq('id', staff.school_id)
       .single();
+
+    // Fetch parent school if this is a campus
+    const { data: school } = campus?.parent_school_id ? await supabase
+      .from('schools')
+      .select('*')
+      .eq('id', campus.parent_school_id)
+      .single() : { data: campus };
 
     // Prepare data object
     const userData = {
@@ -595,8 +666,8 @@ export class IdCardTemplateService {
       school_logo: school?.logo_url || '',
     };
 
-    // Get active template
-    const template = await this.getActiveTemplate(staff.campus_id, 'staff');
+    // Get active template (staff.school_id is their campus)
+    const template = await this.getActiveTemplate(staff.school_id, 'staff');
     if (!template) {
       throw new Error('No active staff ID card template found for this campus');
     }
@@ -632,9 +703,52 @@ export class IdCardTemplateService {
   }
 
   /**
-   * Get available tokens for a user type
+   * Get available tokens for a user type (static tokens)
    */
   getAvailableTokens(userType: string) {
     return SUBSTITUTION_TOKENS[userType as keyof typeof SUBSTITUTION_TOKENS] || {};
+  }
+
+  /**
+   * Get available tokens for a user type including custom fields from database
+   */
+  async getAvailableTokensWithCustomFields(userType: string, schoolId: string) {
+    // Get static tokens
+    const staticTokens = SUBSTITUTION_TOKENS[userType as keyof typeof SUBSTITUTION_TOKENS] || {};
+    
+    // Map entity type
+    const entityType = userType === 'student' ? 'student' : userType === 'teacher' ? 'teacher' : 'staff';
+    
+    // Fetch custom field definitions for this school
+    const { data: customFields, error } = await supabase
+      .from('custom_field_definitions')
+      .select('field_name, label, category_id, field_type')
+      .eq('school_id', schoolId)
+      .eq('entity_type', entityType)
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true });
+    
+    if (error) {
+      console.error('Error fetching custom fields:', error);
+      return staticTokens;
+    }
+    
+    // Convert custom fields to tokens
+    const customTokens: Record<string, string> = {};
+    if (customFields && customFields.length > 0) {
+      customFields.forEach(field => {
+        // Create a token key from field_name (e.g., "parent_occupation" -> "{{custom_parent_occupation}}")
+        const tokenKey = `{{custom_${field.field_name}}}`;
+        customTokens[tokenKey] = `Custom: ${field.label}`;
+      });
+    }
+    
+    // Merge static tokens with custom tokens
+    return {
+      ...staticTokens,
+      // Add a separator
+      '{{---}}': '--- Custom Fields ---',
+      ...customTokens
+    };
   }
 }

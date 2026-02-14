@@ -45,6 +45,13 @@ router.get('/:id/adjustments', (req, res) => feesController.getFeeAdjustments(re
 // Payments
 router.post('/payments', (req, res) => feesController.recordPayment(req, res))
 
+// Student Payments Module
+router.get('/payments/students', (req, res) => feesController.getStudentsForPayments(req, res))
+router.get('/payments/student/:studentId', (req, res) => feesController.getStudentPayments(req, res))
+router.post('/payments/record', (req, res) => feesController.recordDirectPayment(req, res))
+router.put('/payments/:paymentId', (req, res) => feesController.updatePayment(req, res))
+router.delete('/payments/:paymentId', (req, res) => feesController.deletePayment(req, res))
+
 // Fee Generation
 router.post('/generate', (req, res) => feesController.generateFee(req, res))
 router.post('/generate-for-student', (req, res) => feesController.generateFeeForNewStudent(req, res))
@@ -63,6 +70,13 @@ router.post('/cron/apply-late-fees', (req, res) => feesController.applyLateFeesG
 // Monthly Fee Generation
 router.post('/generate-monthly', (req, res) => feesController.generateMonthlyFees(req, res))
 router.post('/cron/generate-monthly', (req, res) => feesController.generateMonthlyFeesGlobal(req, res))
+
+// Student Fee Overrides (Pre-Generation Custom Fees)
+router.get('/overrides', (req, res) => feesController.getAllSchoolFeeOverrides(req, res))
+router.post('/overrides', (req, res) => feesController.createStudentFeeOverride(req, res))
+router.get('/overrides/student/:studentId', (req, res) => feesController.getStudentFeeOverrides(req, res))
+router.put('/overrides/:id', (req, res) => feesController.updateStudentFeeOverride(req, res))
+router.delete('/overrides/:id', (req, res) => feesController.deleteStudentFeeOverride(req, res))
 
 // Student Self-Service
 router.get('/my', (req, res) => feesController.getMyFees(req, res))

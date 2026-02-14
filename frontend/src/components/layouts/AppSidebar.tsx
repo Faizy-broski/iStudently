@@ -277,32 +277,38 @@ function SidebarItem({
   item,
   isActive,
   isCollapsed,
+  expandedItemKey,
+  setExpandedItemKey,
 }: {
   item: SidebarMenuItem
   isActive: boolean
   isCollapsed: boolean
+  expandedItemKey: string | null
+  setExpandedItemKey: (key: string | null) => void
 }) {
   const pathname = usePathname()
-  const [isExpanded, setIsExpanded] = React.useState(() => {
-    // Auto-expand if current path matches any subitem
-    return item.subItems?.some(subItem => 
-      !subItem.isLabel && pathname.startsWith(subItem.href)
-    ) ?? false
-  })
-
+  
   const Icon = item.icon
   const hasSubItems = item.subItems && item.subItems.length > 0
+  
+  // Check if this item is currently expanded
+  const isExpanded = expandedItemKey === item.href
 
   // Check if any subitem is active
   const hasActiveSubItem = item.subItems?.some(subItem =>
     !subItem.isLabel && (pathname === subItem.href || pathname.startsWith(subItem.href + '/'))
   )
 
+  const handleToggle = () => {
+    // If clicking the same item, close it; otherwise open the new one
+    setExpandedItemKey(isExpanded ? null : item.href)
+  }
+
   if (hasSubItems && !isCollapsed) {
     return (
       <div>
         <button
-          onClick={() => setIsExpanded(!isExpanded)}
+          onClick={handleToggle}
           className={cn(
             'sidebar-link group relative flex items-center gap-3 px-4 py-3 transition-all duration-200 w-full text-left',
             isActive || hasActiveSubItem ? 'active' : 'text-white/90 hover:bg-white/10 hover:text-white rounded-l-full'
@@ -412,6 +418,15 @@ function SidebarItem({
 function DesktopSidebar({ menuItems, className }: AppSidebarProps) {
   const pathname = usePathname()
   const { isCollapsed, setIsCollapsed } = useSidebarContext()
+  const [expandedItemKey, setExpandedItemKey] = React.useState<string | null>(() => {
+    // Auto-expand the item that contains the current path
+    const activeItem = menuItems.find(item => 
+      item.subItems?.some(subItem => 
+        !subItem.isLabel && pathname.startsWith(subItem.href)
+      )
+    )
+    return activeItem?.href || null
+  })
 
   return (
     <aside
@@ -487,6 +502,8 @@ function DesktopSidebar({ menuItems, className }: AppSidebarProps) {
               item={item}
               isActive={pathname === item.href || pathname.startsWith(item.href + '/')}
               isCollapsed={isCollapsed}
+              expandedItemKey={expandedItemKey}
+              setExpandedItemKey={setExpandedItemKey}
             />
           ))}
         </nav>
@@ -511,6 +528,15 @@ function DesktopSidebar({ menuItems, className }: AppSidebarProps) {
 function MobileSidebar({ menuItems }: AppSidebarProps) {
   const pathname = usePathname()
   const { isMobileOpen, setIsMobileOpen } = useSidebarContext()
+  const [expandedItemKey, setExpandedItemKey] = React.useState<string | null>(() => {
+    // Auto-expand the item that contains the current path
+    const activeItem = menuItems.find(item => 
+      item.subItems?.some(subItem => 
+        !subItem.isLabel && pathname.startsWith(subItem.href)
+      )
+    )
+    return activeItem?.href || null
+  })
 
   return (
     <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
@@ -572,6 +598,8 @@ function MobileSidebar({ menuItems }: AppSidebarProps) {
                 item={item}
                 isActive={pathname === item.href || pathname.startsWith(item.href + '/')}
                 isCollapsed={false}
+                expandedItemKey={expandedItemKey}
+                setExpandedItemKey={setExpandedItemKey}
               />
             ))}
           </nav>

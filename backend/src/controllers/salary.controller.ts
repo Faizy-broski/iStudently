@@ -258,6 +258,7 @@ export class SalaryController {
         try {
             const schoolId = req.query.school_id as string
             const campus_id = req.query.campus_id as string
+            const staff_id = req.query.staff_id as string
             const month = req.query.month ? parseInt(req.query.month as string) : undefined
             const year = req.query.year ? parseInt(req.query.year as string) : undefined
             const status = req.query.status as string
@@ -268,7 +269,7 @@ export class SalaryController {
                 return res.status(400).json({ success: false, error: 'school_id is required' })
             }
 
-            const result = await salaryService.getSalaryRecords(schoolId, { month, year, status, page, limit, campus_id })
+            const result = await salaryService.getSalaryRecords(schoolId, { month, year, status, page, limit, campus_id, staff_id })
 
             return res.json({
                 success: true,

@@ -22,6 +22,13 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
   Save,
   Eye,
   Plus,
@@ -32,6 +39,7 @@ import {
   QrCode,
   Palette,
   Layout,
+  Search,
 } from 'lucide-react';
 import {
   createTemplate,
@@ -45,6 +53,13 @@ import {
 import { toast } from 'sonner';
 import Image from 'next/image';
 import QRCode from 'react-qr-code';
+
+interface AvailableToken {
+  token: string;
+  label: string;
+  isCustom?: boolean;
+  isSeparator?: boolean;
+}
 
 interface DraggableField {
   id: string;
@@ -98,10 +113,14 @@ export default function TemplateBuilderPage() {
   // Fields
   const [fields, setFields] = useState<DraggableField[]>([]);
   const [selectedField, setSelectedField] = useState<string | null>(null);
-  const [availableTokens, setAvailableTokens] = useState<Record<string, string>>({});
+  const [availableTokens, setAvailableTokens] = useState<AvailableToken[]>([]);
   const [previewData, setPreviewData] = useState<any>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  
+  // Field selector dialog
+  const [showFieldSelector, setShowFieldSelector] = useState(false);
+  const [fieldSearchQuery, setFieldSearchQuery] = useState('');
 
   const canvasRef = useRef<HTMLDivElement>(null);
 
@@ -118,13 +137,10 @@ export default function TemplateBuilderPage() {
 
   const loadTokens = async () => {
     try {
-      const response = await getAvailableTokens(userType) as { tokens: TemplateField[] };
-      // Convert array to Record<string, string>
-      const tokensRecord = response.tokens.reduce((acc, field) => {
-        acc[field.token] = field.label;
-        return acc;
-      }, {} as Record<string, string>);
-      setAvailableTokens(tokensRecord);
+      const response = await getAvailableTokens(userType) as { tokens: AvailableToken[] };
+      // Filter out separators and keep the array format for searchable dropdown
+      const tokens = response.tokens.filter(t => !t.isSeparator);
+      setAvailableTokens(tokens);
     } catch (error: any) {
       toast.error('Failed to load available fields');
     }
@@ -181,19 +197,34 @@ export default function TemplateBuilderPage() {
     setFields(defaults);
   };
 
-  const addField = () => {
+  const openFieldSelector = () => {
+    setFieldSearchQuery('');
+    setShowFieldSelector(true);
+  };
+
+  const addFieldFromToken = (token: AvailableToken) => {
+    // Determine if it's an image field
+    const isImage = token.token.includes('photo') || token.token.includes('logo') || token.token.includes('image');
+    
     const newField: DraggableField = {
       id: `field_${Date.now()}`,
-      label: 'New Field',
-      token: '{{first_name}}',
-      type: 'text',
-      position: { x: 20, y: 220 },
-      size: { width: 260, height: 20 },
-      style: { fontSize: 14, fontWeight: 'normal', color: '#4b5563', align: 'left' },
+      label: token.label.replace('Custom: ', ''),
+      token: token.token,
+      type: isImage ? 'image' : 'text',
+      position: { x: 20, y: 220 + (fields.length * 30) },
+      size: isImage ? { width: 100, height: 100 } : { width: 260, height: 20 },
+      style: isImage ? undefined : { fontSize: 14, fontWeight: 'normal', color: '#4b5563', align: 'left' },
     };
     setFields([...fields, newField]);
     setSelectedField(newField.id);
+    setShowFieldSelector(false);
   };
+
+  // Filtered tokens based on search
+  const filteredTokens = availableTokens.filter(token =>
+    token.label.toLowerCase().includes(fieldSearchQuery.toLowerCase()) ||
+    token.token.toLowerCase().includes(fieldSearchQuery.toLowerCase())
+  );
 
   const updateField = (id: string, updates: Partial<DraggableField>) => {
     setFields(fields.map(f => f.id === id ? { ...f, ...updates } : f));
@@ -370,7 +401,7 @@ export default function TemplateBuilderPage() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">Fields</CardTitle>
-                    <Button size="sm" onClick={addField} className="gap-2">
+                    <Button size="sm" onClick={openFieldSelector} className="gap-2">
                       <Plus className="h-4 w-4" />
                       Add Field
                     </Button>
@@ -428,15 +459,21 @@ export default function TemplateBuilderPage() {
                           <Label>Token/Field</Label>
                           <Select
                             value={selectedFieldData.token}
-                            onValueChange={(v) => updateField(selectedField!, { token: v })}
+                            onValueChange={(v) => {
+                              const token = availableTokens.find(t => t.token === v);
+                              updateField(selectedField!, { 
+                                token: v,
+                                label: token?.label.replace('Custom: ', '') || selectedFieldData.label
+                              });
+                            }}
                           >
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent>
-                              {Object.entries(availableTokens).map(([token, label]) => (
-                                <SelectItem key={token} value={token}>
-                                  {label}
+                            <SelectContent className="max-h-[300px]">
+                              {availableTokens.map((token) => (
+                                <SelectItem key={token.token} value={token.token}>
+                                  {token.label}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -901,6 +938,62 @@ export default function TemplateBuilderPage() {
           </Card>
         </div>
       </div>
+
+      {/* Field Selector Dialog */}
+      <Dialog open={showFieldSelector} onOpenChange={setShowFieldSelector}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Select a Field to Add</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search fields..."
+                value={fieldSearchQuery}
+                onChange={(e) => setFieldSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            
+            {/* Fields List */}
+            <ScrollArea className="h-[400px] pr-4">
+              <div className="space-y-1">
+                {filteredTokens.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-4">No fields found</p>
+                ) : (
+                  filteredTokens.map((token) => (
+                    <button
+                      key={token.token}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-accent text-left transition-colors"
+                      onClick={() => addFieldFromToken(token)}
+                    >
+                      {token.token.includes('photo') || token.token.includes('logo') || token.token.includes('image') ? (
+                        <ImageIcon className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                      ) : (
+                        <Type className="h-4 w-4 text-green-500 flex-shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{token.label}</p>
+                        <p className="text-xs text-muted-foreground truncate">{token.token}</p>
+                      </div>
+                      {token.isCustom && (
+                        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">Custom</span>
+                      )}
+                    </button>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+            
+            <p className="text-xs text-muted-foreground text-center">
+              {availableTokens.length} fields available
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

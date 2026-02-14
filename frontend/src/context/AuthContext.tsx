@@ -182,6 +182,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  // Track when profile fetch failed due to network/server issues (not because profile doesn't exist)
+  // When true, RoleGuard should NOT redirect - we're retrying
+  const [profileFetchPending, setProfileFetchPending] = useState(false)
   // Store raw access token to use for API calls
   const [accessToken, setAccessToken] = useState<string | null>(null)
 
@@ -478,6 +481,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (isMounted) {
             setProfile(profileCache.profile)
+            setProfileFetchPending(false) // Profile loaded from cache, clear pending flag
             setLoading(false) // Profile from cache, loading complete
             clearLoadingTimeout()
           }
@@ -599,6 +603,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             if (isMounted) {
               setProfile(profile)
+              setProfileFetchPending(false) // Clear pending state on success
               // Cache the profile with timestamp
               profileCache = { profile, userId: user.id, timestamp: now }
 
@@ -822,11 +827,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             const result = await Promise.race([profileFetchPromise, timeoutPromise])
 
-            // Handle timeout - set loading false and let components handle missing profile
+            // Handle timeout - server likely unavailable, mark pending and retry
             if ('timedOut' in result && result.timedOut) {
-              console.warn('⚠️ Profile fetch timed out - setting loading=false to unblock app')
+              console.warn('⚠️ Profile fetch timed out - server may be unavailable, will retry...')
+              // CRITICAL: Signal that profile fetch is pending (server issue, not missing profile)
+              // RoleGuard should NOT redirect when this is true
+              setProfileFetchPending(true)
               setLoading(false)
-              // The profile will be fetched when components retry or on next auth event
+              
+              // Schedule a retry after 3 seconds
+              setTimeout(async () => {
+                if (!isMounted) return
+                console.log('🔄 Retrying profile fetch after timeout...')
+                try {
+                  const { data: retryProfile, error: retryError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', session.user.id)
+                    .single()
+                  
+                  if (!retryError && retryProfile && isMounted) {
+                    console.log('✅ Profile fetch retry succeeded!')
+                    setProfile(retryProfile)
+                    profileCache = { profile: retryProfile, userId: session.user.id, timestamp: Date.now() }
+                    setProfileFetchPending(false)
+                  } else if (isMounted) {
+                    console.warn('⚠️ Profile fetch retry failed, will try again on next auth event')
+                    // Keep profileFetchPending=true so RoleGuard doesn't redirect
+                    // The next auth state change or visibility change will trigger another fetch
+                  }
+                } catch (err) {
+                  console.warn('⚠️ Profile fetch retry error:', err)
+                }
+              }, 3000)
               return
             }
 
@@ -927,6 +960,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             setProfile(profile)
+            setProfileFetchPending(false) // Clear pending state on success
             // Update cache
             profileCache = { profile, userId: session.user.id, timestamp: now }
           }
@@ -1054,6 +1088,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       profile,
       loading,
+      profileFetchPending,
       access_token: accessToken,
       signIn,
       signOut,

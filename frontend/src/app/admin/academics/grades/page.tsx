@@ -58,7 +58,6 @@ export default function GradeLevelsPage() {
   const [formData, setFormData] = useState({
     name: '',
     order_index: 1,
-    base_fee: 0,
   })
 
   useEffect(() => {
@@ -85,14 +84,12 @@ export default function GradeLevelsPage() {
       setFormData({
         name: grade.name,
         order_index: grade.order_index,
-        base_fee: grade.base_fee,
       })
     } else {
       setEditingGrade(null)
       setFormData({
         name: '',
         order_index: grades.length + 1,
-        base_fee: 0,
       })
     }
     setDialogOpen(true)
@@ -104,7 +101,6 @@ export default function GradeLevelsPage() {
     setFormData({
       name: '',
       order_index: 1,
-      base_fee: 0,
     })
   }
 
@@ -113,11 +109,6 @@ export default function GradeLevelsPage() {
 
     if (!formData.name.trim()) {
       toast.error('Grade name is required')
-      return
-    }
-
-    if (formData.base_fee < 0) {
-      toast.error('Base fee cannot be negative')
       return
     }
 
@@ -200,7 +191,6 @@ export default function GradeLevelsPage() {
                 <TableRow>
                   <TableHead>Order</TableHead>
                   <TableHead>Name</TableHead>
-                  <TableHead>Base Fee</TableHead>
                   <TableHead>
                     <Users className="inline mr-1 h-4 w-4" />
                     Sections
@@ -223,7 +213,6 @@ export default function GradeLevelsPage() {
                         {grade.name}
                       </div>
                     </TableCell>
-                    <TableCell> {grade.base_fee.toLocaleString()}</TableCell>
                     <TableCell>{grade.sections_count || 0}</TableCell>
                     <TableCell>{grade.subjects_count || 0}</TableCell>
                     <TableCell>
@@ -295,24 +284,6 @@ export default function GradeLevelsPage() {
                 />
                 <p className="text-sm text-muted-foreground">
                   Used for sorting: Grade 1=1, Grade 2=2, etc.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="base_fee">Base Fee  *</Label>
-                <Input
-                  id="base_fee"
-                  type="number"      
-                  min="0"
-                  step="0.01"          
-                  placeholder="5000"
-                  value={formData.base_fee || ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, base_fee: parseFloat(e.target.value) || 0 })
-                  }
-                  required
-                />
-                <p className="text-sm text-muted-foreground">
-                  Default monthly tuition fee for this grade
                 </p>
               </div>
             </div>

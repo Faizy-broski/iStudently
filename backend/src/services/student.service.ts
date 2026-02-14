@@ -13,6 +13,7 @@ export class StudentService {
     search?: string,
     gradeLevel?: string
   ) {
+    console.log('StudentService.getStudents called with:', { schoolId, page, limit, search, gradeLevel });
     const offset = (page - 1) * limit
 
     // Use optimized database search function for library operations when searching
@@ -34,7 +35,23 @@ export class StudentService {
           // Apply grade filter client-side if needed
           let filtered = searchResults || [];
           if (gradeLevel) {
-            filtered = filtered.filter((s: any) => s.grade_level === gradeLevel);
+            // Check if gradeLevel is a UUID (for grade_level_id) or text (for grade_level)
+            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(gradeLevel);
+            
+            // First get the grade_level_id for matching students if filtering by UUID
+            if (isUUID) {
+              const studentIds = filtered.map((s: any) => s.student_id);
+              const { data: gradeData } = await supabase
+                .from('students')
+                .select('id, grade_level_id')
+                .in('id', studentIds)
+                .eq('grade_level_id', gradeLevel);
+              
+              const matchingIds = new Set((gradeData || []).map((s: any) => s.id));
+              filtered = filtered.filter((s: any) => matchingIds.has(s.student_id));
+            } else {
+              filtered = filtered.filter((s: any) => s.grade_level === gradeLevel);
+            }
           }
 
           // Apply pagination
@@ -73,11 +90,23 @@ export class StudentService {
             parentLinksMap.get(link.student_id)!.push(link);
           });
 
-          // Enrich student data with parent links
+          // Fetch grade_level_id for these students (needed for fee generation)
+          const { data: gradeData } = await supabase
+            .from('students')
+            .select('id, grade_level_id')
+            .in('id', studentIds);
+
+          const gradeMap = new Map<string, string>();
+          (gradeData || []).forEach((s: any) => {
+            if (s.grade_level_id) gradeMap.set(s.id, s.grade_level_id);
+          });
+
+          // Enrich student data with parent links and grade_level_id
           const enrichedData = paginatedData.map((student: any) => ({
             id: student.student_id,
             student_number: student.student_number,
             grade_level: student.grade_level,
+            grade_level_id: gradeMap.get(student.student_id) || null,
             profile_id: student.profile_id,
             school_id: schoolId,
             profile: {
@@ -114,10 +143,13 @@ export class StudentService {
         profile:profiles(
           id,
           first_name,
+          father_name,
+          grandfather_name,
           last_name,
           email,
           phone,
           avatar_url,
+          profile_photo_url,
           is_active
         ),
         parent_links:parent_student_links(
@@ -137,9 +169,16 @@ export class StudentService {
       .eq('school_id', schoolId)
       .order('created_at', { ascending: false })
 
-    // Apply grade filter
+    // Apply grade filter - use grade_level_id (UUID) if it looks like a UUID, otherwise use grade_level (text)
     if (gradeLevel) {
-      query = query.eq('grade_level', gradeLevel)
+      // Check if gradeLevel is a UUID (contains hyphens and is the right length)
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(gradeLevel);
+      console.log(`Filtering by ${isUUID ? 'grade_level_id (UUID)' : 'grade_level (text)'}: ${gradeLevel}`);
+      if (isUUID) {
+        query = query.eq('grade_level_id', gradeLevel)
+      } else {
+        query = query.eq('grade_level', gradeLevel)
+      }
     }
 
     // Apply pagination
@@ -173,10 +212,13 @@ export class StudentService {
         profile:profiles(
           id,
           first_name,
+          father_name,
+          grandfather_name,
           last_name,
           email,
           phone,
           avatar_url,
+          profile_photo_url,
           is_active,
           role
         ),
@@ -329,6 +371,7 @@ export class StudentService {
         grade_level: studentData.grade_level, // Legacy field
         grade_level_id: studentData.grade_level_id, // New: UUID reference
         section_id: studentData.section_id, // New: UUID reference (triggers auto-update)
+
         medical_info: studentData.medical_info || {},
         custom_fields: studentData.custom_fields || {}
       })

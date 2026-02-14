@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 // import { useSchoolDashboard } from '@/hooks/useSchoolDashboard'
-import { useFeeSettings, useFeeCategories, useSiblingDiscountTiers } from '@/hooks/useFees'
-import { updateFeeSettings, createFeeCategory, updateFeeCategory, updateSiblingDiscountTiers } from '@/lib/api/fees'
+import { useFeeSettings, useSiblingDiscountTiers } from '@/hooks/useFees'
+import { updateFeeSettings, updateSiblingDiscountTiers } from '@/lib/api/fees'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,7 +24,6 @@ export default function FeeSettingsPage() {
     const schoolId = selectedCampus?.id || profile?.school_id || null
 
     const { data: settings, mutate: mutateSettings } = useFeeSettings(schoolId)
-    const { data: categories, mutate: mutateCategories } = useFeeCategories(schoolId)
     const { data: siblingTiers, mutate: mutateTiers } = useSiblingDiscountTiers(schoolId)
 
     // Settings form state
@@ -37,11 +36,6 @@ export default function FeeSettingsPage() {
     const [adminCanRestoreDiscounts, setAdminCanRestoreDiscounts] = useState(true)
     const [allowPartialPayments, setAllowPartialPayments] = useState(true)
     const [minPartialPaymentPercent, setMinPartialPaymentPercent] = useState(25)
-
-    // New category form
-    const [newCategoryName, setNewCategoryName] = useState('')
-    const [newCategoryCode, setNewCategoryCode] = useState('')
-    const [newCategoryDiscountable, setNewCategoryDiscountable] = useState(true)
 
     // Sibling tiers
     const [tiers, setTiers] = useState<Array<{ sibling_count: number; discount_type: 'percentage' | 'fixed'; discount_value: number }>>([])
@@ -95,24 +89,6 @@ export default function FeeSettingsPage() {
         setSaving(false)
     }
 
-    const handleAddCategory = async () => {
-        if (!schoolId || !newCategoryName || !newCategoryCode) return
-        try {
-            await createFeeCategory({
-                school_id: schoolId,
-                name: newCategoryName,
-                code: newCategoryCode.toUpperCase(),
-                is_discountable: newCategoryDiscountable
-            })
-            mutateCategories()
-            setNewCategoryName('')
-            setNewCategoryCode('')
-            toast.success('Category added')
-        } catch (error: any) {
-            toast.error(error.message)
-        }
-    }
-
     const handleSaveTiers = async () => {
         if (!schoolId) return
         try {
@@ -145,7 +121,7 @@ export default function FeeSettingsPage() {
                 </Button>
                 <div className="flex-1">
                     <h1 className="text-3xl font-bold tracking-tight">Fee Settings</h1>
-                    <p className="text-muted-foreground">Configure fee rules, discounts, and categories</p>
+                    <p className="text-muted-foreground">Configure fee rules and discounts</p>
                 </div>
                 <Button variant="outline" asChild>
                     <Link href="/admin/fees/structures">
@@ -157,7 +133,6 @@ export default function FeeSettingsPage() {
             <Tabs defaultValue="general" className="space-y-4">
                 <TabsList>
                     <TabsTrigger value="general">General</TabsTrigger>
-                    <TabsTrigger value="categories">Fee Categories</TabsTrigger>
                     <TabsTrigger value="services">Services</TabsTrigger>
                     <TabsTrigger value="sibling">Sibling Discounts</TabsTrigger>
                 </TabsList>
@@ -242,46 +217,6 @@ export default function FeeSettingsPage() {
                         <IconDeviceFloppy className="mr-2 h-4 w-4" />
                         {saving ? 'Saving...' : 'Save Settings'}
                     </Button>
-                </TabsContent>
-
-                <TabsContent value="categories">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Fee Categories</CardTitle>
-                            <CardDescription>Define types of fees (tuition, bus, books, etc.)</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex gap-4">
-                                <Input placeholder="Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} />
-                                <Input placeholder="Code" value={newCategoryCode} onChange={(e) => setNewCategoryCode(e.target.value)} className="w-32" />
-                                <div className="flex items-center gap-2">
-                                    <Switch checked={newCategoryDiscountable} onCheckedChange={setNewCategoryDiscountable} />
-                                    <Label className="text-sm">Discountable</Label>
-                                </div>
-                                <Button onClick={handleAddCategory}><IconPlus className="mr-2 h-4 w-4" />Add</Button>
-                            </div>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Name</TableHead>
-                                        <TableHead>Code</TableHead>
-                                        <TableHead>Discountable</TableHead>
-                                        <TableHead>Status</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {categories?.map((cat) => (
-                                        <TableRow key={cat.id}>
-                                            <TableCell>{cat.name}</TableCell>
-                                            <TableCell>{cat.code}</TableCell>
-                                            <TableCell>{cat.is_discountable ? 'Yes' : 'No'}</TableCell>
-                                            <TableCell>{cat.is_active ? 'Active' : 'Inactive'}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
                 </TabsContent>
 
                 <TabsContent value="services">

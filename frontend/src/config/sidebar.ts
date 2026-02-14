@@ -23,6 +23,11 @@ import {
   Award,
   Upload,
   Megaphone,
+  Calculator,
+  TrendingUp,
+  TrendingDown,
+  Layers,
+  Sliders,
   type LucideIcon,
 } from 'lucide-react'
 import { UserRole } from '@/types'
@@ -78,6 +83,7 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: 'Student Info', href: '/admin/students/student-info', icon: GraduationCap },
       { title: 'Add Student', href: '/admin/students/add-student', icon: Users },
       { title: 'Custom Fields', href: '/admin/students/custom-fields', icon: Settings },
+      { title: 'Student ID Card', href: '/admin/students/id-card', icon: CreditCard },
       { title: 'Reports', href: '#', icon: BarChart3, isLabel: true },
       { title: 'Print Student Info', href: '/admin/students/print-info', icon: FileText },
       { title: 'Print Letters', href: '/admin/students/print-letters', icon: FileText },
@@ -121,12 +127,19 @@ const adminMenuItems: SidebarMenuItem[] = [
   { title: 'Exams', href: '/admin/exams', icon: FileText },
   { title: 'Assignments', href: '/admin/assignments', icon: ClipboardList },
   {
-    title: 'Fees',
+    title: 'Student Billing',
     href: '/admin/fees',
     icon: CreditCard,
     subItems: [
       { title: 'Dashboard', href: '/admin/fees', icon: LayoutDashboard },
+      { title: 'Payments', href: '/admin/fees/payments', icon: Receipt },
       { title: 'Generate Fees', href: '/admin/fees/generate', icon: FileText },
+      { title: 'Fee Overrides', href: '/admin/fees/overrides', icon: Sliders },
+      { title: 'Student Balances', href: '/admin/fees/student-balances', icon: Users },
+      { title: 'Fee Structures', href: '/admin/fees/structures', icon: Layers },
+      { title: 'Fee Categories', href: '/admin/fees/fee-categories', icon: FolderOpen },
+      { title: 'Print Invoices', href: '/admin/fees/print-invoices', icon: FileText },
+      { title: 'Print Receipts', href: '/admin/fees/print-receipts', icon: Receipt },
       { title: 'Settings', href: '/admin/fees/settings', icon: Settings },
     ]
   },
@@ -139,6 +152,23 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: 'Generate Salaries', href: '/admin/salary/generate', icon: FileText },
       { title: 'Advances', href: '/admin/salary/advances', icon: CreditCard },
       { title: 'Settings', href: '/admin/salary/settings', icon: Settings },
+    ]
+  },
+  {
+    title: 'Accounting',
+    href: '/admin/accounting/incomes',
+    icon: Calculator,
+    subItems: [
+      { title: 'Incomes', href: '/admin/accounting/incomes', icon: TrendingUp },
+      { title: 'Expenses', href: '/admin/accounting/expenses', icon: TrendingDown },
+      { title: 'Staff Payments', href: '/admin/accounting/staff-payments', icon: Receipt },
+      { title: 'Teacher Hours', href: '/admin/accounting/teacher-hours', icon: Clock },
+      { title: 'Payees', href: '/admin/accounting/payees', icon: Users },
+      { title: 'Reports', href: '#', icon: BarChart3, isLabel: true },
+      { title: 'Daily Transactions', href: '/admin/accounting/daily-transactions', icon: FileText },
+      { title: 'Staff Balances', href: '/admin/accounting/staff-balances', icon: Users },
+      { title: 'Setup', href: '#', icon: Settings, isLabel: true },
+      { title: 'Categories', href: '/admin/accounting/categories', icon: Layers },
     ]
   },
   {

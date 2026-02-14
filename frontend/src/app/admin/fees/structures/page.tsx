@@ -195,7 +195,7 @@ export default function FeeStructuresPage() {
     }
 
     const formatCurrency = (amount: number) => {
-        return `Rs. ${amount?.toLocaleString() || 0}`
+        return `${amount?.toLocaleString() || 0}`
     }
 
     return (
@@ -298,7 +298,7 @@ export default function FeeStructuresPage() {
                             </div>
 
                             <div>
-                                <Label>Amount (Rs.) *</Label>
+                                <Label>Amount *</Label>
                                 <Input
                                     type="number"
                                     min="0"

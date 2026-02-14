@@ -21,6 +21,7 @@ export class StudentController {
           success: false,
           error: 'No school associated with your account'
         })
+        return // FIX: Must return after sending error response
       }
 
       const page = parseInt(req.query.page as string) || 1
@@ -68,6 +69,7 @@ export class StudentController {
           success: false,
           error: 'No school associated with your account'
         })
+        return
       }
 
       const page = parseInt(req.query.page as string) || 1
@@ -113,6 +115,7 @@ export class StudentController {
           success: false,
           error: 'No school associated with your account'
         })
+        return
       }
 
       const student = await studentService.getStudentById(studentId, schoolId)
@@ -152,6 +155,7 @@ export class StudentController {
           success: false,
           error: 'No school associated with your account'
         })
+        return
       }
 
       const student = await studentService.getStudentByNumber(studentNumber, schoolId)
@@ -161,6 +165,7 @@ export class StudentController {
           success: false,
           error: 'Student not found'
         })
+        return
       }
 
       res.json({
@@ -190,6 +195,7 @@ export class StudentController {
           success: false,
           error: 'No school associated with your account'
         })
+        return
       }
 
       // Get the effective school ID (campus) to use
@@ -301,6 +307,7 @@ export class StudentController {
           success: false,
           error: 'No school associated with your account'
         })
+        return
       }
 
       await studentService.deleteStudent(studentId, schoolId)
@@ -341,6 +348,7 @@ export class StudentController {
           success: false,
           error: 'No school associated with your account'
         })
+        return
       }
 
       const students = await studentService.getStudentsByGrade(schoolId, gradeLevel)
@@ -372,6 +380,7 @@ export class StudentController {
           success: false,
           error: 'No school associated with your account'
         })
+        return
       }
 
       const stats = await studentService.getStudentStats(schoolId)

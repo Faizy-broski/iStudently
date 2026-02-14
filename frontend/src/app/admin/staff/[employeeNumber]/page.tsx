@@ -51,11 +51,7 @@ const getInitials = (firstName?: string | null, lastName?: string | null) => {
 // Helper to format currency
 const formatCurrency = (amount: number | null | undefined) => {
   if (!amount) return "Not set";
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'PKR',
-    minimumFractionDigits: 0,
-  }).format(amount);
+  return amount.toLocaleString();
 };
 
 // Info Row Component

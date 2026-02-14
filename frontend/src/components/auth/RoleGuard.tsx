@@ -12,11 +12,18 @@ interface RoleGuardProps {
 }
 
 export function RoleGuard({ children, allowedRoles, redirectTo }: RoleGuardProps) {
-  const { profile, loading } = useAuth()
+  const { profile, loading, profileFetchPending } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
     if (!loading) {
+      // CRITICAL: If profile fetch is pending (server was unavailable, retrying)
+      // Do NOT redirect - wait for the retry to complete
+      if (profileFetchPending) {
+        console.log('⏳ Profile fetch pending (server may have been unavailable), waiting for retry...')
+        return
+      }
+      
       // If no profile after loading, redirect to login (clean redirect, no error)
       if (!profile) {
         console.log('🔒 No profile found, redirecting to login')
@@ -44,10 +51,10 @@ export function RoleGuard({ children, allowedRoles, redirectTo }: RoleGuardProps
         }
       }
     }
-  }, [profile, loading, allowedRoles, redirectTo, router])
+  }, [profile, loading, profileFetchPending, allowedRoles, redirectTo, router])
 
-  // Show minimal loading state while checking authentication
-  if (loading) {
+  // Show minimal loading state while checking authentication or profile fetch pending
+  if (loading || profileFetchPending) {
     return (
       <>
         {children}

@@ -603,7 +603,7 @@ export class FeesController {
     async adjustFee(req: AuthRequest, res: Response) {
         try {
             const { id } = req.params
-            const schoolId = req.profile?.school_id
+            const schoolId = (req.query.school_id as string) || req.profile?.school_id
             const adminId = req.user?.id
 
             if (!schoolId || !adminId) {
@@ -637,7 +637,7 @@ export class FeesController {
     async getFeeAdjustments(req: AuthRequest, res: Response) {
         try {
             const { id } = req.params
-            const schoolId = req.profile?.school_id
+            const schoolId = (req.query.school_id as string) || req.profile?.school_id
 
             if (!schoolId) {
                 return res.status(403).json({ success: false, error: 'Not authenticated' })
@@ -713,7 +713,7 @@ export class FeesController {
                 return res.status(403).json({ success: false, error: 'Not authenticated' })
             }
 
-            const { student_id, grade_id, service_ids, academic_year, fee_month, due_date } = req.body
+            const { student_id, grade_id, service_ids, category_ids, academic_year, fee_month, due_date } = req.body
 
             if (!student_id || !grade_id || !academic_year || !fee_month || !due_date) {
                 return res.status(400).json({
@@ -727,7 +727,7 @@ export class FeesController {
                 schoolId,
                 grade_id,
                 service_ids || [],
-                { academicYear: academic_year, feeMonth: fee_month, dueDate: due_date }
+                { academicYear: academic_year, feeMonth: fee_month, dueDate: due_date, categoryIds: category_ids }
             )
 
             return res.status(201).json({ success: true, data: fee })
@@ -747,7 +747,8 @@ export class FeesController {
      */
     async getFeesByGrade(req: AuthRequest, res: Response) {
         try {
-            const schoolId = req.profile?.school_id
+            // Use query param school_id if provided, otherwise fall back to profile
+            const schoolId = (req.query.school_id as string) || req.profile?.school_id
 
             if (!schoolId) {
                 return res.status(403).json({ success: false, error: 'Not authenticated' })
@@ -781,6 +782,338 @@ export class FeesController {
             })
         } catch (error: any) {
             console.error('Error getting fees by grade:', error)
+            return res.status(500).json({ success: false, error: error.message })
+        }
+    }
+
+    // ==========================================
+    // STUDENT PAYMENTS MODULE
+    // ==========================================
+
+    /**
+     * Get all students for payment selection
+     * GET /api/fees/payments/students
+     */
+    async getStudentsForPayments(req: AuthRequest, res: Response) {
+        try {
+            const schoolId = (req.query.school_id as string) || req.profile?.school_id
+
+            if (!schoolId) {
+                return res.status(403).json({ success: false, error: 'Not authenticated' })
+            }
+
+            const search = req.query.search as string
+            const gradeLevelId = req.query.grade_level_id as string
+            const page = parseInt(req.query.page as string) || 1
+            const limit = parseInt(req.query.limit as string) || 50
+
+            const result = await feesService.getStudentsWithPaymentSummary(schoolId, {
+                search,
+                gradeLevelId,
+                page,
+                limit
+            })
+
+            return res.json({
+                success: true,
+                data: result.data,
+                pagination: {
+                    page,
+                    limit,
+                    total: result.total,
+                    totalPages: Math.ceil(result.total / limit)
+                }
+            })
+        } catch (error: any) {
+            console.error('Error getting students for payments:', error)
+            return res.status(500).json({ success: false, error: error.message })
+        }
+    }
+
+    /**
+     * Get payments for a specific student
+     * GET /api/fees/payments/student/:studentId
+     */
+    async getStudentPayments(req: AuthRequest, res: Response) {
+        try {
+            const schoolId = (req.query.school_id as string) || req.profile?.school_id
+            const { studentId } = req.params
+
+            if (!schoolId) {
+                return res.status(403).json({ success: false, error: 'Not authenticated' })
+            }
+
+            if (!studentId) {
+                return res.status(400).json({ success: false, error: 'studentId is required' })
+            }
+
+            const payments = await feesService.getStudentPayments(studentId, schoolId)
+            const summary = await feesService.getStudentFeeSummary(studentId, schoolId)
+
+            return res.json({
+                success: true,
+                data: {
+                    payments,
+                    summary
+                }
+            })
+        } catch (error: any) {
+            console.error('Error getting student payments:', error)
+            return res.status(500).json({ success: false, error: error.message })
+        }
+    }
+
+    /**
+     * Record a direct payment for a student
+     * POST /api/fees/payments/record
+     */
+    async recordDirectPayment(req: AuthRequest, res: Response) {
+        try {
+            const schoolId = (req.body.school_id as string) || req.profile?.school_id
+            const userId = req.profile?.id
+
+            if (!schoolId) {
+                return res.status(403).json({ success: false, error: 'Not authenticated' })
+            }
+
+            const { student_id, amount, payment_date, comment, is_lunch_payment, file_url } = req.body
+
+            if (!student_id || amount === undefined) {
+                return res.status(400).json({ success: false, error: 'student_id and amount are required' })
+            }
+
+            const payment = await feesService.recordDirectPayment(schoolId, {
+                student_id,
+                amount: parseFloat(amount),
+                payment_date: payment_date || new Date().toISOString(),
+                comment,
+                is_lunch_payment: is_lunch_payment || false,
+                file_url,
+                created_by: userId
+            })
+
+            return res.status(201).json({ success: true, data: payment })
+        } catch (error: any) {
+            console.error('Error recording direct payment:', error)
+            return res.status(500).json({ success: false, error: error.message })
+        }
+    }
+
+    /**
+     * Delete a payment
+     * DELETE /api/fees/payments/:paymentId
+     */
+    async deletePayment(req: AuthRequest, res: Response) {
+        try {
+            const schoolId = (req.query.school_id as string) || req.profile?.school_id
+            const { paymentId } = req.params
+
+            if (!schoolId) {
+                return res.status(403).json({ success: false, error: 'Not authenticated' })
+            }
+
+            if (!paymentId) {
+                return res.status(400).json({ success: false, error: 'paymentId is required' })
+            }
+
+            await feesService.deletePayment(paymentId, schoolId)
+
+            return res.json({ success: true, message: 'Payment deleted successfully' })
+        } catch (error: any) {
+            console.error('Error deleting payment:', error)
+            return res.status(500).json({ success: false, error: error.message })
+        }
+    }
+
+    /**
+     * Update a payment
+     * PUT /api/fees/payments/:paymentId
+     */
+    async updatePayment(req: AuthRequest, res: Response) {
+        try {
+            const schoolId = (req.body.school_id as string) || req.profile?.school_id
+            const { paymentId } = req.params
+
+            if (!schoolId) {
+                return res.status(403).json({ success: false, error: 'Not authenticated' })
+            }
+
+            if (!paymentId) {
+                return res.status(400).json({ success: false, error: 'paymentId is required' })
+            }
+
+            const { amount, payment_date, comment, is_lunch_payment, file_url } = req.body
+
+            const payment = await feesService.updatePayment(paymentId, schoolId, {
+                amount: amount !== undefined ? parseFloat(amount) : undefined,
+                payment_date,
+                comment,
+                is_lunch_payment,
+                file_url
+            })
+
+            return res.json({ success: true, data: payment })
+        } catch (error: any) {
+            console.error('Error updating payment:', error)
+            return res.status(500).json({ success: false, error: error.message })
+        }
+    }
+
+    // ==========================================
+    // STUDENT FEE OVERRIDES
+    // ==========================================
+
+    /**
+     * Create a student fee override
+     * POST /api/fees/overrides
+     */
+    async createStudentFeeOverride(req: AuthRequest, res: Response) {
+        try {
+            const schoolId = (req.body.school_id as string) || req.profile?.school_id
+
+            if (!schoolId) {
+                return res.status(403).json({ success: false, error: 'Not authenticated' })
+            }
+
+            const { student_id, fee_category_id, academic_year, override_amount, reason } = req.body
+
+            if (!student_id || !fee_category_id || !academic_year || override_amount === undefined) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'student_id, fee_category_id, academic_year, and override_amount are required'
+                })
+            }
+
+            const override = await feesService.createStudentFeeOverride({
+                school_id: schoolId,
+                student_id,
+                fee_category_id,
+                academic_year,
+                override_amount: parseFloat(override_amount),
+                reason,
+                created_by: req.profile?.id
+            })
+
+            return res.status(201).json({ success: true, data: override })
+        } catch (error: any) {
+            console.error('Error creating fee override:', error)
+            return res.status(500).json({ success: false, error: error.message })
+        }
+    }
+
+    /**
+     * Get fee overrides for a student
+     * GET /api/fees/overrides/student/:studentId
+     */
+    async getStudentFeeOverrides(req: AuthRequest, res: Response) {
+        try {
+            const schoolId = (req.query.school_id as string) || req.profile?.school_id
+            const { studentId } = req.params
+            const academicYear = req.query.academic_year as string | undefined
+
+            if (!schoolId) {
+                return res.status(403).json({ success: false, error: 'Not authenticated' })
+            }
+
+            if (!studentId) {
+                return res.status(400).json({ success: false, error: 'studentId is required' })
+            }
+
+            const overrides = await feesService.getStudentFeeOverrides(studentId, schoolId, academicYear)
+
+            return res.json({ success: true, data: overrides })
+        } catch (error: any) {
+            console.error('Error getting fee overrides:', error)
+            return res.status(500).json({ success: false, error: error.message })
+        }
+    }
+
+    /**
+     * Get all fee overrides for a school
+     * GET /api/fees/overrides
+     */
+    async getAllSchoolFeeOverrides(req: AuthRequest, res: Response) {
+        try {
+            const schoolId = (req.query.school_id as string) || req.profile?.school_id
+            const academicYear = req.query.academic_year as string | undefined
+            const feeCategoryId = req.query.fee_category_id as string | undefined
+            const isActive = req.query.is_active !== 'false'
+            const page = parseInt(req.query.page as string) || 1
+            const limit = parseInt(req.query.limit as string) || 50
+
+            if (!schoolId) {
+                return res.status(403).json({ success: false, error: 'Not authenticated' })
+            }
+
+            const result = await feesService.getAllSchoolFeeOverrides(schoolId, {
+                academicYear,
+                feeCategoryId,
+                isActive,
+                page,
+                limit
+            })
+
+            return res.json({ success: true, data: result.data, total: result.total })
+        } catch (error: any) {
+            console.error('Error getting school fee overrides:', error)
+            return res.status(500).json({ success: false, error: error.message })
+        }
+    }
+
+    /**
+     * Update a fee override
+     * PUT /api/fees/overrides/:id
+     */
+    async updateStudentFeeOverride(req: AuthRequest, res: Response) {
+        try {
+            const schoolId = (req.body.school_id as string) || req.profile?.school_id
+            const { id } = req.params
+
+            if (!schoolId) {
+                return res.status(403).json({ success: false, error: 'Not authenticated' })
+            }
+
+            if (!id) {
+                return res.status(400).json({ success: false, error: 'Override ID is required' })
+            }
+
+            const { override_amount, reason, is_active } = req.body
+
+            const override = await feesService.updateStudentFeeOverride(id, schoolId, {
+                override_amount: override_amount !== undefined ? parseFloat(override_amount) : undefined,
+                reason,
+                is_active
+            })
+
+            return res.json({ success: true, data: override })
+        } catch (error: any) {
+            console.error('Error updating fee override:', error)
+            return res.status(500).json({ success: false, error: error.message })
+        }
+    }
+
+    /**
+     * Delete a fee override
+     * DELETE /api/fees/overrides/:id
+     */
+    async deleteStudentFeeOverride(req: AuthRequest, res: Response) {
+        try {
+            const schoolId = (req.query.school_id as string) || req.profile?.school_id
+            const { id } = req.params
+
+            if (!schoolId) {
+                return res.status(403).json({ success: false, error: 'Not authenticated' })
+            }
+
+            if (!id) {
+                return res.status(400).json({ success: false, error: 'Override ID is required' })
+            }
+
+            await feesService.deleteStudentFeeOverride(id, schoolId)
+
+            return res.json({ success: true, message: 'Fee override deleted successfully' })
+        } catch (error: any) {
+            console.error('Error deleting fee override:', error)
             return res.status(500).json({ success: false, error: error.message })
         }
     }

@@ -26,6 +26,7 @@ import { createStudent } from "@/lib/api/students";
 import { searchParents, createParent, type Parent, type CreateParentDTO } from "@/lib/api/parents";
 import { useGradeLevels, useSections } from "@/hooks/useAcademics";
 import { generateFeeForNewStudent } from "@/lib/api/fees";
+import FeeChallanModal from "@/components/admin/FeeChallanModal";
 import * as servicesApi from "@/lib/api/services";
 import { getFieldDefinitions, CustomFieldDefinition } from "@/lib/api/custom-fields";
 import { getFieldOrders, getEffectiveFieldOrder, DefaultFieldOrder } from '@/lib/utils/field-ordering';
@@ -181,6 +182,8 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
 
   // Fee Generation State
   const [generateFirstChallan, setGenerateFirstChallan] = useState(false);
+  const [generatedFeeId, setGeneratedFeeId] = useState<string | null>(null);
+  const [showChallanModal, setShowChallanModal] = useState(false);
   const [challanDueDate, setChallanDueDate] = useState<string>(() => {
     const nextMonth = new Date();
     nextMonth.setDate(10); // Due on 10th
@@ -608,7 +611,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
               ? `${now.getFullYear()}-${now.getFullYear() + 1}`
               : `${now.getFullYear() - 1}-${now.getFullYear()}`;
 
-            await generateFeeForNewStudent({
+            const generatedFee = await generateFeeForNewStudent({
               student_id: response.data.id,
               grade_id: formData.grade_level_id,
               service_ids: selectedServices,
@@ -617,6 +620,14 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
               due_date: challanDueDate
             });
             toast.success("First fee challan generated!");
+
+            // Show the challan modal for immediate print
+            if (generatedFee?.id) {
+              setGeneratedFeeId(generatedFee.id);
+              setShowChallanModal(true);
+              setIsSubmitting(false);
+              return; // Don't call onSuccess yet — let user print/close the modal first
+            }
           } catch (feeErr) {
             console.error("Fee generation failed:", feeErr);
             toast.warning("Student created but fee challan generation failed");
@@ -1995,5 +2006,20 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
         </div>
       </div>
     </form >
+
+      {/* Fee Challan Modal — shown immediately after fee generation for printing */}
+      {showChallanModal && generatedFeeId && (
+        <FeeChallanModal
+          isOpen={showChallanModal}
+          onClose={() => {
+            setShowChallanModal(false);
+            setGeneratedFeeId(null);
+            toast.success("Student added successfully!");
+            onSuccess();
+          }}
+          feeId={generatedFeeId}
+          schoolId={profile?.school_id || ''}
+        />
+      )}
   );
 }

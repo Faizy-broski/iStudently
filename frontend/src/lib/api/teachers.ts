@@ -15,6 +15,7 @@ interface ApiResponse<T = unknown> {
 // ============================================================================
 
 export type EmploymentType = 'full_time' | 'part_time' | 'contract'
+export type PaymentType = 'fixed_salary' | 'hourly'
 export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused'
 export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6 // 0 = Monday, 6 = Sunday
 
@@ -40,6 +41,7 @@ export interface Staff {
   specialization: string | null
   date_of_joining: string | null
   employment_type: EmploymentType
+  payment_type?: PaymentType
   is_active: boolean
   permissions: Record<string, any>
   created_at: string
@@ -61,6 +63,7 @@ export interface CreateStaffDTO {
   specialization?: string
   date_of_joining?: string
   employment_type?: EmploymentType
+  payment_type?: PaymentType
   permissions?: Record<string, any>
   created_by?: string
   // Profile data (if creating new user)
@@ -84,6 +87,7 @@ export interface UpdateStaffDTO {
   specialization?: string
   date_of_joining?: string
   employment_type?: EmploymentType
+  payment_type?: PaymentType
   is_active?: boolean
   permissions?: Record<string, any>
   first_name?: string

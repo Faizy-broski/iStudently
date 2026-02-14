@@ -61,6 +61,8 @@ export interface StudentFee {
         category_name: string
         category_code: string
         amount: number
+        is_override?: boolean
+        original_amount?: number
     }>
     students?: {
         student_number: string
@@ -68,6 +70,27 @@ export interface StudentFee {
     }
     fee_structures?: {
         fee_categories: { name: string; code: string }
+    }
+}
+
+export interface StudentFeeOverride {
+    id: string
+    school_id: string
+    student_id: string
+    fee_category_id: string
+    academic_year: string
+    override_amount: number
+    reason?: string
+    is_active: boolean
+    created_by?: string
+    created_at: string
+    updated_at: string
+    fee_categories?: { name: string; code: string }
+    students?: {
+        id: string
+        student_number?: string
+        profiles: { first_name: string; last_name: string }
+        grade_levels?: { name: string }
     }
 }
 
@@ -216,7 +239,7 @@ export async function createFeeCategory(data: Partial<FeeCategory>): Promise<Fee
     })
 }
 
-export async function updateFeeCategory(id: string, data: Partial<FeeCategory>): Promise<FeeCategory> {
+export async function updateFeeCategory(id: string, data: Partial<FeeCategory> & { school_id: string }): Promise<FeeCategory> {
     return apiRequest<FeeCategory>(`/fees/categories/${id}`, {
         method: 'PUT',
         body: JSON.stringify(data)
@@ -328,16 +351,19 @@ export async function adjustFee(
         newLateFee?: number
         customDiscount?: number
         reason: string
-    }
+    },
+    schoolId?: string
 ): Promise<StudentFee> {
-    return apiRequest<StudentFee>(`/fees/${feeId}/adjust`, {
+    const params = schoolId ? `?school_id=${schoolId}` : ''
+    return apiRequest<StudentFee>(`/fees/${feeId}/adjust${params}`, {
         method: 'PUT',
         body: JSON.stringify(adjustment)
     })
 }
 
-export async function getFeeAdjustments(feeId: string): Promise<FeeAdjustment[]> {
-    return apiRequest<FeeAdjustment[]>(`/fees/${feeId}/adjustments`)
+export async function getFeeAdjustments(feeId: string, schoolId?: string): Promise<FeeAdjustment[]> {
+    const params = schoolId ? `?school_id=${schoolId}` : ''
+    return apiRequest<FeeAdjustment[]>(`/fees/${feeId}/adjustments${params}`)
 }
 
 export async function getStudentFeeHistory(
@@ -355,6 +381,7 @@ export async function getStudentFeeHistory(
 }
 
 export async function getFeesByGrade(options?: {
+    schoolId?: string
     gradeLevelId?: string
     sectionId?: string
     feeMonth?: string
@@ -363,6 +390,7 @@ export async function getFeesByGrade(options?: {
     limit?: number
 }): Promise<{ data: StudentFee[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
     const params = new URLSearchParams()
+    if (options?.schoolId) params.append('school_id', options.schoolId)
     if (options?.gradeLevelId) params.append('grade_level_id', options.gradeLevelId)
     if (options?.sectionId) params.append('section_id', options.sectionId)
     if (options?.feeMonth) params.append('fee_month', options.feeMonth)
@@ -384,5 +412,79 @@ export async function generateFeeForNewStudent(data: {
     return apiRequest<StudentFee>('/fees/generate-for-student', {
         method: 'POST',
         body: JSON.stringify(data)
+    })
+}
+
+// ============================================================================
+// STUDENT FEE OVERRIDES
+// ============================================================================
+
+export async function createStudentFeeOverride(data: {
+    school_id?: string
+    student_id: string
+    fee_category_id: string
+    academic_year: string
+    override_amount: number
+    reason?: string
+}): Promise<StudentFeeOverride> {
+    return apiRequest<StudentFeeOverride>('/fees/overrides', {
+        method: 'POST',
+        body: JSON.stringify(data)
+    })
+}
+
+export async function getStudentFeeOverrides(
+    studentId: string,
+    schoolId?: string,
+    academicYear?: string
+): Promise<StudentFeeOverride[]> {
+    const params = new URLSearchParams()
+    if (schoolId) params.append('school_id', schoolId)
+    if (academicYear) params.append('academic_year', academicYear)
+    
+    return apiRequest<StudentFeeOverride[]>(`/fees/overrides/student/${studentId}?${params}`)
+}
+
+export async function getAllSchoolFeeOverrides(options?: {
+    schoolId?: string
+    academicYear?: string
+    feeCategoryId?: string
+    isActive?: boolean
+    page?: number
+    limit?: number
+}): Promise<{ data: StudentFeeOverride[]; total: number }> {
+    const params = new URLSearchParams()
+    if (options?.schoolId) params.append('school_id', options.schoolId)
+    if (options?.academicYear) params.append('academic_year', options.academicYear)
+    if (options?.feeCategoryId) params.append('fee_category_id', options.feeCategoryId)
+    if (options?.isActive !== undefined) params.append('is_active', options.isActive.toString())
+    if (options?.page) params.append('page', options.page.toString())
+    if (options?.limit) params.append('limit', options.limit.toString())
+    
+    return apiRequest<{ data: StudentFeeOverride[]; total: number }>(`/fees/overrides?${params}`)
+}
+
+export async function updateStudentFeeOverride(
+    overrideId: string,
+    data: {
+        school_id?: string
+        override_amount?: number
+        reason?: string
+        is_active?: boolean
+    }
+): Promise<StudentFeeOverride> {
+    return apiRequest<StudentFeeOverride>(`/fees/overrides/${overrideId}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+    })
+}
+
+export async function deleteStudentFeeOverride(
+    overrideId: string,
+    schoolId?: string
+): Promise<void> {
+    const params = schoolId ? `?school_id=${schoolId}` : ''
+    await apiRequest<void>(`/fees/overrides/${overrideId}${params}`, {
+        method: 'DELETE'
     })
 }

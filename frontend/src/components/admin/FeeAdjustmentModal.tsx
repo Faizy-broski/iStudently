@@ -16,9 +16,10 @@ interface FeeAdjustmentModalProps {
     onClose: () => void
     fee: StudentFee
     onAdjusted: () => void
+    schoolId?: string
 }
 
-export default function FeeAdjustmentModal({ isOpen, onClose, fee, onAdjusted }: FeeAdjustmentModalProps) {
+export default function FeeAdjustmentModal({ isOpen, onClose, fee, onAdjusted, schoolId }: FeeAdjustmentModalProps) {
     const [adjustmentType, setAdjustmentType] = useState<FeeAdjustmentType>('custom_discount')
     const [newLateFee, setNewLateFee] = useState<number>(0)
     const [customDiscount, setCustomDiscount] = useState<number>(0)
@@ -41,7 +42,7 @@ export default function FeeAdjustmentModal({ isOpen, onClose, fee, onAdjusted }:
     const loadAdjustmentHistory = async () => {
         setLoadingHistory(true)
         try {
-            const history = await getFeeAdjustments(fee.id)
+            const history = await getFeeAdjustments(fee.id, schoolId)
             setAdjustmentHistory(history)
         } catch (error: any) {
             console.error('Failed to load adjustment history:', error)
@@ -65,7 +66,7 @@ export default function FeeAdjustmentModal({ isOpen, onClose, fee, onAdjusted }:
                 newLateFee: adjustmentType === 'late_fee_reduced' ? newLateFee : undefined,
                 customDiscount: adjustmentType === 'custom_discount' ? customDiscount : undefined,
                 reason: reason.trim()
-            })
+            }, schoolId)
 
             toast.success('Fee adjusted successfully')
             onAdjusted()
@@ -113,19 +114,19 @@ export default function FeeAdjustmentModal({ isOpen, onClose, fee, onAdjusted }:
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                         <div>
                             <p className="text-gray-500 dark:text-gray-400">Base Amount</p>
-                            <p className="font-semibold text-gray-900 dark:text-gray-100">Rs. {fee.base_amount?.toLocaleString()}</p>
+                            <p className="font-semibold text-gray-900 dark:text-gray-100">{fee.base_amount?.toLocaleString()}</p>
                         </div>
                         <div>
                             <p className="text-gray-500 dark:text-gray-400">Late Fee</p>
-                            <p className="font-semibold text-orange-600 dark:text-orange-400">Rs. {(fee.late_fee_applied || 0).toLocaleString()}</p>
+                            <p className="font-semibold text-orange-600 dark:text-orange-400">{(fee.late_fee_applied || 0).toLocaleString()}</p>
                         </div>
                         <div>
                             <p className="text-gray-500 dark:text-gray-400">Custom Discount</p>
-                            <p className="font-semibold text-green-600 dark:text-green-400">-Rs. {(fee.custom_discount || 0).toLocaleString()}</p>
+                            <p className="font-semibold text-green-600 dark:text-green-400">-{(fee.custom_discount || 0).toLocaleString()}</p>
                         </div>
                         <div>
                             <p className="text-gray-500 dark:text-gray-400">Final Amount</p>
-                            <p className="font-semibold text-indigo-600 dark:text-indigo-400">Rs. {fee.final_amount?.toLocaleString()}</p>
+                            <p className="font-semibold text-indigo-600 dark:text-indigo-400">{fee.final_amount?.toLocaleString()}</p>
                         </div>
                     </div>
                 </div>
@@ -218,7 +219,7 @@ export default function FeeAdjustmentModal({ isOpen, onClose, fee, onAdjusted }:
                                 placeholder="Enter new late fee amount"
                             />
                             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                Current late fee: Rs. {fee.late_fee_applied?.toLocaleString()}
+                                Current late fee: {fee.late_fee_applied?.toLocaleString()}
                             </p>
                         </div>
                     )}
@@ -226,7 +227,7 @@ export default function FeeAdjustmentModal({ isOpen, onClose, fee, onAdjusted }:
                     {adjustmentType === 'custom_discount' && (
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                                Discount Amount (Rs.)
+                                Discount Amount
                             </label>
                             <input
                                 type="number"
@@ -297,7 +298,7 @@ export default function FeeAdjustmentModal({ isOpen, onClose, fee, onAdjusted }:
                                         </div>
                                         <div className="text-right">
                                             <p className={`font-medium ${adj.adjustment_amount < 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                                {adj.adjustment_amount < 0 ? '-' : '+'}Rs. {Math.abs(adj.adjustment_amount).toLocaleString()}
+                                                {adj.adjustment_amount < 0 ? '-' : '+'}{Math.abs(adj.adjustment_amount).toLocaleString()}
                                             </p>
                                             <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">
                                                 {new Date(adj.created_at).toLocaleDateString()}

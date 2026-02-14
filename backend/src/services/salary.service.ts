@@ -538,8 +538,8 @@ class SalaryService {
     // SALARY RECORDS
     // ==========================================
 
-    async getSalaryRecords(schoolId: string, options: { month?: number; year?: number; status?: string; page?: number; limit?: number; campus_id?: string } = {}): Promise<{ data: any[]; total: number }> {
-        const { month, year, status, page = 1, limit = 20, campus_id } = options
+    async getSalaryRecords(schoolId: string, options: { month?: number; year?: number; status?: string; page?: number; limit?: number; campus_id?: string; staff_id?: string } = {}): Promise<{ data: any[]; total: number }> {
+        const { month, year, status, page = 1, limit = 20, campus_id, staff_id } = options
         const offset = (page - 1) * limit
 
         // In multi-campus setup, use campus_id; otherwise use schoolId
@@ -560,6 +560,7 @@ class SalaryService {
             .order('created_at', { ascending: false })
             .range(offset, offset + limit - 1)
 
+        if (staff_id) query = query.eq('staff_id', staff_id)
         if (month) query = query.eq('month', month)
         if (year) query = query.eq('year', year)
         if (status) query = query.eq('status', status)

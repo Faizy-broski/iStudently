@@ -238,7 +238,7 @@ export async function generateBulkSalaries(data: {
 
 export async function getSalaryRecords(
     schoolId: string,
-    options?: { month?: number; year?: number; status?: string; page?: number; limit?: number; campus_id?: string }
+    options?: { month?: number; year?: number; status?: string; page?: number; limit?: number; campus_id?: string; staff_id?: string }
 ): Promise<{ data: SalaryRecord[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
     const params = new URLSearchParams({ school_id: schoolId })
     if (options?.month) params.append('month', options.month.toString())
@@ -247,6 +247,7 @@ export async function getSalaryRecords(
     if (options?.page) params.append('page', options.page.toString())
     if (options?.limit) params.append('limit', options.limit.toString())
     if (options?.campus_id) params.append('campus_id', options.campus_id)
+    if (options?.staff_id) params.append('staff_id', options.staff_id)
 
     const headers = await getHeaders()
     const res = await fetch(`${API_BASE}/api/salary/records?${params}`, { headers })

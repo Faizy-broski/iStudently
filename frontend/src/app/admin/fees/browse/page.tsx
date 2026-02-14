@@ -88,6 +88,7 @@ export default function BrowseFeesByGradePage() {
         setLoading(true)
         try {
             const data = await getFeesByGrade({
+                schoolId: schoolId || undefined,
                 gradeLevelId: gradeLevelId === 'all' ? undefined : gradeLevelId,
                 sectionId: sectionId === 'all' ? undefined : sectionId,
                 feeMonth: feeMonth === 'all' ? undefined : feeMonth,
@@ -115,7 +116,7 @@ export default function BrowseFeesByGradePage() {
     }
 
     const formatCurrency = (amount: number) => {
-        return `Rs. ${amount?.toLocaleString() || 0}`
+        return `${amount?.toLocaleString() || 0}`
     }
 
     const handleAdjustFee = (fee: StudentFee) => {
@@ -344,6 +345,7 @@ export default function BrowseFeesByGradePage() {
                     }}
                     fee={selectedFee}
                     onAdjusted={loadFees}
+                    schoolId={schoolId || undefined}
                 />
             )}
 

@@ -28,6 +28,8 @@ import learningResourcesRoutes from './routes/learning-resources.routes'
 import staffDesignationRoutes from './routes/staff-designation.routes'
 import periodsRoutes from './routes/periods.routes'
 import portalRoutes from './routes/portal.routes'
+import accountingRoutes from './routes/accounting.routes'
+import idCardTemplateRoutes from './routes/id-card-template.routes'
 
 const app = express()
 
@@ -185,6 +187,8 @@ registerRoutes('/portal', portalRoutes)
 registerRoutes('/student-dashboard', studentDashboardRoutes)
 registerRoutes('/parent-dashboard', parentDashboardRoutes)
 registerRoutes('/staff-designations', staffDesignationRoutes)
+registerRoutes('/accounting', accountingRoutes)
+registerRoutes('/id-card-templates', idCardTemplateRoutes)
 
 // 404 handler
 app.use((req: Request, res: Response) => {

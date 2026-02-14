@@ -296,6 +296,7 @@ export const createTeacher = async (dto: CreateStaffDTO): Promise<ApiResponse<St
         specialization: dto.specialization,
         date_of_joining: dto.date_of_joining,
         employment_type: dto.employment_type || 'full_time',
+        payment_type: dto.payment_type || 'fixed_salary',
         permissions: dto.permissions || {},
         role: 'teacher',  // Always set role to 'teacher' for teachers
         custom_fields: dto.custom_fields || {}
@@ -380,6 +381,7 @@ export const updateTeacher = async (
     if (dto.specialization !== undefined) staffUpdate.specialization = dto.specialization
     if (dto.date_of_joining !== undefined) staffUpdate.date_of_joining = dto.date_of_joining
     if (dto.employment_type !== undefined) staffUpdate.employment_type = dto.employment_type
+    if (dto.payment_type !== undefined) staffUpdate.payment_type = dto.payment_type
     if (dto.role !== undefined) staffUpdate.role = dto.role
     if (dto.grade_level_id !== undefined) staffUpdate.grade_level_id = dto.grade_level_id
     if (dto.section_id !== undefined) staffUpdate.section_id = dto.section_id

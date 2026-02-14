@@ -25,6 +25,7 @@ export interface CreateStaffDTO {
     specialization?: string
     date_of_joining?: string
     employment_type?: EmploymentType
+    payment_type?: 'fixed_salary' | 'hourly'
     permissions?: Record<string, any>
     custom_fields?: any[] // NEW
     created_by?: string
@@ -46,6 +47,7 @@ export interface UpdateStaffDTO {
     specialization?: string
     date_of_joining?: string
     employment_type?: EmploymentType
+    payment_type?: 'fixed_salary' | 'hourly'
     is_active?: boolean
     permissions?: Record<string, any>
     custom_fields?: any[] // NEW
@@ -109,11 +111,11 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
 // STAFF MANAGEMENT (Use for Staff AND Librarians)
 // ============================================================================
 
-export async function getAllStaff(page = 1, limit = 10, search?: string, role: 'staff' | 'librarian' | 'all' = 'all', campusId?: string) {
+export async function getAllStaff(page = 1, limit = 10, search?: string, role: 'staff' | 'librarian' | 'teacher' | 'all' | 'employees' = 'all', campusId?: string) {
     const queryParams = new URLSearchParams({
         page: page.toString(),
         limit: limit.toString(),
-        role // Filter by role
+        role // Filter by role - use 'employees' to include teachers for payments
     })
     if (search) queryParams.append('search', search)
     if (campusId) queryParams.append('campus_id', campusId)

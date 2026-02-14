@@ -25,10 +25,11 @@ const STANDARD_FIELDS = [
 
   // PROFESSIONAL (Category: professional)
   { id: 'employment_type', label: 'Employment Type', type: 'select', category: 'professional', sort_order: 1, required: true, width: 'half', options: ['full_time', 'part_time', 'contract'] },
-  { id: 'date_of_joining', label: 'Date of Joining', type: 'date', category: 'professional', sort_order: 2, required: false, width: 'half' },
-  { id: 'title', label: 'Title', type: 'text', category: 'professional', sort_order: 3, required: false, width: 'half', placeholder: 'e.g., Senior Teacher' },
-  { id: 'department', label: 'Department', type: 'text', category: 'professional', sort_order: 4, required: false, width: 'half', placeholder: 'e.g., Science' },
-  { id: 'base_salary', label: 'Base Salary (Monthly)', type: 'number', category: 'professional', sort_order: 5, required: true, width: 'full', help: 'Required for payroll generation' },
+  { id: 'payment_type', label: 'Payment Type', type: 'select', category: 'professional', sort_order: 2, required: true, width: 'half', options: ['fixed_salary', 'hourly'], help: 'Hourly teachers appear in Teacher Hours module' },
+  { id: 'date_of_joining', label: 'Date of Joining', type: 'date', category: 'professional', sort_order: 3, required: false, width: 'half' },
+  { id: 'title', label: 'Title', type: 'text', category: 'professional', sort_order: 4, required: false, width: 'half', placeholder: 'e.g., Senior Teacher' },
+  { id: 'department', label: 'Department', type: 'text', category: 'professional', sort_order: 5, required: false, width: 'half', placeholder: 'e.g., Science' },
+  { id: 'base_salary', label: 'Base Salary (Monthly)', type: 'number', category: 'professional', sort_order: 6, required: false, width: 'full', help: 'Required for fixed salary teachers' },
 
   // QUALIFICATIONS (Category: qualifications)
   { id: 'qualifications', label: 'Qualifications', type: 'text', category: 'qualifications', sort_order: 1, required: false, width: 'full', placeholder: 'e.g., M.Sc. Mathematics' },
@@ -66,6 +67,7 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
     specialization: "",
     date_of_joining: "",
     employment_type: "full_time",
+    payment_type: "fixed_salary",
     base_salary: 0,
     first_name: "",
     last_name: "",
@@ -158,6 +160,7 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
         specialization: editingTeacher.specialization || "",
         date_of_joining: editingTeacher.date_of_joining || "",
         employment_type: editingTeacher.employment_type || "full_time",
+        payment_type: (editingTeacher as any).payment_type || "fixed_salary",
         base_salary: (editingTeacher as any).base_salary || 0,
         // Extract from profile object
         first_name: profile?.first_name || "",
@@ -343,8 +346,12 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
       if (!formData.employment_type) {
         errors.employment_type = 'Employment type is required';
       }
-      if (!formData.base_salary || formData.base_salary <= 0) {
-        errors.base_salary = 'Base salary is required';
+      if (!formData.payment_type) {
+        errors.payment_type = 'Payment type is required';
+      }
+      // Base salary only required for fixed_salary payment type
+      if (formData.payment_type === 'fixed_salary' && (!formData.base_salary || formData.base_salary <= 0)) {
+        errors.base_salary = 'Base salary is required for fixed salary teachers';
       }
 
       customFields.filter(f => f.category_id === 'professional' && f.required).forEach(field => {

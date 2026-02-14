@@ -79,6 +79,53 @@ export interface RecordPaymentDTO {
     payment_reference?: string
     received_by?: string
     notes?: string
+    comment?: string
+    is_lunch_payment?: boolean
+    file_url?: string
+    created_by?: string
+}
+
+export interface DirectPaymentDTO {
+    student_id: string
+    amount: number
+    payment_date: string
+    comment?: string
+    is_lunch_payment?: boolean
+    file_url?: string
+    created_by?: string
+}
+
+export interface StudentFeeOverride {
+    id: string
+    school_id: string
+    student_id: string
+    fee_category_id: string
+    academic_year: string
+    override_amount: number
+    reason?: string
+    is_active: boolean
+    created_by?: string
+    created_at: string
+    updated_at: string
+    // Joined fields
+    fee_categories?: { name: string; code: string }
+    students?: { profiles: { first_name: string; last_name: string } }
+}
+
+export interface CreateStudentFeeOverrideDTO {
+    school_id: string
+    student_id: string
+    fee_category_id: string
+    academic_year: string
+    override_amount: number
+    reason?: string
+    created_by?: string
+}
+
+export interface UpdateStudentFeeOverrideDTO {
+    override_amount?: number
+    reason?: string
+    is_active?: boolean
 }
 
 class FeesService {
@@ -376,6 +423,7 @@ class FeesService {
         students!inner(
           id,
           student_number,
+          grade_level,
           profiles!inner(first_name, last_name)
         ),
         fee_structures(
@@ -495,7 +543,11 @@ class FeesService {
                 payment_method: payment.payment_method || 'cash',
                 payment_reference: payment.payment_reference,
                 received_by: payment.received_by,
-                notes: payment.notes
+                notes: payment.notes,
+                comment: payment.comment,
+                is_lunch_payment: payment.is_lunch_payment || false,
+                file_url: payment.file_url,
+                created_by: payment.created_by
             })
             .select()
             .single()
@@ -509,7 +561,8 @@ class FeesService {
             .from('fee_payments')
             .select(`
         *,
-        profiles:received_by(first_name, last_name)
+        profiles:received_by(first_name, last_name),
+        created_by_profile:created_by(first_name, last_name)
       `)
             .eq('student_fee_id', studentFeeId)
             .eq('school_id', schoolId)
@@ -517,6 +570,239 @@ class FeesService {
 
         if (error) throw new Error(`Failed to get payment history: ${error.message}`)
         return data || []
+    }
+
+    // ==========================================
+    // STUDENT PAYMENTS MODULE
+    // ==========================================
+
+    /**
+     * Get all students with their fee/payment summary (expanded data + parent links for family grouping)
+     */
+    async getStudentsWithPaymentSummary(
+        schoolId: string,
+        options: {
+            search?: string
+            gradeLevelId?: string
+            page?: number
+            limit?: number
+        } = {}
+    ): Promise<{ data: any[]; total: number }> {
+        const { search, gradeLevelId, page = 1, limit = 50 } = options
+        const offset = (page - 1) * limit
+
+        // Build the query for students with expanded data + parent links
+        let query = supabase
+            .from('students')
+            .select(`
+                id,
+                student_number,
+                grade_level,
+                custom_fields,
+                profiles!inner(first_name, last_name, email, phone),
+                grade_levels(id, name),
+                parent_student_links(
+                    parent_id,
+                    relationship,
+                    parents(
+                        id,
+                        address,
+                        city,
+                        state,
+                        zip_code,
+                        profiles(first_name, last_name)
+                    )
+                )
+            `, { count: 'exact' })
+            .eq('school_id', schoolId)
+            .order('student_number', { ascending: true })
+
+        if (gradeLevelId && gradeLevelId !== 'all') {
+            query = query.eq('grade_level', gradeLevelId)
+        }
+
+        if (search) {
+            // Search by student_number only at database level, frontend will handle name filtering
+            query = query.ilike('student_number', `%${search}%`)
+        }
+
+        query = query.range(offset, offset + limit - 1)
+
+        const { data: students, error, count } = await query
+
+        if (error) throw new Error(`Failed to get students: ${error.message}`)
+
+        return { data: students || [], total: count || 0 }
+    }
+
+    /**
+     * Get all payments for a specific student (direct payments)
+     */
+    async getStudentPayments(
+        studentId: string,
+        schoolId: string
+    ): Promise<any[]> {
+        // Get all student_fees for this student
+        const { data: studentFees, error: feesError } = await supabase
+            .from('student_fees')
+            .select('id')
+            .eq('student_id', studentId)
+            .eq('school_id', schoolId)
+
+        if (feesError) throw new Error(`Failed to get student fees: ${feesError.message}`)
+
+        if (!studentFees || studentFees.length === 0) {
+            return []
+        }
+
+        const feeIds = studentFees.map(f => f.id)
+
+        // Get all payments for these fees
+        const { data: payments, error: paymentsError } = await supabase
+            .from('fee_payments')
+            .select(`
+                *,
+                created_by_profile:created_by(first_name, last_name)
+            `)
+            .in('student_fee_id', feeIds)
+            .eq('school_id', schoolId)
+            .order('payment_date', { ascending: false })
+
+        if (paymentsError) throw new Error(`Failed to get payments: ${paymentsError.message}`)
+
+        return payments || []
+    }
+
+    /**
+     * Get fee summary for a student
+     */
+    async getStudentFeeSummary(
+        studentId: string,
+        schoolId: string
+    ): Promise<{ totalFees: number; totalPayments: number; balance: number }> {
+        // Get all student_fees for this student
+        const { data: studentFees, error: feesError } = await supabase
+            .from('student_fees')
+            .select('final_amount, amount_paid')
+            .eq('student_id', studentId)
+            .eq('school_id', schoolId)
+
+        if (feesError) throw new Error(`Failed to get student fees: ${feesError.message}`)
+
+        const totalFees = studentFees?.reduce((sum, f) => sum + Number(f.final_amount || 0), 0) || 0
+        const totalPayments = studentFees?.reduce((sum, f) => sum + Number(f.amount_paid || 0), 0) || 0
+        const balance = totalFees - totalPayments
+
+        return { totalFees, totalPayments, balance }
+    }
+
+    /**
+     * Record a direct payment for a student (creates or finds fee record)
+     */
+    async recordDirectPayment(schoolId: string, payment: DirectPaymentDTO): Promise<any> {
+        // Find or create a general fee record for this student
+        let { data: existingFee, error: feeError } = await supabase
+            .from('student_fees')
+            .select('*')
+            .eq('student_id', payment.student_id)
+            .eq('school_id', schoolId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single()
+
+        if (feeError && feeError.code !== 'PGRST116') {
+            // Not a "no rows" error
+            throw new Error(`Failed to find student fee: ${feeError.message}`)
+        }
+
+        if (!existingFee) {
+            // Create a new "general" student fee record
+            const { data: newFee, error: createError } = await supabase
+                .from('student_fees')
+                .insert({
+                    school_id: schoolId,
+                    student_id: payment.student_id,
+                    academic_year: new Date().getFullYear().toString(),
+                    base_amount: 0,
+                    sibling_discount: 0,
+                    custom_discount: 0,
+                    late_fee_applied: 0,
+                    final_amount: 0,
+                    amount_paid: 0,
+                    status: 'pending',
+                    due_date: new Date().toISOString()
+                })
+                .select()
+                .single()
+
+            if (createError) throw new Error(`Failed to create student fee: ${createError.message}`)
+            existingFee = newFee
+        }
+
+        // Record the payment
+        const { data, error } = await supabase
+            .from('fee_payments')
+            .insert({
+                school_id: schoolId,
+                student_fee_id: existingFee.id,
+                amount: payment.amount,
+                payment_method: 'cash',
+                payment_date: payment.payment_date || new Date().toISOString(),
+                comment: payment.comment,
+                is_lunch_payment: payment.is_lunch_payment || false,
+                file_url: payment.file_url,
+                created_by: payment.created_by
+            })
+            .select(`
+                *,
+                created_by_profile:created_by(first_name, last_name)
+            `)
+            .single()
+
+        if (error) throw new Error(`Failed to record payment: ${error.message}`)
+        return data
+    }
+
+    /**
+     * Delete a payment
+     */
+    async deletePayment(paymentId: string, schoolId: string): Promise<void> {
+        const { error } = await supabase
+            .from('fee_payments')
+            .delete()
+            .eq('id', paymentId)
+            .eq('school_id', schoolId)
+
+        if (error) throw new Error(`Failed to delete payment: ${error.message}`)
+    }
+
+    /**
+     * Update a payment
+     */
+    async updatePayment(
+        paymentId: string,
+        schoolId: string,
+        updates: {
+            amount?: number
+            payment_date?: string
+            comment?: string
+            is_lunch_payment?: boolean
+            file_url?: string
+        }
+    ): Promise<any> {
+        const { data, error } = await supabase
+            .from('fee_payments')
+            .update(updates)
+            .eq('id', paymentId)
+            .eq('school_id', schoolId)
+            .select(`
+                *,
+                created_by_profile:created_by(first_name, last_name)
+            `)
+            .single()
+
+        if (error) throw new Error(`Failed to update payment: ${error.message}`)
+        return data
     }
 
     // ==========================================
@@ -892,19 +1178,42 @@ class FeesService {
                     continue; // Skip if no fee structures found
                 }
 
+                // Fetch any student-specific fee overrides for this academic year
+                const { data: studentOverrides } = await supabase
+                    .from('student_fee_overrides')
+                    .select('fee_category_id, override_amount')
+                    .eq('student_id', student.id)
+                    .eq('academic_year', currentAcademicYear)
+                    .eq('is_active', true);
+
+                // Create a map of category_id -> override_amount for quick lookup
+                const overrideMap = new Map<string, number>();
+                if (studentOverrides) {
+                    for (const override of studentOverrides) {
+                        overrideMap.set(override.fee_category_id, override.override_amount);
+                    }
+                }
+
                 // Calculate total fee amount and create breakdown details
                 let totalFeeAmount = 0;
                 const feeBreakdown: any[] = [];
 
                 for (const structure of feeStructures) {
-                    const categoryAmount = structure.amount || 0;
+                    // Check if there's an override for this category
+                    const hasOverride = overrideMap.has(structure.fee_category_id);
+                    const categoryAmount = hasOverride 
+                        ? overrideMap.get(structure.fee_category_id)! 
+                        : (structure.amount || 0);
+                    
                     if (categoryAmount > 0) {
                         totalFeeAmount += categoryAmount;
                         feeBreakdown.push({
                             category_id: structure.fee_category_id,
                             category_name: structure.fee_categories?.name || 'Fee',
                             category_code: structure.fee_categories?.code || '',
-                            amount: categoryAmount
+                            amount: categoryAmount,
+                            is_override: hasOverride,
+                            original_amount: hasOverride ? structure.amount : undefined
                         });
                     }
                 }
@@ -1192,24 +1501,67 @@ class FeesService {
             academicYear: string
             feeMonth: string // Format: "2026-01"
             dueDate: string  // ISO date string
+            categoryIds?: string[] | null // Optional: filter by specific categories
         }
     ): Promise<StudentFee> {
-        // 1. Get base tuition from fee_structures for this grade
-        const { data: feeStructure } = await supabase
+        // 1. Get fee structures for this grade (there can be multiple categories)
+        // Also include school-wide structures where grade_level_id is null
+        let gradeQuery = supabase
             .from('fee_structures')
             .select('*, fee_categories!inner(*)')
             .eq('school_id', schoolId)
             .eq('grade_level_id', gradeId)
+            .eq('academic_year', options.academicYear)
             .eq('is_active', true)
-            .single()
-
-        let baseAmount = 0
-        let feeStructureId = null
-
-        if (feeStructure) {
-            baseAmount = feeStructure.amount || 0
-            feeStructureId = feeStructure.id
+        
+        let globalQuery = supabase
+            .from('fee_structures')
+            .select('*, fee_categories!inner(*)')
+            .eq('school_id', schoolId)
+            .is('grade_level_id', null)
+            .eq('academic_year', options.academicYear)
+            .eq('is_active', true)
+        
+        // Filter by specific categories if provided
+        if (options.categoryIds && options.categoryIds.length > 0) {
+            gradeQuery = gradeQuery.in('fee_category_id', options.categoryIds)
+            globalQuery = globalQuery.in('fee_category_id', options.categoryIds)
         }
+
+        const { data: gradeStructures, error: gradeError } = await gradeQuery
+        const { data: globalStructures, error: globalError } = await globalQuery
+
+        // Merge grade-specific and school-wide (null grade) structures
+        const feeStructures = [
+            ...(gradeStructures || []),
+            ...(globalStructures || [])
+        ]
+
+        // Check if any fee structures exist
+        if ((gradeError && globalError) || feeStructures.length === 0) {
+            throw new Error(
+                `No active fee structure found for this grade level. Please configure fee structures in Settings before generating fees.`
+            )
+        }
+
+        // Sum up all category amounts into a single base amount with breakdown
+        let baseAmount = 0
+        const feeBreakdown: any[] = []
+        for (const structure of feeStructures) {
+            const categoryAmount = structure.amount || 0
+            if (categoryAmount > 0) {
+                baseAmount += categoryAmount
+                feeBreakdown.push({
+                    category_id: structure.fee_category_id,
+                    category_name: structure.fee_categories?.name || 'Fee',
+                    category_code: structure.fee_categories?.code || '',
+                    amount: categoryAmount
+                })
+            }
+        }
+
+        // Use first structure as primary reference
+        let feeStructureId = feeStructures[0].id
 
         // 2. Calculate services total
         let servicesAmount = 0
@@ -1229,7 +1581,7 @@ class FeesService {
         const siblingDiscount = await this.calculateSiblingDiscount(
             studentId,
             schoolId,
-            feeStructure?.fee_category_id || '',
+            feeStructures[0]?.fee_category_id || '',
             subtotal
         )
 
@@ -1252,7 +1604,8 @@ class FeesService {
                 final_amount: finalAmount,
                 amount_paid: 0,
                 status: 'pending',
-                due_date: options.dueDate
+                due_date: options.dueDate,
+                fee_breakdown: JSON.stringify(feeBreakdown)
             })
             .select()
             .single()
@@ -1286,7 +1639,9 @@ class FeesService {
                 *,
                 students!inner(
                     id, student_number, grade_level_id, section_id,
-                    profiles!inner(first_name, last_name)
+                    profiles!inner(first_name, last_name),
+                    grade_levels(id, name),
+                    sections(id, name)
                 ),
                 fee_structures(fee_categories(name, code))
             `, { count: 'exact' })
@@ -1302,6 +1657,181 @@ class FeesService {
         const { data, error, count } = await query
 
         if (error) throw new Error(`Failed to get fees by grade: ${error.message}`)
+
+        return { data: data || [], total: count || 0 }
+    }
+
+    // ==========================================
+    // STUDENT FEE OVERRIDES
+    // ==========================================
+
+    /**
+     * Create a student fee override
+     * Allows setting a custom fee amount for a specific student and category
+     */
+    async createStudentFeeOverride(data: CreateStudentFeeOverrideDTO): Promise<StudentFeeOverride> {
+        const { data: override, error } = await supabase
+            .from('student_fee_overrides')
+            .insert({
+                school_id: data.school_id,
+                student_id: data.student_id,
+                fee_category_id: data.fee_category_id,
+                academic_year: data.academic_year,
+                override_amount: data.override_amount,
+                reason: data.reason,
+                created_by: data.created_by,
+                is_active: true
+            })
+            .select(`
+                *,
+                fee_categories(name, code),
+                students(profiles(first_name, last_name))
+            `)
+            .single()
+
+        if (error) {
+            if (error.code === '23505') {
+                throw new Error('An override already exists for this student, category, and academic year')
+            }
+            throw new Error(`Failed to create fee override: ${error.message}`)
+        }
+
+        return override
+    }
+
+    /**
+     * Get all fee overrides for a specific student
+     */
+    async getStudentFeeOverrides(
+        studentId: string,
+        schoolId: string,
+        academicYear?: string
+    ): Promise<StudentFeeOverride[]> {
+        let query = supabase
+            .from('student_fee_overrides')
+            .select(`
+                *,
+                fee_categories(name, code),
+                students(profiles(first_name, last_name))
+            `)
+            .eq('student_id', studentId)
+            .eq('school_id', schoolId)
+            .order('created_at', { ascending: false })
+
+        if (academicYear) {
+            query = query.eq('academic_year', academicYear)
+        }
+
+        const { data, error } = await query
+
+        if (error) throw new Error(`Failed to get fee overrides: ${error.message}`)
+
+        return data || []
+    }
+
+    /**
+     * Get a single fee override by ID
+     */
+    async getStudentFeeOverrideById(overrideId: string, schoolId: string): Promise<StudentFeeOverride | null> {
+        const { data, error } = await supabase
+            .from('student_fee_overrides')
+            .select(`
+                *,
+                fee_categories(name, code),
+                students(profiles(first_name, last_name))
+            `)
+            .eq('id', overrideId)
+            .eq('school_id', schoolId)
+            .single()
+
+        if (error) {
+            if (error.code === 'PGRST116') return null
+            throw new Error(`Failed to get fee override: ${error.message}`)
+        }
+
+        return data
+    }
+
+    /**
+     * Update an existing fee override
+     */
+    async updateStudentFeeOverride(
+        overrideId: string,
+        schoolId: string,
+        updates: UpdateStudentFeeOverrideDTO
+    ): Promise<StudentFeeOverride> {
+        const { data, error } = await supabase
+            .from('student_fee_overrides')
+            .update({
+                ...(updates.override_amount !== undefined && { override_amount: updates.override_amount }),
+                ...(updates.reason !== undefined && { reason: updates.reason }),
+                ...(updates.is_active !== undefined && { is_active: updates.is_active })
+            })
+            .eq('id', overrideId)
+            .eq('school_id', schoolId)
+            .select(`
+                *,
+                fee_categories(name, code),
+                students(profiles(first_name, last_name))
+            `)
+            .single()
+
+        if (error) throw new Error(`Failed to update fee override: ${error.message}`)
+
+        return data
+    }
+
+    /**
+     * Delete a fee override
+     */
+    async deleteStudentFeeOverride(overrideId: string, schoolId: string): Promise<void> {
+        const { error } = await supabase
+            .from('student_fee_overrides')
+            .delete()
+            .eq('id', overrideId)
+            .eq('school_id', schoolId)
+
+        if (error) throw new Error(`Failed to delete fee override: ${error.message}`)
+    }
+
+    /**
+     * Get all active fee overrides for a school (for admin overview)
+     */
+    async getAllSchoolFeeOverrides(
+        schoolId: string,
+        options?: {
+            academicYear?: string
+            feeCategoryId?: string
+            isActive?: boolean
+            page?: number
+            limit?: number
+        }
+    ): Promise<{ data: StudentFeeOverride[]; total: number }> {
+        const { academicYear, feeCategoryId, isActive = true, page = 1, limit = 50 } = options || {}
+        const offset = (page - 1) * limit
+
+        let query = supabase
+            .from('student_fee_overrides')
+            .select(`
+                *,
+                fee_categories(name, code),
+                students(
+                    id, student_number,
+                    profiles(first_name, last_name),
+                    grade_levels(name)
+                )
+            `, { count: 'exact' })
+            .eq('school_id', schoolId)
+            .order('created_at', { ascending: false })
+            .range(offset, offset + limit - 1)
+
+        if (academicYear) query = query.eq('academic_year', academicYear)
+        if (feeCategoryId) query = query.eq('fee_category_id', feeCategoryId)
+        if (isActive !== undefined) query = query.eq('is_active', isActive)
+
+        const { data, error, count } = await query
+
+        if (error) throw new Error(`Failed to get school fee overrides: ${error.message}`)
 
         return { data: data || [], total: count || 0 }
     }

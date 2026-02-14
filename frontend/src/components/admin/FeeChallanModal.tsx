@@ -230,7 +230,7 @@ export default function FeeChallanModal({ isOpen, onClose, feeId, schoolId }: Fe
                                                                 <span className="text-gray-500 dark:text-gray-400 text-sm ml-2">({category.category_code})</span>
                                                             )}
                                                         </td>
-                                                        <td className="border dark:border-gray-600 p-3 text-right dark:text-gray-200">Rs. {category.amount.toLocaleString()}</td>
+                                                        <td className="border dark:border-gray-600 p-3 text-right dark:text-gray-200">{category.amount.toLocaleString()}</td>
                                                     </tr>
                                                 ))
                                             ) : (
@@ -240,21 +240,21 @@ export default function FeeChallanModal({ isOpen, onClose, feeId, schoolId }: Fe
                                                         {feeCategory}
                                                         <span className="text-gray-500 dark:text-gray-400 text-sm ml-2">(Base Fee)</span>
                                                     </td>
-                                                    <td className="border dark:border-gray-600 p-3 text-right dark:text-gray-200">Rs. {fee.base_amount?.toLocaleString()}</td>
+                                                    <td className="border dark:border-gray-600 p-3 text-right dark:text-gray-200">{fee.base_amount?.toLocaleString()}</td>
                                                 </tr>
                                             )}
 
                                             {(fee as any).services_amount > 0 && (
                                                 <tr>
                                                     <td className="border dark:border-gray-600 p-3 dark:text-gray-200">Service Charges</td>
-                                                    <td className="border dark:border-gray-600 p-3 text-right dark:text-gray-200">Rs. {(fee as any).services_amount?.toLocaleString()}</td>
+                                                    <td className="border dark:border-gray-600 p-3 text-right dark:text-gray-200">{(fee as any).services_amount?.toLocaleString()}</td>
                                                 </tr>
                                             )}
 
                                             {fee.sibling_discount > 0 && (
                                                 <tr className="text-green-700 dark:text-green-400">
                                                     <td className="border dark:border-gray-600 p-3">Sibling Discount</td>
-                                                    <td className="border dark:border-gray-600 p-3 text-right">-Rs. {fee.sibling_discount?.toLocaleString()}</td>
+                                                    <td className="border dark:border-gray-600 p-3 text-right">-{fee.sibling_discount?.toLocaleString()}</td>
                                                 </tr>
                                             )}
 
@@ -266,7 +266,7 @@ export default function FeeChallanModal({ isOpen, onClose, feeId, schoolId }: Fe
                                                             <span className="text-gray-500 dark:text-gray-400 text-sm ml-2">({(fee as any).discount_reason})</span>
                                                         )}
                                                     </td>
-                                                    <td className="border dark:border-gray-600 p-3 text-right">-Rs. {fee.custom_discount?.toLocaleString()}</td>
+                                                    <td className="border dark:border-gray-600 p-3 text-right">-{fee.custom_discount?.toLocaleString()}</td>
                                                 </tr>
                                             )}
 
@@ -281,24 +281,24 @@ export default function FeeChallanModal({ isOpen, onClose, feeId, schoolId }: Fe
                                                             </span>
                                                         )}
                                                     </td>
-                                                    <td className="border dark:border-gray-600 p-3 text-right">+Rs. {fee.late_fee_applied?.toLocaleString()}</td>
+                                                    <td className="border dark:border-gray-600 p-3 text-right">+{fee.late_fee_applied?.toLocaleString()}</td>
                                                 </tr>
                                             )}
 
                                             <tr className="bg-gray-50 dark:bg-gray-700 font-bold">
                                                 <td className="border dark:border-gray-600 p-3 dark:text-gray-100">Total Amount</td>
-                                                <td className="border dark:border-gray-600 p-3 text-right dark:text-gray-100">Rs. {fee.final_amount?.toLocaleString()}</td>
+                                                <td className="border dark:border-gray-600 p-3 text-right dark:text-gray-100">{fee.final_amount?.toLocaleString()}</td>
                                             </tr>
 
                                             <tr className="text-green-700 dark:text-green-400">
                                                 <td className="border dark:border-gray-600 p-3">Amount Paid</td>
-                                                <td className="border dark:border-gray-600 p-3 text-right">-Rs. {fee.amount_paid?.toLocaleString()}</td>
+                                                <td className="border dark:border-gray-600 p-3 text-right">-{fee.amount_paid?.toLocaleString()}</td>
                                             </tr>
 
                                             <tr className="bg-emerald-50 dark:bg-emerald-900/30 font-bold text-emerald-800 dark:text-emerald-300">
                                                 <td className="border dark:border-gray-600 p-3">Balance Due</td>
                                                 <td className="border dark:border-gray-600 p-3 text-right">
-                                                    Rs. {(fee.final_amount - fee.amount_paid).toLocaleString()}
+                                                    {(fee.final_amount - fee.amount_paid).toLocaleString()}
                                                 </td>
                                             </tr>
                                         </tbody>
@@ -325,7 +325,7 @@ export default function FeeChallanModal({ isOpen, onClose, feeId, schoolId }: Fe
                                                     <div className="flex justify-between items-start">
                                                         <div>
                                                             <p className="font-semibold text-green-700 dark:text-green-400">
-                                                                Rs. {payment.amount.toLocaleString()}
+                                                                {payment.amount.toLocaleString()}
                                                             </p>
                                                             <p className="text-sm text-gray-500 dark:text-gray-400">
                                                                 {payment.payment_method || 'Cash'}
@@ -374,7 +374,7 @@ export default function FeeChallanModal({ isOpen, onClose, feeId, schoolId }: Fe
                                                         </div>
                                                         <div className="text-right">
                                                             <p className={`font-semibold ${adj.adjustment_amount < 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                                                {adj.adjustment_amount < 0 ? '-' : '+'}Rs. {Math.abs(adj.adjustment_amount).toLocaleString()}
+                                                                {adj.adjustment_amount < 0 ? '-' : '+'}{Math.abs(adj.adjustment_amount).toLocaleString()}
                                                             </p>
                                                             <p className="text-xs text-gray-400 dark:text-gray-500">
                                                                 {new Date(adj.created_at).toLocaleDateString()}
@@ -382,8 +382,8 @@ export default function FeeChallanModal({ isOpen, onClose, feeId, schoolId }: Fe
                                                         </div>
                                                     </div>
                                                     <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500 mt-2 pt-2 border-t dark:border-gray-600">
-                                                        <span>Before: Rs. {adj.amount_before.toLocaleString()}</span>
-                                                        <span>After: Rs. {adj.amount_after.toLocaleString()}</span>
+                                                        <span>Before: {adj.amount_before.toLocaleString()}</span>
+                                                        <span>After: {adj.amount_after.toLocaleString()}</span>
                                                     </div>
                                                     {adj.adjusted_by_profile && (
                                                         <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">

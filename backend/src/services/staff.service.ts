@@ -44,7 +44,7 @@ const determineRoleFromTitle = (title?: string): UserRole => {
 
 export const getAllStaff = async (
     schoolId: string,
-    options?: { page?: number; limit?: number; search?: string; role?: 'staff' | 'librarian' | 'all' }
+    options?: { page?: number; limit?: number; search?: string; role?: 'staff' | 'librarian' | 'teacher' | 'all' | 'employees' }
 ): Promise<ApiResponse<{ data: Staff[], total: number, page: number, totalPages: number }>> => {
     try {
         const page = options?.page || 1
@@ -65,10 +65,13 @@ export const getAllStaff = async (
 
         // ⚠️ CRITICAL FIX: Filter by role in SQL query BEFORE pagination
         // We filter based on staff.role column (must be synced from profile.role)
-        if (roleFilter !== 'all') {
+        if (roleFilter === 'employees') {
+            // Fetch ALL employees including teachers (for payroll/payments)
+            query = query.in('role', ['staff', 'librarian', 'admin', 'counselor', 'teacher'])
+        } else if (roleFilter !== 'all') {
             query = query.eq('role', roleFilter)
         } else {
-            // Fetch staff, librarian, admin, and counselor roles (exclude teacher)
+            // 'all' = staff, librarian, admin, and counselor roles (exclude teacher for staff management)
             query = query.in('role', ['staff', 'librarian', 'admin', 'counselor'])
         }
 
@@ -304,6 +307,7 @@ export const createStaffRecord = async (
             specialization: data.specialization,
             date_of_joining: data.date_of_joining,
             employment_type: data.employment_type || 'full_time',
+            payment_type: data.payment_type || 'fixed_salary',
             is_active: true,
             permissions: data.permissions || {},
             custom_fields: data.custom_fields || [],
@@ -378,6 +382,7 @@ export const updateStaff = async (
         if (data.specialization !== undefined) staffUpdate.specialization = data.specialization
         if (data.date_of_joining !== undefined) staffUpdate.date_of_joining = data.date_of_joining
         if (data.employment_type !== undefined) staffUpdate.employment_type = data.employment_type
+        if (data.payment_type !== undefined) staffUpdate.payment_type = data.payment_type
         if (data.is_active !== undefined) staffUpdate.is_active = data.is_active
         if (data.permissions !== undefined) staffUpdate.permissions = data.permissions
         if (data.custom_fields !== undefined) staffUpdate.custom_fields = data.custom_fields

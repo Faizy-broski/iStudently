@@ -151,6 +151,9 @@ export interface AuthContextType {
   user: any | null
   profile: Profile | null
   loading: boolean
+  // True when user exists but profile fetch failed due to network/server issues (retrying)
+  // RoleGuard should NOT redirect when this is true
+  profileFetchPending: boolean
   // Access token for authenticated API calls (optional)
   access_token?: string | null
   signIn: (email: string, password: string) => Promise<void>

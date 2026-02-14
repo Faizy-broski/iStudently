@@ -162,7 +162,7 @@ export default function ServicesPage() {
     }
 
     const formatCurrency = (amount: number) => {
-        return `Rs. ${amount?.toLocaleString() || 0}`
+        return `${amount?.toLocaleString() || 0}`
     }
 
     const getFrequencyLabel = (freq: string) => {
@@ -274,7 +274,7 @@ export default function ServicesPage() {
                             </div>
 
                             <div>
-                                <Label>Default Charge (Rs.) *</Label>
+                                <Label>Default Charge *</Label>
                                 <Input
                                     type="number"
                                     min="0"

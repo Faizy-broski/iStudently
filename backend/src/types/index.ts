@@ -541,6 +541,7 @@ export interface CreateStaffDTO {
   specialization?: string
   date_of_joining?: string
   employment_type?: EmploymentType
+  payment_type?: 'fixed_salary' | 'hourly'
   permissions?: Record<string, any>
   custom_fields?: any[] // NEW
   created_by?: string
@@ -565,6 +566,7 @@ export interface UpdateStaffDTO {
   specialization?: string
   date_of_joining?: string
   employment_type?: EmploymentType
+  payment_type?: 'fixed_salary' | 'hourly'
   role?: string
   grade_level_id?: string | null
   section_id?: string | null
