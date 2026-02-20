@@ -43,6 +43,7 @@ import * as academicsApi from "@/lib/api/academics";
 import * as teachersApi from "@/lib/api/teachers";
 import { toast } from "sonner";
 import { useCampus } from "@/context/CampusContext";
+import { formatTime, formatTimeRange } from "@/lib/utils/formatTime";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const DAY_MAP: Record<string, number> = {
@@ -64,6 +65,7 @@ interface TimetableBuilderProps {
     entries: TimetableEntry[];
     academicYearId: string;
     isLoading?: boolean;
+    orientation?: 'vertical' | 'horizontal';
     onEntriesChange: () => void;
 }
 
@@ -72,10 +74,10 @@ const getPeriodShortLabel = (period: GlobalPeriod): string => {
     return period.short_name || `P${period.sort_order}`;
 };
 
-const getPeriodDurationInfo = (period: GlobalPeriod): string => {
-    if (period.length_minutes) {
-        return `${period.length_minutes}min`;
-    }
+const getPeriodTimeInfo = (period: GlobalPeriod): string => {
+    const timeRange = formatTimeRange(period.start_time, period.end_time);
+    if (timeRange) return timeRange;
+    if (period.length_minutes) return `${period.length_minutes}min`;
     return '';
 };
 
@@ -88,6 +90,7 @@ export function TimetableBuilder({
     entries,
     academicYearId,
     isLoading = false,
+    orientation = 'vertical',
     onEntriesChange
 }: TimetableBuilderProps) {
     // Campus context
@@ -377,6 +380,57 @@ export function TimetableBuilder({
         };
     };
 
+    // Render a builder slot cell (reused in both orientations)
+    const renderBuilderSlot = (day: string, period: GlobalPeriod) => {
+        const entry = getEntryForSlot(day, period.id);
+        return (
+            <td
+                key={`${day}-${period.id}`}
+                className={`border p-2 cursor-pointer transition-all duration-150 ${
+                    entry
+                        ? eraseMode
+                            ? 'bg-red-50 hover:bg-red-100 border-red-200'
+                            : 'bg-blue-50 hover:bg-blue-100'
+                        : 'hover:bg-muted/50'
+                }`}
+                onClick={() => handleSlotClick(day, period)}
+            >
+                {entry ? (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div className="relative group min-h-[40px]">
+                                <div className="font-medium text-[#022172] truncate">
+                                    {getSlotDisplayInfo(entry).subjectName}
+                                </div>
+                                <div className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                                    <User className="h-3 w-3 flex-shrink-0" />
+                                    {getSlotDisplayInfo(entry).teacherName}
+                                </div>
+                                {entry.room_number && (
+                                    <div className="text-xs text-muted-foreground">
+                                        {entry.room_number}
+                                    </div>
+                                )}
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <div className="text-sm">
+                                <div><strong>{getSlotDisplayInfo(entry).subjectName}</strong></div>
+                                <div>Teacher: {getSlotDisplayInfo(entry).teacherName}</div>
+                                {entry.room_number && <div>Room: {entry.room_number}</div>}
+                                <div className="text-xs text-muted-foreground mt-1">Click to edit</div>
+                            </div>
+                        </TooltipContent>
+                    </Tooltip>
+                ) : (
+                    <div className="text-center py-2 min-h-[40px] flex items-center justify-center">
+                        <Plus className="h-4 w-4 text-muted-foreground/30" />
+                    </div>
+                )}
+            </td>
+        );
+    };
+
     if (isLoading || loadingData) {
         return (
             <Card>
@@ -428,115 +482,135 @@ export function TimetableBuilder({
                 <TooltipProvider>
                     <div className="overflow-x-auto">
                         <table className="w-full border-collapse text-sm">
-                            <thead>
-                                <tr>
-                                    <th className="border p-2 bg-muted/50 font-medium min-w-[60px]">
-                                        Period
-                                    </th>
-                                    {DAYS.map(day => (
-                                        <th key={day} className="border p-2 bg-muted/50 font-medium min-w-[120px]">
-                                            <div className="flex items-center justify-between">
-                                                <span>{day}</span>
-                                                <div className="flex gap-1">
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="h-6 w-6 p-0"
-                                                                onClick={() => {
-                                                                    const nextDay = DAYS[(DAYS.indexOf(day) + 1) % DAYS.length];
-                                                                    copyDaySchedule(day, nextDay);
-                                                                }}
-                                                                disabled={saving}
-                                                            >
-                                                                <Copy className="h-3 w-3" />
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>Copy to next day</TooltipContent>
-                                                    </Tooltip>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
-                                                                onClick={() => clearDay(day)}
-                                                                disabled={saving}
-                                                            >
-                                                                <Trash2 className="h-3 w-3" />
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>Clear day</TooltipContent>
-                                                    </Tooltip>
-                                                </div>
-                                            </div>
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {sortedPeriods.map(period => (
-                                    <tr key={period.id}>
-                                        <td className="border p-2 bg-muted/30 text-center">
-                                            <div className="font-medium">{getPeriodShortLabel(period)}</div>
-                                            <div className="text-xs text-muted-foreground">
-                                                {getPeriodDurationInfo(period)}
-                                            </div>
-                                        </td>
-                                        {DAYS.map(day => {
-                                            const entry = getEntryForSlot(day, period.id);
-
-                                            return (
-                                                <td
-                                                    key={`${day}-${period.id}`}
-                                                    className={`border p-2 cursor-pointer transition-all duration-150 ${
-                                                        entry
-                                                            ? eraseMode
-                                                                ? 'bg-red-50 hover:bg-red-100 border-red-200'
-                                                                : 'bg-blue-50 hover:bg-blue-100'
-                                                            : 'hover:bg-muted/50'
-                                                    }`}
-                                                    onClick={() => handleSlotClick(day, period)}
-                                                >
-                                                    {entry ? (
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <div className="relative group min-h-[40px]">
-                                                                    <div className="font-medium text-[#022172] truncate">
-                                                                        {getSlotDisplayInfo(entry).subjectName}
-                                                                    </div>
-                                                                    <div className="text-xs text-muted-foreground truncate flex items-center gap-1">
-                                                                        <User className="h-3 w-3 flex-shrink-0" />
-                                                                        {getSlotDisplayInfo(entry).teacherName}
-                                                                    </div>
-                                                                    {entry.room_number && (
-                                                                        <div className="text-xs text-muted-foreground">
-                                                                            📍 {entry.room_number}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>
-                                                                <div className="text-sm">
-                                                                    <div><strong>{getSlotDisplayInfo(entry).subjectName}</strong></div>
-                                                                    <div>Teacher: {getSlotDisplayInfo(entry).teacherName}</div>
-                                                                    {entry.room_number && <div>Room: {entry.room_number}</div>}
-                                                                    <div className="text-xs text-muted-foreground mt-1">Click to edit</div>
-                                                                </div>
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    ) : (
-                                                        <div className="text-center py-2 min-h-[40px] flex items-center justify-center">
-                                                            <Plus className="h-4 w-4 text-muted-foreground/30" />
+                            {orientation === 'vertical' ? (
+                                /* Vertical: Periods as rows, Days as columns (default) */
+                                <>
+                                    <thead>
+                                        <tr>
+                                            <th className="border p-2 bg-muted/50 font-medium min-w-[80px]">
+                                                Period / Time
+                                            </th>
+                                            {DAYS.map(day => (
+                                                <th key={day} className="border p-2 bg-muted/50 font-medium min-w-[120px]">
+                                                    <div className="flex items-center justify-between">
+                                                        <span>{day}</span>
+                                                        <div className="flex gap-1">
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="h-6 w-6 p-0"
+                                                                        onClick={() => {
+                                                                            const nextDay = DAYS[(DAYS.indexOf(day) + 1) % DAYS.length];
+                                                                            copyDaySchedule(day, nextDay);
+                                                                        }}
+                                                                        disabled={saving}
+                                                                    >
+                                                                        <Copy className="h-3 w-3" />
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>Copy to next day</TooltipContent>
+                                                            </Tooltip>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                                                                        onClick={() => clearDay(day)}
+                                                                        disabled={saving}
+                                                                    >
+                                                                        <Trash2 className="h-3 w-3" />
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>Clear day</TooltipContent>
+                                                            </Tooltip>
                                                         </div>
-                                                    )}
+                                                    </div>
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {sortedPeriods.map(period => (
+                                            <tr key={period.id}>
+                                                <td className="border p-2 bg-muted/30 text-center">
+                                                    <div className="font-medium">{getPeriodShortLabel(period)}</div>
+                                                    <div className="text-xs text-muted-foreground whitespace-nowrap">
+                                                        {getPeriodTimeInfo(period)}
+                                                    </div>
                                                 </td>
-                                            );
-                                        })}
-                                    </tr>
-                                ))}
-                            </tbody>
+                                                {DAYS.map(day => renderBuilderSlot(day, period))}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </>
+                            ) : (
+                                /* Horizontal: Days as rows, Periods as columns */
+                                <>
+                                    <thead>
+                                        <tr>
+                                            <th className="border p-2 bg-muted/50 font-medium min-w-[100px]">
+                                                Day
+                                            </th>
+                                            {sortedPeriods.map(period => (
+                                                <th key={period.id} className="border p-2 bg-muted/50 font-medium min-w-[100px]">
+                                                    <div className="font-medium">{getPeriodShortLabel(period)}</div>
+                                                    <div className="text-[10px] font-normal text-muted-foreground whitespace-nowrap">
+                                                        {getPeriodTimeInfo(period)}
+                                                    </div>
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {DAYS.map(day => (
+                                            <tr key={day}>
+                                                <td className="border p-2 bg-muted/30">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="font-medium">{day}</span>
+                                                        <div className="flex gap-1">
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="h-6 w-6 p-0"
+                                                                        onClick={() => {
+                                                                            const nextDay = DAYS[(DAYS.indexOf(day) + 1) % DAYS.length];
+                                                                            copyDaySchedule(day, nextDay);
+                                                                        }}
+                                                                        disabled={saving}
+                                                                    >
+                                                                        <Copy className="h-3 w-3" />
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>Copy to next day</TooltipContent>
+                                                            </Tooltip>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                                                                        onClick={() => clearDay(day)}
+                                                                        disabled={saving}
+                                                                    >
+                                                                        <Trash2 className="h-3 w-3" />
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>Clear day</TooltipContent>
+                                                            </Tooltip>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                {sortedPeriods.map(period => renderBuilderSlot(day, period))}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </>
+                            )}
                         </table>
                     </div>
                 </TooltipProvider>
@@ -590,6 +664,11 @@ export function TimetableBuilder({
                                     <span className="text-muted-foreground">Period:</span>
                                     <span className="font-medium ml-1">
                                         {selectedSlot.period.title || selectedSlot.period.short_name || `P${selectedSlot.period.sort_order}`}
+                                        {(selectedSlot.period.start_time || selectedSlot.period.end_time) && (
+                                            <span className="text-xs text-muted-foreground ml-1">
+                                                ({formatTimeRange(selectedSlot.period.start_time, selectedSlot.period.end_time)})
+                                            </span>
+                                        )}
                                     </span>
                                 </div>
                             </div>

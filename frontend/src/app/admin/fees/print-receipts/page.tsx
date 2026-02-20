@@ -35,6 +35,7 @@ interface Payment {
     comment?: string
     is_lunch_payment: boolean
     created_at: string
+    receipt_number?: string
     created_by_profile?: {
         first_name: string
         last_name: string
@@ -135,6 +136,7 @@ async function fetchStudentsWithPayments(schoolId: string, gradeId?: string, sec
             payment_method,
             comment,
             is_lunch_payment,
+            receipt_number,
             created_at,
             created_by_profile:created_by(first_name, last_name)
         `)
@@ -206,8 +208,11 @@ export default function PrintReceiptsPage() {
         // Search filter
         if (searchQuery) {
             const name = `${p.student.profiles.first_name} ${p.student.profiles.last_name}`.toLowerCase()
+            const receipt = (p.receipt_number || '').toLowerCase()
+            const idNum = p.student.student_number?.toLowerCase() || ''
             if (!name.includes(searchQuery.toLowerCase()) && 
-                !p.student.student_number?.toLowerCase().includes(searchQuery.toLowerCase())) {
+                !idNum.includes(searchQuery.toLowerCase()) &&
+                !receipt.includes(searchQuery.toLowerCase())) {
                 return false
             }
         }
@@ -486,6 +491,7 @@ export default function PrintReceiptsPage() {
                                     <TableHead className="text-[#3d8fb5]">ID</TableHead>
                                     <TableHead className="text-[#3d8fb5]">GRADE</TableHead>
                                     <TableHead className="text-[#3d8fb5]">PAYMENT DATE</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">RECEIPT #</TableHead>
                                     <TableHead className="text-[#3d8fb5] text-right">AMOUNT</TableHead>
                                     <TableHead className="text-[#3d8fb5]">METHOD</TableHead>
                                     <TableHead className="text-[#3d8fb5]">COMMENT</TableHead>
@@ -509,6 +515,7 @@ export default function PrintReceiptsPage() {
                                         <TableCell>{payment.student.student_number || '-'}</TableCell>
                                         <TableCell>{payment.student.grade_levels?.name || '-'}</TableCell>
                                         <TableCell>{formatDate(payment.payment_date)}</TableCell>
+                                        <TableCell>{payment.receipt_number || '-'}</TableCell>
                                         <TableCell className="text-right font-medium text-green-600">
                                             {formatCurrency(payment.amount)}
                                         </TableCell>
@@ -541,7 +548,7 @@ export default function PrintReceiptsPage() {
                                     <p><strong>Grade:</strong> {payment.student.grade_levels?.name || '-'}</p>
                                 </div>
                                 <div className="right">
-                                    <p><strong>Receipt #:</strong> RCP-{payment.id.substring(0, 8).toUpperCase()}</p>
+                                    <p><strong>Receipt #:</strong> {payment.receipt_number || `RCP-${payment.id.substring(0, 8).toUpperCase()}`}</p>
                                     <p><strong>Payment Date:</strong> {formatDate(payment.payment_date)}</p>
                                     <p><strong>Method:</strong> {payment.payment_method || 'Cash'}</p>
                                 </div>

@@ -8,15 +8,33 @@ import { useCampus } from "@/context/CampusContext"
 import { getAuthToken } from "@/lib/api/schools"
 import { toast } from "sonner"
 import { Plus, Minus, Save, Loader2 } from "lucide-react"
+import Link from "next/link"
 
 interface Period {
   id?: string
   title: string
   short_name: string
   sort_order: number
+  start_time: string
+  end_time: string
   length_minutes: number
   block: string
   course_periods_count?: number
+}
+
+function formatTime12h(time: string): string {
+  if (!time) return ''
+  const [h, m] = time.split(':').map(Number)
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  const hour = h % 12 || 12
+  return `${hour}:${String(m).padStart(2, '0')} ${ampm}`
+}
+
+function calcLength(start: string, end: string): number {
+  if (!start || !end) return 0
+  const [sh, sm] = start.split(':').map(Number)
+  const [eh, em] = end.split(':').map(Number)
+  return (eh * 60 + em) - (sh * 60 + sm)
 }
 
 export default function PeriodsPage() {
@@ -60,7 +78,9 @@ export default function PeriodsPage() {
           title: p.title || p.period_name || '',
           short_name: p.short_name || '',
           sort_order: p.sort_order || p.period_number || 1,
-          length_minutes: p.length_minutes || 50,
+          start_time: p.start_time || '',
+          end_time: p.end_time || '',
+          length_minutes: p.length_minutes || 0,
           block: p.block || '',
           course_periods_count: p.course_periods_count || 0
         })))
@@ -88,7 +108,9 @@ export default function PeriodsPage() {
         title: '',
         short_name: '',
         sort_order: newSortOrder,
-        length_minutes: 50,
+        start_time: '',
+        end_time: '',
+        length_minutes: 0,
         block: '',
         course_periods_count: 0
       }
@@ -140,7 +162,9 @@ export default function PeriodsPage() {
               title: p.title,
               short_name: p.short_name,
               sort_order: p.sort_order,
-              length_minutes: p.length_minutes,
+              start_time: p.start_time || null,
+              end_time: p.end_time || null,
+              length_minutes: p.start_time && p.end_time ? calcLength(p.start_time, p.end_time) : p.length_minutes,
               block: p.block
             }))
           }),
@@ -173,20 +197,27 @@ export default function PeriodsPage() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
-      <div className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#022172] dark:text-white">
-          Periods
-        </h1>
-        <p className="text-muted-foreground">
-          Define periods for your timetable{selectedCampus ? ` - ${selectedCampus.name}` : ''}. These will be used when creating schedules.
-        </p>
+      <div className="flex items-start justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#022172] dark:text-white">
+            Periods
+          </h1>
+          <p className="text-muted-foreground">
+            Define periods for your timetable{selectedCampus ? ` - ${selectedCampus.name}` : ''}. These will be used when creating schedules.
+          </p>
+        </div>
+        <Link href="/admin/marking-periods">
+          <Button variant="outline" size="sm" className="gap-1 text-[#022172]">
+            Marking Periods →
+          </Button>
+        </Link>
       </div>
 
       {/* Periods Table */}
       <div className="bg-white dark:bg-gray-900 rounded-lg border overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b bg-gradient-to-r from-[#57A3CC]/10 to-[#022172]/10">
+            <tr className="border-b bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10">
               <th className="w-10 px-2 py-3"></th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-[#022172] uppercase tracking-wider">
                 Title
@@ -198,7 +229,13 @@ export default function PeriodsPage() {
                 Sort Order
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-[#022172] uppercase tracking-wider">
-                Length (Minutes)
+                Start Time
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-[#022172] uppercase tracking-wider">
+                End Time
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-[#022172] uppercase tracking-wider">
+                Length (Min)
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-[#022172] uppercase tracking-wider">
                 Block
@@ -248,11 +285,26 @@ export default function PeriodsPage() {
                 </td>
                 <td className="px-4 py-2">
                   <Input
-                    type="number"
-                    value={period.length_minutes}
-                    onChange={(e) => updatePeriod(index, 'length_minutes', parseInt(e.target.value) || 50)}
-                    className="h-8 w-16 border-0 bg-transparent p-0 focus-visible:ring-0 text-[#008B8B] underline"
+                    type="time"
+                    value={period.start_time}
+                    onChange={(e) => updatePeriod(index, 'start_time', e.target.value)}
+                    className="h-8 w-28 border-0 bg-transparent p-0 focus-visible:ring-0 text-[#008B8B] underline"
                   />
+                </td>
+                <td className="px-4 py-2">
+                  <Input
+                    type="time"
+                    value={period.end_time}
+                    onChange={(e) => updatePeriod(index, 'end_time', e.target.value)}
+                    className="h-8 w-28 border-0 bg-transparent p-0 focus-visible:ring-0 text-[#008B8B] underline"
+                  />
+                </td>
+                <td className="px-4 py-2 text-center">
+                  <span className="text-sm text-gray-600">
+                    {period.start_time && period.end_time
+                      ? `${calcLength(period.start_time, period.end_time)}`
+                      : period.length_minutes || '—'}
+                  </span>
                 </td>
                 <td className="px-4 py-2">
                   <Input
@@ -303,7 +355,13 @@ export default function PeriodsPage() {
                 <Input className="h-8 w-16 opacity-50" disabled />
               </td>
               <td className="px-4 py-2">
-                <Input className="h-8 w-16 opacity-50" disabled />
+                <Input className="h-8 w-28 opacity-50" disabled />
+              </td>
+              <td className="px-4 py-2">
+                <Input className="h-8 w-28 opacity-50" disabled />
+              </td>
+              <td className="px-4 py-2">
+                <span className="text-gray-300 text-sm">Auto</span>
               </td>
               <td className="px-4 py-2">
                 <Input className="h-8 w-20 opacity-50" disabled />

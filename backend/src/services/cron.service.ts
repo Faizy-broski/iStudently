@@ -3,6 +3,7 @@ import { salaryService } from "./salary.service";
 import { supabase } from "../config/supabase";
 import { generateDailyAttendance } from "./attendance.service";
 import { HostelService } from "./hostel.service";
+import { diaryReminderService } from "./diary-reminder.service";
 
 /**
  * AUTOMATED CRON SERVICE
@@ -99,6 +100,20 @@ class CronService {
       },
     );
 
+    // Class Diary Reminders - Runs daily at 7:00 AM
+    // Emails teachers who did not add a diary entry for yesterday's classes
+    cron.schedule(
+      "0 7 * * *",
+      async () => {
+        console.log("📓 [CRON] Checking for missing class diary entries...");
+        await this.sendDiaryReminders();
+      },
+      {
+        scheduled: true,
+        timezone: "Asia/Karachi",
+      },
+    );
+
     this.isInitialized = true;
     console.log("✅ Cron service initialized successfully");
     console.log("📅 Scheduled jobs:");
@@ -109,6 +124,7 @@ class CronService {
     console.log("   - Daily Approval Reminders: Every day at 9:00 AM");
     console.log("   - Backup Generation: 5th of every month at 3:00 AM");
     console.log("   - Hostel Inactive Cleanup: Every day at 2:00 AM");
+    console.log("   - Class Diary Reminders: Every day at 7:00 AM");
   }
 
   /**
@@ -453,6 +469,38 @@ class CronService {
       await this.logAutomationRun("hostel_inactive_cleanup", result);
     } catch (error: any) {
       console.error("❌ Error in hostel inactive cleanup:", error.message);
+    }
+  }
+
+  /**
+   * Send Class Diary email reminders to teachers who missed yesterday's entries
+   */
+  async sendDiaryReminders() {
+    try {
+      const results = await diaryReminderService.sendDiaryReminders();
+
+      const totalNotified = results.reduce((sum, r) => sum + r.teachers_notified, 0);
+      const totalEmails = results.reduce((sum, r) => sum + r.emails_sent, 0);
+      const totalErrors = results.reduce((sum, r) => sum + r.errors.length, 0);
+
+      console.log("\n" + "=".repeat(60));
+      console.log("📓 CLASS DIARY REMINDER SUMMARY");
+      console.log("=".repeat(60));
+      console.log(`🏫 Schools Processed: ${results.length}`);
+      console.log(`👨‍🏫 Teachers Notified: ${totalNotified}`);
+      console.log(`✉️ Emails Sent: ${totalEmails}`);
+      if (totalErrors > 0) console.log(`❌ Errors: ${totalErrors}`);
+      console.log("=".repeat(60));
+
+      await this.logAutomationRun("diary_email_reminders", {
+        schools_processed: results.length,
+        teachers_notified: totalNotified,
+        emails_sent: totalEmails,
+        errors: totalErrors,
+        details: results,
+      });
+    } catch (error: any) {
+      console.error("❌ Error in diary reminders:", error.message);
     }
   }
 }

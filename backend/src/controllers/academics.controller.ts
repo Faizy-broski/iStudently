@@ -112,15 +112,16 @@ export const getGradeLevelById = async (req: Request, res: Response) => {
 export const updateGradeLevel = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
-    const schoolId = (req as AuthRequest).profile?.school_id
-    if (!schoolId) {
+    const userSchoolId = (req as AuthRequest).profile?.school_id
+    const campusId = (req as AuthRequest).profile?.campus_id || userSchoolId
+    if (!campusId) {
       return res.status(400).json({
         success: false,
-        error: 'School ID is required',
+        error: 'Campus or School ID is required',
       } as ApiResponse)
     }
 
-    const grade = await academicsService.updateGradeLevel(id, schoolId, req.body)
+    const grade = await academicsService.updateGradeLevel(id, campusId, req.body)
 
     res.json({
       success: true,
@@ -139,15 +140,18 @@ export const updateGradeLevel = async (req: Request, res: Response) => {
 export const deleteGradeLevel = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
-    const schoolId = (req as AuthRequest).profile?.school_id
-    if (!schoolId) {
+    // allow explicit campus override via query param like other handlers
+    const queryCampus = req.query.campus_id as string | undefined
+    const userSchoolId = (req as AuthRequest).profile?.school_id
+    const campusId = queryCampus || (req as AuthRequest).profile?.campus_id || userSchoolId
+    if (!campusId) {
       return res.status(400).json({
         success: false,
-        error: 'School ID is required',
+        error: 'Campus or School ID is required',
       } as ApiResponse)
     }
 
-    await academicsService.deleteGradeLevel(id, schoolId)
+    await academicsService.deleteGradeLevel(id, campusId)
 
     res.json({
       success: true,
@@ -289,15 +293,17 @@ export const updateSection = async (req: Request, res: Response) => {
 export const deleteSection = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
-    const schoolId = (req as AuthRequest).profile?.school_id
-    if (!schoolId) {
+    const queryCampus = req.query.campus_id as string | undefined
+    const userSchoolId = (req as AuthRequest).profile?.school_id
+    const campusId = queryCampus || (req as AuthRequest).profile?.campus_id || userSchoolId
+    if (!campusId) {
       return res.status(400).json({
         success: false,
-        error: 'School ID is required',
+        error: 'Campus or School ID is required',
       } as ApiResponse)
     }
 
-    await academicsService.deleteSection(id, schoolId)
+    await academicsService.deleteSection(id, campusId)
 
     res.json({
       success: true,
@@ -414,15 +420,16 @@ export const getSubjectById = async (req: Request, res: Response) => {
 export const updateSubject = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
-    const schoolId = (req as AuthRequest).profile?.school_id
-    if (!schoolId) {
+    const userSchoolId = (req as AuthRequest).profile?.school_id
+    const campusId = (req as AuthRequest).profile?.campus_id || userSchoolId
+    if (!campusId) {
       return res.status(400).json({
         success: false,
-        error: 'School ID is required',
+        error: 'Campus or School ID is required',
       } as ApiResponse)
     }
 
-    const subject = await academicsService.updateSubject(id, schoolId, req.body)
+    const subject = await academicsService.updateSubject(id, campusId, req.body)
 
     res.json({
       success: true,
@@ -441,15 +448,18 @@ export const updateSubject = async (req: Request, res: Response) => {
 export const deleteSubject = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
-    const schoolId = (req as AuthRequest).profile?.school_id
-    if (!schoolId) {
+    // prefer campus_id query param when provided
+    const queryCampus = req.query.campus_id as string | undefined
+    const userSchoolId = (req as AuthRequest).profile?.school_id
+    const campusId = queryCampus || (req as AuthRequest).profile?.campus_id || userSchoolId
+    if (!campusId) {
       return res.status(400).json({
         success: false,
-        error: 'School ID is required',
+        error: 'Campus or School ID is required',
       } as ApiResponse)
     }
 
-    await academicsService.deleteSubject(id, schoolId)
+    await academicsService.deleteSubject(id, campusId)
 
     res.json({
       success: true,

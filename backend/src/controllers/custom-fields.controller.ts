@@ -25,10 +25,10 @@ export class CustomFieldsController {
                 return
             }
 
-            if (!['student', 'teacher', 'parent'].includes(entityType)) {
+            if (!['student', 'teacher', 'parent', 'staff'].includes(entityType)) {
                 res.status(400).json({
                     success: false,
-                    error: 'Invalid entity type. Must be "student", "teacher", or "parent"'
+                    error: 'Invalid entity type. Must be "student", "teacher", "parent", or "staff"'
                 })
                 return
             }

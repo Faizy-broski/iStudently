@@ -2,9 +2,11 @@
 
 import { useState, useMemo } from 'react'
 import { useCampus } from '@/context/CampusContext'
+import { useAcademic } from '@/context/AcademicContext'
 import * as feesApi from '@/lib/api/fees'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { IconLoader, IconSearch, IconUsers, IconDownload } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
@@ -72,15 +74,20 @@ type ViewMode = 'original' | 'expanded' | 'family'
 
 export default function StudentBalancesPage() {
     const { selectedCampus, loading: campusLoading } = useCampus() || {}
+    const { currentAcademicYear } = useAcademic()
     const schoolId = selectedCampus?.id
 
     const [searchQuery, setSearchQuery] = useState('')
     const [viewMode, setViewMode] = useState<ViewMode>('original')
+    const [cumulativeBalance, setCumulativeBalance] = useState(false)
 
-    // Fetch all student fees (includes student info)
+    // Fetch student fees — filter by current academic year unless cumulative is checked
     const { data: feesResponse, isLoading: feesLoading } = useSWR(
-        schoolId ? ['student-fees-balances', schoolId] : null,
-        () => feesApi.getStudentFees(schoolId!, { limit: 5000 }),
+        schoolId ? ['student-fees-balances', schoolId, cumulativeBalance, currentAcademicYear?.name] : null,
+        () => feesApi.getStudentFees(schoolId!, {
+            limit: 5000,
+            ...(!cumulativeBalance && currentAcademicYear?.name ? { academicYear: currentAcademicYear.name } : {})
+        }),
         { revalidateOnFocus: false }
     )
 
@@ -295,6 +302,18 @@ export default function StudentBalancesPage() {
                 <p className="text-muted-foreground">
                     View fee balances per student • {selectedCampus.name}
                 </p>
+            </div>
+
+            {/* Cumulative Balance Checkbox */}
+            <div className="flex items-center gap-2">
+                <Checkbox
+                    id="cumulative-balance"
+                    checked={cumulativeBalance}
+                    onCheckedChange={(checked) => setCumulativeBalance(checked === true)}
+                />
+                <label htmlFor="cumulative-balance" className="text-sm cursor-pointer select-none">
+                    Cumulative Balance over school years
+                </label>
             </div>
 
             {/* View Toggle */}

@@ -66,8 +66,15 @@ export interface Campus {
     name: string
     slug: string
     address?: string
+    city?: string
+    state?: string
+    zip_code?: string
     contact_email?: string
     phone?: string
+    principal_name?: string
+    short_name?: string
+    school_number?: string
+    logo_url?: string | null
     status: string
     parent_school_id: string
     created_at: string
@@ -77,8 +84,15 @@ export interface Campus {
 export interface CreateCampusData {
     name: string
     address?: string
+    city?: string
+    state?: string
+    zip_code?: string
     contact_email?: string
     phone?: string
+    principal_name?: string
+    short_name?: string
+    school_number?: string
+    logo_url?: string | null
 }
 
 /**

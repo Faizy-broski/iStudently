@@ -5,27 +5,14 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
-import { Plus, Loader2, Trash2, FileText } from "lucide-react"
+import { Loader2, Trash2, FileText } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useCampus } from "@/context/CampusContext"
 import * as portalApi from "@/lib/api/portal"
-
-const ROLES = [
-  { value: 'admin', label: 'Admin' },
-  { value: 'teacher', label: 'Teacher' },
-  { value: 'student', label: 'Student' },
-  { value: 'parent', label: 'Parent' },
-]
+import { DateRangePicker } from "@/components/ui/date-range-picker"
+import { VisibilityPicker, type VisibilityState, type VisibilityMode } from "@/components/portal/visibility-picker"
 
 interface NoteRow {
   id?: string
@@ -35,19 +22,23 @@ interface NoteRow {
   file_url: string
   file_name: string
   embed_link: string
-  visible_from_month: string
-  visible_from_day: string
-  visible_from_year: string
-  visible_until_month: string
-  visible_until_day: string
-  visible_until_year: string
-  visible_to_roles: string[]
+  visible_from?: string
+  visible_until?: string
+  visibility: VisibilityState
   isNew?: boolean
 }
 
-const MONTHS = ['N/A', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const DAYS = ['N/A', ...Array.from({ length: 31 }, (_, i) => String(i + 1))]
-const YEARS = ['N/A', '2024', '2025', '2026', '2027', '2028']
+// Convert ISO datetime to YYYY-MM-DD for <input type="date">
+function toDateInput(iso: string | undefined | null): string | undefined {
+  if (!iso) return undefined
+  return iso.substring(0, 10)
+}
+
+// Convert YYYY-MM-DD to ISO datetime
+function fromDateInput(val: string | undefined): string | undefined {
+  if (!val) return undefined
+  return new Date(val).toISOString()
+}
 
 export default function PortalNotesPage() {
   const { profile } = useAuth()
@@ -58,20 +49,9 @@ export default function PortalNotesPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
-  const parseDate = (dateStr: string | null | undefined) => {
-    if (!dateStr) return { month: 'N/A', day: 'N/A', year: 'N/A' }
-    const date = new Date(dateStr)
-    return {
-      month: MONTHS[date.getMonth() + 1],
-      day: String(date.getDate()),
-      year: String(date.getFullYear())
-    }
-  }
-
-  const buildDate = (month: string, day: string, year: string): string | undefined => {
-    if (month === 'N/A' || day === 'N/A' || year === 'N/A') return undefined
-    const monthIndex = MONTHS.indexOf(month) - 1
-    return new Date(parseInt(year), monthIndex, parseInt(day)).toISOString()
+  const getVisibilityMode = (note: portalApi.PortalNote): VisibilityMode => {
+    if ((note.visible_to_user_ids?.length ?? 0) > 0) return 'staff'
+    return 'roles'
   }
 
   const fetchNotes = useCallback(async () => {
@@ -81,31 +61,27 @@ export default function PortalNotesPage() {
     try {
       const result = await portalApi.getNotes({
         campus_id: selectedCampus.id,
-        include_inactive: true
+        include_inactive: true,
       })
-      
-      const mappedNotes: NoteRow[] = result.notes.map(note => {
-        const visibleFrom = parseDate(note.visible_from)
-        const visibleUntil = parseDate(note.visible_until)
-        return {
-          id: note.id,
-          title: note.title,
-          content: note.content,
-          sort_order: note.sort_order,
-          file_url: note.file_url || '',
-          file_name: note.file_name || '',
-          embed_link: note.embed_link || '',
-          visible_from_month: visibleFrom.month,
-          visible_from_day: visibleFrom.day,
-          visible_from_year: visibleFrom.year,
-          visible_until_month: visibleUntil.month,
-          visible_until_day: visibleUntil.day,
-          visible_until_year: visibleUntil.year,
-          visible_to_roles: note.visible_to_roles
-        }
-      })
-      
-      // Always add an empty row for new entries
+
+      const mappedNotes: NoteRow[] = result.notes.map((note) => ({
+        id: note.id,
+        title: note.title,
+        content: note.content,
+        sort_order: note.sort_order,
+        file_url: note.file_url || '',
+        file_name: note.file_name || '',
+        embed_link: note.embed_link || '',
+        visible_from: note.visible_from,
+        visible_until: note.visible_until,
+        visibility: {
+          mode: getVisibilityMode(note),
+          roles: note.visible_to_roles || [],
+          userIds: note.visible_to_user_ids || [],
+          gradeIds: note.visible_to_grade_ids || [],
+        },
+      }))
+
       mappedNotes.push(createEmptyRow(mappedNotes.length))
       setNotes(mappedNotes)
     } catch (error) {
@@ -128,28 +104,16 @@ export default function PortalNotesPage() {
     file_url: '',
     file_name: '',
     embed_link: '',
-    visible_from_month: 'N/A',
-    visible_from_day: 'N/A',
-    visible_from_year: 'N/A',
-    visible_until_month: 'N/A',
-    visible_until_day: 'N/A',
-    visible_until_year: 'N/A',
-    visible_to_roles: [],
-    isNew: true
+    visible_from: undefined,
+    visible_until: undefined,
+    visibility: { mode: 'roles', roles: [], userIds: [], gradeIds: [] },
+    isNew: true,
   })
 
-  const updateRow = (index: number, field: keyof NoteRow, value: any) => {
-    setNotes(notes.map((note, i) => 
-      i === index ? { ...note, [field]: value } : note
+  const updateRow = (index: number, updates: Partial<NoteRow>) => {
+    setNotes(notes.map((note, i) =>
+      i === index ? { ...note, ...updates } : note
     ))
-  }
-
-  const toggleRole = (index: number, role: string) => {
-    const note = notes[index]
-    const newRoles = note.visible_to_roles.includes(role)
-      ? note.visible_to_roles.filter(r => r !== role)
-      : [...note.visible_to_roles, role]
-    updateRow(index, 'visible_to_roles', newRoles)
   }
 
   const deleteRow = async (index: number) => {
@@ -158,8 +122,9 @@ export default function PortalNotesPage() {
       try {
         await portalApi.deleteNote(note.id)
         toast.success('Note deleted')
-      } catch (error: any) {
-        toast.error(error.message || 'Failed to delete')
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Failed to delete'
+        toast.error(msg)
         return
       }
     }
@@ -181,7 +146,7 @@ export default function PortalNotesPage() {
       for (const note of notes) {
         if (!note.title.trim() && !note.content.trim()) continue
 
-        const dto: portalApi.CreateNoteDTO = {
+        const dto: portalApi.CreateNoteDTO & { visible_to_grade_ids?: string[]; visible_to_user_ids?: string[] } = {
           title: note.title || 'Untitled',
           content: note.content,
           content_type: 'markdown',
@@ -190,9 +155,13 @@ export default function PortalNotesPage() {
           embed_link: note.embed_link || undefined,
           sort_order: note.sort_order,
           is_pinned: false,
-          visible_from: buildDate(note.visible_from_month, note.visible_from_day, note.visible_from_year),
-          visible_until: buildDate(note.visible_until_month, note.visible_until_day, note.visible_until_year),
-          visible_to_roles: note.visible_to_roles.length > 0 ? note.visible_to_roles : ['admin', 'teacher', 'student', 'parent'],
+          visible_from: note.visible_from || undefined,
+          visible_until: note.visible_until || undefined,
+          visible_to_roles: note.visibility.mode === 'roles' && note.visibility.roles.length > 0
+            ? note.visibility.roles
+            : ['admin', 'teacher', 'student', 'parent'],
+          visible_to_grade_ids: note.visibility.gradeIds,
+          visible_to_user_ids: note.visibility.mode !== 'roles' ? note.visibility.userIds : [],
           campus_id: selectedCampus.id,
         }
 
@@ -204,8 +173,9 @@ export default function PortalNotesPage() {
       }
       toast.success('Notes saved successfully')
       fetchNotes()
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to save notes')
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to save notes'
+      toast.error(msg)
     } finally {
       setSaving(false)
     }
@@ -241,8 +211,8 @@ export default function PortalNotesPage() {
 
       {/* Top Save Button */}
       <div className="flex justify-end">
-        <Button 
-          onClick={handleSave} 
+        <Button
+          onClick={handleSave}
           disabled={saving}
           className="bg-[#022172] hover:bg-[#022172]/90"
         >
@@ -254,24 +224,27 @@ export default function PortalNotesPage() {
       <Card className="border-0 shadow-sm">
         <CardContent className="p-0">
           <p className="px-4 py-2 text-sm text-gray-500 italic">
-            {notes.filter(n => n.id).length === 0 ? 'No notes were found.' : `${notes.filter(n => n.id).length} note(s) found.`}
+            {notes.filter((n) => n.id).length === 0
+              ? 'No notes were found.'
+              : `${notes.filter((n) => n.id).length} note(s) found.`}
           </p>
 
           {/* Table Header */}
-          <div className="grid grid-cols-[40px_120px_1fr_80px_180px_1fr] gap-2 px-4 py-2 bg-gray-50 border-y text-xs font-medium text-gray-600 uppercase tracking-wide">
+          <div className="grid grid-cols-[40px_120px_1fr_80px_180px_180px_140px] gap-2 px-4 py-2 bg-gray-50 border-y text-xs font-medium text-gray-600 uppercase tracking-wide">
             <div></div>
             <div>Title</div>
             <div>Note</div>
             <div>Sort Order</div>
             <div>File Attached</div>
-            <div>Publishing Options</div>
+            <div>Visible Between</div>
+            <div>Visible To</div>
           </div>
 
           {/* Table Rows */}
           {notes.map((note, index) => (
-            <div 
-              key={note.id || `new-${index}`} 
-              className="grid grid-cols-[40px_120px_1fr_80px_180px_1fr] gap-2 px-4 py-3 border-b items-start"
+            <div
+              key={note.id || `new-${index}`}
+              className="grid grid-cols-[40px_120px_1fr_80px_180px_180px_140px] gap-2 px-4 py-3 border-b items-start"
             >
               {/* Add/Delete Button */}
               <div className="flex items-center pt-1">
@@ -293,7 +266,7 @@ export default function PortalNotesPage() {
               <div>
                 <Input
                   value={note.title}
-                  onChange={(e) => updateRow(index, 'title', e.target.value)}
+                  onChange={(e) => updateRow(index, { title: e.target.value })}
                   className="h-8 text-sm"
                 />
               </div>
@@ -310,12 +283,12 @@ export default function PortalNotesPage() {
                   <TabsContent value="write" className="mt-1">
                     <Textarea
                       value={note.content}
-                      onChange={(e) => updateRow(index, 'content', e.target.value)}
-                      className="min-h-[80px] text-sm resize-y border-gray-300"
+                      onChange={(e) => updateRow(index, { content: e.target.value })}
+                      className="min-h-20 text-sm resize-y border-gray-300"
                     />
                   </TabsContent>
                   <TabsContent value="preview" className="mt-1">
-                    <div className="min-h-[80px] p-2 border rounded-md bg-white text-sm whitespace-pre-wrap">
+                    <div className="min-h-20 p-2 border rounded-md bg-white text-sm whitespace-pre-wrap">
                       {note.content || <span className="text-gray-400 italic">No content</span>}
                     </div>
                   </TabsContent>
@@ -327,7 +300,7 @@ export default function PortalNotesPage() {
                 <Input
                   type="number"
                   value={note.sort_order}
-                  onChange={(e) => updateRow(index, 'sort_order', parseInt(e.target.value) || 0)}
+                  onChange={(e) => updateRow(index, { sort_order: parseInt(e.target.value) || 0 })}
                   className="h-8 text-sm"
                 />
               </div>
@@ -336,85 +309,39 @@ export default function PortalNotesPage() {
               <div className="space-y-2 p-3 border border-gray-200 rounded-lg bg-gray-50/50">
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1 block">File Attached</label>
-                  <Input
-                    type="file"
-                    className="h-7 text-xs border-gray-300"
-                    disabled
-                  />
+                  <Input type="file" className="h-7 text-xs border-gray-300" disabled />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1 block">Embed Link</label>
                   <Input
                     value={note.embed_link}
-                    onChange={(e) => updateRow(index, 'embed_link', e.target.value)}
+                    onChange={(e) => updateRow(index, { embed_link: e.target.value })}
                     placeholder="https://"
                     className="h-7 text-xs border-gray-300"
                   />
                 </div>
               </div>
 
-              {/* Publishing Options */}
-              <div className="space-y-3 p-3 border border-gray-200 rounded-lg bg-gray-50/50">
-                {/* Visible Between */}
-                <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">Visible Between</label>
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <Select value={note.visible_from_month} onValueChange={(v) => updateRow(index, 'visible_from_month', v)}>
-                      <SelectTrigger className="w-[60px] h-6 text-xs border-gray-300"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {MONTHS.map(m => <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <Select value={note.visible_from_day} onValueChange={(v) => updateRow(index, 'visible_from_day', v)}>
-                      <SelectTrigger className="w-[50px] h-6 text-xs border-gray-300"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {DAYS.map(d => <SelectItem key={d} value={d} className="text-xs">{d}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <Select value={note.visible_from_year} onValueChange={(v) => updateRow(index, 'visible_from_year', v)}>
-                      <SelectTrigger className="w-[65px] h-6 text-xs border-gray-300"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {YEARS.map(y => <SelectItem key={y} value={y} className="text-xs">{y}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <span className="text-xs text-gray-500 px-1">to</span>
-                    <Select value={note.visible_until_month} onValueChange={(v) => updateRow(index, 'visible_until_month', v)}>
-                      <SelectTrigger className="w-[60px] h-6 text-xs border-gray-300"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {MONTHS.map(m => <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <Select value={note.visible_until_day} onValueChange={(v) => updateRow(index, 'visible_until_day', v)}>
-                      <SelectTrigger className="w-[50px] h-6 text-xs border-gray-300"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {DAYS.map(d => <SelectItem key={d} value={d} className="text-xs">{d}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <Select value={note.visible_until_year} onValueChange={(v) => updateRow(index, 'visible_until_year', v)}>
-                      <SelectTrigger className="w-[65px] h-6 text-xs border-gray-300"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {YEARS.map(y => <SelectItem key={y} value={y} className="text-xs">{y}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+              {/* Visible Between */}
+              <div>
+                <DateRangePicker
+                  from={toDateInput(note.visible_from)}
+                  to={toDateInput(note.visible_until)}
+                  onFromChange={(v) => updateRow(index, { visible_from: fromDateInput(v) })}
+                  onToChange={(v) => updateRow(index, { visible_until: fromDateInput(v) })}
+                />
+              </div>
 
-                {/* Visible To */}
-                <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">Visible To</label>
-                  <div className="flex flex-wrap gap-x-3 gap-y-1">
-                    {ROLES.map(role => (
-                      <label key={role.value} className="flex items-center gap-1 text-xs cursor-pointer">
-                        <Checkbox
-                          checked={note.visible_to_roles.includes(role.value)}
-                          onCheckedChange={() => toggleRole(index, role.value)}
-                          className="h-3 w-3"
-                        />
-                        {role.label}
-                      </label>
-                    ))}
-                  </div>
-                </div>
+              {/* Visible To */}
+              <div>
+                {profile?.school_id && (
+                  <VisibilityPicker
+                    value={note.visibility}
+                    onChange={(vis: VisibilityState) => updateRow(index, { visibility: vis })}
+                    schoolId={profile.school_id}
+                    campusId={selectedCampus?.id}
+                  />
+                )}
               </div>
             </div>
           ))}
@@ -423,8 +350,8 @@ export default function PortalNotesPage() {
 
       {/* Bottom Save Button */}
       <div className="flex justify-center">
-        <Button 
-          onClick={handleSave} 
+        <Button
+          onClick={handleSave}
           disabled={saving}
           className="bg-[#022172] hover:bg-[#022172]/90 px-8"
         >

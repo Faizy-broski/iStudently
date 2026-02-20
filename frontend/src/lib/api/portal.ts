@@ -21,6 +21,8 @@ export interface PortalNote {
   visible_from?: string
   visible_until?: string
   visible_to_roles: string[]
+  visible_to_grade_ids?: string[]
+  visible_to_user_ids?: string[]
   created_by?: string
   created_at: string
   updated_at: string
@@ -39,6 +41,8 @@ export interface CreateNoteDTO {
   visible_from?: string
   visible_until?: string
   visible_to_roles?: string[]
+  visible_to_grade_ids?: string[]
+  visible_to_user_ids?: string[]
   campus_id: string
 }
 
@@ -53,6 +57,8 @@ export interface PortalPoll {
   visible_from?: string
   visible_until?: string
   visible_to_roles: string[]
+  visible_to_grade_ids?: string[]
+  visible_to_user_ids?: string[]
   created_by?: string
   created_at: string
   updated_at: string
@@ -80,6 +86,8 @@ export interface CreatePollDTO {
   visible_from?: string
   visible_until?: string
   visible_to_roles?: string[]
+  visible_to_grade_ids?: string[]
+  visible_to_user_ids?: string[]
   campus_id: string
   questions?: CreateQuestionDTO[]
 }

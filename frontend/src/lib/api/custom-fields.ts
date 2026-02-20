@@ -8,7 +8,7 @@ import { getAuthToken } from './schools'
 
 // Types
 export type CustomFieldType = 'text' | 'long-text' | 'number' | 'date' | 'checkbox' | 'select' | 'multi-select' | 'file'
-export type EntityType = 'student' | 'teacher' | 'parent'
+export type EntityType = 'student' | 'teacher' | 'parent' | 'staff'
 export type CampusScope = 'this_campus' | 'selected_campuses' | 'all_campuses'
 
 export interface CustomFieldDefinition {

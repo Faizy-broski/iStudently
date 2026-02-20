@@ -411,6 +411,22 @@ export const createAcademicYear = async (
         .eq('is_current', true)
     }
 
+    // If setting as next, unset other next years (graceful if column missing)
+    if (dto.is_next) {
+      const { error: nextErr } = await supabase
+        .from('academic_years')
+        .update({ is_next: false } as any)
+        .eq('school_id', dto.school_id)
+        .eq('is_next' as any, true)
+      if (nextErr) {
+        console.warn('is_next column not available yet, skipping:', nextErr.message)
+        delete (dto as any).is_next
+      }
+    } else {
+      // Strip is_next if false to avoid errors when column doesn't exist
+      if ('is_next' in dto && !dto.is_next) delete (dto as any).is_next
+    }
+
     const { data, error } = await supabase
       .from('academic_years')
       .insert(dto)
@@ -457,6 +473,38 @@ export const updateAcademicYear = async (
           .eq('school_id', year.school_id)
           .eq('is_current', true)
           .neq('id', yearId)
+      }
+    }
+
+    // If setting as next, unset other next years (graceful if column missing)
+    if (dto.is_next) {
+      const { data: year } = await supabase
+        .from('academic_years')
+        .select('school_id')
+        .eq('id', yearId)
+        .single()
+
+      if (year) {
+        const { error: nextErr } = await supabase
+          .from('academic_years')
+          .update({ is_next: false } as any)
+          .eq('school_id', year.school_id)
+          .eq('is_next' as any, true)
+          .neq('id', yearId)
+        if (nextErr) {
+          console.warn('is_next column not available yet, skipping:', nextErr.message)
+          delete (dto as any).is_next
+        }
+      }
+    } else if ('is_next' in dto && dto.is_next === false) {
+      // Updating is_next to false — test if column exists first
+      const { error: probeErr } = await supabase
+        .from('academic_years')
+        .select('is_next' as any)
+        .limit(1)
+      if (probeErr) {
+        console.warn('is_next column not available yet, stripping from update')
+        delete (dto as any).is_next
       }
     }
 

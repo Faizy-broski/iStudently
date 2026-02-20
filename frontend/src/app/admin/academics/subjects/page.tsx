@@ -186,7 +186,7 @@ export default function SubjectsPage() {
   const handleDeleteConfirm = async () => {
     if (!subjectToDelete) return
 
-    const result = await academicsApi.deleteSubject(subjectToDelete)
+    const result = await academicsApi.deleteSubject(subjectToDelete, selectedCampus?.id)
 
     if (result.success) {
       toast.success('Subject deleted successfully')

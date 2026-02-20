@@ -48,7 +48,9 @@ export class EventController {
         grade_level: req.query.grade_level as string
       }
 
-      const result = await this.eventService.getEvents(schoolId, filters, page, limit)
+      const campusId = req.query.campus_id as string | undefined
+
+      const result = await this.eventService.getEvents(schoolId, filters, page, limit, campusId)
 
       res.json({
         success: true,
@@ -79,7 +81,7 @@ export class EventController {
         return
       }
 
-      const { start_date, end_date, category, user_role } = req.query
+      const { start_date, end_date, category, user_role, campus_id } = req.query
 
       if (!start_date || !end_date) {
         res.status(400).json({
@@ -94,7 +96,8 @@ export class EventController {
         start_date as string,
         end_date as string,
         category as any,
-        user_role as any
+        user_role as any,
+        campus_id as string | undefined
       )
 
       res.json({
@@ -158,7 +161,14 @@ export class EventController {
         return
       }
 
-      const counts = await this.eventService.getEventCategoryCounts(schoolId)
+      const { start_date, end_date, campus_id } = req.query
+
+      const counts = await this.eventService.getEventCategoryCounts(
+        schoolId,
+        start_date as string | undefined,
+        end_date as string | undefined,
+        campus_id as string | undefined
+      )
 
       res.json({
         success: true,

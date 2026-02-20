@@ -19,6 +19,8 @@ export interface PortalNote {
   visible_from?: string
   visible_until?: string
   visible_to_roles: string[]
+  visible_to_grade_ids?: string[]
+  visible_to_user_ids?: string[]
   created_by?: string
   created_at: string
   updated_at: string
@@ -39,6 +41,8 @@ export interface CreateNoteDTO {
   visible_from?: string
   visible_until?: string
   visible_to_roles?: string[]
+  visible_to_grade_ids?: string[]
+  visible_to_user_ids?: string[]
   created_by?: string
 }
 
@@ -54,6 +58,8 @@ export interface UpdateNoteDTO {
   visible_from?: string
   visible_until?: string
   visible_to_roles?: string[]
+  visible_to_grade_ids?: string[]
+  visible_to_user_ids?: string[]
   is_active?: boolean
 }
 
@@ -68,6 +74,8 @@ export interface PortalPoll {
   visible_from?: string
   visible_until?: string
   visible_to_roles: string[]
+  visible_to_grade_ids?: string[]
+  visible_to_user_ids?: string[]
   created_by?: string
   created_at: string
   updated_at: string
@@ -97,6 +105,8 @@ export interface CreatePollDTO {
   visible_from?: string
   visible_until?: string
   visible_to_roles?: string[]
+  visible_to_grade_ids?: string[]
+  visible_to_user_ids?: string[]
   created_by?: string
   questions?: CreateQuestionDTO[]
 }
@@ -117,6 +127,8 @@ export interface UpdatePollDTO {
   visible_from?: string
   visible_until?: string
   visible_to_roles?: string[]
+  visible_to_grade_ids?: string[]
+  visible_to_user_ids?: string[]
   is_active?: boolean
   questions?: CreateQuestionDTO[]  // Questions to update/add
 }
@@ -251,6 +263,8 @@ class PortalService {
         visible_from: dto.visible_from,
         visible_until: dto.visible_until,
         visible_to_roles: dto.visible_to_roles || ['admin', 'teacher', 'student', 'parent'],
+        visible_to_grade_ids: dto.visible_to_grade_ids || [],
+        visible_to_user_ids: dto.visible_to_user_ids || [],
         created_by: dto.created_by
       })
       .select()
@@ -455,6 +469,8 @@ class PortalService {
         visible_from: dto.visible_from,
         visible_until: dto.visible_until,
         visible_to_roles: dto.visible_to_roles || ['admin', 'teacher', 'student', 'parent'],
+        visible_to_grade_ids: dto.visible_to_grade_ids || [],
+        visible_to_user_ids: dto.visible_to_user_ids || [],
         created_by: dto.created_by
       })
       .select()

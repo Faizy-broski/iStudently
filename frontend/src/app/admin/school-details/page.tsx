@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { Textarea } from "@/components/ui/textarea"
 import { useCampus } from "@/context/CampusContext"
 import { getAuthToken } from "@/lib/api/schools"
 import { toast } from "sonner"
@@ -17,13 +18,11 @@ import {
   Mail,
   Users,
   GraduationCap,
-  Calendar,
   Loader2,
   Edit,
   Save,
   X,
 } from "lucide-react"
-import { format } from "date-fns"
 
 interface CampusStats {
   total_students: number
@@ -37,8 +36,14 @@ interface CampusStats {
 interface CampusFormData {
   name: string
   address: string
+  city: string
+  state: string
+  zip_code: string
   phone: string
   contact_email: string
+  principal_name: string
+  short_name: string
+  school_number: string
 }
 
 export default function SchoolDetailsPage() {
@@ -50,8 +55,14 @@ export default function SchoolDetailsPage() {
   const [formData, setFormData] = useState<CampusFormData>({
     name: "",
     address: "",
+    city: "",
+    state: "",
+    zip_code: "",
     phone: "",
     contact_email: "",
+    principal_name: "",
+    short_name: "",
+    school_number: "",
   })
 
   // Get selected campus directly from context
@@ -63,8 +74,14 @@ export default function SchoolDetailsPage() {
       setFormData({
         name: selectedCampus.name || "",
         address: selectedCampus.address || "",
+        city: selectedCampus.city || "",
+        state: selectedCampus.state || "",
+        zip_code: selectedCampus.zip_code || "",
         phone: selectedCampus.phone || "",
         contact_email: selectedCampus.contact_email || "",
+        principal_name: selectedCampus.principal_name || "",
+        short_name: selectedCampus.short_name || "",
+        school_number: selectedCampus.school_number || "",
       })
     }
   }, [selectedCampus])
@@ -145,13 +162,18 @@ export default function SchoolDetailsPage() {
   }
 
   const handleCancel = () => {
-    // Reset form data to current campus values
     if (selectedCampus) {
       setFormData({
         name: selectedCampus.name || "",
         address: selectedCampus.address || "",
+        city: selectedCampus.city || "",
+        state: selectedCampus.state || "",
+        zip_code: selectedCampus.zip_code || "",
         phone: selectedCampus.phone || "",
         contact_email: selectedCampus.contact_email || "",
+        principal_name: selectedCampus.principal_name || "",
+        short_name: selectedCampus.short_name || "",
+        school_number: selectedCampus.school_number || "",
       })
     }
     setIsEditing(false)
@@ -233,6 +255,24 @@ export default function SchoolDetailsPage() {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="short_name">Short Name</Label>
+                    <Input
+                      id="short_name"
+                      value={formData.short_name}
+                      onChange={(e) => setFormData({ ...formData, short_name: e.target.value })}
+                      placeholder="e.g., SMS, ABC Campus"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="school_number">Campus Number</Label>
+                    <Input
+                      id="school_number"
+                      value={formData.school_number}
+                      onChange={(e) => setFormData({ ...formData, school_number: e.target.value })}
+                      placeholder="Official campus code/number"
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="phone">Phone</Label>
                     <Input
                       id="phone"
@@ -248,43 +288,120 @@ export default function SchoolDetailsPage() {
                       type="email"
                       value={formData.contact_email}
                       onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
-                      placeholder="Enter email address"
+                      placeholder="campus@school.com"
                     />
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="address">Address</Label>
-                    <Input
+                    <Textarea
                       id="address"
                       value={formData.address}
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      placeholder="Enter full address"
+                      placeholder="Enter street address"
+                      rows={2}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="city">City</Label>
+                    <Input
+                      id="city"
+                      value={formData.city}
+                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      placeholder="City"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="state">State</Label>
+                    <Input
+                      id="state"
+                      value={formData.state}
+                      onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                      placeholder="State"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="zip_code">Zip Code</Label>
+                    <Input
+                      id="zip_code"
+                      value={formData.zip_code}
+                      onChange={(e) => setFormData({ ...formData, zip_code: e.target.value })}
+                      placeholder="ZIP code"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="principal">Principal</Label>
+                    <Input
+                      id="principal"
+                      value={formData.principal_name}
+                      onChange={(e) => setFormData({ ...formData, principal_name: e.target.value })}
+                      placeholder="Principal's name"
                     />
                   </div>
                 </div>
               ) : (
-                <>
+                <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-lg font-semibold">{selectedCampus.name}</h3>
-                      {selectedCampus.slug && (
-                        <p className="text-sm text-muted-foreground">Code: {selectedCampus.slug}</p>
+                      <h3 className="text-lg font-medium">{selectedCampus.name}</h3>
+                      {selectedCampus.short_name && (
+                        <p className="text-sm text-muted-foreground">Short Name: {selectedCampus.short_name}</p>
                       )}
                     </div>
                     <Badge variant={selectedCampus.status === 'active' ? "default" : "secondary"}>
                       {selectedCampus.status === 'active' ? "Active" : "Inactive"}
                     </Badge>
                   </div>
+                  
                   <Separator />
+                  
                   <div className="grid gap-4 md:grid-cols-2">
+                    {selectedCampus.school_number && (
+                      <div className="flex items-center gap-3">
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">Campus Number/Code</p>
+                          <p className="text-sm text-muted-foreground">
+                            {selectedCampus.school_number}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {selectedCampus.principal_name && (
+                      <div className="flex items-center gap-3">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">Principal</p>
+                          <p className="text-sm text-muted-foreground">
+                            {selectedCampus.principal_name}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    
                     <div className="flex items-start gap-3">
                       <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                      <div>
+                      <div className="flex-1">
                         <p className="text-sm font-medium">Address</p>
-                        <p className="text-sm text-muted-foreground">
-                          {selectedCampus.address || "Not provided"}
-                        </p>
+                        {selectedCampus.address ? (
+                          <>
+                            <p className="text-sm text-muted-foreground">
+                              {selectedCampus.address}
+                            </p>
+                            {(selectedCampus.city || selectedCampus.state || selectedCampus.zip_code) && (
+                              <p className="text-sm text-muted-foreground">
+                                {[selectedCampus.city, selectedCampus.state, selectedCampus.zip_code]
+                                  .filter(Boolean)
+                                  .join(", ")}
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Not provided</p>
+                        )}
                       </div>
                     </div>
+                    
                     <div className="flex items-center gap-3">
                       <Phone className="h-4 w-4 text-muted-foreground" />
                       <div>
@@ -294,6 +411,7 @@ export default function SchoolDetailsPage() {
                         </p>
                       </div>
                     </div>
+                    
                     <div className="flex items-center gap-3">
                       <Mail className="h-4 w-4 text-muted-foreground" />
                       <div>
@@ -303,17 +421,8 @@ export default function SchoolDetailsPage() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-sm font-medium">Created</p>
-                        <p className="text-sm text-muted-foreground">
-                          {format(new Date(selectedCampus.created_at), "MMMM d, yyyy")}
-                        </p>
-                      </div>
-                    </div>
                   </div>
-                </>
+                </div>
               )}
             </CardContent>
           </Card>

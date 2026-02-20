@@ -25,13 +25,8 @@ import { Plus, Loader2, Trash2, BarChart3, Eye, Star, MessageSquare, Users } fro
 import { useAuth } from "@/context/AuthContext"
 import { useCampus } from "@/context/CampusContext"
 import * as portalApi from "@/lib/api/portal"
-
-const ROLES = [
-  { value: 'admin', label: 'Admin' },
-  { value: 'teacher', label: 'Teacher' },
-  { value: 'student', label: 'Student' },
-  { value: 'parent', label: 'Parent' },
-]
+import { DateRangePicker } from "@/components/ui/date-range-picker"
+import { VisibilityPicker, type VisibilityState, type VisibilityMode } from "@/components/portal/visibility-picker"
 
 const DATA_TYPES = [
   { value: 'single_choice', label: 'Select One from Options' },
@@ -53,19 +48,11 @@ interface PollRow {
   questions: QuestionRow[]
   show_results: boolean
   sort_order: number
-  visible_from_month: string
-  visible_from_day: string
-  visible_from_year: string
-  visible_until_month: string
-  visible_until_day: string
-  visible_until_year: string
-  visible_to_roles: string[]
+  visible_from?: string
+  visible_until?: string
+  visibility: VisibilityState
   isNew?: boolean
 }
-
-const MONTHS = ['N/A', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const DAYS = ['N/A', ...Array.from({ length: 31 }, (_, i) => String(i + 1))]
-const YEARS = ['N/A', '2024', '2025', '2026', '2027', '2028']
 
 interface QuestionResult {
   question_id: string
@@ -84,6 +71,18 @@ interface PollResults {
   questions: QuestionResult[]
 }
 
+// Convert ISO datetime to YYYY-MM-DD for <input type="date">
+function toDateInput(iso: string | undefined | null): string | undefined {
+  if (!iso) return undefined
+  return iso.substring(0, 10)
+}
+
+// Convert YYYY-MM-DD to ISO datetime
+function fromDateInput(val: string | undefined): string | undefined {
+  if (!val) return undefined
+  return new Date(val).toISOString()
+}
+
 export default function PortalPollsPage() {
   const { profile } = useAuth()
   const campusContext = useCampus()
@@ -92,11 +91,16 @@ export default function PortalPollsPage() {
   const [polls, setPolls] = useState<PollRow[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  
+
   // Results dialog state
   const [resultsDialogOpen, setResultsDialogOpen] = useState(false)
   const [loadingResults, setLoadingResults] = useState(false)
   const [currentResults, setCurrentResults] = useState<PollResults | null>(null)
+
+  const getVisibilityMode = (poll: portalApi.PortalPoll): VisibilityMode => {
+    if ((poll.visible_to_user_ids?.length ?? 0) > 0) return 'staff'
+    return 'roles'
+  }
 
   const openResultsDialog = async (pollId: string) => {
     setResultsDialogOpen(true)
@@ -105,49 +109,30 @@ export default function PortalPollsPage() {
     try {
       const data = await portalApi.getPollResults(pollId)
       setCurrentResults(data)
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to load results')
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to load results'
+      toast.error(msg)
     } finally {
       setLoadingResults(false)
     }
   }
 
-  const parseDate = (dateStr: string | null | undefined) => {
-    if (!dateStr) return { month: 'N/A', day: 'N/A', year: 'N/A' }
-    const date = new Date(dateStr)
-    return {
-      month: MONTHS[date.getMonth() + 1],
-      day: String(date.getDate()),
-      year: String(date.getFullYear())
-    }
-  }
-
-  const buildDate = (month: string, day: string, year: string): string | undefined => {
-    if (month === 'N/A' || day === 'N/A' || year === 'N/A') return undefined
-    const monthIndex = MONTHS.indexOf(month) - 1
-    return new Date(parseInt(year), monthIndex, parseInt(day)).toISOString()
-  }
-
   const createEmptyQuestion = (): QuestionRow => ({
     question_text: '',
     options: '',
-    question_type: 'single_choice'
+    question_type: 'single_choice',
   })
 
-  const createEmptyRow = (sortOrder: number): PollRow => ({
+  const createEmptyRow = useCallback((sortOrder: number): PollRow => ({
     title: '',
     questions: [createEmptyQuestion()],
     show_results: false,
     sort_order: sortOrder,
-    visible_from_month: 'N/A',
-    visible_from_day: 'N/A',
-    visible_from_year: 'N/A',
-    visible_until_month: 'N/A',
-    visible_until_day: 'N/A',
-    visible_until_year: 'N/A',
-    visible_to_roles: [],
-    isNew: true
-  })
+    visible_from: undefined,
+    visible_until: undefined,
+    visibility: { mode: 'roles', roles: [], userIds: [], gradeIds: [] },
+    isNew: true,
+  }), [])
 
   const fetchPolls = useCallback(async () => {
     if (!profile?.school_id || !selectedCampus?.id) return
@@ -156,34 +141,30 @@ export default function PortalPollsPage() {
     try {
       const result = await portalApi.getPolls({
         campus_id: selectedCampus.id,
-        include_inactive: true
+        include_inactive: true,
       })
-      
-      const mappedPolls: PollRow[] = result.polls.map(poll => {
-        const visibleFrom = parseDate(poll.visible_from)
-        const visibleUntil = parseDate(poll.visible_until)
-        return {
-          id: poll.id,
-          title: poll.title,
-          questions: poll.questions?.map(q => ({
-            id: q.id,
-            question_text: q.question_text,
-            options: q.options?.join('\n') || '',
-            question_type: q.question_type
-          })) || [createEmptyQuestion()],
-          show_results: poll.show_results,
-          sort_order: poll.sort_order,
-          visible_from_month: visibleFrom.month,
-          visible_from_day: visibleFrom.day,
-          visible_from_year: visibleFrom.year,
-          visible_until_month: visibleUntil.month,
-          visible_until_day: visibleUntil.day,
-          visible_until_year: visibleUntil.year,
-          visible_to_roles: poll.visible_to_roles
-        }
-      })
-      
-      // Always add an empty row for new entries
+
+      const mappedPolls: PollRow[] = result.polls.map((poll) => ({
+        id: poll.id,
+        title: poll.title,
+        questions: poll.questions?.map((q) => ({
+          id: q.id,
+          question_text: q.question_text,
+          options: q.options?.join('\n') || '',
+          question_type: q.question_type,
+        })) || [createEmptyQuestion()],
+        show_results: poll.show_results,
+        sort_order: poll.sort_order,
+        visible_from: poll.visible_from,
+        visible_until: poll.visible_until,
+        visibility: {
+          mode: getVisibilityMode(poll),
+          roles: poll.visible_to_roles || [],
+          userIds: poll.visible_to_user_ids || [],
+          gradeIds: poll.visible_to_grade_ids || [],
+        },
+      }))
+
       mappedPolls.push(createEmptyRow(mappedPolls.length))
       setPolls(mappedPolls)
     } catch (error) {
@@ -193,26 +174,26 @@ export default function PortalPollsPage() {
     } finally {
       setLoading(false)
     }
-  }, [profile?.school_id, selectedCampus?.id])
+  }, [profile?.school_id, selectedCampus?.id, createEmptyRow])
 
   useEffect(() => {
     fetchPolls()
   }, [fetchPolls])
 
-  const updateRow = (index: number, field: keyof PollRow, value: any) => {
-    setPolls(polls.map((poll, i) => 
-      i === index ? { ...poll, [field]: value } : poll
+  const updateRow = (index: number, updates: Partial<PollRow>) => {
+    setPolls(polls.map((poll, i) =>
+      i === index ? { ...poll, ...updates } : poll
     ))
   }
 
-  const updateQuestion = (pollIndex: number, questionIndex: number, field: keyof QuestionRow, value: any) => {
+  const updateQuestion = (pollIndex: number, questionIndex: number, field: keyof QuestionRow, value: string) => {
     setPolls(polls.map((poll, i) => {
       if (i !== pollIndex) return poll
       return {
         ...poll,
-        questions: poll.questions.map((q, qi) => 
+        questions: poll.questions.map((q, qi) =>
           qi === questionIndex ? { ...q, [field]: value } : q
-        )
+        ),
       }
     }))
   }
@@ -222,7 +203,7 @@ export default function PortalPollsPage() {
       if (i !== pollIndex) return poll
       return {
         ...poll,
-        questions: [...poll.questions, createEmptyQuestion()]
+        questions: [...poll.questions, createEmptyQuestion()],
       }
     }))
   }
@@ -233,17 +214,9 @@ export default function PortalPollsPage() {
       const newQuestions = poll.questions.filter((_, qi) => qi !== questionIndex)
       return {
         ...poll,
-        questions: newQuestions.length > 0 ? newQuestions : [createEmptyQuestion()]
+        questions: newQuestions.length > 0 ? newQuestions : [createEmptyQuestion()],
       }
     }))
-  }
-
-  const toggleRole = (index: number, role: string) => {
-    const poll = polls[index]
-    const newRoles = poll.visible_to_roles.includes(role)
-      ? poll.visible_to_roles.filter(r => r !== role)
-      : [...poll.visible_to_roles, role]
-    updateRow(index, 'visible_to_roles', newRoles)
   }
 
   const deleteRow = async (index: number) => {
@@ -252,8 +225,9 @@ export default function PortalPollsPage() {
       try {
         await portalApi.deletePoll(poll.id)
         toast.success('Poll deleted')
-      } catch (error: any) {
-        toast.error(error.message || 'Failed to delete')
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Failed to delete'
+        toast.error(msg)
         return
       }
     }
@@ -273,24 +247,28 @@ export default function PortalPollsPage() {
     setSaving(true)
     try {
       for (const poll of polls) {
-        if (!poll.title.trim() && poll.questions.every(q => !q.question_text.trim())) continue
+        if (!poll.title.trim() && poll.questions.every((q) => !q.question_text.trim())) continue
 
-        const validQuestions = poll.questions.filter(q => q.question_text.trim())
-        
-        const dto: portalApi.CreatePollDTO = {
+        const validQuestions = poll.questions.filter((q) => q.question_text.trim())
+
+        const dto: portalApi.CreatePollDTO & { visible_to_grade_ids?: string[]; visible_to_user_ids?: string[] } = {
           title: poll.title || 'Untitled Poll',
           sort_order: poll.sort_order,
           show_results: poll.show_results,
-          visible_from: buildDate(poll.visible_from_month, poll.visible_from_day, poll.visible_from_year),
-          visible_until: buildDate(poll.visible_until_month, poll.visible_until_day, poll.visible_until_year),
-          visible_to_roles: poll.visible_to_roles.length > 0 ? poll.visible_to_roles : ['admin', 'teacher', 'student', 'parent'],
+          visible_from: poll.visible_from || undefined,
+          visible_until: poll.visible_until || undefined,
+          visible_to_roles: poll.visibility.mode === 'roles' && poll.visibility.roles.length > 0
+            ? poll.visibility.roles
+            : ['admin', 'teacher', 'student', 'parent'],
+          visible_to_grade_ids: poll.visibility.gradeIds,
+          visible_to_user_ids: poll.visibility.mode !== 'roles' ? poll.visibility.userIds : [],
           campus_id: selectedCampus.id,
           questions: validQuestions.map((q, i) => ({
             question_text: q.question_text,
-            question_type: q.question_type as any,
-            options: q.options.split('\n').filter(o => o.trim()),
-            sort_order: i
-          }))
+            question_type: q.question_type as 'single_choice' | 'multiple_choice' | 'text' | 'rating',
+            options: q.options.split('\n').filter((o) => o.trim()),
+            sort_order: i,
+          })),
         }
 
         if (poll.id) {
@@ -301,8 +279,9 @@ export default function PortalPollsPage() {
       }
       toast.success('Polls saved successfully')
       fetchPolls()
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to save polls')
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to save polls'
+      toast.error(msg)
     } finally {
       setSaving(false)
     }
@@ -338,8 +317,8 @@ export default function PortalPollsPage() {
 
       {/* Top Buttons */}
       <div className="flex justify-end gap-3">
-        <Button 
-          onClick={handleSave} 
+        <Button
+          onClick={handleSave}
           disabled={saving}
           className="bg-[#022172] hover:bg-[#022172]/90"
         >
@@ -351,24 +330,27 @@ export default function PortalPollsPage() {
       <Card className="border-0 shadow-sm">
         <CardContent className="p-0">
           <p className="px-4 py-2 text-sm text-gray-500 italic">
-            {polls.filter(p => p.id).length === 0 ? 'No polls were found.' : `${polls.filter(p => p.id).length} poll(s) found.`}
+            {polls.filter((p) => p.id).length === 0
+              ? 'No polls were found.'
+              : `${polls.filter((p) => p.id).length} poll(s) found.`}
           </p>
 
           {/* Table Header */}
-          <div className="grid grid-cols-[40px_100px_1fr_100px_80px_1fr] gap-2 px-4 py-2 bg-gray-50 border-y text-xs font-medium text-gray-600 uppercase tracking-wide">
+          <div className="grid grid-cols-[40px_100px_1fr_100px_80px_180px_140px] gap-2 px-4 py-2 bg-gray-50 border-y text-xs font-medium text-gray-600 uppercase tracking-wide">
             <div></div>
             <div>Title</div>
             <div>Poll</div>
             <div>Results</div>
             <div>Sort Order</div>
-            <div>Publishing Options</div>
+            <div>Visible Between</div>
+            <div>Visible To</div>
           </div>
 
           {/* Table Rows */}
           {polls.map((poll, pollIndex) => (
-            <div 
-              key={poll.id || `new-${pollIndex}`} 
-              className="grid grid-cols-[40px_100px_1fr_100px_80px_1fr] gap-2 px-4 py-3 border-b items-start"
+            <div
+              key={poll.id || `new-${pollIndex}`}
+              className="grid grid-cols-[40px_100px_1fr_100px_80px_180px_140px] gap-2 px-4 py-3 border-b items-start"
             >
               {/* Add/Delete Button */}
               <div className="flex items-center pt-1">
@@ -390,7 +372,7 @@ export default function PortalPollsPage() {
               <div>
                 <Input
                   value={poll.title}
-                  onChange={(e) => updateRow(pollIndex, 'title', e.target.value)}
+                  onChange={(e) => updateRow(pollIndex, { title: e.target.value })}
                   className="h-8 text-sm"
                 />
               </div>
@@ -427,21 +409,21 @@ export default function PortalPollsPage() {
                         value={question.options}
                         onChange={(e) => updateQuestion(pollIndex, qIndex, 'options', e.target.value)}
                         placeholder=""
-                        className="min-h-[60px] text-sm resize-y border-gray-300"
+                        className="min-h-15 text-sm resize-y border-gray-300"
                       />
                     </div>
 
                     <div>
                       <label className="text-xs font-medium text-gray-600 mb-1 block">Data Type</label>
-                      <Select 
-                        value={question.question_type} 
+                      <Select
+                        value={question.question_type}
                         onValueChange={(v) => updateQuestion(pollIndex, qIndex, 'question_type', v)}
                       >
                         <SelectTrigger className="h-8 text-xs border-gray-300">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {DATA_TYPES.map(dt => (
+                          {DATA_TYPES.map((dt) => (
                             <SelectItem key={dt.value} value={dt.value} className="text-xs">
                               {dt.label}
                             </SelectItem>
@@ -467,7 +449,7 @@ export default function PortalPollsPage() {
                 <label className="flex items-center gap-2 cursor-pointer">
                   <Checkbox
                     checked={poll.show_results}
-                    onCheckedChange={(checked) => updateRow(pollIndex, 'show_results', !!checked)}
+                    onCheckedChange={(checked) => updateRow(pollIndex, { show_results: !!checked })}
                     className="h-4 w-4"
                   />
                   <span className="text-xs text-gray-600">Show to Users</span>
@@ -489,73 +471,31 @@ export default function PortalPollsPage() {
                 <Input
                   type="number"
                   value={poll.sort_order}
-                  onChange={(e) => updateRow(pollIndex, 'sort_order', parseInt(e.target.value) || 0)}
+                  onChange={(e) => updateRow(pollIndex, { sort_order: parseInt(e.target.value) || 0 })}
                   className="h-8 text-sm"
                 />
               </div>
 
-              {/* Publishing Options */}
-              <div className="space-y-3 p-3 border border-gray-200 rounded-lg bg-gray-50/50">
-                {/* Visible Between */}
-                <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">Visible Between</label>
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <Select value={poll.visible_from_month} onValueChange={(v) => updateRow(pollIndex, 'visible_from_month', v)}>
-                      <SelectTrigger className="w-[60px] h-6 text-xs border-gray-300"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {MONTHS.map(m => <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <Select value={poll.visible_from_day} onValueChange={(v) => updateRow(pollIndex, 'visible_from_day', v)}>
-                      <SelectTrigger className="w-[50px] h-6 text-xs border-gray-300"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {DAYS.map(d => <SelectItem key={d} value={d} className="text-xs">{d}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <Select value={poll.visible_from_year} onValueChange={(v) => updateRow(pollIndex, 'visible_from_year', v)}>
-                      <SelectTrigger className="w-[65px] h-6 text-xs border-gray-300"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {YEARS.map(y => <SelectItem key={y} value={y} className="text-xs">{y}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <span className="text-xs text-gray-500 px-1">to</span>
-                    <Select value={poll.visible_until_month} onValueChange={(v) => updateRow(pollIndex, 'visible_until_month', v)}>
-                      <SelectTrigger className="w-[60px] h-6 text-xs border-gray-300"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {MONTHS.map(m => <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <Select value={poll.visible_until_day} onValueChange={(v) => updateRow(pollIndex, 'visible_until_day', v)}>
-                      <SelectTrigger className="w-[50px] h-6 text-xs border-gray-300"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {DAYS.map(d => <SelectItem key={d} value={d} className="text-xs">{d}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <Select value={poll.visible_until_year} onValueChange={(v) => updateRow(pollIndex, 'visible_until_year', v)}>
-                      <SelectTrigger className="w-[65px] h-6 text-xs border-gray-300"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {YEARS.map(y => <SelectItem key={y} value={y} className="text-xs">{y}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+              {/* Visible Between */}
+              <div>
+                <DateRangePicker
+                  from={toDateInput(poll.visible_from)}
+                  to={toDateInput(poll.visible_until)}
+                  onFromChange={(v) => updateRow(pollIndex, { visible_from: fromDateInput(v) })}
+                  onToChange={(v) => updateRow(pollIndex, { visible_until: fromDateInput(v) })}
+                />
+              </div>
 
-                {/* Visible To */}
-                <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">Visible To</label>
-                  <div className="flex flex-wrap gap-x-3 gap-y-1">
-                    {ROLES.map(role => (
-                      <label key={role.value} className="flex items-center gap-1 text-xs cursor-pointer">
-                        <Checkbox
-                          checked={poll.visible_to_roles.includes(role.value)}
-                          onCheckedChange={() => toggleRole(pollIndex, role.value)}
-                          className="h-3 w-3"
-                        />
-                        {role.label}
-                      </label>
-                    ))}
-                  </div>
-                </div>
+              {/* Visible To */}
+              <div>
+                {profile?.school_id && (
+                  <VisibilityPicker
+                    value={poll.visibility}
+                    onChange={(vis: VisibilityState) => updateRow(pollIndex, { visibility: vis })}
+                    schoolId={profile.school_id}
+                    campusId={selectedCampus?.id}
+                  />
+                )}
               </div>
             </div>
           ))}
@@ -564,8 +504,8 @@ export default function PortalPollsPage() {
 
       {/* Bottom Save Button */}
       <div className="flex justify-center">
-        <Button 
-          onClick={handleSave} 
+        <Button
+          onClick={handleSave}
           disabled={saving}
           className="bg-[#022172] hover:bg-[#022172]/90 px-8"
         >
@@ -613,7 +553,7 @@ export default function PortalPollsPage() {
                       {question.question_text}
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
-                      {question.total_responses} response{question.total_responses !== 1 ? 's' : ''} • 
+                      {question.total_responses} response{question.total_responses !== 1 ? 's' : ''} •
                       {question.question_type === 'single_choice' && ' Single Choice'}
                       {question.question_type === 'multiple_choice' && ' Multiple Choice'}
                       {question.question_type === 'rating' && ' Rating'}
@@ -625,8 +565,8 @@ export default function PortalPollsPage() {
                   {(question.question_type === 'single_choice' || question.question_type === 'multiple_choice') && question.options && (
                     <div className="space-y-2">
                       {question.options.map((option, optIndex) => {
-                        const percentage = question.total_responses > 0 
-                          ? Math.round((option.count / question.total_responses) * 100) 
+                        const percentage = question.total_responses > 0
+                          ? Math.round((option.count / question.total_responses) * 100)
                           : 0
                         return (
                           <div key={optIndex} className="space-y-1">
@@ -657,9 +597,9 @@ export default function PortalPollsPage() {
                       </div>
                       {question.rating_distribution && (
                         <div className="space-y-1">
-                          {question.rating_distribution.sort((a, b) => b.rating - a.rating).map(item => {
-                            const percentage = question.total_responses > 0 
-                              ? Math.round((item.count / question.total_responses) * 100) 
+                          {question.rating_distribution.sort((a, b) => b.rating - a.rating).map((item) => {
+                            const percentage = question.total_responses > 0
+                              ? Math.round((item.count / question.total_responses) * 100)
                               : 0
                             return (
                               <div key={item.rating} className="flex items-center gap-2">

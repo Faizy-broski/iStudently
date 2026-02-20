@@ -42,7 +42,7 @@ async function apiRequest<T = unknown>(
   return await response.json();
 }
 
-export type EntityType = 'student' | 'parent' | 'teacher';
+export type EntityType = 'student' | 'parent' | 'teacher' | 'staff';
 
 export interface DefaultFieldOrder {
   id: string;

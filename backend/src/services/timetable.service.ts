@@ -41,13 +41,12 @@ export const getTimetableBySection = async (
         section:sections(id, name, grade_level:grade_levels(name)),
         subject:subjects(id, name, code),
         teacher:staff!teacher_id(id, profile:profiles!staff_profile_id_fkey(first_name, last_name)),
-        period:periods(id, period_number, period_name, start_time, end_time, is_break)
+        period:periods(id, period_number, period_name, start_time, end_time, is_break, sort_order)
       `)
       .eq('section_id', sectionId)
       .eq('academic_year_id', academicYearId)
       .eq('is_active', true)
       .order('day_of_week', { ascending: true })
-      .order('period_id', { ascending: true })
 
     if (error) throw error
 
@@ -61,9 +60,16 @@ export const getTimetableBySection = async (
         ? `${item.teacher.profile.first_name} ${item.teacher.profile.last_name}`.trim()
         : 'Unassigned',
       period_number: item.period?.period_number,
+      period_sort_order: item.period?.sort_order,
       start_time: item.period?.start_time,
       end_time: item.period?.end_time
     }))
+
+    // Sort by day_of_week then period sort_order
+    timetable.sort((a: any, b: any) => {
+      if (a.day_of_week !== b.day_of_week) return a.day_of_week - b.day_of_week
+      return (a.period_sort_order || 0) - (b.period_sort_order || 0)
+    })
 
     return {
       success: true,
@@ -93,13 +99,12 @@ export const getTimetableByTeacher = async (
         section:sections(id, name, grade_level:grade_levels(name)),
         subject:subjects(id, name, code),
         teacher:staff!teacher_id(id, profile:profiles!staff_profile_id_fkey(first_name, last_name)),
-        period:periods(id, period_number, period_name, start_time, end_time, is_break)
+        period:periods(id, period_number, period_name, start_time, end_time, is_break, sort_order)
       `)
       .eq('teacher_id', teacherId)
       .eq('academic_year_id', academicYearId)
       .eq('is_active', true)
       .order('day_of_week', { ascending: true })
-      .order('period_id', { ascending: true })
 
     if (error) throw error
 
@@ -112,9 +117,16 @@ export const getTimetableByTeacher = async (
         ? `${item.teacher.profile.first_name} ${item.teacher.profile.last_name}`.trim()
         : 'Unassigned',
       period_number: item.period?.period_number,
+      period_sort_order: item.period?.sort_order,
       start_time: item.period?.start_time,
       end_time: item.period?.end_time
     }))
+
+    // Sort by day_of_week then period sort_order
+    timetable.sort((a: any, b: any) => {
+      if (a.day_of_week !== b.day_of_week) return a.day_of_week - b.day_of_week
+      return (a.period_sort_order || 0) - (b.period_sort_order || 0)
+    })
 
     return {
       success: true,

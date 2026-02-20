@@ -1,8 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, GraduationCap, Users, BookOpen } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Plus, Pencil, Trash2, GraduationCap, Users, BookOpen, FolderDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Dialog,
   DialogContent,
@@ -13,6 +20,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import {
   Card,
@@ -58,15 +66,11 @@ export default function GradeLevelsPage() {
   const [formData, setFormData] = useState({
     name: '',
     order_index: 1,
+    is_active: true,
+    base_fee: 0
   })
 
-  useEffect(() => {
-    if (selectedCampus) {
-      fetchGrades()
-    }
-  }, [selectedCampus])
-
-  const fetchGrades = async () => {
+  const fetchGrades = useCallback(async () => {
     if (!selectedCampus) return
     setLoading(true)
     const result = await academicsApi.getGradeLevels(selectedCampus.id)
@@ -76,6 +80,42 @@ export default function GradeLevelsPage() {
       toast.error(result.error || 'Failed to fetch grade levels')
     }
     setLoading(false)
+  }, [selectedCampus])
+
+  useEffect(() => {
+    if (selectedCampus) {
+      fetchGrades()
+    }
+  }, [selectedCampus, fetchGrades])
+
+  // export grade levels to CSV
+  const exportGrades = () => {
+    if (grades.length === 0) return
+
+    const headers = ['Order','Name','Sections','Subjects','Next Grade','Status']
+    const rows = grades.map(g => {
+      const nextName = g.next_grade_id
+        ? grades.find(x => x.id === g.next_grade_id)?.name || ''
+        : 'Graduate'
+      return [
+        g.order_index.toString(),
+        g.name,
+        (g.sections_count || 0).toString(),
+        (g.subjects_count || 0).toString(),
+        nextName,
+        g.is_active ? 'Active' : 'Inactive'
+      ]
+    })
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'grade_levels.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success('Grade levels exported')
   }
 
   const handleOpenDialog = (grade?: academicsApi.GradeLevel) => {
@@ -84,12 +124,16 @@ export default function GradeLevelsPage() {
       setFormData({
         name: grade.name,
         order_index: grade.order_index,
+        is_active: grade.is_active,
+        base_fee: grade.base_fee || 0,
       })
     } else {
       setEditingGrade(null)
       setFormData({
         name: '',
         order_index: grades.length + 1,
+        is_active: true,
+        base_fee: 0,
       })
     }
     setDialogOpen(true)
@@ -101,6 +145,8 @@ export default function GradeLevelsPage() {
     setFormData({
       name: '',
       order_index: 1,
+      is_active: true,
+      base_fee: 0,
     })
   }
 
@@ -114,7 +160,7 @@ export default function GradeLevelsPage() {
 
     setSaving(true)
     try {
-      // Include campus_id for new grade levels
+      // Include campus_id when creating
       const submitData = editingGrade
         ? formData
         : { ...formData, campus_id: selectedCampus?.id }
@@ -143,7 +189,7 @@ export default function GradeLevelsPage() {
   const handleDeleteConfirm = async () => {
     if (!gradeToDelete) return
 
-    const result = await academicsApi.deleteGradeLevel(gradeToDelete)
+    const result = await academicsApi.deleteGradeLevel(gradeToDelete, selectedCampus?.id)
 
     if (result.success) {
       toast.success('Grade level deleted successfully')
@@ -156,11 +202,51 @@ export default function GradeLevelsPage() {
     setGradeToDelete(null)
   }
 
+  const handleNextGradeChange = async (gradeId: string, nextGradeId: string) => {
+    // Optimistic update: update UI immediately
+    const previousGrades = [...grades]
+    setGrades((prev) =>
+      prev.map((g) =>
+        g.id === gradeId
+          ? { ...g, next_grade_id: nextGradeId === 'graduate' ? null : nextGradeId }
+          : g
+      )
+    )
+
+    try {
+      const result = await academicsApi.updateGradeLevel(gradeId, {
+        next_grade_id: nextGradeId === 'graduate' ? null : nextGradeId,
+      })
+
+      if (result.success) {
+        toast.success('Next grade updated successfully')
+        if (result.data) {
+          setGrades(prev => prev.map(g => g.id === gradeId ? result.data! : g))
+        } else {
+          // fallback to refresh if response missing
+          fetchGrades()
+        }
+      } else {
+        // Rollback on error
+        setGrades(previousGrades)
+        toast.error(result.error || 'Failed to update next grade')
+      }
+    } catch {
+      // Rollback on exception
+      setGrades(previousGrades)
+      toast.error('Failed to update next grade')
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Grade Levels</h1>
+          <div className="flex items-center gap-2">
+            <GraduationCap className="h-6 w-6 text-[#3d8fb5]" />
+            <h1 className="text-3xl font-bold tracking-tight">Grade Levels</h1>
+          </div>
+      
           <p className="text-muted-foreground">
             Manage grade levels for your school. Grades are the foundation for sections and subjects.
           </p>
@@ -178,6 +264,20 @@ export default function GradeLevelsPage() {
             View and manage all grade levels in your school
           </CardDescription>
         </CardHeader>
+        <div className="flex items-center gap-3 pl-6" >
+        <p className="text-xl font-medium text-foreground">
+          {grades.length} grade level{grades.length === 1 ? ' was' : 's were'} found.
+        </p>
+        
+        <div
+          className="h-8 w-8 text-yellow-500 cursor-pointer hover:text-yellow-600"
+          title="Export to CSV"
+          onClick={exportGrades}
+        >
+          <FolderDown />
+        </div>
+        
+      </div>
         <CardContent>
           {loading ? (
             <div className="text-center py-8">Loading...</div>
@@ -199,6 +299,7 @@ export default function GradeLevelsPage() {
                     <BookOpen className="inline mr-1 h-4 w-4" />
                     Subjects
                   </TableHead>
+                  <TableHead>Next Grade</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -215,6 +316,26 @@ export default function GradeLevelsPage() {
                     </TableCell>
                     <TableCell>{grade.sections_count || 0}</TableCell>
                     <TableCell>{grade.subjects_count || 0}</TableCell>
+                    <TableCell>
+                      <Select
+                        value={grade.next_grade_id || 'graduate'}
+                        onValueChange={(value) => handleNextGradeChange(grade.id, value)}
+                      >
+                        <SelectTrigger className="w-45">
+                          <SelectValue placeholder="Select next grade" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="graduate">Graduate (N/A)</SelectItem>
+                          {grades
+                            .filter((g) => g.order_index > grade.order_index)
+                            .map((nextGrade) => (
+                              <SelectItem key={nextGrade.id} value={nextGrade.id}>
+                                {nextGrade.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
                     <TableCell>
                       <Badge variant={grade.is_active ? 'default' : 'secondary'}>
                         {grade.is_active ? 'Active' : 'Inactive'}
@@ -285,6 +406,21 @@ export default function GradeLevelsPage() {
                 <p className="text-sm text-muted-foreground">
                   Used for sorting: Grade 1=1, Grade 2=2, etc.
                 </p>
+              </div>
+              <div className="flex items-center justify-between space-x-2">
+                <div className="space-y-0.5">
+                  <Label htmlFor="is_active">Active Status</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Inactive grades won&apos;t appear in dropdowns
+                  </p>
+                </div>
+                <Switch
+                  id="is_active"
+                  checked={formData.is_active}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, is_active: checked })
+                  }
+                />
               </div>
             </div>
             <DialogFooter>

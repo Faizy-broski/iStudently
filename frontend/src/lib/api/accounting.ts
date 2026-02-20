@@ -127,6 +127,7 @@ export interface UpdateExpenseDTO {
     payment_date?: string
     comments?: string
     file_attached?: string
+    receipt_number?: string
 }
 
 export interface CreateStaffPaymentDTO extends CreateExpenseDTO {

@@ -12,14 +12,15 @@ export function useEvents({ currentMonth, selectedCategory }: UseEventsOptions) 
   const campusContext = useCampus()
   const monthKey = moment(currentMonth).format("YYYY-MM");
   const category = selectedCategory === 'all' ? undefined : selectedCategory;
+  const campusId = campusContext?.selectedCampus?.id;
 
   const { data, error, isLoading, isValidating, mutate } = useSWR(
-    ['events', monthKey, category, campusContext?.selectedCampus?.id],
+    ['events', monthKey, category, campusId],
     async () => {
       const startDate = moment(currentMonth).startOf('month').toISOString();
       const endDate = moment(currentMonth).endOf('month').toISOString();
 
-      const response = await getEventsForRange(startDate, endDate, category);
+      const response = await getEventsForRange(startDate, endDate, category, undefined, campusId);
 
       if (!response.success || !response.data) {
         throw new Error(response.error || "Failed to fetch events");
@@ -46,12 +47,14 @@ export function useEvents({ currentMonth, selectedCategory }: UseEventsOptions) 
   };
 }
 
-export function useCategoryCounts() {
+export function useCategoryCounts(startDate?: string, endDate?: string) {
   const campusContext = useCampus()
+  const campusId = campusContext?.selectedCampus?.id;
+  
   const { data, error, isLoading, mutate } = useSWR(
-    ['event-category-counts', campusContext?.selectedCampus?.id],
+    ['event-category-counts', campusId, startDate, endDate],
     async () => {
-      const response = await getCategoryCounts();
+      const response = await getCategoryCounts(startDate, endDate, campusId);
       
       if (!response.success || !response.data) {
         throw new Error(response.error || "Failed to fetch category counts");

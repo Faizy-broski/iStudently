@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, use } from 'react'
+import { useState, useRef, useCallback, use } from 'react'
 import { useCampus } from '@/context/CampusContext'
 import { useAuth } from '@/context/AuthContext'
 import { Card, CardContent } from '@/components/ui/card'
@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { IconLoader, IconPlus, IconTrash, IconCalendar } from '@tabler/icons-react'
 import useSWR, { mutate } from 'swr'
 import Link from 'next/link'
@@ -19,6 +20,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
 interface Payment {
     id: string
+    receipt_number?: string
     amount: number
     payment_date: string
     comment?: string
@@ -50,6 +52,7 @@ interface Student {
 }
 
 interface NewPayment {
+    receipt_number?: string
     amount: string
     month: string
     day: string
@@ -89,6 +92,12 @@ const MONTHS = [
     'July', 'August', 'September', 'October', 'November', 'December'
 ]
 
+const getDaysInMonth = (month: string, year: string) => {
+    const monthIndex = MONTHS.indexOf(month) + 1 // 1-based
+    const daysInMonth = new Date(parseInt(year), monthIndex, 0).getDate()
+    return Array.from({ length: daysInMonth }, (_, i) => (i + 1).toString())
+}
+
 export default function StudentPaymentsPage({ params }: { params: Promise<{ studentId: string }> }) {
     const resolvedParams = use(params)
     const studentId = resolvedParams.studentId
@@ -98,8 +107,69 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
     const schoolId = selectedCampus?.id
 
     const [viewMode, setViewMode] = useState<'original' | 'expanded'>('original')
+    const printRef = useRef<HTMLDivElement>(null)
+
+    const handlePrint = useCallback(() => {
+        const content = printRef.current
+        if (!content) return
+
+        const printWindow = window.open('', '_blank')
+        if (!printWindow) return
+
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Payment Receipts</title>
+                <style>
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    body { font-family: Arial, sans-serif; padding: 20px; }
+                    .receipt { border: 2px solid #333; padding: 24px; margin-bottom: 32px; page-break-after: always; }
+                    .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 16px; margin-bottom: 16px; }
+                    .header h1 { font-size: 24px; margin-bottom: 4px; }
+                    .header p { color: #666; }
+                    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+                    .info-grid .right { text-align: right; }
+                    .amount-box { background: #f0f0f0; border: 1px solid #ddd; padding: 24px; text-align: center; margin-bottom: 24px; }
+                    .amount-box .label { color: #666; font-size: 14px; margin-bottom: 8px; }
+                    .amount-box .amount { font-size: 32px; font-weight: bold; color: #16a34a; }
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+                    th, td { border: 1px solid #333; padding: 8px; text-align: left; }
+                    th { background: #f0f0f0; width: 40%; }
+                    .footer { display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid #333; padding-top: 16px; }
+                    .footer .date { font-size: 12px; color: #666; }
+                    .footer .signature { text-align: center; }
+                    .footer .signature-line { border-top: 1px solid #333; padding-top: 4px; margin-top: 48px; width: 200px; }
+                    @media print { .receipt:last-child { page-break-after: auto; } }
+                </style>
+            </head>
+            <body>${content.innerHTML}</body>
+            </html>
+        `)
+        printWindow.document.close()
+        printWindow.focus()
+        setTimeout(() => {
+            printWindow.print()
+            printWindow.close()
+        }, 250)
+    }, [])
     const [saving, setSaving] = useState(false)
+    const [openCalendarIndex, setOpenCalendarIndex] = useState<number | null>(null)
+
+    const handleCalendarSelect = (index: number, date: Date | undefined) => {
+        if (!date) return
+        const updated = [...newPayments]
+        updated[index] = {
+            ...updated[index],
+            month: MONTHS[date.getMonth()],
+            day: date.getDate().toString(),
+            year: date.getFullYear().toString(),
+        }
+        setNewPayments(updated)
+        setOpenCalendarIndex(null)
+    }
     const [newPayments, setNewPayments] = useState<NewPayment[]>([{
+        receipt_number: '',
         amount: '',
         month: MONTHS[new Date().getMonth()],
         day: new Date().getDate().toString(),
@@ -161,7 +231,20 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
     // Update payment row
     const updatePaymentRow = (index: number, field: keyof NewPayment, value: string | boolean | File | null) => {
         const updated = [...newPayments]
-        updated[index] = { ...updated[index], [field]: value }
+        const updatedRow = { ...updated[index], [field]: value }
+
+        // When month or year changes, clamp day to avoid invalid dates (e.g. Feb 31)
+        if (field === 'month' || field === 'year') {
+            const maxDay = getDaysInMonth(
+                field === 'month' ? (value as string) : updatedRow.month,
+                field === 'year' ? (value as string) : updatedRow.year
+            ).length
+            if (parseInt(updatedRow.day) > maxDay) {
+                updatedRow.day = maxDay.toString()
+            }
+        }
+
+        updated[index] = updatedRow
         setNewPayments(updated)
     }
 
@@ -224,7 +307,8 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                         payment_date: paymentDate,
                         comment: payment.comment || null,
                         is_lunch_payment: payment.is_lunch_payment,
-                        file_url: fileUrl
+                        file_url: fileUrl,
+                        receipt_number: payment.receipt_number || undefined
                     })
                 })
 
@@ -279,7 +363,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
     }
 
     // Generate days for select
-    const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString())
+    // years list static
     const years = Array.from({ length: 10 }, (_, i) => (new Date().getFullYear() - 5 + i).toString())
 
     if (campusLoading || studentLoading) {
@@ -312,8 +396,15 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
 
             {/* Print Receipt Link */}
             <div>
-                <Link href="#" className="text-[#3d8fb5] hover:underline text-sm">
-                    Print Receipt
+                <Link
+                    href="#"
+                    className="text-[#3d8fb5] hover:underline text-sm"
+                    onClick={(e) => {
+                        e.preventDefault()
+                        if (payments.length > 0) handlePrint()
+                    }}
+                >
+                    Print Receipt{payments.length > 1 ? 's' : ''}
                 </Link>
             </div>
 
@@ -366,6 +457,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                             <TableHeader>
                                 <TableRow className="bg-gray-100">
                                     <TableHead className="w-10"></TableHead>
+                                    <TableHead className="text-[#3d8fb5] font-semibold">RECEIPT #</TableHead>
                                     <TableHead className="text-[#3d8fb5] font-semibold">AMOUNT</TableHead>
                                     <TableHead className="text-[#3d8fb5] font-semibold">DATE</TableHead>
                                     <TableHead className="text-[#3d8fb5] font-semibold">COMMENT</TableHead>
@@ -388,6 +480,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                         className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
                                     >
                                         <TableCell></TableCell>
+                                        <TableCell>{payment.receipt_number || '-'}</TableCell>
                                         <TableCell>{formatCurrency(payment.amount)}</TableCell>
                                         <TableCell>{formatDate(payment.payment_date)}</TableCell>
                                         <TableCell>{payment.comment || '-'}</TableCell>
@@ -445,6 +538,14 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                         </TableCell>
                                         <TableCell>
                                             <Input
+                                                value={payment.receipt_number}
+                                                onChange={(e) => updatePaymentRow(index, 'receipt_number', e.target.value)}
+                                                placeholder="Auto"
+                                                className="w-24 h-8"
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Input
                                                 type="number"
                                                 step="0.01"
                                                 placeholder="0.00"
@@ -476,7 +577,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        {days.map(d => (
+                                                        {getDaysInMonth(payment.month, payment.year).map(d => (
                                                             <SelectItem key={d} value={d}>{d}</SelectItem>
                                                         ))}
                                                     </SelectContent>
@@ -494,9 +595,28 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                                         ))}
                                                     </SelectContent>
                                                 </Select>
-                                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                                    <IconCalendar className="h-4 w-4" />
-                                                </Button>
+                                                <Popover
+                                                    open={openCalendarIndex === index}
+                                                    onOpenChange={(open) => setOpenCalendarIndex(open ? index : null)}
+                                                >
+                                                    <PopoverTrigger asChild>
+                                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                            <IconCalendar className="h-4 w-4" />
+                                                        </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-3" align="start">
+                                                        <input
+                                                            type="date"
+                                                            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                                                            value={`${payment.year}-${String(MONTHS.indexOf(payment.month) + 1).padStart(2, '0')}-${String(payment.day).padStart(2, '0')}`}
+                                                            onChange={(e) => {
+                                                                if (!e.target.value) return
+                                                                const [y, m, d] = e.target.value.split('-')
+                                                                handleCalendarSelect(index, new Date(parseInt(y), parseInt(m) - 1, parseInt(d)))
+                                                            }}
+                                                        />
+                                                    </PopoverContent>
+                                                </Popover>
                                             </div>
                                         </TableCell>
                                         <TableCell>
@@ -594,6 +714,52 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                 <Link href="/admin/fees/payments" className="text-[#3d8fb5] hover:underline text-sm">
                     ← Back to Students
                 </Link>
+            </div>
+
+            {/* Hidden print template */}
+            <div className="hidden">
+                <div ref={printRef}>
+                    {payments.map(payment => (
+                        <div key={payment.id} className="receipt">
+                            <div className="header">
+                                <h1>{selectedCampus?.name || 'School Name'}</h1>
+                                <p>PAYMENT RECEIPT</p>
+                            </div>
+                            <div className="info-grid">
+                                <div>
+                                    <p><strong>Student Name:</strong> {student && `${student.profiles.first_name} ${student.profiles.last_name}`}</p>
+                                    <p><strong>Student ID:</strong> {student?.student_number || '-'}</p>
+                                </div>
+                                <div className="right">
+                                    <p><strong>Receipt #:</strong> {payment.receipt_number || `RCP-${payment.id.substring(0,8).toUpperCase()}`}</p>
+                                    <p><strong>Payment Date:</strong> {formatDate(payment.payment_date)}</p>
+                                </div>
+                            </div>
+                            <div className="amount-box">
+                                <p className="label">Amount Paid</p>
+                                <p className="amount">{formatCurrency(payment.amount)}</p>
+                            </div>
+                            <table>
+                                <tbody>
+                                    <tr>
+                                        <th>Comment</th>
+                                        <td>{payment.comment || '-'}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div className="footer">
+                                <div className="date">
+                                    <p>Generated on: {new Date().toLocaleDateString()}</p>
+                                </div>
+                                <div className="signature">
+                                    <div className="signature-line">
+                                        <p>Authorized Signature</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     )

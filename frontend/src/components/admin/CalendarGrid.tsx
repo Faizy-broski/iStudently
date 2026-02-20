@@ -45,8 +45,12 @@ interface DayInfo {
   gregorianDate?: string;
 }
 
+
+import { type CalendarDay } from "@/lib/api/attendance-calendars";
+
 interface CalendarGridProps {
   events: SchoolEvent[];
+  calendarDays: CalendarDay[];
   currentMonth: Date;
   onMonthChange: (date: Date) => void;
   onDateClick?: (date: Date) => void;
@@ -56,6 +60,7 @@ interface CalendarGridProps {
 
 export function CalendarGrid({
   events,
+  calendarDays,
   currentMonth,
   onMonthChange,
   onDateClick,
@@ -230,12 +235,18 @@ export function CalendarGrid({
 
   const days = generateCalendarDays();
 
+
   // Get events for a specific date
   const getEventsForDate = (dateKey: string) => {
     return events.filter((event) => {
       const eventDate = moment(event.start_at).format("YYYY-MM-DD");
       return eventDate === dateKey;
     });
+  };
+
+  // Get calendar day info for a specific date
+  const getCalendarDay = (dateKey: string) => {
+    return calendarDays.find((d) => d.school_date === dateKey);
   };
 
   // Format month header
@@ -261,7 +272,7 @@ export function CalendarGrid({
                 value={moment(currentMonth).month().toString()}
                 onValueChange={(value) => handleMonthChange(parseInt(value))}
               >
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-35">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -276,7 +287,7 @@ export function CalendarGrid({
                 value={moment(currentMonth).year().toString()}
                 onValueChange={(value) => handleYearChange(parseInt(value))}
               >
-                <SelectTrigger className="w-[100px]">
+                <SelectTrigger className="w-25">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -294,7 +305,7 @@ export function CalendarGrid({
                 value={momentHijri(currentMonth).iMonth().toString()}
                 onValueChange={(value) => handleHijriMonthChange(parseInt(value))}
               >
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className="w-40">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -309,7 +320,7 @@ export function CalendarGrid({
                 value={momentHijri(currentMonth).iYear().toString()}
                 onValueChange={(value) => handleHijriYearChange(parseInt(value))}
               >
-                <SelectTrigger className="w-[100px]">
+                <SelectTrigger className="w-25">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -356,16 +367,26 @@ export function CalendarGrid({
             {days.map((day) => {
               const dayEvents = getEventsForDate(day.dateKey);
               const hasEvents = dayEvents.length > 0;
-
+              const calDay = getCalendarDay(day.dateKey);
+              const isSchoolDay = calDay?.is_school_day;
+              const isHoliday = calDay && !calDay.is_school_day;
+              const isPartialDay = calDay?.is_school_day && calDay.minutes > 0 && calDay.minutes < 360;
+              
               return (
                 <div
                   key={day.dateKey}
                   className={cn(
                     "min-h-[100px] p-2 rounded-lg border transition-all duration-150 cursor-pointer",
                     day.isCurrentMonth
-                      ? "bg-background hover:bg-muted/50"
+                      ? isSchoolDay
+                        ? isPartialDay
+                          ? "bg-purple-50 border-purple-200 dark:bg-purple-900/20"
+                          : "bg-green-50 border-green-200 dark:bg-green-900/20"
+                        : isHoliday
+                        ? "bg-pink-50 border-pink-200 dark:bg-pink-900/20"
+                        : "bg-background hover:bg-muted/50"
                       : "bg-muted/20 opacity-50",
-                    day.isToday && "ring-2 ring-brand bg-brand/10 dark:bg-brand/20",
+                    day.isToday && "ring-2 ring-brand",
                     hoveredDate === day.dateKey && "shadow-md"
                   )}
                   onClick={() => onDateClick?.(day.date)}
@@ -393,6 +414,17 @@ export function CalendarGrid({
                   <div className="text-[10px] opacity-60 mb-1">
                     {calendarType === "gregorian" ? day.hijriDate : day.gregorianDate}
                   </div>
+
+                  {/* School day/holiday indicator */}
+                  {calDay && (
+                    <div className="mb-1">
+                      {isSchoolDay ? (
+                        <span className="text-xs text-green-600 font-semibold">School Day</span>
+                      ) : (
+                        <span className="text-xs text-red-500 font-semibold">Holiday</span>
+                      )}
+                    </div>
+                  )}
 
                   {/* Events for this day */}
                   <div className="space-y-1">

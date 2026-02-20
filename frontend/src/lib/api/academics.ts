@@ -23,6 +23,8 @@ export interface GradeLevel {
   order_index: number
   base_fee: number
   is_active: boolean
+  next_grade_id?: string | null
+  next_grade_name?: string | null
   created_at: string
   updated_at: string
   created_by: string | null
@@ -73,6 +75,7 @@ export interface UpdateGradeLevelDTO {
   order_index?: number
   base_fee?: number
   is_active?: boolean
+  next_grade_id?: string | null
 }
 
 export interface CreateSectionDTO {
@@ -201,8 +204,9 @@ export async function updateGradeLevel(
   })
 }
 
-export async function deleteGradeLevel(id: string): Promise<ApiResponse<void>> {
-  return apiRequest<void>(`/academics/grades/${id}`, {
+export async function deleteGradeLevel(id: string, campusId?: string): Promise<ApiResponse<void>> {
+  const suffix = campusId ? `?campus_id=${campusId}` : ''
+  return apiRequest<void>(`/academics/grades/${id}${suffix}`, {
     method: 'DELETE'
   })
 }
@@ -240,8 +244,9 @@ export async function updateSection(
   })
 }
 
-export async function deleteSection(id: string): Promise<ApiResponse<void>> {
-  return apiRequest<void>(`/academics/sections/${id}`, {
+export async function deleteSection(id: string, campusId?: string): Promise<ApiResponse<void>> {
+  const suffix = campusId ? `?campus_id=${campusId}` : ''
+  return apiRequest<void>(`/academics/sections/${id}${suffix}`, {
     method: 'DELETE'
   })
 }
@@ -279,8 +284,9 @@ export async function updateSubject(
   })
 }
 
-export async function deleteSubject(id: string): Promise<ApiResponse<void>> {
-  return apiRequest<void>(`/academics/subjects/${id}`, {
+export async function deleteSubject(id: string, campusId?: string): Promise<ApiResponse<void>> {
+  const suffix = campusId ? `?campus_id=${campusId}` : ''
+  return apiRequest<void>(`/academics/subjects/${id}${suffix}`, {
     method: 'DELETE'
   })
 }
@@ -296,6 +302,7 @@ export interface AcademicYear {
   start_date: string
   end_date: string
   is_current: boolean
+  is_next: boolean
   is_active: boolean
   created_at: string
   updated_at: string
@@ -306,6 +313,7 @@ export interface CreateAcademicYearDTO {
   start_date: string
   end_date: string
   is_current?: boolean
+  is_next?: boolean
   is_active?: boolean
 }
 
@@ -314,6 +322,7 @@ export interface UpdateAcademicYearDTO {
   start_date?: string
   end_date?: string
   is_current?: boolean
+  is_next?: boolean
   is_active?: boolean
 }
 

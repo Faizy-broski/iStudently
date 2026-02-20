@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { FileDown, Search, ArrowLeft } from "lucide-react"
+import { FileDown, Search, ArrowLeft, ChevronUp, ChevronDown, ArrowUpDown } from "lucide-react"
 import { toast } from "sonner"
 import { getFieldDefinitions, CustomFieldDefinition } from "@/lib/api/custom-fields"
 import { getAuthToken } from "@/lib/api/schools"
@@ -41,6 +41,23 @@ export default function ReportResultsPage() {
   const [filteredStudents, setFilteredStudents] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+
+  // sorting
+  const [sortField, setSortField] = useState<string | null>(null)
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+
+  // icons for header
+  
+  const renderSortIcon = (fieldId: string) => {
+    if (sortField !== fieldId) {
+      // Show a faded up/down arrow when not sorted, ALWAYS visible
+      return <ArrowUpDown className="ml-2 h-3 w-3 text-muted-foreground opacity-40 hover:opacity-100 transition-opacity" />
+    }
+    // Show active sorted state with your brand color
+    return sortDirection === 'asc' 
+      ? <ChevronUp className="ml-2 h-3 w-3 text-[#022172]" /> 
+      : <ChevronDown className="ml-2 h-3 w-3 text-[#022172]" />
+  }
 
   // Load selected fields from URL
   useEffect(() => {
@@ -140,21 +157,43 @@ export default function ReportResultsPage() {
     fetchReportData()
   }, [selectedFields, campusContext?.selectedCampus?.id])
 
-  // Filter students by search query
+  // derive filtered + sorted students
   useEffect(() => {
-    if (!searchQuery) {
-      setFilteredStudents(students)
-      return
+    let arr = students
+
+    // apply search filtering
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      arr = arr.filter((student: any) =>
+        Object.values(student).some((value: any) =>
+          String(value).toLowerCase().includes(query)
+        )
+      )
     }
 
-    const query = searchQuery.toLowerCase()
-    const filtered = students.filter((student: any) =>
-      Object.values(student).some((value: any) =>
-        String(value).toLowerCase().includes(query)
-      )
-    )
-    setFilteredStudents(filtered)
-  }, [searchQuery, students])
+    // apply sorting if requested
+    if (sortField) {
+      const cmp = (a: any, b: any) => {
+        const rawA = getRawValue(a, sortField)
+        const rawB = getRawValue(b, sortField)
+        const aStr = rawA != null ? String(rawA) : ''
+        const bStr = rawB != null ? String(rawB) : ''
+
+        // put blanks first when ascending, last when descending
+        const aBlank = aStr === ''
+        const bBlank = bStr === ''
+        if (aBlank && !bBlank) return sortDirection === 'asc' ? -1 : 1
+        if (!aBlank && bBlank) return sortDirection === 'asc' ? 1 : -1
+
+        if (aStr < bStr) return sortDirection === 'asc' ? -1 : 1
+        if (aStr > bStr) return sortDirection === 'asc' ? 1 : -1
+        return 0
+      }
+      arr = [...arr].sort(cmp)
+    }
+
+    setFilteredStudents(arr)
+  }, [searchQuery, students, sortField, sortDirection])
 
   // Get field label
   const getFieldLabel = (fieldId: string) => {
@@ -165,6 +204,16 @@ export default function ReportResultsPage() {
     }
     return STANDARD_FIELDS_MAP[fieldId] || fieldId
   }
+
+  // return raw (unformatted) value used for sorting
+  const getRawValue = (student: any, fieldId: string) => {
+    if (fieldId.startsWith('custom_')) {
+      const key = fieldId.replace('custom_', '')
+      return student.custom_fields?.[key] ?? ''
+    }
+    return student[fieldId] ?? ''
+  }
+
 
   // Get field value
   const getFieldValue = (student: any, fieldId: string) => {
@@ -276,8 +325,22 @@ export default function ReportResultsPage() {
               <TableHeader>
                 <TableRow>
                   {selectedFields.map(fieldId => (
-                    <TableHead key={fieldId} className="whitespace-nowrap">
-                      {getFieldLabel(fieldId)}
+                    <TableHead
+                      key={fieldId}
+                      className="whitespace-nowrap cursor-pointer select-none group hover:bg-muted/50 transition-colors"
+                      onClick={() => {
+                        if (sortField === fieldId) {
+                          setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'))
+                        } else {
+                          setSortField(fieldId)
+                          setSortDirection('asc')
+                        }
+                      }}
+                    >
+                      <div className="flex items-center">
+                        <span>{getFieldLabel(fieldId)}</span>
+                        {renderSortIcon(fieldId)}
+                      </div>
                     </TableHead>
                   ))}
                 </TableRow>

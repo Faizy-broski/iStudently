@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import { Calendar, Loader2, RefreshCw, Settings, ChevronLeft, ChevronRight, LayoutGrid, Maximize2, Download, FileText, ExternalLink, Pencil } from "lucide-react"
+import { Calendar, Loader2, RefreshCw, Settings, ChevronLeft, ChevronRight, LayoutGrid, Maximize2, Download, FileText, ExternalLink, Pencil, RotateCcw } from "lucide-react"
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { SectionTimetableCard, AssignSlotDialog, TimetableBuilder } from "@/components/timetable"
@@ -18,6 +18,7 @@ import * as academicsApi from "@/lib/api/academics"
 import { TimetableEntry } from "@/lib/api/timetable"
 import { useCampus } from "@/context/CampusContext"
 import { useGradeLevels, useSections } from "@/hooks/useAcademics"
+import { formatTime, formatTimeRange } from "@/lib/utils/formatTime"
 
 export default function TimetablePage() {
   // Campus context
@@ -52,6 +53,7 @@ export default function TimetablePage() {
   const [selectedAcademicYear, setSelectedAcademicYear] = useState("")
   const [viewMode, setViewMode] = useState<'grid' | 'single'>('grid')
   const [expandedSection, setExpandedSection] = useState<string | null>(null)
+  const [orientation, setOrientation] = useState<'vertical' | 'horizontal'>('vertical')
 
   // Combined loading state
   const dataLoading = gradeLevelsLoading || sectionsLoading || loading
@@ -227,13 +229,13 @@ export default function TimetablePage() {
       const entries = sectionEntries[section.id] || []
 
       csvContent += `\nSection: ${section.name}\n`
-      csvContent += 'Period,Duration,' + DAYS.join(',') + '\n'
+      csvContent += 'Period,Time,' + DAYS.join(',') + '\n'
 
       sortedPeriods.forEach(period => {
         const periodName = period.title || period.short_name || `P${period.sort_order}`
-        const periodDuration = period.length_minutes ? `${period.length_minutes}min` : ''
+        const periodTime = formatTimeRange(period.start_time, period.end_time) || (period.length_minutes ? `${period.length_minutes}min` : '')
         
-        const row = [periodName, periodDuration]
+        const row = [periodName, periodTime]
         DAYS.forEach((day, idx) => {
           const entry = entries.find(e => e.day_of_week === idx && e.period_id === period.id)
           if (entry) {
@@ -321,8 +323,8 @@ export default function TimetablePage() {
       sortedPeriods.forEach(period => {
         const row: string[] = []
         const periodName = period.title || period.short_name || `P${period.sort_order}`
-        const periodDuration = period.length_minutes ? `${period.length_minutes}min` : ''
-        row.push(`${periodDuration}\n${periodName}`)
+        const periodTime = formatTimeRange(period.start_time, period.end_time) || (period.length_minutes ? `${period.length_minutes}min` : '')
+        row.push(`${periodTime}\n${periodName}`)
 
         DAYS.forEach((_, dayIdx) => {
           const entry = entries.find(e => e.day_of_week === dayIdx && e.period_id === period.id)
@@ -410,7 +412,7 @@ export default function TimetablePage() {
       {/* Filters */}
       <Card>
         <CardContent className="py-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
             <div className="space-y-1.5">
               <Label className="text-sm">Academic Year</Label>
               <Select value={selectedAcademicYear} onValueChange={setSelectedAcademicYear}>
@@ -468,6 +470,32 @@ export default function TimetablePage() {
                 >
                   <Pencil className="h-4 w-4 mr-1" />
                   Builder
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-sm">Layout</Label>
+              <div className="flex gap-1">
+                <Button
+                  variant={orientation === 'vertical' ? 'default' : 'outline'}
+                  size="sm"
+                  className={orientation === 'vertical' ? 'bg-[#022172]' : ''}
+                  onClick={() => setOrientation('vertical')}
+                  title="Periods as rows, Days as columns"
+                >
+                  <RotateCcw className="h-4 w-4 mr-1" />
+                  Vertical
+                </Button>
+                <Button
+                  variant={orientation === 'horizontal' ? 'default' : 'outline'}
+                  size="sm"
+                  className={orientation === 'horizontal' ? 'bg-[#022172]' : ''}
+                  onClick={() => setOrientation('horizontal')}
+                  title="Days as rows, Periods as columns"
+                >
+                  <RotateCcw className="h-4 w-4 mr-1 rotate-90" />
+                  Horizontal
                 </Button>
               </div>
             </div>
@@ -558,6 +586,7 @@ export default function TimetablePage() {
                     entries={sectionEntries[section.id] || []}
                     isLoading={loadingEntries}
                     isCompact={filteredSections.length > 2}
+                    orientation={orientation}
                     onSlotClick={handleSlotClick}
                     onDeleteEntry={handleDeleteEntry}
                   />
@@ -623,6 +652,7 @@ export default function TimetablePage() {
                     entries={sectionEntries[expandedSection || filteredSections[0].id] || []}
                     academicYearId={selectedAcademicYear}
                     isLoading={loadingEntries}
+                    orientation={orientation}
                     onEntriesChange={loadAllSectionTimetables}
                   />
                 )

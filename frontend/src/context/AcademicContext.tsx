@@ -13,6 +13,7 @@ export interface AcademicYear {
   start_date: string
   end_date: string
   is_current: boolean
+  is_next?: boolean
 }
 
 interface AcademicContextType {

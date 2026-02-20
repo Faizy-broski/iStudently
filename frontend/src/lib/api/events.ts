@@ -81,6 +81,7 @@ export type UserRole = 'super_admin' | 'admin' | 'teacher' | 'student' | 'parent
 export interface SchoolEvent {
   id: string
   school_id: string
+  campus_id?: string | null
   title: string
   description: string | null
   category: EventCategory
@@ -99,6 +100,7 @@ export interface SchoolEvent {
 }
 
 export interface CreateEventDTO {
+  campus_id?: string | null
   title: string
   description?: string
   category: EventCategory
@@ -113,6 +115,7 @@ export interface CreateEventDTO {
 }
 
 export interface UpdateEventDTO {
+  campus_id?: string | null
   title?: string
   description?: string
   category?: EventCategory
@@ -132,6 +135,7 @@ export interface EventFilters {
   end_date?: string
   user_role?: UserRole
   grade_level?: string
+  campus_id?: string
   page?: number
   limit?: number
 }
@@ -147,6 +151,7 @@ export async function getEvents(filters?: EventFilters) {
   if (filters?.end_date) queryParams.append('end_date', filters.end_date)
   if (filters?.user_role) queryParams.append('user_role', filters.user_role)
   if (filters?.grade_level) queryParams.append('grade_level', filters.grade_level)
+  if (filters?.campus_id) queryParams.append('campus_id', filters.campus_id)
   if (filters?.page) queryParams.append('page', filters.page.toString())
   if (filters?.limit) queryParams.append('limit', filters.limit.toString())
 
@@ -158,13 +163,15 @@ export async function getEventsForRange(
   start_date: string,
   end_date: string,
   category?: EventCategory,
-  user_role?: UserRole
+  user_role?: UserRole,
+  campus_id?: string
 ) {
   const queryParams = new URLSearchParams()
   queryParams.append('start_date', start_date)
   queryParams.append('end_date', end_date)
   if (category) queryParams.append('category', category)
   if (user_role) queryParams.append('user_role', user_role)
+  if (campus_id) queryParams.append('campus_id', campus_id)
 
   return apiRequest<SchoolEvent[]>(`/events/range?${queryParams.toString()}`)
 }
@@ -178,8 +185,16 @@ export async function getUpcomingEvents(limit?: number, user_role?: UserRole) {
   return apiRequest<SchoolEvent[]>(`/events/upcoming${query ? `?${query}` : ''}`)
 }
 
-export async function getCategoryCounts() {
-  return apiRequest<Record<EventCategory, number>>('/events/categories/counts')
+export async function getCategoryCounts(startDate?: string, endDate?: string, campusId?: string) {
+  const params = new URLSearchParams()
+  if (startDate) params.append('start_date', startDate)
+  if (endDate) params.append('end_date', endDate)
+  if (campusId) params.append('campus_id', campusId)
+  
+  const queryString = params.toString()
+  const url = `/events/categories/counts${queryString ? `?${queryString}` : ''}`
+  
+  return apiRequest<Record<EventCategory, number>>(url)
 }
 
 export async function getEventById(id: string) {

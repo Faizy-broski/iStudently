@@ -36,6 +36,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { createEvent, updateEvent, type SchoolEvent, type EventCategory, type CreateEventDTO } from "@/lib/api/events";
 import { getGradeLevels, type GradeLevel } from "@/lib/api/academics";
+import { useCampus } from "@/context/CampusContext";
 
 const eventFormSchema = z.object({
   title: z.string().min(1, "Title is required").max(200, "Title is too long"),
@@ -77,6 +78,9 @@ interface EventFormDialogProps {
 }
 
 export function EventFormDialog({ open, onOpenChange, event, onSuccess, initialDate }: EventFormDialogProps) {
+  const campusContext = useCampus();
+  const campusId = campusContext?.selectedCampus?.id;
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [gradeLevels, setGradeLevels] = useState<GradeLevel[]>([]);
   const [isLoadingGrades, setIsLoadingGrades] = useState(true);
@@ -195,6 +199,7 @@ export function EventFormDialog({ open, onOpenChange, event, onSuccess, initialD
 
     try {
       const eventData: CreateEventDTO = {
+        campus_id: campusId,
         title: values.title,
         description: values.description,
         category: values.category,

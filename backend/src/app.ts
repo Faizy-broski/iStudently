@@ -33,6 +33,26 @@ import idCardTemplateRoutes from "./routes/id-card-template.routes";
 import mailRoutes from "./routes/mail.routes";
 import entryExitRoutes from "./routes/entryExit.routes";
 import hostelRoutes from "./routes/hostel.routes";
+import attendanceRoutes from "./routes/attendance.routes";
+import markingPeriodsRoutes from "./routes/marking-periods.routes";
+import billingElementsRoutes from "./routes/billing-elements.routes";
+import classDiaryRoutes from "./routes/class-diary.routes";
+import schoolSettingsRoutes from "./routes/school-settings.routes";
+import resourceDashboardsRoutes from "./routes/dashboards.routes";
+import resourceLinksRoutes from "./routes/resource-links.routes";
+import attendanceCalendarsRoutes from "./routes/attendance-calendars.routes";
+import rolloverRoutes from "./routes/rollover.routes";
+import gradingScalesRoutes from "./routes/grading-scales.routes";
+import coursesRoutes from "./routes/courses.routes";
+import gradebookRoutes from "./routes/gradebook.routes";
+import finalGradesRoutes from "./routes/final-grades.routes";
+import reportCardsRoutes from "./routes/report-cards.routes";
+import gradesReportsRoutes from "./routes/grades-reports.routes";
+import graduationPathsRoutes from "./routes/graduation-paths.routes";
+import schedulingRoutes from "./routes/scheduling.routes";
+import scheduleRequestsRoutes from "./routes/schedule-requests.routes";
+import roomsRoutes from "./routes/rooms.routes";
+import lessonPlansRoutes from "./routes/lesson-plans.routes";
 
 const app = express();
 
@@ -206,6 +226,31 @@ registerRoutes("/id-card-templates", idCardTemplateRoutes);
 registerRoutes("/mail", mailRoutes);
 registerRoutes("/entry-exit", entryExitRoutes);
 registerRoutes("/hostel", hostelRoutes);
+registerRoutes("/attendance", attendanceRoutes);
+registerRoutes("/marking-periods", markingPeriodsRoutes);
+registerRoutes("/billing-elements", billingElementsRoutes);
+registerRoutes("/class-diary", classDiaryRoutes);
+registerRoutes("/school-settings", schoolSettingsRoutes);
+registerRoutes("/resource-dashboards", resourceDashboardsRoutes);
+registerRoutes("/resource-links", resourceLinksRoutes);
+registerRoutes("/attendance-calendars", attendanceCalendarsRoutes);
+// Rollover and enrollment routes (includes /api/rollover/* and /api/enrollment/*)
+registerRoutes("/", rolloverRoutes);
+
+// Grades module routes
+registerRoutes("/grading-scales", gradingScalesRoutes);
+registerRoutes("/courses", coursesRoutes);
+registerRoutes("/gradebook", gradebookRoutes);
+registerRoutes("/final-grades", finalGradesRoutes);
+registerRoutes("/report-cards", reportCardsRoutes);
+registerRoutes("/grades-reports", gradesReportsRoutes);
+registerRoutes("/graduation-paths", graduationPathsRoutes);
+
+// Scheduling module routes
+registerRoutes("/scheduling", schedulingRoutes);
+registerRoutes("/schedule-requests", scheduleRequestsRoutes);
+registerRoutes("/rooms", roomsRoutes);
+registerRoutes("/lesson-plans", lessonPlansRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

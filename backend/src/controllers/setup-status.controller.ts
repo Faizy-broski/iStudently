@@ -52,16 +52,14 @@ class SetupStatusController {
                 return res.status(400).json({ error: 'School context required' })
             }
 
-            const { name, address, contact_email } = req.body
+            const { name, address, contact_email, logo_url, city, state, zip_code, phone, principal_name, short_name, school_number } = req.body
 
             if (!name) {
                 return res.status(400).json({ error: 'Campus name is required' })
             }
 
             const campus = await setupStatusService.createCampus(schoolId, {
-                name,
-                address,
-                contact_email
+                name, address, contact_email, logo_url, city, state, zip_code, phone, principal_name, short_name, school_number
             })
 
             return res.status(201).json(campus)

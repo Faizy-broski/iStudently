@@ -99,6 +99,7 @@ export interface CreateExpenseDTO {
     payment_date: string
     comments?: string
     file_attached?: string
+    receipt_number?: string
     created_by?: string
 }
 
@@ -512,6 +513,7 @@ class AccountingService {
     }
 
     async createStaffPayment(dto: CreateStaffPaymentDTO): Promise<AccountingPayment> {
+        const receipt = dto.receipt_number || `RP-${crypto.randomUUID().split('-')[0]}`
         const { data, error } = await supabase
             .from('accounting_payments')
             .insert({
@@ -524,6 +526,7 @@ class AccountingService {
                 payment_date: dto.payment_date,
                 comments: dto.comments,
                 file_attached: dto.file_attached,
+                receipt_number: receipt,
                 created_by: dto.created_by
             })
             .select(`

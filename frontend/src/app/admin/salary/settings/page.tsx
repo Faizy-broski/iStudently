@@ -19,8 +19,8 @@ export default function SalarySettingsPage() {
     const { profile } = useAuth()
     const campusContext = useCampus()
     const schoolId = profile?.school_id || null
-    const campusId = campusContext?.selectedCampus?.id
 
+    const campusId = campusContext?.selectedCampus?.id
     const { data: settings, mutate } = usePayrollSettings(schoolId, campusId)
 
     const [graceLateCount, setGraceLateCount] = useState(3)
@@ -83,6 +83,9 @@ export default function SalarySettingsPage() {
                 </Button>
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight dark:text-white">Payroll Settings</h1>
+                    {campusId && campusContext?.selectedCampus && (
+                        <p className="text-sm text-muted-foreground">Campus: {campusContext.selectedCampus.name}</p>
+                    )}
                     <p className="text-muted-foreground">Configure salary deductions, bonuses, and advance rules</p>
                 </div>
             </div>

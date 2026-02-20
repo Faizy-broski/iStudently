@@ -182,7 +182,7 @@ export default function SectionsPage() {
   const handleDeleteConfirm = async () => {
     if (!sectionToDelete) return
 
-    const result = await academicsApi.deleteSection(sectionToDelete)
+    const result = await academicsApi.deleteSection(sectionToDelete, selectedCampus?.id)
 
     if (result.success) {
       toast.success('Section deleted successfully')

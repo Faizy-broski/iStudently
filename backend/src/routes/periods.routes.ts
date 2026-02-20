@@ -158,6 +158,8 @@ router.post('/', async (req: AuthRequest, res: Response) => {
       title: req.body.title,
       short_name: req.body.short_name,
       sort_order: req.body.sort_order,
+      start_time: req.body.start_time || null,
+      end_time: req.body.end_time || null,
       length_minutes: req.body.length_minutes,
       block: req.body.block
     }
@@ -194,6 +196,8 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     if (req.body.title !== undefined) updateData.title = req.body.title
     if (req.body.short_name !== undefined) updateData.short_name = req.body.short_name
     if (req.body.sort_order !== undefined) updateData.sort_order = req.body.sort_order
+    if (req.body.start_time !== undefined) updateData.start_time = req.body.start_time
+    if (req.body.end_time !== undefined) updateData.end_time = req.body.end_time
     if (req.body.length_minutes !== undefined) updateData.length_minutes = req.body.length_minutes
     if (req.body.block !== undefined) updateData.block = req.body.block
 

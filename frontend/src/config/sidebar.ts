@@ -31,6 +31,13 @@ import {
   Sliders,
   BedDouble,
   Eye,
+  ShoppingBag,
+  Package,
+  Bell,
+  Link2,
+  RefreshCw,
+  MessageSquare,
+  History,
   type LucideIcon,
 } from "lucide-react";
 import { UserRole } from "@/types";
@@ -88,10 +95,92 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "Sections", href: "/admin/academics/sections", icon: Users },
       { title: "Subjects", href: "/admin/academics/subjects", icon: BookOpen },
       { title: "Periods", href: "/admin/periods", icon: Clock },
+      { title: "Marking Periods", href: "/admin/marking-periods", icon: Layers },
       { title: "Timetable", href: "/admin/timetable", icon: Clock },
       { title: "Calendar", href: "/admin/events", icon: Calendar },
       { title: "Portal Notes", href: "/admin/portal/notes", icon: FileText },
       { title: "Portal Polls", href: "/admin/portal/polls", icon: BarChart3 },
+      { title: "Utilities", href: "#", icon: Settings, isLabel: true },
+      { title: "Year-End Rollover", href: "/admin/rollover", icon: RefreshCw },
+    ],
+  },
+  {
+    title: "Scheduling",
+    href: "/admin/scheduling",
+    icon: CalendarCheck,
+    subItems: [
+      {
+        title: "Dashboard",
+        href: "/admin/scheduling/dashboard",
+        icon: CalendarCheck,
+      },
+      {
+        title: "Courses",
+        href: "/admin/scheduling/courses",
+        icon: Layers,
+      },
+      {
+        title: "Student Schedule",
+        href: "/admin/scheduling/student-schedule",
+        icon: CalendarCheck,
+      },
+      {
+        title: "Group Schedule",
+        href: "/admin/scheduling/group-schedule",
+        icon: Users,
+      },
+      {
+        title: "Group Requests",
+        href: "/admin/scheduling/group-requests",
+        icon: ClipboardList,
+      },
+      {
+        title: "Group Drops",
+        href: "/admin/scheduling/group-drops",
+        icon: TrendingDown,
+      },
+      { title: "Lesson Plans", href: "#", icon: BookOpen, isLabel: true },
+      {
+        title: "Lesson Plans",
+        href: "/admin/scheduling/lesson-plans",
+        icon: BookOpen,
+      },
+      {
+        title: "Lesson Plan - Read",
+        href: "/admin/scheduling/lesson-plan-read",
+        icon: Eye,
+      },
+      { title: "Reports", href: "#", icon: BarChart3, isLabel: true },
+      {
+        title: "Print Schedules",
+        href: "/admin/scheduling/print-schedules",
+        icon: FileText,
+      },
+      {
+        title: "Print Class Pictures",
+        href: "/admin/scheduling/print-class-pictures",
+        icon: FileText,
+      },
+      {
+        title: "Schedule Report",
+        href: "/admin/scheduling/schedule-report",
+        icon: FileText,
+      },
+      {
+        title: "Requests Report",
+        href: "/admin/scheduling/requests-report",
+        icon: FileText,
+      },
+      {
+        title: "Incomplete Schedules",
+        href: "/admin/scheduling/incomplete-schedules",
+        icon: FileText,
+      },
+      {
+        title: "Add / Drop Report",
+        href: "/admin/scheduling/add-drop-report",
+        icon: FileText,
+      },
     ],
   },
   {
@@ -118,6 +207,11 @@ const adminMenuItems: SidebarMenuItem[] = [
         title: "Student ID Card",
         href: "/admin/students/id-card",
         icon: CreditCard,
+      },
+            {
+        title: "Certificate",
+        href: "/admin/students/certificate-enrollment",
+        icon: Award,
       },
       { title: "Reports", href: "#", icon: BarChart3, isLabel: true },
       {
@@ -168,6 +262,7 @@ const adminMenuItems: SidebarMenuItem[] = [
     subItems: [
       { title: "All Staff", href: "/admin/staff", icon: Users },
       { title: "Add Staff", href: "/admin/staff/add-staff", icon: Plus },
+      { title: "Custom Fields", href: "/admin/staff/custom-fields", icon: Settings },
       { title: "Settings", href: "/admin/staff/settings", icon: Settings },
     ],
   },
@@ -198,8 +293,56 @@ const adminMenuItems: SidebarMenuItem[] = [
       },
     ],
   },
-  { title: "Attendance", href: "/admin/attendance", icon: CalendarCheck },
-  { title: "Exams", href: "/admin/exams", icon: FileText },
+  {
+    title: "Attendance",
+    href: "/admin/attendance",
+    icon: CalendarCheck,
+    subItems: [
+      { title: "Take Attendance", href: "/admin/attendance/take-attendance", icon: UserCheck },
+      { title: "Administration", href: "/admin/attendance", icon: Eye },
+      { title: "Add Absences", href: "/admin/attendance/add-absences", icon: Plus },
+      { title: "Class Diary - Read", href: "/admin/attendance/class-diary", icon: BookOpen },
+      { title: "Class Diary - Write", href: "/admin/attendance/class-diary-write", icon: ClipboardList },
+      { title: "Reports", href: "#", icon: BarChart3, isLabel: true },
+      { title: "Teacher Completion", href: "/admin/attendance/teacher-completion", icon: CheckSquare },
+      { title: "Average Daily Attendance", href: "/admin/attendance/average-daily", icon: TrendingUp },
+      { title: "Attendance Chart", href: "/admin/attendance/chart", icon: BarChart3 },
+      { title: "Attendance Summary", href: "/admin/attendance/summary", icon: FileText },
+      { title: "Print Attendance Sheets", href: "/admin/attendance/print-sheets", icon: ClipboardList },
+      { title: "Utilities", href: "#", icon: Settings, isLabel: true },
+      { title: "Recalculate Daily Attendance", href: "/admin/attendance/recalculate", icon: Calculator },
+      { title: "Delete Duplicate Attendance", href: "/admin/attendance/delete-duplicates", icon: Award },
+      { title: "Setup", href: "#", icon: Settings, isLabel: true },
+      { title: "Attendance Codes", href: "/admin/attendance/codes", icon: Settings },
+    ],
+  },
+  {
+    title: "Grades",
+    href: "/admin/grades",
+    icon: Award,
+    subItems: [
+      { title: "Report Cards", href: "/admin/grades/report-cards", icon: FileText },
+      { title: "Transcripts", href: "/admin/grades/transcripts", icon: GraduationCap },
+      { title: "Student Grades", href: "/admin/grades/student-grades", icon: GraduationCap },
+      { title: "Progress Reports", href: "/admin/grades/progress-reports", icon: ClipboardList },
+      { title: "Teacher Completion", href: "/admin/grades/teacher-completion", icon: CheckSquare },
+      { title: "Gradebook Breakdown", href: "/admin/grades/gradebook", icon: BarChart3 },
+      { title: "Final Grades", href: "/admin/grades/final-grades", icon: CheckSquare },
+      { title: "Mass Create Assignments", href: "/admin/grades/mass-create-assignments", icon: ClipboardList },
+      { title: "Setup", href: "#", icon: Settings, isLabel: true },
+      { title: "Configuration", href: "/admin/grades/configuration", icon: Settings },
+      { title: "Grading Scales", href: "/admin/grades/grading-scales", icon: Sliders },
+      { title: "Report Card Comments", href: "/admin/grades/report-card-comments", icon: MessageSquare },
+      { title: "Comment Codes", href: "/admin/grades/comment-codes", icon: MessageSquare },
+      { title: "History Marking Periods", href: "/admin/grades/history-marking-periods", icon: History },
+      { title: "Historical Grades", href: "/admin/grades/historical-grades", icon: FileText },
+      { title: "Graduation Paths", href: "/admin/grades/graduation-paths", icon: Award },
+      { title: "Import Grades", href: "/admin/grades/import-grades", icon: Upload },
+      { title: "Reports", href: "#", icon: BarChart3, isLabel: true },
+      { title: "Honor Roll", href: "/admin/grades/honor-roll", icon: Award },
+      { title: "GPA / Class Ranks", href: "/admin/grades/class-ranks", icon: TrendingUp },
+    ],
+  },
   { title: "Assignments", href: "/admin/assignments", icon: ClipboardList },
   {
     title: "Student Billing",
@@ -216,6 +359,19 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "Print Invoices", href: "/admin/fees/print-invoices", icon: FileText },
       { title: "Print Receipts", href: "/admin/fees/print-receipts", icon: Receipt },
       { title: "Settings", href: "/admin/fees/settings", icon: Settings },
+    ],
+  },
+  {
+    title: "Billing Elements",
+    href: "/admin/billing-elements",
+    icon: ShoppingBag,
+    subItems: [
+      { title: "Elements", href: "/admin/billing-elements", icon: Package },
+      { title: "Mass Assign", href: "/admin/billing-elements/mass-assign", icon: Users },
+      { title: "Student Elements", href: "/admin/billing-elements/student-elements", icon: UserCheck },
+      { title: "Reports", href: "#", icon: BarChart3, isLabel: true },
+      { title: "Category Breakdown", href: "/admin/billing-elements/category-breakdown", icon: BarChart3 },
+      { title: "Daily Transactions", href: "/admin/billing-elements/daily-transactions", icon: Receipt },
     ],
   },
   {
@@ -298,6 +454,15 @@ const adminMenuItems: SidebarMenuItem[] = [
     ],
   },
   {
+    title: "Resources",
+    href: "/admin/resources/links",
+    icon: FolderOpen,
+    subItems: [
+      { title: "Resources", href: "/admin/resources/links", icon: Link2 },
+      { title: "Dashboards", href: "/admin/resources/dashboards", icon: LayoutDashboard },
+    ],
+  },
+  {
     title: "Settings",
     href: "/admin/settings",
     icon: Settings,
@@ -310,6 +475,7 @@ const adminMenuItems: SidebarMenuItem[] = [
         icon: Calendar,
       },
       { title: "Services", href: "/admin/settings/services", icon: Settings },
+      { title: "Email Reminders", href: "/admin/settings/email-reminders", icon: Bell },
     ],
   },
 ];
@@ -332,8 +498,13 @@ const teacherMenuItems: SidebarMenuItem[] = [
     icon: Clock,
     subItems: [
       { title: "My Timetable", href: "/teacher/timetable", icon: Clock },
-      { title: "Attendance", href: "/teacher/attendance", icon: CalendarCheck },
+      { title: "Calendar", href: "/admin/events", icon: Calendar },
+      { title: "Take Attendance", href: "/teacher/attendance", icon: UserCheck },
       { title: "Subjects", href: "/teacher/subjects", icon: BookOpen },
+      { title: "Class Diary - Read", href: "/admin/attendance/class-diary", icon: BookOpen },
+      { title: "Class Diary - Write", href: "/admin/attendance/class-diary-write", icon: ClipboardList },
+      { title: "Lesson Plan - Add", href: "/teacher/lesson-plans", icon: BookOpen },
+      { title: "Lesson Plan - Read", href: "/teacher/lesson-plan-read", icon: Eye },
     ],
   },
   {
@@ -348,6 +519,10 @@ const teacherMenuItems: SidebarMenuItem[] = [
       },
       { title: "Submissions", href: "/teacher/submissions", icon: CheckSquare },
       { title: "Exams & Grading", href: "/teacher/exams", icon: Award },
+      { title: "Gradebook", href: "/teacher/grades/gradebook", icon: BookOpen },
+      { title: "Import Grades", href: "/teacher/grades/import-grades", icon: Upload },
+      { title: "Progress Reports", href: "/teacher/grades/progress-reports", icon: ClipboardList },
+      { title: "Report Cards", href: "/teacher/grades/report-cards", icon: FileText },
     ],
   },
   {
@@ -355,6 +530,7 @@ const teacherMenuItems: SidebarMenuItem[] = [
     href: "/teacher/learning-resources",
     icon: FolderOpen,
     subItems: [
+      { title: "Resources", href: "/teacher/resources", icon: Link2 },
       {
         title: "Learning Resources",
         href: "/teacher/learning-resources",
@@ -386,7 +562,9 @@ const studentMenuItems: SidebarMenuItem[] = [
     icon: BookOpen,
     subItems: [
       { title: "Timetable", href: "/student/timetable", icon: Clock },
+      { title: "Calendar", href: "/admin/events", icon: Calendar },
       { title: "Attendance", href: "/student/attendance", icon: CalendarCheck },
+      { title: "Class Diary", href: "/admin/attendance/class-diary", icon: BookOpen },
     ],
   },
   {
@@ -400,7 +578,8 @@ const studentMenuItems: SidebarMenuItem[] = [
         icon: ClipboardList,
       },
       { title: "Exams", href: "/student/exams", icon: FileText },
-      { title: "Report Cards", href: "/student/report-cards", icon: Award },
+      { title: "Report Cards", href: "/student/grades/report-cards", icon: Award },
+      { title: "Transcripts", href: "/student/grades/transcripts", icon: GraduationCap },
     ],
   },
   {
@@ -408,6 +587,7 @@ const studentMenuItems: SidebarMenuItem[] = [
     href: "/student/learning-resources",
     icon: FolderOpen,
     subItems: [
+      { title: "Resources", href: "/student/resources", icon: Link2 },
       {
         title: "Learning Resources",
         href: "/student/learning-resources",
@@ -446,11 +626,21 @@ const parentMenuItems: SidebarMenuItem[] = [
     ],
   },
   { title: "Academics", href: "/parent/academics", icon: GraduationCap },
+  { title: "Calendar", href: "/admin/events", icon: Calendar },
   { title: "Attendance", href: "/parent/attendance", icon: CalendarCheck },
+  { title: "Class Diary", href: "/admin/attendance/class-diary", icon: BookOpen },
   { title: "Timetable", href: "/parent/timetable", icon: Clock },
   { title: "Homework", href: "/parent/homework", icon: ClipboardList },
   { title: "Fees", href: "/parent/fees", icon: CreditCard },
   { title: "ID Card", href: "/parent/id-card", icon: CreditCard },
+  {
+    title: "Resources",
+    href: "/parent/resources",
+    icon: FolderOpen,
+    subItems: [
+      { title: "Resources", href: "/parent/resources", icon: Link2 },
+    ],
+  },
   { title: "Settings", href: "/parent/settings", icon: Settings },
 ];
 

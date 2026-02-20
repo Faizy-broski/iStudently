@@ -16,7 +16,8 @@ export class EventService {
     schoolId: string,
     filters?: EventFilters,
     page: number = 1,
-    limit: number = 50
+    limit: number = 50,
+    campusId?: string
   ) {
     const offset = (page - 1) * limit
 
@@ -25,6 +26,11 @@ export class EventService {
       .select('*', { count: 'exact' })
       .eq('school_id', schoolId)
       .order('start_at', { ascending: true })
+
+    // Filter by campus: show events for this campus OR school-wide (null campus_id)
+    if (campusId) {
+      query = query.or(`campus_id.eq.${campusId},campus_id.is.null`)
+    }
 
     // Apply filters
     if (filters?.category) {
@@ -76,7 +82,8 @@ export class EventService {
     startDate: string,
     endDate: string,
     category?: EventCategory,
-    userRole?: UserRole
+    userRole?: UserRole,
+    campusId?: string
   ) {
     let query = supabase
       .from('school_events')
@@ -86,6 +93,11 @@ export class EventService {
       .lte('start_at', endDate)
       .gte('end_at', startDate)
       .order('start_at', { ascending: true })
+
+    // Filter by campus: show events for this campus OR school-wide (null campus_id)
+    if (campusId) {
+      query = query.or(`campus_id.eq.${campusId},campus_id.is.null`)
+    }
 
     if (category) {
       query = query.eq('category', category)
@@ -133,6 +145,7 @@ export class EventService {
       .from('school_events')
       .insert({
         school_id: eventData.school_id,
+        campus_id: eventData.campus_id || null,
         title: eventData.title,
         description: eventData.description || null,
         category: eventData.category,
@@ -197,11 +210,26 @@ export class EventService {
   /**
    * Get event categories with counts
    */
-  async getEventCategoryCounts(schoolId: string) {
-    const { data, error } = await supabase
+  async getEventCategoryCounts(schoolId: string, startDate?: string, endDate?: string, campusId?: string) {
+    let query = supabase
       .from('school_events')
-      .select('category')
+      .select('category, event_date')
       .eq('school_id', schoolId)
+
+    // Filter by campus: show events for this campus OR school-wide (null campus_id)
+    if (campusId) {
+      query = query.or(`campus_id.eq.${campusId},campus_id.is.null`)
+    }
+
+    // Apply date range filter if provided
+    if (startDate) {
+      query = query.gte('event_date', startDate)
+    }
+    if (endDate) {
+      query = query.lte('event_date', endDate)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       throw new Error(`Failed to fetch category counts: ${error.message}`)

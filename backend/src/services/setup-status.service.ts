@@ -59,6 +59,14 @@ class SetupStatusService {
         name: string
         address?: string
         contact_email?: string
+        logo_url?: string | null
+        city?: string
+        state?: string
+        zip_code?: string
+        phone?: string
+        principal_name?: string
+        short_name?: string
+        school_number?: string
     }): Promise<any> {
         // Generate a slug from the name
         const slug = campusData.name
@@ -73,6 +81,14 @@ class SetupStatusService {
                 slug,
                 address: campusData.address || null,
                 contact_email: campusData.contact_email || null,
+                logo_url: campusData.logo_url || null,
+                city: campusData.city || null,
+                state: campusData.state || null,
+                zip_code: campusData.zip_code || null,
+                phone: campusData.phone || null,
+                principal_name: campusData.principal_name || null,
+                short_name: campusData.short_name || null,
+                school_number: campusData.school_number || null,
                 parent_school_id: parentSchoolId,
                 status: 'active'
             })

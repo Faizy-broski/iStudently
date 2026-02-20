@@ -52,6 +52,7 @@ const getYears = () => {
 
 interface StaffPaymentRow {
     id?: string
+    receipt_number?: string
     amount: string
     payment_date: string
     comments: string
@@ -118,6 +119,7 @@ export default function StaffPaymentsPage() {
     })
 
     const createEmptyRow = (): StaffPaymentRow => ({
+        receipt_number: '',
         amount: '',
         payment_date: format(new Date(), 'yyyy-MM-dd'),
         comments: '',
@@ -129,6 +131,7 @@ export default function StaffPaymentsPage() {
         if (selectedStaff && staffPayments) {
             const existingRows: StaffPaymentRow[] = staffPayments.map(payment => ({
                 id: payment.id,
+                receipt_number: payment.receipt_number,
                 amount: String(payment.amount),
                 payment_date: payment.payment_date,
                 comments: payment.comments || '',
@@ -186,7 +189,8 @@ export default function StaffPaymentsPage() {
                     staff_id: selectedStaff.id,
                     amount: parseFloat(row.amount) || 0,
                     payment_date: row.payment_date,
-                    comments: row.comments.trim() || undefined
+                    comments: row.comments.trim() || undefined,
+                    receipt_number: row.receipt_number || undefined
                 }))
             }
 
@@ -197,7 +201,8 @@ export default function StaffPaymentsPage() {
                     const changed =
                         row.amount !== String(original.amount) ||
                         row.payment_date !== original.payment_date ||
-                        row.comments !== (original.comments || '')
+                        row.comments !== (original.comments || '') ||
+                        row.receipt_number !== original.receipt_number
 
                     if (changed) {
                         promises.push(accountingApi.updateStaffPayment(row.id!, {
@@ -205,7 +210,8 @@ export default function StaffPaymentsPage() {
                             title: `Payment to ${selectedStaff.profile?.first_name} ${selectedStaff.profile?.last_name}`,
                             amount: parseFloat(row.amount) || 0,
                             payment_date: row.payment_date,
-                            comments: row.comments.trim() || undefined
+                            comments: row.comments.trim() || undefined,
+                            receipt_number: row.receipt_number
                         }))
                     }
                 }
@@ -601,6 +607,15 @@ export default function StaffPaymentsPage() {
                                                                     <IconPlus className="h-4 w-4" />
                                                                 </Button>
                                                             )}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Input
+                                                                value={row.receipt_number}
+                                                                onChange={(e) => handleRowChange(index, 'receipt_number', e.target.value)}
+                                                                placeholder="Auto"
+                                                                className="w-32"
+                                                                disabled={!row.isNew}
+                                                            />
                                                         </TableCell>
                                                         <TableCell>
                                                             <Input

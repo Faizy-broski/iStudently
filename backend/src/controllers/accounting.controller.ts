@@ -327,7 +327,7 @@ export class AccountingController {
 
     async createStaffPayment(req: Request, res: Response) {
         try {
-            const { campus_id, academic_year, staff_id, title, category_id, amount, payment_date, comments, file_attached } = req.body
+            const { campus_id, academic_year, staff_id, title, category_id, amount, payment_date, comments, file_attached, receipt_number } = req.body
             // @ts-ignore
             const userId = req.user?.id
 
@@ -348,6 +348,7 @@ export class AccountingController {
                 payment_date,
                 comments,
                 file_attached,
+                receipt_number,
                 created_by: userId
             })
 

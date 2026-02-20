@@ -10,8 +10,9 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { toast } from "sonner"
-import { Plus, Edit, Calendar, CheckCircle, Loader2, Building2, School as SchoolIcon } from "lucide-react"
+import { Plus, Edit, Calendar, CheckCircle, Loader2, ArrowRight, Info, AlertTriangle } from "lucide-react"
 import * as academicsApi from "@/lib/api/academics"
 import * as schoolsApi from "@/lib/api/schools"
 import { School } from "@/lib/api/schools"
@@ -123,6 +124,7 @@ export default function AcademicYearsPage() {
       start_date: year.start_date.split('T')[0],
       end_date: year.end_date.split('T')[0],
       is_current: year.is_current,
+      is_next: year.is_next,
       is_active: year.is_active
     })
     setIsDialogOpen(true)
@@ -138,18 +140,50 @@ export default function AcademicYearsPage() {
     }
   }
 
+  const handleSetNext = async (id: string) => {
+    try {
+      await academicsApi.updateAcademicYear(id, { is_next: true })
+      toast.success("Academic year set as rollover target")
+      loadAcademicYears()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to set rollover year")
+    }
+  }
+
+  const handleClearNext = async (id: string) => {
+    try {
+      await academicsApi.updateAcademicYear(id, { is_next: false })
+      toast.success("Rollover target cleared")
+      loadAcademicYears()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to clear rollover year")
+    }
+  }
+
   const resetForm = () => {
     setFormData({
       name: "",
       start_date: "",
       end_date: "",
       is_current: false,
+      is_next: false,
       is_active: true
     })
     setEditingYear(null)
   }
 
   const currentYear = academicYears.find(year => year.is_current)
+
+  // Next year: prefer explicit is_next flag, fall back to chronological derivation
+  const sortedYears = [...academicYears].sort(
+    (a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
+  )
+  const explicitNext = academicYears.find(year => year.is_next)
+  const currentIndex = currentYear ? sortedYears.findIndex(y => y.id === currentYear.id) : -1
+  const chronoNext = currentIndex >= 0 && currentIndex < sortedYears.length - 1
+    ? sortedYears[currentIndex + 1]
+    : null
+  const nextYear = explicitNext || chronoNext
 
   return (
     <div className="p-6 space-y-6">
@@ -168,28 +202,98 @@ export default function AcademicYearsPage() {
         </TabsList>
 
         <TabsContent value="academic-years" className="space-y-6 mt-6">
-          {/* Current Year Card */}
-          {currentYear && (
-            <Card className="border-2 border-[#022172]">
+          {/* Rollover preparation notice */}
+          <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/30">
+            <Info className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-blue-800 dark:text-blue-200 text-sm">
+              <strong>Before doing Year-End Rollover:</strong> Create the next academic year here first.
+              The rollover tool uses the year listed after the current one to promote students and copy data — it does <em>not</em> create years for you.
+            </AlertDescription>
+          </Alert>
+
+          {/* Current Year + Next Year Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Current Year */}
+            {currentYear ? (
+              <Card className="border-2 border-[#022172]">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                        <span className="text-sm font-medium text-muted-foreground">Current Academic Year</span>
+                      </div>
+                      <h3 className="text-2xl font-bold text-[#022172]">{currentYear.name}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {new Date(currentYear.start_date).toLocaleDateString()} – {new Date(currentYear.end_date).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="h-16 w-16 rounded-full bg-gradient-blue flex items-center justify-center">
+                      <Calendar className="h-8 w-8 text-white" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="border-2 border-dashed border-orange-300 bg-orange-50 dark:bg-orange-950/20">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle className="h-6 w-6 text-orange-500 shrink-0" />
+                    <div>
+                      <p className="font-semibold text-orange-700 dark:text-orange-300">No Current Year Set</p>
+                      <p className="text-sm text-orange-600 dark:text-orange-400 mt-0.5">
+                        Use <strong>Set Current</strong> on a year below, or create a new one and mark it as current.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Next Year – Dropdown Selector */}
+            <Card className={`border-2 ${nextYear ? 'border-green-400' : 'border-dashed border-muted'}`}>
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                      <span className="text-sm font-medium text-muted-foreground">Current Academic Year</span>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-3">
+                      <ArrowRight className="h-5 w-5 text-green-600" />
+                      <span className="text-sm font-medium text-muted-foreground">Next Academic Year (Rollover Target)</span>
                     </div>
-                    <h3 className="text-2xl font-bold text-[#022172]">{currentYear.name}</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {new Date(currentYear.start_date).toLocaleDateString()} - {new Date(currentYear.end_date).toLocaleDateString()}
-                    </p>
+                    <select
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      value={explicitNext?.id || ''}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        if (!val) {
+                          // Clear current next year
+                          if (explicitNext) handleClearNext(explicitNext.id)
+                        } else {
+                          handleSetNext(val)
+                        }
+                      }}
+                    >
+                      <option value="">— Select next year —</option>
+                      {academicYears
+                        .filter(y => !y.is_current && y.is_active)
+                        .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
+                        .map(y => (
+                          <option key={y.id} value={y.id}>{y.name}</option>
+                        ))}
+                    </select>
+                    {nextYear && !explicitNext && (
+                      <p className="text-xs text-amber-600 mt-1.5">Auto-detected: {nextYear.name} (set explicitly above to confirm)</p>
+                    )}
+                    {!nextYear && academicYears.filter(y => !y.is_current && y.is_active).length === 0 && (
+                      <p className="text-xs text-red-500 mt-1.5">No eligible years. Create a new academic year first.</p>
+                    )}
                   </div>
-                  <div className="h-16 w-16 rounded-full bg-gradient-blue flex items-center justify-center">
-                    <Calendar className="h-8 w-8 text-white" />
+                  <div className={`h-16 w-16 rounded-full ${nextYear ? 'bg-green-100 border-2 border-green-400' : 'bg-muted'} flex items-center justify-center ml-4 shrink-0`}>
+                    <Calendar className={`h-8 w-8 ${nextYear ? 'text-green-600' : 'text-muted-foreground'}`} />
                   </div>
                 </div>
               </CardContent>
             </Card>
-          )}
+          </div>
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -261,6 +365,16 @@ export default function AcademicYearsPage() {
                       {editingYear ? "Edit Academic Year" : "Add New Academic Year"}
                     </DialogTitle>
                   </DialogHeader>
+                  {!editingYear && (
+                    <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950/30">
+                      <Info className="h-4 w-4 text-amber-600 shrink-0" />
+                      <AlertDescription className="text-amber-800 dark:text-amber-200 text-sm">
+                        <strong>Do this now, not at rollover time.</strong> Create the next academic year here
+                        <em> before</em> you run Year-End Rollover. The rollover tool will use this year to enroll
+                        promoted students — it will not create the year for you.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-1 gap-4">
                       <div>
@@ -292,7 +406,7 @@ export default function AcademicYearsPage() {
                           />
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-4 flex-wrap">
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input
                             type="checkbox"
@@ -312,6 +426,9 @@ export default function AcademicYearsPage() {
                           <span className="text-sm">Active</span>
                         </label>
                       </div>
+                      <p className="text-xs text-muted-foreground">
+                        To set this as the rollover target, use the "Next Year" dropdown on the main page after creating.
+                      </p>
                     </div>
                     <div className="flex justify-end gap-2">
                       <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
@@ -344,13 +461,14 @@ export default function AcademicYearsPage() {
                         <TableHead>End Date</TableHead>
                         <TableHead>Duration</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Next Year</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {academicYears.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                             No academic years found
                           </TableCell>
                         </TableRow>
@@ -367,7 +485,7 @@ export default function AcademicYearsPage() {
                               <TableCell>{endDate.toLocaleDateString()}</TableCell>
                               <TableCell>{durationMonths} months</TableCell>
                               <TableCell>
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 flex-wrap">
                                   {year.is_current && (
                                     <Badge variant="default" className="bg-green-600">
                                       Current
@@ -378,8 +496,22 @@ export default function AcademicYearsPage() {
                                   </Badge>
                                 </div>
                               </TableCell>
+                              <TableCell>
+                                {year.is_current ? (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                ) : (
+                                  <input
+                                    type="radio"
+                                    name="next_year"
+                                    checked={explicitNext?.id === year.id}
+                                    onChange={() => handleSetNext(year.id)}
+                                    className="h-4 w-4 accent-green-600 cursor-pointer"
+                                    title={`Set ${year.name} as rollover target`}
+                                  />
+                                )}
+                              </TableCell>
                               <TableCell className="text-right">
-                                <div className="flex justify-end gap-2">
+                                <div className="flex justify-end gap-2 flex-wrap">
                                   {!year.is_current && (
                                     <Button
                                       variant="ghost"

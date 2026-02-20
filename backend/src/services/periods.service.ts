@@ -7,6 +7,8 @@ export interface Period {
   title: string
   short_name: string
   sort_order: number
+  start_time?: string | null
+  end_time?: string | null
   length_minutes: number
   block?: string
   is_active: boolean
@@ -17,6 +19,8 @@ export interface CreatePeriodDTO {
   title: string
   short_name: string
   sort_order: number
+  start_time?: string | null
+  end_time?: string | null
   length_minutes: number
   block?: string
 }
@@ -25,6 +29,8 @@ export interface UpdatePeriodDTO {
   title?: string
   short_name?: string
   sort_order?: number
+  start_time?: string | null
+  end_time?: string | null
   length_minutes?: number
   block?: string
 }
@@ -47,9 +53,9 @@ class PeriodsService {
       .order('sort_order', { ascending: true, nullsFirst: false })
       .order('period_number', { ascending: true })
 
-    // Filter by campus if provided, or show all if no campus specified
+    // Filter by campus if provided: include campus-specific AND school-wide (null campus)
     if (campusId) {
-      query = query.eq('campus_id', campusId)
+      query = query.or(`campus_id.eq.${campusId},campus_id.is.null`)
     }
 
     const { data: periods, error } = await query
@@ -200,6 +206,14 @@ class PeriodsService {
     campusId: string | null,
     data: CreatePeriodDTO
   ): Promise<Period> {
+    // Auto-calculate length_minutes from times if not explicitly set
+    let lengthMinutes = data.length_minutes
+    if (data.start_time && data.end_time && !lengthMinutes) {
+      const [sh, sm] = data.start_time.split(':').map(Number)
+      const [eh, em] = data.end_time.split(':').map(Number)
+      lengthMinutes = (eh * 60 + em) - (sh * 60 + sm)
+    }
+
     const { data: period, error } = await supabase
       .from('periods')
       .insert({
@@ -208,7 +222,9 @@ class PeriodsService {
         title: data.title,
         short_name: data.short_name,
         sort_order: data.sort_order,
-        length_minutes: data.length_minutes,
+        start_time: data.start_time || null,
+        end_time: data.end_time || null,
+        length_minutes: lengthMinutes,
         block: data.block || null,
         period_name: data.title, // For backward compatibility
         period_number: data.sort_order, // For backward compatibility
@@ -240,8 +256,17 @@ class PeriodsService {
       updateData.sort_order = data.sort_order
       updateData.period_number = data.sort_order // For backward compatibility
     }
+    if (data.start_time !== undefined) updateData.start_time = data.start_time || null
+    if (data.end_time !== undefined) updateData.end_time = data.end_time || null
     if (data.length_minutes !== undefined) updateData.length_minutes = data.length_minutes
     if (data.block !== undefined) updateData.block = data.block
+
+    // Auto-calculate length_minutes from times if both are set
+    if (updateData.start_time && updateData.end_time) {
+      const [sh, sm] = updateData.start_time.split(':').map(Number)
+      const [eh, em] = updateData.end_time.split(':').map(Number)
+      updateData.length_minutes = (eh * 60 + em) - (sh * 60 + sm)
+    }
 
     const { data: period, error } = await supabase
       .from('periods')
@@ -311,6 +336,8 @@ class PeriodsService {
           title: period.title,
           short_name: period.short_name,
           sort_order: period.sort_order,
+          start_time: period.start_time || null,
+          end_time: period.end_time || null,
           length_minutes: period.length_minutes,
           block: period.block || null,
           period_name: period.title,
@@ -380,6 +407,8 @@ class PeriodsService {
           .update({
             title: period.title,
             short_name: period.short_name,
+            start_time: period.start_time || null,
+            end_time: period.end_time || null,
             length_minutes: period.length_minutes,
             block: period.block || null,
             period_name: period.title,
@@ -405,6 +434,8 @@ class PeriodsService {
             title: period.title,
             short_name: period.short_name,
             sort_order: sortOrder,
+            start_time: period.start_time || null,
+            end_time: period.end_time || null,
             length_minutes: period.length_minutes,
             block: period.block || null,
             period_name: period.title,

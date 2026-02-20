@@ -46,6 +46,124 @@ export function useSidebarContext() {
   return context
 }
 
+// --- Hijri date conversion (Kuwaiti algorithm) ---
+function toHijri(date: Date) {
+  const jd = Math.floor(date.getTime() / 86400000) + 2440588
+  let l = jd - 1948440 + 10632
+  const n = Math.floor((l - 1) / 10631)
+  l = l - 10631 * n + 354
+  const j =
+    Math.floor((10985 - l) / 5316) * Math.floor((50 * l) / 17719) +
+    Math.floor(l / 5670) * Math.floor((43 * l) / 15238)
+  l =
+    l -
+    Math.floor((30 - j) / 15) * Math.floor((17719 * j) / 50) -
+    Math.floor(j / 16) * Math.floor((15238 * j) / 43) +
+    29
+  const month = Math.floor((24 * l) / 709)
+  const day = l - Math.floor((709 * month) / 24)
+  const year = 30 * n + j - 30
+  return { day, month, year }
+}
+
+const HIJRI_MONTHS = [
+  'Muharram','Safar','Rabi al-Awwal','Rabi al-Thani',
+  'Jumada al-Awwal','Jumada al-Thani','Rajab','Shaban',
+  'Ramadan','Shawwal','Dhu al-Qidah','Dhu al-Hijjah',
+]
+
+function getISOWeek(date: Date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  const day = d.getUTCDay() || 7
+  d.setUTCDate(d.getUTCDate() + 4 - day)
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
+}
+
+// --- Sidebar Header: campus logo + admin name + live date/time ---
+function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
+  const { profile } = useAuth()
+  const campusContext = useCampus()
+  const selectedCampus = campusContext?.selectedCampus
+
+  const [now, setNow] = React.useState(() => new Date())
+  React.useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  // Campus initials fallback
+  const initials = selectedCampus
+    ? (selectedCampus.short_name ||
+        selectedCampus.name.split(' ').map((w) => w[0]).join('').slice(0, 2)
+      ).toUpperCase()
+    : '?'
+
+  const adminName = profile
+    ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
+    : ''
+
+  // Gregorian
+  const dayName = now.toLocaleDateString('en-US', { weekday: 'long' })
+  const dayNum = now.getDate()
+  const monthShort = now.toLocaleDateString('en-US', { month: 'short' })
+  const year = now.getFullYear()
+  const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+  const weekNum = getISOWeek(now)
+
+  // Hijri
+  const h = toHijri(now)
+  const hijriStr = `${h.day} ${HIJRI_MONTHS[h.month - 1]} ${h.year}`
+
+  if (isCollapsed) {
+    return (
+      <div className="flex flex-col items-center py-4 mb-2">
+        <div className="w-12 h-10 rounded-lg overflow-hidden ring-2 ring-white/20">
+          {selectedCampus?.logo_url ? (
+            <Image src={selectedCampus.logo_url} alt={selectedCampus.name} width={48} height={40} className="object-contain w-full h-full" />
+          ) : (
+            <div className="w-full h-full bg-[#EEA831] flex items-center justify-center">
+              <span className="text-[#022172] font-bold text-xs">{initials}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="px-4 pt-6 pb-5 mb-1 border-b border-white/10 flex flex-col items-center text-center">
+      {/* Campus logo — centered, square/rectangle */}
+      <div className="w-28 h-20 rounded-xl overflow-hidden ring-2 ring-white/30 shadow-lg mb-3 bg-white">
+        {selectedCampus?.logo_url ? (
+          <Image src={selectedCampus.logo_url} alt={selectedCampus.name} width={112} height={80} className="object-contain w-full h-full" />
+        ) : (
+          <div className="w-full h-full bg-[#EEA831] flex items-center justify-center">
+            <span className="text-[#022172] font-bold text-2xl">{initials}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Admin name */}
+      <p className="text-white font-semibold text-sm leading-tight truncate w-full">{adminName}</p>
+      <p className="text-white/50 text-xs mt-0.5 truncate w-full">{selectedCampus?.name || 'No Campus'}</p>
+
+      {/* Date / time */}
+      <div className="mt-3 w-full bg-white/10 rounded-lg px-3 py-2.5 space-y-1.5">
+        <p className="text-white font-semibold text-sm">
+          {dayName}, {dayNum} {monthShort} {year}
+        </p>
+        <p className="text-white/65 text-xs">{hijriStr}</p>
+        <div className="flex items-center justify-center gap-2 text-xs text-white/65">
+          <span className="font-medium">{timeStr}</span>
+          <span className="text-white/30">|</span>
+          <span>Week {weekNum}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // Academic Year & Quarter Selectors Component
 function AcademicSelectors() {
   const { profile } = useAuth()
@@ -236,7 +354,7 @@ function ViewedProfileIndicator() {
   
   return (
     <div className="px-3 mb-2">
-      <div className="flex items-center gap-2 px-3 py-2.5 bg-gradient-to-r from-[#EEA831]/30 to-[#F59E0B]/20 rounded-lg border-2 border-[#EEA831] shadow-lg shadow-[#EEA831]/20">
+      <div className="flex items-center gap-2 px-3 py-2.5 bg-linear-to-r from-[#EEA831]/30 to-[#F59E0B]/20 rounded-lg border-2 border-[#EEA831] shadow-lg shadow-[#EEA831]/20">
         {getIcon()}
         <div className="flex-1 min-w-0">
           <p className="text-[10px] uppercase tracking-wider text-[#EEA831] font-semibold">{getLabel()}</p>
@@ -461,29 +579,8 @@ function DesktopSidebar({ menuItems, className }: AppSidebarProps) {
       {/* Content Container */}
       <div className="relative z-10 flex flex-col h-full overflow-hidden">
 
-        {/* Logo Section */}
-        <div className={cn(
-          'flex items-center gap-3 p-6 mb-2',
-          isCollapsed ? 'justify-center px-2' : ''
-        )}>
-          <div className="relative w-10 h-10 shrink-0">
-            <Image
-              src="/images/logo.svg"
-              alt="Studently Logo"
-              fill
-              className="object-contain"
-              priority
-            />
-          </div>
-          {!isCollapsed && (
-            <div className="flex flex-col">
-              <span className="text-white font-bold text-lg tracking-tight leading-none">
-                ISTUDENTS.LY
-              </span>
-              <span className="text-white/60 text-[10px] mt-1 uppercase tracking-wider">Education ERP</span>
-            </div>
-          )}
-        </div>
+        {/* Sidebar Header: campus logo + admin + date/time */}
+        <SidebarHeader isCollapsed={isCollapsed} />
 
         {/* Campus Switcher */}
         {!isCollapsed && <CampusSelector />}
@@ -563,18 +660,7 @@ function MobileSidebar({ menuItems }: AppSidebarProps) {
         />
 
         <div className="relative z-10 flex flex-col h-full">
-          <div className="flex items-center justify-between p-6 mb-2">
-            <div className="flex items-center gap-3">
-              <div className="relative w-8 h-8">
-                <Image
-                  src="/images/logo.svg"
-                  alt="Studently Logo"
-                  fill
-                  className="object-contain"
-                />
-              </div>
-              <span className="text-white font-bold text-lg">ISTUDENTS.LY</span>
-            </div>
+          <div className="flex items-center justify-end px-4 pt-3">
             <Button
               variant="ghost"
               size="icon"
@@ -584,6 +670,7 @@ function MobileSidebar({ menuItems }: AppSidebarProps) {
               <X className="h-5 w-5" />
             </Button>
           </div>
+          <SidebarHeader isCollapsed={false} />
 
           {/* Campus Switcher */}
           <CampusSelector />

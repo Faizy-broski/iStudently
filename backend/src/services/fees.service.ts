@@ -92,6 +92,7 @@ export interface DirectPaymentDTO {
     comment?: string
     is_lunch_payment?: boolean
     file_url?: string
+    receipt_number?: string
     created_by?: string
 }
 
@@ -716,22 +717,39 @@ class FeesService {
         }
 
         if (!existingFee) {
+            // Determine a default fee_structure for the school (use first available)
+            let defaultStructureId: string | null = null
+            const { data: structs, error: structErr } = await supabase
+                .from('fee_structures')
+                .select('id')
+                .eq('school_id', schoolId)
+                .limit(1)
+
+            if (!structErr && Array.isArray(structs) && structs.length > 0) {
+                defaultStructureId = structs[0].id
+            }
+
             // Create a new "general" student fee record
+            const insertObj: any = {
+                school_id: schoolId,
+                student_id: payment.student_id,
+                academic_year: new Date().getFullYear().toString(),
+                base_amount: 0,
+                sibling_discount: 0,
+                custom_discount: 0,
+                late_fee_applied: 0,
+                final_amount: 0,
+                amount_paid: 0,
+                status: 'pending',
+                due_date: new Date().toISOString()
+            }
+            if (defaultStructureId) {
+                insertObj.fee_structure_id = defaultStructureId
+            }
+
             const { data: newFee, error: createError } = await supabase
                 .from('student_fees')
-                .insert({
-                    school_id: schoolId,
-                    student_id: payment.student_id,
-                    academic_year: new Date().getFullYear().toString(),
-                    base_amount: 0,
-                    sibling_discount: 0,
-                    custom_discount: 0,
-                    late_fee_applied: 0,
-                    final_amount: 0,
-                    amount_paid: 0,
-                    status: 'pending',
-                    due_date: new Date().toISOString()
-                })
+                .insert(insertObj)
                 .select()
                 .single()
 
@@ -740,6 +758,7 @@ class FeesService {
         }
 
         // Record the payment
+        const receipt = payment.receipt_number || `RP-${crypto.randomUUID().split('-')[0]}`
         const { data, error } = await supabase
             .from('fee_payments')
             .insert({
@@ -751,6 +770,7 @@ class FeesService {
                 comment: payment.comment,
                 is_lunch_payment: payment.is_lunch_payment || false,
                 file_url: payment.file_url,
+                receipt_number: receipt,
                 created_by: payment.created_by
             })
             .select(`
@@ -792,7 +812,10 @@ class FeesService {
     ): Promise<any> {
         const { data, error } = await supabase
             .from('fee_payments')
-            .update(updates)
+            .update({
+                ...updates,
+                receipt_number: (updates as any).receipt_number
+            })
             .eq('id', paymentId)
             .eq('school_id', schoolId)
             .select(`

@@ -20,6 +20,7 @@ import * as academicsApi from "@/lib/api/academics";
 import * as teachersApi from "@/lib/api/teachers";
 import { toast } from "sonner";
 import { useCampus } from "@/context/CampusContext";
+import { formatTimeRange } from "@/lib/utils/formatTime";
 
 const DAY_MAP: Record<string, number> = {
     Monday: 0, Tuesday: 1, Wednesday: 2, Thursday: 3, Friday: 4
@@ -215,7 +216,7 @@ export function AssignSlotDialog({
 
                 <div className="space-y-4">
                     {/* Slot Info */}
-                    <div className="flex gap-4 text-sm bg-muted/50 p-3 rounded-lg">
+                    <div className="flex flex-wrap gap-4 text-sm bg-muted/50 p-3 rounded-lg">
                         <div>
                             <span className="text-muted-foreground">Section:</span>
                             <span className="font-medium ml-1">{sectionName}</span>
@@ -232,8 +233,16 @@ export function AssignSlotDialog({
                         </div>
                         <div>
                             <span className="text-muted-foreground">Period:</span>
-                            <span className="font-medium ml-1">{period.title || period.short_name || `P${period.sort_order}`}</span>
+                            <span className="font-medium ml-1">
+                                {period.title || period.short_name || `P${period.sort_order}`}
+                            </span>
                         </div>
+                        {(period.start_time || period.end_time) && (
+                            <div>
+                                <span className="text-muted-foreground">Time:</span>
+                                <span className="font-medium ml-1">{formatTimeRange(period.start_time, period.end_time)}</span>
+                            </div>
+                        )}
                     </div>
 
                     {conflictWarning && (

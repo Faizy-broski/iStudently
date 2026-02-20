@@ -106,6 +106,7 @@ export interface AcademicYear {
   start_date: string
   end_date: string
   is_current: boolean
+  is_next?: boolean
   is_active: boolean
   created_at: string
   updated_at: string
@@ -688,6 +689,8 @@ export interface GlobalPeriod {
   short_name: string
   sort_order: number
   length_minutes: number
+  start_time?: string | null
+  end_time?: string | null
   block?: string
   is_active?: boolean
   created_at?: string

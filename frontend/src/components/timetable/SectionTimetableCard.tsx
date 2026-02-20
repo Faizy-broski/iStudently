@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, User, X, Loader2 } from "lucide-react";
 import { TimetableEntry } from "@/lib/api/timetable";
 import { GlobalPeriod } from "@/lib/api/teachers";
+import { formatTime, formatTimeRange } from "@/lib/utils/formatTime";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const DAY_MAP: Record<string, number> = {
@@ -21,6 +22,7 @@ interface SectionTimetableCardProps {
     entries: TimetableEntry[];
     isLoading?: boolean;
     isCompact?: boolean;
+    orientation?: 'vertical' | 'horizontal';
     onSlotClick?: (sectionId: string, day: string, period: GlobalPeriod) => void;
     onDeleteEntry?: (entryId: string) => void;
 }
@@ -35,11 +37,11 @@ const getPeriodShortLabel = (period: GlobalPeriod): string => {
     return period.short_name || `P${period.sort_order}`;
 };
 
-// Helper to get period duration info
-const getPeriodDurationInfo = (period: GlobalPeriod): string => {
-    if (period.length_minutes) {
-        return `${period.length_minutes}min`;
-    }
+// Helper to get period time info (show actual clock times if available, fallback to duration)
+const getPeriodTimeInfo = (period: GlobalPeriod): string => {
+    const timeRange = formatTimeRange(period.start_time, period.end_time);
+    if (timeRange) return timeRange;
+    if (period.length_minutes) return `${period.length_minutes}min`;
     return '';
 };
 
@@ -51,6 +53,7 @@ export function SectionTimetableCard({
     entries,
     isLoading = false,
     isCompact = false,
+    orientation = 'vertical',
     onSlotClick,
     onDeleteEntry
 }: SectionTimetableCardProps) {
@@ -64,6 +67,47 @@ export function SectionTimetableCard({
 
     // Sort periods by sort_order
     const sortedPeriods = [...periods].sort((a, b) => a.sort_order - b.sort_order);
+
+    // Render a slot cell (reused in both orientations)
+    const renderSlotCell = (day: string, period: GlobalPeriod, entry: TimetableEntry | undefined) => (
+        <td
+            key={`${day}-${period.id}`}
+            className={`border p-1 cursor-pointer transition-colors ${entry
+                ? 'bg-blue-50 hover:bg-blue-100'
+                : 'hover:bg-muted/50'
+                }`}
+            onClick={() => onSlotClick?.(sectionId, day, period)}
+        >
+            {entry ? (
+                <div className="relative group">
+                    <div className="font-medium text-[#022172] truncate max-w-[70px]" title={`${entry.subject_name}`}>
+                        {entry.subject_name}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground truncate flex items-center gap-0.5">
+                        <User className="h-2.5 w-2.5 flex-shrink-0" />
+                        <span className="truncate max-w-[60px]" title={entry.teacher_name}>
+                            {entry.teacher_name}
+                        </span>
+                    </div>
+                    {onDeleteEntry && (
+                        <button
+                            className="absolute -top-1 -right-1 hidden group-hover:flex h-4 w-4 items-center justify-center bg-red-500 text-white rounded-full"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteEntry(entry.id);
+                            }}
+                        >
+                            <X className="h-2.5 w-2.5" />
+                        </button>
+                    )}
+                </div>
+            ) : (
+                <div className="text-center text-muted-foreground py-1">
+                    <Plus className="h-3 w-3 mx-auto opacity-30" />
+                </div>
+            )}
+        </td>
+    );
 
     if (isLoading) {
         return (
@@ -97,78 +141,80 @@ export function SectionTimetableCard({
             <CardContent className="p-2">
                 <div className="overflow-x-auto">
                     <table className="w-full border-collapse text-xs">
-                        <thead>
-                            <tr>
-                                <th className="border p-1.5 bg-muted/50 font-medium min-w-[50px]">
-                                    Time
-                                </th>
-                                {DAYS.map(day => (
-                                    <th
-                                        key={day}
-                                        className="border p-1.5 bg-muted/50 font-medium min-w-[50px]"
-                                    >
-                                        {isCompact ? day.slice(0, 3) : day.slice(0, 3)}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {sortedPeriods.map(period => (
-                                <tr key={period.id}>
-                                    <td className="border p-1.5 bg-muted/30 text-center">
-                                        <div className="font-medium" title={getPeriodDisplayName(period)}>
-                                            {getPeriodShortLabel(period)}
-                                        </div>
-                                        <div className="text-[10px] text-muted-foreground whitespace-nowrap">
-                                            {getPeriodDurationInfo(period)}
-                                        </div>
-                                    </td>
-                                    {DAYS.map(day => {
-                                        const entry = getEntryForSlot(day, period);
-
-                                        return (
-                                            <td
-                                                key={`${day}-${period.id}`}
-                                                className={`border p-1 cursor-pointer transition-colors ${entry
-                                                    ? 'bg-blue-50 hover:bg-blue-100'
-                                                    : 'hover:bg-muted/50'
-                                                    }`}
-                                                onClick={() => onSlotClick?.(sectionId, day, period)}
+                        {orientation === 'vertical' ? (
+                            /* Vertical: Periods as rows, Days as columns */
+                            <>
+                                <thead>
+                                    <tr>
+                                        <th className="border p-1.5 bg-muted/50 font-medium min-w-[60px]">
+                                            Time
+                                        </th>
+                                        {DAYS.map(day => (
+                                            <th
+                                                key={day}
+                                                className="border p-1.5 bg-muted/50 font-medium min-w-[50px]"
                                             >
-                                                {entry ? (
-                                                    <div className="relative group">
-                                                        <div className="font-medium text-[#022172] truncate max-w-[70px]" title={`${entry.subject_name} (${entry.subject_id?.slice(0, 8)}...)`}>
-                                                            {entry.subject_name}
-                                                        </div>
-                                                        <div className="text-[10px] text-muted-foreground truncate flex items-center gap-0.5">
-                                                            <User className="h-2.5 w-2.5 flex-shrink-0" />
-                                                            <span className="truncate max-w-[60px]" title={entry.teacher_name}>
-                                                                {entry.teacher_name}
-                                                            </span>
-                                                        </div>
-                                                        {onDeleteEntry && (
-                                                            <button
-                                                                className="absolute -top-1 -right-1 hidden group-hover:flex h-4 w-4 items-center justify-center bg-red-500 text-white rounded-full"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    onDeleteEntry(entry.id);
-                                                                }}
-                                                            >
-                                                                <X className="h-2.5 w-2.5" />
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <div className="text-center text-muted-foreground py-1">
-                                                        <Plus className="h-3 w-3 mx-auto opacity-30" />
-                                                    </div>
-                                                )}
+                                                {day.slice(0, 3)}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {sortedPeriods.map(period => (
+                                        <tr key={period.id}>
+                                            <td className="border p-1.5 bg-muted/30 text-center">
+                                                <div className="font-medium" title={getPeriodDisplayName(period)}>
+                                                    {getPeriodShortLabel(period)}
+                                                </div>
+                                                <div className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                                    {getPeriodTimeInfo(period)}
+                                                </div>
                                             </td>
-                                        );
-                                    })}
-                                </tr>
-                            ))}
-                        </tbody>
+                                            {DAYS.map(day => {
+                                                const entry = getEntryForSlot(day, period);
+                                                return renderSlotCell(day, period, entry);
+                                            })}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </>
+                        ) : (
+                            /* Horizontal: Days as rows, Periods as columns */
+                            <>
+                                <thead>
+                                    <tr>
+                                        <th className="border p-1.5 bg-muted/50 font-medium min-w-[50px]">
+                                            Day
+                                        </th>
+                                        {sortedPeriods.map(period => (
+                                            <th
+                                                key={period.id}
+                                                className="border p-1.5 bg-muted/50 font-medium min-w-[50px]"
+                                                title={getPeriodDisplayName(period)}
+                                            >
+                                                <div>{getPeriodShortLabel(period)}</div>
+                                                <div className="text-[10px] font-normal text-muted-foreground whitespace-nowrap">
+                                                    {getPeriodTimeInfo(period)}
+                                                </div>
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {DAYS.map(day => (
+                                        <tr key={day}>
+                                            <td className="border p-1.5 bg-muted/30 text-center font-medium">
+                                                {day.slice(0, 3)}
+                                            </td>
+                                            {sortedPeriods.map(period => {
+                                                const entry = getEntryForSlot(day, period);
+                                                return renderSlotCell(day, period, entry);
+                                            })}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </>
+                        )}
                     </table>
                 </div>
             </CardContent>

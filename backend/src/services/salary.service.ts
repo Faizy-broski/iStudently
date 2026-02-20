@@ -74,27 +74,56 @@ class SalaryService {
     // PAYROLL SETTINGS
     // ==========================================
 
-    async getPayrollSettings(schoolId: string): Promise<PayrollSettings | null> {
-        const { data, error } = await supabase
+    async getPayrollSettings(schoolId: string, campusId?: string | null): Promise<PayrollSettings | null> {
+        // try campus-specific first
+        let query = supabase
             .from('payroll_settings')
             .select('*')
             .eq('school_id', schoolId)
-            .single()
 
+        if (campusId) {
+            query = query.eq('campus_id', campusId)
+        } else {
+            query = query.is('campus_id', null)
+        }
+
+        let { data, error } = await query.single()
         if (error && error.code !== 'PGRST116') {
             throw new Error(`Failed to get payroll settings: ${error.message}`)
         }
+
+        // if campus requested but no row found, fall back to school-wide null campus
+        if (!data && campusId) {
+            const { data: fallback, error: fbErr } = await supabase
+                .from('payroll_settings')
+                .select('*')
+                .eq('school_id', schoolId)
+                .is('campus_id', null)
+                .single()
+
+            if (fbErr && fbErr.code !== 'PGRST116') {
+                throw new Error(`Failed to get payroll settings fallback: ${fbErr.message}`)
+            }
+            data = fallback
+        }
+
         return data
     }
 
-    async upsertPayrollSettings(schoolId: string, settings: Partial<PayrollSettings>): Promise<PayrollSettings> {
+    async upsertPayrollSettings(schoolId: string, settings: Partial<PayrollSettings> & { campus_id?: string | null }): Promise<PayrollSettings> {
+        // clean campus_id explicit
+        const { campus_id, ...clean } = settings as any
+        const insertObj: any = {
+            school_id: schoolId,
+            ...clean,
+            updated_at: new Date().toISOString()
+        }
+        if (campus_id) insertObj.campus_id = campus_id
+        else insertObj.campus_id = null
+
         const { data, error } = await supabase
             .from('payroll_settings')
-            .upsert({
-                school_id: schoolId,
-                ...settings,
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'school_id' })
+            .upsert(insertObj, { onConflict: ['school_id', 'campus_id'] })
             .select()
             .single()
 

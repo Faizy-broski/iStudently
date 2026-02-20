@@ -876,7 +876,7 @@ export class FeesController {
                 return res.status(403).json({ success: false, error: 'Not authenticated' })
             }
 
-            const { student_id, amount, payment_date, comment, is_lunch_payment, file_url } = req.body
+            const { student_id, amount, payment_date, comment, is_lunch_payment, file_url, receipt_number } = req.body
 
             if (!student_id || amount === undefined) {
                 return res.status(400).json({ success: false, error: 'student_id and amount are required' })
@@ -889,6 +889,7 @@ export class FeesController {
                 comment,
                 is_lunch_payment: is_lunch_payment || false,
                 file_url,
+                receipt_number,
                 created_by: userId
             })
 
@@ -942,14 +943,15 @@ export class FeesController {
                 return res.status(400).json({ success: false, error: 'paymentId is required' })
             }
 
-            const { amount, payment_date, comment, is_lunch_payment, file_url } = req.body
+            const { amount, payment_date, comment, is_lunch_payment, file_url, receipt_number } = req.body
 
             const payment = await feesService.updatePayment(paymentId, schoolId, {
                 amount: amount !== undefined ? parseFloat(amount) : undefined,
                 payment_date,
                 comment,
                 is_lunch_payment,
-                file_url
+                file_url,
+                receipt_number
             })
 
             return res.json({ success: true, data: payment })

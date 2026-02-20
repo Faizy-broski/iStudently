@@ -82,10 +82,11 @@ export const useGradeLevels = () => {
   }, [mutate])
 
   const deleteGradeLevel = useCallback(async (id: string) => {
-    const response = await academicsApi.deleteGradeLevel(id)
+    const currentCampusId = campusContext?.selectedCampus?.id || profile?.school_id
+    const response = await academicsApi.deleteGradeLevel(id, currentCampusId || undefined)
     if (response.success) mutate()
     return response
-  }, [mutate])
+  }, [mutate, campusContext?.selectedCampus?.id, profile?.school_id])
 
   return {
     gradeLevels: data ?? [],
@@ -141,10 +142,11 @@ export const useSections = () => {
   }, [mutate])
 
   const deleteSection = useCallback(async (id: string) => {
-    const response = await academicsApi.deleteSection(id)
+    const currentCampusId = campusContext?.selectedCampus?.id || profile?.school_id
+    const response = await academicsApi.deleteSection(id, currentCampusId || undefined)
     if (response.success) mutate()
     return response
-  }, [mutate])
+  }, [mutate, campusContext?.selectedCampus?.id, profile?.school_id])
 
   return {
     sections: data ?? [],

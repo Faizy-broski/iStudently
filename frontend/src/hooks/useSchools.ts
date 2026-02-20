@@ -16,6 +16,13 @@ export interface School {
   website: string | null;
   contact_email: string;
   address: string | null;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
+  phone: string | null;
+  principal_name: string | null;
+  short_name: string | null;
+  school_number: string | null;
   parent_school_id: string | null;
   status: "active" | "suspended";
   created_at: string;

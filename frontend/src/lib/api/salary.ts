@@ -84,9 +84,9 @@ export interface PaySlip extends SalaryRecord {
 // API Functions
 export async function getPayrollSettings(schoolId: string, campusId?: string): Promise<PayrollSettings | null> {
     const headers = await getHeaders()
-    const url = campusId 
-        ? `${API_BASE}/api/salary/settings?school_id=${schoolId}&campus_id=${campusId}`
-        : `${API_BASE}/api/salary/settings?school_id=${schoolId}`
+    const params = new URLSearchParams({ school_id: schoolId })
+    if (campusId) params.append('campus_id', campusId)
+    const url = `${API_BASE}/api/salary/settings?${params.toString()}`
     const res = await fetch(url, { headers })
     const json = await res.json()
     if (!json.success) throw new Error(json.error)
@@ -95,9 +95,8 @@ export async function getPayrollSettings(schoolId: string, campusId?: string): P
 
 export async function updatePayrollSettings(schoolId: string, settings: Partial<PayrollSettings>, campusId?: string): Promise<PayrollSettings> {
     const headers = await getHeaders()
-    const body = campusId 
-        ? { school_id: schoolId, campus_id: campusId, ...settings }
-        : { school_id: schoolId, ...settings }
+    const body: any = { school_id: schoolId, ...settings }
+    if (campusId) body.campus_id = campusId
     const res = await fetch(`${API_BASE}/api/salary/settings`, {
         method: 'PUT',
         headers,

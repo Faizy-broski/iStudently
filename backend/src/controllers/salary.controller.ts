@@ -9,11 +9,12 @@ export class SalaryController {
     async getPayrollSettings(req: Request, res: Response) {
         try {
             const schoolId = req.query.school_id as string
+            const campusId = req.query.campus_id as string | undefined
             if (!schoolId) {
                 return res.status(400).json({ success: false, error: 'school_id is required' })
             }
 
-            const settings = await salaryService.getPayrollSettings(schoolId)
+            const settings = await salaryService.getPayrollSettings(schoolId, campusId ?? null)
             return res.json({ success: true, data: settings })
         } catch (error: any) {
             console.error('Error getting payroll settings:', error)
@@ -24,11 +25,16 @@ export class SalaryController {
     async updatePayrollSettings(req: Request, res: Response) {
         try {
             const schoolId = req.body.school_id as string
+            const campusId = req.body.campus_id as string | undefined
             if (!schoolId) {
                 return res.status(400).json({ success: false, error: 'school_id is required' })
             }
 
-            const settings = await salaryService.upsertPayrollSettings(schoolId, req.body)
+            const payload: any = { ...req.body }
+            if (campusId) payload.campus_id = campusId
+            else payload.campus_id = null
+
+            const settings = await salaryService.upsertPayrollSettings(schoolId, payload)
             return res.json({ success: true, data: settings })
         } catch (error: any) {
             console.error('Error updating payroll settings:', error)

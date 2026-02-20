@@ -213,6 +213,13 @@ export interface School {
   website: string | null;
   contact_email: string;
   address: string | null;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
+  phone: string | null;
+  principal_name: string | null;
+  short_name: string | null;
+  school_number: string | null;
   parent_school_id: string | null; // NEW: For branches
   settings?: {
     grading_scale: number;
@@ -238,6 +245,13 @@ export interface CreateSchoolDTO {
   contact_email: string;
   parent_school_id?: string; // NEW: Optional parent school ID
   address?: string;
+  city?: string;
+  state?: string;
+  zip_code?: string;
+  phone?: string;
+  principal_name?: string;
+  short_name?: string;
+  school_number?: string;
   website?: string;
   logo_url?: string;
   settings?: School["settings"];
@@ -248,6 +262,13 @@ export interface UpdateSchoolDTO {
   name?: string;
   contact_email?: string;
   address?: string;
+  city?: string;
+  state?: string;
+  zip_code?: string;
+  phone?: string;
+  principal_name?: string;
+  short_name?: string;
+  school_number?: string;
   website?: string;
   logo_url?: string;
   status?: SchoolStatus;
@@ -449,6 +470,7 @@ export interface CreateParentStudentLinkDTO {
 export interface SchoolEvent {
   id: string;
   school_id: string;
+  campus_id?: string | null;
   title: string;
   description: string | null;
   category: EventCategory;
@@ -468,6 +490,7 @@ export interface SchoolEvent {
 
 export interface CreateEventDTO {
   school_id: string;
+  campus_id?: string | null;
   title: string;
   description?: string;
   category: EventCategory;
@@ -483,6 +506,7 @@ export interface CreateEventDTO {
 }
 
 export interface UpdateEventDTO {
+  campus_id?: string | null;
   title?: string;
   description?: string;
   category?: EventCategory;
@@ -613,6 +637,7 @@ export interface AcademicYear {
   start_date: string;
   end_date: string;
   is_current: boolean;
+  is_next: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -624,6 +649,7 @@ export interface CreateAcademicYearDTO {
   start_date: string;
   end_date: string;
   is_current?: boolean;
+  is_next?: boolean;
 }
 
 export interface UpdateAcademicYearDTO {
@@ -631,6 +657,7 @@ export interface UpdateAcademicYearDTO {
   start_date?: string;
   end_date?: string;
   is_current?: boolean;
+  is_next?: boolean;
   is_active?: boolean;
 }
 
@@ -1348,3 +1375,230 @@ export const recordFeePaymentSchema = z.object({
   amount: z.number().min(0),
   notes: z.string().optional(),
 });
+
+// ============================================================================
+// ATTENDANCE MODULE TYPES (Admin Attendance System)
+// ============================================================================
+
+// ---- Enums / Literal Types ----
+
+export type AttendanceStateCode = 'P' | 'A' | 'H';
+export type AttendanceCodeType = 'teacher' | 'official' | 'both';
+
+// ---- Core Entities ----
+
+export interface AttendanceCode {
+  id: string;
+  school_id: string;
+  campus_id?: string | null;
+  title: string;
+  short_name: string;
+  state_code: AttendanceStateCode;
+  type: AttendanceCodeType;
+  is_default: boolean;
+  sort_order: number;
+  color: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AttendanceDailyRecord {
+  id: string;
+  school_id: string;
+  campus_id?: string | null;
+  student_id: string;
+  attendance_date: string;
+  state_value: number; // 0.0, 0.5, 1.0
+  total_minutes: number;
+  minutes_present: number;
+  comment?: string | null;
+  academic_year_id?: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  student_name?: string;
+  student_number?: string;
+  section_name?: string;
+  grade_name?: string;
+}
+
+export interface AttendanceCalendarDay {
+  id: string;
+  school_id: string;
+  campus_id?: string | null;
+  school_date: string;
+  is_school_day: boolean;
+  minutes: number;
+  block?: string | null;
+  notes?: string | null;
+  academic_year_id?: string | null;
+  created_at: string;
+}
+
+export interface AttendanceCompletionRecord {
+  id: string;
+  school_id: string;
+  staff_id: string;
+  school_date: string;
+  period_id: string;
+  table_name: number;
+  created_at: string;
+  // Joined
+  staff_name?: string;
+  period_name?: string;
+  period_number?: number;
+}
+
+// ---- DTOs ----
+
+export interface CreateAttendanceCodeDTO {
+  school_id: string;
+  campus_id?: string | null;
+  title: string;
+  short_name: string;
+  state_code: AttendanceStateCode;
+  type?: AttendanceCodeType;
+  is_default?: boolean;
+  sort_order?: number;
+  color?: string;
+}
+
+export interface UpdateAttendanceCodeDTO {
+  title?: string;
+  short_name?: string;
+  state_code?: AttendanceStateCode;
+  type?: AttendanceCodeType;
+  is_default?: boolean;
+  sort_order?: number;
+  color?: string;
+  is_active?: boolean;
+}
+
+export interface AddAbsencesDTO {
+  school_id: string;
+  campus_id?: string | null;
+  student_ids: string[];
+  attendance_date: string;
+  period_ids: string[];
+  attendance_code_id: string;
+  reason?: string;
+  admin_override?: boolean;
+  override_by?: string;
+}
+
+export interface AttendanceOverrideDTO {
+  attendance_record_id: string;
+  attendance_code_id: string;
+  override_reason: string;
+  override_by: string;
+}
+
+export interface GenerateCalendarDTO {
+  school_id: string;
+  academic_year_id: string;
+  campus_id?: string | null;
+}
+
+export interface UpdateCalendarDayDTO {
+  is_school_day?: boolean;
+  minutes?: number;
+  block?: string;
+  notes?: string;
+}
+
+export interface AttendanceSheetParams {
+  school_id: string;
+  campus_id?: string | null;
+  section_id?: string;
+  grade_id?: string;
+  start_date: string;
+  end_date: string;
+  include_data?: boolean; // Pre-fill with recorded data
+}
+
+// ---- Report Interfaces ----
+
+export interface TeacherCompletionStatus {
+  staff_id: string;
+  staff_name: string;
+  periods: {
+    period_id: string;
+    period_name: string;
+    period_number: number;
+    completed: boolean;
+    assigned: boolean;
+    courses?: { subject_name: string; section_name: string }[];
+  }[];
+  date: string;
+}
+
+export interface ADAReportRow {
+  date: string;
+  total_enrolled: number;
+  total_present: number;
+  total_absent: number;
+  total_half_day: number;
+  total_minutes_available: number;
+  total_minutes_present: number;
+  ada_percentage: number;
+}
+
+export interface ADAGradeRow {
+  grade_id: string;
+  grade_name: string;
+  students: number;
+  days_possible: number;
+  days_present: number;
+  days_absent: number;
+  ada: number;
+  avg_attendance: number;
+  avg_absent: number;
+}
+
+export interface AttendanceChartData {
+  labels: string[];
+  present: number[];
+  absent: number[];
+  half_day: number[];
+  ada: number[];
+}
+
+export interface AttendanceSummaryRow {
+  student_id: string;
+  student_name: string;
+  student_number?: string;
+  section_name?: string;
+  grade_name?: string;
+  total_days: number;
+  days_present: number;
+  days_absent: number;
+  days_half: number;
+  total_minutes: number;
+  minutes_present: number;
+  attendance_percentage: number;
+  state_code_breakdown: Record<string, number>;
+}
+
+export interface DailySummaryGridStudent {
+  student_id: string;
+  student_name: string;
+  student_number?: string;
+  grade_name?: string;
+  dates: Record<string, number | null>; // date → state_value (1.0, 0.5, 0.0) or null
+}
+
+export interface DailySummaryGridResponse {
+  school_dates: string[];
+  students: DailySummaryGridStudent[];
+}
+
+export interface DuplicateAttendanceRecord {
+  student_id: string;
+  student_name?: string;
+  attendance_date: string;
+  period_id: string;
+  period_name?: string;
+  count: number;
+  record_ids: string[];
+}
