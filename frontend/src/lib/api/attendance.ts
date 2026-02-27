@@ -547,14 +547,15 @@ export function getPrintSheetsUrl(
   return `${API_URL}/attendance/reports/sheets?${params}`
 }
 
-export function getExportSummaryUrl(
+export async function exportAttendanceSummary(
   schoolId: string,
   startDate: string,
   endDate: string,
   campusId?: string,
   gradeId?: string,
   sectionId?: string
-): string {
+): Promise<Blob> {
+  const token = await getAuthToken()
   const params = new URLSearchParams({
     school_id: schoolId,
     start_date: startDate,
@@ -563,7 +564,17 @@ export function getExportSummaryUrl(
   if (campusId) params.append('campus_id', campusId)
   if (gradeId) params.append('grade_id', gradeId)
   if (sectionId) params.append('section_id', sectionId)
-  return `${API_URL}/attendance/reports/summary/export?${params}`
+
+  const resp = await fetch(`${API_URL}/attendance/reports/summary/export?${params}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  })
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({ error: 'Export failed' }))
+    throw new Error(err.error || 'Export failed')
+  }
+
+  return resp.blob()
 }
 
 // ============================================================================

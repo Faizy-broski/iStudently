@@ -6,6 +6,8 @@ import {
   EntryStatus,
 } from "../types/index";
 
+type RecordType = "ENTRY" | "EXIT";
+
 export class EntryExitService {
   // ========================
   // CHECKPOINTS
@@ -151,8 +153,55 @@ export class EntryExitService {
     return "late";
   }
 
-  static async createRecord(dto: CreateEntryExitDTO) {
-    const status = await this.resolveStatus(dto.checkpoint_id, dto.record_type);
+  /**
+   * Resolve which record type to apply next for a person at a checkpoint.
+   * Queries the last record and returns the opposite direction (toggle).
+   * Falls back to 'ENTRY' if no prior record exists.
+   */
+  static async resolveRecordType(
+    personId: string,
+    personType: string,
+    checkpointId: string,
+  ): Promise<RecordType> {
+    const { data } = await supabase
+      .from("entry_exit_records")
+      .select("record_type")
+      .eq("person_id", personId)
+      .eq("person_type", personType)
+      .eq("checkpoint_id", checkpointId)
+      .order("recorded_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!data) return "ENTRY";
+    return data.record_type === "ENTRY" ? "EXIT" : "ENTRY";
+  }
+
+  static async createRecord(dto: CreateEntryExitDTO & { record_type?: RecordType }) {
+    // Auto-toggle record_type if not provided
+    const record_type: RecordType =
+      (dto.record_type as RecordType) ||
+      (await this.resolveRecordType(
+        dto.person_id,
+        dto.person_type,
+        dto.checkpoint_id,
+      ));
+
+    // Soft double-entry detection: warn if last record matches the incoming type
+    const { data: lastRecord } = await supabase
+      .from("entry_exit_records")
+      .select("record_type")
+      .eq("person_id", dto.person_id)
+      .eq("person_type", dto.person_type)
+      .eq("checkpoint_id", dto.checkpoint_id)
+      .order("recorded_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const duplicateDirection =
+      lastRecord && lastRecord.record_type === record_type;
+
+    const status = await this.resolveStatus(dto.checkpoint_id, record_type);
 
     const { data, error } = await supabase
       .from("entry_exit_records")
@@ -161,7 +210,7 @@ export class EntryExitService {
         checkpoint_id: dto.checkpoint_id,
         person_id: dto.person_id,
         person_type: dto.person_type,
-        record_type: dto.record_type,
+        record_type,
         status,
         description: dto.description || null,
       })
@@ -177,7 +226,39 @@ export class EntryExitService {
 
     // Enrich with person name
     const enriched = await this.enrichRecordsWithNames([data]);
-    return enriched[0];
+    const result = enriched[0] as any;
+    if (duplicateDirection) {
+      result.warning = "DUPLICATE_DIRECTION";
+    }
+    return result;
+  }
+
+  static async deleteRecord(id: string) {
+    const { error } = await supabase
+      .from("entry_exit_records")
+      .delete()
+      .eq("id", id);
+    if (error) throw error;
+    return { success: true };
+  }
+
+  /**
+   * Delete records older than N days for a school.
+   * Called by the nightly cron job when configured.
+   */
+  static async deleteOldRecords(schoolId: string, daysOlderThan: number) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - daysOlderThan);
+    const cutoffStr = cutoff.toISOString();
+
+    const { error } = await supabase
+      .from("entry_exit_records")
+      .delete()
+      .eq("school_id", schoolId)
+      .lt("recorded_at", cutoffStr);
+
+    if (error) throw error;
+    return { success: true, cutoff: cutoffStr };
   }
 
   static async createBulkRecords(dto: {
@@ -414,5 +495,109 @@ export class EntryExitService {
 
     if (error) throw error;
     return data;
+  }
+
+  // ========================
+  // ATTENDANCE INTEGRATION (Premium)
+  // ========================
+
+  /**
+   * For each student in the school, return their last entry/exit record for the
+   * given checkpoint on the given date, their active evening leave return time,
+   * and a `suggest_absent` flag.
+   *
+   * The Take Attendance page uses this to pre-populate extra columns and
+   * pre-select absent codes for students that appear to be missing.
+   */
+  static async getAttendanceIntegration(
+    schoolId: string,
+    checkpointId: string,
+    date: string,           // YYYY-MM-DD
+    currentTime: string,    // HH:MM
+  ) {
+    const dayStart = `${date}T00:00:00`;
+    const dayEnd   = `${date}T23:59:59`;
+
+    // Day of week for evening leave matching (0=Sun … 6=Sat)
+    const dow = new Date(`${date}T00:00:00`).getDay();
+
+    // All STUDENT entry/exit records for the checkpoint today
+    const { data: records, error: recErr } = await supabase
+      .from("entry_exit_records")
+      .select("person_id, record_type, recorded_at")
+      .eq("school_id", schoolId)
+      .eq("checkpoint_id", checkpointId)
+      .eq("person_type", "STUDENT")
+      .gte("recorded_at", dayStart)
+      .lte("recorded_at", dayEnd)
+      .order("recorded_at", { ascending: false });
+
+    if (recErr) throw recErr;
+
+    // Build map: student_id → { last_record_type, last_record_time }
+    const recordMap = new Map<string, { type: string; time: string }>();
+    for (const r of records || []) {
+      if (!recordMap.has(r.person_id)) {
+        // First (most recent) record wins
+        recordMap.set(r.person_id, {
+          type: r.record_type,
+          time: r.recorded_at,
+        });
+      }
+    }
+
+    // Active evening leaves that cover today
+    const { data: leaves, error: lvErr } = await supabase
+      .from("evening_leaves")
+      .select("student_id, authorized_return_time, checkpoint_id")
+      .eq("school_id", schoolId)
+      .eq("is_active", true)
+      .lte("start_date", date)
+      .gte("end_date", date);
+
+    if (lvErr) throw lvErr;
+
+    // Filter leaves that apply to today's day_of_week and optionally the same checkpoint
+    const leaveMap = new Map<string, string>(); // student_id → return_time (HH:MM)
+    for (const lv of leaves || []) {
+      const dows: number[] = lv.days_of_week || [];
+      if (!dows.includes(dow)) continue;
+      if (lv.checkpoint_id && lv.checkpoint_id !== checkpointId) continue;
+      // Keep earliest return time if multiple leaves
+      const existing = leaveMap.get(lv.student_id);
+      if (!existing || lv.authorized_return_time < existing) {
+        leaveMap.set(lv.student_id, lv.authorized_return_time);
+      }
+    }
+
+    // Collect all unique student IDs across both records and leaves
+    const allStudentIds = [
+      ...new Set([...recordMap.keys(), ...leaveMap.keys()]),
+    ];
+
+    // Build the result array
+    const result = allStudentIds.map((studentId) => {
+      const rec = recordMap.get(studentId);
+      const returnTime = leaveMap.get(studentId) || null;
+
+      // suggest_absent when:
+      //   – no record at all AND
+      //   – (no evening leave OR evening leave return time has already passed)
+      const noRecord = !rec;
+      const returnTimePassed = returnTime
+        ? currentTime >= returnTime.slice(0, 5)
+        : true;
+      const suggestAbsent = noRecord && returnTimePassed;
+
+      return {
+        student_id: studentId,
+        last_record_type: rec?.type || null,
+        last_record_time: rec?.time || null,
+        evening_leave_return_time: returnTime,
+        suggest_absent: suggestAbsent,
+      };
+    });
+
+    return result;
   }
 }

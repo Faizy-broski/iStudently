@@ -102,22 +102,30 @@ export class StudentService {
           });
 
           // Enrich student data with parent links and grade_level_id
-          const enrichedData = paginatedData.map((student: any) => ({
-            id: student.student_id,
-            student_number: student.student_number,
-            grade_level: student.grade_level,
-            grade_level_id: gradeMap.get(student.student_id) || null,
-            profile_id: student.profile_id,
-            school_id: schoolId,
-            profile: {
+          const enrichedData = paginatedData.map((student: any) => {
+            const flattened: any = {
+              id: student.student_id,
+              student_number: student.student_number,
+              grade_level: student.grade_level,
+              grade_level_id: gradeMap.get(student.student_id) || null,
+              profile_id: student.profile_id,
+              school_id: schoolId,
+              parent_links: parentLinksMap.get(student.student_id) || []
+            };
+            // include whatever profile fields the caller might be expecting at top level
+            flattened.first_name = student.first_name;
+            flattened.last_name = student.last_name;
+            flattened.father_name = student.father_name;
+            flattened.grandfather_name = student.grandfather_name;
+            flattened.profile = {
               id: student.profile_id,
               first_name: student.first_name,
               last_name: student.last_name,
               email: student.email,
               is_active: student.is_active
-            },
-            parent_links: parentLinksMap.get(student.student_id) || []
-          }));
+            };
+            return flattened;
+          });
 
           return {
             students: enrichedData,
@@ -190,8 +198,27 @@ export class StudentService {
       throw new Error(`Failed to fetch students: ${error.message}`)
     }
 
+    // Post-process results so callers always see the primary name fields at the top level
+    // (`first_name`, `last_name`, etc).  The standard query returns a nested `profile` object,
+    // which the frontend has been assuming for many years, so failing to flatten it is why
+    // student lists in the activities module (and the eligibility page) were rendering as
+    // blank.  The search branch above already creates a flattened record; mimic that here.
+    const students = (data || []).map((s: any) => {
+      const first = s?.profile?.first_name ?? null;
+      const last = s?.profile?.last_name ?? null;
+      const father = s?.profile?.father_name ?? null;
+      const grand = s?.profile?.grandfather_name ?? null;
+      return {
+        ...s,
+        first_name: first,
+        last_name: last,
+        father_name: father,
+        grandfather_name: grand,
+      };
+    });
+
     return {
-      students: data || [],
+      students,
       pagination: {
         total: count || 0,
         page,
@@ -599,6 +626,173 @@ export class StudentService {
     })
 
     return stats
+  }
+
+  // ── BULK IMPORT ────────────────────────────────────────────────────────────
+
+  /**
+   * Bulk import students with full validation, batch processing, and detailed results.
+   * Phase 1: Validate all rows (required fields, email, within-batch duplicates)
+   * Phase 2: Batch-resolve grade_level_name / section_name → IDs
+   * Phase 3: Create students 3 at a time to stay within auth rate limits
+   */
+  async bulkImportStudents(
+    studentsData: Array<Record<string, any>>,
+    schoolId: string
+  ): Promise<{
+    success_count: number
+    error_count: number
+    errors: Array<{ row: number; student_number?: string; error: string }>
+    created_students: any[]
+  }> {
+    const results = {
+      success_count: 0,
+      error_count: 0,
+      errors: [] as Array<{ row: number; student_number?: string; error: string }>,
+      created_students: [] as any[]
+    }
+
+    const validRows: Array<{
+      row: number
+      data: CreateStudentDTO
+      gradeName?: string
+      sectionName?: string
+    }> = []
+
+    const seenStudentNumbers = new Set<string>()
+    const seenEmails = new Set<string>()
+    const uniqueGradeNames = new Set<string>()
+    const uniqueSectionNames = new Set<string>()
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+    // ── Phase 1: Validate all rows ──────────────────────────────────────────
+    for (let i = 0; i < studentsData.length; i++) {
+      const rowNum = i + 2 // row 1 = header
+      const raw = studentsData[i]
+
+      const missingFields: string[] = []
+      if (!raw.student_number?.toString().trim()) missingFields.push('student_number')
+      if (!raw.first_name?.toString().trim()) missingFields.push('first_name')
+      if (!raw.last_name?.toString().trim()) missingFields.push('last_name')
+      if (!raw.email?.toString().trim()) missingFields.push('email')
+
+      if (missingFields.length > 0) {
+        results.errors.push({
+          row: rowNum,
+          student_number: raw.student_number?.toString().trim(),
+          error: `Missing required fields: ${missingFields.join(', ')}`
+        })
+        results.error_count++
+        continue
+      }
+
+      const studentNumber = raw.student_number.toString().trim()
+      const email = raw.email.toString().trim().toLowerCase()
+
+      if (!emailRegex.test(email)) {
+        results.errors.push({ row: rowNum, student_number: studentNumber, error: `Invalid email format: ${email}` })
+        results.error_count++
+        continue
+      }
+
+      if (seenStudentNumbers.has(studentNumber)) {
+        results.errors.push({ row: rowNum, student_number: studentNumber, error: 'Duplicate student_number within this file' })
+        results.error_count++
+        continue
+      }
+
+      if (seenEmails.has(email)) {
+        results.errors.push({ row: rowNum, student_number: studentNumber, error: 'Duplicate email within this file' })
+        results.error_count++
+        continue
+      }
+
+      seenStudentNumbers.add(studentNumber)
+      seenEmails.add(email)
+
+      const gradeName = raw.grade_level_name?.toString().trim()
+      const sectionName = raw.section_name?.toString().trim()
+      if (gradeName) uniqueGradeNames.add(gradeName.toLowerCase())
+      if (sectionName) uniqueSectionNames.add(sectionName.toLowerCase())
+
+      validRows.push({
+        row: rowNum,
+        gradeName: gradeName?.toLowerCase(),
+        sectionName: sectionName?.toLowerCase(),
+        data: {
+          school_id: schoolId,
+          student_number: studentNumber,
+          first_name: raw.first_name.toString().trim(),
+          father_name: raw.father_name?.toString().trim() || undefined,
+          grandfather_name: raw.grandfather_name?.toString().trim() || undefined,
+          last_name: raw.last_name.toString().trim(),
+          email,
+          phone: raw.phone?.toString().trim() || undefined,
+          password: raw.password?.toString().trim() || undefined,
+          grade_level: gradeName || undefined
+        }
+      })
+    }
+
+    if (validRows.length === 0) return results
+
+    // ── Phase 2: Batch-resolve grade levels & sections ──────────────────────
+    const gradeLevelMap = new Map<string, string>() // lower name → id
+    const sectionMap = new Map<string, string>()   // "lower_name|grade_id" → id, and "lower_name" → id
+
+    if (uniqueGradeNames.size > 0) {
+      const { data: grades } = await supabase
+        .from('grade_levels')
+        .select('id, name')
+        .eq('school_id', schoolId)
+      grades?.forEach((g: any) => gradeLevelMap.set(g.name.toLowerCase(), g.id))
+    }
+
+    if (uniqueSectionNames.size > 0) {
+      const { data: sections } = await supabase
+        .from('sections')
+        .select('id, name, grade_level_id')
+        .eq('school_id', schoolId)
+      sections?.forEach((s: any) => {
+        sectionMap.set(`${s.name.toLowerCase()}|${s.grade_level_id}`, s.id)
+        if (!sectionMap.has(s.name.toLowerCase())) sectionMap.set(s.name.toLowerCase(), s.id)
+      })
+    }
+
+    // Enrich data with resolved IDs
+    for (const vr of validRows) {
+      if (vr.gradeName && gradeLevelMap.has(vr.gradeName)) {
+        vr.data.grade_level_id = gradeLevelMap.get(vr.gradeName)
+      }
+      if (vr.sectionName) {
+        const gradeId = vr.data.grade_level_id
+        vr.data.section_id =
+          (gradeId ? sectionMap.get(`${vr.sectionName}|${gradeId}`) : undefined) ||
+          sectionMap.get(vr.sectionName)
+      }
+    }
+
+    // ── Phase 3: Process in batches of 3 ───────────────────────────────────
+    for (let i = 0; i < validRows.length; i += 3) {
+      const batch = validRows.slice(i, i + 3)
+      const batchResults = await Promise.allSettled(batch.map(vr => this.createStudent(vr.data)))
+      batchResults.forEach((result, idx) => {
+        const { row, data } = batch[idx]
+        if (result.status === 'fulfilled') {
+          results.success_count++
+          results.created_students.push(result.value)
+        } else {
+          results.error_count++
+          results.errors.push({
+            row,
+            student_number: data.student_number,
+            error: result.reason?.message || 'Failed to create student'
+          })
+        }
+      })
+    }
+
+    return results
   }
 
   /**

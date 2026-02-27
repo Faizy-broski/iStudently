@@ -138,15 +138,20 @@ export class HostelController {
   static async getAssignments(req: Request, res: Response) {
     try {
       const schoolId = req.query.school_id as string;
+      const campusId = req.query.campus_id as string | undefined;
       if (!schoolId)
         return res
           .status(400)
           .json({ success: false, error: "school_id is required" });
-      const data = await HostelService.getAssignments(schoolId, {
-        building_id: req.query.building_id as string,
-        room_id: req.query.room_id as string,
-        active_only: req.query.active_only !== "false",
-      });
+      const data = await HostelService.getAssignments(
+        schoolId,
+        {
+          building_id: req.query.building_id as string,
+          room_id: req.query.room_id as string,
+          active_only: req.query.active_only !== "false",
+        },
+        campusId,
+      );
       res.json({ success: true, data });
     } catch (err: any) {
       console.error("getAssignments error:", err);
@@ -188,17 +193,22 @@ export class HostelController {
   static async getVisits(req: Request, res: Response) {
     try {
       const schoolId = req.query.school_id as string;
+      const campusId = req.query.campus_id as string | undefined;
       if (!schoolId)
         return res
           .status(400)
           .json({ success: false, error: "school_id is required" });
-      const data = await HostelService.getVisits(schoolId, {
-        student_id: req.query.student_id as string,
-        room_id: req.query.room_id as string,
-        date_from: req.query.date_from as string,
-        date_to: req.query.date_to as string,
-        active_only: req.query.active_only === "true",
-      });
+      const data = await HostelService.getVisits(
+        schoolId,
+        {
+          student_id: req.query.student_id as string,
+          room_id: req.query.room_id as string,
+          date_from: req.query.date_from as string,
+          date_to: req.query.date_to as string,
+          active_only: req.query.active_only === "true",
+        },
+        campusId,
+      );
       res.json({ success: true, data });
     } catch (err: any) {
       console.error("getVisits error:", err);
@@ -231,16 +241,21 @@ export class HostelController {
   static async getRentalFees(req: Request, res: Response) {
     try {
       const schoolId = req.query.school_id as string;
+      const campusId = req.query.campus_id as string | undefined;
       if (!schoolId)
         return res
           .status(400)
           .json({ success: false, error: "school_id is required" });
-      const data = await HostelService.getRentalFees(schoolId, {
-        student_id: req.query.student_id as string,
-        status: req.query.status as string,
-        period_start: req.query.period_start as string,
-        period_end: req.query.period_end as string,
-      });
+      const data = await HostelService.getRentalFees(
+        schoolId,
+        {
+          student_id: req.query.student_id as string,
+          status: req.query.status as string,
+          period_start: req.query.period_start as string,
+          period_end: req.query.period_end as string,
+        },
+        campusId,
+      );
       res.json({ success: true, data });
     } catch (err: any) {
       console.error("getRentalFees error:", err);
@@ -305,11 +320,12 @@ export class HostelController {
   static async deleteFile(req: Request, res: Response) {
     try {
       const schoolId = req.query.school_id as string;
+      const campusId = req.query.campus_id as string | undefined;
       if (!schoolId)
         return res
           .status(400)
           .json({ success: false, error: "school_id is required" });
-      await HostelService.deleteFile(req.params.id, schoolId);
+      await HostelService.deleteFile(req.params.id, schoolId, campusId);
       res.json({ success: true });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
@@ -328,14 +344,16 @@ export class HostelController {
 
       const buildingId = req.query.building_id as string;
       const roomId = req.query.room_id as string;
+      const campusId = req.query.campus_id as string | undefined;
 
       let data;
       if (roomId) {
-        data = await HostelService.searchStudentsByRoom(schoolId, roomId);
+        data = await HostelService.searchStudentsByRoom(schoolId, roomId, campusId);
       } else if (buildingId) {
         data = await HostelService.searchStudentsByBuilding(
           schoolId,
           buildingId,
+          campusId,
         );
       } else {
         return res.status(400).json({

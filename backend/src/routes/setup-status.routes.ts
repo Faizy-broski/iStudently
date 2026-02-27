@@ -5,19 +5,21 @@ import { requireRole } from '../middlewares/role.middleware'
 
 const router = Router()
 
-// All routes require authentication and admin role
+// All routes require authentication
 router.use(authenticate)
-router.use(requireRole('admin', 'super_admin'))
 
-// Setup status
-router.get('/status', setupStatusController.getSetupStatus)
+// Setup status (admin only)
+router.get('/status', requireRole('admin', 'super_admin'), setupStatusController.getSetupStatus)
 
 // Campus management
-router.get('/campuses', setupStatusController.getCampuses)
-router.post('/campuses', setupStatusController.createCampus)
-router.get('/campuses/:id', setupStatusController.getCampusById)
-router.get('/campuses/:id/stats', setupStatusController.getCampusStats)
-router.put('/campuses/:id', setupStatusController.updateCampus)
-router.delete('/campuses/:id', setupStatusController.deleteCampus)
+// GET campuses is accessible by admin, super_admin, AND librarian (for sidebar campus info)
+router.get('/campuses', requireRole('admin', 'super_admin', 'librarian'), setupStatusController.getCampuses)
+router.get('/campuses/:id', requireRole('admin', 'super_admin', 'librarian'), setupStatusController.getCampusById)
+router.get('/campuses/:id/stats', requireRole('admin', 'super_admin'), setupStatusController.getCampusStats)
+
+// Write operations remain admin-only
+router.post('/campuses', requireRole('admin', 'super_admin'), setupStatusController.createCampus)
+router.put('/campuses/:id', requireRole('admin', 'super_admin'), setupStatusController.updateCampus)
+router.delete('/campuses/:id', requireRole('admin', 'super_admin'), setupStatusController.deleteCampus)
 
 export default router

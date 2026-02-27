@@ -72,8 +72,14 @@ export function updateBuilding(id: string, schoolId: string, data: any) {
   });
 }
 
-export function deleteBuilding(id: string, schoolId: string) {
-  return apiRequest(`/hostel/buildings/${id}?school_id=${schoolId}`, {
+export function deleteBuilding(
+  id: string,
+  schoolId: string,
+  campusId?: string,
+) {
+  let url = `/hostel/buildings/${id}?school_id=${schoolId}`;
+  if (campusId) url += `&campus_id=${campusId}`;
+  return apiRequest(url, {
     method: "DELETE",
   });
 }
@@ -99,8 +105,14 @@ export function updateRoom(id: string, schoolId: string, data: any) {
   });
 }
 
-export function deleteRoom(id: string, schoolId: string) {
-  return apiRequest(`/hostel/rooms/${id}?school_id=${schoolId}`, {
+export function deleteRoom(
+  id: string,
+  schoolId: string,
+  campusId?: string,
+) {
+  let url = `/hostel/rooms/${id}?school_id=${schoolId}`;
+  if (campusId) url += `&campus_id=${campusId}`;
+  return apiRequest(url, {
     method: "DELETE",
   });
 }
@@ -108,9 +120,11 @@ export function deleteRoom(id: string, schoolId: string) {
 // ─── ASSIGNMENTS ──────────────────────────────────────────
 export function getAssignments(
   schoolId: string,
+  campusId?: string,
   filters?: { building_id?: string; room_id?: string; active_only?: boolean },
 ) {
   let url = `/hostel/assignments?school_id=${schoolId}`;
+  if (campusId) url += `&campus_id=${campusId}`;
   if (filters?.building_id) url += `&building_id=${filters.building_id}`;
   if (filters?.room_id) url += `&room_id=${filters.room_id}`;
   if (filters?.active_only === false) url += `&active_only=false`;
@@ -124,8 +138,13 @@ export function assignStudent(data: any) {
   });
 }
 
-export function releaseStudent(assignmentId: string) {
-  return apiRequest(`/hostel/assignments/${assignmentId}`, {
+export function releaseStudent(
+  assignmentId: string,
+  campusId?: string,
+) {
+  let url = `/hostel/assignments/${assignmentId}`;
+  if (campusId) url += `?campus_id=${campusId}`;
+  return apiRequest(url, {
     method: "DELETE",
   });
 }
@@ -137,6 +156,7 @@ export function getStudentRoom(studentId: string) {
 // ─── VISITS ───────────────────────────────────────────────
 export function getVisits(
   schoolId: string,
+  campusId?: string,
   filters?: {
     student_id?: string;
     room_id?: string;
@@ -146,6 +166,7 @@ export function getVisits(
   },
 ) {
   let url = `/hostel/visits?school_id=${schoolId}`;
+  if (campusId) url += `&campus_id=${campusId}`;
   if (filters?.student_id) url += `&student_id=${filters.student_id}`;
   if (filters?.room_id) url += `&room_id=${filters.room_id}`;
   if (filters?.date_from) url += `&date_from=${filters.date_from}`;
@@ -170,6 +191,7 @@ export function checkOutVisit(visitId: string) {
 // ─── RENTAL FEES ──────────────────────────────────────────
 export function getRentalFees(
   schoolId: string,
+  campusId?: string,
   filters?: {
     student_id?: string;
     status?: string;
@@ -178,6 +200,7 @@ export function getRentalFees(
   },
 ) {
   let url = `/hostel/fees?school_id=${schoolId}`;
+  if (campusId) url += `&campus_id=${campusId}`;
   if (filters?.student_id) url += `&student_id=${filters.student_id}`;
   if (filters?.status) url += `&status=${filters.status}`;
   if (filters?.period_start) url += `&period_start=${filters.period_start}`;
@@ -217,23 +240,33 @@ export function addFile(data: any) {
   });
 }
 
-export function deleteFile(id: string, schoolId: string) {
-  return apiRequest(`/hostel/files/${id}?school_id=${schoolId}`, {
+export function deleteFile(id: string, schoolId: string, campusId?: string) {
+  let url = `/hostel/files/${id}?school_id=${schoolId}`;
+  if (campusId) url += `&campus_id=${campusId}`;
+  return apiRequest(url, {
     method: "DELETE",
   });
 }
 
 // ─── SEARCH ───────────────────────────────────────────────
-export function searchStudentsByBuilding(schoolId: string, buildingId: string) {
-  return apiRequest(
-    `/hostel/search/students?school_id=${schoolId}&building_id=${buildingId}`,
-  );
+export function searchStudentsByBuilding(
+  schoolId: string,
+  buildingId: string,
+  campusId?: string,
+) {
+  let url = `/hostel/search/students?school_id=${schoolId}&building_id=${buildingId}`;
+  if (campusId) url += `&campus_id=${campusId}`;
+  return apiRequest(url);
 }
 
-export function searchStudentsByRoom(schoolId: string, roomId: string) {
-  return apiRequest(
-    `/hostel/search/students?school_id=${schoolId}&room_id=${roomId}`,
-  );
+export function searchStudentsByRoom(
+  schoolId: string,
+  roomId: string,
+  campusId?: string,
+) {
+  let url = `/hostel/search/students?school_id=${schoolId}&room_id=${roomId}`;
+  if (campusId) url += `&campus_id=${campusId}`;
+  return apiRequest(url);
 }
 
 // ─── STUDENT SEARCH (reuse from entry-exit pattern) ──────
@@ -254,8 +287,10 @@ export function searchStudentsByRoom(schoolId: string, roomId: string) {
 export async function searchStudents(
   schoolId: string,
   query?: string,
+  campusId?: string,
 ): Promise<any[]> {
   const params = new URLSearchParams({ school_id: schoolId });
   if (query) params.append("search", query);
+  if (campusId) params.append("campus_id", campusId);
   return apiRequestToken(`/students?${params.toString()}`);
 }

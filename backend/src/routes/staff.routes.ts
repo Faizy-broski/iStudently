@@ -11,6 +11,10 @@ router.use(requireAuth)
 // Get current staff member's own profile (for librarian/staff roles)
 router.get('/me', requireRole('librarian', 'staff'), StaffController.getMyProfile)
 
+// Bulk import routes (admin only — must be before /:id to avoid route conflicts)
+router.get('/import-template', requireRole('admin'), StaffController.getStaffImportTemplate)
+router.post('/bulk-import', requireRole('admin'), StaffController.bulkImportStaff)
+
 // Admin only routes for managing staff
 router.get('/', requireRole('admin'), StaffController.getAllStaff)
 router.get('/:id', requireRole('admin'), StaffController.getStaffById)

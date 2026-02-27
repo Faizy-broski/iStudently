@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useProfileView } from "@/context/ProfileViewContext";
+import { QualificationsTab } from "@/components/admin/QualificationsTab";
 import { type Staff } from "@/lib/api/teachers";
 import { useTeachers } from "@/hooks/useTeachers";
 import { format } from "date-fns";
@@ -268,7 +269,7 @@ export default function TeacherDetailsPage() {
 
       {/* Detailed Information Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
           <TabsTrigger value="personal" className="gap-2">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">Personal</span>
@@ -280,6 +281,10 @@ export default function TeacherDetailsPage() {
           <TabsTrigger value="subjects" className="gap-2">
             <BookOpen className="h-4 w-4" />
             <span className="hidden sm:inline">Subjects</span>
+          </TabsTrigger>
+          <TabsTrigger value="qualifications" className="gap-2">
+            <GraduationCap className="h-4 w-4" />
+            <span className="hidden sm:inline">Qualifications</span>
           </TabsTrigger>
           <TabsTrigger value="system" className="gap-2">
             <Settings className="h-4 w-4" />
@@ -386,6 +391,17 @@ export default function TeacherDetailsPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Qualifications Tab */}
+        <TabsContent value="qualifications" className="mt-6">
+          {currentTeacher.profile_id ? (
+            <QualificationsTab profileId={currentTeacher.profile_id} />
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              Profile ID not available for this teacher.
+            </p>
+          )}
         </TabsContent>
 
         {/* System Information Tab */}

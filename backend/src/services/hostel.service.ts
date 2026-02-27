@@ -3,12 +3,16 @@ import { supabase } from "../config/supabase";
 export class HostelService {
   // ─── BUILDINGS ──────────────────────────────────────────────
 
+  // Buildings/Rooms/Stats/Visits/Fees are school-wide (no campus filter).
+  // Assignments are campus-scoped (students belong to a campus).
+
   static async getBuildings(schoolId: string) {
-    const { data, error } = await supabase
+    const query: any = supabase
       .from("hostel_buildings")
       .select("*, hostel_rooms(id)")
-      .eq("school_id", schoolId)
-      .order("name");
+      .eq("school_id", schoolId);
+
+    const { data, error } = await query.order("name");
 
     if (error) throw error;
 
@@ -30,9 +34,10 @@ export class HostelService {
   }
 
   static async updateBuilding(id: string, schoolId: string, dto: any) {
+    const payload = { ...dto, updated_at: new Date().toISOString() };
     const { data, error } = await supabase
       .from("hostel_buildings")
-      .update({ ...dto, updated_at: new Date().toISOString() })
+      .update(payload)
       .eq("id", id)
       .eq("school_id", schoolId)
       .select()
@@ -52,8 +57,11 @@ export class HostelService {
 
   // ─── ROOMS ──────────────────────────────────────────────────
 
-  static async getRooms(schoolId: string, buildingId?: string) {
-    let query = supabase
+  static async getRooms(
+    schoolId: string,
+    buildingId?: string,
+  ) {
+    let query: any = supabase
       .from("hostel_rooms")
       .select(
         `
@@ -126,8 +134,9 @@ export class HostelService {
   static async getAssignments(
     schoolId: string,
     filters: { building_id?: string; room_id?: string; active_only?: boolean },
+    campusId?: string,
   ) {
-    let query = supabase
+    let query: any = supabase
       .from("hostel_room_assignments")
       .select(
         `
@@ -139,6 +148,7 @@ export class HostelService {
       .eq("school_id", schoolId)
       .order("created_at", { ascending: false });
 
+    if (campusId) query = query.eq("campus_id", campusId);
     if (filters.active_only !== false) query = query.eq("is_active", true);
     if (filters.room_id) query = query.eq("room_id", filters.room_id);
 
@@ -204,16 +214,19 @@ export class HostelService {
       );
     }
 
+    const insertPayload: any = {
+      room_id: dto.room_id,
+      student_id: dto.student_id,
+      school_id: dto.school_id,
+      assigned_date:
+        dto.assigned_date || new Date().toISOString().split("T")[0],
+      notes: dto.notes,
+    };
+    if (dto.campus_id) insertPayload.campus_id = dto.campus_id;
+
     const { data, error } = await supabase
       .from("hostel_room_assignments")
-      .insert({
-        room_id: dto.room_id,
-        student_id: dto.student_id,
-        school_id: dto.school_id,
-        assigned_date:
-          dto.assigned_date || new Date().toISOString().split("T")[0],
-        notes: dto.notes,
-      })
+      .insert(insertPayload)
       .select()
       .single();
 
@@ -271,8 +284,9 @@ export class HostelService {
       date_to?: string;
       active_only?: boolean;
     },
+    campusId?: string,
   ) {
-    let query = supabase
+    let query: any = supabase
       .from("hostel_visits")
       .select(
         `
@@ -290,6 +304,7 @@ export class HostelService {
     if (filters.date_to)
       query = query.lte("check_in", filters.date_to + "T23:59:59");
     if (filters.active_only) query = query.is("check_out", null);
+    if (campusId) query = query.eq("campus_id", campusId);
 
     const { data, error } = await query;
     if (error) throw error;
@@ -311,6 +326,7 @@ export class HostelService {
       const assignment = await this.getStudentRoom(dto.student_id);
       if (assignment) {
         dto.room_id = assignment.room_id;
+        if (assignment.campus_id) dto.campus_id = assignment.campus_id;
       }
     }
 
@@ -344,8 +360,9 @@ export class HostelService {
       period_start?: string;
       period_end?: string;
     },
+    campusId?: string,
   ) {
-    let query = supabase
+    let query: any = supabase
       .from("hostel_rental_fees")
       .select(
         `
@@ -362,6 +379,7 @@ export class HostelService {
     if (filters.period_start)
       query = query.gte("period_start", filters.period_start);
     if (filters.period_end) query = query.lte("period_end", filters.period_end);
+    if (campusId) query = query.eq("campus_id", campusId);
 
     const { data, error } = await query;
     if (error) throw error;
@@ -479,13 +497,19 @@ export class HostelService {
 
   // ─── FILES ──────────────────────────────────────────────────
 
-  static async getFiles(entityType: string, entityId: string) {
-    const { data, error } = await supabase
+  static async getFiles(
+    entityType: string,
+    entityId: string,
+    campusId?: string,
+  ) {
+    let query: any = supabase
       .from("hostel_room_files")
       .select("*")
       .eq("entity_type", entityType)
       .eq("entity_id", entityId)
       .order("created_at", { ascending: false });
+    if (campusId) query = query.eq("campus_id", campusId);
+    const { data, error } = await query;
     if (error) throw error;
     return data || [];
   }
@@ -500,18 +524,24 @@ export class HostelService {
     return data;
   }
 
-  static async deleteFile(fileId: string, schoolId: string) {
-    const { error } = await supabase
+  static async deleteFile(fileId: string, schoolId: string, campusId?: string) {
+    let query: any = supabase
       .from("hostel_room_files")
       .delete()
       .eq("id", fileId)
       .eq("school_id", schoolId);
+    if (campusId) query = query.eq("campus_id", campusId);
+    const { error } = await query;
     if (error) throw error;
   }
 
   // ─── SEARCH ─────────────────────────────────────────────────
 
-  static async searchStudentsByBuilding(schoolId: string, buildingId: string) {
+  static async searchStudentsByBuilding(
+    schoolId: string,
+    buildingId: string,
+    campusId?: string,
+  ) {
     const { data: rooms } = await supabase
       .from("hostel_rooms")
       .select("id")
@@ -520,7 +550,7 @@ export class HostelService {
     const roomIds = (rooms || []).map((r: any) => r.id);
     if (roomIds.length === 0) return [];
 
-    const { data, error } = await supabase
+    let query: any = supabase
       .from("hostel_room_assignments")
       .select(
         `
@@ -532,6 +562,10 @@ export class HostelService {
       .eq("school_id", schoolId)
       .eq("is_active", true)
       .in("room_id", roomIds);
+
+    if (campusId) query = query.eq("campus_id", campusId);
+
+    const { data, error } = await query;
 
     if (error) throw error;
 
@@ -545,8 +579,12 @@ export class HostelService {
     }));
   }
 
-  static async searchStudentsByRoom(schoolId: string, roomId: string) {
-    const { data, error } = await supabase
+  static async searchStudentsByRoom(
+    schoolId: string,
+    roomId: string,
+    campusId?: string,
+  ) {
+    let query: any = supabase
       .from("hostel_room_assignments")
       .select(
         `
@@ -557,6 +595,10 @@ export class HostelService {
       .eq("school_id", schoolId)
       .eq("room_id", roomId)
       .eq("is_active", true);
+
+    if (campusId) query = query.eq("campus_id", campusId);
+
+    const { data, error } = await query;
 
     if (error) throw error;
 
@@ -571,6 +613,7 @@ export class HostelService {
 
   // ─── DASHBOARD STATS ───────────────────────────────────────
 
+  // Stats are always school-wide so all campuses see the full hostel picture
   static async getStats(schoolId: string) {
     const [buildings, rooms, activeAssignments, activeVisits] =
       await Promise.all([
@@ -616,9 +659,9 @@ export class HostelService {
 
   // ─── CRON: REMOVE INACTIVE STUDENTS ────────────────────────
 
-  static async removeInactiveStudents() {
+  static async removeInactiveStudents(schoolId?: string, campusId?: string) {
     // Find active assignments where the student's profile is inactive
-    const { data: assignments, error } = await supabase
+    let query: any = supabase
       .from("hostel_room_assignments")
       .select(
         `
@@ -627,6 +670,8 @@ export class HostelService {
       `,
       )
       .eq("is_active", true);
+    if (schoolId) query = query.eq("school_id", schoolId);
+    if (campusId) query = query.eq("campus_id", campusId);
 
     if (error) {
       console.error("Error fetching hostel assignments for cleanup:", error);

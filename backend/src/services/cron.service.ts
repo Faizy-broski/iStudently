@@ -4,6 +4,7 @@ import { supabase } from "../config/supabase";
 import { generateDailyAttendance } from "./attendance.service";
 import { HostelService } from "./hostel.service";
 import { diaryReminderService } from "./diary-reminder.service";
+import { AutomaticRecordsService } from "./automaticRecords.service";
 
 /**
  * AUTOMATED CRON SERVICE
@@ -114,6 +115,33 @@ class CronService {
       },
     );
 
+    // Entry & Exit — Automatic Records (Premium)
+    // Runs every minute; applies any rules whose scheduled_time matches now ±1 min
+    cron.schedule(
+      "* * * * *",
+      async () => {
+        await this.applyAutomaticEntryExitRecords();
+      },
+      {
+        scheduled: true,
+        timezone: "Asia/Karachi",
+      },
+    );
+
+    // Entry & Exit — Nightly record cleanup
+    // Deletes records older than 365 days for all schools (3:30 AM daily)
+    cron.schedule(
+      "30 3 * * *",
+      async () => {
+        console.log("🗑️  [CRON] Entry/Exit: running nightly old-record cleanup...");
+        await AutomaticRecordsService.runNightlyCleanupAllSchools();
+      },
+      {
+        scheduled: true,
+        timezone: "Asia/Karachi",
+      },
+    );
+
     this.isInitialized = true;
     console.log("✅ Cron service initialized successfully");
     console.log("📅 Scheduled jobs:");
@@ -125,6 +153,44 @@ class CronService {
     console.log("   - Backup Generation: 5th of every month at 3:00 AM");
     console.log("   - Hostel Inactive Cleanup: Every day at 2:00 AM");
     console.log("   - Class Diary Reminders: Every day at 7:00 AM");
+    console.log("   - Entry/Exit Automatic Records: Every minute");
+    console.log("   - Entry/Exit Record Cleanup: Every day at 3:30 AM");
+  }
+
+  /**
+   * Apply Entry & Exit automatic record rules for all active schools.
+   * Called every minute by the cron job.
+   */
+  async applyAutomaticEntryExitRecords() {
+    const now = new Date();
+    const today = now.toISOString().split("T")[0]; // YYYY-MM-DD
+    const dayOfWeek = now.getDay(); // 0=Sun … 6=Sat
+    const currentTime = now.toTimeString().slice(0, 5); // HH:MM
+
+    try {
+      // Get all active schools
+      const { data: schools } = await supabase
+        .from("schools")
+        .select("id")
+        .eq("is_active", true);
+
+      for (const school of schools || []) {
+        const results = await AutomaticRecordsService.applyAutomaticRecords(
+          school.id,
+          dayOfWeek,
+          currentTime,
+          today,
+        );
+        if (results.length > 0) {
+          console.log(
+            `🚪 [CRON] Entry/Exit auto-records applied for school ${school.id}:`,
+            results.map((r: any) => `rule=${r.rule_id} inserted=${r.inserted}`).join(", "),
+          );
+        }
+      }
+    } catch (error: any) {
+      console.error("❌ [CRON] Entry/Exit automatic records error:", error.message);
+    }
   }
 
   /**

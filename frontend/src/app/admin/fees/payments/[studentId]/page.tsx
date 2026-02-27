@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback, use } from 'react'
+import { useState, useRef, useCallback, use, useEffect } from 'react'
 import { useCampus } from '@/context/CampusContext'
 import { useAuth } from '@/context/AuthContext'
 import { Card, CardContent } from '@/components/ui/card'
@@ -15,6 +15,7 @@ import useSWR, { mutate } from 'swr'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import { getSchoolSettings, PAYMENT_METHOD_OPTIONS, type PaymentMethodOption } from '@/lib/api/school-settings'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
@@ -33,6 +34,13 @@ interface Payment {
     }
 }
 
+interface StudentInfo {
+    id: string
+    student_number: string
+    first_name: string
+    last_name: string
+}
+
 interface PaymentResponse {
     payments: Payment[]
     summary: {
@@ -40,15 +48,7 @@ interface PaymentResponse {
         totalPayments: number
         balance: number
     }
-}
-
-interface Student {
-    id: string
-    student_number: string
-    profiles: {
-        first_name: string
-        last_name: string
-    }
+    studentInfo?: StudentInfo
 }
 
 interface NewPayment {
@@ -59,6 +59,7 @@ interface NewPayment {
     year: string
     comment: string
     is_lunch_payment: boolean
+    payment_method: PaymentMethodOption
     file?: File | null
 }
 
@@ -74,18 +75,6 @@ async function fetchStudentPayments(studentId: string, schoolId: string): Promis
     return json.data
 }
 
-async function fetchStudent(studentId: string, schoolId: string): Promise<Student> {
-    const supabase = createClient()
-    const { data, error } = await supabase
-        .from('students')
-        .select('id, student_number, profiles!inner(first_name, last_name)')
-        .eq('id', studentId)
-        .eq('school_id', schoolId)
-        .single()
-    
-    if (error) throw error
-    return data as unknown as Student
-}
 
 const MONTHS = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -108,6 +97,16 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
 
     const [viewMode, setViewMode] = useState<'original' | 'expanded'>('original')
     const printRef = useRef<HTMLDivElement>(null)
+
+    // Load campus-specific default payment method
+    const [defaultPaymentMethod, setDefaultPaymentMethod] = useState<PaymentMethodOption>('cash')
+    useEffect(() => {
+        getSchoolSettings(schoolId ?? null).then((res) => {
+            if (res.success && res.data?.default_payment_method) {
+                setDefaultPaymentMethod(res.data.default_payment_method)
+            }
+        }).catch(() => {})
+    }, [schoolId])
 
     const handlePrint = useCallback(() => {
         const content = printRef.current
@@ -176,16 +175,11 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
         year: new Date().getFullYear().toString(),
         comment: '',
         is_lunch_payment: false,
+        payment_method: defaultPaymentMethod,
         file: null
     }])
 
-    // Fetch student info
-    const { data: student, isLoading: studentLoading } = useSWR(
-        schoolId && studentId ? ['student-info', studentId, schoolId] : null,
-        () => fetchStudent(studentId, schoolId!)
-    )
-
-    // Fetch payments
+    // Fetch payments (includes studentInfo)
     const { data: paymentData, isLoading: paymentsLoading } = useSWR<PaymentResponse>(
         schoolId && studentId ? ['student-payments', studentId, schoolId] : null,
         () => fetchStudentPayments(studentId, schoolId!)
@@ -193,6 +187,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
 
     const payments = paymentData?.payments || []
     const summary = paymentData?.summary || { totalFees: 0, totalPayments: 0, balance: 0 }
+    const student = paymentData?.studentInfo
 
     // Format currency
     const formatCurrency = (amount: number) => {
@@ -211,8 +206,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
     // Format student name
     const formatStudentName = () => {
         if (!student) return ''
-        const { first_name, last_name } = student.profiles
-        return `${first_name} ${last_name}`.toUpperCase()
+        return `${student.first_name} ${student.last_name}`.toUpperCase()
     }
 
     // Add new payment row
@@ -224,6 +218,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
             year: new Date().getFullYear().toString(),
             comment: '',
             is_lunch_payment: false,
+            payment_method: defaultPaymentMethod,
             file: null
         }])
     }
@@ -307,6 +302,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                         payment_date: paymentDate,
                         comment: payment.comment || null,
                         is_lunch_payment: payment.is_lunch_payment,
+                        payment_method: payment.payment_method || defaultPaymentMethod,
                         file_url: fileUrl,
                         receipt_number: payment.receipt_number || undefined
                     })
@@ -326,6 +322,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                 year: new Date().getFullYear().toString(),
                 comment: '',
                 is_lunch_payment: false,
+                payment_method: defaultPaymentMethod,
                 file: null
             }])
             
@@ -366,7 +363,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
     // years list static
     const years = Array.from({ length: 10 }, (_, i) => (new Date().getFullYear() - 5 + i).toString())
 
-    if (campusLoading || studentLoading) {
+    if (campusLoading || paymentsLoading) {
         return (
             <div className="flex items-center justify-center h-64">
                 <IconLoader className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -461,6 +458,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                     <TableHead className="text-[#3d8fb5] font-semibold">AMOUNT</TableHead>
                                     <TableHead className="text-[#3d8fb5] font-semibold">DATE</TableHead>
                                     <TableHead className="text-[#3d8fb5] font-semibold">COMMENT</TableHead>
+                                    <TableHead className="text-[#3d8fb5] font-semibold">METHOD</TableHead>
                                     <TableHead className="text-[#3d8fb5] font-semibold text-center">LUNCH PAYMENT</TableHead>
                                     <TableHead className="text-[#3d8fb5] font-semibold text-center">FILE ATTACHED</TableHead>
                                     {viewMode === 'expanded' && (
@@ -484,6 +482,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                         <TableCell>{formatCurrency(payment.amount)}</TableCell>
                                         <TableCell>{formatDate(payment.payment_date)}</TableCell>
                                         <TableCell>{payment.comment || '-'}</TableCell>
+                                        <TableCell className="capitalize">{(payment as any).payment_method?.replace('_', ' ') || 'Cash'}</TableCell>
                                         <TableCell className="text-center">
                                             <Checkbox checked={payment.is_lunch_payment} disabled />
                                         </TableCell>
@@ -539,9 +538,10 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                         <TableCell>
                                             <Input
                                                 value={payment.receipt_number}
-                                                onChange={(e) => updatePaymentRow(index, 'receipt_number', e.target.value)}
+                                                readOnly
                                                 placeholder="Auto"
-                                                className="w-24 h-8"
+                                                className="w-24 h-8 bg-muted cursor-not-allowed select-none"
+                                                title="Receipt number is auto-generated"
                                             />
                                         </TableCell>
                                         <TableCell>
@@ -626,6 +626,23 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                                 onChange={(e) => updatePaymentRow(index, 'comment', e.target.value)}
                                                 className="w-full h-8"
                                             />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Select
+                                                value={payment.payment_method}
+                                                onValueChange={(v) => updatePaymentRow(index, 'payment_method', v)}
+                                            >
+                                                <SelectTrigger className="w-32 h-8">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {PAYMENT_METHOD_OPTIONS.map((opt) => (
+                                                        <SelectItem key={opt.value} value={opt.value}>
+                                                            {opt.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                         </TableCell>
                                         <TableCell className="text-center">
                                             <Checkbox
@@ -727,7 +744,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                             </div>
                             <div className="info-grid">
                                 <div>
-                                    <p><strong>Student Name:</strong> {student && `${student.profiles.first_name} ${student.profiles.last_name}`}</p>
+                                    <p><strong>Student Name:</strong> {student ? `${student.first_name} ${student.last_name}` : '-'}</p>
                                     <p><strong>Student ID:</strong> {student?.student_number || '-'}</p>
                                 </div>
                                 <div className="right">

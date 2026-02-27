@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -24,7 +24,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useAuth } from "@/context/AuthContext";
-import { createBook } from "@/lib/api/library";
+import { createBook, getCategories } from "@/lib/api/library";
+import { LibraryCategory } from "@/types";
 import { toast } from "sonner";
 
 const bookSchema = z.object({
@@ -32,6 +33,9 @@ const bookSchema = z.object({
   author: z.string().min(1, "Author is required"),
   isbn: z.string().optional(),
   category: z.string().optional(),
+  category_id: z.string().optional(),
+  reference: z.string().optional(),
+  document_type: z.string().optional(),
   publisher: z.string().optional(),
   publication_year: z.number().optional(),
   description: z.string().optional(),
@@ -48,6 +52,15 @@ interface AddBookDialogProps {
 export function AddBookDialog({ open, onOpenChange, onBookAdded }: AddBookDialogProps) {
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [categories, setCategories] = useState<LibraryCategory[]>([]);
+
+  useEffect(() => {
+    if (open && user?.access_token) {
+      getCategories(user.access_token).then((res) => {
+        if (res.success && res.data) setCategories(res.data);
+      });
+    }
+  }, [open, user?.access_token]);
 
   const form = useForm<BookFormData>({
     resolver: zodResolver(bookSchema),
@@ -56,6 +69,9 @@ export function AddBookDialog({ open, onOpenChange, onBookAdded }: AddBookDialog
       author: "",
       isbn: "",
       category: "",
+      category_id: "",
+      reference: "",
+      document_type: "book",
       publisher: "",
       publication_year: undefined,
       description: "",
@@ -149,12 +165,60 @@ export function AddBookDialog({ open, onOpenChange, onBookAdded }: AddBookDialog
 
               <FormField
                 control={form.control}
-                name="category"
+                name="category_id"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., Fiction, Science, History" {...field} />
+                      <select
+                        {...field}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      >
+                        <option value="">No category</option>
+                        {categories.map((cat) => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </option>
+                        ))}
+                      </select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="reference"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Reference Code</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. LIB-001" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="document_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Document Type</FormLabel>
+                    <FormControl>
+                      <select
+                        {...field}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      >
+                        <option value="book">Book</option>
+                        <option value="magazine">Magazine</option>
+                        <option value="cd">CD / DVD</option>
+                        <option value="periodical">Periodical</option>
+                        <option value="thesis">Thesis</option>
+                        <option value="other">Other</option>
+                      </select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

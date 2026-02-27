@@ -33,6 +33,7 @@ import { DollarSign, Plus, CreditCard, Sparkles } from "lucide-react";
 export default function FeesPage() {
   const { profile } = useAuth();
   const schoolId = profile?.school_id || "";
+  const campusId = profile?.campus_id;
 
   const [fees, setFees] = useState<HostelRentalFee[]>([]);
   const [buildings, setBuildings] = useState<HostelBuilding[]>([]);
@@ -67,7 +68,7 @@ export default function FeesPage() {
     try {
       setLoading(true);
       const [feesData, buildingsData] = await Promise.all([
-        getRentalFees(schoolId, {
+        getRentalFees(schoolId, campusId, {
           status: filterStatus || undefined,
         }),
         getBuildings(schoolId),
@@ -88,6 +89,7 @@ export default function FeesPage() {
       setGenResult(null);
       const result = await generateRentalFees({
         school_id: schoolId,
+        campus_id: campusId,
         period_start: periodStart,
         period_end: periodEnd,
         factor: genFactor,

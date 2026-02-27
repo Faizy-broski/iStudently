@@ -6,6 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Info, BookOpen, Loader2 } from "lucide-react"
 import { getAuthToken } from '@/lib/api/schools'
 import { API_URL } from '@/config/api'
+import { LoansBreakdownChart } from '@/components/admin/library/LoansBreakdownChart'
 
 interface LibraryStats {
   total_books: number;
@@ -73,39 +74,44 @@ export default function AdminLibraryPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-gray-500">Total Inventory</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-[#022172] dark:text-white">{stats?.total_books || 0} Books</div>
-              <p className="text-xs text-gray-500 mt-1">{stats?.total_copies || 0} total copies</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-gray-500">Current Circulation</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-[#022172] dark:text-white">{stats?.active_loans || 0} Issued</div>
-              {(stats?.overdue_loans || 0) > 0 && (
-                <p className="text-xs text-red-600 mt-1">{stats?.overdue_loans} overdue</p>
-              )}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-gray-500">Financials</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-[#022172] dark:text-white">${stats?.total_fines_collected?.toFixed(2) || '0.00'} Collected</div>
-              {(stats?.pending_fines || 0) > 0 && (
-                <p className="text-xs text-amber-600 mt-1">${stats?.pending_fines?.toFixed(2)} pending</p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium text-gray-500">Total Inventory</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-[#022172] dark:text-white">{stats?.total_books || 0} Books</div>
+                <p className="text-xs text-gray-500 mt-1">{stats?.total_copies || 0} total copies</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium text-gray-500">Current Circulation</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-[#022172] dark:text-white">{stats?.active_loans || 0} Issued</div>
+                {(stats?.overdue_loans || 0) > 0 && (
+                  <p className="text-xs text-red-600 mt-1">{stats?.overdue_loans} overdue</p>
+                )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium text-gray-500">Financials</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-[#022172] dark:text-white">${stats?.total_fines_collected?.toFixed(2) || '0.00'} Collected</div>
+                {(stats?.pending_fines || 0) > 0 && (
+                  <p className="text-xs text-amber-600 mt-1">${stats?.pending_fines?.toFixed(2)} pending</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Loans Breakdown Chart */}
+          <LoansBreakdownChart />
+        </>
       )}
     </div>
   );

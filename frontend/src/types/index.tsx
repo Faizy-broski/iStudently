@@ -16,6 +16,8 @@ export type BookCopyStatus =
   | "maintenance"
   | "damaged";
 export type LoanStatus = "active" | "returned" | "overdue" | "lost";
+export type BorrowerType = "student" | "user";
+export type DocumentFieldType = "select_multiple" | "select_single" | "text" | "long_text" | "checkbox" | "number" | "date" | "files";
 
 export interface Book {
   id: string;
@@ -24,6 +26,11 @@ export interface Book {
   author: string;
   isbn: string | null;
   category: string | null;
+  category_id: string | null;
+  reference: string | null;
+  document_type: string;
+  file_url: string | null;
+  custom_fields: Record<string, any>;
   publisher: string | null;
   publication_year: number | null;
   description: string | null;
@@ -52,9 +59,12 @@ export interface BookLoan {
   book_copy_id: string;
   student_id: string;
   school_id: string;
+  borrower_type: BorrowerType;
+  borrower_id: string;
   issue_date: string;
   due_date: string;
   return_date?: string;
+  return_comment?: string;
   status: LoanStatus;
   fine_amount?: number;
   collected_amount?: number;
@@ -91,6 +101,33 @@ export interface LibraryFine {
   paid: boolean;
   paid_at: Date | null;
   reason: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LibraryCategory {
+  id: string;
+  school_id: string;
+  name: string;
+  color_code: string;
+  sort_order: number;
+  visible_to_roles: string[];
+  visible_to_grade_levels: string[];
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LibraryDocumentField {
+  id: string;
+  school_id: string;
+  category_id: string | null;
+  field_name: string;
+  field_type: DocumentFieldType;
+  is_required: boolean;
+  sort_order: number;
+  options: any[];
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -376,6 +413,56 @@ export interface EntryExitStats {
   packages: number;
 }
 
+// ─── Automatic Records (Premium) ─────────────────────────────────────────────
+
+export type AutoRecordTargetType =
+  | "all_students"
+  | "grade_level"
+  | "all_staff"
+  | "staff_profile";
+
+export interface AutomaticRecord {
+  id: string;
+  school_id: string;
+  checkpoint_id: string;
+  record_type: RecordType;
+  day_of_week: number; // 0 = Sunday … 6 = Saturday
+  scheduled_time: string; // HH:MM
+  target_type: AutoRecordTargetType;
+  target_value: string | null;
+  is_active: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  checkpoint_name?: string;
+}
+
+export interface AutomaticRecordException {
+  id: string;
+  school_id: string;
+  automatic_record_id: string;
+  person_id: string;
+  person_type: PersonType;
+  from_date: string;
+  to_date: string;
+  reason: string | null;
+  created_by: string | null;
+  created_at: string;
+  // Joined
+  person_name?: string;
+}
+
+// ─── Attendance Integration (Premium) ────────────────────────────────────────
+
+export interface AttendanceIntegrationRecord {
+  student_id: string;
+  last_record_type: RecordType | null;
+  last_record_time: string | null;
+  evening_leave_return_time: string | null;
+  suggest_absent: boolean;
+}
+
 // =============================================================
 // HOSTEL MODULE
 // =============================================================
@@ -383,6 +470,7 @@ export interface EntryExitStats {
 export interface HostelBuilding {
   id: string;
   school_id: string;
+  campus_id?: string | null;
   name: string;
   address?: string;
   floors: number;
@@ -398,6 +486,7 @@ export interface HostelRoom {
   id: string;
   building_id: string;
   school_id: string;
+  campus_id?: string | null;
   room_number: string;
   floor: number;
   capacity: number;
@@ -417,6 +506,7 @@ export interface HostelRoomAssignment {
   room_id: string;
   student_id: string;
   school_id: string;
+  campus_id?: string | null;
   assigned_date: string;
   released_date?: string;
   is_active: boolean;
@@ -433,6 +523,7 @@ export interface HostelVisit {
   student_id: string;
   room_id?: string;
   school_id: string;
+  campus_id?: string | null;
   visitor_name: string;
   visitor_phone?: string;
   visitor_relation?: string;
@@ -452,6 +543,7 @@ export interface HostelRentalFee {
   student_id: string;
   room_id: string;
   school_id: string;
+  campus_id?: string | null;
   period_start: string;
   period_end: string;
   base_amount: number;

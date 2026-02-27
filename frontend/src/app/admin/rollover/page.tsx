@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -359,11 +360,18 @@ export default function RolloverPage() {
     <div className="container mx-auto py-8">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold">Year-End Rollover</h1>
-          <p className="text-muted-foreground mt-1">
-            Promote students and roll data from {currentYear.name} to {nextYear.name}
-          </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Year-End Rollover</h1>
+            <p className="text-muted-foreground mt-1">
+              Promote students and roll data from {currentYear.name} to {nextYear.name}
+            </p>
+          </div>
+          <Link href="/admin/rollover/semester">
+            <Button variant="outline" size="sm">
+              Semester Rollover →
+            </Button>
+          </Link>
         </div>
 
         {/* Prerequisites Check */}

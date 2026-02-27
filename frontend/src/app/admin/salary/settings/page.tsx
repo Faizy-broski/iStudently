@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 import { IconArrowLeft, IconDeviceFloppy } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
@@ -34,6 +35,14 @@ export default function SalarySettingsPage() {
     const [expectedCheckIn, setExpectedCheckIn] = useState('08:00')
     const [workingDaysPerMonth, setWorkingDaysPerMonth] = useState(22)
 
+    // Monthly one-time adjustments
+    const [monthlyBonusEnabled, setMonthlyBonusEnabled] = useState(false)
+    const [monthlyBonusAmount, setMonthlyBonusAmount] = useState(0)
+    const [monthlyBonusReason, setMonthlyBonusReason] = useState('')
+    const [monthlyDeductionEnabled, setMonthlyDeductionEnabled] = useState(false)
+    const [monthlyDeductionAmount, setMonthlyDeductionAmount] = useState(0)
+    const [monthlyDeductionReason, setMonthlyDeductionReason] = useState('')
+
     const [saving, setSaving] = useState(false)
 
     useEffect(() => {
@@ -48,6 +57,12 @@ export default function SalarySettingsPage() {
             setMaxAdvancePercent(settings.max_advance_percent)
             setExpectedCheckIn(settings.expected_check_in)
             setWorkingDaysPerMonth(settings.working_days_per_month)
+            setMonthlyBonusEnabled(settings.monthly_bonus_enabled ?? false)
+            setMonthlyBonusAmount(settings.monthly_bonus_amount ?? 0)
+            setMonthlyBonusReason(settings.monthly_bonus_reason ?? '')
+            setMonthlyDeductionEnabled(settings.monthly_deduction_enabled ?? false)
+            setMonthlyDeductionAmount(settings.monthly_deduction_amount ?? 0)
+            setMonthlyDeductionReason(settings.monthly_deduction_reason ?? '')
         }
     }, [settings])
 
@@ -65,7 +80,13 @@ export default function SalarySettingsPage() {
                 attendance_bonus_amount: attendanceBonusAmount,
                 max_advance_percent: maxAdvancePercent,
                 expected_check_in: expectedCheckIn,
-                working_days_per_month: workingDaysPerMonth
+                working_days_per_month: workingDaysPerMonth,
+                monthly_bonus_enabled: monthlyBonusEnabled,
+                monthly_bonus_amount: monthlyBonusAmount,
+                monthly_bonus_reason: monthlyBonusReason,
+                monthly_deduction_enabled: monthlyDeductionEnabled,
+                monthly_deduction_amount: monthlyDeductionAmount,
+                monthly_deduction_reason: monthlyDeductionReason
             }, campusId)
             mutate()
             toast.success('Settings saved successfully')
@@ -152,6 +173,80 @@ export default function SalarySettingsPage() {
                                 <Input type="number" step="0.01" value={attendanceBonusAmount} onChange={(e) => setAttendanceBonusAmount(parseFloat(e.target.value))} />
                                 <p className="text-xs text-muted-foreground mt-1">Bonus for zero late arrivals/absences in a month</p>
                             </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Monthly Bonus</CardTitle>
+                        <CardDescription>One-time bonus applied to all staff this month</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <Label>Enable Monthly Bonus</Label>
+                            <Switch checked={monthlyBonusEnabled} onCheckedChange={setMonthlyBonusEnabled} />
+                        </div>
+                        {monthlyBonusEnabled && (
+                            <>
+                                <div>
+                                    <Label>Bonus Amount ($)</Label>
+                                    <Input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={monthlyBonusAmount}
+                                        onChange={(e) => setMonthlyBonusAmount(parseFloat(e.target.value) || 0)}
+                                        className="w-40"
+                                    />
+                                </div>
+                                <div>
+                                    <Label>Bonus Reason</Label>
+                                    <Textarea
+                                        value={monthlyBonusReason}
+                                        onChange={(e) => setMonthlyBonusReason(e.target.value)}
+                                        placeholder="e.g. Eid bonus, Performance reward…"
+                                        className="h-20 resize-none"
+                                    />
+                                </div>
+                            </>
+                        )}
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Monthly Deduction</CardTitle>
+                        <CardDescription>One-time deduction applied to all staff this month</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <Label>Enable Monthly Deduction</Label>
+                            <Switch checked={monthlyDeductionEnabled} onCheckedChange={setMonthlyDeductionEnabled} />
+                        </div>
+                        {monthlyDeductionEnabled && (
+                            <>
+                                <div>
+                                    <Label>Deduction Amount ($)</Label>
+                                    <Input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={monthlyDeductionAmount}
+                                        onChange={(e) => setMonthlyDeductionAmount(parseFloat(e.target.value) || 0)}
+                                        className="w-40"
+                                    />
+                                </div>
+                                <div>
+                                    <Label>Deduction Reason</Label>
+                                    <Textarea
+                                        value={monthlyDeductionReason}
+                                        onChange={(e) => setMonthlyDeductionReason(e.target.value)}
+                                        placeholder="e.g. Equipment damage, Policy violation…"
+                                        className="h-20 resize-none"
+                                    />
+                                </div>
+                            </>
                         )}
                     </CardContent>
                 </Card>

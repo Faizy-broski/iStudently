@@ -80,18 +80,10 @@ export interface Student {
   id: string
   profile_id: string | null
   school_id: string
+  campus_id?: string               // returned when a student is assigned to a campus
   student_number: string
   grade_level: string | null
   medical_info?: {
-    blood_group?: string
-    allergies?: string[]
-    medications?: string[]
-    conditions?: string[]
-    emergency_notes?: string
-  }
-  custom_fields?: Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
-  created_at: string
-  profile?: {
     id: string
     first_name: string | null
     father_name: string | null // NEW
@@ -267,4 +259,63 @@ export async function getStudentsPrintInfo(params: {
     method: 'POST',
     body: JSON.stringify(params)
   })
+}
+
+// ============================================================================
+// BULK IMPORT
+// ============================================================================
+
+export interface BulkImportRow {
+  student_number: string
+  first_name: string
+  father_name?: string
+  grandfather_name?: string
+  last_name: string
+  email: string
+  phone?: string
+  password?: string
+  grade_level_name?: string
+  section_name?: string
+}
+
+export interface BulkImportError {
+  row: number
+  student_number?: string
+  error: string
+}
+
+export interface BulkImportResult {
+  success_count: number
+  error_count: number
+  errors: BulkImportError[]
+  created_students: Student[]
+}
+
+export async function bulkImportStudents(
+  students: BulkImportRow[],
+  campusId?: string
+) {
+  return apiRequest<BulkImportResult>('/students/bulk-import', {
+    method: 'POST',
+    body: JSON.stringify({ students, campus_id: campusId })
+  })
+}
+
+export function downloadStudentImportTemplate() {
+  const headers = [
+    'student_number', 'first_name', 'father_name', 'grandfather_name',
+    'last_name', 'email', 'phone', 'password', 'grade_level_name', 'section_name'
+  ]
+  const example = [
+    'S001', 'John', 'Robert', 'James', 'Smith',
+    'john.smith@school.com', '+1234567890', 'Pass@1234', 'Grade 10', 'A'
+  ]
+  const csv = [headers.join(','), example.join(',')].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'student_import_template.csv'
+  a.click()
+  URL.revokeObjectURL(url)
 }

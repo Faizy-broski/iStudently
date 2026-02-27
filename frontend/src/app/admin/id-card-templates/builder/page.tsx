@@ -93,6 +93,14 @@ export default function TemplateBuilderPage() {
     orientation: 'portrait' as 'portrait' | 'landscape',
   });
 
+  // Unit for width/height display
+  const [unit, setUnit] = useState<'px' | 'mm' | 'cm' | 'in'>('px');
+
+  // Conversion helpers (96 PPI)
+  const PX_PER_UNIT: Record<string, number> = { px: 1, mm: 96 / 25.4, cm: 96 / 2.54, in: 96 };
+  const pxToUnit = (px: number) => parseFloat((px / PX_PER_UNIT[unit]).toFixed(3));
+  const unitToPx = (val: number) => Math.round(val * PX_PER_UNIT[unit]);
+
   // Design settings
   const [design, setDesign] = useState({
     backgroundColor: '#ffffff',
@@ -628,21 +636,42 @@ export default function TemplateBuilderPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Unit selector */}
+                  <div>
+                    <Label>Size Unit</Label>
+                    <Select
+                      value={unit}
+                      onValueChange={(v: 'px' | 'mm' | 'cm' | 'in') => setUnit(v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="px">px (pixels)</SelectItem>
+                        <SelectItem value="mm">mm (millimeters)</SelectItem>
+                        <SelectItem value="cm">cm (centimeters)</SelectItem>
+                        <SelectItem value="in">in (inches)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <Label>Width (px)</Label>
+                      <Label>Width ({unit})</Label>
                       <Input
                         type="number"
-                        value={layout.width}
-                        onChange={(e) => setLayout({ ...layout, width: +e.target.value })}
+                        step={unit === 'px' ? 1 : 0.001}
+                        value={pxToUnit(layout.width)}
+                        onChange={(e) => setLayout({ ...layout, width: unitToPx(+e.target.value) })}
                       />
                     </div>
                     <div>
-                      <Label>Height (px)</Label>
+                      <Label>Height ({unit})</Label>
                       <Input
                         type="number"
-                        value={layout.height}
-                        onChange={(e) => setLayout({ ...layout, height: +e.target.value })}
+                        step={unit === 'px' ? 1 : 0.001}
+                        value={pxToUnit(layout.height)}
+                        onChange={(e) => setLayout({ ...layout, height: unitToPx(+e.target.value) })}
                       />
                     </div>
                   </div>

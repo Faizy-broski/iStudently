@@ -18,6 +18,7 @@ import { toast } from 'sonner'
 import useSWR from 'swr'
 import { format, parse } from 'date-fns'
 import { getAllStaff, Staff } from '@/lib/api/staff'
+import { getSchoolSettings, PAYMENT_METHOD_OPTIONS, type PaymentMethodOption } from '@/lib/api/school-settings'
 
 const MONTHS = [
     { value: '01', label: 'January' },
@@ -71,6 +72,16 @@ export default function StaffPaymentsPage() {
     const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null)
     const [searchQuery, setSearchQuery] = useState('')
     const [activeTab, setActiveTab] = useState<'payments' | 'salaries'>('salaries')
+
+    // Campus-specific default payment method from school settings
+    const [defaultPaymentMethod, setDefaultPaymentMethod] = useState<PaymentMethodOption>('cash')
+    useEffect(() => {
+        getSchoolSettings(campusId ?? null).then((res) => {
+            if (res.success && res.data?.default_payment_method) {
+                setDefaultPaymentMethod(res.data.default_payment_method)
+            }
+        }).catch(() => {})
+    }, [campusId])
 
     // Payment rows state for the selected staff
     const [rows, setRows] = useState<StaffPaymentRow[]>([])
@@ -267,7 +278,7 @@ export default function StaffPaymentsPage() {
         if (!schoolId) return
         setMarkingPaidId(salaryRecordId)
         try {
-            await salaryApi.markSalaryPaid(salaryRecordId, { school_id: schoolId, payment_method: 'Cash' })
+            await salaryApi.markSalaryPaid(salaryRecordId, { school_id: schoolId, payment_method: defaultPaymentMethod })
             toast.success('Salary marked as paid')
             mutateSalaries()
         } catch (error) {

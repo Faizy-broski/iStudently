@@ -1,8 +1,8 @@
-import { Book, BookCopy, BookLoan, LibraryFine } from "@/types";
+import { Book, BookCopy, BookLoan, LibraryFine, LibraryCategory, LibraryDocumentField } from "@/types";
 import { API_URL } from '@/config/api'
 
 // Re-export types
-export type { BookCopy, BookLoan };
+export type { Book, BookCopy, BookLoan, LibraryCategory, LibraryDocumentField };
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -121,7 +121,9 @@ export async function issueBook(
   data: {
     book_id?: string;
     copyId?: string;
-    student_id: string;
+    student_id?: string;
+    borrower_type?: string;
+    borrower_id?: string;
     due_date: Date;
     notes?: string;
   },
@@ -144,6 +146,7 @@ export async function returnBook(
     return_condition: string;
     damage_notes?: string;
     collected_amount: number;
+    return_comment?: string;
   },
   token: string
 ): Promise<ApiResponse<BookLoan>> {
@@ -255,6 +258,167 @@ export async function checkStudentEligibility(
   warnings?: string[];
 }>> {
   const res = await fetch(`${API_URL}/library/students/${studentId}/eligibility`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.json();
+}
+
+// ==================== PREMIUM: CATEGORY API ====================
+
+export async function getCategories(token: string): Promise<ApiResponse<LibraryCategory[]>> {
+  const res = await fetch(`${API_URL}/library/categories`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.json();
+}
+
+export async function createCategory(data: Partial<LibraryCategory>, token: string): Promise<ApiResponse<LibraryCategory>> {
+  const res = await fetch(`${API_URL}/library/categories`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function updateCategory(id: string, data: Partial<LibraryCategory>, token: string): Promise<ApiResponse<LibraryCategory>> {
+  const res = await fetch(`${API_URL}/library/categories/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function deleteCategory(id: string, token: string): Promise<ApiResponse> {
+  const res = await fetch(`${API_URL}/library/categories/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.json();
+}
+
+// ==================== PREMIUM: DOCUMENT FIELDS API ====================
+
+export async function getDocumentFields(token: string, categoryId?: string): Promise<ApiResponse<LibraryDocumentField[]>> {
+  const params = categoryId ? `?category_id=${categoryId}` : '';
+  const res = await fetch(`${API_URL}/library/document-fields${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.json();
+}
+
+export async function createDocumentField(data: Partial<LibraryDocumentField>, token: string): Promise<ApiResponse<LibraryDocumentField>> {
+  const res = await fetch(`${API_URL}/library/document-fields`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function updateDocumentField(fieldId: string, data: Partial<LibraryDocumentField>, token: string): Promise<ApiResponse<LibraryDocumentField>> {
+  const res = await fetch(`${API_URL}/library/document-fields/${fieldId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function deleteDocumentField(fieldId: string, token: string): Promise<ApiResponse> {
+  const res = await fetch(`${API_URL}/library/document-fields/${fieldId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.json();
+}
+
+// ==================== PREMIUM: BORROWER SEARCH ====================
+
+export async function searchBorrowers(query: string, type: string, token: string): Promise<ApiResponse<Student[]>> {
+  const res = await fetch(`${API_URL}/library/borrowers/search?q=${encodeURIComponent(query)}&type=${type}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.json();
+}
+
+// ==================== PREMIUM: LOANS BORROWERS ====================
+
+export async function getLoansBorrowers(type: string, token: string, search?: string): Promise<ApiResponse<any[]>> {
+  const params = new URLSearchParams({ type });
+  if (search) params.append('search', search);
+  const res = await fetch(`${API_URL}/library/loans/borrowers?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.json();
+}
+
+// ==================== PREMIUM: QUICK LOAN ====================
+
+export async function quickLoan(
+  data: { borrower_type: string; borrower_id: string; book_id: string },
+  token: string
+): Promise<ApiResponse> {
+  const res = await fetch(`${API_URL}/library/loans/quick`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+// ==================== PREMIUM: GLOBAL SEARCH ====================
+
+export async function globalSearchDocuments(query: string, token: string): Promise<ApiResponse<Book[]>> {
+  const res = await fetch(`${API_URL}/library/search?q=${encodeURIComponent(query)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.json();
+}
+
+// ==================== PREMIUM: LOANS BREAKDOWN ====================
+
+export async function getLoansBreakdown(
+  startDate: string,
+  endDate: string,
+  byCategory: boolean,
+  token: string
+): Promise<ApiResponse<{
+  chart_data: any[];
+  categories: { name: string; color: string }[];
+  total_loans: number;
+}>> {
+  const params = new URLSearchParams({
+    start_date: startDate,
+    end_date: endDate,
+    by_category: String(byCategory),
+  });
+  const res = await fetch(`${API_URL}/library/loans/breakdown?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.json();
+}
+
+// ==================== PREMIUM: STATS ====================
+
+export async function getLibraryStats(token: string): Promise<ApiResponse<any>> {
+  const res = await fetch(`${API_URL}/library/stats`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   return res.json();

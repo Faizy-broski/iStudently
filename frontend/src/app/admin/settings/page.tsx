@@ -5,22 +5,43 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Calendar, Save } from "lucide-react";
+import { Calendar, CreditCard, Save } from "lucide-react";
+import { getSchoolSettings, updateSchoolSettings, PAYMENT_METHOD_OPTIONS, PaymentMethodOption } from "@/lib/api/school-settings";
+import { useCampus } from "@/context/CampusContext";
 
 const HIJRI_OFFSET_KEY = "studently_global_hijri_offset";
 
 export default function SettingsPage() {
+  const { selectedCampus } = useCampus();
+  const campusId = selectedCampus?.id ?? null;
+
   const [hijriOffset, setHijriOffset] = useState<number>(0);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Default payment method
+  const [defaultPaymentMethod, setDefaultPaymentMethod] = useState<PaymentMethodOption>("cash");
+  const [paymentMethodSaving, setPaymentMethodSaving] = useState(false);
+  const [paymentMethodLoading, setPaymentMethodLoading] = useState(true);
+
   useEffect(() => {
-    // Load saved offset from localStorage
+    // Load saved Hijri offset from localStorage
     const saved = localStorage.getItem(HIJRI_OFFSET_KEY);
     if (saved !== null) {
       setHijriOffset(parseInt(saved));
     }
-  }, []);
+
+    // Load campus-specific default payment method from server
+    setPaymentMethodLoading(true);
+    getSchoolSettings(campusId).then((res) => {
+      if (res.success && res.data?.default_payment_method) {
+        setDefaultPaymentMethod(res.data.default_payment_method);
+      } else {
+        setDefaultPaymentMethod("cash");
+      }
+    }).finally(() => setPaymentMethodLoading(false));
+  }, [campusId]);
 
   const handleSave = () => {
     setIsSaving(true);
@@ -34,6 +55,19 @@ export default function SettingsPage() {
       toast.error("Failed to save settings");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSavePaymentMethod = async () => {
+    setPaymentMethodSaving(true);
+    try {
+      const res = await updateSchoolSettings({ default_payment_method: defaultPaymentMethod }, campusId);
+      if (!res.success) throw new Error(res.error || "Failed to save");
+      toast.success(campusId ? "Campus default payment method saved" : "Default payment method saved");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to save payment method");
+    } finally {
+      setPaymentMethodSaving(false);
     }
   };
 
@@ -115,6 +149,69 @@ export default function SettingsPage() {
             >
               <Save className="h-4 w-4 mr-2" />
               {isSaving ? "Saving..." : "Save Settings"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Default Payment Method Settings */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5 text-[#022172]" />
+            <CardTitle>Default Payment Method</CardTitle>
+          </div>
+          <CardDescription>
+            Set the default payment method for{" "}
+            {selectedCampus ? (
+              <strong>{selectedCampus.name}</strong>
+            ) : (
+              "your school"
+            )}
+            {". "}This will be pre-selected on all new invoices, fee payments, billing elements,
+            accounting expenses and staff salary payments for this campus. Switch campuses using the
+            campus selector to configure other campuses.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-3">
+            <Label className="text-base font-semibold">Payment Method</Label>
+            {paymentMethodLoading ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : (
+              <Select
+                value={defaultPaymentMethod}
+                onValueChange={(v) => setDefaultPaymentMethod(v as PaymentMethodOption)}
+              >
+                <SelectTrigger className="w-60">
+                  <SelectValue placeholder="Select payment method" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHOD_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+              <p className="text-sm text-blue-900 dark:text-blue-100">
+                <strong>Note:</strong> This setting is campus-specific. Each campus can have its own
+                default payment method. Individual payment entries can still override the method at the
+                time of recording. Changing this setting does not affect historical records.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button
+              onClick={handleSavePaymentMethod}
+              disabled={paymentMethodSaving || paymentMethodLoading}
+              className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {paymentMethodSaving ? "Saving..." : "Save Payment Method"}
             </Button>
           </div>
         </CardContent>

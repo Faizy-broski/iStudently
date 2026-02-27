@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs'
+import JSZip from 'jszip'
 import { supabase } from '../config/supabase'
 import { AttendanceSheetParams } from '../types'
 
@@ -25,17 +26,12 @@ export const generateAttendanceSheet = async (
     .from('students')
     .select(`
       id,
-      admission_number,
+      student_number,
       profiles!inner(first_name, last_name),
-      sections!inner(name, grades!inner(name))
+      sections!inner(name, grade_levels!inner(name))
     `)
     .eq('school_id', params.school_id)
-    .eq('is_active', true)
     .order('profiles(last_name)', { ascending: true })
-
-  if (params.campus_id) {
-    studentQuery = studentQuery.eq('campus_id', params.campus_id)
-  }
 
   if (params.section_id) {
     studentQuery = studentQuery.eq('section_id', params.section_id)
@@ -155,7 +151,7 @@ export const generateAttendanceSheet = async (
 
   // Build filename
   const sectionName = (students[0] as any).sections?.name || 'all'
-  const gradeName = (students[0] as any).sections?.grades?.name || ''
+  const gradeName = (students[0] as any).sections?.grade_levels?.name || ''
   const filename = `Attendance_${gradeName}_${sectionName}_${params.start_date}_to_${params.end_date}.xlsx`
 
   return { buffer: Buffer.from(buffer), filename }
@@ -227,7 +223,7 @@ function buildDailySheet(
     row.values = [
       idx + 1,
       fullName,
-      student.admission_number || '',
+      student.student_number || '',
       ...periods.map(p => {
         const key = `${student.id}:${date}:${p.id}`
         return data.get(key) || ''
@@ -333,7 +329,7 @@ function buildRangeSheet(
     row.values = [
       idx + 1,
       fullName,
-      student.admission_number || '',
+      student.student_number || '',
       ...dates.map(date => {
         // Get all period codes for this student+date, find the dominant one
         const periodCodes: string[] = []
@@ -548,10 +544,6 @@ export const generateCoursePeriodSheets = async (
   campusId?: string,
   includeInactive = false
 ): Promise<{ buffer: Buffer; filename: string }> => {
-  const workbook = new ExcelJS.Workbook()
-  workbook.creator = 'Studently'
-  workbook.created = new Date()
-
   // Get school days in range
   let calQ = supabase
     .from('attendance_calendar')
@@ -569,7 +561,7 @@ export const generateCoursePeriodSheets = async (
   const { data: calDays } = await calQ
   const schoolDates = (calDays || []).map(c => c.school_date)
 
-  // If no calendar data, fall back to weekdays
+  // Fall back to weekdays if no calendar data
   const dates = schoolDates.length > 0 ? schoolDates : (() => {
     const ds: string[] = []
     const s = new Date(startDate)
@@ -593,37 +585,29 @@ export const generateCoursePeriodSheets = async (
     }
   }
 
-  let hasStudents = false
+  const zip = new JSZip()
+  let fileCount = 0
 
   for (const cp of coursePeriods) {
     // Get students enrolled in this section
-    let studentQ = supabase
+    const { data: students } = await supabase
       .from('students')
       .select(`
         id,
-        admission_number,
+        student_number,
         profiles!inner(first_name, last_name)
       `)
       .eq('school_id', schoolId)
       .eq('section_id', cp.section_id)
 
-    if (!includeInactive) {
-      studentQ = studentQ.eq('is_active', true)
-    }
-
-    const { data: students } = await studentQ
-
     if (!students || students.length === 0) continue
-    hasStudents = true
 
-    // Sanitize sheet name (max 31 chars, no special chars)
-    const sheetName = cp.label
-      .replace(/[\\/*?[\]:]/g, '')
-      .substring(0, 31)
+    // Build a separate workbook for this course period
+    const workbook = new ExcelJS.Workbook()
+    workbook.creator = 'Studently'
+    workbook.created = new Date()
+    const sheet = workbook.addWorksheet('Attendance')
 
-    const sheet = workbook.addWorksheet(sheetName)
-
-    // Build the sheet using our cached template layout
     buildCoursePeriodSheet(
       sheet,
       cp.label,
@@ -631,19 +615,34 @@ export const generateCoursePeriodSheets = async (
       students,
       dates
     )
+
+    const xlsxBuffer = await workbook.xlsx.writeBuffer()
+
+    // Sanitize filename (no special chars, max 100 chars)
+    const safeLabel = cp.label
+      .replace(/[\\/*?[\]:<>|"]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .substring(0, 100)
+
+    zip.file(`${safeLabel}.xlsx`, xlsxBuffer)
+    fileCount++
   }
 
-  if (!hasStudents) {
-    // Add an empty info sheet
+  if (fileCount === 0) {
+    // Add a placeholder if no students found
+    const workbook = new ExcelJS.Workbook()
     const sheet = workbook.addWorksheet('Info')
     sheet.getCell(1, 1).value = 'No students were found for the selected course periods.'
     sheet.getCell(1, 1).font = { size: 14, italic: true }
+    const xlsxBuffer = await workbook.xlsx.writeBuffer()
+    zip.file('No_Students_Found.xlsx', xlsxBuffer)
   }
 
-  const buffer = await workbook.xlsx.writeBuffer()
-  const filename = `Attendance_Sheets_${startDate}_to_${endDate}.xlsx`
+  const zipBuffer = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' })
+  const filename = `Attendance_Sheets_${startDate}_to_${endDate}.zip`
 
-  return { buffer: Buffer.from(buffer), filename }
+  return { buffer: Buffer.from(zipBuffer), filename }
 }
 
 /**
@@ -729,7 +728,7 @@ function buildCoursePeriodSheet(
     row.values = [
       idx + 1,
       fullName,
-      student.admission_number || '',
+      student.student_number || '',
       ...dates.map(() => '') // Empty cells for attendance marking
     ]
 

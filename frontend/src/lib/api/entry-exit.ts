@@ -6,6 +6,9 @@ import {
   EveningLeave,
   PackageDelivery,
   StudentCheckpointNote,
+  AutomaticRecord,
+  AutomaticRecordException,
+  AttendanceIntegrationRecord,
 } from "@/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -183,6 +186,29 @@ export async function getStats(schoolId: string): Promise<EntryExitStats> {
   return apiRequest<EntryExitStats>(`/entry-exit/stats?school_id=${schoolId}`);
 }
 
+export async function deleteRecord(id: string): Promise<void> {
+  await apiRequest(`/entry-exit/records/${id}`, { method: "DELETE" });
+}
+
+// ========================
+// ATTENDANCE INTEGRATION (Premium)
+// ========================
+
+export async function getAttendanceIntegration(params: {
+  school_id: string;
+  checkpoint_id: string;
+  date?: string;
+  current_time?: string;
+}): Promise<AttendanceIntegrationRecord[]> {
+  const p = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== "") p.append(k, String(v));
+  });
+  return apiRequest<AttendanceIntegrationRecord[]>(
+    `/entry-exit/attendance-integration?${p.toString()}`,
+  );
+}
+
 // ========================
 // EVENING LEAVES
 // ========================
@@ -326,6 +352,135 @@ export async function upsertStudentNotes(
 }
 
 // ========================
+// AUTOMATIC RECORDS (Premium)
+// ========================
+
+export async function getAutomaticRecords(
+  schoolId: string,
+): Promise<AutomaticRecord[]> {
+  return apiRequest<AutomaticRecord[]>(
+    `/entry-exit/automatic-records?school_id=${schoolId}`,
+  );
+}
+
+export async function createAutomaticRecord(data: {
+  school_id: string;
+  checkpoint_id: string;
+  record_type: string;
+  day_of_week: number;
+  scheduled_time: string;
+  target_type?: string;
+  target_value?: string | null;
+  created_by?: string;
+}): Promise<AutomaticRecord> {
+  return apiRequest<AutomaticRecord>("/entry-exit/automatic-records", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateAutomaticRecord(
+  id: string,
+  data: Partial<{
+    checkpoint_id: string;
+    record_type: string;
+    day_of_week: number;
+    scheduled_time: string;
+    target_type: string;
+    target_value: string | null;
+    is_active: boolean;
+  }>,
+): Promise<AutomaticRecord> {
+  return apiRequest<AutomaticRecord>(`/entry-exit/automatic-records/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteAutomaticRecord(id: string): Promise<void> {
+  await apiRequest(`/entry-exit/automatic-records/${id}`, { method: "DELETE" });
+}
+
+export async function getAutomaticRecordExceptions(
+  ruleId: string,
+): Promise<AutomaticRecordException[]> {
+  return apiRequest<AutomaticRecordException[]>(
+    `/entry-exit/automatic-records/${ruleId}/exceptions`,
+  );
+}
+
+export async function createAutomaticRecordException(data: {
+  school_id: string;
+  automatic_record_id: string;
+  person_id: string;
+  person_type: string;
+  from_date: string;
+  to_date: string;
+  reason?: string;
+  created_by?: string;
+}): Promise<AutomaticRecordException> {
+  return apiRequest<AutomaticRecordException>(
+    `/entry-exit/automatic-records/${data.automatic_record_id}/exceptions`,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    },
+  );
+}
+
+export async function deleteAutomaticRecordException(
+  ruleId: string,
+  exceptionId: string,
+): Promise<void> {
+  await apiRequest(
+    `/entry-exit/automatic-records/${ruleId}/exceptions/${exceptionId}`,
+    { method: "DELETE" },
+  );
+}
+
+// ========================
+// SCHOOL-WIDE EXCEPTIONS
+// ========================
+
+export async function getSchoolExceptions(
+  schoolId: string,
+  filters: {
+    from_date?: string;
+    to_date?: string;
+    checkpoint_id?: string;
+    record_type?: string;
+  } = {},
+): Promise<(AutomaticRecordException & { checkpoint_id: string; record_type: string; checkpoint_name?: string })[]> {
+  const params = new URLSearchParams({ school_id: schoolId });
+  if (filters.from_date) params.append("from_date", filters.from_date);
+  if (filters.to_date) params.append("to_date", filters.to_date);
+  if (filters.checkpoint_id) params.append("checkpoint_id", filters.checkpoint_id);
+  if (filters.record_type) params.append("record_type", filters.record_type);
+  return apiRequest(`/entry-exit/exceptions?${params.toString()}`);
+}
+
+export async function bulkCreateExceptions(data: {
+  school_id: string;
+  person_ids: string[];
+  person_type: "STUDENT" | "STAFF";
+  checkpoint_id?: string;
+  record_type?: string;
+  from_date: string;
+  to_date: string;
+  reason?: string;
+  created_by?: string;
+}): Promise<{ created: number }> {
+  return apiRequest("/entry-exit/exceptions/bulk", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteExceptionById(id: string): Promise<void> {
+  await apiRequest(`/entry-exit/exceptions/${id}`, { method: "DELETE" });
+}
+
+// ========================
 // STUDENTS (for searchable select)
 // ========================
 
@@ -337,3 +492,4 @@ export async function searchStudents(
   if (query) params.append("search", query);
   return apiRequestToken(`/students?${params.toString()}`);
 }
+

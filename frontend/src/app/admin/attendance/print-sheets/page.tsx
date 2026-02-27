@@ -135,7 +135,7 @@ export default function PrintAttendanceSheetsPage() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `Attendance_Sheets_${startDateStr}_to_${endDateStr}.xlsx`
+      a.download = `Attendance_Sheets_${startDateStr}_to_${endDateStr}.zip`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)

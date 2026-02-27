@@ -111,6 +111,8 @@ class SetupStatusService {
             .from('schools')
             .select('*')
             .eq('parent_school_id', schoolId)
+            // only active campuses (deleted ones are marked suspended)
+            .neq('status', 'suspended')
             .order('name')
 
         if (error) {

@@ -165,3 +165,18 @@ export async function deleteCampus(id: string): Promise<void> {
         throw new Error(result.error || 'Failed to delete campus')
     }
 }
+
+/**
+ * Get a single campus by ID (used as fallback when getCampuses returns empty for a librarian)
+ */
+export async function getCampusById(id: string): Promise<Campus | null> {
+    const result = await apiRequest<{ success: boolean; data: Campus }>(`/setup/campuses/${id}`)
+
+    if (!result.success || !result.data) {
+        return null
+    }
+
+    // The backend wraps single-campus responses in { success, data }
+    const payload = result.data as any
+    return payload?.data ?? payload ?? null
+}

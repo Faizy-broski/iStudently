@@ -25,9 +25,11 @@ import {
   DollarSign,
   Clock,
   Shield,
+  GraduationCap,
   LucideIcon,
 } from "lucide-react";
 import { useProfileView } from "@/context/ProfileViewContext";
+import { QualificationsTab } from "@/components/admin/QualificationsTab";
 import { type Staff } from "@/lib/api/staff";
 import { useStaff } from "@/hooks/useStaff";
 import { useCampus } from "@/context/CampusContext";
@@ -263,7 +265,7 @@ export default function StaffDetailsPage() {
 
       {/* Detailed Information Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
           <TabsTrigger value="personal" className="gap-2">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">Personal</span>
@@ -271,6 +273,10 @@ export default function StaffDetailsPage() {
           <TabsTrigger value="professional" className="gap-2">
             <Briefcase className="h-4 w-4" />
             <span className="hidden sm:inline">Professional</span>
+          </TabsTrigger>
+          <TabsTrigger value="qualifications" className="gap-2">
+            <GraduationCap className="h-4 w-4" />
+            <span className="hidden sm:inline">Qualifications</span>
           </TabsTrigger>
           <TabsTrigger value="system" className="gap-2">
             <Settings className="h-4 w-4" />
@@ -349,6 +355,17 @@ export default function StaffDetailsPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Qualifications Tab */}
+        <TabsContent value="qualifications" className="mt-6">
+          {currentStaff.profile_id ? (
+            <QualificationsTab profileId={currentStaff.profile_id} />
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              Profile ID not available for this staff member.
+            </p>
+          )}
         </TabsContent>
 
         {/* System Information Tab */}

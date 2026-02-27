@@ -73,6 +73,7 @@ interface CoursePeriodWithSeats extends CoursePeriod {
   total_seats?: number | null
   available_seats?: number | null
   period?: { period_name?: string; period_number?: number } | null
+  marking_period?: { id: string; title: string; short_name: string; mp_type: string } | null
 }
 
 // ── Component ───────────────────────────────────────────────────────────
@@ -115,7 +116,7 @@ export function Courses() {
   // ── Form state ──────────────────────────────────────────────────────
   const [formLoading, setFormLoading] = useState(false)
   const [subjectForm, setSubjectForm] = useState({ name: "", code: "", grade_level_id: "" })
-  const [courseForm, setCourseForm] = useState({ title: "", short_name: "" })
+  const [courseForm, setCourseForm] = useState({ title: "", short_name: "", credit_hours: "1" })
   const [cpForm, setCpForm] = useState({
     short_name: "",
     teacher_id: "",
@@ -221,21 +222,21 @@ export function Courses() {
 
   // Marking periods for cp dialog
   const { data: markingPeriodsData } = useSWR(
-    cpDialog.open && campusId ? ["courses-page-mps", campusId] : null,
+    cpDialog.open ? ["courses-page-mps", campusId] : null,
     async () => getMarkingPeriods(campusId),
     { revalidateOnFocus: false }
   )
 
   // School periods for cp dialog
   const { data: schoolPeriodsRes } = useSWR(
-    cpDialog.open && campusId ? ["courses-page-periods", campusId] : null,
+    cpDialog.open ? ["courses-page-periods", campusId] : null,
     async () => getSchoolPeriods(campusId),
     { revalidateOnFocus: false }
   )
 
   // Grading scales for cp dialog
   const { data: gradingScalesRes } = useSWR(
-    cpDialog.open && campusId ? ["courses-page-scales", campusId] : null,
+    cpDialog.open ? ["courses-page-scales", campusId] : null,
     async () => getGradingScales(campusId),
     { revalidateOnFocus: false }
   )
@@ -319,12 +320,12 @@ export function Courses() {
   // ── Course CRUD ─────────────────────────────────────────────────────
 
   const openAddCourse = () => {
-    setCourseForm({ title: "", short_name: "" })
+    setCourseForm({ title: "", short_name: "", credit_hours: "1" })
     setCourseDialog({ open: true, mode: "add" })
   }
 
   const openEditCourse = (course: Course) => {
-    setCourseForm({ title: course.title, short_name: course.short_name || "" })
+    setCourseForm({ title: course.title, short_name: course.short_name || "", credit_hours: course.credit_hours?.toString() || "1" })
     setCourseDialog({ open: true, mode: "edit", course })
   }
 
@@ -345,6 +346,7 @@ export function Courses() {
           short_name: courseForm.short_name.trim() || undefined,
           subject_id: selectedSubjectId,
           campus_id: campusId,
+          credit_hours: courseForm.credit_hours ? parseFloat(courseForm.credit_hours) : 1,
         } as Partial<Course> & { campus_id?: string })
         if (!res.success) throw new Error(res.error)
         toast.success("Course created")
@@ -352,6 +354,7 @@ export function Courses() {
         const res = await updateCourse(courseDialog.course!.id, {
           title: courseForm.title.trim(),
           short_name: courseForm.short_name.trim() || undefined,
+          credit_hours: courseForm.credit_hours ? parseFloat(courseForm.credit_hours) : 1,
         })
         if (!res.success) throw new Error(res.error)
         toast.success("Course updated")
@@ -758,19 +761,19 @@ export function Courses() {
                   coursePeriods.map((cp) => {
                     const teacherName = getTeacherName(cp)
                     const displayTitle =
-                      cp.title ||
                       [
+                        cp.marking_period?.title,
                         cp.period?.period_name,
                         selectedCourse?.title,
-                        teacherName ? `${teacherName}` : null,
+                        teacherName || null,
                       ]
                         .filter(Boolean)
-                        .join(" - ")
+                        .join(" - ") || cp.title || "—"
 
                     return (
                       <tr key={cp.id} className="border-b hover:bg-muted/50">
                         <td className="px-3 py-2 text-primary">
-                          {displayTitle || "—"}
+                          {displayTitle}
                         </td>
                         <td className="px-3 py-2 text-right font-medium text-amber-600">
                           {cp.available_seats != null
@@ -921,6 +924,17 @@ export function Courses() {
                 value={courseForm.short_name}
                 onChange={(e) => setCourseForm((f) => ({ ...f, short_name: e.target.value }))}
                 placeholder="e.g. MATH6"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Credit Hours</Label>
+              <Input
+                type="number"
+                value={courseForm.credit_hours}
+                onChange={(e) => setCourseForm((f) => ({ ...f, credit_hours: e.target.value }))}
+                placeholder="e.g. 1"
+                min={0}
+                step={0.5}
               />
             </div>
           </div>

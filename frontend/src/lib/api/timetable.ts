@@ -453,3 +453,60 @@ export async function getTeacherAttendanceOverview(
 
   return result.data
 }
+
+// ============================================================================
+// BULK TIMETABLE IMPORT
+// ============================================================================
+
+export interface BulkTimetableRow {
+  grade_name?: string
+  section_name: string
+  subject_name?: string
+  subject_code?: string
+  teacher_email?: string
+  teacher_name?: string
+  day_of_week: string | number
+  period_number: string | number
+  room_number?: string
+}
+
+export interface BulkTimetableError {
+  row: number
+  error: string
+}
+
+export interface BulkTimetableResult {
+  success_count: number
+  error_count: number
+  errors: BulkTimetableError[]
+  created_entries: any[]
+}
+
+export async function bulkImportTimetable(
+  entries: BulkTimetableRow[],
+  academicYearId: string
+): Promise<ApiResponse<BulkTimetableResult>> {
+  const token = await getAuthToken()
+  const response = await fetch(`${API_URL}/timetable/bulk-import`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ entries, academic_year_id: academicYearId })
+  })
+  return response.json()
+}
+
+export function downloadTimetableImportTemplate() {
+  const headers = ['grade_name', 'section_name', 'subject_name', 'subject_code', 'teacher_email', 'day_of_week', 'period_number', 'room_number']
+  const example = ['Grade 10', 'A', 'Mathematics', 'MATH10', 'teacher@school.com', 'Monday', '1', 'Room 101']
+  const csv = [headers.join(','), example.join(',')].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'timetable_import_template.csv'
+  a.click()
+  URL.revokeObjectURL(url)
+}

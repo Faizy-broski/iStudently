@@ -28,10 +28,11 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { BookOpen, User, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { issueBook, checkStudentEligibility, type Book } from "@/lib/api/library";
+import { issueBook, checkStudentEligibility, searchBorrowers as searchBorrowersApi, type Book } from "@/lib/api/library";
 import { getStudents, type Student } from "@/lib/api/students";
 import { useDebounce } from "@/hooks/useDebounce";
 import { Combobox } from "@/components/ui/combobox";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 const issueBookSchema = z.object({
@@ -68,6 +69,7 @@ export function IssueBookDialog({ open, onOpenChange, book, onBookIssued }: Issu
   const [eligibilityCheck, setEligibilityCheck] = useState<EligibilityCheck | null>(null);
   const [isSearchingStudents, setIsSearchingStudents] = useState(false);
   const [isCheckingEligibility, setIsCheckingEligibility] = useState(false);
+  const [borrowerType, setBorrowerType] = useState<"student" | "user">("student");
 
   const form = useForm<IssueBookFormData>({
     resolver: zodResolver(issueBookSchema),
@@ -88,6 +90,7 @@ export function IssueBookDialog({ open, onOpenChange, book, onBookIssued }: Issu
       setStudents([]);
       setIsSearchingStudents(false);
       setIsCheckingEligibility(false);
+      setBorrowerType("student");
       form.reset();
     }
   }, [open, form]);
@@ -96,8 +99,7 @@ export function IssueBookDialog({ open, onOpenChange, book, onBookIssued }: Issu
   useEffect(() => {
     const fetchStudents = async () => {
       const trimmedSearch = debouncedStudentSearch.trim();
-      
-      // Don't search if empty or if a student is already selected
+
       if (!trimmedSearch || selectedStudent) {
         setStudents([]);
         setIsSearchingStudents(false);
@@ -106,23 +108,25 @@ export function IssueBookDialog({ open, onOpenChange, book, onBookIssued }: Issu
 
       try {
         setIsSearchingStudents(true);
-        console.log('Searching for students:', trimmedSearch);
-        
-        const response = await getStudents({ search: trimmedSearch, limit: 50 });
-        
-        console.log('getStudents response:', { success: response.success, dataLength: response.data?.length, error: response.error });
-        
-        if (response.success && response.data) {
-          setStudents(response.data);
-          console.log('Found students:', response.data.length);
+
+        if (borrowerType === "student") {
+          const response = await getStudents({ search: trimmedSearch, limit: 50 });
+          if (response.success && response.data) {
+            setStudents(response.data);
+          } else {
+            setStudents([]);
+          }
         } else {
-          setStudents([]);
-          if (response.error) {
-            console.error('Error fetching students:', response.error);
+          // Search users (staff/other)
+          const response = await searchBorrowersApi(trimmedSearch, "user", user?.access_token || "");
+          if (response.success && response.data) {
+            setStudents(response.data as any);
+          } else {
+            setStudents([]);
           }
         }
       } catch (err) {
-        console.error('Error fetching students:', err);
+        console.error('Error fetching borrowers:', err);
         setStudents([]);
       } finally {
         setIsSearchingStudents(false);
@@ -130,7 +134,7 @@ export function IssueBookDialog({ open, onOpenChange, book, onBookIssued }: Issu
     };
 
     fetchStudents();
-  }, [debouncedStudentSearch, selectedStudent]);
+  }, [debouncedStudentSearch, selectedStudent, borrowerType, user?.access_token]);
 
   // Check student eligibility when selected
   useEffect(() => {
@@ -144,9 +148,9 @@ export function IssueBookDialog({ open, onOpenChange, book, onBookIssued }: Issu
         setIsCheckingEligibility(true);
         // Use profile_id for eligibility check (library system uses profile IDs)
         const studentProfileId = selectedStudent.profile?.id || selectedStudent.profile_id || selectedStudent.id;
-        
+
         const response = await checkStudentEligibility(studentProfileId, user.access_token);
-        
+
         if (response.success && response.data) {
           setEligibilityCheck(response.data);
         } else {
@@ -181,7 +185,7 @@ export function IssueBookDialog({ open, onOpenChange, book, onBookIssued }: Issu
   // Handle search input change
   const handleSearchChange = useCallback((query: string) => {
     setStudentSearch(query);
-    
+
     // If user starts typing and a student was selected, clear selection
     if (selectedStudent && query.trim()) {
       setSelectedStudent(null);
@@ -204,7 +208,7 @@ export function IssueBookDialog({ open, onOpenChange, book, onBookIssued }: Issu
 
     try {
       setIsSubmitting(true);
-      
+
       // Use profile_id for issuing (library_loans.student_id references profiles.id)
       const studentProfileId = selectedStudent.profile?.id || selectedStudent.profile_id || selectedStudent.id;
       const studentName = `${selectedStudent.profile?.first_name || selectedStudent.first_name || ''} ${selectedStudent.profile?.last_name || selectedStudent.last_name || ''}`.trim();
@@ -212,7 +216,9 @@ export function IssueBookDialog({ open, onOpenChange, book, onBookIssued }: Issu
       const response = await issueBook(
         {
           book_id: book.id,
-          student_id: studentProfileId,
+          student_id: borrowerType === "student" ? studentProfileId : undefined,
+          borrower_type: borrowerType,
+          borrower_id: studentProfileId,
           due_date: new Date(data.due_date),
           notes: data.notes,
         },
@@ -254,9 +260,35 @@ export function IssueBookDialog({ open, onOpenChange, book, onBookIssued }: Issu
             Issue Book
           </DialogTitle>
           <DialogDescription>
-            Issue this book to a student. Student eligibility will be verified automatically.
+            Issue this book to a borrower. Eligibility will be verified automatically.
           </DialogDescription>
         </DialogHeader>
+
+        {/* Borrower Type Toggle */}
+        <div className="flex gap-1 p-1 bg-muted rounded-lg">
+          {(["student", "user"] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => {
+                setBorrowerType(tab);
+                setSelectedStudent(null);
+                setStudentSearch("");
+                setStudents([]);
+                setEligibilityCheck(null);
+                form.setValue("student_id", "");
+              }}
+              className={cn(
+                "flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-all capitalize",
+                borrowerType === tab
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {tab === "user" ? "Staff / Other" : "Student"}
+            </button>
+          ))}
+        </div>
 
         {/* Book Info */}
         <Card className="border-muted">
@@ -285,7 +317,7 @@ export function IssueBookDialog({ open, onOpenChange, book, onBookIssued }: Issu
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             {/* Student Search */}
             <div className="space-y-2">
-              <FormLabel>Search Student *</FormLabel>
+              <FormLabel>Search {borrowerType === "student" ? "Student" : "Staff/User"} *</FormLabel>
               <Combobox
                 options={studentOptions}
                 value={selectedStudent?.id || ""}
@@ -396,10 +428,10 @@ export function IssueBookDialog({ open, onOpenChange, book, onBookIssued }: Issu
                 <FormItem>
                   <FormLabel>Due Date *</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="date" 
+                    <Input
+                      type="date"
                       min={new Date().toISOString().split('T')[0]}
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />

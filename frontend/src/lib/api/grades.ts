@@ -120,10 +120,12 @@ export interface CoursePeriod {
   credits?: number | null
   affects_class_rank?: boolean
   parent_course_period_id?: string | null
-  teacher?: { first_name: string; last_name: string }
+  teacher?: { first_name?: string; last_name?: string; profile?: { first_name?: string; last_name?: string } }
   first_name: string
   last_name: string
   course?: Course
+  marking_period?: { id: string; title: string; short_name: string; mp_type: string } | null
+  period?: { id: string; period_name: string; period_number?: number } | null
 }
 
 export interface StudentListItem {
@@ -789,50 +791,50 @@ export interface ReportCardComment {
 export async function getReportCardCommentCategories(campusId?: string) {
   const qp = new URLSearchParams()
   if (campusId) qp.append('campus_id', campusId)
-  return apiRequest<ReportCardCommentCategory[]>(`/report-card-comments/categories?${qp}`)
+  return apiRequest<ReportCardCommentCategory[]>(`/report-cards/categories?${qp}`)
 }
 
 export async function getReportCardComments(categoryId: string, campusId?: string) {
   const qp = new URLSearchParams()
   qp.append('category_id', categoryId)
   if (campusId) qp.append('campus_id', campusId)
-  return apiRequest<ReportCardComment[]>(`/report-card-comments?${qp}`)
+  return apiRequest<ReportCardComment[]>(`/report-cards/comments?${qp}`)
 }
 
 export async function createReportCardComment(data: Partial<ReportCardComment>) {
-  return apiRequest<ReportCardComment>('/report-card-comments', {
+  return apiRequest<ReportCardComment>('/report-cards/comments', {
     method: 'POST',
     body: JSON.stringify(data)
   })
 }
 
 export async function updateReportCardComment(id: string, data: Partial<ReportCardComment>) {
-  return apiRequest<ReportCardComment>(`/report-card-comments/${id}`, {
+  return apiRequest<ReportCardComment>(`/report-cards/comments/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data)
   })
 }
 
 export async function deleteReportCardComment(id: string) {
-  return apiRequest(`/report-card-comments/${id}`, { method: 'DELETE' })
+  return apiRequest(`/report-cards/comments/${id}`, { method: 'DELETE' })
 }
 
 export async function createReportCardCommentCategory(data: { title: string; color?: string; sort_order?: number }) {
-  return apiRequest<ReportCardCommentCategory>('/report-card-comments/categories', {
+  return apiRequest<ReportCardCommentCategory>('/report-cards/categories', {
     method: 'POST',
     body: JSON.stringify(data)
   })
 }
 
 export async function updateReportCardCommentCategory(id: string, data: Partial<ReportCardCommentCategory>) {
-  return apiRequest<ReportCardCommentCategory>(`/report-card-comments/categories/${id}`, {
+  return apiRequest<ReportCardCommentCategory>(`/report-cards/categories/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data)
   })
 }
 
 export async function deleteReportCardCommentCategory(id: string) {
-  return apiRequest(`/report-card-comments/categories/${id}`, { method: 'DELETE' })
+  return apiRequest(`/report-cards/categories/${id}`, { method: 'DELETE' })
 }
 
 // ============================================================================

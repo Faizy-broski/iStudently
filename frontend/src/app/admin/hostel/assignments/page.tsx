@@ -35,6 +35,7 @@ import { Plus, Users, UserMinus, Search } from "lucide-react";
 export default function AssignmentsPage() {
   const { profile } = useAuth();
   const schoolId = profile?.school_id || "";
+  const campusId = profile?.campus_id;
 
   const [assignments, setAssignments] = useState<HostelRoomAssignment[]>([]);
   const [rooms, setRooms] = useState<HostelRoom[]>([]);
@@ -66,7 +67,7 @@ export default function AssignmentsPage() {
     try {
       setLoading(true);
       const [assignData, roomsData, buildingsData] = await Promise.all([
-        getAssignments(schoolId, {
+        getAssignments(schoolId, campusId, {
           active_only: activeOnly,
           building_id: filterBuilding || undefined,
         }),
@@ -91,7 +92,7 @@ export default function AssignmentsPage() {
     }
     try {
       setSearchingStudents(true);
-      const results = await searchStudents(schoolId, query);
+      const results = await searchStudents(schoolId, query, campusId);
       setStudents(Array.isArray(results) ? results : []);
     } catch {
       setStudents([]);
@@ -167,7 +168,7 @@ export default function AssignmentsPage() {
   async function handleRelease(id: string) {
     if (!confirm("Release this student from their room?")) return;
     try {
-      await releaseStudent(id);
+      await releaseStudent(id, campusId);
       loadData();
     } catch (err) {
       console.error("Failed to release student:", err);

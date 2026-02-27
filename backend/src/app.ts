@@ -44,6 +44,7 @@ import attendanceCalendarsRoutes from "./routes/attendance-calendars.routes";
 import rolloverRoutes from "./routes/rollover.routes";
 import gradingScalesRoutes from "./routes/grading-scales.routes";
 import coursesRoutes from "./routes/courses.routes";
+import coursePeriodsFlatRoutes from "./routes/course-periods-flat.routes";
 import gradebookRoutes from "./routes/gradebook.routes";
 import finalGradesRoutes from "./routes/final-grades.routes";
 import reportCardsRoutes from "./routes/report-cards.routes";
@@ -53,6 +54,13 @@ import schedulingRoutes from "./routes/scheduling.routes";
 import scheduleRequestsRoutes from "./routes/schedule-requests.routes";
 import roomsRoutes from "./routes/rooms.routes";
 import lessonPlansRoutes from "./routes/lesson-plans.routes";
+import schoolInventoryRoutes from "./routes/school-inventory.routes";
+import calculationsRoutes from "./routes/calculations.routes";
+import disciplineRoutes from "./routes/discipline.routes";
+import activitiesRoutes from "./routes/activities.routes";
+import staffAbsencesRoutes from "./routes/staff-absences.routes";
+import humanResourcesRoutes from "./routes/human-resources.routes";
+import quizRoutes from "./routes/quiz.routes";
 
 const app = express();
 
@@ -240,6 +248,7 @@ registerRoutes("/", rolloverRoutes);
 // Grades module routes
 registerRoutes("/grading-scales", gradingScalesRoutes);
 registerRoutes("/courses", coursesRoutes);
+registerRoutes("/course-periods", coursePeriodsFlatRoutes);
 registerRoutes("/gradebook", gradebookRoutes);
 registerRoutes("/final-grades", finalGradesRoutes);
 registerRoutes("/report-cards", reportCardsRoutes);
@@ -251,6 +260,13 @@ registerRoutes("/scheduling", schedulingRoutes);
 registerRoutes("/schedule-requests", scheduleRequestsRoutes);
 registerRoutes("/rooms", roomsRoutes);
 registerRoutes("/lesson-plans", lessonPlansRoutes);
+registerRoutes("/school-inventory", schoolInventoryRoutes);
+registerRoutes("/", calculationsRoutes);
+registerRoutes("/", disciplineRoutes);
+registerRoutes("/", activitiesRoutes);
+registerRoutes("/staff-absences", staffAbsencesRoutes);
+registerRoutes("/human-resources", humanResourcesRoutes);
+registerRoutes("/quiz", quizRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

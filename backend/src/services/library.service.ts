@@ -1,6 +1,6 @@
 import { supabase } from '../config/supabase';
 import { getAllCampusIds, isCampus } from '../utils/school-helpers';
-import { Book, BookCopy, BookLoan, BookCopyStatus, LoanStatus } from '../types';
+import { Book, BookCopy, BookLoan, BookCopyStatus, LoanStatus, LibraryCategory, LibraryDocumentField, BorrowerType } from '../types';
 
 export class LibraryService {
   // ==================== BOOK MANAGEMENT ====================
@@ -14,7 +14,7 @@ export class LibraryService {
     // If user is admin and this is a parent school, show all campus books
     const isParentSchool = !(await isCampus(schoolId));
     const shouldShowAllCampuses = userRole === 'admin' && isParentSchool;
-    
+
     let query = supabase
       .from('library_books')
       .select('*')
@@ -357,7 +357,7 @@ export class LibraryService {
   // ==================== LOAN MANAGEMENT ====================
 
   /**
-   * Issue a book to a student with comprehensive validations
+   * Issue a book to a borrower (student or user) with comprehensive validations
    */
   async issueBook(
     copyId: string,
@@ -365,8 +365,12 @@ export class LibraryService {
     schoolId: string,
     _userRole: string,
     dueDateOverride?: Date,
-    notes?: string
+    notes?: string,
+    borrowerType: BorrowerType = 'student',
+    borrowerId?: string
   ) {
+    const effectiveBorrowerId = borrowerId || studentId;
+
     // Validation 1: Check if copy exists and is available
     const { data: copy } = await supabase
       .from('library_book_copies')
@@ -380,46 +384,53 @@ export class LibraryService {
       throw new Error(`Book copy is not available. Current status: ${copy.status}`);
     }
 
-    // Validation 2: Check if student account is active
-    const { data: student } = await supabase
+    // Validation 2: Check if borrower account is active
+    const { data: borrower } = await supabase
       .from('profiles')
       .select('is_active, role')
-      .eq('id', studentId)
-      .eq('school_id', schoolId)
+      .eq('id', effectiveBorrowerId)
       .single();
 
-    if (!student) throw new Error('Student not found');
-    if (!student.is_active) {
-      throw new Error('Student account is inactive. Cannot issue books.');
+    if (!borrower) throw new Error('Borrower not found');
+    if (!borrower.is_active) {
+      throw new Error('Borrower account is inactive. Cannot issue books.');
     }
 
-    // Validation 3: Check for overdue books
-    const overdueLoans = await this.getOverdueLoans(studentId, schoolId);
-    if (overdueLoans.length > 0) {
-      throw new Error('Student has overdue books. Please return them before issuing new books.');
+    // Validation 3: Check for overdue books (only for students)
+    let totalUnpaidFines = 0;
+    if (borrowerType === 'student') {
+      const overdueLoans = await this.getOverdueLoans(effectiveBorrowerId, schoolId);
+      if (overdueLoans.length > 0) {
+        throw new Error('Borrower has overdue books. Please return them before issuing new books.');
+      }
+
+      // Validation 4: Check max books limit
+      const activeLoans = await this.getActiveLoans(effectiveBorrowerId, schoolId);
+      const { data: school } = await supabase
+        .from('schools')
+        .select('settings')
+        .eq('id', schoolId)
+        .single();
+
+      const maxBooks = school?.settings?.library?.max_books_per_student || 3;
+      if (activeLoans.length >= maxBooks) {
+        throw new Error(`Borrower has reached maximum book limit (${maxBooks} books)`);
+      }
+
+      // Validation 5: Check for unpaid fines (Warning - not blocker)
+      const unpaidFines = await this.getUnpaidFines(effectiveBorrowerId, schoolId);
+      totalUnpaidFines = unpaidFines.reduce((sum, fine) => sum + fine.amount, 0);
     }
 
-    // Validation 4: Check max books limit
-    const activeLoans = await this.getActiveLoans(studentId, schoolId);
+    // Calculate due date based on school settings unless overridden
     const { data: school } = await supabase
       .from('schools')
       .select('settings')
       .eq('id', schoolId)
       .single();
 
-    const maxBooks = school?.settings?.library?.max_books_per_student || 3;
-    if (activeLoans.length >= maxBooks) {
-      throw new Error(`Student has reached maximum book limit (${maxBooks} books)`);
-    }
-
-    // Validation 5: Check for unpaid fines (Warning - not blocker)
-    const unpaidFines = await this.getUnpaidFines(studentId, schoolId);
-    const totalUnpaidFines = unpaidFines.reduce((sum, fine) => sum + fine.amount, 0);
-
-    // Calculate due date based on school settings unless overridden
     const dueDate = dueDateOverride ? new Date(dueDateOverride) : new Date();
     if (!dueDateOverride) {
-      // Get loan duration from school settings
       const loanDuration = school?.settings?.library?.loan_duration_days || 14;
       dueDate.setDate(dueDate.getDate() + loanDuration);
     }
@@ -429,8 +440,10 @@ export class LibraryService {
       .from('library_loans')
       .insert({
         book_copy_id: copyId,
-        student_id: studentId,
+        student_id: effectiveBorrowerId,
         school_id: schoolId,
+        borrower_type: borrowerType,
+        borrower_id: effectiveBorrowerId,
         issue_date: new Date(),
         due_date: dueDate,
         status: 'active',
@@ -454,7 +467,7 @@ export class LibraryService {
 
     return {
       loan: this.normalizeLoan(loan as any),
-      warning: totalUnpaidFines > 0 ? `Student has $${totalUnpaidFines} in unpaid fines` : null
+      warning: totalUnpaidFines > 0 ? `Borrower has $${totalUnpaidFines} in unpaid fines` : null
     };
   }
 
@@ -467,7 +480,8 @@ export class LibraryService {
   async returnBook(
     loanId: string,
     schoolId: string,
-    collectedAmount?: number
+    collectedAmount?: number,
+    returnComment?: string
   ) {
     // Get the loan
     const { data: loan } = await supabase
@@ -518,7 +532,8 @@ export class LibraryService {
         return_date: returnDate,
         status: 'returned',
         fine_amount: totalFineAmount,
-        collected_amount: totalCollectedAmount
+        collected_amount: totalCollectedAmount,
+        return_comment: returnComment || null
       })
       .eq('id', loanId)
       .select()
@@ -1345,6 +1360,432 @@ export class LibraryService {
       pending_fines: pendingFines,
       recent_loans: recentLoansFormatted,
       overdue_list: overdueListFormatted,
+    };
+  }
+
+  // ============================================================================
+  // PREMIUM: CATEGORY CRUD
+  // ============================================================================
+
+  async getCategories(schoolId: string) {
+    const { data, error } = await supabase
+      .from('library_categories')
+      .select('*')
+      .eq('school_id', schoolId)
+      .order('sort_order', { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
+
+  async getCategoryById(categoryId: string, schoolId: string) {
+    const { data, error } = await supabase
+      .from('library_categories')
+      .select('*')
+      .eq('id', categoryId)
+      .eq('school_id', schoolId)
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  async createCategory(categoryData: Partial<LibraryCategory>, schoolId: string) {
+    const { data, error } = await supabase
+      .from('library_categories')
+      .insert({
+        school_id: schoolId,
+        name: categoryData.name,
+        color_code: categoryData.color_code || '#000000',
+        sort_order: categoryData.sort_order || 0,
+        visible_to_roles: categoryData.visible_to_roles || [],
+        visible_to_grade_levels: categoryData.visible_to_grade_levels || [],
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  async updateCategory(categoryId: string, categoryData: Partial<LibraryCategory>, schoolId: string) {
+    const updates: any = {};
+    if (categoryData.name !== undefined) updates.name = categoryData.name;
+    if (categoryData.color_code !== undefined) updates.color_code = categoryData.color_code;
+    if (categoryData.sort_order !== undefined) updates.sort_order = categoryData.sort_order;
+    if (categoryData.visible_to_roles !== undefined) updates.visible_to_roles = categoryData.visible_to_roles;
+    if (categoryData.visible_to_grade_levels !== undefined) updates.visible_to_grade_levels = categoryData.visible_to_grade_levels;
+    if (categoryData.is_active !== undefined) updates.is_active = categoryData.is_active;
+
+    const { data, error } = await supabase
+      .from('library_categories')
+      .update(updates)
+      .eq('id', categoryId)
+      .eq('school_id', schoolId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  async deleteCategory(categoryId: string, schoolId: string) {
+    // Check if any documents use this category
+    const { count } = await supabase
+      .from('library_books')
+      .select('*', { count: 'exact', head: true })
+      .eq('category_id', categoryId)
+      .eq('school_id', schoolId);
+
+    if (count && count > 0) {
+      throw new Error(`Cannot delete: ${count} document(s) use this category. Reassign them first.`);
+    }
+
+    const { error } = await supabase
+      .from('library_categories')
+      .delete()
+      .eq('id', categoryId)
+      .eq('school_id', schoolId);
+    if (error) throw error;
+  }
+
+  // ============================================================================
+  // PREMIUM: DOCUMENT FIELDS CRUD
+  // ============================================================================
+
+  async getDocumentFields(schoolId: string, categoryId?: string) {
+    let query = supabase
+      .from('library_document_fields')
+      .select('*')
+      .eq('school_id', schoolId)
+      .order('sort_order', { ascending: true });
+
+    if (categoryId) {
+      query = query.eq('category_id', categoryId);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  }
+
+  async createDocumentField(fieldData: Partial<LibraryDocumentField>, schoolId: string) {
+    const { data, error } = await supabase
+      .from('library_document_fields')
+      .insert({
+        school_id: schoolId,
+        category_id: fieldData.category_id || null,
+        field_name: fieldData.field_name,
+        field_type: fieldData.field_type,
+        is_required: fieldData.is_required || false,
+        sort_order: fieldData.sort_order || 0,
+        options: fieldData.options || [],
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  async updateDocumentField(fieldId: string, fieldData: Partial<LibraryDocumentField>, schoolId: string) {
+    const updates: any = {};
+    if (fieldData.field_name !== undefined) updates.field_name = fieldData.field_name;
+    if (fieldData.field_type !== undefined) updates.field_type = fieldData.field_type;
+    if (fieldData.is_required !== undefined) updates.is_required = fieldData.is_required;
+    if (fieldData.sort_order !== undefined) updates.sort_order = fieldData.sort_order;
+    if (fieldData.options !== undefined) updates.options = fieldData.options;
+    if (fieldData.category_id !== undefined) updates.category_id = fieldData.category_id;
+    if (fieldData.is_active !== undefined) updates.is_active = fieldData.is_active;
+
+    const { data, error } = await supabase
+      .from('library_document_fields')
+      .update(updates)
+      .eq('id', fieldId)
+      .eq('school_id', schoolId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  async deleteDocumentField(fieldId: string, schoolId: string) {
+    const { error } = await supabase
+      .from('library_document_fields')
+      .delete()
+      .eq('id', fieldId)
+      .eq('school_id', schoolId);
+    if (error) throw error;
+  }
+
+  // ============================================================================
+  // PREMIUM: GLOBAL SEARCH
+  // ============================================================================
+
+  async globalSearchDocuments(schoolId: string, query: string) {
+    const { data, error } = await supabase
+      .from('library_books')
+      .select(`
+        *,
+        category:library_categories(id, name, color_code)
+      `)
+      .eq('school_id', schoolId)
+      .or(`title.ilike.%${query}%,author.ilike.%${query}%,reference.ilike.%${query}%,isbn.ilike.%${query}%`)
+      .order('title', { ascending: true })
+      .limit(50);
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  // ============================================================================
+  // PREMIUM: QUICK LOAN
+  // ============================================================================
+
+  async quickLoan(
+    schoolId: string,
+    borrowerType: BorrowerType,
+    borrowerId: string,
+    bookId: string,
+    userRole: string
+  ) {
+    // Find first available copy for this book
+    const { data: copies } = await supabase
+      .from('library_book_copies')
+      .select('id')
+      .eq('book_id', bookId)
+      .eq('school_id', schoolId)
+      .eq('status', 'available')
+      .limit(1);
+
+    if (!copies || copies.length === 0) {
+      throw new Error('No available copies for this document');
+    }
+
+    return this.issueBook(
+      copies[0].id,
+      borrowerId,
+      schoolId,
+      userRole,
+      undefined,
+      undefined,
+      borrowerType,
+      borrowerId
+    );
+  }
+
+  // ============================================================================
+  // PREMIUM: BORROWER SEARCH (Students + Users)
+  // ============================================================================
+
+  async searchBorrowers(schoolId: string, query: string, borrowerType: BorrowerType = 'student') {
+    // For students: search profiles with role = 'student' joined to students table
+    // For users: search profiles with role != 'student'
+    if (borrowerType === 'student') {
+      return this.searchStudents(schoolId, query);
+    }
+
+    // Users = all non-student roles
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, first_name, last_name, email, role')
+      .eq('school_id', schoolId)
+      .eq('is_active', true)
+      .neq('role', 'student')
+      .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%`)
+      .limit(20);
+
+    if (error) throw error;
+
+    return (data || []).map((p: any) => ({
+      id: p.id,
+      first_name: p.first_name || '',
+      last_name: p.last_name || '',
+      admission_number: '',
+      class_name: p.role || '',
+      email: p.email,
+    }));
+  }
+
+  // ============================================================================
+  // PREMIUM: LOANS LIST (Students / Users tabs)
+  // ============================================================================
+
+  async getLoansBorrowers(schoolId: string, borrowerType: BorrowerType = 'student', search?: string) {
+    if (borrowerType === 'student') {
+      // Get students with their loan counts
+      let profileQuery = supabase
+        .from('profiles')
+        .select(`
+          id, first_name, last_name, role,
+          students!inner(id, student_number, grade_level_id,
+            grade_level:grade_levels(name)
+          )
+        `)
+        .eq('school_id', schoolId)
+        .eq('role', 'student')
+        .eq('is_active', true);
+
+      if (search) {
+        profileQuery = profileQuery.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%`);
+      }
+
+      const { data: profiles, error } = await profileQuery.limit(100);
+      if (error) throw error;
+
+      // Get loan counts for these students
+      const profileIds = profiles?.map((p: any) => p.id) || [];
+      if (profileIds.length === 0) return [];
+
+      const { data: loans } = await supabase
+        .from('library_loans')
+        .select('student_id, status, due_date')
+        .in('student_id', profileIds)
+        .eq('school_id', schoolId)
+        .in('status', ['active', 'overdue']);
+
+      const loanCounts = new Map<string, { documents: number; past_due: number }>();
+      for (const loan of (loans || [])) {
+        const existing = loanCounts.get(loan.student_id) || { documents: 0, past_due: 0 };
+        existing.documents++;
+        if (loan.status === 'overdue' || (loan.status === 'active' && new Date(loan.due_date) < new Date())) {
+          existing.past_due++;
+        }
+        loanCounts.set(loan.student_id, existing);
+      }
+
+      return (profiles || []).map((p: any) => {
+        const studentData = Array.isArray(p.students) ? p.students[0] : p.students;
+        const counts = loanCounts.get(p.id) || { documents: 0, past_due: 0 };
+        return {
+          id: p.id,
+          name: `${p.first_name || ''} ${p.last_name || ''}`.trim(),
+          student_number: studentData?.student_number || '',
+          grade_level: studentData?.grade_level?.name || '',
+          documents: counts.documents,
+          past_due: counts.past_due,
+        };
+      });
+    } else {
+      // Users = all non-student roles
+      let profileQuery = supabase
+        .from('profiles')
+        .select('id, first_name, last_name, role, email')
+        .eq('school_id', schoolId)
+        .neq('role', 'student')
+        .eq('is_active', true);
+
+      if (search) {
+        profileQuery = profileQuery.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%`);
+      }
+
+      const { data: profiles, error } = await profileQuery.limit(100);
+      if (error) throw error;
+
+      const profileIds = profiles?.map((p: any) => p.id) || [];
+      if (profileIds.length === 0) return [];
+
+      const { data: loans } = await supabase
+        .from('library_loans')
+        .select('borrower_id, status, due_date')
+        .in('borrower_id', profileIds)
+        .eq('school_id', schoolId)
+        .eq('borrower_type', 'user')
+        .in('status', ['active', 'overdue']);
+
+      const loanCounts = new Map<string, { documents: number; past_due: number }>();
+      for (const loan of (loans || [])) {
+        const bid = loan.borrower_id;
+        const existing = loanCounts.get(bid) || { documents: 0, past_due: 0 };
+        existing.documents++;
+        if (loan.status === 'overdue' || (loan.status === 'active' && new Date(loan.due_date) < new Date())) {
+          existing.past_due++;
+        }
+        loanCounts.set(bid, existing);
+      }
+
+      return (profiles || []).map((p: any) => {
+        const counts = loanCounts.get(p.id) || { documents: 0, past_due: 0 };
+        return {
+          id: p.id,
+          name: `${p.first_name || ''} ${p.last_name || ''}`.trim(),
+          role: p.role || '',
+          email: p.email || '',
+          documents: counts.documents,
+          past_due: counts.past_due,
+        };
+      });
+    }
+  }
+
+  // ============================================================================
+  // PREMIUM: LOANS BREAKDOWN (Chart data)
+  // ============================================================================
+
+  async getLoansBreakdown(schoolId: string, startDate: string, endDate: string, byCategory: boolean = false) {
+    let query = supabase
+      .from('library_loans')
+      .select(`
+        id, issue_date, status,
+        book_copy:library_book_copies(
+          book:library_books(
+            id, category_id,
+            category:library_categories(id, name, color_code)
+          )
+        )
+      `)
+      .eq('school_id', schoolId)
+      .gte('issue_date', startDate)
+      .lte('issue_date', endDate);
+
+    const { data: loans, error } = await query;
+    if (error) throw error;
+
+    // Group by month
+    const monthlyData: Record<string, Record<string, number>> = {};
+    const categoryColors: Record<string, string> = {};
+
+    for (const loan of (loans || [])) {
+      const date = new Date(loan.issue_date);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+      if (!monthlyData[monthKey]) monthlyData[monthKey] = {};
+
+      if (byCategory) {
+        const categoryName = (loan as any).book_copy?.book?.category?.name || 'Uncategorized';
+        const categoryColor = (loan as any).book_copy?.book?.category?.color_code || '#808080';
+        categoryColors[categoryName] = categoryColor;
+        monthlyData[monthKey][categoryName] = (monthlyData[monthKey][categoryName] || 0) + 1;
+      } else {
+        monthlyData[monthKey]['Loans'] = (monthlyData[monthKey]['Loans'] || 0) + 1;
+      }
+    }
+
+    // Convert to chart data
+    const months = Object.keys(monthlyData).sort();
+    const allCategories = new Set<string>();
+    for (const m of months) {
+      for (const cat of Object.keys(monthlyData[m])) {
+        allCategories.add(cat);
+      }
+    }
+
+    const chartData = months.map(month => {
+      const entry: Record<string, any> = {
+        month,
+        label: new Date(month + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+      };
+      for (const cat of allCategories) {
+        entry[cat] = monthlyData[month][cat] || 0;
+      }
+      return entry;
+    });
+
+    // Total count
+    const totalLoans = (loans || []).length;
+
+    return {
+      chart_data: chartData,
+      categories: Array.from(allCategories).map(name => ({
+        name,
+        color: categoryColors[name] || '#3b82f6'
+      })),
+      total_loans: totalLoans,
     };
   }
 }

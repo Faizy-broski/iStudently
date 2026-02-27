@@ -9,6 +9,13 @@ const router = Router()
 router.use(authenticate)
 
 // ============================================================================
+// BULK IMPORT ROUTES
+// ============================================================================
+
+router.get('/import-template', requireAdmin, timetableController.getTimetableImportTemplate)
+router.post('/bulk-import', requireAdmin, timetableController.bulkImportTimetable)
+
+// ============================================================================
 // STEP 2: TIMETABLE CONSTRUCTION ROUTES
 // ============================================================================
 

@@ -106,11 +106,22 @@ export class EntryExitController {
   static async createRecord(req: Request, res: Response) {
     try {
       const dto = createRecordSchema.parse(req.body);
-      const data = await EntryExitService.createRecord(dto);
+      const data = await EntryExitService.createRecord(dto as any);
+      // Forward any soft warnings (e.g. DUPLICATE_DIRECTION) with HTTP 201
       res.status(201).json({ success: true, data });
     } catch (err: any) {
       console.error("createRecord error:", err);
       res.status(400).json({ success: false, error: err.message });
+    }
+  }
+
+  static async deleteRecord(req: Request, res: Response) {
+    try {
+      await EntryExitService.deleteRecord(req.params.id);
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error("deleteRecord error:", err);
+      res.status(500).json({ success: false, error: err.message });
     }
   }
 
@@ -188,6 +199,35 @@ export class EntryExitController {
       res.json({ success: true, data });
     } catch (err: any) {
       console.error("getStats error:", err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // ========================
+  // ATTENDANCE INTEGRATION (Premium)
+  // ========================
+
+  static async getAttendanceIntegration(req: Request, res: Response) {
+    try {
+      const schoolId = req.query.school_id as string;
+      const checkpointId = req.query.checkpoint_id as string;
+      const date = (req.query.date as string) || new Date().toISOString().split("T")[0];
+      const currentTime = (req.query.current_time as string) || new Date().toTimeString().slice(0, 5);
+
+      if (!schoolId || !checkpointId)
+        return res
+          .status(400)
+          .json({ success: false, error: "school_id and checkpoint_id are required" });
+
+      const data = await EntryExitService.getAttendanceIntegration(
+        schoolId,
+        checkpointId,
+        date,
+        currentTime,
+      );
+      res.json({ success: true, data });
+    } catch (err: any) {
+      console.error("getAttendanceIntegration error:", err);
       res.status(500).json({ success: false, error: err.message });
     }
   }

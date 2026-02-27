@@ -847,14 +847,18 @@ export class FeesController {
                 return res.status(400).json({ success: false, error: 'studentId is required' })
             }
 
-            const payments = await feesService.getStudentPayments(studentId, schoolId)
-            const summary = await feesService.getStudentFeeSummary(studentId, schoolId)
+            const [payments, summary, studentInfo] = await Promise.all([
+                feesService.getStudentPayments(studentId, schoolId),
+                feesService.getStudentFeeSummary(studentId, schoolId),
+                feesService.getStudentInfo(studentId, schoolId)
+            ])
 
             return res.json({
                 success: true,
                 data: {
                     payments,
-                    summary
+                    summary,
+                    studentInfo
                 }
             })
         } catch (error: any) {
@@ -876,7 +880,7 @@ export class FeesController {
                 return res.status(403).json({ success: false, error: 'Not authenticated' })
             }
 
-            const { student_id, amount, payment_date, comment, is_lunch_payment, file_url, receipt_number } = req.body
+            const { student_id, amount, payment_date, comment, is_lunch_payment, file_url, receipt_number, payment_method } = req.body
 
             if (!student_id || amount === undefined) {
                 return res.status(400).json({ success: false, error: 'student_id and amount are required' })
@@ -890,6 +894,7 @@ export class FeesController {
                 is_lunch_payment: is_lunch_payment || false,
                 file_url,
                 receipt_number,
+                payment_method: payment_method || 'cash',
                 created_by: userId
             })
 

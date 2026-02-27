@@ -13,6 +13,12 @@ export interface PayrollSettings {
     max_advance_percent: number
     expected_check_in: string
     working_days_per_month: number
+    monthly_bonus_enabled: boolean
+    monthly_bonus_amount: number
+    monthly_bonus_reason: string
+    monthly_deduction_enabled: boolean
+    monthly_deduction_amount: number
+    monthly_deduction_reason: string
 }
 
 export interface SalaryStructure {
@@ -457,6 +463,14 @@ class SalaryService {
             attendanceBonus = settings.attendance_bonus_amount
         }
 
+        // Monthly one-time bonus
+        const monthlyBonus = (settings?.monthly_bonus_enabled && settings.monthly_bonus_amount > 0)
+            ? settings.monthly_bonus_amount : 0
+
+        // Monthly one-time deduction
+        const monthlyDeduction = (settings?.monthly_deduction_enabled && settings.monthly_deduction_amount > 0)
+            ? settings.monthly_deduction_amount : 0
+
         // Check for advance recovery
         let advanceDeduction = 0
         const { data: advances } = await supabase
@@ -473,8 +487,8 @@ class SalaryService {
         }
 
         // Calculate net salary
-        const totalDeductions = fixedDeductions + totalDeduction + advanceDeduction
-        const netSalary = structure.base_salary + totalAllowances + attendanceBonus - totalDeductions
+        const totalDeductions = fixedDeductions + totalDeduction + advanceDeduction + monthlyDeduction
+        const netSalary = structure.base_salary + totalAllowances + attendanceBonus + monthlyBonus - totalDeductions
 
         // Create salary record
         const { data: salaryRecord, error } = await supabase
@@ -487,7 +501,7 @@ class SalaryService {
                 year,
                 base_salary: structure.base_salary,
                 total_allowances: totalAllowances,
-                attendance_bonus: attendanceBonus,
+                attendance_bonus: attendanceBonus + monthlyBonus,
                 total_deductions: totalDeductions,
                 advance_deduction: advanceDeduction,
                 net_salary: netSalary,
@@ -526,6 +540,27 @@ class SalaryService {
                 allowance_type: 'attendance_bonus',
                 description: 'Perfect Attendance Bonus',
                 amount: attendanceBonus
+            })
+        }
+
+        // If monthly bonus, add it
+        if (monthlyBonus > 0) {
+            await supabase.from('salary_allowance_items').insert({
+                salary_record_id: salaryRecord.id,
+                allowance_type: 'monthly_bonus',
+                description: settings?.monthly_bonus_reason || 'Monthly Bonus',
+                amount: monthlyBonus
+            })
+        }
+
+        // If monthly deduction, add it
+        if (monthlyDeduction > 0) {
+            await supabase.from('salary_deduction_items').insert({
+                salary_record_id: salaryRecord.id,
+                deduction_type: 'monthly_deduction',
+                description: settings?.monthly_deduction_reason || 'Monthly Deduction',
+                amount: monthlyDeduction,
+                deduction_date: new Date().toISOString().split('T')[0]
             })
         }
 

@@ -246,6 +246,7 @@ export interface ScheduleConflict {
 
 export interface AddDropRecord {
   student_id: string
+  student_number?: string
   student_name?: string
   course_title: string
   course_period_title?: string

@@ -79,6 +79,21 @@ export const deleteCourse = async (req: Request, res: Response) => {
 // COURSE PERIODS CONTROLLERS
 // ============================================================================
 
+export const getAllCoursePeriods = async (req: Request, res: Response) => {
+  try {
+    const schoolId = (req as AuthRequest).profile?.school_id
+    if (!schoolId) {
+      return res.status(400).json({ success: false, error: 'school_id is required' })
+    }
+    const campusId = req.query.campus_id as string | undefined
+    const data = await coursesService.getAllCoursePeriods(schoolId, campusId)
+    res.json({ success: true, data })
+  } catch (error: any) {
+    console.error('Error in getAllCoursePeriods:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+}
+
 export const getCoursePeriods = async (req: Request, res: Response) => {
   try {
     const { courseId } = req.params

@@ -27,7 +27,9 @@ interface CoursePeriodDetail {
   id: string
   course_id: string
   teacher_id?: string | null
-  teacher?: { first_name: string; last_name: string } | null
+  // Backend may return flat or nested profile shape
+  teacher?: { first_name?: string; last_name?: string; profile?: { first_name?: string; last_name?: string } } | null
+  period?: { period_name?: string; period_number?: number } | null
   days?: string | null
   short_name?: string | null
   room?: string | null
@@ -113,10 +115,10 @@ export function ChooseCourseDialog({ onSelect, selectedCoursePeriod }: ChooseCou
   const handleSelectPeriod = (cp: CoursePeriodDetail) => {
     const course = allCourses.find((c) => c.id === cp.course_id || c.id === selectedCourseId)
     const teacher = cp.teacher
-    const teacherName = teacher
-      ? `${teacher.first_name || ""} ${(teacher.last_name || "")[0] || ""} ${teacher.last_name || ""}`.trim()
-      : ""
-    const periodLabel = [cp.days, cp.short_name, teacherName].filter(Boolean).join(" - ")
+    const tFirst = teacher?.profile?.first_name || teacher?.first_name || ""
+    const tLast = teacher?.profile?.last_name || teacher?.last_name || ""
+    const teacherName = [tFirst, tLast].filter(Boolean).join(" ").trim()
+    const periodLabel = [cp.period?.period_name || cp.days, cp.short_name, teacherName].filter(Boolean).join(" - ")
     const availableSeats =
       cp.total_seats !== null && cp.total_seats !== undefined
         ? cp.total_seats - (cp.filled_seats || 0)
@@ -270,10 +272,10 @@ export function ChooseCourseDialog({ onSelect, selectedCoursePeriod }: ChooseCou
                 ) : (
                   coursePeriods.map((cp) => {
                     const teacher = cp.teacher
-                    const teacherName = teacher
-                      ? `${teacher.first_name || ""} ${(teacher.last_name || "")[0] || ""} ${teacher.last_name || ""}`.trim()
-                      : ""
-                    const periodLabel = [cp.days, cp.short_name, teacherName].filter(Boolean).join(" - ")
+                    const tFirst = teacher?.profile?.first_name || teacher?.first_name || ""
+                    const tLast = teacher?.profile?.last_name || teacher?.last_name || ""
+                    const teacherName = [tFirst, tLast].filter(Boolean).join(" ").trim()
+                    const periodLabel = [cp.period?.period_name || cp.days, cp.short_name, teacherName].filter(Boolean).join(" - ")
                     const availableSeats =
                       cp.total_seats !== null && cp.total_seats !== undefined
                         ? cp.total_seats - (cp.filled_seats || 0)

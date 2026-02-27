@@ -26,6 +26,12 @@ export interface PayrollSettings {
     max_advance_percent: number
     expected_check_in: string
     working_days_per_month: number
+    monthly_bonus_enabled: boolean
+    monthly_bonus_amount: number
+    monthly_bonus_reason: string
+    monthly_deduction_enabled: boolean
+    monthly_deduction_amount: number
+    monthly_deduction_reason: string
 }
 
 export interface SalaryStructure {

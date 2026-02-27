@@ -46,7 +46,7 @@ export default function NewCalendarPage() {
     to_day: '1',
     to_month: '0',
     to_year: (new Date().getFullYear() + 1).toString(),
-    weekdays: [false, true, true, true, true, true, false], // Mon-Fri default
+    weekdays: [true, true, true, true, true, false, false], // Sun-Thu default (Fri+Sat off)
     default_minutes: '360'
   });
 

@@ -64,6 +64,24 @@ router.get('/', requireRole('admin', 'teacher', 'librarian'), (req, res) =>
 )
 
 /**
+ * GET /api/students/import-template
+ * Download CSV template for bulk import
+ * Admin only
+ */
+router.get('/import-template', requireRole('admin'), (req, res) =>
+  studentController.getImportTemplate(req, res)
+)
+
+/**
+ * POST /api/students/bulk-import
+ * Bulk import students from parsed CSV/Excel data
+ * Admin only
+ */
+router.post('/bulk-import', requireRole('admin'), (req, res) =>
+  studentController.bulkImportStudents(req, res)
+)
+
+/**
  * POST /api/students
  * Create a new student
  * Admin only

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useCampus } from '@/context/CampusContext'
 import { useAcademic } from '@/context/AcademicContext'
 import * as accountingApi from '@/lib/api/accounting'
+import { getSchoolSettings, PAYMENT_METHOD_OPTIONS, type PaymentMethodOption } from '@/lib/api/school-settings'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -53,6 +54,7 @@ interface IncomeRow {
     amount: string
     income_date: string
     comments: string
+    payment_method: PaymentMethodOption
     file_attached?: string
     isNew?: boolean
 }
@@ -62,6 +64,16 @@ export default function IncomesPage() {
     const { currentAcademicYear } = useAcademic()
     const campusId = selectedCampus?.id
     const academicYear = currentAcademicYear?.name || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`
+
+    // Campus default payment method
+    const [defaultPaymentMethod, setDefaultPaymentMethod] = useState<PaymentMethodOption>('cash')
+    useEffect(() => {
+        getSchoolSettings(campusId ?? null).then((res) => {
+            if (res.success && res.data?.default_payment_method) {
+                setDefaultPaymentMethod(res.data.default_payment_method)
+            }
+        }).catch(() => {})
+    }, [campusId])
 
     // Date filter state
     const today = new Date()
@@ -107,6 +119,7 @@ export default function IncomesPage() {
         amount: '',
         income_date: format(new Date(), 'yyyy-MM-dd'),
         comments: '',
+        payment_method: defaultPaymentMethod,
         isNew: true
     })
 
@@ -120,6 +133,7 @@ export default function IncomesPage() {
                 amount: String(inc.amount),
                 income_date: inc.income_date,
                 comments: inc.comments || '',
+                payment_method: (inc.payment_method as PaymentMethodOption) || 'cash',
                 file_attached: inc.file_attached
             }))
             // Add empty row for new entry
@@ -194,7 +208,8 @@ export default function IncomesPage() {
                     category_id: row.category_id || undefined,
                     amount: parseFloat(row.amount) || 0,
                     income_date: row.income_date,
-                    comments: row.comments.trim() || undefined
+                    comments: row.comments.trim() || undefined,
+                    payment_method: row.payment_method
                 }))
             }
 
@@ -208,7 +223,8 @@ export default function IncomesPage() {
                         row.category_id !== (original.category_id || '') ||
                         row.amount !== String(original.amount) ||
                         row.income_date !== original.income_date ||
-                        row.comments !== (original.comments || '')
+                        row.comments !== (original.comments || '') ||
+                        row.payment_method !== ((original.payment_method as PaymentMethodOption) || 'cash')
 
                     if (changed) {
                         promises.push(accountingApi.updateIncome(row.id!, {
@@ -217,7 +233,8 @@ export default function IncomesPage() {
                             category_id: row.category_id || undefined,
                             amount: parseFloat(row.amount) || 0,
                             income_date: row.income_date,
-                            comments: row.comments.trim() || undefined
+                            comments: row.comments.trim() || undefined,
+                            payment_method: row.payment_method
                         }))
                     }
                 }
@@ -409,6 +426,7 @@ export default function IncomesPage() {
                                         <TableHead>CATEGORY</TableHead>
                                         <TableHead>AMOUNT</TableHead>
                                         <TableHead>DATE</TableHead>
+                                        <TableHead>METHOD</TableHead>
                                         <TableHead>COMMENT</TableHead>
                                         <TableHead>FILE ATTACHED</TableHead>
                                         <TableHead className="w-12"></TableHead>
@@ -493,6 +511,21 @@ export default function IncomesPage() {
                                                             </SelectContent>
                                                         </Select>
                                                     </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Select
+                                                        value={row.payment_method}
+                                                        onValueChange={(v) => handleRowChange(index, 'payment_method', v)}
+                                                    >
+                                                        <SelectTrigger className="w-32">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {PAYMENT_METHOD_OPTIONS.map(opt => (
+                                                                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
                                                 </TableCell>
                                                 <TableCell>
                                                     <Input

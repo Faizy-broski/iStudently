@@ -426,9 +426,9 @@ export const getAddDropLog = async (
       .from('student_schedules')
       .select(`
         id, student_id, start_date, end_date, enrolled_by,
-        student:students(id, profile:profiles!students_profile_id_fkey(first_name, last_name)),
-        course:courses(id, title),
-        course_period:course_periods(id, title)
+        student:students(id, student_number, profile:profiles!students_profile_id_fkey(first_name, last_name)),
+        course:courses(id, title, short_name),
+        course_period:course_periods(id, title, short_name, marking_period:marking_periods(title), period:periods(period_name), teacher:staff!teacher_id(profile:profiles!profile_id(first_name, last_name)))
       `)
       .eq('school_id', mainSchoolId)
       .eq('academic_year_id', academicYearId)
@@ -438,11 +438,12 @@ export const getAddDropLog = async (
     if (campusId) {
       query = query.or(`campus_id.eq.${campusId},campus_id.is.null`)
     }
+    // Include records where enrollment OR drop falls within the date range
     if (startDate) {
-      query = query.gte('start_date', startDate)
+      query = query.or(`start_date.gte.${startDate},end_date.gte.${startDate}`)
     }
     if (endDate) {
-      query = query.lte('start_date', endDate)
+      query = query.or(`start_date.lte.${endDate},end_date.lte.${endDate}`)
     }
 
     const { data, error } = await query
@@ -454,12 +455,26 @@ export const getAddDropLog = async (
         ? `${(row as any).student.profile.first_name} ${(row as any).student.profile.last_name}`
         : undefined
 
+      const cp = (row as any).course_period
+      const cpParts: string[] = []
+      if (cp?.marking_period?.title) cpParts.push(cp.marking_period.title)
+      if (cp?.period?.period_name) cpParts.push(cp.period.period_name)
+      if (cp?.short_name || cp?.title) cpParts.push(cp.short_name || cp.title)
+      if (cp?.teacher?.profile) {
+        const tName = [cp.teacher.profile.first_name, cp.teacher.profile.last_name].filter(Boolean).join(' ')
+        if (tName) cpParts.push(tName)
+      }
+      const coursePeriodTitle = cpParts.length > 0 ? cpParts.join(' - ') : undefined
+
+      const studentNumber = (row as any).student?.student_number || undefined
+
       // Add record
       records.push({
         student_id: row.student_id,
+        student_number: studentNumber,
         student_name: studentName,
         course_title: (row as any).course?.title || '',
-        course_period_title: (row as any).course_period?.title,
+        course_period_title: coursePeriodTitle,
         action: 'add',
         date: row.start_date,
         enrolled_by: row.enrolled_by || undefined,
@@ -469,9 +484,10 @@ export const getAddDropLog = async (
       if (row.end_date) {
         records.push({
           student_id: row.student_id,
+          student_number: studentNumber,
           student_name: studentName,
           course_title: (row as any).course?.title || '',
-          course_period_title: (row as any).course_period?.title,
+          course_period_title: coursePeriodTitle,
           action: 'drop',
           date: row.end_date,
         })

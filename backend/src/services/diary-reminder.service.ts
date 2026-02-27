@@ -24,44 +24,119 @@ interface ReminderResult {
 
 export class DiaryReminderService {
   /**
-   * Get school settings for diary reminders
+   * Get school settings, with optional campus-specific override.
+   * If campusId is provided, tries campus-specific row first, then falls back to school-wide.
+   * If campusId is not provided, returns the school-wide row.
    */
-  async getSettings(schoolId: string) {
-    const { data, error } = await supabase
-      .from('school_settings')
-      .select('*')
-      .eq('school_id', schoolId)
-      .single()
+  async getSettings(schoolId: string, campusId?: string | null) {
+    try {
+      // Campus-specific lookup first
+      if (campusId) {
+        const { data: campusData, error: campusError } = await supabase
+          .from('school_settings')
+          .select('*')
+          .eq('school_id', schoolId)
+          .eq('campus_id', campusId)
+          .maybeSingle()
 
-    if (error && error.code !== 'PGRST116') {
-      throw new Error(`Failed to fetch school settings: ${error.message}`)
+        if (campusError && campusError.code !== 'PGRST116') {
+          if (campusError.message?.includes('schema cache') || campusError.message?.includes('table')) {
+            throw new Error('School settings table not found; please run database migrations.')
+          }
+          throw new Error(`Failed to fetch school settings: ${campusError.message}`)
+        }
+
+        if (campusData) {
+          return campusData
+        }
+        // Fall through to school-wide lookup
+      }
+
+      // School-wide (campus_id IS NULL)
+      const { data, error } = await supabase
+        .from('school_settings')
+        .select('*')
+        .eq('school_id', schoolId)
+        .is('campus_id', null)
+        .maybeSingle()
+
+      if (error && error.code !== 'PGRST116') {
+        if (error.message?.includes('schema cache') || error.message?.includes('table')) {
+          throw new Error('School settings table not found; please run database migrations.')
+        }
+        throw new Error(`Failed to fetch school settings: ${error.message}`)
+      }
+
+      return data || null
+    } catch (err: any) {
+      throw err
     }
-
-    return data
   }
 
   /**
-   * Update diary reminder settings for a school
+   * Update diary reminder / school settings for a school.
+   * Pass campusId to save a campus-specific row; omit for the school-wide default.
    */
   async updateSettings(schoolId: string, settings: {
     diary_reminder_enabled?: boolean
     diary_reminder_time?: string
     diary_reminder_days?: number[]
-  }) {
-    // Upsert: insert if not exists, update if exists
-    const { data, error } = await supabase
+    hostel?: {
+      auto_remove_inactive?: boolean
+    }
+    default_payment_method?: string
+  }, campusId?: string | null) {
+    const VALID_PAYMENT_METHODS = ['cash', 'online', 'bank_deposit', 'cheque']
+    const now = new Date().toISOString()
+    const updates: any = { updated_at: now }
+
+    if (settings.diary_reminder_enabled !== undefined) updates.diary_reminder_enabled = settings.diary_reminder_enabled
+    if (settings.diary_reminder_time !== undefined) updates.diary_reminder_time = settings.diary_reminder_time
+    if (settings.diary_reminder_days !== undefined) updates.diary_reminder_days = settings.diary_reminder_days
+    if (settings.hostel && settings.hostel.auto_remove_inactive !== undefined) {
+      updates.auto_remove_inactive = settings.hostel.auto_remove_inactive
+    }
+    if (settings.default_payment_method !== undefined) {
+      const method = settings.default_payment_method.toLowerCase()
+      updates.default_payment_method = VALID_PAYMENT_METHODS.includes(method) ? method : 'cash'
+    }
+
+    // Check if a row already exists for this school + campus combination
+    const existingQuery = supabase
       .from('school_settings')
-      .upsert({
-        school_id: schoolId,
-        ...settings,
-        updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'school_id',
-      })
+      .select('id')
+      .eq('school_id', schoolId)
+
+    if (campusId) {
+      existingQuery.eq('campus_id', campusId)
+    } else {
+      existingQuery.is('campus_id', null)
+    }
+
+    const { data: existing } = await existingQuery.maybeSingle()
+
+    let query
+    if (existing?.id) {
+      // Update existing row
+      query = supabase
+        .from('school_settings')
+        .update(updates)
+        .eq('id', existing.id)
+    } else {
+      // Insert new row
+      query = supabase
+        .from('school_settings')
+        .insert({ school_id: schoolId, campus_id: campusId || null, created_at: now, ...updates })
+    }
+
+    const { data, error } = await query
       .select()
       .single()
 
     if (error) {
+      if (error.message?.includes('schema cache') || error.message?.includes('table')) {
+        throw new Error('School settings table not found; please run database migrations.');
+      }
       throw new Error(`Failed to update settings: ${error.message}`)
     }
 

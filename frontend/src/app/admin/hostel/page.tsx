@@ -20,6 +20,7 @@ import Link from "next/link";
 export default function HostelDashboard() {
   const { profile } = useAuth();
   const schoolId = profile?.school_id || "";
+  const campusId = profile?.campus_id;
 
   const [stats, setStats] = useState<HostelStats>({
     total_buildings: 0,
@@ -42,7 +43,7 @@ export default function HostelDashboard() {
       setLoading(true);
       const [statsData, visitsData] = await Promise.all([
         getHostelStats(schoolId),
-        getVisits(schoolId, { active_only: true }),
+        getVisits(schoolId, campusId, { active_only: true }),
       ]);
       setStats(statsData);
       setRecentVisits(visitsData.slice(0, 10));

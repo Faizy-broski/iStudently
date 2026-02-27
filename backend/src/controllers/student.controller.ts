@@ -399,6 +399,68 @@ export class StudentController {
   }
 
   /**
+   * Download a CSV template for student bulk import
+   * GET /api/students/import-template
+   * Requires: admin role
+   */
+  async getImportTemplate(_req: AuthRequest, res: Response): Promise<void> {
+    const headers = [
+      'student_number', 'first_name', 'father_name', 'grandfather_name',
+      'last_name', 'email', 'phone', 'password', 'grade_level_name', 'section_name'
+    ]
+    const example = [
+      'S001', 'John', 'Robert', 'James', 'Smith',
+      'john.smith@school.com', '+1234567890', 'Pass@1234', 'Grade 10', 'A'
+    ]
+    const csv = [headers.join(','), example.join(',')].join('\n')
+
+    res.setHeader('Content-Type', 'text/csv')
+    res.setHeader('Content-Disposition', 'attachment; filename="student_import_template.csv"')
+    res.send(csv)
+  }
+
+  /**
+   * Bulk import students from a parsed CSV/Excel payload
+   * POST /api/students/bulk-import
+   * Requires: admin role
+   * Body: { students: Record<string,any>[], campus_id?: string }
+   */
+  async bulkImportStudents(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const adminSchoolId = req.profile?.school_id
+
+      if (!adminSchoolId) {
+        res.status(403).json({ success: false, error: 'No school associated with your account' })
+        return
+      }
+
+      const { students, campus_id } = req.body
+
+      if (!Array.isArray(students) || students.length === 0) {
+        res.status(400).json({ success: false, error: 'students array is required and must not be empty' })
+        return
+      }
+
+      if (students.length > 500) {
+        res.status(400).json({ success: false, error: 'Maximum 500 students per import batch' })
+        return
+      }
+
+      const effectiveSchoolId = await getEffectiveSchoolId(adminSchoolId, campus_id)
+      const result = await studentService.bulkImportStudents(students, effectiveSchoolId)
+
+      res.status(200).json({
+        success: true,
+        data: result,
+        message: `Imported ${result.success_count} student(s) with ${result.error_count} error(s)`
+      })
+    } catch (error: any) {
+      console.error('Bulk import students error:', error)
+      res.status(500).json({ success: false, error: error.message || 'Bulk import failed' })
+    }
+  }
+
+  /**
    * Get students info for printing with selected categories
    * POST /api/students/print-info
    * Requires: admin role

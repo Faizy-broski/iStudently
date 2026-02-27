@@ -22,8 +22,8 @@ export const createCategory = async (req: Request, res: Response) => {
   try {
     const schoolId = (req as AuthRequest).profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'school_id is required' })
-    const { title, sort_order, campus_id } = req.body
-    const data = await reportCardsService.createCategory(schoolId, title, sort_order, campus_id)
+    const { title, sort_order, campus_id, color } = req.body
+    const data = await reportCardsService.createCategory(schoolId, title, sort_order, campus_id, color)
     res.status(201).json({ success: true, data })
   } catch (error: any) {
     console.error('Error in createCategory:', error)

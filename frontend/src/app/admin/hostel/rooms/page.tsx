@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -28,12 +30,15 @@ import {
   updateRoom,
   deleteRoom,
 } from "@/lib/api/hostel";
+import { customFieldsApi, CustomFieldDefinition } from "@/lib/api/custom-fields";
 import { HostelRoom, HostelBuilding } from "@/types";
 import { Plus, DoorOpen, Edit, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function RoomsPage() {
   const { profile } = useAuth();
   const schoolId = profile?.school_id || "";
+  const campusId = profile?.campus_id;
 
   const [rooms, setRooms] = useState<HostelRoom[]>([]);
   const [buildings, setBuildings] = useState<HostelBuilding[]>([]);
@@ -41,6 +46,10 @@ export default function RoomsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState<HostelRoom | null>(null);
   const [filterBuilding, setFilterBuilding] = useState("");
+
+  // Custom fields
+  const [customFieldDefs, setCustomFieldDefs] = useState<CustomFieldDefinition[]>([]);
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
 
   // Form
   const [buildingId, setBuildingId] = useState("");
@@ -52,10 +61,20 @@ export default function RoomsPage() {
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  const loadCustomFieldDefs = useCallback(async () => {
+    const res = await customFieldsApi.getFieldDefinitions("hostel_room", campusId ?? undefined);
+    if (res.success && res.data) {
+      setCustomFieldDefs(
+        [...res.data].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+      );
+    }
+  }, [campusId]);
+
   useEffect(() => {
     if (!schoolId) return;
     loadData();
-  }, [schoolId, filterBuilding]);
+    loadCustomFieldDefs();
+  }, [schoolId, filterBuilding, loadCustomFieldDefs]);
 
   async function loadData() {
     try {
@@ -81,6 +100,7 @@ export default function RoomsPage() {
     setRoomType("standard");
     setPricePerMonth(0);
     setDescription("");
+    setCustomFieldValues({});
     setEditingRoom(null);
   }
 
@@ -93,32 +113,52 @@ export default function RoomsPage() {
     setRoomType(r.room_type);
     setPricePerMonth(r.price_per_month);
     setDescription(r.description || "");
+    // Populate saved custom field values
+    const saved: Record<string, string> = {};
+    if (r.custom_fields) {
+      Object.entries(r.custom_fields).forEach(([k, v]) => {
+        saved[k] = String(v ?? "");
+      });
+    }
+    setCustomFieldValues(saved);
     setDialogOpen(true);
   }
 
   async function handleSubmit() {
     if (!roomNumber || !buildingId) return;
+    // Validate required custom fields
+    const missingRequired = customFieldDefs.filter(
+      (def) => def.required && !customFieldValues[def.field_key]?.trim()
+    );
+    if (missingRequired.length > 0) {
+      toast.error(`Please fill in required fields: ${missingRequired.map((d) => d.label).join(", ")}`);
+      return;
+    }
     try {
       setSubmitting(true);
       if (editingRoom) {
         await updateRoom(editingRoom.id, schoolId, {
+          campus_id: campusId,
           room_number: roomNumber,
           floor,
           capacity,
           room_type: roomType,
           price_per_month: pricePerMonth,
           description: description || undefined,
+          custom_fields: customFieldValues,
         });
       } else {
         await createRoom({
           building_id: buildingId,
           school_id: schoolId,
+          campus_id: campusId,
           room_number: roomNumber,
           floor,
           capacity,
           room_type: roomType,
           price_per_month: pricePerMonth,
           description: description || undefined,
+          custom_fields: customFieldValues,
         });
       }
       setDialogOpen(false);
@@ -249,6 +289,67 @@ export default function RoomsPage() {
                   placeholder="Optional..."
                 />
               </div>
+
+              {/* Custom Fields */}
+              {customFieldDefs.length > 0 && (
+                <div className="space-y-3 border-t pt-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Additional Fields</p>
+                  {customFieldDefs.map((def) => (
+                    <div key={def.id} className="space-y-1">
+                      <Label className="text-sm">
+                        {def.label}{def.required && <span className="text-red-500 ml-0.5">*</span>}
+                      </Label>
+                      {(def.type === "text" || def.type === "number" || def.type === "date") && (
+                        <Input
+                          type={def.type === "date" ? "date" : def.type === "number" ? "number" : "text"}
+                          value={customFieldValues[def.field_key] ?? ""}
+                          onChange={(e) =>
+                            setCustomFieldValues((prev) => ({ ...prev, [def.field_key]: e.target.value }))
+                          }
+                        />
+                      )}
+                      {def.type === "long-text" && (
+                        <Textarea
+                          rows={3}
+                          value={customFieldValues[def.field_key] ?? ""}
+                          onChange={(e) =>
+                            setCustomFieldValues((prev) => ({ ...prev, [def.field_key]: e.target.value }))
+                          }
+                        />
+                      )}
+                      {def.type === "checkbox" && (
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            checked={customFieldValues[def.field_key] === "true"}
+                            onCheckedChange={(c) =>
+                              setCustomFieldValues((prev) => ({ ...prev, [def.field_key]: c ? "true" : "false" }))
+                            }
+                          />
+                          <span className="text-sm text-muted-foreground">{def.label}</span>
+                        </div>
+                      )}
+                      {(def.type === "select" || def.type === "multi-select") && (
+                        <Select
+                          value={customFieldValues[def.field_key] ?? ""}
+                          onValueChange={(v) =>
+                            setCustomFieldValues((prev) => ({ ...prev, [def.field_key]: v }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(def.options || []).map((opt) => (
+                              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <Button
                 onClick={handleSubmit}
                 disabled={

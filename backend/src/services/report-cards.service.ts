@@ -42,10 +42,10 @@ class ReportCardsService {
     return (data || []) as ReportCardCommentCategory[]
   }
 
-  async createCategory(schoolId: string, title: string, sortOrder?: number, campusId?: string): Promise<ReportCardCommentCategory> {
+  async createCategory(schoolId: string, title: string, sortOrder?: number, campusId?: string, color?: string): Promise<ReportCardCommentCategory> {
     const { data, error } = await supabase
       .from('report_card_comment_categories')
-      .insert({ school_id: schoolId, campus_id: campusId || null, title, sort_order: sortOrder || 0 })
+      .insert({ school_id: schoolId, campus_id: campusId || null, title, sort_order: sortOrder || 0, color: color || null })
       .select()
       .single()
 
@@ -53,7 +53,7 @@ class ReportCardsService {
     return data as ReportCardCommentCategory
   }
 
-  async updateCategory(id: string, updates: { title?: string; sort_order?: number }): Promise<ReportCardCommentCategory> {
+  async updateCategory(id: string, updates: { title?: string; sort_order?: number; color?: string | null }): Promise<ReportCardCommentCategory> {
     const { data, error } = await supabase
       .from('report_card_comment_categories')
       .update(updates)

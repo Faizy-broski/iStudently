@@ -219,28 +219,28 @@ export default function PeriodsPage() {
           <thead>
             <tr className="border-b bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10">
               <th className="w-10 px-2 py-3"></th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-[#022172] uppercase tracking-wider">
+              <th className="min-w-[200px] px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
                 Title
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-[#022172] uppercase tracking-wider">
+              <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
                 Short Name
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-[#022172] uppercase tracking-wider">
+              <th className="w-20 px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
                 Sort Order
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-[#022172] uppercase tracking-wider">
+              <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
                 Start Time
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-[#022172] uppercase tracking-wider">
+              <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
                 End Time
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-[#022172] uppercase tracking-wider">
+              <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
                 Length (Min)
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-[#022172] uppercase tracking-wider">
+              <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
                 Block
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-[#022172] uppercase tracking-wider">
+              <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
                 Course Periods
               </th>
             </tr>
@@ -259,44 +259,44 @@ export default function PeriodsPage() {
                     <Minus className="h-4 w-4" />
                   </Button>
                 </td>
-                <td className="px-4 py-2">
+                <td className="px-4 py-2 text-center">
                   <Input
                     value={period.title}
                     onChange={(e) => updatePeriod(index, 'title', e.target.value)}
                     placeholder="Period name"
-                    className="h-8 w-full border-0 bg-transparent p-0 focus-visible:ring-0 text-[#008B8B] underline"
+                    className="h-8 w-full border-0 bg-transparent p-0 focus-visible:ring-0 text-[#008B8B] underline text-center"
                   />
                 </td>
-                <td className="px-4 py-2">
+                <td className="px-4 py-2 text-center">
                   <Input
                     value={period.short_name}
                     onChange={(e) => updatePeriod(index, 'short_name', e.target.value)}
                     placeholder="Short"
-                    className="h-8 w-20 border-0 bg-transparent p-0 focus-visible:ring-0 text-[#008B8B] underline"
+                    className="h-8 w-20 mx-auto border-0 bg-transparent p-0 focus-visible:ring-0 text-[#008B8B] underline text-center"
                   />
                 </td>
-                <td className="px-4 py-2">
+                <td className="px-4 py-2 text-center">
                   <Input
                     type="number"
                     value={period.sort_order}
                     onChange={(e) => updatePeriod(index, 'sort_order', parseInt(e.target.value) || 1)}
-                    className="h-8 w-16 border-0 bg-transparent p-0 focus-visible:ring-0 text-[#008B8B] underline"
+                    className="h-8 w-14 mx-auto border-0 bg-transparent p-0 focus-visible:ring-0 text-[#008B8B] underline text-center"
                   />
                 </td>
-                <td className="px-4 py-2">
+                <td className="px-4 py-2 text-center">
                   <Input
                     type="time"
                     value={period.start_time}
                     onChange={(e) => updatePeriod(index, 'start_time', e.target.value)}
-                    className="h-8 w-28 border-0 bg-transparent p-0 focus-visible:ring-0 text-[#008B8B] underline"
+                    className="h-8 w-28 mx-auto border-0 bg-transparent p-0 focus-visible:ring-0 text-[#008B8B] underline text-center"
                   />
                 </td>
-                <td className="px-4 py-2">
+                <td className="px-4 py-2 text-center">
                   <Input
                     type="time"
                     value={period.end_time}
                     onChange={(e) => updatePeriod(index, 'end_time', e.target.value)}
-                    className="h-8 w-28 border-0 bg-transparent p-0 focus-visible:ring-0 text-[#008B8B] underline"
+                    className="h-8 w-28 mx-auto border-0 bg-transparent p-0 focus-visible:ring-0 text-[#008B8B] underline text-center"
                   />
                 </td>
                 <td className="px-4 py-2 text-center">
@@ -306,12 +306,12 @@ export default function PeriodsPage() {
                       : period.length_minutes || '—'}
                   </span>
                 </td>
-                <td className="px-4 py-2">
+                <td className="px-4 py-2 text-center">
                   <Input
                     value={period.block}
                     onChange={(e) => updatePeriod(index, 'block', e.target.value)}
                     placeholder=""
-                    className="h-8 w-20 border-0 bg-transparent p-0 focus-visible:ring-0"
+                    className="h-8 w-20 mx-auto border-0 bg-transparent p-0 focus-visible:ring-0 text-center"
                   />
                 </td>
                 <td className="px-4 py-2 text-center">
@@ -340,31 +340,31 @@ export default function PeriodsPage() {
                   <Plus className="h-4 w-4" />
                 </Button>
               </td>
-              <td className="px-4 py-2">
+              <td className="px-4 py-2 text-center">
                 <Input
                   placeholder="New period..."
-                  className="h-8 w-full opacity-50"
+                  className="h-8 w-full opacity-50 text-center"
                   onFocus={addPeriod}
                   readOnly
                 />
               </td>
-              <td className="px-4 py-2">
-                <Input className="h-8 w-20 opacity-50" disabled />
+              <td className="px-4 py-2 text-center">
+                <Input className="h-8 w-20 mx-auto opacity-50 text-center" disabled />
               </td>
-              <td className="px-4 py-2">
-                <Input className="h-8 w-16 opacity-50" disabled />
+              <td className="px-4 py-2 text-center">
+                <Input className="h-8 w-14 mx-auto opacity-50 text-center" disabled />
               </td>
-              <td className="px-4 py-2">
-                <Input className="h-8 w-28 opacity-50" disabled />
+              <td className="px-4 py-2 text-center">
+                <Input className="h-8 w-28 mx-auto opacity-50 text-center" disabled />
               </td>
-              <td className="px-4 py-2">
-                <Input className="h-8 w-28 opacity-50" disabled />
+              <td className="px-4 py-2 text-center">
+                <Input className="h-8 w-28 mx-auto opacity-50 text-center" disabled />
               </td>
-              <td className="px-4 py-2">
+              <td className="px-4 py-2 text-center">
                 <span className="text-gray-300 text-sm">Auto</span>
               </td>
-              <td className="px-4 py-2">
-                <Input className="h-8 w-20 opacity-50" disabled />
+              <td className="px-4 py-2 text-center">
+                <Input className="h-8 w-20 mx-auto opacity-50 text-center" disabled />
               </td>
               <td className="px-4 py-2"></td>
             </tr>

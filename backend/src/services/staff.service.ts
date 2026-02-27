@@ -263,15 +263,20 @@ export const createStaffRecord = async (
     schoolId: string,
     profileId: string,
     data: CreateStaffDTO,
-    creatorId: string
+    creatorId: string,
+    roleOverride?: UserRole  // Optional: explicit role bypasses determineRoleFromTitle
 ): Promise<Staff> => {
-    // 1. Determine role based on title
-    const role = determineRoleFromTitle(data.title)
+    // 1. Determine role based on title (or use explicit override)
+    const role = roleOverride || determineRoleFromTitle(data.title)
 
     // 2. Auto-generate employee_number if not provided
     let employeeNumber = data.employee_number
     if (!employeeNumber) {
-        const rolePrefix = role === 'librarian' ? 'LIB' : role === 'staff' ? 'STF' : role === 'admin' ? 'ADM' : 'CSL'
+        const rolePrefix =
+            role === 'librarian' ? 'LIB' :
+            role === 'teacher'   ? 'TCH' :
+            role === 'admin'     ? 'ADM' :
+            role === 'counselor' ? 'CSL' : 'STF'
         const timestamp = Date.now().toString().slice(-6)
         employeeNumber = `${rolePrefix}-${timestamp}`
     }
@@ -499,4 +504,198 @@ export const deleteStaff = async (id: string, _schoolId: string): Promise<ApiRes
     } catch (error: any) {
         return { success: false, message: error.message }
     }
+}
+
+// ============================================================================
+// BULK IMPORT
+// ============================================================================
+
+export interface BulkImportStaffResult {
+    success_count: number
+    error_count: number
+    errors: Array<{ row: number; email?: string; error: string }>
+    created_staff: Staff[]
+}
+
+const VALID_STAFF_ROLES: UserRole[] = ['teacher', 'librarian', 'staff', 'admin', 'counselor']
+const VALID_EMPLOYMENT_TYPES = ['full_time', 'part_time', 'contract'] as const
+
+/**
+ * Bulk import staff members (teachers, librarians, counselors, general staff).
+ *
+ * Role resolution priority:
+ *   1. Explicit `role` column in CSV (if valid UserRole)
+ *   2. `determineRoleFromTitle(title)` (title keyword matching)
+ *   3. Default: 'staff'
+ *
+ * All staff get auth credentials (dashboard access for teacher/librarian/admin/counselor).
+ *
+ * Phase 1: Validate all rows (required fields, email, duplicates, enums)
+ * Phase 2: Process 3 at a time — auth user creation → staff record creation
+ */
+export const bulkImportStaff = async (
+    staffData: Array<Record<string, any>>,
+    schoolId: string,
+    creatorId: string
+): Promise<BulkImportStaffResult> => {
+    const results: BulkImportStaffResult = {
+        success_count: 0,
+        error_count: 0,
+        errors: [],
+        created_staff: []
+    }
+
+    const validRows: Array<{
+        row: number
+        data: CreateStaffDTO
+        roleOverride?: UserRole
+    }> = []
+
+    const seenEmails = new Set<string>()
+    const seenEmployeeNumbers = new Set<string>()
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+    // ── Phase 1: Validate all rows ────────────────────────────────────────────
+    for (let i = 0; i < staffData.length; i++) {
+        const rowNum = i + 2
+        const raw = staffData[i]
+
+        const missing: string[] = []
+        if (!raw.first_name?.toString().trim()) missing.push('first_name')
+        if (!raw.last_name?.toString().trim()) missing.push('last_name')
+        if (!raw.email?.toString().trim()) missing.push('email')
+
+        if (missing.length > 0) {
+            results.errors.push({ row: rowNum, email: raw.email?.toString().trim(), error: `Missing required fields: ${missing.join(', ')}` })
+            results.error_count++
+            continue
+        }
+
+        const email = raw.email.toString().trim().toLowerCase()
+        const firstName = raw.first_name.toString().trim()
+        const lastName = raw.last_name.toString().trim()
+
+        if (!emailRegex.test(email)) {
+            results.errors.push({ row: rowNum, email, error: `Invalid email format: ${email}` })
+            results.error_count++
+            continue
+        }
+
+        if (seenEmails.has(email)) {
+            results.errors.push({ row: rowNum, email, error: 'Duplicate email within this file' })
+            results.error_count++
+            continue
+        }
+        seenEmails.add(email)
+
+        // Validate explicit role override (optional column)
+        const rawRole = raw.role?.toString().trim().toLowerCase()
+        let roleOverride: UserRole | undefined
+        if (rawRole && rawRole !== '') {
+            if (!VALID_STAFF_ROLES.includes(rawRole as UserRole)) {
+                results.errors.push({ row: rowNum, email, error: `Invalid role "${rawRole}". Must be one of: ${VALID_STAFF_ROLES.join(', ')}` })
+                results.error_count++
+                continue
+            }
+            roleOverride = rawRole as UserRole
+        }
+
+        // Validate employment_type (optional, defaults to full_time)
+        const empType = raw.employment_type?.toString().trim().toLowerCase()
+        if (empType && !VALID_EMPLOYMENT_TYPES.includes(empType as any)) {
+            results.errors.push({ row: rowNum, email, error: `Invalid employment_type "${empType}". Must be one of: ${VALID_EMPLOYMENT_TYPES.join(', ')}` })
+            results.error_count++
+            continue
+        }
+
+        // Validate base_salary (optional, must be positive number)
+        const rawSalary = raw.base_salary?.toString().trim()
+        const baseSalary = rawSalary && rawSalary !== '' ? Number(rawSalary) : undefined
+        if (baseSalary !== undefined && (isNaN(baseSalary) || baseSalary < 0)) {
+            results.errors.push({ row: rowNum, email, error: `Invalid base_salary: "${raw.base_salary}" — must be a non-negative number` })
+            results.error_count++
+            continue
+        }
+
+        // Validate employee_number uniqueness within the file (optional field)
+        const empNum = raw.employee_number?.toString().trim()
+        if (empNum && seenEmployeeNumbers.has(empNum)) {
+            results.errors.push({ row: rowNum, email, error: `Duplicate employee_number "${empNum}" within this file` })
+            results.error_count++
+            continue
+        }
+        if (empNum) seenEmployeeNumbers.add(empNum)
+
+        validRows.push({
+            row: rowNum,
+            roleOverride,
+            data: {
+                school_id: schoolId,
+                first_name: firstName,
+                last_name: lastName,
+                email,
+                phone: raw.phone?.toString().trim() || undefined,
+                password: raw.password?.toString().trim() || undefined,
+                employee_number: empNum || undefined,
+                title: raw.title?.toString().trim() || undefined,
+                department: raw.department?.toString().trim() || undefined,
+                qualifications: raw.qualifications?.toString().trim() || undefined,
+                specialization: raw.specialization?.toString().trim() || undefined,
+                date_of_joining: raw.date_of_joining?.toString().trim() || undefined,
+                employment_type: (empType as any) || 'full_time',
+                base_salary: baseSalary
+            }
+        })
+    }
+
+    if (validRows.length === 0) return results
+
+    // ── Phase 2: Process 3 at a time ─────────────────────────────────────────
+    for (let i = 0; i < validRows.length; i += 3) {
+        const batch = validRows.slice(i, i + 3)
+        const batchResults = await Promise.allSettled(
+            batch.map(async ({ data, roleOverride }) => {
+                // Determine final role before creating auth user
+                const finalRole = roleOverride || determineRoleFromTitle(data.title)
+
+                // Create Supabase auth user (dashboard credentials)
+                const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+                    email: data.email!,
+                    // Use provided password or generate a strong one
+                    password: data.password || `Staff@${Math.random().toString(36).slice(-8)}1!`,
+                    email_confirm: true,
+                    user_metadata: {
+                        first_name: data.first_name,
+                        last_name: data.last_name,
+                        school_id: schoolId,
+                        role: finalRole
+                    }
+                })
+
+                if (authError || !authUser.user) {
+                    throw new Error(authError?.message || 'Failed to create auth user')
+                }
+
+                // Create staff record (profile + staff table entry + optional salary)
+                return createStaffRecord(schoolId, authUser.user.id, data, creatorId, finalRole)
+            })
+        )
+
+        batchResults.forEach((result, idx) => {
+            const { row, data } = batch[idx]
+            if (result.status === 'fulfilled') {
+                results.success_count++
+                results.created_staff.push(result.value)
+            } else {
+                results.error_count++
+                results.errors.push({
+                    row,
+                    email: data.email,
+                    error: result.reason?.message || 'Failed to create staff member'
+                })
+            }
+        })
+    }
+
+    return results
 }

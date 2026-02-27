@@ -35,6 +35,10 @@ const currentYear = new Date().getFullYear();
 const GREGORIAN_YEARS = Array.from({ length: 21 }, (_, i) => currentYear - 10 + i);
 const HIJRI_YEARS = Array.from({ length: 21 }, (_, i) => momentHijri().iYear() - 10 + i);
 
+// Convert Arabic-Indic numerals (٠١٢٣٤٥٦٧٨٩) to Western numerals (0123456789)
+const toWesternNumerals = (str: string) =>
+  str.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660));
+
 interface DayInfo {
   date: Date;
   dateKey: string;
@@ -167,7 +171,7 @@ export function CalendarGrid({
         dayNumber: day.date(),
         isCurrentMonth: day.month() === startOfMonth.month(),
         isToday: day.isSame(moment(), "day"),
-        hijriDate: momentHijri(day.toDate()).format("iD iMMMM"),
+        hijriDate: toWesternNumerals(momentHijri(day.toDate()).format("iD iMMMM")),
       });
       day.add(1, "day");
     }

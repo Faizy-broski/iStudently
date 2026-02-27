@@ -22,13 +22,17 @@ import {
   UserX,
   ChevronLeft,
   ChevronRight,
+  DoorOpen,
+  DoorClosed,
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useCampus } from "@/context/CampusContext"
 import { useGradeLevels, useSections } from "@/hooks/useAcademics"
 import * as timetableApi from "@/lib/api/timetable"
 import * as academicsApi from "@/lib/api/academics"
+import { getCheckpoints, getAttendanceIntegration } from "@/lib/api/entry-exit"
 import type { TimetableEntry, AttendanceRecord } from "@/lib/api/timetable"
+import type { Checkpoint, AttendanceIntegrationRecord } from "@/types"
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused"
 
@@ -51,7 +55,8 @@ function getDayOfWeek(dateStr: string): number {
 }
 
 export default function AdminTakeAttendancePage() {
-  useAuth()
+  const { profile } = useAuth()
+  const schoolId = profile?.school_id || ""
   useCampus()
 
   const { gradeLevels } = useGradeLevels()
@@ -79,6 +84,12 @@ export default function AdminTakeAttendancePage() {
   const [hasChanges, setHasChanges] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState<AttendanceStatus | "all">("all")
+
+  // Entry & Exit integration
+  const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([])
+  const [eeCheckpoint, setEeCheckpoint] = useState("")
+  const [eeData, setEeData] = useState<Map<string, AttendanceIntegrationRecord>>(new Map())
+  const [loadingEE, setLoadingEE] = useState(false)
 
   // Filtered sections by grade
   const filteredSections = useMemo(() => {
@@ -111,6 +122,52 @@ export default function AdminTakeAttendancePage() {
     },
     [selectedDate]
   )
+
+  // Load academic year
+  useEffect(() => {
+    if (!schoolId) return
+    getCheckpoints(schoolId).then(setCheckpoints).catch(() => {})
+  }, [schoolId])
+
+  // Load EE integration when checkpoint or date changes
+  useEffect(() => {
+    if (!eeCheckpoint || !selectedDate || !schoolId) {
+      setEeData(new Map())
+      return
+    }
+    const load = async () => {
+      setLoadingEE(true)
+      try {
+        const records = await getAttendanceIntegration({
+          school_id: schoolId,
+          checkpoint_id: eeCheckpoint,
+          date: selectedDate,
+        })
+        const map = new Map<string, AttendanceIntegrationRecord>()
+        if (Array.isArray(records)) {
+          records.forEach((r: AttendanceIntegrationRecord) => map.set(r.student_id, r))
+        }
+        setEeData(map)
+        // Auto-suggest absent for students who haven't returned
+        if (map.size > 0) {
+          setAttendanceData((prev) =>
+            prev.map((s) => {
+              const ee = map.get(s.student_id)
+              if (ee?.suggest_absent && s.status === "present") {
+                return { ...s, status: "absent" as AttendanceStatus }
+              }
+              return s
+            })
+          )
+        }
+      } catch {
+        setEeData(new Map())
+      } finally {
+        setLoadingEE(false)
+      }
+    }
+    void load()
+  }, [eeCheckpoint, selectedDate, schoolId])
 
   // Load academic year
   useEffect(() => {
@@ -344,8 +401,8 @@ export default function AdminTakeAttendancePage() {
             </Button>
           </div>
 
-          {/* Grade + Section */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Grade + Section + EE Checkpoint */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Select value={selectedGrade} onValueChange={setSelectedGrade}>
               <SelectTrigger>
                 <SelectValue placeholder="Select Grade" />
@@ -374,6 +431,20 @@ export default function AdminTakeAttendancePage() {
                 {filteredSections.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
                     {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={eeCheckpoint || "__none__"} onValueChange={(v) => setEeCheckpoint(v === "__none__" ? "" : v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Entry/Exit Checkpoint (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">None</SelectItem>
+                {checkpoints.map((cp) => (
+                  <SelectItem key={cp.id} value={cp.id}>
+                    {cp.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -581,9 +652,42 @@ export default function AdminTakeAttendancePage() {
                           <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium">
                             {index + 1}
                           </div>
-                          <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0">
                             <p className="font-medium truncate">{student.student_name}</p>
                             <p className="text-xs text-muted-foreground">{student.student_number}</p>
+                            {eeCheckpoint && (() => {
+                              const ee = eeData.get(student.student_id)
+                              if (!ee) return null
+                              return (
+                                <div className="flex items-center gap-2 mt-1">
+                                  {ee.last_record_type && (
+                                    <span className={`inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                                      ee.last_record_type === "ENTRY"
+                                        ? "bg-emerald-100 text-emerald-700"
+                                        : "bg-orange-100 text-orange-700"
+                                    }`}>
+                                      {ee.last_record_type === "ENTRY" ? (
+                                        <DoorOpen className="h-2.5 w-2.5" />
+                                      ) : (
+                                        <DoorClosed className="h-2.5 w-2.5" />
+                                      )}
+                                      {ee.last_record_type} {ee.last_record_time ? ee.last_record_time.substring(0, 5) : ""}
+                                    </span>
+                                  )}
+                                  {ee.evening_leave_return_time && (
+                                    <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded font-medium bg-purple-100 text-purple-700">
+                                      <Clock className="h-2.5 w-2.5" />
+                                      Eve. Leave back {ee.evening_leave_return_time.substring(0, 5)}
+                                    </span>
+                                  )}
+                                  {ee.suggest_absent && (
+                                    <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded font-medium bg-red-100 text-red-700">
+                                      Not returned
+                                    </span>
+                                  )}
+                                </div>
+                              )
+                            })()}
                           </div>
                           <div className="flex items-center gap-1">
                             <button

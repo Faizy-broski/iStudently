@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
-import { getCampuses, Campus } from '@/lib/api/setup-status'
+import { getCampuses, getCampusById, Campus } from '@/lib/api/setup-status'
 import { useVisibilityRefetch } from '@/hooks/useVisibilityRefetch'
 
 interface CampusContextType {
@@ -84,17 +84,20 @@ export function CampusProvider({ children }: { children: ReactNode }) {
     }
 
     const refreshCampuses = async (forceRefresh = false) => {
-        if (!profile?.school_id || profile.role !== 'admin') {
+        if (!profile?.school_id || (profile.role !== 'admin' && profile.role !== 'librarian')) {
             setLoading(false)
             return
         }
 
+        // Librarians always get a fresh fetch — their campus list is small (usually 1 campus)
+        // and we must not show stale data from a previous session or admin context.
+        const effectiveForceRefresh = forceRefresh || profile.role === 'librarian'
         // Check if we have valid cached data
         const cached = getCachedCampuses()
         const now = Date.now()
 
         if (
-            !forceRefresh &&
+            !effectiveForceRefresh &&
             cached &&
             cached.schoolId === profile.school_id &&
             now - cached.timestamp < CACHE_DURATION &&
@@ -107,9 +110,15 @@ export function CampusProvider({ children }: { children: ReactNode }) {
 
             // Ensure selected campus is set
             if (!selectedCampus && cached.campuses.length > 0) {
-                const savedCampusId = localStorage.getItem(SELECTED_CAMPUS_KEY)
-                const savedCampus = savedCampusId ? cached.campuses.find(c => c.id === savedCampusId) : null
-                setSelectedCampus(savedCampus || cached.campuses[0])
+                // For librarians, always prioritise their assigned campus
+                if (profile.role === 'librarian' && profile.campus_id) {
+                    const librarianCampus = cached.campuses.find(c => c.id === profile.campus_id)
+                    setSelectedCampus(librarianCampus || cached.campuses[0])
+                } else {
+                    const savedCampusId = localStorage.getItem(SELECTED_CAMPUS_KEY)
+                    const savedCampus = savedCampusId ? cached.campuses.find(c => c.id === savedCampusId) : null
+                    setSelectedCampus(savedCampus || cached.campuses[0])
+                }
             }
 
             setLoading(false)
@@ -119,21 +128,42 @@ export function CampusProvider({ children }: { children: ReactNode }) {
         // CRITICAL: Only show loading state if we have NO data yet
         // If we already have campuses, do a SILENT background refresh to avoid flicker
         const hasExistingData = campuses.length > 0 || (cached?.campuses?.length ?? 0) > 0
-        
+
         try {
             if (!hasExistingData) {
                 setLoading(true)
             }
             // If we have existing data, continue showing it while fetching fresh data
-            
-            const data = await getCampuses()
+
+            let data = await getCampuses()
+
+            // Fallback for librarians: if the campus list is empty but we know the librarian's
+            // campus_id, fetch that specific campus directly so the sidebar is always populated.
+            if (data.length === 0 && profile.role === 'librarian' && profile.campus_id) {
+                try {
+                    const singleCampus = await getCampusById(profile.campus_id)
+                    if (singleCampus) {
+                        data = [singleCampus]
+                    }
+                } catch {
+                    // Silent fail — remain with empty list
+                }
+            }
 
             setCampuses(data)
             setCampusCache(data, profile.school_id)
 
             // Auto-select first campus if none selected or if selected is not in list
             if (data.length > 0) {
-                if (!selectedCampus || !data.find(c => c.id === selectedCampus.id)) {
+                // For librarian, auto-select their assigned campus
+                if (profile.role === 'librarian' && profile.campus_id) {
+                    const librarianCampus = data.find(c => c.id === profile.campus_id)
+                    if (librarianCampus) {
+                        setSelectedCampus(librarianCampus)
+                    } else {
+                        setSelectedCampus(data[0])
+                    }
+                } else if (!selectedCampus || !data.find(c => c.id === selectedCampus.id)) {
                     const savedCampusId = localStorage.getItem(SELECTED_CAMPUS_KEY)
                     const savedCampus = savedCampusId ? data.find(c => c.id === savedCampusId) : null
                     setSelectedCampus(savedCampus || data[0])
@@ -150,7 +180,7 @@ export function CampusProvider({ children }: { children: ReactNode }) {
         let isMounted = true
 
         const loadCampuses = async () => {
-            if (profile?.school_id && profile?.role === 'admin') {
+            if (profile?.school_id && (profile?.role === 'admin' || profile?.role === 'librarian')) {
                 try {
                     await refreshCampuses(false)
                 } catch {
@@ -167,16 +197,16 @@ export function CampusProvider({ children }: { children: ReactNode }) {
             isMounted = false
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [profile?.school_id, profile?.role])
+    }, [profile?.school_id, profile?.role, profile?.campus_id])
 
     // Refetch data when tab becomes visible again
     useVisibilityRefetch(
         useCallback(() => {
-            if (profile?.school_id && profile?.role === 'admin') {
+            if (profile?.school_id && (profile?.role === 'admin' || profile?.role === 'librarian')) {
                 refreshCampuses(true) // Force refresh when returning to tab
             }
             // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [profile?.school_id, profile?.role])
+        }, [profile?.school_id, profile?.role, profile?.campus_id])
     )
 
     return (

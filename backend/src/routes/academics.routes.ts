@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import * as academicsController from '../controllers/academics.controller'
 import { authenticate } from '../middlewares/auth.middleware'
-import { requireAdmin, requireTeacher, requireStaff } from '../middlewares/role.middleware'
+import { requireAdmin, requireTeacher, requireStaff, requireRole } from '../middlewares/role.middleware'
 
 const router = Router()
 
@@ -21,7 +21,7 @@ router.post(
 
 router.get(
   '/grades',
-  requireTeacher, // Allows super_admin, admin, teacher
+  requireRole('super_admin', 'admin', 'teacher', 'librarian'),
   academicsController.getGradeLevels
 )
 

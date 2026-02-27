@@ -38,6 +38,7 @@ const returnBookSchema = z.object({
   }),
   damage_notes: z.string().optional(),
   collected_amount: z.number().min(0, "Collected amount cannot be negative"),
+  return_comment: z.string().optional(),
 });
 
 type ReturnBookFormData = z.infer<typeof returnBookSchema>;
@@ -63,6 +64,7 @@ export function ReturnBookDialog({ open, onOpenChange, onBookReturned }: ReturnB
       return_condition: "good",
       damage_notes: "",
       collected_amount: 0,
+      return_comment: "",
     },
   });
 
@@ -77,11 +79,11 @@ export function ReturnBookDialog({ open, onOpenChange, onBookReturned }: ReturnB
       try {
         setIsLoadingLoans(true);
         console.log('Searching for loans:', searchQuery);
-        
+
         const response = await getBookLoans({ search: searchQuery, status: "active" }, user.access_token);
-        
+
         console.log('getBookLoans response:', { success: response.success, dataLength: response.data?.length });
-        
+
         if (response.success) {
           setBookLoans(response.data || []);
         } else {
@@ -116,7 +118,7 @@ export function ReturnBookDialog({ open, onOpenChange, onBookReturned }: ReturnB
 
     try {
       setIsSubmitting(true);
-      
+
       // Backend only expects collected_amount
       const response = await returnBook(
         selectedLoan.id,
@@ -124,6 +126,7 @@ export function ReturnBookDialog({ open, onOpenChange, onBookReturned }: ReturnB
           return_condition: data.return_condition,
           damage_notes: data.damage_notes,
           collected_amount: data.collected_amount,
+          return_comment: data.return_comment,
         },
         user.access_token
       );
@@ -344,6 +347,24 @@ export function ReturnBookDialog({ open, onOpenChange, onBookReturned }: ReturnB
                       <FormControl>
                         <Textarea
                           placeholder="Any damage or condition notes (optional)"
+                          className="min-h-[60px]"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="return_comment"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Return Comment</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Any comments about this return (optional)"
                           className="min-h-[60px]"
                           {...field}
                         />

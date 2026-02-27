@@ -213,6 +213,66 @@ export const deleteStaff = async (req: Request, res: Response) => {
     }
 }
 
+// ============================================================================
+// BULK IMPORT
+// ============================================================================
+
+export const getStaffImportTemplate = (_req: Request, res: Response) => {
+    const headers = [
+        'employee_number', 'first_name', 'last_name', 'email', 'phone', 'password',
+        'title', 'role', 'department', 'qualifications', 'date_of_joining',
+        'employment_type', 'base_salary'
+    ]
+    const notes = [
+        '# role values: teacher | librarian | staff | admin | counselor (leave blank to auto-detect from title)',
+        '# employment_type values: full_time | part_time | contract',
+        '# date_of_joining format: YYYY-MM-DD'
+    ]
+    const examples = [
+        ['TCH001', 'John', 'Smith', 'john.smith@school.com', '+1234567890', 'Pass@1234', 'Mathematics Teacher', 'teacher', 'Mathematics', 'B.Ed', '2024-01-15', 'full_time', '5000'],
+        ['LIB001', 'Jane', 'Doe', 'jane.doe@school.com', '+1234567891', 'Pass@1234', 'Head Librarian', 'librarian', 'Library', 'MLS', '2024-01-15', 'full_time', '4000'],
+        ['STF001', 'Mike', 'Johnson', 'mike.j@school.com', '+1234567892', 'Pass@1234', 'Accountant', 'staff', 'Finance', '', '2024-02-01', 'full_time', '3500'],
+        ['CSL001', 'Sara', 'Lee', 'sara.lee@school.com', '+1234567893', 'Pass@1234', 'School Counselor', 'counselor', 'Counseling', 'M.Sc Psychology', '2024-02-01', 'full_time', '4500']
+    ]
+    const rows = [notes.join('\n'), headers.join(','), ...examples.map(e => e.join(','))].join('\n')
+    res.setHeader('Content-Type', 'text/csv')
+    res.setHeader('Content-Disposition', 'attachment; filename="staff_import_template.csv"')
+    res.send(rows)
+}
+
+export const bulkImportStaff = async (req: Request, res: Response) => {
+    try {
+        const adminSchoolId = (req as any).profile?.school_id
+        const creatorId = (req as any).profile?.id
+
+        if (!adminSchoolId) {
+            return res.status(403).json({ success: false, error: 'No school associated with your account' })
+        }
+
+        const { staff, campus_id } = req.body
+
+        if (!Array.isArray(staff) || staff.length === 0) {
+            return res.status(400).json({ success: false, error: 'staff array is required and must not be empty' })
+        }
+
+        if (staff.length > 500) {
+            return res.status(400).json({ success: false, error: 'Maximum 500 staff members per import batch' })
+        }
+
+        const effectiveSchoolId = await getEffectiveSchoolId(adminSchoolId, campus_id)
+        const result = await StaffService.bulkImportStaff(staff, effectiveSchoolId, creatorId || '')
+
+        return res.status(200).json({
+            success: true,
+            data: result,
+            message: `Imported ${result.success_count} staff member(s) with ${result.error_count} error(s)`
+        })
+    } catch (error: any) {
+        console.error('Bulk import staff error:', error)
+        return res.status(500).json({ success: false, error: error.message || 'Bulk import failed' })
+    }
+}
+
 // Get current staff/librarian's own profile
 export const getMyProfile = async (req: Request, res: Response) => {
     try {

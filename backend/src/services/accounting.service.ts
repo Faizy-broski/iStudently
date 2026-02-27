@@ -87,6 +87,7 @@ export interface CreateIncomeDTO {
     income_date: string
     comments?: string
     file_attached?: string
+    payment_method?: string
     created_by?: string
 }
 
@@ -100,6 +101,7 @@ export interface CreateExpenseDTO {
     comments?: string
     file_attached?: string
     receipt_number?: string
+    payment_method?: string
     created_by?: string
 }
 
@@ -281,6 +283,7 @@ class AccountingService {
                 income_date: dto.income_date,
                 comments: dto.comments,
                 file_attached: dto.file_attached,
+                payment_method: dto.payment_method || 'cash',
                 created_by: dto.created_by
             })
             .select(`
@@ -306,7 +309,8 @@ class AccountingService {
                 amount: updates.amount,
                 income_date: updates.income_date,
                 comments: updates.comments,
-                file_attached: updates.file_attached
+                file_attached: updates.file_attached,
+                payment_method: updates.payment_method
             })
             .eq('id', id)
             .eq('campus_id', campusId)
@@ -389,6 +393,7 @@ class AccountingService {
                 payment_date: dto.payment_date,
                 comments: dto.comments,
                 file_attached: dto.file_attached,
+                payment_method: dto.payment_method || 'cash',
                 created_by: dto.created_by
             })
             .select(`
@@ -414,7 +419,8 @@ class AccountingService {
                 amount: updates.amount,
                 payment_date: updates.payment_date,
                 comments: updates.comments,
-                file_attached: updates.file_attached
+                file_attached: updates.file_attached,
+                payment_method: updates.payment_method
             })
             .eq('id', id)
             .eq('campus_id', campusId)

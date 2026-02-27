@@ -91,22 +91,21 @@ export function PrintClassPictures() {
       let bodyHtml = ""
 
       for (const cl of classLists) {
+        const activeStudents = cl.students.filter((s) => includeInactive || !s.end_date)
         bodyHtml += `<div class="class-page">`
-        bodyHtml += `<h1 class="class-title">${cl.course_title}</h1>`
-        if (includeTeacher && cl.teacher_name) {
-          bodyHtml += `<p class="teacher-info">Teacher: ${cl.teacher_name}</p>`
-        }
-        bodyHtml += `<p class="student-count">${cl.students.length} student${cl.students.length !== 1 ? "s" : ""}</p>`
+        bodyHtml += `<h1 class="class-title">${cl.course_title}${cl.teacher_name ? ` - ${cl.teacher_name}` : ""}</h1>`
 
-        bodyHtml += `<div class="photo-grid">`
-        for (const student of cl.students) {
-          if (!includeInactive && student.end_date) continue
-          bodyHtml += `<div class="student-card">`
-          bodyHtml += `<div class="photo-placeholder"></div>`
+        bodyHtml += `<div class="person-grid">`
+        if (includeTeacher && cl.teacher_name) {
+          bodyHtml += `<div class="person-card">`
+          bodyHtml += `<div class="role-label">Teacher</div>`
+          bodyHtml += `<div class="teacher-name">${cl.teacher_name}</div>`
+          bodyHtml += `</div>`
+        }
+        for (const student of activeStudents) {
+          bodyHtml += `<div class="person-card">`
+          bodyHtml += `<div class="role-label">Student</div>`
           bodyHtml += `<div class="student-name">${student.student_name}</div>`
-          if (student.grade_level) {
-            bodyHtml += `<div class="student-grade">${student.grade_level}</div>`
-          }
           bodyHtml += `</div>`
         }
         bodyHtml += `</div>`
@@ -266,10 +265,15 @@ export function PrintClassPictures() {
 
 function buildCPLabel(cp: CoursePeriod): string {
   const parts: string[] = []
+  if (cp.marking_period?.title) parts.push(cp.marking_period.title)
+  if (cp.period?.period_name) parts.push(cp.period.period_name)
   if (cp.course?.short_name) parts.push(cp.course.short_name)
   else if (cp.course?.title) parts.push(cp.course.title)
   if (cp.teacher) {
-    parts.push(`${cp.teacher.first_name} ${cp.teacher.last_name}`.trim())
+    const firstName = cp.teacher.profile?.first_name || cp.teacher.first_name || ""
+    const lastName = cp.teacher.profile?.last_name || cp.teacher.last_name || ""
+    const name = [firstName, lastName].filter(Boolean).join(" ").trim()
+    if (name) parts.push(name)
   }
   return parts.join(" - ") || "Course Period"
 }
@@ -289,51 +293,44 @@ const CLASS_PICTURES_STYLES = `
   .class-page:last-child { page-break-after: avoid; }
 
   .class-title {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
-    margin-bottom: 4px;
-  }
-  .teacher-info {
-    font-size: 14px;
-    color: #555;
-    margin-bottom: 4px;
-  }
-  .student-count {
-    font-size: 12px;
-    color: #b45309;
-    margin-bottom: 16px;
-  }
-
-  .photo-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 16px;
-  }
-
-  .student-card {
     text-align: center;
+    margin-bottom: 20px;
   }
-  .photo-placeholder {
-    width: 100px;
-    height: 120px;
-    background: #e2e8f0;
-    border: 1px solid #cbd5e1;
-    border-radius: 4px;
-    margin: 0 auto 6px;
+
+  .person-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px 8px;
   }
-  .student-name {
+
+  .person-card {
+    text-align: left;
+  }
+
+  .role-label {
     font-size: 11px;
-    font-weight: 600;
-    line-height: 1.3;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 2px;
   }
-  .student-grade {
-    font-size: 10px;
-    color: #666;
+
+  .teacher-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #b45309;
+  }
+
+  .student-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: #1d4ed8;
   }
 
   @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .class-page { padding: 16px 24px; }
-    .photo-grid { grid-template-columns: repeat(5, 1fr); }
+    .person-grid { grid-template-columns: repeat(6, 1fr); }
   }
 `

@@ -412,8 +412,8 @@ export default function TimetablePage() {
       {/* Filters */}
       <Card>
         <CardContent className="py-4">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-            <div className="space-y-1.5">
+          <div className="flex flex-wrap gap-4 items-end">
+            <div className="space-y-1.5 min-w-[160px]">
               <Label className="text-sm">Academic Year</Label>
               <Select value={selectedAcademicYear} onValueChange={setSelectedAcademicYear}>
                 <SelectTrigger>
@@ -429,7 +429,7 @@ export default function TimetablePage() {
               </Select>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 min-w-[160px]">
               <Label className="text-sm">Grade Level</Label>
               <Select value={selectedGrade} onValueChange={setSelectedGrade}>
                 <SelectTrigger>

@@ -688,7 +688,7 @@ export const downloadCoursePeriodSheets = async (req: AuthRequest, res: Response
       schoolId, inputs, start_date, end_date, campus_id, include_inactive || false
     )
 
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    res.setHeader('Content-Type', 'application/zip')
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
     res.send(buffer)
   } catch (error: any) {

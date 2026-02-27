@@ -164,16 +164,40 @@ export default function CampusesPage() {
     }
 
     const handleDelete = async (campus: Campus) => {
-        if (!confirm(`Are you sure you want to delete "${campus.name}"?`)) return
-
-        try {
-            await deleteCampus(campus.id)
-            toast.success("Campus deleted successfully")
-            loadCampuses()
-        } catch (error) {
-            console.error("Error deleting campus:", error)
-            toast.error("Failed to delete campus")
-        }
+        // show toast with confirm/cancel buttons instead of browser dialog
+        toast.custom((t) => (
+            <div className="bg-white rounded-md shadow-lg p-4 max-w-sm">
+                <p className="text-sm">
+                    Are you sure you want to delete "{campus.name}"?
+                </p>
+                <div className="mt-3 flex justify-end space-x-2">
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => toast.dismiss(t.id)}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={async () => {
+                            toast.dismiss(t.id)
+                            try {
+                                await deleteCampus(campus.id)
+                                toast.success("Campus deleted successfully")
+                                loadCampuses()
+                            } catch (error) {
+                                console.error("Error deleting campus:", error)
+                                toast.error("Failed to delete campus")
+                            }
+                        }}
+                    >
+                        Delete
+                    </Button>
+                </div>
+            </div>
+        ))
     }
 
     return (

@@ -34,7 +34,7 @@ export async function waitForSessionValidation(): Promise<boolean> {
   if (Date.now() - lastValidationTime < VALIDATION_COOLDOWN) {
     return true
   }
-  
+
   // If a visibility validation is in progress, wait for it (with timeout)
   if (visibilityValidationPromise) {
     // Add a 5 second timeout to prevent infinite hangs
@@ -44,10 +44,10 @@ export async function waitForSessionValidation(): Promise<boolean> {
         resolve(true) // Assume valid and proceed
       }, 5000)
     })
-    
+
     return Promise.race([visibilityValidationPromise, timeoutPromise])
   }
-  
+
   // If a refresh is in progress, wait for it (with timeout)
   if (isRefreshing && refreshPromise) {
     const timeoutPromise = new Promise<boolean>((resolve) => {
@@ -56,10 +56,10 @@ export async function waitForSessionValidation(): Promise<boolean> {
         resolve(true) // Assume valid and proceed
       }, 5000)
     })
-    
+
     return Promise.race([refreshPromise, timeoutPromise])
   }
-  
+
   // No validation in progress - session should be ready
   return true
 }
@@ -74,12 +74,12 @@ function startVisibilityValidation(): void {
     clearTimeout(visibilityValidationTimeout)
     visibilityValidationTimeout = null
   }
-  
+
   if (!visibilityValidationPromise) {
     visibilityValidationPromise = new Promise((resolve) => {
       visibilityValidationResolve = resolve
     })
-    
+
     // Safety: Auto-resolve after 10 seconds to prevent infinite hangs
     visibilityValidationTimeout = setTimeout(() => {
       console.warn('⚠️ Visibility validation auto-resolved after 10s timeout')
@@ -98,7 +98,7 @@ function completeVisibilityValidation(isValid: boolean): void {
     clearTimeout(visibilityValidationTimeout)
     visibilityValidationTimeout = null
   }
-  
+
   if (visibilityValidationResolve) {
     visibilityValidationResolve(isValid)
     visibilityValidationResolve = null
@@ -151,7 +151,7 @@ export async function handleSessionExpiry() {
     isRefreshing = false
     refreshPromise = null
     lastValidationTime = 0
-    
+
     // Clear any pending visibility validation to prevent hangs
     if (visibilityValidationTimeout) {
       clearTimeout(visibilityValidationTimeout)
@@ -528,8 +528,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Retry succeeded - use the profile
             if (isMounted) {
               // Continue with the retry profile
-              // For teachers and staff, fetch their staff_id and campus_id (school_id in staff table IS the campus)
-              if (retryProfile.role === 'teacher' || retryProfile.role === 'staff') {
+              // For teachers, staff, and librarians, fetch their staff_id and campus_id (school_id in staff table IS the campus)
+              if (retryProfile.role === 'teacher' || retryProfile.role === 'staff' || retryProfile.role === 'librarian') {
                 const { data: staffData } = await supabase
                   .from('staff')
                   .select('id, school_id')
@@ -554,8 +554,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
             return
           } else {
-            // For teachers and staff, fetch their staff_id and campus_id (school_id in staff table IS the campus)
-            if (profile.role === 'teacher' || profile.role === 'staff') {
+            // For teachers, staff, and librarians, fetch their staff_id and campus_id (school_id in staff table IS the campus)
+            if (profile.role === 'teacher' || profile.role === 'staff' || profile.role === 'librarian') {
               const { data: staffData } = await supabase
                 .from('staff')
                 .select('id, school_id')
@@ -594,9 +594,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               // The actual campus filtering happens via selected student in ParentDashboardContext
               profile.campus_id = profile.school_id
 
-              // Adding custom property for parents
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              ;(profile as any).campus_ids = [profile.school_id] // Main school only
+                // Adding custom property for parents
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                ; (profile as any).campus_ids = [profile.school_id] // Main school only
 
               console.log('✅ Parent campus_id set to main school:', profile.school_id)
             }
@@ -676,7 +676,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         // Signal that validation is starting - other modules can wait for this
         startVisibilityValidation()
-        
+
         // Debounce validation by 300ms (reduced from 500ms for faster response)
         visibilityDebounceRef.current = setTimeout(async () => {
           try {
@@ -704,14 +704,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(null)
           setProfile(null)
           profileCache = null // Clear cache on sign out
-          
+
           // CRITICAL: Reset ALL module-level state to prevent stale state on re-login
           isRefreshing = false
           refreshPromise = null
           isHandlingExpiry = false
           expiryHandledAt = 0
           lastValidationTime = 0
-          
+
           // Clear any pending visibility validation
           if (visibilityValidationTimeout) {
             clearTimeout(visibilityValidationTimeout)
@@ -722,7 +722,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             visibilityValidationResolve = null
             visibilityValidationPromise = null
           }
-          
+
           // Clear session check interval on sign out
           if (sessionIntervalRef.current) {
             clearInterval(sessionIntervalRef.current)
@@ -740,7 +740,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isHandlingExpiry = false
           expiryHandledAt = 0
           lastValidationTime = 0
-          
+
           // Clear any stale visibility validation state
           if (visibilityValidationTimeout) {
             clearTimeout(visibilityValidationTimeout)
@@ -751,7 +751,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             visibilityValidationResolve = null
             visibilityValidationPromise = null
           }
-          
+
           // Start session validation interval
           if (!sessionIntervalRef.current) {
             sessionIntervalRef.current = setInterval(() => {
@@ -782,7 +782,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } else {
             // Wrap profile fetch in a timeout to handle cold database scenarios
             const PROFILE_FETCH_TIMEOUT_MS = 8000 // 8 seconds max for profile fetch
-            
+
             const profileFetchPromise = (async () => {
               const { data: profile, error: profileError } = await supabase
                 .from('profiles')
@@ -834,7 +834,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               // RoleGuard should NOT redirect when this is true
               setProfileFetchPending(true)
               setLoading(false)
-              
+
               // Schedule a retry after 3 seconds
               setTimeout(async () => {
                 if (!isMounted) return
@@ -845,7 +845,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     .select('*')
                     .eq('id', session.user.id)
                     .single()
-                  
+
                   if (!retryError && retryProfile && isMounted) {
                     console.log('✅ Profile fetch retry succeeded!')
                     setProfile(retryProfile)
@@ -874,7 +874,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // If profile doesn't load, login page has its own timeout handling
                 return
               }
-              
+
               // Not on auth page - sign out silently
               console.warn('⚠️ Profile not found after retry - signing out silently')
               await supabase.auth.signOut()
@@ -896,8 +896,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             const profile = result.profile
 
-            // For teachers and staff, fetch their staff_id and campus_id (school_id in staff table IS the campus)
-            if (profile.role === 'teacher' || profile.role === 'staff') {
+            // For teachers, staff, and librarians, fetch their staff_id and campus_id (school_id in staff table IS the campus)
+            if (profile.role === 'teacher' || profile.role === 'staff' || profile.role === 'librarian') {
               const { data: staffData } = await supabase
                 .from('staff')
                 .select('id, school_id')
@@ -988,7 +988,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       // Ensure any pending visibility validation is resolved to prevent hangs
       completeVisibilityValidation(true)
-      
+
       window.removeEventListener('storage', handleStorageChange)
       if (visibilityHandlerRef.current) {
         document.removeEventListener('visibilitychange', visibilityHandlerRef.current)
@@ -1003,7 +1003,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (user && loading) {
       // User exists but we're still loading - start circuit breaker timer
       userSetAtRef.current = Date.now()
-      
+
       loadingCircuitBreakerRef.current = setTimeout(() => {
         // If we still have a user and loading is still true after timeout, force it false
         if (user && loading) {
@@ -1011,7 +1011,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoading(false)
         }
       }, LOADING_CIRCUIT_BREAKER_MS)
-      
+
       return () => {
         if (loadingCircuitBreakerRef.current) {
           clearTimeout(loadingCircuitBreakerRef.current)

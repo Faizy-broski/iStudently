@@ -228,6 +228,72 @@ export async function getStudentsByRolloverStatus(
   return rolloverFetch(`/enrollment/by-status?${params}`);
 }
 
+// ---- Semester Rollover ----
+
+export interface SemesterInfo {
+  id: string;
+  title: string;
+  short_name: string;
+  start_date: string;
+  end_date: string;
+}
+
+export interface SemesterRolloverPreview {
+  students: {
+    pending: number;
+    promoted: number;
+    retained: number;
+    dropped: number;
+    graduated: number;
+    transferred: number;
+    total_active: number;
+  };
+  semesters: SemesterInfo[];
+}
+
+export interface SemesterRolloverResult {
+  success: boolean;
+  promoted: number;
+  retained: number;
+  dropped: number;
+  graduated: number;
+  transferred: number;
+  total: number;
+}
+
+/**
+ * Preview semester rollover (dry-run within one academic year)
+ */
+export async function previewSemesterRollover(
+  academicYearId: string,
+  schoolId: string,
+  campusId?: string
+): Promise<SemesterRolloverPreview> {
+  return rolloverFetch('/rollover/semester/preview', {
+    method: 'POST',
+    body: JSON.stringify({
+      academic_year_id: academicYearId,
+      school_id: schoolId,
+      campus_id: campusId,
+    }),
+  });
+}
+
+/**
+ * Execute semester rollover within one academic year
+ */
+export async function executeSemesterRollover(request: {
+  academic_year_id: string;
+  semester_end_date: string;
+  school_id: string;
+  campus_id?: string;
+}): Promise<SemesterRolloverResult> {
+  return rolloverFetch('/rollover/semester/execute', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  });
+}
+
 /**
  * Export enrollment types for convenience
  */

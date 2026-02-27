@@ -34,15 +34,20 @@ export class SchoolSettingsController {
         return
       }
 
-      const settings = await this.reminderService.getSettings(schoolId)
+      const campusId = req.query.campus_id as string | undefined
+
+      const settings = await this.reminderService.getSettings(schoolId, campusId || null)
 
       res.json({
         success: true,
         data: settings || {
           school_id: schoolId,
+          campus_id: campusId || null,
           diary_reminder_enabled: false,
           diary_reminder_time: '07:00',
           diary_reminder_days: [1, 2, 3, 4, 5],
+          auto_remove_inactive: false,
+          default_payment_method: 'cash',
         },
       })
     } catch (error: any) {
@@ -62,7 +67,16 @@ export class SchoolSettingsController {
         return
       }
 
-      const { diary_reminder_enabled, diary_reminder_time, diary_reminder_days } = req.body
+      const {
+        diary_reminder_enabled,
+        diary_reminder_time,
+        diary_reminder_days,
+        auto_remove_inactive,
+        default_payment_method,
+        campus_id: bodyCampusId,
+      } = req.body
+
+      const campusId = (req.query.campus_id as string | undefined) || bodyCampusId || null
 
       // Validate time format
       if (diary_reminder_time && !/^\d{2}:\d{2}$/.test(diary_reminder_time)) {
@@ -82,7 +96,11 @@ export class SchoolSettingsController {
         diary_reminder_enabled,
         diary_reminder_time,
         diary_reminder_days,
-      })
+        hostel: {
+          auto_remove_inactive,
+        },
+        default_payment_method,
+      }, campusId)
 
       res.json({ success: true, data: settings })
     } catch (error: any) {

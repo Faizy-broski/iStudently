@@ -34,7 +34,7 @@ export default function AddAbsencesPage() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth())
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [selectedDates, setSelectedDates] = useState<Set<string>>(() => {
-    // Auto-check today like RosarioSIS
+    // Auto-check today 
     const today = new Date()
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
     return new Set([todayStr])
@@ -44,6 +44,8 @@ export default function AddAbsencesPage() {
   const [gradeFilter, setGradeFilter] = useState<string>('all')
   const [sectionFilter, setSectionFilter] = useState<string>('all')
   const [submitting, setSubmitting] = useState(false)
+  // Off-day configuration: 0=Sun,1=Mon,...,5=Fri,6=Sat — default Fri+Sat off
+  const [offDays, setOffDays] = useState<number[]>([5, 6])
 
   // Fetch attendance codes
   const { data: codesRes, isLoading: codesLoading } = useSWR(
@@ -139,20 +141,27 @@ export default function AddAbsencesPage() {
     'July', 'August', 'September', 'October', 'November', 'December']
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
+  const toggleOffDay = (dayIndex: number) => {
+    setOffDays(prev =>
+      prev.includes(dayIndex) ? prev.filter(d => d !== dayIndex) : [...prev, dayIndex]
+    )
+  }
+
   const calendarDays = useMemo(() => {
     const days: { date: number; dateStr: string; isWeekend: boolean; isSchoolDay: boolean }[] = []
     for (let d = 1; d <= daysInMonth; d++) {
-      const day = new Date(selectedYear, selectedMonth, d).getDay()
+      const dayOfWeek = new Date(selectedYear, selectedMonth, d).getDay()
       const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+      const isOff = offDays.includes(dayOfWeek)
       days.push({
         date: d,
         dateStr,
-        isWeekend: day === 0 || day === 6,
-        isSchoolDay: schoolDays.size === 0 ? true : schoolDays.has(dateStr)
+        isWeekend: isOff,
+        isSchoolDay: !isOff && (schoolDays.size === 0 ? true : schoolDays.has(dateStr))
       })
     }
     return days
-  }, [selectedMonth, selectedYear, daysInMonth, schoolDays])
+  }, [selectedMonth, selectedYear, daysInMonth, schoolDays, offDays])
 
   // Calendar grid (6 rows x 7 cols)
   const calendarGrid = useMemo(() => {
@@ -380,6 +389,20 @@ export default function AddAbsencesPage() {
 
           {/* Calendar */}
           <div className="space-y-2">
+            {/* Off-day selector */}
+            <div className="flex items-center gap-3 justify-center flex-wrap">
+              <span className="text-xs text-muted-foreground font-medium">Off days:</span>
+              {dayNames.map((name, i) => (
+                <label key={i} className="flex items-center gap-1 text-xs cursor-pointer select-none">
+                  <Checkbox
+                    checked={offDays.includes(i)}
+                    onCheckedChange={() => toggleOffDay(i)}
+                    className="h-3.5 w-3.5"
+                  />
+                  <span className={offDays.includes(i) ? 'text-red-500 font-medium' : 'text-muted-foreground'}>{name}</span>
+                </label>
+              ))}
+            </div>
             <div className="flex items-center gap-2 justify-center">
               <Select
                 value={String(selectedMonth)}
@@ -543,13 +566,13 @@ export default function AddAbsencesPage() {
                         />
                       </TableCell>
                       <TableCell className="font-medium">
-                        {student.profiles?.first_name} {student.profiles?.last_name}
+                        {student.profile?.first_name || student.profiles?.first_name} {student.profile?.last_name || student.profiles?.last_name}
                       </TableCell>
                       <TableCell>
                         {student.admission_number || student.student_number || '-'}
                       </TableCell>
                       <TableCell>
-                        {student.grade_levels?.name || student.sections?.grades?.name || '-'}
+                        {student.grade_level || student.grade_levels?.name || '-'}
                       </TableCell>
                     </TableRow>
                   ))

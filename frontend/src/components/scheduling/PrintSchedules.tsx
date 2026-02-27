@@ -67,8 +67,8 @@ export function PrintSchedules() {
 
   // Fetch marking periods
   const { data: markingPeriodsData } = useSWR(
-    academicYearId ? ["marking-periods-print", academicYearId] : null,
-    async () => getMarkingPeriods(academicYearId!),
+    ["marking-periods-print", campusId],
+    async () => getMarkingPeriods(campusId),
     { revalidateOnFocus: false }
   )
 

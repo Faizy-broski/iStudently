@@ -18,6 +18,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
@@ -29,13 +30,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   getRecords,
   getCheckpoints,
   createRecord,
   searchStudents,
+  deleteRecord,
 } from "@/lib/api/entry-exit";
 import { EntryExitRecord, Checkpoint } from "@/types";
+import { toast } from "sonner";
 import {
   Plus,
   Filter,
@@ -44,6 +48,9 @@ import {
   DoorOpen,
   DoorClosed,
   Clock,
+  Trash2,
+  Download,
+  AlertTriangle,
 } from "lucide-react";
 
 export default function RecordsPage() {
@@ -53,6 +60,12 @@ export default function RecordsPage() {
   const [records, setRecords] = useState<EntryExitRecord[]>([]);
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Selection & delete
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null); // single-row delete
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Filters
   const [filterCheckpoint, setFilterCheckpoint] = useState("all");
@@ -98,6 +111,7 @@ export default function RecordsPage() {
   async function loadRecords() {
     try {
       setLoading(true);
+      setSelected(new Set());
       const data = await getRecords({
         school_id: schoolId,
         checkpoint_id:
@@ -174,6 +188,78 @@ export default function RecordsPage() {
     setStudentSearch("");
   }
 
+  // ── CSV Export ────────────────────────────────────────────────────────────
+  function exportCSV() {
+    if (records.length === 0) return;
+    const header = ["Time", "Person", "Type", "Direction", "Checkpoint", "Status", "Notes"];
+    const rows = records.map((r) => [
+      new Date(r.recorded_at).toLocaleString(),
+      r.person_name || r.person_id,
+      r.person_type,
+      r.record_type,
+      r.checkpoint_name || r.checkpoint_id,
+      r.status,
+      r.description || "",
+    ]);
+    const csv = [header, ...rows]
+      .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `entry-exit-records-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // ── Delete helpers ────────────────────────────────────────────────────────
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    setSelected((prev) =>
+      prev.size === records.length
+        ? new Set()
+        : new Set(records.map((r) => r.id)),
+    );
+  }
+
+  async function handleDeleteSingle() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await deleteRecord(deleteTarget);
+      setRecords((prev) => prev.filter((r) => r.id !== deleteTarget));
+      setDeleteTarget(null);
+      toast.success("Record deleted");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to delete record");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function handleDeleteBulk() {
+    setDeleting(true);
+    try {
+      await Promise.all([...selected].map((id) => deleteRecord(id)));
+      setRecords((prev) => prev.filter((r) => !selected.has(r.id)));
+      setSelected(new Set());
+      setBulkDeleteOpen(false);
+      toast.success(`${selected.size} record(s) deleted`);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to delete records");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   function getStatusBadge(status: string) {
     switch (status) {
       case "authorized":
@@ -210,7 +296,22 @@ export default function RecordsPage() {
             View and manage all entry and exit records
           </p>
         </div>
-        <Dialog
+        <div className="flex items-center gap-2">
+          {selected.size > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setBulkDeleteOpen(true)}
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Delete ({selected.size})
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={exportCSV} disabled={records.length === 0}>
+            <Download className="h-4 w-4 mr-1" />
+            Export CSV
+          </Button>
+          <Dialog
           open={dialogOpen}
           onOpenChange={(open) => {
             setDialogOpen(open);
@@ -355,6 +456,7 @@ export default function RecordsPage() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Filters */}
@@ -453,6 +555,12 @@ export default function RecordsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={selected.size === records.length && records.length > 0}
+                      onCheckedChange={toggleAll}
+                    />
+                  </TableHead>
                   <TableHead>Direction</TableHead>
                   <TableHead>Person</TableHead>
                   <TableHead>Type</TableHead>
@@ -460,11 +568,18 @@ export default function RecordsPage() {
                   <TableHead>Status</TableHead>
                   <TableHead>Time</TableHead>
                   <TableHead>Notes</TableHead>
+                  <TableHead className="w-10"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {records.map((record) => (
-                  <TableRow key={record.id}>
+                  <TableRow key={record.id} className={selected.has(record.id) ? "bg-muted/50" : ""}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selected.has(record.id)}
+                        onCheckedChange={() => toggleSelect(record.id)}
+                      />
+                    </TableCell>
                     <TableCell>
                       <div
                         className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium ${
@@ -508,6 +623,16 @@ export default function RecordsPage() {
                     <TableCell className="max-w-32 truncate text-sm text-muted-foreground">
                       {record.description || "—"}
                     </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => setDeleteTarget(record.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -515,6 +640,52 @@ export default function RecordsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Single-record delete confirm */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Delete Record
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This record will be permanently deleted. This action cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteSingle} disabled={deleting}>
+              {deleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk delete confirm */}
+      <Dialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Delete {selected.size} Record{selected.size !== 1 ? "s" : ""}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {selected.size} record{selected.size !== 1 ? "s" : ""} will be permanently deleted. This action cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkDeleteOpen(false)} disabled={deleting}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteBulk} disabled={deleting}>
+              {deleting ? "Deleting..." : `Delete ${selected.size}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

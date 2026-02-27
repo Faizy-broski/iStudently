@@ -53,12 +53,27 @@ async function apiRequest<T = unknown>(
 // Types
 // ==================
 
+export interface HostelSettings {
+  auto_remove_inactive?: boolean
+}
+
+export type PaymentMethodOption = 'cash' | 'online' | 'bank_deposit' | 'cheque'
+
+export const PAYMENT_METHOD_OPTIONS: { value: PaymentMethodOption; label: string }[] = [
+  { value: 'cash', label: 'Cash' },
+  { value: 'online', label: 'Online' },
+  { value: 'bank_deposit', label: 'Bank Deposit' },
+  { value: 'cheque', label: 'Cheque' },
+]
+
 export interface SchoolSettings {
   id: string
   school_id: string
   diary_reminder_enabled: boolean
   diary_reminder_time: string
   diary_reminder_days: number[]
+  hostel?: HostelSettings
+  default_payment_method?: PaymentMethodOption
   created_at: string
   updated_at: string
 }
@@ -67,20 +82,24 @@ export interface UpdateSchoolSettings {
   diary_reminder_enabled?: boolean
   diary_reminder_time?: string
   diary_reminder_days?: number[]
+  hostel?: HostelSettings
+  default_payment_method?: PaymentMethodOption
 }
 
 // ==================
 // API Functions
 // ==================
 
-export async function getSchoolSettings() {
-  return apiRequest<SchoolSettings>('/school-settings')
+export async function getSchoolSettings(campusId?: string | null) {
+  const qs = campusId ? `?campus_id=${encodeURIComponent(campusId)}` : ''
+  return apiRequest<SchoolSettings>(`/school-settings${qs}`)
 }
 
-export async function updateSchoolSettings(settings: UpdateSchoolSettings) {
-  return apiRequest<SchoolSettings>('/school-settings', {
+export async function updateSchoolSettings(settings: UpdateSchoolSettings, campusId?: string | null) {
+  const qs = campusId ? `?campus_id=${encodeURIComponent(campusId)}` : ''
+  return apiRequest<SchoolSettings>(`/school-settings${qs}`, {
     method: 'PUT',
-    body: JSON.stringify(settings),
+    body: JSON.stringify({ ...settings, campus_id: campusId || undefined }),
   })
 }
 

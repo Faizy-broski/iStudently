@@ -90,19 +90,27 @@ export default function AttendanceSummaryPage() {
     }
   }
 
-  const handleCreateReport = useCallback(() => {
+  const handleCreateReport = useCallback(async () => {
     if (selectedStudents.size === 0) {
       toast.error('Please select at least one student')
       return
     }
-    // Download the export summary Excel
-    const url = attendanceApi.getExportSummaryUrl(
-      schoolId,
-      startDateStr,
-      endDateStr,
-      selectedCampus?.id
-    )
-    window.open(url, '_blank')
+    try {
+      const blob = await attendanceApi.exportAttendanceSummary(
+        schoolId,
+        startDateStr,
+        endDateStr,
+        selectedCampus?.id
+      )
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `attendance-summary-${startDateStr}-${endDateStr}.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to export report')
+    }
   }, [schoolId, startDateStr, endDateStr, selectedCampus?.id, selectedStudents])
 
   const allSelected = data !== null && data.length > 0 && selectedStudents.size === data.length

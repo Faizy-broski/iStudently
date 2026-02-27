@@ -94,6 +94,7 @@ export interface DirectPaymentDTO {
     file_url?: string
     receipt_number?: string
     created_by?: string
+    payment_method?: string
 }
 
 export interface StudentFeeOverride {
@@ -639,6 +640,29 @@ class FeesService {
     /**
      * Get all payments for a specific student (direct payments)
      */
+    async getStudentInfo(studentId: string, schoolId: string): Promise<any> {
+        const { data, error } = await supabase
+            .from('students')
+            .select('id, student_number, profiles(first_name, last_name)')
+            .eq('id', studentId)
+            .eq('school_id', schoolId)
+            .single()
+
+        if (error) return null
+
+        // Normalize profiles (can be object or array depending on Supabase version)
+        const profileData = Array.isArray(data?.profiles)
+            ? data.profiles[0]
+            : data?.profiles
+
+        return {
+            id: data.id,
+            student_number: data.student_number,
+            first_name: profileData?.first_name || '',
+            last_name: profileData?.last_name || ''
+        }
+    }
+
     async getStudentPayments(
         studentId: string,
         schoolId: string
@@ -765,7 +789,7 @@ class FeesService {
                 school_id: schoolId,
                 student_fee_id: existingFee.id,
                 amount: payment.amount,
-                payment_method: 'cash',
+                payment_method: payment.payment_method || 'cash',
                 payment_date: payment.payment_date || new Date().toISOString(),
                 comment: payment.comment,
                 is_lunch_payment: payment.is_lunch_payment || false,

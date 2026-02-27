@@ -31,6 +31,7 @@ export interface AccountingIncome {
     income_date: string
     comments?: string
     file_attached?: string
+    payment_method?: string
     created_by?: string
     created_at: string
     updated_at: string
@@ -48,6 +49,7 @@ export interface AccountingExpense {
     payment_date: string
     comments?: string
     file_attached?: string
+    payment_method?: string
     created_by?: string
     created_at: string
     updated_at: string
@@ -96,6 +98,7 @@ export interface CreateIncomeDTO {
     income_date: string
     comments?: string
     file_attached?: string
+    payment_method?: string
 }
 
 export interface UpdateIncomeDTO {
@@ -106,6 +109,7 @@ export interface UpdateIncomeDTO {
     income_date?: string
     comments?: string
     file_attached?: string
+    payment_method?: string
 }
 
 export interface CreateExpenseDTO {
@@ -117,6 +121,7 @@ export interface CreateExpenseDTO {
     payment_date: string
     comments?: string
     file_attached?: string
+    payment_method?: string
 }
 
 export interface UpdateExpenseDTO {
@@ -128,6 +133,7 @@ export interface UpdateExpenseDTO {
     comments?: string
     file_attached?: string
     receipt_number?: string
+    payment_method?: string
 }
 
 export interface CreateStaffPaymentDTO extends CreateExpenseDTO {

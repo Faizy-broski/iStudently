@@ -114,6 +114,26 @@ class CoursesService {
   // COURSE PERIODS CRUD
   // ──────────────────────────────────────────────────────────────────────────
 
+  async getAllCoursePeriods(schoolId: string, campusId?: string): Promise<CoursePeriod[]> {
+    let query = supabase
+      .from('course_periods')
+      .select(`
+        *,
+        course:courses(id, title, short_name, subject_id),
+        teacher:staff!teacher_id(id, profile_id, profile:profiles!profile_id(first_name, last_name)),
+        period:periods(id, period_name, period_number),
+        marking_period:marking_periods(id, title, short_name, mp_type)
+      `)
+      .eq('school_id', schoolId)
+      .order('title')
+
+    if (campusId) query = query.eq('campus_id', campusId)
+
+    const { data, error } = await query
+    if (error) throw new Error(`Failed to fetch course periods: ${error.message}`)
+    return (data || []) as CoursePeriod[]
+  }
+
   async getCoursePeriods(courseId: string): Promise<CoursePeriod[]> {
     const { data, error } = await supabase
       .from('course_periods')
@@ -124,6 +144,7 @@ class CoursesService {
         secondary_teacher:staff!secondary_teacher_id(id, profile_id, profile:profiles!profile_id(first_name, last_name)),
         section:sections(id, name, grade_level:grade_levels(id, name)),
         period:periods(id, period_name, period_number, start_time, end_time),
+        marking_period:marking_periods(id, title, short_name, mp_type),
         grading_scale:grading_scales(id, title, type)
       `)
       .eq('course_id', courseId)

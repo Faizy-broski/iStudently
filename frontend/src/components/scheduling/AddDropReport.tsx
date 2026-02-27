@@ -82,8 +82,9 @@ export function AddDropReport() {
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return ""
-    const d = new Date(dateStr)
-    return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "2-digit" })
+    const [y, m, d] = dateStr.substring(0, 10).split("-")
+    const date = new Date(Number(y), Number(m) - 1, Number(d))
+    return date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "2-digit" })
   }
 
   const days31 = Array.from({ length: 31 }, (_, i) => String(i + 1))
@@ -255,7 +256,7 @@ export function AddDropReport() {
                     <td className="px-4 py-3 text-primary font-medium">
                       {record.student_name || record.student_id}
                     </td>
-                    <td className="px-4 py-3">{record.student_id.substring(0, 8)}</td>
+                    <td className="px-4 py-3">{record.student_number || "—"}</td>
                     <td className="px-4 py-3">{record.course_title}</td>
                     <td className="px-4 py-3">{record.course_period_title || "—"}</td>
                     <td className="px-4 py-3">

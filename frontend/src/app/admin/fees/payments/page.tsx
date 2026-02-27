@@ -184,8 +184,8 @@ export default function PaymentsPage() {
         if (!filteredStudents.length) return
         
         const headers = viewMode === 'expanded' 
-            ? ['Student', 'Rosariosis ID', 'Grade Level', 'Ethnicity', 'Gender', 'Mailing Address', 'City', 'State', 'Zip Code']
-            : ['Student', 'Rosariosis ID', 'Grade Level']
+            ? ['Student', 'Istudently ID', 'Grade Level', 'Ethnicity', 'Gender', 'Mailing Address', 'City', 'State', 'Zip Code']
+            : ['Student', 'Istudently ID', 'Grade Level']
         
         const rows = filteredStudents.map(s => {
             const addr = getStudentAddress(s)
@@ -326,7 +326,7 @@ export default function PaymentsPage() {
                                         <TableHeader>
                                             <TableRow className="bg-gray-100">
                                                 <TableHead className="text-[#3d8fb5] font-semibold">STUDENT</TableHead>
-                                                <TableHead className="text-[#3d8fb5] font-semibold">ROSARIOSIS ID</TableHead>
+                                                <TableHead className="text-[#3d8fb5] font-semibold">ISTUDENTLY ID</TableHead>
                                                 <TableHead className="text-[#3d8fb5] font-semibold">GRADE LEVEL</TableHead>
                                                 <TableHead className="text-[#3d8fb5] font-semibold">RELATIONSHIP</TableHead>
                                             </TableRow>
@@ -363,7 +363,7 @@ export default function PaymentsPage() {
                             <TableHeader>
                                 <TableRow className="bg-gray-100">
                                     <TableHead className="text-[#3d8fb5] font-semibold">STUDENT</TableHead>
-                                    <TableHead className="text-[#3d8fb5] font-semibold">ROSARIOSIS ID</TableHead>
+                                    <TableHead className="text-[#3d8fb5] font-semibold">ISTUDENTLY ID</TableHead>
                                     <TableHead className="text-[#3d8fb5] font-semibold">GRADE LEVEL</TableHead>
                                     {viewMode === 'expanded' && (
                                         <>

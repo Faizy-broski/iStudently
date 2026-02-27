@@ -78,7 +78,7 @@ export async function uploadMultipleFiles(
     const batchSize = 3
     for (let i = 0; i < files.length; i += batchSize) {
       const batch = files.slice(i, i + batchSize)
-      
+
       const results = await Promise.all(
         batch.map(file => uploadAssignmentFile(file, userId, assignmentId, schoolId, campusId, academicYearId))
       )
@@ -92,7 +92,7 @@ export async function uploadMultipleFiles(
         }
         urls.push(result.url)
         completed++
-        
+
         if (onProgress) {
           onProgress((completed / files.length) * 100)
         }
@@ -135,6 +135,78 @@ export async function deleteAssignmentFile(
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to delete file'
+    }
+  }
+}
+
+// ==================== LIBRARY DOCUMENT STORAGE ====================
+
+/**
+ * Upload a library document file to Supabase Storage ('books' bucket)
+ * Path structure: {school_id}/documents/{category_id}/{timestamp}-{filename}
+ */
+export async function uploadLibraryDocument(
+  file: File,
+  schoolId: string,
+  categoryId?: string
+): Promise<{ success: boolean; url?: string; path?: string; error?: string }> {
+  try {
+    const timestamp = Date.now()
+    const fileExt = file.name.split('.').pop()
+    const safeName = file.name
+      .replace(/\.[^/.]+$/, '')
+      .replace(/[^a-zA-Z0-9_-]/g, '_')
+      .substring(0, 50)
+    const fileName = `${timestamp}-${safeName}.${fileExt}`
+    const folder = categoryId || 'uncategorized'
+    const filePath = `${schoolId}/documents/${folder}/${fileName}`
+
+    const { data, error } = await supabase.storage
+      .from('books')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+      })
+
+    if (error) {
+      console.error('Library document upload error:', error)
+      return { success: false, error: error.message }
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('books')
+      .getPublicUrl(data.path)
+
+    return { success: true, url: publicUrl, path: data.path }
+  } catch (error: unknown) {
+    console.error('Library document upload error:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to upload file',
+    }
+  }
+}
+
+/**
+ * Delete a library document file from Supabase Storage ('books' bucket)
+ */
+export async function deleteLibraryDocument(
+  filePath: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error } = await supabase.storage
+      .from('books')
+      .remove([filePath])
+
+    if (error) {
+      return { success: false, error: error.message }
+    }
+
+    return { success: true }
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to delete file',
     }
   }
 }

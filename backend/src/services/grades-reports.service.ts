@@ -61,7 +61,7 @@ class GradesReportsService {
           does_honor_roll,
           grading_scale_id,
           grading_scale:grading_scales(hr_gpa_value, hhr_gpa_value),
-          teacher:staff!teacher_id(profile:profiles(first_name, last_name))
+          teacher:staff(profile:profiles(first_name, last_name))
         ),
         student:students!inner(
           id,

@@ -35,9 +35,21 @@ import {
   Package,
   Bell,
   Link2,
+  Camera,
   RefreshCw,
   MessageSquare,
   History,
+  AlertCircle,
+  Star,
+  UserPlus,
+  ClipboardCheck,
+  CalendarPlus,
+  ShieldX,
+  ShieldPlus,
+  CalendarOff,
+  HelpCircle,
+  Mail,
+  Send,
   type LucideIcon,
 } from "lucide-react";
 import { UserRole } from "@/types";
@@ -97,11 +109,13 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "Periods", href: "/admin/periods", icon: Clock },
       { title: "Marking Periods", href: "/admin/marking-periods", icon: Layers },
       { title: "Timetable", href: "/admin/timetable", icon: Clock },
+      { title: "Bulk Import Timetable", href: "/admin/timetable/import", icon: Upload },
       { title: "Calendar", href: "/admin/events", icon: Calendar },
       { title: "Portal Notes", href: "/admin/portal/notes", icon: FileText },
       { title: "Portal Polls", href: "/admin/portal/polls", icon: BarChart3 },
       { title: "Utilities", href: "#", icon: Settings, isLabel: true },
       { title: "Year-End Rollover", href: "/admin/rollover", icon: RefreshCw },
+      { title: "Semester Rollover", href: "/admin/rollover/semester", icon: RefreshCw },
     ],
   },
   {
@@ -199,6 +213,11 @@ const adminMenuItems: SidebarMenuItem[] = [
         icon: Users,
       },
       {
+        title: "Bulk Import",
+        href: "/admin/students/bulk-import",
+        icon: Upload,
+      },
+      {
         title: "Custom Fields",
         href: "/admin/students/custom-fields",
         icon: Settings,
@@ -208,7 +227,7 @@ const adminMenuItems: SidebarMenuItem[] = [
         href: "/admin/students/id-card",
         icon: CreditCard,
       },
-            {
+      {
         title: "Certificate",
         href: "/admin/students/certificate-enrollment",
         icon: Award,
@@ -234,6 +253,83 @@ const adminMenuItems: SidebarMenuItem[] = [
         href: "/admin/students/advanced-report",
         icon: FileText,
       },
+      { title: "Email Students", href: "#", icon: Mail, isLabel: true },
+      { title: "Send Email", href: "/admin/email/students", icon: Mail },
+    ],
+  },
+  {
+    title: "Email",
+    href: "/admin/email/students",
+    icon: Mail,
+    subItems: [
+      { title: "Send to Students", href: "/admin/email/students", icon: Send },
+      { title: "Send to Staff", href: "/admin/email/staff", icon: Send },
+      { title: "Email Log", href: "/admin/email/log", icon: FileText },
+      { title: "Notifications", href: "#", icon: Bell, isLabel: true },
+      { title: "Email Notifications", href: "/admin/email/notifications", icon: Bell },
+   
+    ],
+  },
+  {
+    title: "Activities",
+    href: "/admin/activities",
+    icon: Star,
+    subItems: [
+      { title: "Student Screen", href: "/admin/activities", icon: Star },
+      { title: "Add Activity", href: "/admin/activities/add-activity", icon: UserPlus },
+      { title: "Enter Eligibility", href: "/admin/activities/enter-eligibility", icon: ClipboardCheck },
+      { title: "Reports", href: "#", icon: BarChart3, isLabel: true },
+      { title: "Student List", href: "/admin/activities/reports/student-list", icon: Users },
+      { title: "Teacher Completion", href: "/admin/activities/reports/teacher-completion", icon: CheckSquare },
+      { title: "Setup", href: "#", icon: Settings, isLabel: true },
+      { title: "Activities", href: "/admin/activities/setup/activities", icon: Settings },
+      { title: "Entry Times", href: "/admin/activities/setup/entry-times", icon: Clock },
+    ],
+  },
+  {
+    title: "Discipline",
+    href: "/admin/discipline",
+    icon: AlertCircle,
+    subItems: [
+      { title: "Add Referral", href: "/admin/discipline/add-referral", icon: Plus },
+      { title: "Referrals", href: "/admin/discipline", icon: ClipboardList },
+      { title: "Reports", href: "#", icon: BarChart3, isLabel: true },
+      { title: "Category Breakdown", href: "/admin/discipline/reports/category-breakdown", icon: BarChart3 },
+      { title: "Breakdown over Time", href: "/admin/discipline/reports/category-breakdown-time", icon: TrendingUp },
+      { title: "By Student Field", href: "/admin/discipline/reports/breakdown-student-field", icon: Users },
+      { title: "Discipline Log", href: "/admin/discipline/reports/log", icon: FileText },
+      { title: "Setup", href: "#", icon: Settings, isLabel: true },
+      { title: "Referral Form", href: "/admin/discipline/referral-form", icon: Settings },
+      { title: "Email Students", href: "#", icon: Mail, isLabel: true },
+      { title: "Send Discipline Log", href: "/admin/discipline/email-students", icon: Mail },
+      { title: "Email Parents", href: "#", icon: Mail, isLabel: true },
+      { title: "Send Discipline Log", href: "/admin/discipline/email-parents", icon: Mail },
+    ],
+  },
+  {
+    title: "Quiz",
+    href: "/admin/quiz",
+    icon: HelpCircle,
+    subItems: [
+      { title: "Quizzes", href: "/admin/quiz/quizzes", icon: HelpCircle },
+      { title: "Questions", href: "/admin/quiz/questions", icon: BookOpen },
+      { title: "Premium", href: "#", icon: BarChart3, isLabel: true },
+      { title: "Answer Breakdown", href: "/admin/quiz/answer-breakdown", icon: BarChart3 },
+      { title: "Configuration", href: "/admin/quiz/configuration", icon: Settings },
+    ],
+  },
+  {
+    title: "Staff Absences",
+    href: "/admin/staff-absences",
+    icon: CalendarOff,
+    subItems: [
+      { title: "Add Absence", href: "/admin/staff-absences/add-absence", icon: Plus },
+      { title: "Absences", href: "/admin/staff-absences/absences", icon: CalendarOff },
+      { title: "Reports", href: "#", icon: BarChart3, isLabel: true },
+      { title: "Cancelled Classes", href: "/admin/staff-absences/cancelled-classes", icon: BookOpen },
+      { title: "Days Absent Breakdown", href: "/admin/staff-absences/breakdown", icon: BarChart3 },
+      { title: "Setup", href: "#", icon: Settings, isLabel: true },
+      { title: "Absence Fields", href: "/admin/staff-absences/fields", icon: Settings },
     ],
   },
   {
@@ -262,6 +358,7 @@ const adminMenuItems: SidebarMenuItem[] = [
     subItems: [
       { title: "All Staff", href: "/admin/staff", icon: Users },
       { title: "Add Staff", href: "/admin/staff/add-staff", icon: Plus },
+      { title: "Bulk Import", href: "/admin/staff/bulk-import", icon: Upload },
       { title: "Custom Fields", href: "/admin/staff/custom-fields", icon: Settings },
       { title: "Settings", href: "/admin/staff/settings", icon: Settings },
     ],
@@ -291,6 +388,8 @@ const adminMenuItems: SidebarMenuItem[] = [
         href: "/admin/parents/custom-fields",
         icon: Settings,
       },
+      { title: "Email Parents", href: "#", icon: Mail, isLabel: true },
+      { title: "Notifications", href: "/admin/email/notifications", icon: Bell },
     ],
   },
   {
@@ -314,6 +413,8 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "Delete Duplicate Attendance", href: "/admin/attendance/delete-duplicates", icon: Award },
       { title: "Setup", href: "#", icon: Settings, isLabel: true },
       { title: "Attendance Codes", href: "/admin/attendance/codes", icon: Settings },
+      { title: "Email Parents", href: "#", icon: Mail, isLabel: true },
+      { title: "Send Days Absent", href: "/admin/attendance/email-parents", icon: Mail },
     ],
   },
   {
@@ -341,6 +442,10 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "Reports", href: "#", icon: BarChart3, isLabel: true },
       { title: "Honor Roll", href: "/admin/grades/honor-roll", icon: Award },
       { title: "GPA / Class Ranks", href: "/admin/grades/class-ranks", icon: TrendingUp },
+      { title: "Email Students", href: "#", icon: Mail, isLabel: true },
+      { title: "Send Report Cards", href: "/admin/grades/email-students", icon: Mail },
+      { title: "Email Parents", href: "#", icon: Mail, isLabel: true },
+      { title: "Send Report Cards", href: "/admin/grades/email-parents", icon: Mail },
     ],
   },
   { title: "Assignments", href: "/admin/assignments", icon: ClipboardList },
@@ -359,6 +464,10 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "Print Invoices", href: "/admin/fees/print-invoices", icon: FileText },
       { title: "Print Receipts", href: "/admin/fees/print-receipts", icon: Receipt },
       { title: "Settings", href: "/admin/fees/settings", icon: Settings },
+      { title: "Email Students", href: "#", icon: Mail, isLabel: true },
+      { title: "Send Balances", href: "/admin/fees/email-students", icon: Mail },
+      { title: "Email Parents", href: "#", icon: Mail, isLabel: true },
+      { title: "Send Balances", href: "/admin/fees/email-parents", icon: Mail },
     ],
   },
   {
@@ -412,16 +521,31 @@ const adminMenuItems: SidebarMenuItem[] = [
     icon: Library,
     subItems: [
       { title: "Overview", href: "/admin/library", icon: BookOpen },
+      { title: "Document Categories", href: "/admin/library/categories", icon: FolderOpen },
+      { title: "Document Fields", href: "/admin/library/document-fields", icon: Sliders },
       { title: "Settings", href: "/admin/library/settings", icon: Settings },
     ],
   },
-  { title: "Reports", href: "/admin/reports", icon: BarChart3 },
+  {
+    title: "Reports",
+    href: "/admin/reports/calculations",
+    icon: BarChart3,
+    subItems: [
+      { title: "Calculations", href: "/admin/reports/calculations", icon: Calculator },
+      { title: "Calculation Reports", href: "/admin/reports/calculation-reports", icon: FileText },
+    ],
+  },
   {
     title: "Entry & Exit",
     href: "/admin/entry-exit",
     icon: DoorOpen,
     subItems: [
       { title: "Dashboard", href: "/admin/entry-exit", icon: LayoutDashboard },
+      {
+        title: "Add Records",
+        href: "/admin/entry-exit/add-records",
+        icon: UserPlus,
+      },
       {
         title: "Records",
         href: "/admin/entry-exit/report",
@@ -437,7 +561,32 @@ const adminMenuItems: SidebarMenuItem[] = [
         href: "/admin/entry-exit/evening-leaves",
         icon: Clock,
       },
+      {
+        title: "Mass Evening Leaves",
+        href: "/admin/entry-exit/mass-evening-leaves",
+        icon: CalendarPlus,
+      },
       { title: "Packages", href: "/admin/entry-exit/packages", icon: FileText },
+      {
+        title: "Automatic Records",
+        href: "/admin/entry-exit/automatic-records",
+        icon: ClipboardCheck,
+      },
+      {
+        title: "Exceptions",
+        href: "/admin/entry-exit/exceptions",
+        icon: ShieldX,
+      },
+      {
+        title: "Add Exceptions",
+        href: "/admin/entry-exit/add-exceptions",
+        icon: ShieldPlus,
+      },
+      {
+        title: "Take Attendance",
+        href: "/admin/entry-exit/take-attendance",
+        icon: UserCheck,
+      },
     ],
   },
   {
@@ -451,6 +600,8 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "Assignments", href: "/admin/hostel/assignments", icon: Users },
       { title: "Visits", href: "/admin/hostel/visits", icon: Eye },
       { title: "Fees", href: "/admin/hostel/fees", icon: DollarSign },
+      { title: "Room Fields", href: "/admin/hostel/fields", icon: Settings },
+      { title: "Configuration", href: "/admin/hostel/settings", icon: Settings },
     ],
   },
   {
@@ -460,6 +611,8 @@ const adminMenuItems: SidebarMenuItem[] = [
     subItems: [
       { title: "Resources", href: "/admin/resources/links", icon: Link2 },
       { title: "Dashboards", href: "/admin/resources/dashboards", icon: LayoutDashboard },
+      { title: "School Inventory", href: "/admin/resources/school-inventory", icon: Package },
+      { title: "Inventory Snapshots", href: "/admin/resources/inventory-snapshots", icon: Camera },
     ],
   },
   {
@@ -649,7 +802,15 @@ const librarianMenuItems: SidebarMenuItem[] = [
   { title: "Dashboard", href: "/librarian/dashboard", icon: LayoutDashboard },
   { title: "Books", href: "/librarian/books", icon: BookOpen },
   { title: "Loan Directory", href: "/librarian/loans", icon: ClipboardList },
-  // Reuse Profile/Settings
+  {
+    title: "Library",
+    href: "/librarian/library",
+    icon: Library,
+    subItems: [
+      { title: "Document Categories", href: "/librarian/library/categories", icon: FolderOpen },
+      { title: "Document Fields", href: "/librarian/library/document-fields", icon: Sliders },
+    ],
+  },
   { title: "My Profile", href: "/profile", icon: UserCheck },
 ];
 

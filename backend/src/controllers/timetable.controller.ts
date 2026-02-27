@@ -307,6 +307,51 @@ export const getNextClass = async (req: Request, res: Response) => {
 }
 
 // ============================================================================
+// BULK TIMETABLE IMPORT
+// ============================================================================
+
+export const getTimetableImportTemplate = async (_req: Request, res: Response) => {
+  const headers = ['grade_name', 'section_name', 'subject_name', 'subject_code', 'teacher_email', 'day_of_week', 'period_number', 'room_number']
+  const example = ['Grade 10', 'A', 'Mathematics', 'MATH10', 'teacher@school.com', 'Monday', '1', 'Room 101']
+  const csv = [headers.join(','), example.join(',')].join('\n')
+  res.setHeader('Content-Type', 'text/csv')
+  res.setHeader('Content-Disposition', 'attachment; filename="timetable_import_template.csv"')
+  res.send(csv)
+}
+
+export const bulkImportTimetable = async (req: Request, res: Response) => {
+  try {
+    const schoolId = (req as AuthRequest).profile?.school_id
+    const userId = (req as AuthRequest).profile?.id
+
+    if (!schoolId) {
+      return res.status(403).json({ success: false, error: 'School ID is required' })
+    }
+
+    const { entries, academic_year_id } = req.body
+
+    if (!academic_year_id) {
+      return res.status(400).json({ success: false, error: 'academic_year_id is required' })
+    }
+
+    if (!Array.isArray(entries) || entries.length === 0) {
+      return res.status(400).json({ success: false, error: 'entries array is required and must not be empty' })
+    }
+
+    const result = await timetableService.bulkImportTimetable(entries, schoolId, academic_year_id, userId || '')
+
+    if (!result.success) {
+      return res.status(400).json(result)
+    }
+
+    res.status(200).json(result)
+  } catch (error: any) {
+    console.error('Error bulk importing timetable:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+}
+
+// ============================================================================
 // STEP 3: AUTO-GENERATE ATTENDANCE
 // ============================================================================
 

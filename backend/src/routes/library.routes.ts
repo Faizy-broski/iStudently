@@ -43,4 +43,29 @@ router.post('/fines/:fineId/pay', requireRole('admin', 'librarian'), libraryCont
 // ==================== STATS ROUTE ====================
 router.get('/stats', requireRole('admin', 'librarian'), libraryController.getLibraryStats);
 
+// ==================== PREMIUM: CATEGORIES ====================
+router.get('/categories', requireRole('admin', 'librarian'), libraryController.getCategories);
+router.post('/categories', requireRole('admin', 'librarian'), libraryController.createCategory);
+router.put('/categories/:id', requireRole('admin', 'librarian'), libraryController.updateCategory);
+router.delete('/categories/:id', requireRole('admin', 'librarian'), libraryController.deleteCategory);
+
+// ==================== PREMIUM: DOCUMENT FIELDS ====================
+router.get('/document-fields', requireRole('admin', 'librarian'), libraryController.getDocumentFields);
+router.post('/document-fields', requireRole('admin', 'librarian'), libraryController.createDocumentField);
+router.put('/document-fields/:fieldId', requireRole('admin', 'librarian'), libraryController.updateDocumentField);
+router.delete('/document-fields/:fieldId', requireRole('admin', 'librarian'), libraryController.deleteDocumentField);
+
+// ==================== PREMIUM: BORROWERS ====================
+router.get('/borrowers/search', requireRole('admin', 'librarian'), libraryController.searchBorrowers);
+router.get('/loans/borrowers', requireRole('admin', 'librarian'), libraryController.getLoansBorrowers);
+
+// ==================== PREMIUM: QUICK LOAN ====================
+router.post('/loans/quick', requireRole('admin', 'librarian'), libraryController.quickLoan);
+
+// ==================== PREMIUM: GLOBAL SEARCH ====================
+router.get('/search', requireRole('admin', 'teacher', 'librarian'), libraryController.globalSearchDocuments);
+
+// ==================== PREMIUM: LOANS BREAKDOWN ====================
+router.get('/loans/breakdown', requireRole('admin', 'librarian'), libraryController.getLoansBreakdown);
+
 export default router;

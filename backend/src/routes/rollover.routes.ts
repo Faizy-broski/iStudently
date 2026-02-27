@@ -43,6 +43,26 @@ router.post(
   rolloverController.executeRollover
 );
 
+/**
+ * POST /api/rollover/semester/preview
+ * Preview semester rollover (dry-run, within one academic year)
+ */
+router.post(
+  '/rollover/semester/preview',
+  requireAdmin,
+  rolloverController.previewSemesterRollover
+);
+
+/**
+ * POST /api/rollover/semester/execute
+ * Execute semester rollover within one academic year
+ */
+router.post(
+  '/rollover/semester/execute',
+  requireAdmin,
+  rolloverController.executeSemesterRollover
+);
+
 // ============================================================================
 // ENROLLMENT ROUTES
 // ============================================================================

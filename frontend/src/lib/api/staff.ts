@@ -146,3 +146,77 @@ export async function deleteStaff(id: string) {
         method: 'DELETE'
     })
 }
+
+// ============================================================================
+// BULK IMPORT
+// ============================================================================
+
+export type StaffBulkRole = 'teacher' | 'librarian' | 'staff' | 'admin' | 'counselor'
+
+export interface BulkImportStaffRow {
+    employee_number?: string
+    first_name: string
+    last_name: string
+    email: string
+    phone?: string
+    password?: string
+    title?: string
+    /** Explicit role override. If omitted, role is derived from title. */
+    role?: StaffBulkRole
+    department?: string
+    qualifications?: string
+    date_of_joining?: string
+    employment_type?: 'full_time' | 'part_time' | 'contract'
+    base_salary?: number
+}
+
+export interface BulkImportStaffError {
+    row: number
+    email?: string
+    error: string
+}
+
+export interface BulkImportStaffResult {
+    success_count: number
+    error_count: number
+    errors: BulkImportStaffError[]
+    created_staff: Staff[]
+}
+
+export async function bulkImportStaff(
+    staff: BulkImportStaffRow[],
+    campusId?: string
+): Promise<{ success: boolean; data?: BulkImportStaffResult; error?: string; message?: string }> {
+    const token = await getAuthToken()
+    const response = await fetch(`${API_URL}/staff/bulk-import`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ staff, campus_id: campusId })
+    })
+    return response.json()
+}
+
+export function downloadStaffImportTemplate() {
+    const headers = [
+        'employee_number', 'first_name', 'last_name', 'email', 'phone', 'password',
+        'title', 'role', 'department', 'qualifications', 'date_of_joining',
+        'employment_type', 'base_salary'
+    ]
+    const examples = [
+        ['TCH001', 'John', 'Smith', 'john.smith@school.com', '+1234567890', 'Pass@1234', 'Mathematics Teacher', 'teacher', 'Mathematics', 'B.Ed', '2024-01-15', 'full_time', '5000'],
+        ['LIB001', 'Jane', 'Doe', 'jane.doe@school.com', '+1234567891', 'Pass@1234', 'Head Librarian', 'librarian', 'Library', 'MLS', '2024-01-15', 'full_time', '4000'],
+        ['STF001', 'Mike', 'Johnson', 'mike.j@school.com', '+1234567892', 'Pass@1234', 'Accountant', 'staff', 'Finance', '', '2024-02-01', 'full_time', '3500'],
+        ['CSL001', 'Sara', 'Lee', 'sara.lee@school.com', '+1234567893', 'Pass@1234', 'School Counselor', 'counselor', 'Counseling', 'M.Sc Psychology', '2024-02-01', 'full_time', '4500']
+    ]
+    const csv = [headers.join(','), ...examples.map(r => r.join(','))].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'staff_import_template.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+}

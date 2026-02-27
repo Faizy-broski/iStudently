@@ -128,6 +128,43 @@ export type BookCopyStatus =
   | "maintenance"
   | "damaged";
 export type LoanStatus = "active" | "returned" | "overdue" | "lost";
+export type BorrowerType = "student" | "user";
+export type DocumentFieldType =
+  | "select_multiple"
+  | "select_single"
+  | "text"
+  | "long_text"
+  | "checkbox"
+  | "number"
+  | "date"
+  | "files";
+
+export interface LibraryCategory {
+  id: string;
+  school_id: string;
+  name: string;
+  color_code: string;
+  sort_order: number;
+  visible_to_roles: string[];
+  visible_to_grade_levels: string[];
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LibraryDocumentField {
+  id: string;
+  school_id: string;
+  category_id: string | null;
+  field_name: string;
+  field_type: DocumentFieldType;
+  is_required: boolean;
+  sort_order: number;
+  options: any[];
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface Book {
   id: string;
@@ -136,6 +173,11 @@ export interface Book {
   author: string;
   isbn: string | null;
   category: string | null;
+  category_id: string | null;
+  reference: string | null;
+  document_type: string;
+  file_url: string | null;
+  custom_fields: Record<string, any>;
   publisher: string | null;
   publication_year: number | null;
   description: string | null;
@@ -163,9 +205,12 @@ export interface BookLoan {
   book_copy_id: string;
   student_id: string;
   school_id: string;
+  borrower_type: BorrowerType;
+  borrower_id: string;
   issue_date: Date;
   due_date: Date;
   return_date: Date | null;
+  return_comment: string | null;
   status: LoanStatus;
   fine_amount: number;
   collected_amount: number;
@@ -1148,11 +1193,80 @@ export const createRecordSchema = z.object({
   checkpoint_id: z.string().uuid(),
   person_id: z.string().uuid(),
   person_type: z.enum(["STUDENT", "STAFF"]),
-  record_type: z.enum(["ENTRY", "EXIT"]),
+  // Optional: if omitted, server auto-toggles based on last record for this person+checkpoint
+  record_type: z.enum(["ENTRY", "EXIT"]).optional(),
   description: z.string().optional(),
 });
 
 export type CreateRecordDTO = z.infer<typeof createRecordSchema>;
+
+// ── Automatic Records (Premium) ───────────────────────────────────────────────
+
+export type AutoRecordTargetType = "all_students" | "grade_level" | "all_staff" | "staff_profile";
+
+export interface AutomaticRecord {
+  id: string;
+  school_id: string;
+  checkpoint_id: string;
+  record_type: "ENTRY" | "EXIT";
+  day_of_week: number; // 0 = Sunday
+  scheduled_time: string; // HH:MM
+  target_type: AutoRecordTargetType;
+  target_value: string | null;
+  is_active: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  // joined
+  checkpoint_name?: string;
+}
+
+export interface AutomaticRecordException {
+  id: string;
+  school_id: string;
+  automatic_record_id: string;
+  person_id: string;
+  person_type: "STUDENT" | "STAFF";
+  from_date: string;
+  to_date: string;
+  reason: string | null;
+  created_by: string | null;
+  created_at: string;
+  // joined
+  person_name?: string;
+}
+
+export const createAutomaticRecordSchema = z.object({
+  school_id: z.string().uuid(),
+  checkpoint_id: z.string().uuid(),
+  record_type: z.enum(["ENTRY", "EXIT"]),
+  day_of_week: z.number().int().min(0).max(6),
+  scheduled_time: z.string().regex(/^\d{2}:\d{2}$/, "Must be HH:MM"),
+  target_type: z.enum(["all_students", "grade_level", "all_staff", "staff_profile"]).default("all_students"),
+  target_value: z.string().nullish(),
+  created_by: z.string().optional(),
+});
+
+export const updateAutomaticRecordSchema = z.object({
+  checkpoint_id: z.string().uuid().optional(),
+  record_type: z.enum(["ENTRY", "EXIT"]).optional(),
+  day_of_week: z.number().int().min(0).max(6).optional(),
+  scheduled_time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  target_type: z.enum(["all_students", "grade_level", "all_staff", "staff_profile"]).optional(),
+  target_value: z.string().nullish(),
+  is_active: z.boolean().optional(),
+});
+
+export const createAutoRecordExceptionSchema = z.object({
+  school_id: z.string().uuid(),
+  automatic_record_id: z.string().uuid(),
+  person_id: z.string().uuid(),
+  person_type: z.enum(["STUDENT", "STAFF"]),
+  from_date: z.string(),
+  to_date: z.string(),
+  reason: z.string().optional(),
+  created_by: z.string().optional(),
+});
 
 export const createEveningLeaveSchema = z.object({
   school_id: z.string().uuid(),
@@ -1304,42 +1418,46 @@ export interface HostelSettings {
 
 export const createBuildingSchema = z.object({
   school_id: z.string().uuid(),
+  campus_id: z.string().uuid().optional(),
   name: z.string().min(1),
   address: z.string().optional(),
   floors: z.number().int().min(1).optional(),
   description: z.string().optional(),
-  custom_fields: z.record(z.any()).optional(),
+  custom_fields: z.any().optional(),
 });
 
 export const updateBuildingSchema = z.object({
+  campus_id: z.string().uuid().optional(),
   name: z.string().min(1).optional(),
   address: z.string().optional(),
   floors: z.number().int().min(1).optional(),
   description: z.string().optional(),
-  custom_fields: z.record(z.any()).optional(),
+  custom_fields: z.any().optional(),
   is_active: z.boolean().optional(),
 });
 
 export const createRoomSchema = z.object({
   building_id: z.string().uuid(),
   school_id: z.string().uuid(),
+  campus_id: z.string().uuid().optional(),
   room_number: z.string().min(1),
   floor: z.number().int().min(0).optional(),
   capacity: z.number().int().min(1),
   room_type: z.string().optional(),
   price_per_month: z.number().min(0).optional(),
   description: z.string().optional(),
-  custom_fields: z.record(z.any()).optional(),
+  custom_fields: z.any().optional(),
 });
 
 export const updateRoomSchema = z.object({
+  campus_id: z.string().uuid().optional(),
   room_number: z.string().min(1).optional(),
   floor: z.number().int().min(0).optional(),
   capacity: z.number().int().min(1).optional(),
   room_type: z.string().optional(),
   price_per_month: z.number().min(0).optional(),
   description: z.string().optional(),
-  custom_fields: z.record(z.any()).optional(),
+  custom_fields: z.any().optional(),
   is_active: z.boolean().optional(),
 });
 
@@ -1347,6 +1465,7 @@ export const assignStudentSchema = z.object({
   room_id: z.string().uuid(),
   student_id: z.string().uuid(),
   school_id: z.string().uuid(),
+  campus_id: z.string().uuid().optional(),
   assigned_date: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -1355,6 +1474,7 @@ export const createVisitSchema = z.object({
   student_id: z.string().uuid(),
   room_id: z.string().uuid().optional(),
   school_id: z.string().uuid(),
+  campus_id: z.string().uuid().optional(),
   visitor_name: z.string().min(1),
   visitor_phone: z.string().optional(),
   visitor_relation: z.string().optional(),
@@ -1364,6 +1484,7 @@ export const createVisitSchema = z.object({
 
 export const generateRentalFeesSchema = z.object({
   school_id: z.string().uuid(),
+  campus_id: z.string().uuid().optional(),
   period_start: z.string(),
   period_end: z.string(),
   factor: z.number().min(0).optional(),
@@ -1373,6 +1494,7 @@ export const generateRentalFeesSchema = z.object({
 export const recordFeePaymentSchema = z.object({
   fee_id: z.string().uuid(),
   amount: z.number().min(0),
+  campus_id: z.string().uuid().optional(),
   notes: z.string().optional(),
 });
 

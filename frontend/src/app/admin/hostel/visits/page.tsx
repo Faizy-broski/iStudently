@@ -26,6 +26,7 @@ import { Plus, Eye, LogOut, Search, Users } from "lucide-react";
 export default function VisitsPage() {
   const { profile } = useAuth();
   const schoolId = profile?.school_id || "";
+  const campusId = profile?.campus_id;
 
   const [visits, setVisits] = useState<HostelVisit[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,7 +61,7 @@ export default function VisitsPage() {
   async function loadData() {
     try {
       setLoading(true);
-      const data = await getVisits(schoolId, {
+      const data = await getVisits(schoolId, campusId, {
         active_only: activeOnly,
         date_from: dateFrom || undefined,
         date_to: dateTo || undefined,
@@ -95,7 +96,7 @@ export default function VisitsPage() {
     }
     try {
       setSearchingStudents(true);
-      const results = await searchStudents(schoolId, query);
+      const results = await searchStudents(schoolId, query, campusId);
       setStudents(Array.isArray(results) ? results : []);
     } catch {
       setStudents([]);

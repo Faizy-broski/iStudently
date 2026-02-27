@@ -392,6 +392,286 @@ export const deleteTimetableEntry = async (entryId: string): Promise<ApiResponse
 }
 
 // ============================================================================
+// BULK TIMETABLE IMPORT
+// ============================================================================
+
+type DayName = 'monday'|'tuesday'|'wednesday'|'thursday'|'friday'|'saturday'|'sunday'
+const DAY_MAP: Record<string, DayOfWeek> = {
+  monday: 0, mon: 0, '0': 0,
+  tuesday: 1, tue: 1, '1': 1,
+  wednesday: 2, wed: 2, '2': 2,
+  thursday: 3, thu: 3, '3': 3,
+  friday: 4, fri: 4, '4': 4,
+  saturday: 5, sat: 5, '5': 5,
+  sunday: 6, sun: 6, '6': 6
+}
+
+function parseDayOfWeek(value: string | number): DayOfWeek | null {
+  if (typeof value === 'number') return (value >= 0 && value <= 6) ? value as DayOfWeek : null
+  const key = value.toString().toLowerCase().trim()
+  return key in DAY_MAP ? DAY_MAP[key] : null
+}
+
+export interface BulkTimetableRow {
+  grade_name?: string
+  section_name: string
+  subject_name?: string
+  subject_code?: string
+  teacher_email?: string
+  teacher_name?: string
+  day_of_week: string | number
+  period_number: string | number
+  room_number?: string
+}
+
+export interface BulkTimetableResult {
+  success_count: number
+  error_count: number
+  errors: Array<{ row: number; error: string }>
+  created_entries: any[]
+}
+
+/**
+ * Bulk import timetable entries.
+ * Strategy:
+ *   1. Fetch all lookup data (sections, subjects, staff, periods) once
+ *   2. Load existing entries to build in-memory conflict index
+ *   3. Validate each row and check conflicts (teacher + section)
+ *   4. Insert all valid rows in one Supabase call
+ */
+export const bulkImportTimetable = async (
+  rows: BulkTimetableRow[],
+  schoolId: string,
+  academicYearId: string,
+  userId: string
+): Promise<ApiResponse<BulkTimetableResult>> => {
+  try {
+    if (!rows.length) {
+      return { success: false, error: 'No rows provided' }
+    }
+    if (rows.length > 500) {
+      return { success: false, error: 'Maximum 500 entries per import' }
+    }
+
+    // Determine main school ID (handle campus hierarchy)
+    const mainSchoolId = await getMainSchoolId(schoolId)
+
+    // ── Fetch all lookup data at once ────────────────────────────────────────
+    const [
+      { data: sections },
+      { data: subjects },
+      { data: staffData },
+      { data: periodsData },
+      { data: existingEntries }
+    ] = await Promise.all([
+      supabase
+        .from('sections')
+        .select('id, name, school_id, grade_level:grade_levels(id, name)')
+        .or(`school_id.eq.${mainSchoolId},school_id.eq.${schoolId}`),
+      supabase
+        .from('subjects')
+        .select('id, name, code')
+        .or(`school_id.eq.${mainSchoolId},school_id.eq.${schoolId}`),
+      supabase
+        .from('staff')
+        .select('id, profile:profiles!staff_profile_id_fkey(id, first_name, last_name, email)')
+        .or(`school_id.eq.${mainSchoolId},school_id.eq.${schoolId}`),
+      supabase
+        .from('periods')
+        .select('id, period_number, period_name')
+        .or(`school_id.eq.${mainSchoolId},school_id.eq.${schoolId}`)
+        .eq('is_break', false),
+      supabase
+        .from('timetable_entries')
+        .select('teacher_id, section_id, period_id, day_of_week')
+        .eq('school_id', mainSchoolId)
+        .eq('academic_year_id', academicYearId)
+        .eq('is_active', true)
+    ])
+
+    // Build lookup maps
+    const sectionMap = new Map<string, { id: string; school_id: string }>()
+    sections?.forEach((s: any) => {
+      const gradeName = Array.isArray(s.grade_level) ? s.grade_level[0]?.name : s.grade_level?.name
+      sectionMap.set(s.name.toLowerCase(), { id: s.id, school_id: s.school_id })
+      if (gradeName) {
+        sectionMap.set(`${s.name.toLowerCase()}|${gradeName.toLowerCase()}`, { id: s.id, school_id: s.school_id })
+      }
+    })
+
+    const subjectMap = new Map<string, string>() // name/code lower → id
+    subjects?.forEach((s: any) => {
+      subjectMap.set(s.name.toLowerCase(), s.id)
+      if (s.code) subjectMap.set(s.code.toLowerCase(), s.id)
+    })
+
+    const staffByEmail = new Map<string, string>()   // email lower → staff id
+    const staffByName = new Map<string, string>()    // "first last" lower → staff id
+    staffData?.forEach((s: any) => {
+      const profile = Array.isArray(s.profile) ? s.profile[0] : s.profile
+      if (profile?.email) staffByEmail.set(profile.email.toLowerCase(), s.id)
+      if (profile?.first_name && profile?.last_name) {
+        staffByName.set(`${profile.first_name} ${profile.last_name}`.toLowerCase(), s.id)
+      }
+    })
+
+    const periodMap = new Map<number, string>() // period_number → period id
+    periodsData?.forEach((p: any) => periodMap.set(Number(p.period_number), p.id))
+
+    // Build in-memory conflict index from existing entries
+    const teacherOccupied = new Set<string>() // "teacher_id|day|period_id"
+    const sectionOccupied = new Set<string>() // "section_id|day|period_id"
+    existingEntries?.forEach((e: any) => {
+      teacherOccupied.add(`${e.teacher_id}|${e.day_of_week}|${e.period_id}`)
+      sectionOccupied.add(`${e.section_id}|${e.day_of_week}|${e.period_id}`)
+    })
+
+    // ── Validate rows ────────────────────────────────────────────────────────
+    const result: BulkTimetableResult = {
+      success_count: 0,
+      error_count: 0,
+      errors: [],
+      created_entries: []
+    }
+
+    const toInsert: any[] = []
+
+    for (let i = 0; i < rows.length; i++) {
+      const rowNum = i + 2
+      const raw = rows[i]
+      const rowErrors: string[] = []
+
+      // Required field checks
+      if (!raw.section_name?.toString().trim()) rowErrors.push('section_name is required')
+      if (!raw.subject_name?.toString().trim() && !raw.subject_code?.toString().trim()) rowErrors.push('subject_name or subject_code is required')
+      if (!raw.teacher_email?.toString().trim() && !raw.teacher_name?.toString().trim()) rowErrors.push('teacher_email or teacher_name is required')
+      if (raw.day_of_week === undefined || raw.day_of_week === null || raw.day_of_week === '') rowErrors.push('day_of_week is required')
+      if (!raw.period_number?.toString().trim()) rowErrors.push('period_number is required')
+
+      if (rowErrors.length > 0) {
+        result.errors.push({ row: rowNum, error: rowErrors.join('; ') })
+        result.error_count++
+        continue
+      }
+
+      // Resolve section
+      const sectionKey = raw.grade_name
+        ? `${raw.section_name.toLowerCase()}|${raw.grade_name.toLowerCase()}`
+        : raw.section_name.toLowerCase()
+      const sectionInfo = sectionMap.get(sectionKey) || sectionMap.get(raw.section_name.toLowerCase())
+      if (!sectionInfo) {
+        result.errors.push({ row: rowNum, error: `Section not found: "${raw.section_name}"${raw.grade_name ? ` (grade: "${raw.grade_name}")` : ''}` })
+        result.error_count++
+        continue
+      }
+
+      // Resolve subject
+      const subjectKey = (raw.subject_name || raw.subject_code || '').toLowerCase().trim()
+      const subjectId = subjectMap.get(subjectKey)
+      if (!subjectId) {
+        result.errors.push({ row: rowNum, error: `Subject not found: "${raw.subject_name || raw.subject_code}"` })
+        result.error_count++
+        continue
+      }
+
+      // Resolve teacher
+      const teacherEmail = raw.teacher_email?.toString().trim().toLowerCase()
+      const teacherName = raw.teacher_name?.toString().trim().toLowerCase()
+      const teacherId = (teacherEmail ? staffByEmail.get(teacherEmail) : undefined) ||
+                        (teacherName ? staffByName.get(teacherName) : undefined)
+      if (!teacherId) {
+        result.errors.push({ row: rowNum, error: `Teacher not found: "${raw.teacher_email || raw.teacher_name}"` })
+        result.error_count++
+        continue
+      }
+
+      // Resolve period
+      const periodNumber = Number(raw.period_number)
+      if (isNaN(periodNumber)) {
+        result.errors.push({ row: rowNum, error: `Invalid period_number: "${raw.period_number}"` })
+        result.error_count++
+        continue
+      }
+      const periodId = periodMap.get(periodNumber)
+      if (!periodId) {
+        result.errors.push({ row: rowNum, error: `Period not found: period_number ${periodNumber}` })
+        result.error_count++
+        continue
+      }
+
+      // Resolve day of week
+      const dayOfWeek = parseDayOfWeek(raw.day_of_week)
+      if (dayOfWeek === null) {
+        result.errors.push({ row: rowNum, error: `Invalid day_of_week: "${raw.day_of_week}". Use 0-6 or Monday-Sunday` })
+        result.error_count++
+        continue
+      }
+
+      // Conflict checks (teacher)
+      const teacherKey = `${teacherId}|${dayOfWeek}|${periodId}`
+      if (teacherOccupied.has(teacherKey)) {
+        result.errors.push({ row: rowNum, error: `Teacher "${raw.teacher_email || raw.teacher_name}" already has a class on ${raw.day_of_week} period ${periodNumber}` })
+        result.error_count++
+        continue
+      }
+
+      // Conflict checks (section)
+      const sectionConflictKey = `${sectionInfo.id}|${dayOfWeek}|${periodId}`
+      if (sectionOccupied.has(sectionConflictKey)) {
+        result.errors.push({ row: rowNum, error: `Section "${raw.section_name}" already has a class on ${raw.day_of_week} period ${periodNumber}` })
+        result.error_count++
+        continue
+      }
+
+      // Mark occupied for subsequent rows in this batch
+      teacherOccupied.add(teacherKey)
+      sectionOccupied.add(sectionConflictKey)
+
+      toInsert.push({
+        school_id: mainSchoolId,
+        campus_id: sectionInfo.school_id,
+        academic_year_id: academicYearId,
+        section_id: sectionInfo.id,
+        subject_id: subjectId,
+        teacher_id: teacherId,
+        period_id: periodId,
+        day_of_week: dayOfWeek,
+        room_number: raw.room_number?.toString().trim() || null,
+        created_by: userId,
+        is_active: true
+      })
+    }
+
+    // ── Batch insert all valid entries ───────────────────────────────────────
+    if (toInsert.length > 0) {
+      const { data: inserted, error: insertError } = await supabase
+        .from('timetable_entries')
+        .insert(toInsert)
+        .select('*')
+
+      if (insertError) {
+        return {
+          success: false,
+          error: `Database insert failed: ${insertError.message}`
+        }
+      }
+
+      result.success_count = inserted?.length || toInsert.length
+      result.created_entries = inserted || []
+    }
+
+    return {
+      success: true,
+      data: result,
+      message: `Imported ${result.success_count} timetable entry/entries with ${result.error_count} error(s)`
+    }
+  } catch (error: any) {
+    console.error('Error bulk importing timetable:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+// ============================================================================
 // STEP 4: TEACHER'S CURRENT SCHEDULE VIEW
 // ============================================================================
 

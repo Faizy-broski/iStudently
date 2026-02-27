@@ -8,6 +8,40 @@ import type {
 } from '../types/enrollment.types';
 import type { AuthRequest } from '../middlewares/auth.middleware';
 
+// ---- Types for semester rollover ----
+
+interface SemesterRolloverStudents {
+  pending: number;
+  promoted: number;
+  retained: number;
+  dropped: number;
+  graduated: number;
+  transferred: number;
+  total_active: number;
+}
+
+interface SemesterInfo {
+  id: string;
+  title: string;
+  short_name: string;
+  start_date: string;
+  end_date: string;
+}
+
+interface SemesterRolloverPreview {
+  students: SemesterRolloverStudents;
+  semesters: SemesterInfo[];
+}
+
+interface SemesterRolloverResult {
+  promoted: number;
+  retained: number;
+  dropped: number;
+  graduated: number;
+  transferred: number;
+  total: number;
+}
+
 /** Resolve school_id: prefer body, fall back to authenticated profile */
 function resolveSchoolId(req: Request): string | undefined {
   const body = (req as AuthRequest).body?.school_id;
@@ -87,6 +121,77 @@ export async function checkPrerequisites(req: Request, res: Response): Promise<v
     res.json(result as RolloverPrerequisiteCheck);
   } catch (error: any) {
     console.error('Check prerequisites exception:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+}
+
+/**
+ * Preview semester rollover (dry-run)
+ * POST /api/rollover/semester/preview
+ */
+export async function previewSemesterRollover(req: Request, res: Response): Promise<void> {
+  try {
+    const { academic_year_id, campus_id } = req.body;
+    const school_id = resolveSchoolId(req);
+
+    if (!academic_year_id || !school_id) {
+      res.status(400).json({ error: 'Missing required fields: academic_year_id' });
+      return;
+    }
+
+    const { data, error } = await supabase.rpc('preview_semester_rollover', {
+      p_academic_year_id: academic_year_id,
+      p_school_id: school_id,
+      p_campus_id: campus_id || null,
+    });
+
+    if (error) {
+      console.error('Preview semester rollover error:', error);
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    res.json(data as SemesterRolloverPreview);
+  } catch (error: any) {
+    console.error('Preview semester rollover exception:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+}
+
+/**
+ * Execute semester rollover
+ * POST /api/rollover/semester/execute
+ */
+export async function executeSemesterRollover(req: Request, res: Response): Promise<void> {
+  try {
+    const { academic_year_id, semester_end_date, campus_id } = req.body;
+    const school_id = resolveSchoolId(req);
+
+    if (!academic_year_id || !semester_end_date || !school_id) {
+      res.status(400).json({
+        error: 'Missing required fields: academic_year_id, semester_end_date',
+      });
+      return;
+    }
+
+    const { data, error } = await supabase.rpc('semester_rollover', {
+      p_academic_year_id: academic_year_id,
+      p_semester_end_date: semester_end_date,
+      p_school_id: school_id,
+      p_campus_id: campus_id || null,
+    });
+
+    if (error) {
+      console.error('Execute semester rollover error:', error);
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    // rpc returns an array of rows from the TABLE return type
+    const result = Array.isArray(data) && data.length > 0 ? data[0] : data;
+    res.json({ success: true, ...(result as SemesterRolloverResult) });
+  } catch (error: any) {
+    console.error('Execute semester rollover exception:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 }

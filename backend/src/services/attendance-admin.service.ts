@@ -486,17 +486,10 @@ export const getADAByGrade = async (
     }
 
     // 4. Get students and map to grade
-    let studentsQ = supabase
+    const { data: students, error: stErr } = await supabase
       .from('students')
       .select('id, section_id')
       .eq('school_id', schoolId)
-      .eq('is_active', true)
-
-    if (campusId) {
-      studentsQ = studentsQ.eq('campus_id', campusId)
-    }
-
-    const { data: students, error: stErr } = await studentsQ
     if (stErr) throw stErr
 
     // Map section -> grade
@@ -648,14 +641,11 @@ export const getDailySummaryGrid = async (
       .from('students')
       .select(`
         id,
-        admission_number,
+        student_number,
         profiles!inner(first_name, last_name),
-        sections!inner(name, grades!inner(name))
+        sections!inner(name, grade_levels!inner(name))
       `)
       .eq('school_id', schoolId)
-      .eq('is_active', true)
-
-    if (campusId) studentQuery = studentQuery.eq('campus_id', campusId)
 
     if (sectionId) {
       studentQuery = studentQuery.eq('section_id', sectionId)
@@ -711,8 +701,8 @@ export const getDailySummaryGrid = async (
           return {
             student_id: s.id,
             student_name: `${s.profiles?.first_name || ''} ${s.profiles?.last_name || ''}`.trim(),
-            student_number: s.admission_number,
-            grade_name: s.sections?.grades?.name,
+            student_number: s.student_number,
+            grade_name: s.sections?.grade_levels?.name,
             dates
           }
         })
@@ -760,8 +750,8 @@ export const getDailySummaryGrid = async (
           return {
             student_id: s.id,
             student_name: `${s.profiles?.first_name || ''} ${s.profiles?.last_name || ''}`.trim(),
-            student_number: s.admission_number,
-            grade_name: s.sections?.grades?.name,
+            student_number: s.student_number,
+            grade_name: s.sections?.grade_levels?.name,
             dates
           }
         })
@@ -877,16 +867,11 @@ export const getAttendanceSummary = async (
       .from('students')
       .select(`
         id,
-        admission_number,
+        student_number,
         profiles!inner(first_name, last_name),
-        sections!inner(name, grades!inner(name))
+        sections!inner(name, grade_levels!inner(name))
       `)
       .eq('school_id', schoolId)
-      .eq('is_active', true)
-
-    if (campusId) {
-      studentQuery = studentQuery.eq('campus_id', campusId)
-    }
 
     if (sectionId) {
       studentQuery = studentQuery.eq('section_id', sectionId)
@@ -967,9 +952,9 @@ export const getAttendanceSummary = async (
       return {
         student_id: s.id,
         student_name: `${s.profiles?.first_name || ''} ${s.profiles?.last_name || ''}`.trim(),
-        student_number: s.admission_number,
+        student_number: s.student_number,
         section_name: s.sections?.name,
-        grade_name: s.sections?.grades?.name,
+        grade_name: s.sections?.grade_levels?.name,
         total_days: totalDays,
         days_present: daysPresent,
         days_absent: daysAbsent,
@@ -1195,10 +1180,10 @@ export const getAdminAttendanceView = async (
         *,
         students!inner(
           id,
-          admission_number,
+          student_number,
           section_id,
           profiles!inner(first_name, last_name),
-          sections!inner(name, grades!inner(name))
+          sections!inner(name, grade_levels!inner(name))
         )
       `)
       .eq('school_id', schoolId)
@@ -1215,9 +1200,9 @@ export const getAdminAttendanceView = async (
     let records = (data || []).map((rec: any) => ({
       ...rec,
       student_name: `${rec.students?.profiles?.first_name || ''} ${rec.students?.profiles?.last_name || ''}`.trim(),
-      student_number: rec.students?.admission_number,
+      student_number: rec.students?.student_number,
       section_name: rec.students?.sections?.name,
-      grade_name: rec.students?.sections?.grades?.name,
+      grade_name: rec.students?.sections?.grade_levels?.name,
       _section_id: rec.students?.section_id
     }))
 
@@ -1297,10 +1282,10 @@ export const getAdminPeriodGrid = async (
       .from('students')
       .select(`
         id,
-        admission_number,
+        student_number,
         section_id,
         profiles!inner(first_name, last_name),
-        sections!inner(name, grades!inner(id, name))
+        sections!inner(name, grade_levels!inner(id, name))
       `)
       .in('id', studentIds)
 
@@ -1311,7 +1296,7 @@ export const getAdminPeriodGrid = async (
     if (sectionId) {
       filteredStudents = filteredStudents.filter((s: any) => s.section_id === sectionId)
     } else if (gradeId) {
-      filteredStudents = filteredStudents.filter((s: any) => s.sections?.grades?.id === gradeId)
+      filteredStudents = filteredStudents.filter((s: any) => s.sections?.grade_levels?.id === gradeId)
     }
 
     const filteredStudentIds = new Set(filteredStudents.map((s: any) => s.id))
@@ -1334,9 +1319,9 @@ export const getAdminPeriodGrid = async (
       studentMap.set(stu.id, {
         student_id: stu.id,
         student_name: `${(stu as any).profiles?.first_name || ''} ${(stu as any).profiles?.last_name || ''}`.trim(),
-        student_number: stu.admission_number,
+        student_number: stu.student_number,
         section_name: (stu as any).sections?.name,
-        grade_name: (stu as any).sections?.grades?.name,
+        grade_name: (stu as any).sections?.grade_levels?.name,
         period_records: {} as Record<string, any>
       })
     }
