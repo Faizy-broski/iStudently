@@ -547,6 +547,11 @@ export default function MarkingPeriodsPage() {
                                 G
                               </span>
                             )}
+                            {mp.does_comments && (
+                              <span className="text-[10px] text-purple-500 font-medium" title="Comments">
+                                C
+                              </span>
+                            )}
                           </div>
                         </div>
                         {(mp.start_date || mp.end_date) && (
@@ -573,7 +578,7 @@ export default function MarkingPeriodsPage() {
         </p>
         <p>
           <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1" />
-          Currently active (today falls within date range). <strong className="text-blue-500">G</strong> = Graded.
+          Currently active (today falls within date range). <strong className="text-blue-500">G</strong> = Graded. <strong className="text-purple-500">C</strong> = Comments.
         </p>
       </div>
     </div>

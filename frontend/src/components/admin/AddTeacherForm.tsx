@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent } from "@/components/ui/tabs"
 import { toast } from "sonner"
-import { ChevronLeft, ChevronRight, Check } from "lucide-react"
+import { ChevronLeft, ChevronRight, Check, Copy, Eye, EyeOff } from "lucide-react"
 import { getFieldDefinitions, CustomFieldDefinition } from "@/lib/api/custom-fields"
 import { getFieldOrders, getEffectiveFieldOrder, DefaultFieldOrder } from '@/lib/utils/field-ordering';
 import * as teachersApi from "@/lib/api/teachers"
@@ -58,6 +58,15 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const handleCopy = (text: string, fieldName: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(fieldName);
+    toast.success(`${fieldName} copied to clipboard`);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
 
   const [formData, setFormData] = useState<teachersApi.CreateStaffDTO>({
     employee_number: "",
@@ -79,8 +88,6 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
     status: "active",
     custom_fields: {}
   });
-
-  const submitButtonRef = useRef<HTMLButtonElement>(null);
 
   // Load custom fields on mount
   useEffect(() => {
@@ -228,6 +235,71 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
 
   // Render a single field
   const renderField = (field: any) => {
+    // Hide base_salary for hourly-rate teachers — their pay is tracked in accounting
+    if (field.id === 'base_salary' && formData.payment_type === 'hourly') {
+      return null;
+    }
+
+    // Special render: username (= email, read-only + copy)
+    if (field.id === 'username') {
+      const usernameValue = formData.email || '';
+      return (
+        <div key={field.id} className="col-span-1 space-y-2">
+          <Label>Username (Email)</Label>
+          <div className="flex gap-2">
+            <Input value={usernameValue} readOnly className="bg-gray-50 dark:bg-gray-800 flex-1" />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => handleCopy(usernameValue, 'Username')}
+            >
+              {copiedField === 'Username' ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">Username is the teacher's email address</p>
+        </div>
+      );
+    }
+
+    // Special render: password (show/hide + copy)
+    if (field.id === 'password') {
+      const passwordValue = String(formData.password || '');
+      return (
+        <div key={field.id} className="col-span-1 md:col-span-2 space-y-2">
+          <Label>Password</Label>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                value={passwordValue}
+                onChange={(e) => updateFormData('password', e.target.value)}
+                className="pr-10"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Button>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => handleCopy(passwordValue, 'Password')}
+            >
+              {copiedField === 'Password' ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">Auto-generated password. Save before creating the teacher.</p>
+        </div>
+      );
+    }
+
     const isCustom = !!field.isCustom;
     const value = isCustom ? (customFieldValues[field.field_key] ?? '') : (formData[field.id as keyof teachersApi.CreateStaffDTO] ?? '');
 
@@ -408,8 +480,7 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
     return titles[activeTab] || '';
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
 
     if (!validateCurrentTab()) {
       return;
@@ -475,32 +546,7 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
 
   return (
     <form 
-      onSubmit={(e) => {
-        // Always prevent default first
-        e.preventDefault();
-        
-        const submitEvent = e.nativeEvent as SubmitEvent;
-        
-        // Only allow submission on the last tab
-        if (!isLastTab) {
-          console.log('Prevented: Not on last tab');
-          return;
-        }
-
-        // Only allow submission from the actual submit button click
-        if (submitEvent?.submitter !== submitButtonRef.current) {
-          console.log('Prevented: Not from submit button');
-          return;
-        }
-
-        // Double check we're not already submitting
-        if (isSubmitting) {
-          console.log('Prevented: Already submitting');
-          return;
-        }
-
-        handleSubmit(e);
-      }} 
+      onSubmit={(e) => e.preventDefault()} 
       onKeyDown={handleKeyDown} 
       className="space-y-6"
     >
@@ -579,6 +625,27 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {getMergedFields(['system']).map(renderField)}
               </div>
+
+              {/* Credentials summary — copy both at once */}
+              {!editingTeacher && formData.email && (
+                <div className="mt-2 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 mb-2 uppercase tracking-wide">Login Credentials Summary</p>
+                  <div className="text-sm text-amber-900 dark:text-amber-200 space-y-0.5 font-mono mb-3">
+                    <div><span className="font-sans text-xs text-amber-700 dark:text-amber-400">Username: </span>{formData.email}</div>
+                    <div><span className="font-sans text-xs text-amber-700 dark:text-amber-400">Password: </span>{formData.password || '—'}</div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-900/40"
+                    onClick={() => handleCopy(`Username: ${formData.email}\nPassword: ${formData.password}`, 'Credentials')}
+                  >
+                    {copiedField === 'Credentials' ? <Check className="h-4 w-4 mr-1.5 text-green-600" /> : <Copy className="h-4 w-4 mr-1.5" />}
+                    Copy All Credentials
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -598,9 +665,9 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
 
         {isLastTab ? (
           <Button
-            ref={submitButtonRef}
-            type="submit"
+            type="button"
             disabled={isSubmitting}
+            onClick={() => { if (!isSubmitting) handleSubmit(); }}
             className="bg-gradient-to-r from-[#57A3CC] to-[#022172]"
           >
             {isSubmitting ? (

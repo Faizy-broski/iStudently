@@ -60,6 +60,10 @@ interface CalendarGridProps {
   onDateClick?: (date: Date) => void;
   onEventClick?: (event: SchoolEvent) => void;
   calendarType: "gregorian" | "hijri";
+  /** ISO date string (YYYY-MM-DD) — first month of the calendar range */
+  calendarStart?: string | null;
+  /** ISO date string (YYYY-MM-DD) — last month of the calendar range */
+  calendarEnd?: string | null;
 }
 
 export function CalendarGrid({
@@ -70,6 +74,8 @@ export function CalendarGrid({
   onDateClick,
   onEventClick,
   calendarType,
+  calendarStart,
+  calendarEnd,
 }: CalendarGridProps) {
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
   const [globalHijriOffset, setGlobalHijriOffset] = useState<number>(0);
@@ -96,20 +102,41 @@ export function CalendarGrid({
     };
   }, []);
 
+  // Clamp helpers — compare year+month only
+  const calStartDate = calendarStart ? new Date(calendarStart) : null;
+  const calEndDate   = calendarEnd   ? new Date(calendarEnd)   : null;
+
+  const isBeforeStart = (d: Date) =>
+    !!calStartDate &&
+    (d.getFullYear() < calStartDate.getFullYear() ||
+      (d.getFullYear() === calStartDate.getFullYear() && d.getMonth() < calStartDate.getMonth()));
+
+  const isAfterEnd = (d: Date) =>
+    !!calEndDate &&
+    (d.getFullYear() > calEndDate.getFullYear() ||
+      (d.getFullYear() === calEndDate.getFullYear() && d.getMonth() > calEndDate.getMonth()));
+
+  const prevMonthDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
+  const nextMonthDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+  const canGoPrev = !isBeforeStart(prevMonthDate);
+  const canGoNext = !isAfterEnd(nextMonthDate);
+
   const goToPreviousMonth = () => {
-    const newDate = new Date(currentMonth);
-    newDate.setMonth(newDate.getMonth() - 1);
-    onMonthChange(newDate);
+    if (!canGoPrev) return;
+    onMonthChange(prevMonthDate);
   };
 
   const goToNextMonth = () => {
-    const newDate = new Date(currentMonth);
-    newDate.setMonth(newDate.getMonth() + 1);
-    onMonthChange(newDate);
+    if (!canGoNext) return;
+    onMonthChange(nextMonthDate);
   };
 
   const goToToday = () => {
-    onMonthChange(new Date());
+    const today = new Date();
+    // Clamp today to calendar range
+    if (calStartDate && today < calStartDate) { onMonthChange(calStartDate); return; }
+    if (calEndDate   && today > calEndDate)   { onMonthChange(calEndDate);   return; }
+    onMonthChange(today);
   };
 
   const handleMonthChange = (monthIndex: number) => {
@@ -339,13 +366,13 @@ export function CalendarGrid({
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={goToPreviousMonth}>
+          <Button variant="outline" size="sm" onClick={goToPreviousMonth} disabled={!canGoPrev}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Button variant="outline" size="sm" onClick={goToToday}>
             Today
           </Button>
-          <Button variant="outline" size="sm" onClick={goToNextMonth}>
+          <Button variant="outline" size="sm" onClick={goToNextMonth} disabled={!canGoNext}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>

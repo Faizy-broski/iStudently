@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,7 +90,6 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
   const [activeTab, setActiveTab] = useState("relationship");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const submitButtonRef = useRef<HTMLButtonElement>(null);
 
   const isLastTab = activeTab === "preferences";
 
@@ -208,8 +207,7 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setFormErrors({});
 
     try {
@@ -495,32 +493,7 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
 
   return (
     <form 
-      onSubmit={(e) => {
-        // Always prevent default first
-        e.preventDefault();
-        
-        const submitEvent = e.nativeEvent as SubmitEvent;
-        
-        // Only allow submission on the last tab
-        if (!isLastTab) {
-          console.log('Prevented: Not on last tab');
-          return;
-        }
-
-        // Only allow submission from the actual submit button click
-        if (submitEvent?.submitter !== submitButtonRef.current) {
-          console.log('Prevented: Not from submit button');
-          return;
-        }
-
-        // Double check we're not already submitting
-        if (isSubmitting) {
-          console.log('Prevented: Already submitting');
-          return;
-        }
-
-        handleSubmit(e);
-      }} 
+      onSubmit={(e) => e.preventDefault()} 
       onKeyDown={handleKeyDown}
       className="space-y-6"
     >
@@ -710,10 +683,10 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
             Next
           </Button>
         ) : (
-          <Button 
-            type="submit" 
-            ref={submitButtonRef}
-            disabled={isSubmitting} 
+          <Button
+            type="button"
+            disabled={isSubmitting}
+            onClick={() => { if (!isSubmitting) handleSubmit(); }}
             className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white"
           >
             {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : "Add Parent"}

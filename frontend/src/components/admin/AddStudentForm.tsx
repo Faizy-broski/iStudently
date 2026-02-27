@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -211,8 +211,6 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
     password: '',
     relationship: 'Father'
   });
-
-  const submitButtonRef = useRef<HTMLButtonElement>(null);
 
   // Load custom fields from API and grades on mount
   useEffect(() => {
@@ -463,8 +461,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setFormErrors({});
     setIsSubmitting(true);
 
@@ -1331,38 +1328,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
   return (
     <>
       <form
-        onSubmit={(e) => {
-          // Always prevent default first
-          e.preventDefault();
-          
-          console.log('Form submit triggered');
-          const submitEvent = e.nativeEvent as SubmitEvent;
-          console.log('Submitter:', submitEvent?.submitter);
-          console.log('Submit button ref:', submitButtonRef.current);
-        console.log('Is last tab:', isLastTab);
-        console.log('Active tab:', activeTab);
-
-        // Only allow submission on the last tab
-        if (!isLastTab) {
-          console.log('Prevented: Not on last tab');
-          return;
-        }
-
-        // Only allow submission from the actual submit button click
-        if (submitEvent?.submitter !== submitButtonRef.current) {
-          console.log('Prevented: Not from submit button');
-          return;
-        }
-
-        // Double check we're not already submitting
-        if (isSubmitting) {
-          console.log('Prevented: Already submitting');
-          return;
-        }
-
-        console.log('Proceeding with submission');
-        handleSubmit(e);
-      }}
+        onSubmit={(e) => e.preventDefault()}
       onKeyDown={handleKeyDown}
       className="space-y-6"
     >
@@ -1476,7 +1442,18 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
                           </div>
                           <div className="text-right">
                             <div className="font-bold text-[#022172]">${amount.toFixed(2)}</div>
-                            <Checkbox checked={isSelected} className="mt-2" />
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={(checked) => {
+                                setSelectedServices(prev =>
+                                  checked
+                                    ? [...prev, service.id]
+                                    : prev.filter(id => id !== service.id)
+                                );
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              className="mt-2"
+                            />
                           </div>
                         </div>
                       </div>
@@ -1978,9 +1955,9 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
 
           {isLastTab ? (
             <Button
-              type="submit"
-              ref={submitButtonRef}
+              type="button"
               disabled={isSubmitting}
+              onClick={() => { if (!isSubmitting) handleSubmit(); }}
               className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white hover:opacity-90"
             >
               {isSubmitting ? (

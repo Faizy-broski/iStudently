@@ -112,8 +112,7 @@ export default function AddStaffPage() {
         }
     }
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
+    const handleSubmit = async () => {
         setLoading(true)
 
         try {
@@ -183,7 +182,7 @@ export default function AddStaffPage() {
                 </div>
             </div>
 
-            <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="space-y-6">
+            <form onSubmit={(e) => e.preventDefault()} onKeyDown={handleKeyDown} className="space-y-6">
                 {/* Personal Details */}
                 <Card>
                     <CardHeader>
@@ -462,8 +461,9 @@ export default function AddStaffPage() {
                         Cancel
                     </Button>
                     <Button
-                        type="submit"
+                        type="button"
                         disabled={loading}
+                        onClick={() => { if (!loading) handleSubmit(); }}
                         className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white min-w-[120px]"
                     >
                         {loading ? 'Creating...' : 'Create Staff'}

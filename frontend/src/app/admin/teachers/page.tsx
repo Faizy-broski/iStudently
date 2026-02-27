@@ -82,19 +82,29 @@ export default function TeachersPage() {
     router.push(`/admin/teachers/${encodeURIComponent(teacher.employee_number)}/edit`)
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to deactivate this teacher?")) return
-
-    try {
-      const response = await deleteTeacher(id)
-      if (response.success) {
-        toast.success("Teacher deactivated successfully")
-      } else {
-        toast.error(response.error || "Failed to deactivate teacher")
-      }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to deactivate teacher")
-    }
+  const handleDelete = (id: string) => {
+    toast("Deactivate this teacher?", {
+      description: "The teacher will be marked as inactive and lose dashboard access.",
+      action: {
+        label: "Deactivate",
+        onClick: async () => {
+          try {
+            const response = await deleteTeacher(id)
+            if (response.success) {
+              toast.success("Teacher deactivated successfully")
+            } else {
+              toast.error(response.error || "Failed to deactivate teacher")
+            }
+          } catch (error: any) {
+            toast.error(error.message || "Failed to deactivate teacher")
+          }
+        },
+      },
+      cancel: {
+        label: "Cancel",
+        onClick: () => {},
+      },
+    })
   }
 
   // Loading state

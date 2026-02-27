@@ -21,7 +21,7 @@
   --accent: oklch(0.967 0.001 286.375);
   --accent-foreground: oklch(0.21 0.006 285.885);
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: 210 40% 98%;
+  --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(0.92 0.004 286.32);
   --input: oklch(0.92 0.004 286.32);
   --ring: oklch(0.705 0.015 286.067);
@@ -124,7 +124,7 @@
   --accent: oklch(0.274 0.006 286.033);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: 210 40% 98%;
+  --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.552 0.016 285.938);
@@ -154,12 +154,14 @@
 
 body {
   background-color: rgb(249, 250, 251);
-  color: hsl(var(--foreground));
+  /* Use var() directly — --foreground is oklch, not hsl */
+  color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
 .dark body {
   background-color: #0f172a;
+  color: var(--foreground);
 }
 
 
@@ -174,7 +176,7 @@ body {
   
   /* Global white background fix for dark mode */
   .bg-white {
-    @apply dark:bg-gray-800;
+    @apply dark:bg-gray-800 dark:text-gray-100;
   }
   
   /* Global border fixes for dark mode */
@@ -211,6 +213,21 @@ body {
     @apply dark:text-white;
   }
   
+  /* Table cells */
+  td, th {
+    @apply dark:text-gray-100;
+  }
+
+  /* Inline elements */
+  span, li, a {
+    @apply dark:text-inherit;
+  }
+
+  /* Form elements */
+  input, textarea, select {
+    @apply dark:text-gray-100 dark:bg-gray-800 dark:placeholder-gray-400;
+  }
+
   /* Form labels and inputs */
   label {
     @apply dark:text-gray-200;
@@ -284,6 +301,14 @@ body {
   background: rgba(0, 0, 0, 0.3);
 }
 
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
 /* Gradient card classes */
 .gradient-red {
   background: linear-gradient(to right, #F6183D, #F76E85);
@@ -339,6 +364,10 @@ body {
 /* Text colors from theme */
 .text-brand-blue {
   color: #022172;
+}
+
+.dark .text-brand-blue {
+  color: #57A3CC;
 }
 
 .text-brand-green {

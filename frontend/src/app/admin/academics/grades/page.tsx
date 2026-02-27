@@ -75,7 +75,7 @@ export default function GradeLevelsPage() {
     setLoading(true)
     const result = await academicsApi.getGradeLevels(selectedCampus.id)
     if (result.success && result.data) {
-      setGrades(result.data)
+      setGrades([...result.data].sort((a, b) => a.order_index - b.order_index))
     } else {
       toast.error(result.error || 'Failed to fetch grade levels')
     }
@@ -220,12 +220,9 @@ export default function GradeLevelsPage() {
 
       if (result.success) {
         toast.success('Next grade updated successfully')
-        if (result.data) {
-          setGrades(prev => prev.map(g => g.id === gradeId ? result.data! : g))
-        } else {
-          // fallback to refresh if response missing
-          fetchGrades()
-        }
+        // Always re-fetch so sections_count / subjects_count stay correct
+        // and next_grade_id reflects the actual saved value
+        fetchGrades()
       } else {
         // Rollback on error
         setGrades(previousGrades)

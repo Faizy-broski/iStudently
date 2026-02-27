@@ -114,7 +114,7 @@ export default function EventsPage() {
     }
   );
 
-  // Set default calendars when data loads
+  // Set default calendars when data loads; jump the grid to the calendar's start month
   useEffect(() => {
     if (allCalendars && allCalendars.length > 0) {
       const greg = allCalendars.find(c => c.calendar_type === "gregorian" && c.is_default) || 
@@ -123,8 +123,15 @@ export default function EventsPage() {
                   allCalendars.find(c => c.calendar_type === "hijri");
       if (greg) setGregorianCalendar(greg);
       if (hij) setHijriCalendar(hij);
+
+      // Jump the grid to the active calendar's start month
+      const active = activeTab === 'gregorian' ? greg : hij;
+      if (active?.start_date) {
+        setCurrentMonth(new Date(active.start_date));
+      }
     }
-  }, [allCalendars]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allCalendars]);  // intentionally not including activeTab to avoid loop
 
   // Use SWR hooks for data fetching with automatic caching
   const { events, isLoading, isValidating, mutate: mutateEvents } = useEvents({
@@ -293,6 +300,8 @@ export default function EventsPage() {
     if (res.success) {
       toast.success("Calendar updated");
       setShowCalendarDialog(false);
+      // Jump the grid to the new start month so the user immediately sees the updated range
+      setCurrentMonth(new Date(startDate));
       mutateCalendars();
     } else {
       toast.error(res.error || "Failed to update calendar");
@@ -492,6 +501,8 @@ export default function EventsPage() {
                 onDateClick={handleCalendarDayClick}
                 onEventClick={handleEventClick}
                 calendarType="gregorian"
+                calendarStart={gregorianCalendar?.start_date}
+                calendarEnd={gregorianCalendar?.end_date}
               />
             </div>
           )}
@@ -573,6 +584,8 @@ export default function EventsPage() {
                 onDateClick={handleCalendarDayClick}
                 onEventClick={handleEventClick}
                 calendarType="hijri"
+                calendarStart={hijriCalendar?.start_date}
+                calendarEnd={hijriCalendar?.end_date}
               />
             </div>
           )}

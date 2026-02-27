@@ -281,20 +281,19 @@ function LoginForm() {
             </div>
 
             {/* Remember Me Checkbox */}
-            <div className={`flex items-center space-x-2 ${getAnimClass('delay-350')}`}>
+            <div className={`flex items-center space-x-2 cursor-pointer ${getAnimClass('delay-350')}`}>
               <Checkbox
-                id="rememberMe"
                 checked={rememberMe}
-                onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                onCheckedChange={(checked) => { if (!loading && !authLoading) setRememberMe(!!checked) }}
                 disabled={loading || authLoading}
                 className="border-white/30 data-[state=checked]:bg-white data-[state=checked]:text-brand-blue"
               />
-              <label
-                htmlFor="rememberMe"
-                className="text-sm text-white/90 cursor-pointer select-none"
+              <span
+                className="text-sm text-white/90 select-none"
+                onClick={() => { if (!loading && !authLoading) setRememberMe(r => !r) }}
               >
                 Remember me
-              </label>
+              </span>
             </div>
 
             {/* Submit Button */}
