@@ -1,10 +1,12 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import useSWR from "swr"
 import { useAuth } from "@/context/AuthContext"
 import { useAcademic } from "@/context/AcademicContext"
 import { useCampus } from "@/context/CampusContext"
+import { useSchoolSettings } from "@/context/SchoolSettingsContext"
+import { openPdfDownload } from "@/lib/utils/printLayout"
 import * as studentsApi from "@/lib/api/students"
 import { getStudentSchedule, type StudentSchedule } from "@/lib/api/scheduling"
 import { getMarkingPeriods, type MarkingPeriod } from "@/lib/api/marking-periods"
@@ -30,10 +32,17 @@ export function PrintSchedules() {
   const { user } = useAuth()
   const { selectedAcademicYear } = useAcademic()
   const campusContext = useCampus()
+  const { isPluginActive } = useSchoolSettings()
 
   const academicYearId = selectedAcademicYear
   const campusId = campusContext?.selectedCampus?.id
-  const schoolName = campusContext?.selectedCampus?.name || "School"
+  const campus = campusContext?.selectedCampus
+  const schoolName = campus?.name || "School"
+
+  const [pdfSettings, setPdfSettings] = useState<import("@/lib/api/school-settings").PdfHeaderFooterSettings | null>(null)
+  useEffect(() => {
+    if (campusId) import("@/lib/api/school-settings").then(m => m.getPdfHeaderFooter(campusId)).then(r => { if (r.success && r.data) setPdfSettings(r.data) })
+  }, [campusId])
 
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState("")
@@ -177,12 +186,9 @@ export function PrintSchedules() {
         bodyHtml += `<div class="schedule-page">`
         bodyHtml += `<h1 class="page-title">Student Schedule</h1>`
 
-        // Student info header
-        bodyHtml += `<table class="info-table"><tbody>`
-        bodyHtml += `<tr><td class="info-left">${schoolName}</td><td class="info-right">${todayStr}</td></tr>`
-        bodyHtml += `<tr><td class="info-left">${studentName}</td><td class="info-right">${student.student_number}</td></tr>`
-        bodyHtml += `<tr><td class="info-left">${student.grade_level || "—"}</td><td class="info-right"></td></tr>`
-        bodyHtml += `</tbody></table>`
+        // Student info — RosarioSIS-style coloured record header
+        bodyHtml += `<div class="record-header"><span>${studentName}</span><span class="rh-right">${student.student_number}</span></div>`
+        bodyHtml += `<div class="record-subheader"><span>${student.grade_level || "—"}</span><span>${todayStr}</span></div>`
 
         bodyHtml += `<p class="period-count">${periodCount} period${periodCount !== 1 ? "s" : ""} were found.</p>`
 
@@ -240,21 +246,15 @@ export function PrintSchedules() {
         bodyHtml += `</div>`
       }
 
-      // Open print window
-      const printWindow = window.open("", "_blank")
-      if (!printWindow) {
-        toast.error("Please allow popups to print schedules.")
-        return
-      }
-
-      printWindow.document.write(`<!DOCTYPE html>
-<html>
-<head><title>Student Schedule</title><style>${SCHEDULE_PRINT_STYLES}</style></head>
-<body>${bodyHtml}</body>
-</html>`)
-      printWindow.document.close()
-      printWindow.focus()
-      setTimeout(() => printWindow.print(), 500)
+      // Download PDF with shared RosarioSIS-style header/footer
+      await openPdfDownload({
+        title: "Student Schedule",
+        bodyHtml,
+        bodyStyles: SCHEDULE_BODY_STYLES,
+        school: campus ?? { name: schoolName },
+        pdfSettings,
+        pluginActive: isPluginActive('pdf_header_footer'),
+      })
 
       toast.success(`Generated schedules for ${studentSchedules.length} student(s)`)
     } catch (err: unknown) {
@@ -262,7 +262,7 @@ export function PrintSchedules() {
     } finally {
       setSubmitting(false)
     }
-  }, [selectedStudentIds, data, academicYearId, schoolName, viewMode, displayTitleOf])
+  }, [selectedStudentIds, data, academicYearId, campus, schoolName, viewMode, displayTitleOf, pdfSettings, isPluginActive])
 
   const months = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
   const days = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"))
@@ -514,12 +514,9 @@ function getTitle(sched: StudentSchedule, mode: "subject" | "course" | "course_p
   return sched.course_period?.short_name || sched.course?.title || "—"
 }
 
-// ── Print Styles (matches screenshot 3 — dark purple header, gold accents) ──
+// ── Print Styles — content only (base reset lives in BASE_PRINT_STYLES) ──
 
-const SCHEDULE_PRINT_STYLES = `
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a1a; }
-
+const SCHEDULE_BODY_STYLES = `
   .schedule-page {
     page-break-after: always;
     padding: 24px 32px;
@@ -532,21 +529,8 @@ const SCHEDULE_PRINT_STYLES = `
     font-size: 22px;
     font-style: italic;
     color: #333;
-    margin-bottom: 12px;
+    margin: 12px 0 8px;
   }
-
-  .info-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 12px;
-    font-size: 13px;
-  }
-  .info-table td {
-    padding: 2px 0;
-    border-bottom: 1px solid #e2e8f0;
-  }
-  .info-left { text-align: left; font-weight: 500; }
-  .info-right { text-align: right; color: #555; }
 
   .period-count {
     font-size: 12px;
@@ -615,9 +599,4 @@ const SCHEDULE_PRINT_STYLES = `
     border-bottom: 1px solid #e2e8f0;
   }
   .list-table tr:nth-child(even) { background: #f8fafc; }
-
-  @media print {
-    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .schedule-page { padding: 16px 24px; }
-  }
 `

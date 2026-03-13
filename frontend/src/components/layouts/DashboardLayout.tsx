@@ -12,6 +12,8 @@ import { UserRole } from '@/types'
 import { Toaster } from '@/components/ui/sonner'
 import { getSetupStatus } from '@/lib/api/setup-status'
 import { getDashboards } from '@/lib/api/dashboards'
+import { useSchoolSettings } from '@/context/SchoolSettingsContext'
+import { PLUGIN_REGISTRY } from '@/config/plugins'
 import { LayoutDashboard } from 'lucide-react'
 
 interface DashboardLayoutProps {
@@ -96,24 +98,50 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
 
   const baseMenuItems = effectiveRole ? getSidebarConfig(effectiveRole) : []
 
-  // Inject dynamically-created dashboards into the Resources sidebar section
+  // Plugin injection: only for admin role, uses SchoolSettingsContext
+  const { isPluginActive } = useSchoolSettings()
+
   const menuItems = React.useMemo(() => {
-    if (dynamicDashboards.length === 0) return baseMenuItems
-    return baseMenuItems.map((item) => {
-      if (item.title === 'Resources' && item.subItems) {
-        return {
-          ...item,
-          subItems: [
-            ...item.subItems,
-            ...dynamicDashboards.filter(
-              (d) => !item.subItems!.some((s) => s.href === d.href)
-            ),
-          ],
+    let items = baseMenuItems
+
+    // 1. Inject user-created dashboards into Resources section (existing logic)
+    if (dynamicDashboards.length > 0) {
+      items = items.map((item) => {
+        if (item.title === 'Resources' && item.subItems) {
+          return {
+            ...item,
+            subItems: [
+              ...item.subItems,
+              ...dynamicDashboards.filter(
+                (d) => !item.subItems!.some((s) => s.href === d.href)
+              ),
+            ],
+          }
+        }
+        return item
+      })
+    }
+
+    // 2. Inject sidebar items for each active plugin (admin only)
+    if (effectiveRole === 'admin') {
+      for (const plugin of PLUGIN_REGISTRY) {
+        if (!isPluginActive(plugin.id)) continue
+        for (const injection of plugin.sidebarInjections) {
+          items = items.map((item) => {
+            if (item.title === injection.parentTitle && item.subItems) {
+              const existingHrefs = new Set(item.subItems.map((s) => s.href))
+              const newItems = injection.items.filter((ni) => !existingHrefs.has(ni.href))
+              if (newItems.length === 0) return item
+              return { ...item, subItems: [...item.subItems, ...newItems] }
+            }
+            return item
+          })
         }
       }
-      return item
-    })
-  }, [baseMenuItems, dynamicDashboards])
+    }
+
+    return items
+  }, [baseMenuItems, dynamicDashboards, effectiveRole, isPluginActive])
 
   // Render dashboard immediately - no loading screens after auth
   // Setup check happens in background and redirects if needed

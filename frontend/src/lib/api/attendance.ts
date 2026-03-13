@@ -645,6 +645,16 @@ export async function recalculateDailyAttendance(data: {
   })
 }
 
+export async function generateMissingAttendanceRange(data: {
+  from_date: string
+  to_date: string
+}): Promise<ApiResponse<{ total_generated: number; days_processed: number }>> {
+  return apiRequest<{ total_generated: number; days_processed: number }>(
+    '/attendance/utilities/generate-range',
+    { method: 'POST', body: JSON.stringify(data) }
+  )
+}
+
 export async function findDuplicateAttendance(
   schoolId: string,
   startDate?: string,

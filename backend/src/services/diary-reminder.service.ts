@@ -85,6 +85,10 @@ export class DiaryReminderService {
       auto_remove_inactive?: boolean
     }
     default_payment_method?: string
+    auto_attendance_enabled?: boolean
+    auto_attendance_hour?: string
+    auto_attendance_days?: number[]
+    active_plugins?: Record<string, boolean>
   }, campusId?: string | null) {
     const VALID_PAYMENT_METHODS = ['cash', 'online', 'bank_deposit', 'cheque']
     const now = new Date().toISOString()
@@ -99,6 +103,13 @@ export class DiaryReminderService {
     if (settings.default_payment_method !== undefined) {
       const method = settings.default_payment_method.toLowerCase()
       updates.default_payment_method = VALID_PAYMENT_METHODS.includes(method) ? method : 'cash'
+    }
+    if (settings.auto_attendance_enabled !== undefined) updates.auto_attendance_enabled = settings.auto_attendance_enabled
+    if (settings.auto_attendance_hour !== undefined) updates.auto_attendance_hour = settings.auto_attendance_hour
+    if (settings.auto_attendance_days !== undefined) updates.auto_attendance_days = settings.auto_attendance_days
+    if (settings.active_plugins !== undefined) {
+      // Merge incoming plugin states with existing — never replace entire object
+      updates.active_plugins = settings.active_plugins
     }
 
     // Check if a row already exists for this school + campus combination

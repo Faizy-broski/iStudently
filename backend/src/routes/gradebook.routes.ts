@@ -46,6 +46,9 @@ router.put('/assignments/:id', requireTeacher, gradebookController.updateAssignm
 // DELETE /gradebook/assignments/:id (teacher)
 router.delete('/assignments/:id', requireTeacher, gradebookController.deleteAssignment)
 
+// POST /gradebook/assignments/mass-create (admin/teacher)
+router.post('/assignments/mass-create', requireTeacher, gradebookController.massCreateAssignment)
+
 // ============================================================================
 // GRADES
 // ============================================================================

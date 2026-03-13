@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { supabase } from '../config/supabase';
 import type { AuthRequest } from '../middlewares/auth.middleware';
+import { getStudentDisciplineScore } from '../services/discipline-score.service';
 
 
 const DEFAULT_DISCIPLINE_FIELDS = [
@@ -491,6 +492,47 @@ export async function updateReferral(req: Request, res: Response): Promise<void>
 
     res.json({ data });
   } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Internal server error' });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// DISCIPLINE SCORE
+// ---------------------------------------------------------------------------
+
+/**
+ * GET /api/discipline/score/:studentId
+ * Query: campus_id?, academic_year_id?
+ * school_id is resolved from the auth profile (or via campus lookup as fallback)
+ */
+export async function getStudentScore(req: Request, res: Response): Promise<void> {
+  try {
+    const { studentId } = req.params;
+    const campusId = (req.query.campus_id as string) || null;
+    const academicYearId = (req.query.academic_year_id as string) || null;
+
+    // Resolve school_id from auth profile first; fall back to campus lookup
+    let schoolId = resolveQuerySchoolId(req);
+    if (!schoolId && campusId) {
+      const { data: campus } = await supabase
+        .from('campuses')
+        .select('parent_school_id')
+        .eq('id', campusId)
+        .single();
+      if (campus?.parent_school_id) schoolId = campus.parent_school_id;
+    }
+    if (!schoolId) {
+      res.status(400).json({ error: 'school_id is required' });
+      return;
+    }
+
+    const result = await getStudentDisciplineScore({ studentId, schoolId, campusId, academicYearId });
+    res.json({ data: result });
+  } catch (err: any) {
+    if (err.message === 'PLUGIN_INACTIVE') {
+      res.status(403).json({ error: 'PLUGIN_INACTIVE' });
+      return;
+    }
     res.status(500).json({ error: err.message || 'Internal server error' });
   }
 }

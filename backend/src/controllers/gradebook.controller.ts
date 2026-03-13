@@ -8,11 +8,19 @@ import { gradebookService } from '../services/gradebook.service'
 
 export const getAssignmentTypes = async (req: Request, res: Response) => {
   try {
-    const { course_period_id } = req.query
-    if (!course_period_id) {
-      return res.status(400).json({ success: false, error: 'course_period_id is required' })
+    const { course_period_id, campus_id } = req.query
+
+    if (course_period_id) {
+      const data = await gradebookService.getAssignmentTypes(course_period_id as string)
+      return res.json({ success: true, data })
     }
-    const data = await gradebookService.getAssignmentTypes(course_period_id as string)
+
+    // Fallback: query by campus_id or school_id (for mass-create page)
+    const schoolId = (req as AuthRequest).profile?.school_id
+    const data = await gradebookService.getAssignmentTypesByScope(
+      campus_id as string | undefined,
+      schoolId
+    )
     res.json({ success: true, data })
   } catch (error: any) {
     console.error('Error in getAssignmentTypes:', error)
@@ -38,13 +46,13 @@ export const createAssignmentType = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'school_id is required' })
     }
 
-    const { course_period_id } = req.body
-    if (!course_period_id) {
-      return res.status(400).json({ success: false, error: 'course_period_id is required' })
-    }
-
     const userId = (req as AuthRequest).user?.id
-    const data = await gradebookService.createAssignmentType(schoolId, course_period_id, req.body, userId)
+    const data = await gradebookService.createAssignmentType(
+      schoolId,
+      req.body.course_period_id || null,
+      req.body,
+      userId
+    )
     res.status(201).json({ success: true, data })
   } catch (error: any) {
     console.error('Error in createAssignmentType:', error)
@@ -148,6 +156,27 @@ export const deleteAssignment = async (req: Request, res: Response) => {
     res.json({ success: true, message: 'Assignment deleted' })
   } catch (error: any) {
     console.error('Error in deleteAssignment:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+}
+
+export const massCreateAssignment = async (req: Request, res: Response) => {
+  try {
+    const schoolId = (req as AuthRequest).profile?.school_id
+    if (!schoolId) {
+      return res.status(400).json({ success: false, error: 'school_id is required' })
+    }
+
+    const { course_period_ids } = req.body
+    if (!course_period_ids || !Array.isArray(course_period_ids) || course_period_ids.length === 0) {
+      return res.status(400).json({ success: false, error: 'course_period_ids is required' })
+    }
+
+    const userId = (req as AuthRequest).user?.id
+    const created_count = await gradebookService.massCreateAssignment(schoolId, req.body, userId)
+    res.status(201).json({ success: true, data: { created_count } })
+  } catch (error: any) {
+    console.error('Error in massCreateAssignment:', error)
     res.status(500).json({ success: false, error: error.message })
   }
 }

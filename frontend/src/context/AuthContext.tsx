@@ -124,7 +124,8 @@ const REFRESH_THRESHOLD = 10 * 60 * 1000 // Refresh 10 min before expiry
  */
 function isOnAuthPage(): boolean {
   if (typeof window === 'undefined') return false
-  return window.location.pathname.startsWith('/auth/')
+  const { pathname } = window.location
+  return pathname.startsWith('/auth/') || pathname.startsWith('/p/')
 }
 
 /**

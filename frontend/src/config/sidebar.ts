@@ -50,6 +50,8 @@ import {
   HelpCircle,
   Mail,
   Send,
+  Puzzle,
+  Globe,
   type LucideIcon,
 } from "lucide-react";
 import { UserRole } from "@/types";
@@ -116,6 +118,8 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "Utilities", href: "#", icon: Settings, isLabel: true },
       { title: "Year-End Rollover", href: "/admin/rollover", icon: RefreshCw },
       { title: "Semester Rollover", href: "/admin/rollover/semester", icon: RefreshCw },
+      { title: "Configuration", href: "#", icon: Settings, isLabel: true },
+      { title: "Plugins", href: "/admin/settings/plugins", icon: Puzzle },
     ],
   },
   {
@@ -396,25 +400,15 @@ const adminMenuItems: SidebarMenuItem[] = [
     title: "Attendance",
     href: "/admin/attendance",
     icon: CalendarCheck,
+    // Base items — always visible (manual attendance workflow)
+    // Plugin-gated items (reports, utilities, setup, email) are injected by
+    // DashboardLayout when the 'automatic_attendance' plugin is active.
     subItems: [
       { title: "Take Attendance", href: "/admin/attendance/take-attendance", icon: UserCheck },
       { title: "Administration", href: "/admin/attendance", icon: Eye },
       { title: "Add Absences", href: "/admin/attendance/add-absences", icon: Plus },
       { title: "Class Diary - Read", href: "/admin/attendance/class-diary", icon: BookOpen },
       { title: "Class Diary - Write", href: "/admin/attendance/class-diary-write", icon: ClipboardList },
-      { title: "Reports", href: "#", icon: BarChart3, isLabel: true },
-      { title: "Teacher Completion", href: "/admin/attendance/teacher-completion", icon: CheckSquare },
-      { title: "Average Daily Attendance", href: "/admin/attendance/average-daily", icon: TrendingUp },
-      { title: "Attendance Chart", href: "/admin/attendance/chart", icon: BarChart3 },
-      { title: "Attendance Summary", href: "/admin/attendance/summary", icon: FileText },
-      { title: "Print Attendance Sheets", href: "/admin/attendance/print-sheets", icon: ClipboardList },
-      { title: "Utilities", href: "#", icon: Settings, isLabel: true },
-      { title: "Recalculate Daily Attendance", href: "/admin/attendance/recalculate", icon: Calculator },
-      { title: "Delete Duplicate Attendance", href: "/admin/attendance/delete-duplicates", icon: Award },
-      { title: "Setup", href: "#", icon: Settings, isLabel: true },
-      { title: "Attendance Codes", href: "/admin/attendance/codes", icon: Settings },
-      { title: "Email Parents", href: "#", icon: Mail, isLabel: true },
-      { title: "Send Days Absent", href: "/admin/attendance/email-parents", icon: Mail },
     ],
   },
   {
@@ -448,7 +442,7 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "Send Report Cards", href: "/admin/grades/email-parents", icon: Mail },
     ],
   },
-  { title: "Assignments", href: "/admin/assignments", icon: ClipboardList },
+
   {
     title: "Student Billing",
     href: "/admin/fees",
@@ -629,6 +623,8 @@ const adminMenuItems: SidebarMenuItem[] = [
       },
       { title: "Services", href: "/admin/settings/services", icon: Settings },
       { title: "Email Reminders", href: "/admin/settings/email-reminders", icon: Bell },
+      { title: "Email SMTP", href: "/admin/settings/email-smtp", icon: Mail },
+      { title: "Public Pages", href: "/admin/settings/public-pages", icon: Globe },
     ],
   },
 ];

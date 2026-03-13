@@ -43,7 +43,7 @@ export default function ParentPortalPollsPage() {
     try {
       const result = await portalApi.getPolls({ campus_id: selectedStudentCampus, limit: 100 })
       setPolls(result.polls)
-      result.polls.forEach(poll => markPortalItemViewed('poll', poll.id))
+      result.polls.forEach(poll => markPortalItemViewed('poll', poll.id, profile?.id))
     } catch (error) {
       console.error('Error fetching polls:', error)
     } finally {

@@ -3,6 +3,7 @@
 import { DashboardLayout } from "@/components/layouts";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { RefreshOnReturn } from "@/components/RefreshOnReturn";
+import { SchoolSettingsProvider } from "@/context/SchoolSettingsContext";
 
 export default function SuperAdminLayout({
   children,
@@ -11,9 +12,11 @@ export default function SuperAdminLayout({
 }) {
   return (
     <RoleGuard allowedRoles={['super_admin']}>
-      <DashboardLayout role="super_admin">
-        <RefreshOnReturn>{children}</RefreshOnReturn>
-      </DashboardLayout>
+      <SchoolSettingsProvider>
+        <DashboardLayout role="super_admin">
+          <RefreshOnReturn>{children}</RefreshOnReturn>
+        </DashboardLayout>
+      </SchoolSettingsProvider>
     </RoleGuard>
   );
 }

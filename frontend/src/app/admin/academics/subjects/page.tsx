@@ -88,7 +88,16 @@ export default function SubjectsPage() {
     if (!selectedCampus) return
     const result = await academicsApi.getGradeLevels(selectedCampus.id)
     if (result.success && result.data) {
-      setGrades(result.data.filter((g) => g.is_active))
+      setGrades(
+        result.data
+          .filter((g) => g.is_active)
+          .sort((a, b) => {
+            const numA = parseInt(a.name.replace(/\D/g, ''), 10)
+            const numB = parseInt(b.name.replace(/\D/g, ''), 10)
+            if (!isNaN(numA) && !isNaN(numB)) return numA - numB
+            return a.name.localeCompare(b.name)
+          })
+      )
     }
   }
 

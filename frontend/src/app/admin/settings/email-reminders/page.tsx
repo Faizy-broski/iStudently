@@ -29,7 +29,7 @@ export default function EmailRemindersPage() {
   const [saving, setSaving] = useState(false)
   const [sendingTest, setSendingTest] = useState(false)
 
-  // Settings state
+  // Diary reminder state
   const [enabled, setEnabled] = useState(false)
   const [reminderTime, setReminderTime] = useState('07:00')
   const [reminderDays, setReminderDays] = useState<number[]>([0, 1, 2, 3, 4])

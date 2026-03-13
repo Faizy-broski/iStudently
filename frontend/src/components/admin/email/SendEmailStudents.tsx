@@ -26,6 +26,7 @@ import {
   RotateCcw,
   CheckCheck,
 } from "lucide-react"
+import { useCampus } from "@/context/CampusContext"
 
 // ─── Substitution definitions ────────────────────────────────────────────────
 
@@ -42,6 +43,8 @@ const STUDENT_SUBS = [
 
 export function SendEmailStudents() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const campusContext = useCampus()
+  const selectedCampusId = campusContext?.selectedCampus?.id
 
   // Compose state
   const [subject, setSubject] = useState("")
@@ -67,12 +70,16 @@ export function SendEmailStudents() {
   const fetchStudents = useCallback(async () => {
     setLoadingStudents(true)
     try {
-      const res = await getStudents({ limit: 300, search: search.trim() || undefined })
+      const res = await getStudents({
+        limit: 300,
+        search: search.trim() || undefined,
+        campus_id: selectedCampusId,
+      })
       setStudents((res.data as any) || [])
     } finally {
       setLoadingStudents(false)
     }
-  }, [search])
+  }, [search, selectedCampusId])
 
   useEffect(() => {
     const t = setTimeout(fetchStudents, 350)
@@ -148,6 +155,7 @@ export function SendEmailStudents() {
         body,
         test_email: testEmail.trim() || undefined,
         cc_emails: ccEmails.length ? ccEmails : undefined,
+        campus_id: selectedCampusId,
       })
 
       if (res.success && res.data) {

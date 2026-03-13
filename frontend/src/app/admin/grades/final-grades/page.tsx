@@ -25,10 +25,12 @@ import { Loader2, CheckSquare, Users, ClipboardList, Download } from "lucide-rea
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
+import { useSchoolSettings } from "@/context/SchoolSettingsContext";
 import * as gradesApi from "@/lib/api/grades";
 import * as academicsApi from "@/lib/api/academics";
 import type { GradeLevel } from "@/lib/api/academics";
 import { printReportCards, type ReportCardData } from "@/components/grades/ReportPrintPreview";
+import { getPdfHeaderFooter, type PdfHeaderFooterSettings } from "@/lib/api/school-settings";
 
 interface StudentItem {
   id: string;
@@ -53,6 +55,16 @@ export default function FinalGradesPage() {
   const { user } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
+  const { isPluginActive } = useSchoolSettings();
+
+  const [pdfSettings, setPdfSettings] = useState<PdfHeaderFooterSettings | null>(null);
+  useEffect(() => {
+    if (selectedCampus?.id && isPluginActive('pdf_header_footer')) {
+      getPdfHeaderFooter(selectedCampus.id).then(r => { if (r.success && r.data) setPdfSettings(r.data) })
+    } else {
+      setPdfSettings(null);
+    }
+  }, [selectedCampus?.id, isPluginActive]);
 
   // ── Include options ───────────────────────────────────────────
   const [includeTeacher, setIncludeTeacher] = useState(true);
@@ -188,7 +200,7 @@ export default function FinalGradesPage() {
       if (res.success) {
         const cards = res.data?.grade_lists || res.data?.data?.grade_lists || [];
         if (cards.length > 0) {
-          printReportCards("Final Grade List", cards as ReportCardData[]);
+          printReportCards("Final Grade List", cards as ReportCardData[], pdfSettings, selectedCampus?.name, selectedCampus ?? undefined, isPluginActive('pdf_header_footer'));
         } else {
           toast.success(
             `Grade lists created for ${selectedStudentIds.length} student(s)`

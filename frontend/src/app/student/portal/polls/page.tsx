@@ -42,9 +42,9 @@ export default function StudentPortalPollsPage() {
       })
       setPolls(result.polls)
       
-      // Mark all polls as viewed
+      // Mark all polls as viewed (user-scoped)
       result.polls.forEach(poll => {
-        markPortalItemViewed('poll', poll.id)
+        markPortalItemViewed('poll', poll.id, profile?.id)
       })
     } catch (error) {
       console.error('Error fetching polls:', error)

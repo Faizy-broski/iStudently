@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useCampus } from '@/context/CampusContext'
+import { useSchoolSettings } from '@/context/SchoolSettingsContext'
+import { getPdfHeaderFooter, type PdfHeaderFooterSettings } from '@/lib/api/school-settings'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -9,9 +11,10 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
-import { IconLoader, IconSearch, IconPrinter, IconReceipt, IconFilter, IconRefresh } from '@tabler/icons-react'
+import { IconLoader, IconSearch, IconReceipt, IconFilter, IconRefresh, IconDownload } from '@tabler/icons-react'
 import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
+import { openPdfDownload } from '@/lib/utils/printLayout'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
@@ -163,7 +166,17 @@ async function fetchStudentsWithPayments(schoolId: string, gradeId?: string, sec
 
 export default function PrintReceiptsPage() {
     const { selectedCampus, loading: campusLoading } = useCampus() || {}
+    const { isPluginActive } = useSchoolSettings()
     const schoolId = selectedCampus?.id
+
+    const [pdfSettings, setPdfSettings] = useState<PdfHeaderFooterSettings | null>(null)
+    useEffect(() => {
+        if (schoolId && isPluginActive('pdf_header_footer')) {
+            getPdfHeaderFooter(schoolId).then(r => { if (r.success && r.data) setPdfSettings(r.data) })
+        } else {
+            setPdfSettings(null)
+        }
+    }, [schoolId, isPluginActive])
 
     const [gradeId, setGradeId] = useState<string>('all')
     const [sectionId, setSectionId] = useState<string>('all')
@@ -285,51 +298,51 @@ export default function PrintReceiptsPage() {
     // Get selected payments for printing
     const paymentsToPrint = filteredPayments.filter(p => selectedPayments.has(p.id))
 
-    // Print handler using native window.print
-    const handlePrint = useCallback(() => {
+    // Download PDF handler using openPdfDownload
+    const handlePrint = useCallback(async () => {
         const printContent = printRef.current
         if (!printContent) return
 
-        const printWindow = window.open('', '_blank')
-        if (!printWindow) return
+        const bodyHtml = printContent.innerHTML
+        const bodyStyles = `
+            .receipt { border: 2px solid #333; padding: 24px; margin-bottom: 32px; page-break-after: always; }
+            .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 16px; margin-bottom: 16px; }
+            .header h1 { font-size: 24px; margin-bottom: 4px; }
+            .header p { color: #666; }
+            .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+            .info-grid .right { text-align: right; }
+            .amount-box { background: #f0f0f0; border: 1px solid #ddd; padding: 24px; text-align: center; margin-bottom: 24px; }
+            .amount-box .label { color: #666; font-size: 14px; margin-bottom: 8px; }
+            .amount-box .amount { font-size: 32px; font-weight: bold; color: #16a34a; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+            th, td { border: 1px solid #333; padding: 8px; text-align: left; }
+            th { background: #f0f0f0; width: 40%; }
+            .footer { display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid #333; padding-top: 16px; }
+            .footer .date { font-size: 12px; color: #666; }
+            .footer .signature { text-align: center; }
+            .footer .signature-line { border-top: 1px solid #333; padding-top: 4px; margin-top: 48px; width: 200px; }
+            .receipt:last-child { page-break-after: auto; }
+        `
 
-        printWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Payment Receipts</title>
-                <style>
-                    * { margin: 0; padding: 0; box-sizing: border-box; }
-                    body { font-family: Arial, sans-serif; padding: 20px; }
-                    .receipt { border: 2px solid #333; padding: 24px; margin-bottom: 32px; page-break-after: always; }
-                    .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 16px; margin-bottom: 16px; }
-                    .header h1 { font-size: 24px; margin-bottom: 4px; }
-                    .header p { color: #666; }
-                    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
-                    .info-grid .right { text-align: right; }
-                    .amount-box { background: #f0f0f0; border: 1px solid #ddd; padding: 24px; text-align: center; margin-bottom: 24px; }
-                    .amount-box .label { color: #666; font-size: 14px; margin-bottom: 8px; }
-                    .amount-box .amount { font-size: 32px; font-weight: bold; color: #16a34a; }
-                    table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-                    th, td { border: 1px solid #333; padding: 8px; text-align: left; }
-                    th { background: #f0f0f0; width: 40%; }
-                    .footer { display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid #333; padding-top: 16px; }
-                    .footer .date { font-size: 12px; color: #666; }
-                    .footer .signature { text-align: center; }
-                    .footer .signature-line { border-top: 1px solid #333; padding-top: 4px; margin-top: 48px; width: 200px; }
-                    @media print { .receipt:last-child { page-break-after: auto; } }
-                </style>
-            </head>
-            <body>${printContent.innerHTML}</body>
-            </html>
-        `)
-        printWindow.document.close()
-        printWindow.focus()
-        setTimeout(() => {
-            printWindow.print()
-            printWindow.close()
-        }, 250)
-    }, [])
+        const school = {
+            name: selectedCampus?.name || '',
+            address: selectedCampus?.address,
+            phone: selectedCampus?.phone,
+            logo_url: selectedCampus?.logo_url,
+        }
+
+        await openPdfDownload(
+            {
+                title: 'Payment Receipts',
+                bodyHtml,
+                bodyStyles,
+                school,
+                pdfSettings,
+                pluginActive: isPluginActive('pdf_header_footer'),
+            },
+            'payment-receipts',
+        )
+    }, [pdfSettings, selectedCampus, isPluginActive])
 
     if (campusLoading) {
         return (
@@ -418,13 +431,13 @@ export default function PrintReceiptsPage() {
                             </div>
                         </div>
                         <div className="flex items-end">
-                            <Button 
+                            <Button
                                 onClick={() => handlePrint()}
                                 disabled={selectedPayments.size === 0}
                                 className="bg-[#3d8fb5] hover:bg-[#357a9e] w-full"
                             >
-                                <IconPrinter className="h-4 w-4 mr-2" />
-                                Print Selected ({selectedPayments.size})
+                                <IconDownload className="h-4 w-4 mr-2" />
+                                Download PDF ({selectedPayments.size})
                             </Button>
                         </div>
                     </div>

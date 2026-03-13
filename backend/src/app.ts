@@ -61,6 +61,10 @@ import activitiesRoutes from "./routes/activities.routes";
 import staffAbsencesRoutes from "./routes/staff-absences.routes";
 import humanResourcesRoutes from "./routes/human-resources.routes";
 import quizRoutes from "./routes/quiz.routes";
+import icalRoutes from "./routes/ical.routes";
+import publicPagesRoutes from "./routes/public-pages.routes";
+import letterTemplateRoutes from "./routes/letter-template.routes";
+import mediaUploadRoutes from "./routes/media-upload.routes";
 
 const app = express();
 
@@ -142,9 +146,9 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 // CORS headers are already set above - don't use cors package to avoid conflicts
 
-// Increase body size limit for file uploads (assignments with attachments)
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
+// Standard body limit for most routes
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ limit: "2mb", extended: true }));
 
 // Request logging middleware
 app.use((req: Request, _res: Response, next: NextFunction) => {
@@ -203,6 +207,15 @@ const registerRoutes = (path: string, router: any) => {
   app.use(path, router); // cPanel/Root: /academics, /schools, etc.
 };
 
+// iCal routes registered FIRST so the public /subscribe/:token endpoint is never
+// intercepted by routers that apply global authenticate middleware (e.g. rolloverRoutes).
+registerRoutes("", icalRoutes); // /api/ical/link  (auth)  and /api/ical/subscribe/:token  (public)
+
+// Public Pages plugin — registered before all auth routes.
+// Contains both public GET routes (/api/public/:slug/...) and
+// admin config routes (/api/public/config/settings) with inline auth middleware.
+registerRoutes("/public", publicPagesRoutes);
+
 // Register all routes using helper for dual-path support
 registerRoutes("/schools", schoolRoutes);
 registerRoutes("/dashboard", dashboardRoutes);
@@ -231,6 +244,8 @@ registerRoutes("/parent-dashboard", parentDashboardRoutes);
 registerRoutes("/staff-designations", staffDesignationRoutes);
 registerRoutes("/accounting", accountingRoutes);
 registerRoutes("/id-card-templates", idCardTemplateRoutes);
+registerRoutes("/letter-templates", letterTemplateRoutes);
+registerRoutes("/media", mediaUploadRoutes);
 registerRoutes("/mail", mailRoutes);
 registerRoutes("/entry-exit", entryExitRoutes);
 registerRoutes("/hostel", hostelRoutes);

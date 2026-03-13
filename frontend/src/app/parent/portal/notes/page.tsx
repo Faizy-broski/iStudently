@@ -38,7 +38,7 @@ export default function ParentPortalNotesPage() {
     try {
       const result = await portalApi.getNotes({ campus_id: selectedStudentCampus, limit: 100 })
       setNotes(result.notes)
-      result.notes.forEach(note => markPortalItemViewed('note', note.id))
+      result.notes.forEach(note => markPortalItemViewed('note', note.id, profile?.id))
     } catch (error) {
       console.error('Error fetching notes:', error)
     } finally {

@@ -230,6 +230,37 @@ export async function deleteDisciplineReferral(
 }
 
 // ============================================================================
+// DISCIPLINE SCORE
+// ============================================================================
+
+export interface DisciplineScoreBreakdown {
+  referral_id: string;
+  incident_date: string;
+  field_name: string;
+  delta: number;
+  detail: string;
+}
+
+export interface DisciplineScoreResult {
+  score: number;
+  total_delta: number;
+  referral_count: number;
+  breakdown: DisciplineScoreBreakdown[];
+}
+
+export async function getStudentDisciplineScore(params: {
+  studentId: string;
+  campusId?: string | null;
+  academicYearId?: string | null;
+}): Promise<ApiResponse<DisciplineScoreResult>> {
+  const urlParams = new URLSearchParams();
+  if (params.campusId) urlParams.append('campus_id', params.campusId);
+  if (params.academicYearId) urlParams.append('academic_year_id', params.academicYearId);
+  const qs = urlParams.toString();
+  return apiRequest<DisciplineScoreResult>(`/discipline/score/${params.studentId}${qs ? `?${qs}` : ''}`);
+}
+
+// ============================================================================
 // DISCIPLINE REPORTS — fetch all referrals (no pagination)
 // ============================================================================
 

@@ -97,6 +97,7 @@ router.post('/reports/sheets/course-periods', requireAdmin, attendanceController
 // ============================================================================
 
 router.post('/utilities/recalculate', requireAdmin, attendanceController.recalculateDailyAttendance)
+router.post('/utilities/generate-range', requireAdmin, attendanceController.generateMissingAttendanceRange)
 
 // ============================================================================
 // UTILITIES > Delete Duplicate Attendance

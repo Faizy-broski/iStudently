@@ -30,7 +30,7 @@ export default function TeacherPortalPollsPage() {
     try {
       const result = await portalApi.getPolls({ campus_id: profile.campus_id, limit: 100 })
       setPolls(result.polls)
-      result.polls.forEach(poll => markPortalItemViewed('poll', poll.id))
+      result.polls.forEach(poll => markPortalItemViewed('poll', poll.id, profile?.id))
     } catch (error) {
       console.error('Error fetching polls:', error)
     } finally {

@@ -50,7 +50,29 @@ interface DayInfo {
 }
 
 
-import { type CalendarDay } from "@/lib/api/attendance-calendars";
+import { type CalendarDay, type ScheduleViewEntry } from "@/lib/api/attendance-calendars";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+// ── Schedule view colour helper ────────────────────────────────────────────
+
+const SCHEDULE_PALETTE = [
+  '#3B82F6', '#10B981', '#F59E0B', '#EF4444',
+  '#8B5CF6', '#EC4899', '#14B8A6', '#F97316',
+  '#6366F1', '#84CC16',
+];
+
+function getSectionColor(sectionId: string): string {
+  let hash = 0;
+  for (let i = 0; i < sectionId.length; i++) {
+    hash = sectionId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return SCHEDULE_PALETTE[Math.abs(hash) % SCHEDULE_PALETTE.length];
+}
 
 interface CalendarGridProps {
   events: SchoolEvent[];
@@ -64,6 +86,12 @@ interface CalendarGridProps {
   calendarStart?: string | null;
   /** ISO date string (YYYY-MM-DD) — last month of the calendar range */
   calendarEnd?: string | null;
+  /**
+   * When provided the grid switches to Schedule View mode:
+   * timetable entries shown per day cell instead of events.
+   * Keyed by "YYYY-MM-DD" (always Gregorian).
+   */
+  scheduleEntries?: Record<string, ScheduleViewEntry[]>;
 }
 
 export function CalendarGrid({
@@ -76,6 +104,7 @@ export function CalendarGrid({
   calendarType,
   calendarStart,
   calendarEnd,
+  scheduleEntries,
 }: CalendarGridProps) {
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
   const [globalHijriOffset, setGlobalHijriOffset] = useState<number>(0);
@@ -457,7 +486,47 @@ export function CalendarGrid({
                     </div>
                   )}
 
-                  {/* Events for this day */}
+                  {/* Schedule entries (shown in Schedule View mode) */}
+                  {scheduleEntries && (
+                    <TooltipProvider delayDuration={150}>
+                      <div className="space-y-0.5 mb-1">
+                        {(scheduleEntries[day.dateKey] || []).map((entry) => {
+                          const color = getSectionColor(entry.section_id);
+                          const label = entry.subject_code || entry.subject_name.slice(0, 7);
+                          const period = entry.period_name || `P${entry.period_number}`;
+                          return (
+                            <Tooltip key={entry.id}>
+                              <TooltipTrigger asChild>
+                                <div
+                                  className="text-[10px] leading-tight px-1 py-0.5 rounded-sm truncate cursor-default"
+                                  style={{
+                                    borderLeft: `3px solid ${color}`,
+                                    background: `${color}18`,
+                                  }}
+                                >
+                                  <span className="font-semibold" style={{ color }}>{label}</span>
+                                  <span className="text-muted-foreground ml-1">{period}</span>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="max-w-[200px] space-y-1 text-xs">
+                                <p className="font-semibold">{entry.subject_name}</p>
+                                <p className="text-muted-foreground">{entry.section_name} · {entry.grade_name}</p>
+                                <p className="text-muted-foreground">{entry.teacher_name}</p>
+                                {entry.start_time && (
+                                  <p className="text-muted-foreground">{entry.start_time}–{entry.end_time}</p>
+                                )}
+                                {entry.room_number && (
+                                  <p className="text-muted-foreground">Room {entry.room_number}</p>
+                                )}
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        })}
+                      </div>
+                    </TooltipProvider>
+                  )}
+
+                  {/* Events for this day (always shown) */}
                   <div className="space-y-1">
                     {dayEvents.slice(0, 2).map((event) => (
                       <div

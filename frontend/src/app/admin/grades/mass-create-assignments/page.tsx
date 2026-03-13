@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -126,6 +126,7 @@ export default function MassCreateAssignmentsPage() {
       const res = await gradesApi.createGradebookAssignmentType({
         title: newTypeName.trim(),
         sort_order: assignmentTypes.length + 1,
+        campus_id: selectedCampus?.id,
       });
       if (res.success && res.data) {
         toast.success("Assignment type created");
@@ -345,14 +346,12 @@ export default function MassCreateAssignmentsPage() {
 
           {/* Description */}
           <div className="space-y-1.5">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
+            <Label>Description</Label>
+            <RichTextEditor
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={4}
-              placeholder="Assignment description or instructions..."
-              className="resize-y"
+              onChange={setDescription}
+              campusId={selectedCampus?.id}
+              showEditorPlugins
             />
           </div>
 

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, BookOpen, FileText, Users, Zap, Bell, Calendar as CalendarBadge, Settings2, Edit, Trash2, Info } from "lucide-react";
+import { Plus, BookOpen, FileText, Users, Zap, Bell, Calendar as CalendarBadge, Settings2, Edit, Trash2, Info, CalendarDays, CalendarRange, Copy, Check, List, Download } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -26,26 +26,31 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { 
+import {
   deleteEvent,
   type SchoolEvent,
-  type EventCategory 
+  type EventCategory
 } from "@/lib/api/events";
+import { getICalLink, type ICalType } from "@/lib/api/ical";
 import { EventFormDialog } from "@/components/admin/EventFormDialog";
 import { CalendarGrid } from "@/components/admin/CalendarGrid";
 import { EventDetailsDialog } from "@/components/admin/EventDetailsDialog";
-import { 
-  getCalendars, 
-  getCalendarDays, 
+import {
+  getCalendars,
+  getCalendarDays,
   updateCalendar,
   deleteCalendar,
   toggleCalendarDay,
-  type CalendarDay, 
-  type AttendanceCalendar 
+  getCalendarScheduleView,
+  type CalendarDay,
+  type AttendanceCalendar,
+  type ScheduleViewEntry,
 } from "@/lib/api/attendance-calendars";
+import { getAcademicYears, type AcademicYear } from "@/lib/api/academics";
 import useSWR, { mutate } from "swr";
 import { useEvents, useCategoryCounts } from "@/hooks/useEvents";
 import { useCampus } from "@/context/CampusContext";
+import { useSchoolSettings } from "@/context/SchoolSettingsContext";
 import { toast } from "sonner";
 import moment from "moment";
 
@@ -71,9 +76,86 @@ export default function EventsPage() {
   const router = useRouter();
   const campusContext = useCampus();
   const campusId = campusContext?.selectedCampus?.id;
-  
+  const { isPluginActive } = useSchoolSettings();
+  const schedulePluginActive = isPluginActive('calendar_schedule_view');
+  const icalPluginActive = isPluginActive('icalendar');
+
+  // iCalendar state
+  const [icalLoading, setIcalLoading] = useState<ICalType | null>(null);
+  const [icalUrls, setIcalUrls] = useState<Record<ICalType, string>>({ events: '', schedule: '' });
+  const [icalCopied, setIcalCopied] = useState<ICalType | null>(null);
+  const [showIcalPopover, setShowIcalPopover] = useState(false);
+
+  async function fetchIcalLink(type: ICalType) {
+    if (icalUrls[type]) return; // already fetched
+    setIcalLoading(type);
+    try {
+      const res = await getICalLink({ type, campusId });
+      if (res.data?.url) {
+        setIcalUrls(prev => ({ ...prev, [type]: res.data!.url }));
+      } else {
+        toast.error(res.error || 'Failed to generate link');
+      }
+    } catch {
+      toast.error('Failed to generate iCalendar link');
+    } finally {
+      setIcalLoading(null);
+    }
+  }
+
+  async function copyIcalLink(type: ICalType) {
+    // If URL already fetched, copy directly
+    if (icalUrls[type]) {
+      await navigator.clipboard.writeText(icalUrls[type]);
+      setIcalCopied(type);
+      setTimeout(() => setIcalCopied(null), 2000);
+      return;
+    }
+    // Otherwise fetch fresh from the API (avoids stale-closure issue)
+    const res = await getICalLink({ type, campusId });
+    const url = res.data?.url;
+    if (!url) { toast.error(res.error || 'Failed to generate link'); return; }
+    setIcalUrls(prev => ({ ...prev, [type]: url }));
+    await navigator.clipboard.writeText(url);
+    setIcalCopied(type);
+    setTimeout(() => setIcalCopied(null), 2000);
+  }
+
+  async function downloadIcal(type: ICalType) {
+    let url = icalUrls[type];
+    if (!url) {
+      await fetchIcalLink(type);
+      // After fetch, icalUrls state may not yet be updated in this closure.
+      // Re-read by triggering a download once state settles via a follow-up effect is complex,
+      // so we instead get the URL directly from the API response here.
+      const res = await getICalLink({ type, campusId });
+      url = res.data?.url || '';
+      if (!url) { toast.error(res.error || 'Failed to generate link'); return; }
+    }
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error('Download failed');
+      const blob = await resp.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = type === 'schedule' ? 'class-schedule.ics' : 'school-events.ics';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      toast.error('Download failed. Try copying the link instead.');
+    }
+  }
+
   const [selectedCategory, setSelectedCategory] = useState<EventCategory | 'all'>('all');
   const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  // Schedule View mode
+  const [scheduleViewMode, setScheduleViewMode] = useState(false);
+  const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
+  const [selectedAcademicYearId, setSelectedAcademicYearId] = useState<string>('');
   const [gregorianCalendar, setGregorianCalendar] = useState<AttendanceCalendar | null>(null);
   const [hijriCalendar, setHijriCalendar] = useState<AttendanceCalendar | null>(null);
   const [activeTab, setActiveTab] = useState<'gregorian' | 'hijri'>('gregorian');
@@ -132,6 +214,74 @@ export default function EventsPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allCalendars]);  // intentionally not including activeTab to avoid loop
+
+  // Fetch academic years on mount (needed as soon as schedule mode is toggled)
+  useEffect(() => {
+    getAcademicYears().then((years) => {
+      setAcademicYears(years);
+      const current = years.find((y) => y.is_current) || years[0];
+      if (current) setSelectedAcademicYearId(current.id);
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Build month string "YYYY-MM" for current view
+  const monthStr = useMemo(
+    () => `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`,
+    [currentMonth]
+  );
+
+  // Fetch schedule view data (one query per month, only in schedule mode)
+  const activeCalendarForSchedule = activeTab === 'gregorian' ? gregorianCalendar : hijriCalendar;
+  const { data: scheduleResp, isLoading: scheduleLoading, error: scheduleError } = useSWR(
+    scheduleViewMode && schedulePluginActive && activeCalendarForSchedule?.id && selectedAcademicYearId
+      ? ['schedule-view', activeCalendarForSchedule.id, selectedAcademicYearId, monthStr, campusId]
+      : null,
+    async () => {
+      const res = await getCalendarScheduleView(activeCalendarForSchedule!.id, {
+        academic_year_id: selectedAcademicYearId,
+        month: monthStr,
+        campus_id: campusId || null,
+      });
+      if (!res.success) {
+        toast.error(res.error || 'Failed to load schedule');
+      }
+      return res;
+    },
+    { revalidateOnFocus: false, keepPreviousData: true }
+  );
+
+  // Build per-date schedule entries map.
+  // When scheduleViewMode is ON: always return a Record (even empty {}) so CalendarGrid
+  // switches to schedule mode immediately on toggle — not undefined (which keeps events mode).
+  const scheduleEntriesMap = useMemo<Record<string, ScheduleViewEntry[]> | undefined>(() => {
+    if (!scheduleViewMode) return undefined;
+    if (!scheduleResp?.data) return {};          // schedule mode active, data still loading
+
+    const { calendar_days, schedule_by_dow } = scheduleResp.data;
+    const map: Record<string, ScheduleViewEntry[]> = {};
+
+    // Primary: use calendar_days which marks school-day vs holiday
+    for (const [date, dayData] of Object.entries(calendar_days)) {
+      map[date] = dayData.entries;
+    }
+
+    // Fallback: if attendance calendar days haven't been generated yet but timetable exists,
+    // populate every date in the visible month from schedule_by_dow
+    if (Object.keys(map).length === 0 && Object.keys(schedule_by_dow).length > 0) {
+      const y = currentMonth.getFullYear();
+      const m = currentMonth.getMonth();
+      const daysInMonth = new Date(y, m + 1, 0).getDate();
+      for (let d = 1; d <= daysInMonth; d++) {
+        const jsDow = new Date(y, m, d).getDay();
+        const ourDow = jsDow === 0 ? 6 : jsDow - 1;
+        const dateKey = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        map[dateKey] = schedule_by_dow[ourDow] || [];
+      }
+    }
+
+    return map;
+  }, [scheduleViewMode, scheduleResp, currentMonth]);
 
   // Use SWR hooks for data fetching with automatic caching
   const { events, isLoading, isValidating, mutate: mutateEvents } = useEvents({
@@ -324,6 +474,12 @@ export default function EventsPage() {
   };
 
   const handleCalendarDayClick = async (date: Date) => {
+    // In schedule view mode: clicking a date opens the "add event" form
+    if (scheduleViewMode) {
+      handleAddEvent(date);
+      return;
+    }
+
     const currentCalendar = activeTab === 'gregorian' ? gregorianCalendar : hijriCalendar;
     if (!currentCalendar) {
       // If no calendar, allow adding event
@@ -376,13 +532,29 @@ export default function EventsPage() {
             Manage academic events, holidays, and important dates with dual calendar support
           </p>
         </div>
-        <Button 
-          className="bg-linear-to-r from-[#57A3CC] to-[#022172] text-white hover:opacity-90"
-          onClick={() => router.push('/admin/events/calendars/new')}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          New Calendar
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => router.push('/admin/events/list')}
+          >
+            <List className="mr-2 h-4 w-4" />
+            All Events
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => router.push('/admin/events/calendars/new')}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            New Calendar
+          </Button>
+          <Button
+            className="bg-linear-to-r from-[#57A3CC] to-[#022172] text-white hover:opacity-90"
+            onClick={() => handleAddEvent()}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Event
+          </Button>
+        </div>
       </div>
 
       {/* Category Stats */}
@@ -424,6 +596,92 @@ export default function EventsPage() {
             <TabsTrigger value="hijri">Hijri Calendar</TabsTrigger>
           </TabsList>
         </div>
+
+        {/* Schedule View toggle + academic year selector (shown when plugin is active) */}
+        {schedulePluginActive && (
+          <div className="flex items-center gap-3 mb-2 flex-wrap">
+            <button
+              className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+              onClick={() => setScheduleViewMode((v) => !v)}
+            >
+              <CalendarDays className="w-4 h-4" />
+              {scheduleViewMode ? 'Events and Assignments View' : 'Schedule View'}
+            </button>
+            {icalPluginActive && (
+              <Popover open={showIcalPopover} onOpenChange={(o) => { setShowIcalPopover(o); if (o) { fetchIcalLink('events'); if (schedulePluginActive) fetchIcalLink('schedule'); } }}>
+                <PopoverTrigger asChild>
+                  <button className="text-sm text-green-700 hover:underline flex items-center gap-1 ml-2">
+                    <CalendarRange className="w-4 h-4" />
+                    iCalendar
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-4 space-y-4" align="start">
+                  <p className="text-sm font-semibold">iCalendar</p>
+                  <p className="text-xs text-muted-foreground">
+                    <strong>Download</strong> the .ics file directly, or <strong>copy the link</strong> to subscribe in Google Calendar, Outlook, or any app that supports .ics feeds.
+                  </p>
+                  {/* Events link */}
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">School Events</p>
+                    <div className="flex items-center gap-1.5">
+                      <input readOnly value={icalUrls.events || (icalLoading === 'events' ? 'Generating…' : '—')} className="flex-1 text-xs border rounded px-2 py-1 bg-muted/30 truncate" />
+                      {/* Download button */}
+                      <button
+                        onClick={() => downloadIcal('events')}
+                        disabled={icalLoading === 'events'}
+                        className="shrink-0 p-1.5 rounded border hover:bg-muted disabled:opacity-50"
+                        title="Download .ics"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </button>
+                      {/* Copy button */}
+                      <button onClick={() => copyIcalLink('events')} className="shrink-0 p-1.5 rounded border hover:bg-muted" title="Copy subscribe link">
+                        {icalCopied === 'events' ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+                  {/* Schedule link (only if schedule plugin also active) */}
+                  {schedulePluginActive && (
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Class Schedule</p>
+                      <div className="flex items-center gap-1.5">
+                        <input readOnly value={icalUrls.schedule || (icalLoading === 'schedule' ? 'Generating…' : '—')} className="flex-1 text-xs border rounded px-2 py-1 bg-muted/30 truncate" />
+                        <button
+                          onClick={() => downloadIcal('schedule')}
+                          disabled={icalLoading === 'schedule'}
+                          className="shrink-0 p-1.5 rounded border hover:bg-muted disabled:opacity-50"
+                          title="Download .ics"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => copyIcalLink('schedule')} className="shrink-0 p-1.5 rounded border hover:bg-muted" title="Copy subscribe link">
+                          {icalCopied === 'schedule' ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+            )}
+            {scheduleViewMode && academicYears.length > 0 && (
+              <Select value={selectedAcademicYearId} onValueChange={setSelectedAcademicYearId}>
+                <SelectTrigger className="h-7 w-36 text-xs">
+                  <SelectValue placeholder="Academic year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {academicYears.map((y) => (
+                    <SelectItem key={y.id} value={y.id} className="text-xs">
+                      {y.name}{y.is_current ? ' (Current)' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {scheduleViewMode && scheduleLoading && (
+              <span className="text-xs text-muted-foreground animate-pulse">Loading schedule…</span>
+            )}
+          </div>
+        )}
 
         <TabsContent value="gregorian" className="mt-6">
           {/* Calendar Selector */}
@@ -474,7 +732,7 @@ export default function EventsPage() {
               )}
             </div>
           )}
-          
+
           {isLoading || loadingGregorianDays ? (
             <Card>
               <CardContent className="p-12 text-center text-muted-foreground">
@@ -503,6 +761,7 @@ export default function EventsPage() {
                 calendarType="gregorian"
                 calendarStart={gregorianCalendar?.start_date}
                 calendarEnd={gregorianCalendar?.end_date}
+                scheduleEntries={activeTab === 'gregorian' ? scheduleEntriesMap : undefined}
               />
             </div>
           )}
@@ -557,7 +816,7 @@ export default function EventsPage() {
               )}
             </div>
           )}
-          
+
           {isLoading || loadingHijriDays ? (
             <Card>
               <CardContent className="p-12 text-center text-muted-foreground">
@@ -586,6 +845,7 @@ export default function EventsPage() {
                 calendarType="hijri"
                 calendarStart={hijriCalendar?.start_date}
                 calendarEnd={hijriCalendar?.end_date}
+                scheduleEntries={activeTab === 'hijri' ? scheduleEntriesMap : undefined}
               />
             </div>
           )}

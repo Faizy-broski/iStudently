@@ -73,4 +73,11 @@ router.post('/:id/regenerate', requireRole('admin'), (req, res) => controller.re
  */
 router.get('/:id/summary', (req, res) => controller.getSummary(req, res))
 
+/**
+ * GET /api/attendance-calendars/:id/schedule-view
+ * Schedule view for a calendar month (requires calendar_schedule_view plugin active)
+ * Query: academic_year_id, month (YYYY-MM), campus_id?, section_id?
+ */
+router.get('/:id/schedule-view', (req, res) => controller.getScheduleView(req, res))
+
 export default router

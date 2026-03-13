@@ -134,6 +134,10 @@ function DynamicFieldInput({
 }) {
   const { field_type, options, name } = field;
 
+  // Strip the first option if it's a negative-number penalty marker (not selectable)
+  const isPenaltyMarker = (opt: string) => !isNaN(parseFloat(opt)) && parseFloat(opt) < 0;
+  const visibleOptions = (options ?? []).filter((opt, idx) => !(idx === 0 && isPenaltyMarker(opt)));
+
   if (field_type === 'text') {
     return (
       <Input
@@ -198,7 +202,7 @@ function DynamicFieldInput({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="__na__">N/A</SelectItem>
-          {(options ?? []).map((opt) => (
+          {visibleOptions.map((opt) => (
             <SelectItem key={opt} value={opt}>{opt}</SelectItem>
           ))}
         </SelectContent>
@@ -209,7 +213,7 @@ function DynamicFieldInput({
   if (field_type === 'multiple_radio') {
     return (
       <div className="flex flex-wrap gap-4">
-        {(options ?? []).map((opt) => (
+        {visibleOptions.map((opt) => (
           <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer">
             <input
               type="radio"
@@ -230,7 +234,7 @@ function DynamicFieldInput({
     const selected: string[] = Array.isArray(value) ? value : [];
     return (
       <div className="flex flex-wrap gap-4">
-        {(options ?? []).map((opt) => (
+        {visibleOptions.map((opt) => (
           <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer">
             <Checkbox
               checked={selected.includes(opt)}
@@ -438,18 +442,15 @@ export default function AddReferralPage() {
                       Change
                     </Button>
                   </div>
-                  {selectedStudent.campus_id ? (
-                    campusId && selectedStudent.campus_id !== campusId ? (
-                      <p className="text-sm text-yellow-700">
-                        Student is assigned to a different campus&nbsp;({selectedStudent.campus_id}).
-                      </p>
-                    ) : null
-                  ) : (
-                    <p className="text-sm text-red-700">
-                      This student has no campus assigned. You must update their profile
-                      before creating a referral.
+                  {selectedStudent.campus_id && campusId && selectedStudent.campus_id !== campusId ? (
+                    <p className="text-sm text-yellow-700">
+                      Student is assigned to a different campus&nbsp;({selectedStudent.campus_id}).
                     </p>
-                  )}
+                  ) : !selectedStudent.campus_id && !campusId ? (
+                    <p className="text-sm text-red-700">
+                      No campus selected. Please select a campus before creating a referral.
+                    </p>
+                  ) : null}
                 </div>
               ) : (
                 <StudentSearch

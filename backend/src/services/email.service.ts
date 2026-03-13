@@ -1,5 +1,83 @@
 import { supabase } from '../config/supabase'
 import { sendEmail } from './mail'
+import { createTransporter, SmtpConfig } from '../config/mail'
+import type { Transporter } from 'nodemailer'
+
+// ─── Per-school SMTP loader ───────────────────────────────────────────────────
+
+interface SchoolMailer {
+  transporter: Transporter
+  fromAddress: string
+}
+
+/**
+ * Load SMTP settings from school_settings for the given school/campus.
+ * schoolId may be a campus ID (returned by getEffectiveSchoolId) or a standalone school ID.
+ * Lookup cascade:
+ *   1. Campus-specific SMTP: school_settings where school_id=parentSchoolId, campus_id=campusId
+ *   2. School-level SMTP:    school_settings where school_id=parentSchoolId, campus_id IS NULL
+ * Throws if neither is configured.
+ */
+async function getSchoolMailer(schoolId: string): Promise<SchoolMailer> {
+  // Resolve whether schoolId is a campus or a standalone school
+  const { data: school } = await supabase
+    .from('schools')
+    .select('id, parent_school_id')
+    .eq('id', schoolId)
+    .maybeSingle()
+
+  const parentSchoolId = school?.parent_school_id ?? schoolId
+  const campusId = school?.parent_school_id ? schoolId : null
+
+  const SMTP_COLS = 'smtp_host, smtp_port, smtp_secure, smtp_user, smtp_pass, smtp_from_email, smtp_from_name'
+
+  // 1. Try campus-specific SMTP if this is a campus
+  let smtpRow: Record<string, any> | null = null
+  if (campusId) {
+    const { data } = await supabase
+      .from('school_settings')
+      .select(SMTP_COLS)
+      .eq('school_id', parentSchoolId)
+      .eq('campus_id', campusId)
+      .maybeSingle()
+    if (data?.smtp_host && data?.smtp_user && data?.smtp_pass) {
+      smtpRow = data
+    }
+  }
+
+  // 2. Fall back to school-level SMTP
+  if (!smtpRow) {
+    const { data } = await supabase
+      .from('school_settings')
+      .select(SMTP_COLS)
+      .eq('school_id', parentSchoolId)
+      .is('campus_id', null)
+      .maybeSingle()
+    if (data?.smtp_host && data?.smtp_user && data?.smtp_pass) {
+      smtpRow = data
+    }
+  }
+
+  if (!smtpRow) {
+    throw new Error(
+      'SMTP not configured for this school. Go to Settings → Plugins → Email SMTP to set up your mail server.'
+    )
+  }
+
+  const config: SmtpConfig = {
+    host: smtpRow.smtp_host,
+    port: smtpRow.smtp_port ?? 465,
+    secure: smtpRow.smtp_secure ?? true,
+    user: smtpRow.smtp_user,
+    pass: smtpRow.smtp_pass,
+  }
+
+  const fromName = smtpRow.smtp_from_name || 'Studently'
+  const fromEmail = smtpRow.smtp_from_email || smtpRow.smtp_user
+  const fromAddress = `${fromName} <${fromEmail}>`
+
+  return { transporter: createTransporter(config), fromAddress }
+}
 
 // ─── Substitution engine ─────────────────────────────────────────────────────
 
@@ -83,13 +161,15 @@ async function logEmail(params: {
 export async function sendEmailToStudents(options: SendOptions): Promise<EmailSendResult> {
   const { subject, body, recipientIds, schoolId, sentByProfileId, testEmail, ccEmails } = options
 
+  const { transporter, fromAddress } = await getSchoolMailer(schoolId)
+
   const { data: students, error } = await supabase
     .from('students')
     .select(`
       id,
       student_number,
       grade_level,
-      profile:profiles(
+      profile:profiles!students_profile_id_fkey(
         first_name,
         last_name,
         email
@@ -97,9 +177,14 @@ export async function sendEmailToStudents(options: SendOptions): Promise<EmailSe
     `)
     .eq('school_id', schoolId)
     .in('id', recipientIds)
-    .eq('is_active', true)
 
   if (error) throw new Error(`Failed to fetch students: ${error.message}`)
+
+  console.log('[EMAIL:students] fetched=%d schoolId=%s', students?.length ?? 0, schoolId)
+  if (students?.length) {
+    const s0 = students[0] as any
+    console.log('[EMAIL:students] first student profile: email=%s', s0?.profile?.email ?? 'null')
+  }
 
   const result: EmailSendResult = {
     success_count: 0,
@@ -135,6 +220,8 @@ export async function sendEmailToStudents(options: SendOptions): Promise<EmailSe
           subject: applySubstitutions(subject, subs),
           html: applySubstitutions(body, subs),
           text: stripHtml(applySubstitutions(body, subs)),
+          transporter,
+          fromAddress,
         })
 
         return { to, profile }
@@ -149,11 +236,13 @@ export async function sendEmailToStudents(options: SendOptions): Promise<EmailSe
         sentAddresses.push(r.value.to)
       } else {
         result.fail_count++
+        const errMsg = r.reason?.message ?? 'Send failed'
+        console.error('[EMAIL:students] send failed to %s: %s', testEmail || profile?.email || student.id, errMsg)
         result.errors.push({
           id: student.id,
           email: testEmail || profile?.email || '',
           name: `${profile?.first_name ?? ''} ${profile?.last_name ?? ''}`.trim(),
-          error: r.reason?.message ?? 'Send failed',
+          error: errMsg,
         })
       }
     })
@@ -167,6 +256,8 @@ export async function sendEmailToStudents(options: SendOptions): Promise<EmailSe
         subject: `[Copy] ${subject}`,
         html: body,
         text: stripHtml(body),
+        transporter,
+        fromAddress,
       })
     } catch { /* CC failure is non-fatal */ }
   }
@@ -195,6 +286,8 @@ export async function sendEmailToStudents(options: SendOptions): Promise<EmailSe
 
 export async function sendEmailToStaff(options: SendOptions): Promise<EmailSendResult> {
   const { subject, body, recipientIds, schoolId, sentByProfileId, testEmail, ccEmails } = options
+
+  const { transporter, fromAddress } = await getSchoolMailer(schoolId)
 
   const { data: staffList, error } = await supabase
     .from('staff')
@@ -245,6 +338,8 @@ export async function sendEmailToStaff(options: SendOptions): Promise<EmailSendR
           subject: applySubstitutions(subject, subs),
           html: applySubstitutions(body, subs),
           text: stripHtml(applySubstitutions(body, subs)),
+          transporter,
+          fromAddress,
         })
 
         return { to, profile }
@@ -276,6 +371,8 @@ export async function sendEmailToStaff(options: SendOptions): Promise<EmailSendR
         subject: `[Copy] ${subject}`,
         html: body,
         text: stripHtml(body),
+        transporter,
+        fromAddress,
       })
     } catch { /* CC failure is non-fatal */ }
   }
@@ -399,13 +496,14 @@ export async function sendDisciplineLog(options: {
 }): Promise<EmailSendResult> {
   const { subject, body, recipientIds, schoolId, sentByProfileId, testEmail, includeFields, academicYearId } = options
 
+  const { transporter, fromAddress } = await getSchoolMailer(schoolId)
+
   // Fetch students with profiles
   const { data: students, error: sErr } = await supabase
     .from('students')
-    .select('id, student_number, grade_level, profile:profiles(first_name, last_name, email)')
+    .select('id, student_number, grade_level, profile:profiles!students_profile_id_fkey(first_name, last_name, email)')
     .eq('school_id', schoolId)
     .in('id', recipientIds)
-    .eq('is_active', true)
   if (sErr) throw new Error(`Failed to fetch students: ${sErr.message}`)
 
   // Fetch all referrals for selected students in batch
@@ -451,6 +549,8 @@ export async function sendDisciplineLog(options: {
           subject: applySubstitutions(subject, subs),
           html: applySubstitutions(body, subs),
           text: stripHtml(applySubstitutions(body, subs)),
+          transporter,
+          fromAddress,
         })
         return { to }
       })
@@ -516,12 +616,13 @@ export async function sendReportCards(options: {
 }): Promise<EmailSendResult> {
   const { subject, body, recipientIds, schoolId, sentByProfileId, testEmail, markingPeriodId, academicYearId, includeFields } = options
 
+  const { transporter, fromAddress } = await getSchoolMailer(schoolId)
+
   const { data: students, error: sErr } = await supabase
     .from('students')
-    .select('id, student_number, grade_level, profile:profiles(first_name, last_name, email)')
+    .select('id, student_number, grade_level, profile:profiles!students_profile_id_fkey(first_name, last_name, email)')
     .eq('school_id', schoolId)
     .in('id', recipientIds)
-    .eq('is_active', true)
   if (sErr) throw new Error(`Failed to fetch students: ${sErr.message}`)
 
   // Fetch all final grades for selected students in one query
@@ -560,7 +661,7 @@ export async function sendReportCards(options: {
           student_id: student.student_number ?? '',
           report_card: buildReportCardHtml(grades, includeFields),
         }
-        await sendEmail({ to, subject: applySubstitutions(subject, subs), html: applySubstitutions(body, subs), text: stripHtml(applySubstitutions(body, subs)) })
+        await sendEmail({ to, subject: applySubstitutions(subject, subs), html: applySubstitutions(body, subs), text: stripHtml(applySubstitutions(body, subs)), transporter, fromAddress })
         return { to }
       })
     )
@@ -589,12 +690,13 @@ export async function sendBalances(options: {
 }): Promise<EmailSendResult> {
   const { subject, body, recipientIds, schoolId, sentByProfileId, testEmail, academicYear } = options
 
+  const { transporter, fromAddress } = await getSchoolMailer(schoolId)
+
   const { data: students, error: sErr } = await supabase
     .from('students')
-    .select('id, student_number, grade_level, profile:profiles(first_name, last_name, email)')
+    .select('id, student_number, grade_level, profile:profiles!students_profile_id_fkey(first_name, last_name, email)')
     .eq('school_id', schoolId)
     .in('id', recipientIds)
-    .eq('is_active', true)
   if (sErr) throw new Error(`Failed to fetch students: ${sErr.message}`)
 
   // Fetch fees for all selected students
@@ -640,7 +742,7 @@ export async function sendBalances(options: {
           balance: totalBalance.toFixed(2),
           fees_list: feesListHtml,
         }
-        await sendEmail({ to, subject: applySubstitutions(subject, subs), html: applySubstitutions(body, subs), text: stripHtml(applySubstitutions(body, subs)) })
+        await sendEmail({ to, subject: applySubstitutions(subject, subs), html: applySubstitutions(body, subs), text: stripHtml(applySubstitutions(body, subs)), transporter, fromAddress })
         return { to }
       })
     )
@@ -782,13 +884,14 @@ export async function sendDaysAbsent(options: {
 }): Promise<EmailSendResult> {
   const { subject, body, recipientStudentIds, schoolId, sentByProfileId, testEmail, startDate, endDate } = options
 
+  const { transporter, fromAddress } = await getSchoolMailer(schoolId)
+
   // Fetch students
   const { data: students, error: sErr } = await supabase
     .from('students')
-    .select('id, student_number, grade_level, profile:profiles(first_name, last_name, email)')
+    .select('id, student_number, grade_level, profile:profiles!students_profile_id_fkey(first_name, last_name, email)')
     .eq('school_id', schoolId)
     .in('id', recipientStudentIds)
-    .eq('is_active', true)
   if (sErr) throw new Error(`Failed to fetch students: ${sErr.message}`)
 
   // Fetch absence counts per student for the date range
@@ -851,6 +954,8 @@ export async function sendDaysAbsent(options: {
           subject: applySubstitutions(subject, subs),
           html: applySubstitutions(body, subs),
           text: stripHtml(applySubstitutions(body, subs)),
+          transporter,
+          fromAddress,
         })
         parentEmailsSent.add(parent.email)
         result.success_count++
@@ -890,10 +995,12 @@ export async function sendDisciplineLogToParents(options: {
 }): Promise<EmailSendResult> {
   const { subject, body, recipientIds, schoolId, sentByProfileId, testEmail, includeFields, academicYearId } = options
 
+  const { transporter, fromAddress } = await getSchoolMailer(schoolId)
+
   const { data: students, error: sErr } = await supabase
     .from('students')
-    .select('id, student_number, grade_level, profile:profiles(first_name, last_name)')
-    .eq('school_id', schoolId).in('id', recipientIds).eq('is_active', true)
+    .select('id, student_number, grade_level, profile:profiles!students_profile_id_fkey(first_name, last_name)')
+    .eq('school_id', schoolId).in('id', recipientIds)
   if (sErr) throw new Error(`Failed to fetch students: ${sErr.message}`)
 
   let refQuery = supabase
@@ -935,7 +1042,7 @@ export async function sendDisciplineLogToParents(options: {
           referral_count: String(referrals.length),
           discipline_log: buildDisciplineLogHtml(referrals, includeFields),
         }
-        await sendEmail({ to, subject: applySubstitutions(subject, subs), html: applySubstitutions(body, subs), text: stripHtml(applySubstitutions(body, subs)) })
+        await sendEmail({ to, subject: applySubstitutions(subject, subs), html: applySubstitutions(body, subs), text: stripHtml(applySubstitutions(body, subs)), transporter, fromAddress })
         parentEmailsSent.add(parent.email)
         result.success_count++
         sentAddresses.push(to)
@@ -965,10 +1072,12 @@ export async function sendReportCardsToParents(options: {
 }): Promise<EmailSendResult> {
   const { subject, body, recipientIds, schoolId, sentByProfileId, testEmail, markingPeriodId, academicYearId, includeFields } = options
 
+  const { transporter, fromAddress } = await getSchoolMailer(schoolId)
+
   const { data: students, error: sErr } = await supabase
     .from('students')
-    .select('id, student_number, grade_level, profile:profiles(first_name, last_name)')
-    .eq('school_id', schoolId).in('id', recipientIds).eq('is_active', true)
+    .select('id, student_number, grade_level, profile:profiles!students_profile_id_fkey(first_name, last_name)')
+    .eq('school_id', schoolId).in('id', recipientIds)
   if (sErr) throw new Error(`Failed to fetch students: ${sErr.message}`)
 
   let gradesQuery = supabase.from('student_final_grades')
@@ -1009,7 +1118,7 @@ export async function sendReportCardsToParents(options: {
           grade: student.grade_level ?? '',
           report_card: buildReportCardHtml(grades, includeFields),
         }
-        await sendEmail({ to, subject: applySubstitutions(subject, subs), html: applySubstitutions(body, subs), text: stripHtml(applySubstitutions(body, subs)) })
+        await sendEmail({ to, subject: applySubstitutions(subject, subs), html: applySubstitutions(body, subs), text: stripHtml(applySubstitutions(body, subs)), transporter, fromAddress })
         parentEmailsSent.add(parent.email)
         result.success_count++
         sentAddresses.push(to)
@@ -1037,10 +1146,12 @@ export async function sendBalancesToParents(options: {
 }): Promise<EmailSendResult> {
   const { subject, body, recipientIds, schoolId, sentByProfileId, testEmail, academicYear } = options
 
+  const { transporter, fromAddress } = await getSchoolMailer(schoolId)
+
   const { data: students, error: sErr } = await supabase
     .from('students')
-    .select('id, student_number, grade_level, profile:profiles(first_name, last_name)')
-    .eq('school_id', schoolId).in('id', recipientIds).eq('is_active', true)
+    .select('id, student_number, grade_level, profile:profiles!students_profile_id_fkey(first_name, last_name)')
+    .eq('school_id', schoolId).in('id', recipientIds)
   if (sErr) throw new Error(`Failed to fetch students: ${sErr.message}`)
 
   let feesQuery = supabase.from('student_fees')
@@ -1088,7 +1199,7 @@ export async function sendBalancesToParents(options: {
           balance: totalBalance.toFixed(2),
           fees_list: feesListHtml,
         }
-        await sendEmail({ to, subject: applySubstitutions(subject, subs), html: applySubstitutions(body, subs), text: stripHtml(applySubstitutions(body, subs)) })
+        await sendEmail({ to, subject: applySubstitutions(subject, subs), html: applySubstitutions(body, subs), text: stripHtml(applySubstitutions(body, subs)), transporter, fromAddress })
         parentEmailsSent.add(parent.email)
         result.success_count++
         sentAddresses.push(to)

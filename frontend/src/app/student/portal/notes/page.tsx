@@ -39,9 +39,9 @@ export default function StudentPortalNotesPage() {
       })
       setNotes(result.notes)
       
-      // Mark all notes as viewed
+      // Mark all notes as viewed (user-scoped)
       result.notes.forEach(note => {
-        markPortalItemViewed('note', note.id)
+        markPortalItemViewed('note', note.id, profile?.id)
       })
     } catch (error) {
       console.error('Error fetching notes:', error)

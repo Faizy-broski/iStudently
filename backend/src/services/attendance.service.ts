@@ -14,13 +14,15 @@ import {
 // ============================================================================
 
 export const generateDailyAttendance = async (
-  targetDate?: string
+  targetDate?: string,
+  schoolId?: string | null
 ): Promise<ApiResponse<{ generated_count: number; timetable_entries_processed: number }>> => {
   try {
     const date = targetDate || new Date().toISOString().split('T')[0]
 
     const { data, error } = await supabase.rpc('generate_daily_attendance', {
-      target_date: date
+      target_date: date,
+      p_school_id: schoolId ?? null
     })
 
     if (error) throw error

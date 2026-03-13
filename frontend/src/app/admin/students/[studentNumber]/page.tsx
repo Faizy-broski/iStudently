@@ -33,10 +33,13 @@ import {
 import { toast } from "sonner";
 import { useCampus } from "@/context/CampusContext";
 import { useProfileView } from "@/context/ProfileViewContext";
+import { useSchoolSettings } from "@/context/SchoolSettingsContext";
 import { type Student } from "@/lib/api/students";
 import { useStudents } from "@/hooks/useStudents";
 import { getParentById, type Parent } from "@/lib/api/parents";
 import { format } from "date-fns";
+import DisciplineScoreTab from "@/components/admin/DisciplineScoreTab";
+import RelativesTab from "@/components/admin/RelativesTab";
 
 // Type for emergency contacts stored in custom_fields
 interface EmergencyContact {
@@ -77,24 +80,27 @@ export default function StudentDetailsPage() {
   const router = useRouter();
   const campusContext = useCampus();
   const { setViewedProfile, clearViewedProfile } = useProfileView();
-  
+  const { isPluginActive } = useSchoolSettings();
+  const disciplineScoreActive = isPluginActive('discipline_score');
+  const relativesActive = isPluginActive('relatives');
+  const prevNextEnabled = isPluginActive('previous_next_student');
+
   // Get student number from URL (URL-encoded, so decode it)
   const studentNumber = decodeURIComponent(params.studentNumber as string);
-  
+
   const [currentStudent, setCurrentStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(true);
   const [linkedParent, setLinkedParent] = useState<Parent | null>(null);
   const [loadingParent, setLoadingParent] = useState(false);
   const [activeTab, setActiveTab] = useState("personal");
 
-  // Fetch all students for navigation
-  const { students, total, loading: studentsLoading } = useStudents({
-    page: 1,
-    limit: 1000, // Get all for navigation
-  });
+  // Fetch all students for navigation — only when plugin is active
+  const { students, total, loading: studentsLoading } = useStudents(
+    prevNextEnabled ? { page: 1, limit: 1000 } : { page: 1, limit: 0 }
+  );
 
   // Find current student index for prev/next navigation (by student_number)
-  const currentIndex = students.findIndex((s) => s.student_number === studentNumber);
+  const currentIndex = prevNextEnabled ? students.findIndex((s) => s.student_number === studentNumber) : -1;
   const prevStudent = currentIndex > 0 ? students[currentIndex - 1] : null;
   const nextStudent = currentIndex < students.length - 1 ? students[currentIndex + 1] : null;
 
@@ -199,32 +205,38 @@ export default function StudentDetailsPage() {
             <h1 className="text-2xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent dark:text-white">
               Student Details
             </h1>
+            {prevNextEnabled && (
             <p className="text-sm text-muted-foreground">
               Viewing {currentIndex + 1} of {total} students
             </p>
+          )}
           </div>
         </div>
         
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!prevStudent}
-            onClick={() => prevStudent && navigateToStudent(prevStudent)}
-          >
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!nextStudent}
-            onClick={() => nextStudent && navigateToStudent(nextStudent)}
-          >
-            Next
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
-          <Separator orientation="vertical" className="h-6" />
+          {prevNextEnabled && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!prevStudent}
+                onClick={() => prevStudent && navigateToStudent(prevStudent)}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!nextStudent}
+                onClick={() => nextStudent && navigateToStudent(nextStudent)}
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+              <Separator orientation="vertical" className="h-6" />
+            </>
+          )}
           <Button
             onClick={() => router.push(`/admin/students/student-info?edit=${currentStudent.id}`)}
           >
@@ -298,7 +310,7 @@ export default function StudentDetailsPage() {
 
       {/* Detailed Information Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+        <TabsList className={`grid w-full lg:w-auto lg:inline-grid ${[disciplineScoreActive, relativesActive].filter(Boolean).length === 2 ? 'grid-cols-7' : [disciplineScoreActive, relativesActive].filter(Boolean).length === 1 ? 'grid-cols-6' : 'grid-cols-5'}`}>
           <TabsTrigger value="personal" className="gap-2">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">Personal</span>
@@ -319,6 +331,18 @@ export default function StudentDetailsPage() {
             <Settings className="h-4 w-4" />
             <span className="hidden sm:inline">System</span>
           </TabsTrigger>
+          {disciplineScoreActive && (
+            <TabsTrigger value="discipline" className="gap-2">
+              <Shield className="h-4 w-4" />
+              <span className="hidden sm:inline">Discipline</span>
+            </TabsTrigger>
+          )}
+          {relativesActive && (
+            <TabsTrigger value="relatives" className="gap-2">
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">Relatives</span>
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Personal Information Tab */}
@@ -580,6 +604,24 @@ export default function StudentDetailsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Discipline Score Tab */}
+        {disciplineScoreActive && (
+          <TabsContent value="discipline" className="mt-6">
+            <DisciplineScoreTab
+              studentId={currentStudent.id}
+              campusId={campusContext?.selectedCampus?.id ?? null}
+              academicYearId={currentStudent.custom_fields?.academic?.academic_year_id ?? null}
+            />
+          </TabsContent>
+        )}
+
+        {/* Relatives Tab */}
+        {relativesActive && (
+          <TabsContent value="relatives" className="mt-6">
+            <RelativesTab studentId={currentStudent.id} />
+          </TabsContent>
+        )}
 
         {/* System Information Tab */}
         <TabsContent value="system" className="mt-6">

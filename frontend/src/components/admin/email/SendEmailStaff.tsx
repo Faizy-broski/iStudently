@@ -24,6 +24,7 @@ import {
   FlaskConical,
   RotateCcw,
 } from "lucide-react"
+import { useCampus } from "@/context/CampusContext"
 
 // ─── Substitution definitions ────────────────────────────────────────────────
 
@@ -47,6 +48,8 @@ const ROLE_LABELS: Record<string, string> = {
 
 export function SendEmailStaff() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const campusContext = useCampus()
+  const selectedCampusId = campusContext?.selectedCampus?.id
 
   // Compose state
   const [subject, setSubject] = useState("")
@@ -70,12 +73,12 @@ export function SendEmailStaff() {
     setLoadingStaff(true)
     try {
       const role = roleFilter === "all" ? "all" : (roleFilter as any)
-      const res = await getAllStaff(1, 300, search.trim() || undefined, role)
-      setStaffList((res.data as any) || [])
+      const res = await getAllStaff(1, 300, search.trim() || undefined, role, selectedCampusId)
+      setStaffList((res.data as any)?.data || (res.data as any) || [])
     } finally {
       setLoadingStaff(false)
     }
-  }, [search, roleFilter])
+  }, [search, roleFilter, selectedCampusId])
 
   useEffect(() => {
     const t = setTimeout(fetchStaff, 350)
@@ -135,6 +138,7 @@ export function SendEmailStaff() {
         subject,
         body,
         test_email: testEmail.trim() || undefined,
+        campus_id: selectedCampusId,
       })
 
       if (res.success && res.data) {

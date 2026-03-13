@@ -30,18 +30,18 @@ class CronService {
 
     console.log("⏰ Initializing automated cron jobs...");
 
-    // Daily Attendance Generation - Runs every day at 6:00 AM before school starts
-    // This creates attendance records for all students as 'present' by default
-    // Teachers only need to mark who is absent/late
+    // Auto-Attendance: check every 5 minutes.
+    // For each school/campus, generate attendance once per day after its
+    // configured hour (mirrors RosarioSIS AUTOMATIC_ATTENDANCE_CRON_HOUR).
+    // Per-campus settings stored in school_settings (auto_attendance_*).
     cron.schedule(
-      "0 6 * * 1-6",
+      "*/5 * * * *",
       async () => {
-        console.log("📋 [CRON] Starting daily attendance generation...");
-        await this.generateDailyAttendanceForAllSchools();
+        await this.checkAndGenerateAttendanceForSchools();
       },
       {
         scheduled: true,
-        timezone: "Asia/Karachi", // Change to your timezone
+        timezone: "Asia/Karachi",
       },
     );
 
@@ -145,7 +145,7 @@ class CronService {
     this.isInitialized = true;
     console.log("✅ Cron service initialized successfully");
     console.log("📅 Scheduled jobs:");
-    console.log("   - Daily Attendance Generation: Every weekday at 6:00 AM");
+    console.log("   - Auto Attendance Check: Every 5 minutes (per-school configurable hour)");
     console.log(
       "   - Monthly Salary Generation: 1st of every month at 2:00 AM",
     );
@@ -194,51 +194,88 @@ class CronService {
   }
 
   /**
-   * Generate attendance records for all active schools
-   * This marks all students as 'present' by default for today's scheduled classes
+   * Check each school/campus and generate daily attendance when:
+   *   1. auto_attendance_enabled = true
+   *   2. today is in auto_attendance_days (0=Mon … 6=Sun)
+   *   3. current time (HH:MM) >= auto_attendance_hour
+   *   4. auto_attendance_last_run < today  (prevents double-run)
+   *
+   * Mirrors RosarioSIS AUTOMATIC_ATTENDANCE_CRON_HOUR per-school logic.
+   * Called every 5 minutes by the cron scheduler.
    */
-  async generateDailyAttendanceForAllSchools() {
-    const today = new Date().toISOString().split("T")[0];
-    const dayOfWeek = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
-
-    // Skip if Sunday (no school)
-    if (dayOfWeek === 0) {
-      console.log("📋 Skipping attendance generation - Sunday");
-      return;
-    }
+  async checkAndGenerateAttendanceForSchools() {
+    const now       = new Date();
+    const today     = now.toISOString().split("T")[0];          // YYYY-MM-DD
+    const currentTime = now.toTimeString().slice(0, 5);         // HH:MM
+    // Convert JS getDay() (0=Sun) → 0=Mon … 6=Sun convention
+    const dow = (now.getDay() + 6) % 7;
 
     try {
-      console.log(`📋 Generating daily attendance for all schools - ${today}`);
+      const { data: settings, error } = await supabase
+        .from("school_settings")
+        .select(
+          "school_id, auto_attendance_enabled, auto_attendance_hour, auto_attendance_days, auto_attendance_last_run"
+        )
+        .eq("auto_attendance_enabled", true);
 
-      // Call the RPC function that generates attendance for all schools
-      const result = await generateDailyAttendance(today);
+      if (error) {
+        console.error("❌ [AutoAttendance] Failed to fetch settings:", error.message);
+        return;
+      }
 
-      if (result.success && result.data) {
-        console.log("=".repeat(60));
-        console.log("📋 DAILY ATTENDANCE GENERATION SUMMARY");
-        console.log("=".repeat(60));
-        console.log(`📅 Date: ${today}`);
-        console.log(`✅ Records Generated: ${result.data.generated_count}`);
-        console.log(
-          `📚 Classes Processed: ${result.data.timetable_entries_processed}`,
-        );
-        console.log("=".repeat(60));
+      for (const s of settings ?? []) {
+        // Guard: today must be in this school's configured school days
+        if (!s.auto_attendance_days?.includes(dow)) continue;
 
-        // Log automation run
-        await this.logAutomationRun("daily_attendance_generation", {
-          date: today,
-          generated_count: result.data.generated_count,
-          timetable_entries_processed: result.data.timetable_entries_processed,
-        });
-      } else {
-        console.error("❌ Failed to generate daily attendance:", result.error);
+        // Guard: current time must be at or past the configured hour
+        if (currentTime < s.auto_attendance_hour) continue;
+
+        // Guard: must not have already run today
+        if (s.auto_attendance_last_run >= today) continue;
+
+        try {
+          const result = await generateDailyAttendance(today, s.school_id);
+
+          // Mark as done for today — prevents re-run within same day
+          await supabase
+            .from("school_settings")
+            .update({ auto_attendance_last_run: today })
+            .eq("school_id", s.school_id);
+
+          if (result.success && result.data) {
+            console.log(
+              `📋 [AutoAttendance] school=${s.school_id} ` +
+              `generated=${result.data.generated_count} ` +
+              `classes=${result.data.timetable_entries_processed}`
+            );
+            await this.logAutomationRun("daily_attendance_generation", {
+              date: today,
+              school_id: s.school_id,
+              generated_count: result.data.generated_count,
+              timetable_entries_processed: result.data.timetable_entries_processed,
+            });
+          } else {
+            console.error(
+              `❌ [AutoAttendance] school=${s.school_id} error:`, result.error
+            );
+          }
+        } catch (schoolErr: any) {
+          console.error(
+            `❌ [AutoAttendance] school=${s.school_id} exception:`, schoolErr.message
+          );
+        }
       }
     } catch (error: any) {
-      console.error(
-        "❌ Critical error in daily attendance generation:",
-        error.message,
-      );
+      console.error("❌ [AutoAttendance] Critical error:", error.message);
     }
+  }
+
+  /**
+   * @deprecated Use checkAndGenerateAttendanceForSchools() instead.
+   * Kept for backward compatibility with manualTriggerDailyAttendance().
+   */
+  async generateDailyAttendanceForAllSchools() {
+    await this.checkAndGenerateAttendanceForSchools();
   }
 
   /**

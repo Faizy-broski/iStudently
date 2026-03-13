@@ -1,6 +1,7 @@
 "use client";
 
 import { DashboardLayout } from "@/components/layouts";
+import { SchoolSettingsProvider } from "@/context/SchoolSettingsContext";
 
 export default function ProfileLayout({
     children,
@@ -8,5 +9,9 @@ export default function ProfileLayout({
     children: React.ReactNode;
 }) {
     // Profile page uses the user's actual role from auth context
-    return <DashboardLayout>{children}</DashboardLayout>;
+    return (
+        <SchoolSettingsProvider>
+            <DashboardLayout>{children}</DashboardLayout>
+        </SchoolSettingsProvider>
+    );
 }

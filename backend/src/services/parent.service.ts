@@ -899,3 +899,113 @@ export class ParentService {
     }
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Relatives (siblings + parents) — used by the Relatives plugin tab
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface StudentRelative {
+  id: string
+  student_number: string | null
+  grade_level: string | null
+  first_name: string | null
+  last_name: string | null
+  father_name: string | null
+  profile_photo_url: string | null
+}
+
+export interface StudentParentRelative {
+  id: string
+  relation_type: string
+  relationship: string | null
+  first_name: string | null
+  last_name: string | null
+  phone: string | null
+  email: string | null
+  profile_photo_url: string | null
+}
+
+export interface StudentRelativesResult {
+  siblings: StudentRelative[]
+  parents: StudentParentRelative[]
+}
+
+export async function getStudentRelatives(
+  studentId: string,
+  schoolId: string
+): Promise<StudentRelativesResult> {
+  // Step 1: Get all parent IDs for this student
+  const { data: myLinks } = await supabase
+    .from('parent_student_links')
+    .select('parent_id')
+    .eq('student_id', studentId)
+    .eq('is_active', true)
+
+  const parentIds = (myLinks || []).map((l: any) => l.parent_id)
+
+  // Step 2: Get parents with profile info
+  let parents: StudentParentRelative[] = []
+  if (parentIds.length > 0) {
+    const { data: parentLinks } = await supabase
+      .from('parent_student_links')
+      .select(`
+        relation_type,
+        relationship,
+        parent:parents(
+          id,
+          profile:profiles(first_name, last_name, phone, email, profile_photo_url)
+        )
+      `)
+      .eq('student_id', studentId)
+      .eq('is_active', true)
+
+    parents = (parentLinks || []).map((l: any) => ({
+      id: l.parent?.id,
+      relation_type: l.relation_type,
+      relationship: l.relationship,
+      first_name: l.parent?.profile?.first_name ?? null,
+      last_name: l.parent?.profile?.last_name ?? null,
+      phone: l.parent?.profile?.phone ?? null,
+      email: l.parent?.profile?.email ?? null,
+      profile_photo_url: l.parent?.profile?.profile_photo_url ?? null,
+    }))
+  }
+
+  // Step 3: Find siblings — other students linked to the same parents
+  let siblings: StudentRelative[] = []
+  if (parentIds.length > 0) {
+    const { data: siblingLinks } = await supabase
+      .from('parent_student_links')
+      .select(`
+        student:students(
+          id,
+          student_number,
+          grade_level,
+          school_id,
+          profile:profiles(first_name, last_name, father_name, profile_photo_url)
+        )
+      `)
+      .in('parent_id', parentIds)
+      .eq('is_active', true)
+      .neq('student_id', studentId)
+
+    // Deduplicate by student id and filter to same school
+    const seen = new Set<string>()
+    for (const link of (siblingLinks || [])) {
+      const s = link.student as any
+      if (!s || seen.has(s.id) || s.school_id !== schoolId) continue
+      seen.add(s.id)
+      siblings.push({
+        id: s.id,
+        student_number: s.student_number,
+        grade_level: s.grade_level,
+        first_name: s.profile?.first_name ?? null,
+        last_name: s.profile?.last_name ?? null,
+        father_name: s.profile?.father_name ?? null,
+        profile_photo_url: s.profile?.profile_photo_url ?? null,
+      })
+    }
+  }
+
+  return { siblings, parents }
+}

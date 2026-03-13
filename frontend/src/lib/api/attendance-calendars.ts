@@ -192,3 +192,52 @@ export async function regenerateCalendar(calendarId: string): Promise<ApiRespons
 export async function getCalendarSummary(calendarId: string): Promise<ApiResponse<CalendarDaySummary>> {
   return apiRequest<CalendarDaySummary>(`/attendance-calendars/${calendarId}/summary`)
 }
+
+// ---- Schedule View (plugin: calendar_schedule_view) ----
+
+export interface ScheduleViewEntry {
+  id: string
+  day_of_week: number        // 0=Mon … 6=Sun
+  section_id: string
+  section_name: string
+  grade_name: string
+  subject_name: string
+  subject_code: string
+  teacher_name: string
+  period_number: number
+  period_name: string | null
+  start_time: string
+  end_time: string
+  room_number: string | null
+  sort_order: number
+}
+
+export interface CalendarDaySchedule {
+  id: string
+  date: string
+  is_school_day: boolean
+  minutes: number
+  block: string | null
+  notes: string | null
+  entries: ScheduleViewEntry[]
+}
+
+export interface ScheduleViewResponse {
+  calendar_days: Record<string, CalendarDaySchedule>
+  schedule_by_dow: Record<number, ScheduleViewEntry[]>
+}
+
+export async function getCalendarScheduleView(
+  calendarId: string,
+  params: {
+    academic_year_id: string
+    month: string        // "YYYY-MM"
+    campus_id?: string | null
+    section_id?: string
+  }
+): Promise<ApiResponse<ScheduleViewResponse>> {
+  const qs = new URLSearchParams({ academic_year_id: params.academic_year_id, month: params.month })
+  if (params.campus_id) qs.append('campus_id', params.campus_id)
+  if (params.section_id) qs.append('section_id', params.section_id)
+  return apiRequest<ScheduleViewResponse>(`/attendance-calendars/${calendarId}/schedule-view?${qs}`)
+}

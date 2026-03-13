@@ -213,7 +213,7 @@ export class EventService {
   async getEventCategoryCounts(schoolId: string, startDate?: string, endDate?: string, campusId?: string) {
     let query = supabase
       .from('school_events')
-      .select('category, event_date')
+      .select('category, start_at')
       .eq('school_id', schoolId)
 
     // Filter by campus: show events for this campus OR school-wide (null campus_id)
@@ -223,10 +223,10 @@ export class EventService {
 
     // Apply date range filter if provided
     if (startDate) {
-      query = query.gte('event_date', startDate)
+      query = query.gte('start_at', startDate)
     }
     if (endDate) {
-      query = query.lte('event_date', endDate)
+      query = query.lte('start_at', endDate)
     }
 
     const { data, error } = await query

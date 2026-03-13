@@ -9,13 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Printer, 
-  Mail, 
-  Users, 
-  Search, 
-  CheckSquare, 
-  Square, 
+import {
+  Mail,
+  Users,
+  Search,
+  CheckSquare,
+  Square,
   Loader2,
   Building2,
   Bold,
@@ -26,13 +25,18 @@ import {
   AlignRight,
   List,
   ListOrdered,
-  Copy
+  Copy,
+  Download
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useCampus } from "@/context/CampusContext";
+import { useSchoolSettings } from "@/context/SchoolSettingsContext";
 import { useGradeLevels, useSections } from "@/hooks/useAcademics";
 import { getStudents, Student } from "@/lib/api/students";
+import { getPdfHeaderFooter, PdfHeaderFooterSettings } from "@/lib/api/school-settings";
+import { buildAutoHeaderHtml, buildAutoFooterHtml, resolvePdfTokens as resolveLayoutTokens, applyHtml2CanvasColorFix } from "@/lib/utils/printLayout";
+import TemplateSelector from "@/components/templates/TemplateSelector";
 
 // Available placeholder fields for mail merge
 const PLACEHOLDER_FIELDS = [
@@ -60,37 +64,55 @@ const GROUPED_FIELDS = PLACEHOLDER_FIELDS.reduce((acc, field) => {
 export default function PrintLettersPage() {
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
-  
+  const { isPluginActive } = useSchoolSettings();
+  const isPdfPluginActive = isPluginActive('pdf_header_footer');
+
   // State for filters
   const [selectedGradeLevel, setSelectedGradeLevel] = useState<string>("");
   const [selectedSection, setSelectedSection] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
-  
+
   // State for selections
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [selectedField, setSelectedField] = useState<string>("");
-  
+
   // State for data
   const [students, setStudents] = useState<Student[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
-  
+
   // Letter content
   const [letterContent, setLetterContent] = useState<string>("");
-  
+
+  // PDF header/footer settings — only loaded when the plugin is active
+  const [pdfSettings, setPdfSettings] = useState<PdfHeaderFooterSettings | null>(null);
+
+  useEffect(() => {
+    if (isPdfPluginActive) {
+      getPdfHeaderFooter(selectedCampus?.id ?? null).then((res) => {
+        if (res.success && res.data) setPdfSettings(res.data);
+      });
+    } else {
+      setPdfSettings(null);
+    }
+  }, [selectedCampus?.id, isPdfPluginActive]);
+
   // Hooks for academics data
   const { gradeLevels } = useGradeLevels();
   const { sections } = useSections();
-  
+
   // Filter sections by selected grade level
   const filteredSections = useMemo(() => {
     if (!selectedGradeLevel) return sections;
     return sections.filter(s => s.grade_level_id === selectedGradeLevel);
   }, [sections, selectedGradeLevel]);
-  
+
   // Rich text editor ref
   const editorRef = useRef<HTMLDivElement>(null);
-  
+
+  // Letters container ref for PDF generation
+  const lettersRef = useRef<HTMLDivElement>(null);
+
   // Load students when filters change
   useEffect(() => {
     const loadStudents = async () => {
@@ -103,7 +125,7 @@ export default function PrintLettersPage() {
           grade_level: selectedGradeLevel || undefined,
           campus_id: selectedCampus?.id
         });
-        
+
         if (response.success && response.data) {
           setStudents(response.data);
         }
@@ -114,11 +136,11 @@ export default function PrintLettersPage() {
         setLoadingStudents(false);
       }
     };
-    
+
     const debounceTimer = setTimeout(loadStudents, 300);
     return () => clearTimeout(debounceTimer);
   }, [selectedGradeLevel, searchQuery, selectedCampus?.id]);
-  
+
   // Filter students by section
   const filteredStudents = useMemo(() => {
     if (!selectedSection) return students;
@@ -127,7 +149,7 @@ export default function PrintLettersPage() {
       return studentWithSection.section_id === selectedSection;
     });
   }, [students, selectedSection]);
-  
+
   // Handle student selection
   const toggleStudent = (studentId: string) => {
     setSelectedStudentIds(prev =>
@@ -136,7 +158,7 @@ export default function PrintLettersPage() {
         : [...prev, studentId]
     );
   };
-  
+
   // Select all/none students
   const toggleAllStudents = () => {
     if (selectedStudentIds.length === filteredStudents.length) {
@@ -145,13 +167,25 @@ export default function PrintLettersPage() {
       setSelectedStudentIds(filteredStudents.map(s => s.id));
     }
   };
-  
+
   // Format commands for rich text editor
   const execCommand = useCallback((command: string, value?: string) => {
     document.execCommand(command, false, value);
     editorRef.current?.focus();
   }, []);
-  
+
+  // Get current editor HTML content
+  const getCurrentContent = useCallback((): string => {
+    return editorRef.current?.innerHTML ?? "";
+  }, []);
+
+  // Load template content into the editor
+  const loadTemplateContent = useCallback((content: string) => {
+    if (editorRef.current) {
+      editorRef.current.innerHTML = content;
+    }
+  }, []);
+
   // Insert placeholder at cursor position
   const insertPlaceholder = (placeholder: string) => {
     if (editorRef.current) {
@@ -160,20 +194,20 @@ export default function PrintLettersPage() {
     }
     setSelectedField("");
   };
-  
+
   // Copy placeholder to clipboard
   const copyPlaceholder = (placeholder: string) => {
     navigator.clipboard.writeText(placeholder);
     toast.success(`Copied ${placeholder} to clipboard`);
   };
-  
+
   // Get student display name
   const getStudentName = (student: Student) => {
     const profile = student.profile;
     if (!profile) return student.student_number;
     return `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || student.student_number;
   };
-  
+
   // Get full name for a student
   const getFullName = (student: Student) => {
     const profile = student.profile;
@@ -186,16 +220,16 @@ export default function PrintLettersPage() {
     ].filter(Boolean);
     return parts.join(' ');
   };
-  
+
   // Replace placeholders with student data
   const replacePlaceholders = (content: string, student: Student): string => {
     const profile = student.profile || {};
-    const studentWithAcademics = student as Student & { 
-      grade_level_name?: string; 
+    const studentWithAcademics = student as Student & {
+      grade_level_name?: string;
       section_name?: string;
       grade_level?: string;
     };
-    
+
     return content
       .replace(/__FIRST_NAME__/g, profile.first_name || '')
       .replace(/__FATHER_NAME__/g, profile.father_name || '')
@@ -208,67 +242,157 @@ export default function PrintLettersPage() {
       .replace(/__GRADE_LEVEL__/g, studentWithAcademics.grade_level_name || studentWithAcademics.grade_level || '')
       .replace(/__SECTION__/g, studentWithAcademics.section_name || '')
       .replace(/__CAMPUS__/g, selectedCampus?.name || '')
-      .replace(/__DATE__/g, new Date().toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+      .replace(/__DATE__/g, new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
       }));
   };
-  
-  // Handle print
-  const handlePrint = () => {
+
+  // Resolve PDF header/footer substitution tokens with school/campus data
+  const resolvePdfTokens = (html: string) => {
+    const school = {
+      name: selectedCampus?.name || '',
+      address: selectedCampus?.address,
+      city: selectedCampus?.city,
+      state: selectedCampus?.state,
+      zip_code: selectedCampus?.zip_code,
+      phone: selectedCampus?.phone,
+      contact_email: selectedCampus?.contact_email,
+      logo_url: selectedCampus?.logo_url,
+    };
+    return resolveLayoutTokens(html, school);
+  };
+
+  const school = {
+    name: selectedCampus?.name || '',
+    address: selectedCampus?.address,
+    city: selectedCampus?.city,
+    state: selectedCampus?.state,
+    zip_code: selectedCampus?.zip_code,
+    phone: selectedCampus?.phone,
+    contact_email: selectedCampus?.contact_email,
+    logo_url: selectedCampus?.logo_url,
+  };
+  // Only build header/footer when plugin is active
+  const resolvedLetterHeader = isPdfPluginActive
+    ? (pdfSettings?.pdf_header_html ? resolvePdfTokens(pdfSettings.pdf_header_html) : buildAutoHeaderHtml(school))
+    : null;
+  const resolvedLetterFooter = isPdfPluginActive
+    ? (pdfSettings?.pdf_footer_html ? resolvePdfTokens(pdfSettings.pdf_footer_html) : buildAutoFooterHtml(school))
+    : null;
+
+  // Get selected students for printing
+  const selectedStudents = useMemo(() => {
+    return students.filter(s => selectedStudentIds.includes(s.id));
+  }, [students, selectedStudentIds]);
+
+  // Generate PDF from letters container
+  const generateLettersPdf = async () => {
+    const container = lettersRef.current;
+    if (!container) return;
+    setIsPrinting(true);
+    try {
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ]);
+      await document.fonts.ready;
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        windowWidth: 794,
+        onclone: applyHtml2CanvasColorFix,
+      });
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const PAGE_W = 210, PAGE_H = 297;
+      const imgW = PAGE_W;
+      const imgH = (canvas.height / canvas.width) * imgW;
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      pdf.addImage(imgData, 'JPEG', 0, 0, imgW, imgH);
+      let remaining = imgH - PAGE_H, offset = -PAGE_H;
+      while (remaining > 0) {
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, offset, imgW, imgH);
+        offset -= PAGE_H;
+        remaining -= PAGE_H;
+      }
+      pdf.save('letters.pdf');
+      toast.success('PDF downloaded');
+    } catch (err) {
+      toast.error('Failed to generate PDF');
+      console.error(err);
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
+  // Handle download PDF
+  const handleDownloadPdf = () => {
     if (selectedStudentIds.length === 0) {
       toast.error('Please select at least one student');
       return;
     }
-    
+
     const content = editorRef.current?.innerHTML || '';
     if (!content.trim()) {
       toast.error('Please write a letter first');
       return;
     }
-    
+
     setLetterContent(content);
-    setIsPrinting(true);
-    
+    // Use setTimeout to allow state update and re-render before generating PDF
     setTimeout(() => {
-      window.print();
-      setIsPrinting(false);
-      toast.success('Print dialog opened');
+      generateLettersPdf();
     }, 100);
   };
-  
-  // Get selected students for printing
-  const selectedStudents = useMemo(() => {
-    return students.filter(s => selectedStudentIds.includes(s.id));
-  }, [students, selectedStudentIds]);
-  
+
   return (
     <>
-      {/* Print Area - Only visible when printing */}
-      {letterContent && (
-        <div className="hidden print:block">
+      {/* Off-screen letters container for PDF generation */}
+      {letterContent && selectedStudents.length > 0 && (
+        <div
+          ref={lettersRef}
+          style={{ position: 'fixed', left: '-10000px', top: 0, width: '794px', background: '#fff', zIndex: -9999 }}
+        >
           {selectedStudents.map((student, index) => (
-            <div 
-              key={student.id} 
+            <div
+              key={student.id}
               className="letter-page"
-              style={{ 
-                pageBreakAfter: index < selectedStudents.length - 1 ? 'always' : 'avoid'
+              style={{
+                pageBreakAfter: index < selectedStudents.length - 1 ? 'always' : 'avoid',
+                fontFamily: "'Times New Roman', serif",
+                fontSize: '12pt',
+                lineHeight: '1.6',
+                padding: '24px',
               }}
             >
-              <div 
+              {/* Inline page header — only when PDF plugin is active */}
+              {isPdfPluginActive && resolvedLetterHeader && (
+                <div dangerouslySetInnerHTML={{ __html: resolvedLetterHeader }} />
+              )}
+
+              <div
                 className="letter-content"
-                dangerouslySetInnerHTML={{ 
-                  __html: replacePlaceholders(letterContent, student) 
+                style={{ padding: '16px 0' }}
+                dangerouslySetInnerHTML={{
+                  __html: replacePlaceholders(letterContent, student)
                 }}
               />
+
+              {/* Inline page footer — only when PDF plugin is active */}
+              {isPdfPluginActive && resolvedLetterFooter && (
+                <div dangerouslySetInnerHTML={{ __html: resolvedLetterFooter }} />
+              )}
             </div>
           ))}
         </div>
       )}
-      
-      {/* Main UI - Hidden when printing */}
-      <div className="container mx-auto py-6 space-y-6 print:hidden">
+
+      {/* Main UI */}
+      <div className="container mx-auto py-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -281,7 +405,7 @@ export default function PrintLettersPage() {
             </div>
             <h1 className="text-2xl font-bold tracking-tight">Print Letters</h1>
             <p className="text-muted-foreground">
-              Write a letter template and print personalized letters for selected students
+              Write a letter template and download personalized letters for selected students
             </p>
           </div>
           {selectedCampus && (
@@ -291,7 +415,7 @@ export default function PrintLettersPage() {
             </Badge>
           )}
         </div>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Panel - Letter Editor */}
           <Card className="lg:col-span-2">
@@ -308,8 +432,8 @@ export default function PrintLettersPage() {
               {/* Placeholder Field Selector */}
               <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
                 <Label className="text-sm font-medium whitespace-nowrap">Insert Field:</Label>
-                <Select 
-                  value={selectedField} 
+                <Select
+                  value={selectedField}
                   onValueChange={(value) => {
                     if (value) {
                       insertPlaceholder(value);
@@ -351,7 +475,7 @@ export default function PrintLettersPage() {
                   )}
                 </div>
               </div>
-              
+
               {/* Formatting Toolbar */}
               <div className="flex items-center gap-1 p-2 border rounded-t-lg bg-muted/30">
                 <Button
@@ -378,9 +502,9 @@ export default function PrintLettersPage() {
                 >
                   <Underline className="h-4 w-4" />
                 </Button>
-                
+
                 <Separator orientation="vertical" className="h-6 mx-1" />
-                
+
                 <Button
                   variant="ghost"
                   size="sm"
@@ -405,9 +529,9 @@ export default function PrintLettersPage() {
                 >
                   <AlignRight className="h-4 w-4" />
                 </Button>
-                
+
                 <Separator orientation="vertical" className="h-6 mx-1" />
-                
+
                 <Button
                   variant="ghost"
                   size="sm"
@@ -424,9 +548,9 @@ export default function PrintLettersPage() {
                 >
                   <ListOrdered className="h-4 w-4" />
                 </Button>
-                
+
                 <Separator orientation="vertical" className="h-6 mx-1" />
-                
+
                 <Select onValueChange={(value) => execCommand('fontSize', value)}>
                   <SelectTrigger className="w-24 h-8">
                     <SelectValue placeholder="Size" />
@@ -439,7 +563,16 @@ export default function PrintLettersPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
+              {/* Templates Panel */}
+              <TemplateSelector
+                context="print_letters"
+                campusId={selectedCampus?.id}
+                onLoad={loadTemplateContent}
+                getCurrentContent={getCurrentContent}
+                label="TEMPLATES - PRINT LETTERS"
+              />
+
               {/* Rich Text Editor */}
               <div
                 ref={editorRef}
@@ -458,7 +591,7 @@ export default function PrintLettersPage() {
                 <p>Best regards,</p>
                 <p>__CAMPUS__</p>
               </div>
-              
+
               {/* Available Fields Reference */}
               <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
                 <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
@@ -479,7 +612,7 @@ export default function PrintLettersPage() {
               </div>
             </CardContent>
           </Card>
-          
+
           {/* Right Panel - Student Selection */}
           <Card className="lg:col-span-1">
             <CardHeader>
@@ -506,11 +639,11 @@ export default function PrintLettersPage() {
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <Label className="text-xs text-muted-foreground mb-1.5 block">Grade Level</Label>
-                  <Select 
-                    value={selectedGradeLevel} 
+                  <Select
+                    value={selectedGradeLevel}
                     onValueChange={(value) => {
                       setSelectedGradeLevel(value === "all" ? "" : value);
                       setSelectedSection("");
@@ -529,11 +662,11 @@ export default function PrintLettersPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div>
                   <Label className="text-xs text-muted-foreground mb-1.5 block">Section</Label>
-                  <Select 
-                    value={selectedSection} 
+                  <Select
+                    value={selectedSection}
                     onValueChange={(value) => setSelectedSection(value === "all" ? "" : value)}
                     disabled={!selectedGradeLevel}
                   >
@@ -551,9 +684,9 @@ export default function PrintLettersPage() {
                   </Select>
                 </div>
               </div>
-              
+
               <Separator />
-              
+
               {/* Select All */}
               <div className="flex items-center justify-between">
                 <Button
@@ -578,7 +711,7 @@ export default function PrintLettersPage() {
                   {selectedStudentIds.length} selected
                 </Badge>
               </div>
-              
+
               {/* Student List */}
               <div className="h-64 overflow-y-auto space-y-2">
                 {loadingStudents ? (
@@ -616,57 +749,33 @@ export default function PrintLettersPage() {
             </CardContent>
           </Card>
         </div>
-        
+
         {/* Action Bar */}
         <Card className="bg-muted/30">
           <CardContent className="flex items-center justify-between py-4">
             <div className="text-sm text-muted-foreground">
               <span className="font-medium text-foreground">{selectedStudentIds.length}</span> students selected
             </div>
-            <Button 
-              onClick={handlePrint}
+            <Button
+              onClick={handleDownloadPdf}
               disabled={isPrinting || selectedStudentIds.length === 0}
               size="lg"
             >
               {isPrinting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Preparing...
+                  Generating PDF...
                 </>
               ) : (
                 <>
-                  <Printer className="mr-2 h-4 w-4" />
-                  Print Letters ({selectedStudentIds.length})
+                  <Download className="mr-2 h-4 w-4" />
+                  Download PDF ({selectedStudentIds.length})
                 </>
               )}
             </Button>
           </CardContent>
         </Card>
       </div>
-      
-      {/* Print Styles */}
-      <style jsx global>{`
-        @media print {
-          .print\\:hidden {
-            display: none !important;
-          }
-          .print\\:block {
-            display: block !important;
-          }
-          .letter-page {
-            font-family: 'Times New Roman', serif;
-            font-size: 12pt;
-            line-height: 1.6;
-          }
-          .letter-content p {
-            margin: 0 0 1em 0;
-          }
-          @page {
-            size: A4;
-            margin: 20mm;
-          }
-        }
-      `}</style>
     </>
   );
 }

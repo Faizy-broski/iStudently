@@ -1414,6 +1414,27 @@ export interface HostelSettings {
   updated_at: string;
 }
 
+export interface SchoolSettings {
+  id: string;
+  school_id: string;
+  campus_id?: string | null;
+  // Diary reminder
+  diary_reminder_enabled: boolean;
+  diary_reminder_time: string;          // HH:MM (24h)
+  diary_reminder_days: number[];        // 0=Mon … 6=Sun
+  // Hostel
+  auto_remove_inactive: boolean;
+  default_payment_method: string;
+  // Automatic Attendance (mirrors RosarioSIS AUTOMATIC_ATTENDANCE_CRON_HOUR)
+  auto_attendance_enabled: boolean;
+  auto_attendance_hour: string;         // HH:MM (24h) — run after this time
+  auto_attendance_days: number[];       // 0=Mon … 6=Sun
+  auto_attendance_last_run?: string | null; // YYYY-MM-DD, prevents double-run
+  active_plugins: Record<string, boolean>;  // { "automatic_attendance": true, ... }
+  created_at: string;
+  updated_at: string;
+}
+
 // Zod schemas
 
 export const createBuildingSchema = z.object({

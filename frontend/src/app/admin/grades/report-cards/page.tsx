@@ -25,10 +25,12 @@ import { Loader2, FileText, Users, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
+import { useSchoolSettings } from "@/context/SchoolSettingsContext";
 import * as gradesApi from "@/lib/api/grades";
 import * as academicsApi from "@/lib/api/academics";
 import type { GradeLevel } from "@/lib/api/academics";
 import { printReportCards, type ReportCardData } from "@/components/grades/ReportPrintPreview";
+import { getPdfHeaderFooter, type PdfHeaderFooterSettings } from "@/lib/api/school-settings";
 
 interface StudentItem {
   id: string;
@@ -53,6 +55,16 @@ export default function ReportCardsPage() {
   const { user } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
+  const { isPluginActive } = useSchoolSettings();
+
+  const [pdfSettings, setPdfSettings] = useState<PdfHeaderFooterSettings | null>(null);
+  useEffect(() => {
+    if (selectedCampus?.id && isPluginActive('pdf_header_footer')) {
+      getPdfHeaderFooter(selectedCampus.id).then(r => { if (r.success && r.data) setPdfSettings(r.data) })
+    } else {
+      setPdfSettings(null);
+    }
+  }, [selectedCampus?.id, isPluginActive]);
 
   // ── Options state ─────────────────────────────────────────────
   const [includeStudentPhoto, setIncludeStudentPhoto] = useState(false);
@@ -211,7 +223,7 @@ export default function ReportCardsPage() {
       if (res.success) {
         const cards = res.data?.report_cards || res.data?.data?.report_cards || [];
         if (cards.length > 0) {
-          printReportCards("Report Card", cards as ReportCardData[]);
+          printReportCards("Report Card", cards as ReportCardData[], pdfSettings, selectedCampus?.name, selectedCampus ?? undefined, isPluginActive('pdf_header_footer'));
         } else {
           toast.success(
             `Report cards generated for ${selectedStudentIds.length} student(s)`

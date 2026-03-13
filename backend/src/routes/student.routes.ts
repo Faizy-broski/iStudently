@@ -1,7 +1,9 @@
-import { Router } from 'express'
+import { Router, Request, Response } from 'express'
 import { StudentController } from '../controllers/student.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 import { requireRole } from '../middlewares/role.middleware'
+import type { AuthRequest } from '../middlewares/auth.middleware'
+import { getStudentRelatives } from '../services/parent.service'
 
 const router = Router()
 const studentController = new StudentController()
@@ -44,6 +46,23 @@ router.get('/grade/:gradeLevel', requireRole('admin', 'teacher'), (req, res) =>
 router.get('/number/:studentNumber', requireRole('admin', 'teacher'), (req, res) =>
   studentController.getStudentByNumber(req, res)
 )
+
+/**
+ * GET /api/students/:id/relatives
+ * Get siblings and parents for a student (Relatives plugin)
+ * Admin and teacher can access
+ */
+router.get('/:id/relatives', requireRole('admin', 'teacher'), async (req: Request, res: Response) => {
+  try {
+    const profile = (req as AuthRequest).profile
+    const schoolId = profile?.school_id
+    if (!schoolId) return res.status(403).json({ success: false, error: 'No school associated with account' })
+    const data = await getStudentRelatives(req.params.id, schoolId)
+    res.json({ success: true, data })
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message })
+  }
+})
 
 /**
  * GET /api/students/:id

@@ -1,9 +1,11 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import useSWR from "swr"
 import { useAuth } from "@/context/AuthContext"
 import { useCampus } from "@/context/CampusContext"
+import { useSchoolSettings } from "@/context/SchoolSettingsContext"
+import { openPdfDownload } from "@/lib/utils/printLayout"
 import { getCoursePeriods, type CoursePeriod } from "@/lib/api/grades"
 import { getClassList, type ClassListResponse } from "@/lib/api/scheduling"
 import { CalendarDays, Download, Search } from "lucide-react"
@@ -16,7 +18,15 @@ import { toast } from "sonner"
 export function PrintClassPictures() {
   const { user } = useAuth()
   const campusContext = useCampus()
+  const { isPluginActive } = useSchoolSettings()
   const campusId = campusContext?.selectedCampus?.id
+  const campus = campusContext?.selectedCampus
+  const campusName = campus?.name || ""
+
+  const [pdfSettings, setPdfSettings] = useState<import("@/lib/api/school-settings").PdfHeaderFooterSettings | null>(null)
+  useEffect(() => {
+    if (campusId) import("@/lib/api/school-settings").then(m => m.getPdfHeaderFooter(campusId)).then(r => { if (r.success && r.data) setPdfSettings(r.data) })
+  }, [campusId])
 
   const [selectedCPIds, setSelectedCPIds] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState("")
@@ -93,7 +103,8 @@ export function PrintClassPictures() {
       for (const cl of classLists) {
         const activeStudents = cl.students.filter((s) => includeInactive || !s.end_date)
         bodyHtml += `<div class="class-page">`
-        bodyHtml += `<h1 class="class-title">${cl.course_title}${cl.teacher_name ? ` - ${cl.teacher_name}` : ""}</h1>`
+        // RosarioSIS-style coloured record header
+        bodyHtml += `<div class="record-header"><span>${cl.course_title}${cl.teacher_name ? ` — ${cl.teacher_name}` : ""}</span><span class="rh-right">${campusName}</span></div>`
 
         bodyHtml += `<div class="person-grid">`
         if (includeTeacher && cl.teacher_name) {
@@ -112,20 +123,15 @@ export function PrintClassPictures() {
         bodyHtml += `</div>`
       }
 
-      const printWindow = window.open("", "_blank")
-      if (!printWindow) {
-        toast.error("Please allow popups to print class pictures.")
-        return
-      }
-
-      printWindow.document.write(`<!DOCTYPE html>
-<html>
-<head><title>Class Pictures</title><style>${CLASS_PICTURES_STYLES}</style></head>
-<body>${bodyHtml}</body>
-</html>`)
-      printWindow.document.close()
-      printWindow.focus()
-      setTimeout(() => printWindow.print(), 500)
+      // Download PDF with shared RosarioSIS-style header/footer
+      await openPdfDownload({
+        title: "Class Pictures",
+        bodyHtml,
+        bodyStyles: CLASS_PICTURES_BODY_STYLES,
+        school: campus ?? { name: campusName },
+        pdfSettings,
+        pluginActive: isPluginActive('pdf_header_footer'),
+      })
 
       toast.success(`Generated class pictures for ${classLists.length} course period(s)`)
     } catch (err: unknown) {
@@ -133,7 +139,7 @@ export function PrintClassPictures() {
     } finally {
       setSubmitting(false)
     }
-  }, [selectedCPIds, includeTeacher, includeInactive])
+  }, [selectedCPIds, includeTeacher, includeInactive, pdfSettings, campusName, campus, isPluginActive])
 
   return (
     <div className="space-y-4">
@@ -280,10 +286,7 @@ function buildCPLabel(cp: CoursePeriod): string {
 
 // ── Print Styles ────────────────────────────────────────────────────────
 
-const CLASS_PICTURES_STYLES = `
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a1a; }
-
+const CLASS_PICTURES_BODY_STYLES = `
   .class-page {
     page-break-after: always;
     padding: 24px 32px;
@@ -326,11 +329,5 @@ const CLASS_PICTURES_STYLES = `
     font-size: 12px;
     font-weight: 500;
     color: #1d4ed8;
-  }
-
-  @media print {
-    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .class-page { padding: 16px 24px; }
-    .person-grid { grid-template-columns: repeat(6, 1fr); }
   }
 `

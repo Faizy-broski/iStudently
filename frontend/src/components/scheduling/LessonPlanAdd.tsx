@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useCallback, useEffect } from "react"
+import { useState, useRef } from "react"
 import useSWR, { mutate as globalMutate } from "swr"
 import { useAuth } from "@/context/AuthContext"
 import { useAcademic } from "@/context/AcademicContext"
@@ -71,117 +71,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-
-// ==================
-// Rich Text Editor
-// ==================
-
-function detectTextDirection(text: string): "ltr" | "rtl" {
-  const rtlChars =
-    /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/
-  const firstChar = text.replace(/<[^>]*>/g, "").trim().charAt(0)
-  return rtlChars.test(firstChar) ? "rtl" : "ltr"
-}
-
-function RichTextEditor({
-  value,
-  onChange,
-  placeholder,
-  minHeight = "100px",
-}: {
-  value: string
-  onChange: (html: string) => void
-  placeholder?: string
-  minHeight?: string
-}) {
-  const ref = useRef<HTMLDivElement>(null)
-
-  // Sync value into editor on mount or external change
-  useEffect(() => {
-    if (ref.current && ref.current.innerHTML !== value) {
-      ref.current.innerHTML = value
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  function exec(cmd: string) {
-    document.execCommand(cmd)
-    ref.current?.focus()
-  }
-
-  return (
-    <div className="border rounded-md">
-      <div className="flex items-center gap-1 p-1.5 border-b bg-muted/30 flex-wrap">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 w-7 p-0"
-          onClick={() => exec("bold")}
-          title="Bold"
-        >
-          <span className="font-bold text-xs">B</span>
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 w-7 p-0"
-          onClick={() => exec("italic")}
-          title="Italic"
-        >
-          <span className="italic text-xs">I</span>
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 w-7 p-0"
-          onClick={() => exec("underline")}
-          title="Underline"
-        >
-          <span className="underline text-xs">U</span>
-        </Button>
-        <div className="w-px h-5 bg-border mx-0.5" />
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 px-1.5 text-xs"
-          onClick={() => exec("insertUnorderedList")}
-        >
-          • List
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 px-1.5 text-xs"
-          onClick={() => exec("insertOrderedList")}
-        >
-          1. List
-        </Button>
-      </div>
-      <div
-        ref={ref}
-        contentEditable
-        className="p-2 focus:outline-none text-sm"
-        style={{ minHeight, whiteSpace: "pre-wrap" }}
-        dir="auto"
-        data-placeholder={placeholder}
-        onInput={(e) => {
-          const html = e.currentTarget.innerHTML
-          const text = e.currentTarget.textContent || ""
-          if (text.length === 1) {
-            const dir = detectTextDirection(text)
-            e.currentTarget.dir = dir
-            e.currentTarget.style.textAlign = dir === "rtl" ? "right" : "left"
-          }
-          onChange(html)
-        }}
-      />
-    </div>
-  )
-}
+import { RichTextEditor } from "@/components/ui/rich-text-editor"
 
 // ==================
 // Types for form state
@@ -670,6 +560,8 @@ export default function LessonPlanAdd() {
                   setLessonForm({ ...lessonForm, learning_objectives: html })
                 }
                 placeholder="Describe the learning objectives..."
+                campusId={campusId}
+                showEditorPlugins
               />
             </div>
 
@@ -757,6 +649,8 @@ export default function LessonPlanAdd() {
                           }
                           placeholder="Teacher activity..."
                           minHeight="80px"
+                          campusId={campusId}
+                          showEditorPlugins
                         />
                       </div>
                       <div>
@@ -768,6 +662,8 @@ export default function LessonPlanAdd() {
                           }
                           placeholder="Learner activity..."
                           minHeight="80px"
+                          campusId={campusId}
+                          showEditorPlugins
                         />
                       </div>
                       <div>
@@ -779,6 +675,8 @@ export default function LessonPlanAdd() {
                           }
                           placeholder="Assessment..."
                           minHeight="80px"
+                          campusId={campusId}
+                          showEditorPlugins
                         />
                       </div>
                       <div>
@@ -792,6 +690,8 @@ export default function LessonPlanAdd() {
                           }
                           placeholder="Materials..."
                           minHeight="80px"
+                          campusId={campusId}
+                          showEditorPlugins
                         />
                       </div>
                     </div>
@@ -814,6 +714,8 @@ export default function LessonPlanAdd() {
                     setLessonForm({ ...lessonForm, evaluation: html })
                   }
                   placeholder="Evaluate the past lesson..."
+                  campusId={campusId}
+                  showEditorPlugins
                 />
               </div>
               <div>
@@ -824,6 +726,8 @@ export default function LessonPlanAdd() {
                     setLessonForm({ ...lessonForm, inclusiveness: html })
                   }
                   placeholder="Describe inclusiveness considerations..."
+                  campusId={campusId}
+                  showEditorPlugins
                 />
               </div>
             </div>

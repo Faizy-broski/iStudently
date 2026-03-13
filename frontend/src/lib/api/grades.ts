@@ -1005,6 +1005,7 @@ export async function deleteHistoricalGrade(id: string) {
 export interface GradebookAssignmentType {
   id: string
   school_id: string
+  campus_id?: string | null
   title: string
   sort_order: number
   color?: string | null

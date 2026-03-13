@@ -5,6 +5,9 @@
 // Opens a new window with formatted report cards and triggers print immediately
 // ============================================================================
 
+import { openPdfDownload, type PrintSchool } from "@/lib/utils/printLayout"
+import type { PdfHeaderFooterSettings } from "@/lib/api/school-settings"
+
 export interface ReportCardData {
   student?: {
     id?: string;
@@ -90,16 +93,16 @@ function buildCardHtml(card: ReportCardData, title: string): string {
 
   let html = `<div class="report-card">`;
 
-  // School header
-  html += `<div class="school-header">`;
+  // School header — RosarioSIS-style coloured record band
+  html += `<div class="report-card-school">`
   if (school?.logo_url)
-    html += `<img src="${school.logo_url}" alt="" class="school-logo" />`;
-  html += `<h1>${school?.name || "School"}</h1>`;
-  if (school?.address) html += `<p>${school.address}</p>`;
-  if (school?.phone) html += `<p>${school.phone}</p>`;
-  html += `</div>`;
+    html += `<img src="${school.logo_url}" alt="" class="school-logo" />`
+  html += `<div class="school-info"><div class="school-name">${school?.name || "School"}</div>`
+  if (school?.address) html += `<div class="school-detail">${school.address}</div>`
+  if (school?.phone) html += `<div class="school-detail">${school.phone}</div>`
+  html += `</div></div>`
 
-  html += `<div class="report-title">${title}</div>`;
+  html += `<div class="report-title">${title}</div>`
 
   // Student info
   html += `<div class="student-info">`;
@@ -174,44 +177,43 @@ function buildCardHtml(card: ReportCardData, title: string): string {
   return html;
 }
 
-const PRINT_STYLES = `
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a1a; }
+const REPORT_BODY_STYLES = `
   .report-card { page-break-after: always; padding: 24px 32px; max-width: 800px; margin: 0 auto; }
   .report-card:last-child { page-break-after: avoid; }
-  .school-header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #0369a1; padding-bottom: 12px; }
-  .school-header h1 { font-size: 22px; color: #0369a1; margin-bottom: 4px; }
-  .school-header p { font-size: 11px; color: #666; }
-  .school-logo { height: 50px; margin-bottom: 6px; }
+  /* School banner at top of each card */
+  .report-card-school { display:flex; align-items:center; gap:12px; padding:10px 14px; background:#f0f4f8; border:1px solid #d0dae8; border-radius:6px; margin-bottom:12px; }
+  .school-logo { height:48px; width:48px; object-fit:contain; border-radius:4px; flex-shrink:0; }
+  .school-info .school-name { font-size:15px; font-weight:700; color:#1e3a5f; }
+  .school-info .school-detail { font-size:11px; color:#555; margin-top:2px; }
   .report-title { text-align: center; font-size: 16px; font-weight: 700; color: #333; margin: 12px 0 16px; text-transform: uppercase; letter-spacing: 1px; }
   .student-info { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; margin-bottom: 16px; font-size: 12px; background: #f8fafc; padding: 10px 14px; border-radius: 6px; border: 1px solid #e2e8f0; }
   .student-info .label { font-weight: 600; color: #555; }
   .student-info .value { color: #1a1a1a; }
   .grades-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 12px; }
-  .grades-table th { background: #0369a1; color: white; padding: 6px 10px; text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; }
+  .grades-table th { background: #1e3a5f; color: white; padding: 6px 10px; text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; }
   .grades-table td { padding: 5px 10px; border-bottom: 1px solid #e2e8f0; }
   .grades-table tr:nth-child(even) { background: #f8fafc; }
   .grades-table .num { text-align: center; }
   .summary-row { display: flex; justify-content: space-between; background: #f0f9ff; padding: 8px 14px; border-radius: 6px; font-size: 12px; border: 1px solid #bae6fd; margin-bottom: 12px; }
   .summary-row .item { display: flex; gap: 6px; }
-  .summary-row .label { font-weight: 600; color: #0369a1; }
+  .summary-row .label { font-weight: 600; color: #1e3a5f; }
   .comments-section { margin-top: 8px; font-size: 11px; }
   .comments-section h4 { font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #555; }
   .no-grades { font-size: 12px; color: #999; padding: 12px 0; }
-  @media print {
-    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .report-card { padding: 16px 24px; }
-  }
 `;
 
 /**
- * Directly opens a print window with all report cards and triggers print.
- * No preview dialog — goes straight to the browser print page.
+ * Generates and downloads a PDF with all report cards.
+ * No print dialog — directly downloads as a PDF file.
  */
-export function printReportCards(
+export async function printReportCards(
   title: string,
-  reportCards: ReportCardData[]
-): void {
+  reportCards: ReportCardData[],
+  pdfSettings?: PdfHeaderFooterSettings | null,
+  campusName?: string,
+  school?: PrintSchool,
+  pluginActive?: boolean,
+): Promise<void> {
   const validCards = reportCards.filter((c) => !c.error);
   if (validCards.length === 0) return;
 
@@ -219,21 +221,21 @@ export function printReportCards(
     .map((card) => buildCardHtml(card, title))
     .join("\n");
 
-  const printWindow = window.open("", "_blank");
-  if (!printWindow) {
-    alert("Please allow popups to print report cards.");
-    return;
-  }
+  const resolvedSchool: PrintSchool = school ?? {
+    name: campusName || "",
+    logo_url: validCards[0]?.school?.logo_url || validCards[0]?.student?.school?.logo_url,
+    address: validCards[0]?.school?.address || validCards[0]?.student?.school?.address,
+    phone: validCards[0]?.school?.phone || validCards[0]?.student?.school?.phone,
+  };
 
-  printWindow.document.write(`<!DOCTYPE html>
-<html>
-<head><title>${title}</title><style>${PRINT_STYLES}</style></head>
-<body>${bodyHtml}</body>
-</html>`);
-
-  printWindow.document.close();
-  printWindow.focus();
-  setTimeout(() => printWindow.print(), 500);
+  await openPdfDownload({
+    title,
+    bodyHtml,
+    bodyStyles: REPORT_BODY_STYLES,
+    school: resolvedSchool,
+    pdfSettings,
+    pluginActive,
+  });
 }
 
 /**

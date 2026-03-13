@@ -24,10 +24,12 @@ import { Loader2, ClipboardList, Users, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
+import { useSchoolSettings } from "@/context/SchoolSettingsContext";
 import * as gradesApi from "@/lib/api/grades";
 import * as academicsApi from "@/lib/api/academics";
 import type { GradeLevel } from "@/lib/api/academics";
 import { printReportCards, type ReportCardData } from "@/components/grades/ReportPrintPreview";
+import { getPdfHeaderFooter, type PdfHeaderFooterSettings } from "@/lib/api/school-settings";
 
 interface StudentItem {
   id: string;
@@ -45,6 +47,16 @@ export default function ProgressReportsPage() {
   const { user } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
+  const { isPluginActive } = useSchoolSettings();
+
+  const [pdfSettings, setPdfSettings] = useState<PdfHeaderFooterSettings | null>(null);
+  useEffect(() => {
+    if (selectedCampus?.id && isPluginActive('pdf_header_footer')) {
+      getPdfHeaderFooter(selectedCampus.id).then(r => { if (r.success && r.data) setPdfSettings(r.data) })
+    } else {
+      setPdfSettings(null);
+    }
+  }, [selectedCampus?.id, isPluginActive]);
 
   // ── Options state (matching RosarioSIS screenshot) ─────────────
   const [includeAssignedDate, setIncludeAssignedDate] = useState(false);
@@ -143,7 +155,7 @@ export default function ProgressReportsPage() {
       if (res.success) {
         const cards = res.data?.progress_reports || res.data?.data?.progress_reports || [];
         if (cards.length > 0) {
-          printReportCards("Progress Report", cards as ReportCardData[]);
+          printReportCards("Progress Report", cards as ReportCardData[], pdfSettings, selectedCampus?.name, selectedCampus ?? undefined, isPluginActive('pdf_header_footer'));
         } else {
           toast.success(
             `Progress reports generated for ${selectedStudentIds.length} student(s)`

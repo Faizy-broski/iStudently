@@ -1,16 +1,27 @@
 import nodemailer from "nodemailer";
+import SMTPTransport from "nodemailer/lib/smtp-transport";
 
-export const mailTransporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: process.env.EMAIL_PORT,
-  secure: process.env.EMAIL_SECURE === "true",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+export interface SmtpConfig {
+  host: string;
+  port: number;
+  secure: boolean;
+  user: string;
+  pass: string;
+}
 
-export const verifyMailer = async () => {
-  await mailTransporter.verify();
-  console.log("📧 Mail server is ready");
-};
+/**
+ * Create a nodemailer transporter from explicit SMTP config.
+ * No env-var fallback — each school must configure their own settings
+ * via Settings > Plugins > Email SMTP.
+ */
+export function createTransporter(config: SmtpConfig) {
+  const options = {
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    auth: { user: config.user, pass: config.pass },
+    family: 4,
+  } as SMTPTransport.Options;
+
+  return nodemailer.createTransport(options);
+}

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import { AttendanceCalendarsService } from '../services/attendance-calendars.service'
+import { getCalendarScheduleView } from '../services/calendar-schedule-view.service'
 
 export interface AuthRequest extends Request {
   user?: {
@@ -196,6 +197,56 @@ export class AttendanceCalendarsController {
       res.json({ success: true, data: { days_created: count } })
     } catch (error: any) {
       console.error('Error regenerating calendar:', error)
+      res.status(500).json({ success: false, error: error.message })
+    }
+  }
+
+  /**
+   * GET /api/attendance-calendars/:id/schedule-view
+   * Get schedule view data for a calendar month (plugin: calendar_schedule_view)
+   *
+   * Query params:
+   *   academic_year_id  (required)
+   *   month             YYYY-MM  (required)
+   *   section_id        optional – student/parent filter
+   */
+  async getScheduleView(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const schoolId = req.profile?.school_id
+      if (!schoolId) {
+        res.status(403).json({ success: false, error: 'No school associated with your account' })
+        return
+      }
+
+      const calendarId = req.params.id
+      const academicYearId = req.query.academic_year_id as string
+      const month = req.query.month as string
+      const campusId = (req.query.campus_id as string | undefined) || null
+      const sectionId = (req.query.section_id as string | undefined) || undefined
+
+      if (!academicYearId || !month) {
+        res.status(400).json({ success: false, error: 'academic_year_id and month (YYYY-MM) are required' })
+        return
+      }
+
+      const data = await getCalendarScheduleView({
+        calendarId,
+        academicYearId,
+        month,
+        schoolId,
+        campusId,
+        profileId: req.profile?.id,
+        userRole: req.profile?.role || 'admin',
+        sectionId,
+      })
+
+      res.json({ success: true, data })
+    } catch (error: any) {
+      if (error.message === 'PLUGIN_INACTIVE') {
+        res.status(403).json({ success: false, error: 'Calendar Schedule View plugin is not activated for this campus' })
+        return
+      }
+      console.error('Error getting schedule view:', error)
       res.status(500).json({ success: false, error: error.message })
     }
   }

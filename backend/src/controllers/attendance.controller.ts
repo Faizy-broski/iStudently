@@ -3,6 +3,7 @@ import * as codesService from '../services/attendance-codes.service'
 import * as calendarService from '../services/attendance-calendar.service'
 import * as adminService from '../services/attendance-admin.service'
 import * as exportService from '../services/attendance-export.service'
+import { generateDailyAttendance } from '../services/attendance.service'
 import { ApiResponse } from '../types'
 
 interface AuthRequest extends Request {
@@ -475,6 +476,68 @@ export const recalculateDailyAttendance = async (req: AuthRequest, res: Response
       schoolId, start_date, end_date, campus_id
     )
     res.json(result)
+  } catch (error: any) {
+    res.status(500).json({ data: null, error: error.message })
+  }
+}
+
+// ============================================================================
+// UTILITIES > Generate Missing Attendance (Timeframe Backfill)
+// RosarioSIS equivalent: "Take missing attendance for this timeframe"
+// Loops each date in range and runs generate_daily_attendance RPC
+// ============================================================================
+
+export const generateMissingAttendanceRange = async (req: AuthRequest, res: Response) => {
+  try {
+    const schoolId = req.body.school_id || req.profile?.school_id
+    if (!schoolId) return res.status(400).json({ data: null, error: 'School ID required' })
+
+    const { from_date, to_date } = req.body
+    if (!from_date || !to_date) {
+      return res.status(400).json({ data: null, error: 'from_date and to_date are required' })
+    }
+
+    const from = new Date(from_date)
+    const to = new Date(to_date)
+    if (isNaN(from.getTime()) || isNaN(to.getTime())) {
+      return res.status(400).json({ data: null, error: 'Invalid date format' })
+    }
+    if (from > to) {
+      return res.status(400).json({ data: null, error: 'from_date must be before or equal to to_date' })
+    }
+    // Cap range to 90 days to avoid runaway requests
+    const diffDays = Math.ceil((to.getTime() - from.getTime()) / 86400000) + 1
+    if (diffDays > 90) {
+      return res.status(400).json({ data: null, error: 'Date range cannot exceed 90 days' })
+    }
+
+    let totalGenerated = 0
+    let daysProcessed = 0
+    const errors: string[] = []
+
+    const cur = new Date(from)
+    while (cur <= to) {
+      const dateStr = cur.toISOString().split('T')[0]
+      try {
+        const result = await generateDailyAttendance(dateStr, schoolId)
+        if (result.success && result.data) {
+          totalGenerated += result.data.generated_count
+        } else if (!result.success) {
+          errors.push(`${dateStr}: ${result.error}`)
+        }
+        daysProcessed++
+      } catch {
+        errors.push(`${dateStr}: unexpected error`)
+      }
+      cur.setDate(cur.getDate() + 1)
+    }
+
+    res.json({
+      success: true,
+      data: { total_generated: totalGenerated, days_processed: daysProcessed },
+      message: `Generated ${totalGenerated} attendance records across ${daysProcessed} day(s)`,
+      ...(errors.length > 0 ? { warnings: errors } : {}),
+    })
   } catch (error: any) {
     res.status(500).json({ data: null, error: error.message })
   }

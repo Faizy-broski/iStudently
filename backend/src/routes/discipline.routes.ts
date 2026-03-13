@@ -70,4 +70,14 @@ router.patch('/discipline/referrals/:id', requireAdmin, disciplineController.upd
  */
 router.delete('/discipline/referrals/:id', requireAdmin, disciplineController.deleteReferral);
 
+// ============================================================================
+// DISCIPLINE SCORE
+// ============================================================================
+
+/**
+ * GET /api/discipline/score/:studentId
+ * Query: school_id, campus_id?, academic_year_id?
+ */
+router.get('/discipline/score/:studentId', requireTeacher, disciplineController.getStudentScore);
+
 export default router;

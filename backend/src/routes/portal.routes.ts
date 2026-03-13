@@ -1,49 +1,10 @@
 import { Router, Response } from 'express'
 import { portalService } from '../services/portal.service'
 import { authenticate, AuthRequest } from '../middlewares/auth.middleware'
-import { supabase } from '../config/supabase'
-
 const router = Router()
 
 // Apply authentication to all routes
 router.use(authenticate)
-
-// ================================================================
-// DEBUG ROUTE (Remove after testing)
-// ================================================================
-router.get('/debug/notes', async (req: AuthRequest, res: Response) => {
-  try {
-    const schoolId = req.profile?.school_id
-    const campusId = (req.query.campus_id as string) || req.profile?.campus_id
-    
-    // Get ALL notes without any filtering
-    const { data: allNotes, error } = await supabase
-      .from('portal_notes')
-      .select('id, title, school_id, campus_id, visible_to_roles, is_active, visible_from, visible_until')
-      .eq('school_id', schoolId)
-    
-    console.log('🔍 DEBUG - All notes in school:', allNotes)
-    console.log('🔍 DEBUG - Looking for campus_id:', campusId)
-    
-    // Filter to show what matches
-    const matchingCampus = allNotes?.filter(n => n.campus_id === campusId)
-    console.log('🔍 DEBUG - Notes matching campus:', matchingCampus)
-    
-    res.json({ 
-      success: true, 
-      debug: {
-        school_id: schoolId,
-        requested_campus_id: campusId,
-        total_notes_in_school: allNotes?.length || 0,
-        notes_matching_campus: matchingCampus?.length || 0,
-        all_notes: allNotes,
-        matching_notes: matchingCampus
-      }
-    })
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message })
-  }
-})
 
 // ================================================================
 // NOTES ROUTES

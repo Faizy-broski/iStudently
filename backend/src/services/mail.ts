@@ -1,13 +1,21 @@
-import { mailTransporter } from "../config/mail";
+import nodemailer from "nodemailer";
 
-export const sendEmail = async ({ to, subject, html, text }) => {
-  const mailOptions = {
-    from: process.env.EMAIL_FROM,
-    to,
-    subject,
-    text,
-    html,
-  };
+interface SendEmailOptions {
+  to: string;
+  subject: string;
+  html?: string;
+  text?: string;
+  transporter: nodemailer.Transporter;
+  fromAddress: string;
+}
 
-  return await mailTransporter.sendMail(mailOptions);
+export const sendEmail = async ({
+  to,
+  subject,
+  html,
+  text,
+  transporter,
+  fromAddress,
+}: SendEmailOptions) => {
+  return await transporter.sendMail({ from: fromAddress, to, subject, text, html });
 };

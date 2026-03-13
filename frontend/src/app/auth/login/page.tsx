@@ -173,7 +173,7 @@ function LoginForm() {
 
           <div className="relative w-64 h-64 mx-auto">
             <Image
-              src="/images/logo.svg"
+              src="/images/logo.png"
               alt="Studently Logo"
               fill
               className="object-contain"

@@ -60,13 +60,37 @@ class GradebookService {
     return (data || []) as GradebookAssignmentType[]
   }
 
+  async getAssignmentTypesByScope(campusId?: string, schoolId?: string): Promise<GradebookAssignmentType[]> {
+    let query = supabase
+      .from('gradebook_assignment_types')
+      .select('*')
+      .eq('is_active', true)
+      .is('course_period_id', null)
+      .order('sort_order')
+
+    if (campusId) {
+      query = query.eq('campus_id', campusId)
+    } else if (schoolId) {
+      query = query.eq('school_id', schoolId)
+    } else {
+      return []
+    }
+
+    const { data, error } = await query
+    if (error) throw new Error(`Failed to fetch assignment types: ${error.message}`)
+    return (data || []) as GradebookAssignmentType[]
+  }
+
   async createAssignmentType(
     schoolId: string,
-    coursePeriodId: string,
+    coursePeriodId: string | null,
     dto: CreateGradebookAssignmentTypeDTO,
     createdBy?: string
   ): Promise<GradebookAssignmentType> {
-    const campusId = await this.getCampusId(coursePeriodId)
+    let campusId = (dto as any).campus_id || null
+    if (coursePeriodId && !campusId) {
+      campusId = await this.getCampusId(coursePeriodId)
+    }
     const { data, error } = await supabase
       .from('gradebook_assignment_types')
       .insert({
@@ -200,6 +224,51 @@ class GradebookService {
       .eq('id', id)
 
     if (error) throw new Error(`Failed to delete assignment: ${error.message}`)
+  }
+
+  async massCreateAssignment(
+    schoolId: string,
+    dto: {
+      title: string
+      assignment_type_id: string
+      points: number
+      default_points?: number | null
+      weight?: number | null
+      description?: string | null
+      assigned_date?: string | null
+      due_date?: string | null
+      enable_submission?: boolean
+      course_period_ids: string[]
+    },
+    createdBy?: string
+  ): Promise<number> {
+    const rows = await Promise.all(
+      dto.course_period_ids.map(async (cpId) => {
+        const campusId = await this.getCampusId(cpId)
+        return {
+          school_id: schoolId,
+          campus_id: campusId,
+          course_period_id: cpId,
+          assignment_type_id: dto.assignment_type_id,
+          title: dto.title,
+          description: dto.description || null,
+          assigned_date: dto.assigned_date || null,
+          due_date: dto.due_date || null,
+          points: dto.points || 100,
+          default_points: dto.default_points ?? null,
+          weight: dto.weight ?? 1.00,
+          created_by: createdBy,
+        }
+      })
+    )
+
+    const { data, error } = await supabase
+      .from('gradebook_assignments')
+      .insert(rows)
+      .select('id')
+
+    if (error) throw new Error(`Failed to mass create assignments: ${error.message}`)
+    return data?.length || 0
   }
 
   // ──────────────────────────────────────────────────────────────────────────

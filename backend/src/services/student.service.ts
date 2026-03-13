@@ -13,7 +13,6 @@ export class StudentService {
     search?: string,
     gradeLevel?: string
   ) {
-    console.log('StudentService.getStudents called with:', { schoolId, page, limit, search, gradeLevel });
     const offset = (page - 1) * limit
 
     // Use optimized database search function for library operations when searching
@@ -35,23 +34,7 @@ export class StudentService {
           // Apply grade filter client-side if needed
           let filtered = searchResults || [];
           if (gradeLevel) {
-            // Check if gradeLevel is a UUID (for grade_level_id) or text (for grade_level)
-            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(gradeLevel);
-            
-            // First get the grade_level_id for matching students if filtering by UUID
-            if (isUUID) {
-              const studentIds = filtered.map((s: any) => s.student_id);
-              const { data: gradeData } = await supabase
-                .from('students')
-                .select('id, grade_level_id')
-                .in('id', studentIds)
-                .eq('grade_level_id', gradeLevel);
-              
-              const matchingIds = new Set((gradeData || []).map((s: any) => s.id));
-              filtered = filtered.filter((s: any) => matchingIds.has(s.student_id));
-            } else {
-              filtered = filtered.filter((s: any) => s.grade_level === gradeLevel);
-            }
+            filtered = filtered.filter((s: any) => s.grade_level === gradeLevel);
           }
 
           // Apply pagination
@@ -90,42 +73,22 @@ export class StudentService {
             parentLinksMap.get(link.student_id)!.push(link);
           });
 
-          // Fetch grade_level_id for these students (needed for fee generation)
-          const { data: gradeData } = await supabase
-            .from('students')
-            .select('id, grade_level_id')
-            .in('id', studentIds);
-
-          const gradeMap = new Map<string, string>();
-          (gradeData || []).forEach((s: any) => {
-            if (s.grade_level_id) gradeMap.set(s.id, s.grade_level_id);
-          });
-
-          // Enrich student data with parent links and grade_level_id
-          const enrichedData = paginatedData.map((student: any) => {
-            const flattened: any = {
-              id: student.student_id,
-              student_number: student.student_number,
-              grade_level: student.grade_level,
-              grade_level_id: gradeMap.get(student.student_id) || null,
-              profile_id: student.profile_id,
-              school_id: schoolId,
-              parent_links: parentLinksMap.get(student.student_id) || []
-            };
-            // include whatever profile fields the caller might be expecting at top level
-            flattened.first_name = student.first_name;
-            flattened.last_name = student.last_name;
-            flattened.father_name = student.father_name;
-            flattened.grandfather_name = student.grandfather_name;
-            flattened.profile = {
+          // Enrich student data with parent links
+          const enrichedData = paginatedData.map((student: any) => ({
+            id: student.student_id,
+            student_number: student.student_number,
+            grade_level: student.grade_level,
+            profile_id: student.profile_id,
+            school_id: schoolId,
+            profile: {
               id: student.profile_id,
               first_name: student.first_name,
               last_name: student.last_name,
               email: student.email,
               is_active: student.is_active
-            };
-            return flattened;
-          });
+            },
+            parent_links: parentLinksMap.get(student.student_id) || []
+          }));
 
           return {
             students: enrichedData,
@@ -151,13 +114,10 @@ export class StudentService {
         profile:profiles(
           id,
           first_name,
-          father_name,
-          grandfather_name,
           last_name,
           email,
           phone,
           avatar_url,
-          profile_photo_url,
           is_active
         ),
         parent_links:parent_student_links(
@@ -177,16 +137,9 @@ export class StudentService {
       .eq('school_id', schoolId)
       .order('created_at', { ascending: false })
 
-    // Apply grade filter - use grade_level_id (UUID) if it looks like a UUID, otherwise use grade_level (text)
+    // Apply grade filter
     if (gradeLevel) {
-      // Check if gradeLevel is a UUID (contains hyphens and is the right length)
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(gradeLevel);
-      console.log(`Filtering by ${isUUID ? 'grade_level_id (UUID)' : 'grade_level (text)'}: ${gradeLevel}`);
-      if (isUUID) {
-        query = query.eq('grade_level_id', gradeLevel)
-      } else {
-        query = query.eq('grade_level', gradeLevel)
-      }
+      query = query.eq('grade_level', gradeLevel)
     }
 
     // Apply pagination
@@ -198,27 +151,8 @@ export class StudentService {
       throw new Error(`Failed to fetch students: ${error.message}`)
     }
 
-    // Post-process results so callers always see the primary name fields at the top level
-    // (`first_name`, `last_name`, etc).  The standard query returns a nested `profile` object,
-    // which the frontend has been assuming for many years, so failing to flatten it is why
-    // student lists in the activities module (and the eligibility page) were rendering as
-    // blank.  The search branch above already creates a flattened record; mimic that here.
-    const students = (data || []).map((s: any) => {
-      const first = s?.profile?.first_name ?? null;
-      const last = s?.profile?.last_name ?? null;
-      const father = s?.profile?.father_name ?? null;
-      const grand = s?.profile?.grandfather_name ?? null;
-      return {
-        ...s,
-        first_name: first,
-        last_name: last,
-        father_name: father,
-        grandfather_name: grand,
-      };
-    });
-
     return {
-      students,
+      students: data || [],
       pagination: {
         total: count || 0,
         page,
@@ -239,13 +173,10 @@ export class StudentService {
         profile:profiles(
           id,
           first_name,
-          father_name,
-          grandfather_name,
           last_name,
           email,
           phone,
           avatar_url,
-          profile_photo_url,
           is_active,
           role
         ),
@@ -276,20 +207,6 @@ export class StudentService {
     }
 
     return data
-  }
-
-  /**
-   * Check if a student exists and belongs to a school (for updates)
-   */
-  async checkStudentOwnership(studentId: string, schoolId: string): Promise<boolean> {
-    const { data, error } = await supabase
-      .from('students')
-      .select('id')
-      .eq('id', studentId)
-      .eq('school_id', schoolId)
-      .single()
-
-    return !error && !!data
   }
 
   /**
@@ -398,7 +315,6 @@ export class StudentService {
         grade_level: studentData.grade_level, // Legacy field
         grade_level_id: studentData.grade_level_id, // New: UUID reference
         section_id: studentData.section_id, // New: UUID reference (triggers auto-update)
-
         medical_info: studentData.medical_info || {},
         custom_fields: studentData.custom_fields || {}
       })
@@ -453,44 +369,14 @@ export class StudentService {
     updateData: UpdateStudentDTO
   ): Promise<Student> {
     // First verify the student belongs to this school
-    const studentExists = await this.checkStudentOwnership(studentId, schoolId)
-    if (!studentExists) {
-      throw new Error('Student not found or does not belong to this school')
-    }
-
-    // Get the existing student data for the update
-    let existing = await this.getStudentById(studentId, schoolId)
+    const existing = await this.getStudentById(studentId, schoolId)
     if (!existing) {
-      // If getStudentById fails (e.g., no parent links), get basic student data
-      const { data, error } = await supabase
-        .from('students')
-        .select(`
-          *,
-          profile:profiles(
-            id,
-            first_name,
-            last_name,
-            email,
-            phone,
-            avatar_url,
-            is_active,
-            role
-          )
-        `)
-        .eq('id', studentId)
-        .eq('school_id', schoolId)
-        .single()
-
-      if (error || !data) {
-        throw new Error('Student not found or does not belong to this school')
-      }
-      existing = data
+      throw new Error('Student not found or does not belong to this school')
     }
 
     // Update profile if profile data is provided
     if (updateData.first_name || updateData.father_name || updateData.grandfather_name || 
-        updateData.last_name || updateData.email || updateData.phone || updateData.profile_photo_url || 
-        updateData.is_active !== undefined) {
+        updateData.last_name || updateData.email || updateData.phone || updateData.profile_photo_url) {
       const profileUpdates: any = {}
       if (updateData.first_name !== undefined) profileUpdates.first_name = updateData.first_name
       if (updateData.father_name !== undefined) profileUpdates.father_name = updateData.father_name
@@ -499,7 +385,6 @@ export class StudentService {
       if (updateData.email !== undefined) profileUpdates.email = updateData.email
       if (updateData.phone !== undefined) profileUpdates.phone = updateData.phone
       if (updateData.profile_photo_url !== undefined) profileUpdates.profile_photo_url = updateData.profile_photo_url
-      if (updateData.is_active !== undefined) profileUpdates.is_active = updateData.is_active
 
       if (Object.keys(profileUpdates).length > 0 && existing.profile_id) {
         const { error: profileError } = await supabase
@@ -628,173 +513,6 @@ export class StudentService {
     return stats
   }
 
-  // ── BULK IMPORT ────────────────────────────────────────────────────────────
-
-  /**
-   * Bulk import students with full validation, batch processing, and detailed results.
-   * Phase 1: Validate all rows (required fields, email, within-batch duplicates)
-   * Phase 2: Batch-resolve grade_level_name / section_name → IDs
-   * Phase 3: Create students 3 at a time to stay within auth rate limits
-   */
-  async bulkImportStudents(
-    studentsData: Array<Record<string, any>>,
-    schoolId: string
-  ): Promise<{
-    success_count: number
-    error_count: number
-    errors: Array<{ row: number; student_number?: string; error: string }>
-    created_students: any[]
-  }> {
-    const results = {
-      success_count: 0,
-      error_count: 0,
-      errors: [] as Array<{ row: number; student_number?: string; error: string }>,
-      created_students: [] as any[]
-    }
-
-    const validRows: Array<{
-      row: number
-      data: CreateStudentDTO
-      gradeName?: string
-      sectionName?: string
-    }> = []
-
-    const seenStudentNumbers = new Set<string>()
-    const seenEmails = new Set<string>()
-    const uniqueGradeNames = new Set<string>()
-    const uniqueSectionNames = new Set<string>()
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-    // ── Phase 1: Validate all rows ──────────────────────────────────────────
-    for (let i = 0; i < studentsData.length; i++) {
-      const rowNum = i + 2 // row 1 = header
-      const raw = studentsData[i]
-
-      const missingFields: string[] = []
-      if (!raw.student_number?.toString().trim()) missingFields.push('student_number')
-      if (!raw.first_name?.toString().trim()) missingFields.push('first_name')
-      if (!raw.last_name?.toString().trim()) missingFields.push('last_name')
-      if (!raw.email?.toString().trim()) missingFields.push('email')
-
-      if (missingFields.length > 0) {
-        results.errors.push({
-          row: rowNum,
-          student_number: raw.student_number?.toString().trim(),
-          error: `Missing required fields: ${missingFields.join(', ')}`
-        })
-        results.error_count++
-        continue
-      }
-
-      const studentNumber = raw.student_number.toString().trim()
-      const email = raw.email.toString().trim().toLowerCase()
-
-      if (!emailRegex.test(email)) {
-        results.errors.push({ row: rowNum, student_number: studentNumber, error: `Invalid email format: ${email}` })
-        results.error_count++
-        continue
-      }
-
-      if (seenStudentNumbers.has(studentNumber)) {
-        results.errors.push({ row: rowNum, student_number: studentNumber, error: 'Duplicate student_number within this file' })
-        results.error_count++
-        continue
-      }
-
-      if (seenEmails.has(email)) {
-        results.errors.push({ row: rowNum, student_number: studentNumber, error: 'Duplicate email within this file' })
-        results.error_count++
-        continue
-      }
-
-      seenStudentNumbers.add(studentNumber)
-      seenEmails.add(email)
-
-      const gradeName = raw.grade_level_name?.toString().trim()
-      const sectionName = raw.section_name?.toString().trim()
-      if (gradeName) uniqueGradeNames.add(gradeName.toLowerCase())
-      if (sectionName) uniqueSectionNames.add(sectionName.toLowerCase())
-
-      validRows.push({
-        row: rowNum,
-        gradeName: gradeName?.toLowerCase(),
-        sectionName: sectionName?.toLowerCase(),
-        data: {
-          school_id: schoolId,
-          student_number: studentNumber,
-          first_name: raw.first_name.toString().trim(),
-          father_name: raw.father_name?.toString().trim() || undefined,
-          grandfather_name: raw.grandfather_name?.toString().trim() || undefined,
-          last_name: raw.last_name.toString().trim(),
-          email,
-          phone: raw.phone?.toString().trim() || undefined,
-          password: raw.password?.toString().trim() || undefined,
-          grade_level: gradeName || undefined
-        }
-      })
-    }
-
-    if (validRows.length === 0) return results
-
-    // ── Phase 2: Batch-resolve grade levels & sections ──────────────────────
-    const gradeLevelMap = new Map<string, string>() // lower name → id
-    const sectionMap = new Map<string, string>()   // "lower_name|grade_id" → id, and "lower_name" → id
-
-    if (uniqueGradeNames.size > 0) {
-      const { data: grades } = await supabase
-        .from('grade_levels')
-        .select('id, name')
-        .eq('school_id', schoolId)
-      grades?.forEach((g: any) => gradeLevelMap.set(g.name.toLowerCase(), g.id))
-    }
-
-    if (uniqueSectionNames.size > 0) {
-      const { data: sections } = await supabase
-        .from('sections')
-        .select('id, name, grade_level_id')
-        .eq('school_id', schoolId)
-      sections?.forEach((s: any) => {
-        sectionMap.set(`${s.name.toLowerCase()}|${s.grade_level_id}`, s.id)
-        if (!sectionMap.has(s.name.toLowerCase())) sectionMap.set(s.name.toLowerCase(), s.id)
-      })
-    }
-
-    // Enrich data with resolved IDs
-    for (const vr of validRows) {
-      if (vr.gradeName && gradeLevelMap.has(vr.gradeName)) {
-        vr.data.grade_level_id = gradeLevelMap.get(vr.gradeName)
-      }
-      if (vr.sectionName) {
-        const gradeId = vr.data.grade_level_id
-        vr.data.section_id =
-          (gradeId ? sectionMap.get(`${vr.sectionName}|${gradeId}`) : undefined) ||
-          sectionMap.get(vr.sectionName)
-      }
-    }
-
-    // ── Phase 3: Process in batches of 3 ───────────────────────────────────
-    for (let i = 0; i < validRows.length; i += 3) {
-      const batch = validRows.slice(i, i + 3)
-      const batchResults = await Promise.allSettled(batch.map(vr => this.createStudent(vr.data)))
-      batchResults.forEach((result, idx) => {
-        const { row, data } = batch[idx]
-        if (result.status === 'fulfilled') {
-          results.success_count++
-          results.created_students.push(result.value)
-        } else {
-          results.error_count++
-          results.errors.push({
-            row,
-            student_number: data.student_number,
-            error: result.reason?.message || 'Failed to create student'
-          })
-        }
-      })
-    }
-
-    return results
-  }
-
   /**
    * Get students for advanced report with proper joins
    */
@@ -874,105 +592,45 @@ export class StudentService {
     }
   }
 
-  /**
-   * Get students info for printing with selected categories
-   * Returns students with their full profile, grade/section info, campus info, and custom fields
-   */
   async getStudentsPrintInfo(
     schoolId: string,
     studentIds: string[],
     categoryIds: string[]
-  ): Promise<{
-    students: any[],
-    categories: { id: string, name: string }[],
-    campus: { id: string, name: string } | null
-  }> {
-    // Get campus/school info
-    const { data: schoolData, error: schoolError } = await supabase
-      .from('schools')
-      .select('id, name, logo_url')
-      .eq('id', schoolId)
-      .single()
-
-    if (schoolError) {
-      console.error('Failed to fetch school info:', schoolError)
-    }
-
-    // Get custom field definitions for requested categories
-    const { data: fieldDefinitions, error: fieldDefError } = await supabase
-      .from('custom_field_definitions')
-      .select('*')
-      .eq('school_id', schoolId)
-      .eq('entity_type', 'student')
-      .in('category_id', categoryIds)
-      .eq('is_active', true)
-      .order('category_order', { ascending: true })
-      .order('sort_order', { ascending: true })
-
-    if (fieldDefError) {
-      console.error('Failed to fetch custom field definitions:', fieldDefError)
-    }
-
-    // Get unique categories with their names
-    const categoryMap = new Map<string, string>()
-    
-    // Add standard categories
-    const standardCategories: Record<string, string> = {
-      'personal': 'Personal Information',
-      'academic': 'Academic Information', 
-      'medical': 'Medical Information',
-      'family': 'Family & Emergency',
-      'services': 'Services',
-      'system': 'System Information'
-    }
-
-    categoryIds.forEach(catId => {
-      if (standardCategories[catId]) {
-        categoryMap.set(catId, standardCategories[catId])
-      }
-    })
-
-    // Add custom categories from field definitions
-    if (fieldDefinitions) {
-      fieldDefinitions.forEach((field: any) => {
-        if (field.category_name && !categoryMap.has(field.category_id)) {
-          categoryMap.set(field.category_id, field.category_name)
-        }
-      })
-    }
-
-    // Get students with all required data
-    const { data: students, error: studentsError } = await supabase
+  ) {
+    // Fetch students with full profile, academic, medical, parent links, and custom fields
+    const { data: studentsData, error: studentsError } = await supabase
       .from('students')
       .select(`
         id,
         student_number,
-        grade_level,
         grade_level_id,
         section_id,
+        admission_date,
         custom_fields,
-        medical_info,
         created_at,
         profile:profiles(
           id,
           first_name,
+          last_name,
           father_name,
           grandfather_name,
-          last_name,
           email,
           phone,
           profile_photo_url,
           is_active
         ),
-        grade:grade_levels(
+        grade:grade_levels!grade_level_id(
           id,
           name
         ),
-        section:sections(
+        section:sections!section_id(
           id,
           name
         ),
+        medical_info,
         parent_links:parent_student_links(
+          relationship,
+          relation_type,
           parent:parents(
             id,
             profile:profiles(
@@ -981,27 +639,24 @@ export class StudentService {
               email,
               phone
             )
-          ),
-          relationship,
-          relation_type
+          )
         )
       `)
       .eq('school_id', schoolId)
       .in('id', studentIds)
 
-    if (studentsError) {
-      throw new Error(`Failed to fetch students: ${studentsError.message}`)
-    }
+    if (studentsError) throw new Error(studentsError.message)
 
-    // Process students data
-    const processedStudents = (students || []).map(student => {
-      const profile = Array.isArray(student.profile) ? student.profile[0] : student.profile
-      const grade = Array.isArray(student.grade) ? student.grade[0] : student.grade
-      const section = Array.isArray(student.section) ? student.section[0] : student.section
+    const students = (studentsData || []).map((s: any) => {
+      const profile = Array.isArray(s.profile) ? s.profile[0] : s.profile
+      const grade = Array.isArray(s.grade) ? s.grade[0] : s.grade
+      const section = Array.isArray(s.section) ? s.section[0] : s.section
+      const medical = s.medical_info || {}
 
       return {
-        id: student.id,
-        student_number: student.student_number,
+        id: s.id,
+        student_number: s.student_number,
+        created_at: s.created_at,
         profile: {
           first_name: profile?.first_name || '',
           father_name: profile?.father_name || '',
@@ -1010,24 +665,52 @@ export class StudentService {
           email: profile?.email || '',
           phone: profile?.phone || '',
           profile_photo_url: profile?.profile_photo_url || null,
-          is_active: profile?.is_active || false
+          is_active: profile?.is_active ?? true,
         },
         academic: {
-          grade_level: grade?.name || student.grade_level || '',
+          grade_level: grade?.name || '',
           section: section?.name || '',
-          admission_date: student.custom_fields?.academic?.admissionDate || student.created_at
+          admission_date: s.admission_date || '',
         },
-        medical_info: student.medical_info || {},
-        custom_fields: student.custom_fields || {},
-        parent_links: student.parent_links || [],
-        created_at: student.created_at
+        medical_info: medical,
+        custom_fields: s.custom_fields || {},
+        parent_links: (s.parent_links || []).map((link: any) => ({
+          relationship: link.relationship,
+          relation_type: link.relation_type,
+          parent: {
+            id: link.parent?.id,
+            profile: {
+              first_name: link.parent?.profile?.first_name || '',
+              last_name: link.parent?.profile?.last_name || '',
+              email: link.parent?.profile?.email || '',
+              phone: link.parent?.profile?.phone || '',
+            },
+          },
+        })),
       }
     })
 
+    // Fetch custom field category names for the requested category IDs
+    const { data: categoriesData } = categoryIds.length > 0
+      ? await supabase
+          .from('custom_field_categories')
+          .select('id, name')
+          .eq('school_id', schoolId)
+          .in('id', categoryIds)
+      : { data: [] }
+
+    // Fetch campus info
+    const { data: campusData } = await supabase
+      .from('schools')
+      .select('id, name')
+      .eq('id', schoolId)
+      .maybeSingle()
+
     return {
-      students: processedStudents,
-      categories: Array.from(categoryMap.entries()).map(([id, name]) => ({ id, name })),
-      campus: schoolData ? { id: schoolData.id, name: schoolData.name } : null
+      students,
+      categories: (categoriesData || []).map((c: any) => ({ id: c.id, name: c.name })),
+      campus: campusData ? { id: campusData.id, name: campusData.name } : null,
     }
   }
 }
+

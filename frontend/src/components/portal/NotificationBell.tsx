@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -33,6 +33,7 @@ import { formatDistanceToNow } from "date-fns"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import { getViewedPortalItems, markMultiplePortalItemsViewed } from "@/lib/utils/portal-storage"
+
 import { useRouter } from "next/navigation"
 
 interface NotificationBellProps {
@@ -56,6 +57,8 @@ export function NotificationBell({ className }: NotificationBellProps) {
     ? parentDashboard.selectedStudentData.campus_id
     : profile?.campus_id
   
+  const userId = profile?.id
+
   const [open, setOpen] = useState(false)
   const [notes, setNotes] = useState<portalApi.PortalNote[]>([])
   const [polls, setPolls] = useState<portalApi.PortalPoll[]>([])
@@ -64,11 +67,16 @@ export function NotificationBell({ className }: NotificationBellProps) {
   const [viewedNotes, setViewedNotes] = useState<string[]>([])
   const [viewedPolls, setViewedPolls] = useState<string[]>([])
 
-  // Load viewed items from localStorage
+  // Track open state in a ref so fetchContent can read it without being recreated
+  const openRef = useRef(open)
+  useEffect(() => { openRef.current = open }, [open])
+
+  // Load viewed items from localStorage (user-scoped)
   useEffect(() => {
-    setViewedNotes(getViewedPortalItems('note'))
-    setViewedPolls(getViewedPortalItems('poll'))
-  }, [])
+    if (!userId) return
+    setViewedNotes(getViewedPortalItems('note', userId))
+    setViewedPolls(getViewedPortalItems('poll', userId))
+  }, [userId])
 
   const fetchContent = useCallback(async () => {
     if (!profile?.school_id || !effectiveCampusId) {
@@ -89,6 +97,17 @@ export function NotificationBell({ className }: NotificationBellProps) {
       setNotes(notesResult.notes)
       setPolls(pollsResult.polls)
       setHasNewContent(false)
+
+      // Auto-mark all items as viewed when the popover is open
+      // This ensures items don't keep showing as "new" on every login once seen
+      if (openRef.current && userId) {
+        const noteIds = notesResult.notes.map(n => n.id)
+        const pollIds = pollsResult.polls.map(p => p.id)
+        markMultiplePortalItemsViewed('note', noteIds, userId)
+        markMultiplePortalItemsViewed('poll', pollIds, userId)
+        setViewedNotes(getViewedPortalItems('note', userId))
+        setViewedPolls(getViewedPortalItems('poll', userId))
+      }
     } catch (error) {
       console.error('Error fetching portal content:', error)
     } finally {
@@ -183,11 +202,11 @@ export function NotificationBell({ className }: NotificationBellProps) {
   // Mark items as viewed when navigating to full page
   const handleViewAll = (type: 'notes' | 'polls') => {
     if (type === 'notes') {
-      markMultiplePortalItemsViewed('note', notes.map(n => n.id))
-      setViewedNotes(prev => [...prev, ...notes.map(n => n.id)])
+      markMultiplePortalItemsViewed('note', notes.map(n => n.id), userId)
+      setViewedNotes(prev => [...new Set([...prev, ...notes.map(n => n.id)])])
     } else {
-      markMultiplePortalItemsViewed('poll', polls.map(p => p.id))
-      setViewedPolls(prev => [...prev, ...polls.map(p => p.id)])
+      markMultiplePortalItemsViewed('poll', polls.map(p => p.id), userId)
+      setViewedPolls(prev => [...new Set([...prev, ...polls.map(p => p.id)])])
     }
     setOpen(false)
     router.push(getPortalPath(type))

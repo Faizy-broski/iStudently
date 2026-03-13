@@ -2,11 +2,11 @@
 
 import { PrintInfoResponse, StudentPrintInfo } from "@/lib/api/students";
 import { format } from "date-fns";
-import Image from "next/image";
 
 interface StudentInfoPrintReportProps {
   data: PrintInfoResponse;
   selectedCategories: string[];
+  hidePdfHeader?: boolean;
 }
 
 // Standard field definitions for each category
@@ -119,22 +119,36 @@ function renderCustomFieldValue(value: unknown): string {
   return String(value);
 }
 
+// Keys that are already rendered in the student card header (photo, avatar, etc.)
+const EXCLUDED_CUSTOM_FIELD_KEYS = new Set([
+  'profile_photo_url', 'profilePhotoUrl', 'photo', 'photoUrl',
+  'student_photo', 'studentPhoto', 'avatar', 'avatarUrl',
+  'profile_picture', 'profilePicture', 'picture', 'image', 'imageUrl',
+]);
+
 // Get custom fields for a category
 function getCustomFieldsForCategory(student: StudentPrintInfo, categoryId: string): { label: string; value: string }[] {
   const categoryData = student.custom_fields?.[categoryId];
   if (!categoryData || typeof categoryData !== 'object') return [];
-  
+
   const standardFieldIds = STANDARD_FIELDS[categoryId]?.map(f => f.id) || [];
-  
+
   return Object.entries(categoryData)
-    .filter(([key]) => !standardFieldIds.includes(key))
+    .filter(([key, value]) => {
+      // Skip fields already shown via STANDARD_FIELDS or in the student header card
+      if (standardFieldIds.includes(key)) return false;
+      if (EXCLUDED_CUSTOM_FIELD_KEYS.has(key)) return false;
+      // Skip any field whose value is a long URL (e.g. photo stored as raw URL in custom_fields)
+      if (typeof value === 'string' && /^https?:\/\/.{30,}/.test(value)) return false;
+      return true;
+    })
     .map(([key, value]) => ({
       label: key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()),
       value: renderCustomFieldValue(value)
     }));
 }
 
-export function StudentInfoPrintReport({ data, selectedCategories }: StudentInfoPrintReportProps) {
+export function StudentInfoPrintReport({ data, selectedCategories, hidePdfHeader = false }: StudentInfoPrintReportProps) {
   const { students, categories, campus } = data;
   
   return (
@@ -150,40 +164,39 @@ export function StudentInfoPrintReport({ data, selectedCategories }: StudentInfo
               <div
                 key={`${student.id}-${categoryId}`}
                 className={`${!isFirstPage ? 'page-break' : ''} p-6`}
-                style={{ minHeight: '100vh' }}
+                style={{ minHeight: '1060px' }}
               >
-                {/* Page Header */}
-                <div className="flex items-center justify-between border-b-2 border-gray-800 pb-4 mb-6">
-                  <div>
-                    {campus && (
-                      <h1 className="text-xl font-bold text-gray-800">{campus.name}</h1>
-                    )}
-                    <p className="text-sm text-gray-600">Student Information Report</p>
+                {/* Page Header — hidden when PDF header/footer plugin provides its own header */}
+                {!hidePdfHeader && (
+                  <div className="flex items-center justify-between border-b-2 border-gray-800 pb-4 mb-6">
+                    <div>
+                      {campus && (
+                        <h1 className="text-xl font-bold text-gray-800">{campus.name}</h1>
+                      )}
+                      <p className="text-sm text-gray-600">Student Information Report</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-600">
+                        Generated: {format(new Date(), 'MMM dd, yyyy')}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Page {categoryIndex + 1} of {selectedCategories.length}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm text-gray-600">
-                      Generated: {format(new Date(), 'MMM dd, yyyy')}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Page {categoryIndex + 1} of {selectedCategories.length}
-                    </p>
-                  </div>
-                </div>
+                )}
                 
                 {/* Student Header with Photo */}
                 <div className="flex items-start gap-6 mb-6 p-4 bg-gray-50 rounded-lg">
                   {/* Student Photo */}
                   <div className="shrink-0">
                     {student.profile.profile_photo_url ? (
-                      <div className="w-24 h-28 relative rounded border-2 border-gray-300 overflow-hidden">
-                        <Image
-                          src={student.profile.profile_photo_url}
-                          alt={`${student.profile.first_name} ${student.profile.last_name}`}
-                          fill
-                          className="object-cover"
-                          unoptimized
-                        />
-                      </div>
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={student.profile.profile_photo_url}
+                        alt={`${student.profile.first_name} ${student.profile.last_name}`}
+                        style={{ width: 96, height: 112, objectFit: 'cover', borderRadius: 4, border: '2px solid #d1d5db' }}
+                      />
                     ) : (
                       <div className="w-24 h-28 rounded border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-100">
                         <span className="text-4xl text-gray-400">
@@ -304,20 +317,6 @@ export function StudentInfoPrintReport({ data, selectedCategories }: StudentInfo
         </div>
       ))}
       
-      {/* Print Styles */}
-      <style jsx global>{`
-        @media print {
-          .print-report {
-            font-size: 12pt;
-          }
-          .page-break {
-            page-break-before: always;
-          }
-          .no-print {
-            display: none !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }

@@ -36,7 +36,7 @@ export default function TeacherPortalNotesPage() {
         limit: 100
       })
       setNotes(result.notes)
-      result.notes.forEach(note => markPortalItemViewed('note', note.id))
+      result.notes.forEach(note => markPortalItemViewed('note', note.id, profile?.id))
     } catch (error) {
       console.error('Error fetching notes:', error)
     } finally {

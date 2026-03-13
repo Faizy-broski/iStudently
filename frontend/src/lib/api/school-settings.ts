@@ -69,11 +69,18 @@ export const PAYMENT_METHOD_OPTIONS: { value: PaymentMethodOption; label: string
 export interface SchoolSettings {
   id: string
   school_id: string
+  campus_id?: string | null
   diary_reminder_enabled: boolean
   diary_reminder_time: string
   diary_reminder_days: number[]
   hostel?: HostelSettings
   default_payment_method?: PaymentMethodOption
+  // Automatic Attendance
+  auto_attendance_enabled: boolean
+  auto_attendance_hour: string      // HH:MM (24h) — run after this time
+  auto_attendance_days: number[]    // 0=Mon … 6=Sun
+  auto_attendance_last_run?: string | null
+  active_plugins: Record<string, boolean>
   created_at: string
   updated_at: string
 }
@@ -84,6 +91,26 @@ export interface UpdateSchoolSettings {
   diary_reminder_days?: number[]
   hostel?: HostelSettings
   default_payment_method?: PaymentMethodOption
+  // Automatic Attendance
+  auto_attendance_enabled?: boolean
+  auto_attendance_hour?: string
+  auto_attendance_days?: number[]
+  // Plugin activation
+  active_plugins?: Record<string, boolean>
+}
+
+// ─── SMTP Settings ────────────────────────────────────────────────────────────
+
+export interface SmtpSettings {
+  smtp_host: string
+  smtp_port: number
+  smtp_secure: boolean
+  smtp_user: string
+  /** Always masked as '••••••••' when loaded from server */
+  smtp_pass: string
+  smtp_from_email: string
+  smtp_from_name: string
+  has_password: boolean
 }
 
 // ==================
@@ -113,5 +140,51 @@ export async function sendTestDiaryReminder(email?: string) {
 export async function triggerDiaryReminders() {
   return apiRequest<{ message: string; results: unknown }>('/school-settings/trigger-diary-reminders', {
     method: 'POST',
+  })
+}
+
+// ─── SMTP API ─────────────────────────────────────────────────────────────────
+
+export async function getSmtpSettings(campusId?: string | null) {
+  const qs = campusId ? `?campus_id=${encodeURIComponent(campusId)}` : ''
+  return apiRequest<SmtpSettings>(`/school-settings/smtp${qs}`)
+}
+
+export async function updateSmtpSettings(settings: Partial<SmtpSettings>, campusId?: string | null) {
+  const qs = campusId ? `?campus_id=${encodeURIComponent(campusId)}` : ''
+  return apiRequest<{ message: string }>(`/school-settings/smtp${qs}`, {
+    method: 'PUT',
+    body: JSON.stringify({ ...settings, campus_id: campusId || undefined }),
+  })
+}
+
+export async function testSmtpSettings(params: Partial<SmtpSettings> & { test_email: string }, campusId?: string | null) {
+  const qs = campusId ? `?campus_id=${encodeURIComponent(campusId)}` : ''
+  return apiRequest<{ message: string }>(`/school-settings/smtp/test${qs}`, {
+    method: 'POST',
+    body: JSON.stringify({ ...params, campus_id: campusId || undefined }),
+  })
+}
+
+// ─── PDF Header / Footer ──────────────────────────────────────────────────────
+
+export interface PdfHeaderFooterSettings {
+  pdf_header_html: string
+  pdf_footer_html: string
+  pdf_margin_top: number
+  pdf_margin_bottom: number
+  pdf_exclude_print: boolean
+}
+
+export async function getPdfHeaderFooter(campusId?: string | null) {
+  const qs = campusId ? `?campus_id=${encodeURIComponent(campusId)}` : ''
+  return apiRequest<PdfHeaderFooterSettings>(`/school-settings/pdf-header-footer${qs}`)
+}
+
+export async function updatePdfHeaderFooter(settings: Partial<PdfHeaderFooterSettings>, campusId?: string | null) {
+  const qs = campusId ? `?campus_id=${encodeURIComponent(campusId)}` : ''
+  return apiRequest<{ message: string }>(`/school-settings/pdf-header-footer${qs}`, {
+    method: 'PUT',
+    body: JSON.stringify({ ...settings, campus_id: campusId || undefined }),
   })
 }
