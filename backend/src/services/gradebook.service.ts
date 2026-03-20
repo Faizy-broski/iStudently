@@ -32,6 +32,31 @@ class GradebookService {
     return data?.campus_id || null
   }
 
+  /**
+   * Returns the campus assignment_max_points cap (NULL = disabled).
+   * Mirrors RosarioSIS "Assignment Max Points" plugin config lookup.
+   */
+  private async getAssignmentMaxPoints(schoolId: string): Promise<number | null> {
+    const { data } = await supabase
+      .from('school_settings')
+      .select('assignment_max_points')
+      .eq('school_id', schoolId)
+      .maybeSingle()
+    return data?.assignment_max_points ?? null
+  }
+
+  /**
+   * Throws if points exceeds the campus cap (when the cap is set).
+   */
+  private async enforceMaxPoints(schoolId: string, points: number): Promise<void> {
+    const cap = await this.getAssignmentMaxPoints(schoolId)
+    if (cap != null && points > cap) {
+      throw new Error(
+        `Points (${points}) exceeds the campus maximum of ${cap}. Please correct.`
+      )
+    }
+  }
+
   // ──────────────────────────────────────────────────────────────────────────
   // ASSIGNMENT TYPES (categories: Homework, Quizzes, Tests, etc.)
   // ──────────────────────────────────────────────────────────────────────────
@@ -179,6 +204,9 @@ class GradebookService {
     dto: CreateGradebookAssignmentDTO,
     createdBy?: string
   ): Promise<GradebookAssignment> {
+    if (dto.points != null) {
+      await this.enforceMaxPoints(schoolId, dto.points)
+    }
     const campusId = await this.getCampusId(coursePeriodId)
     const { data, error } = await supabase
       .from('gradebook_assignments')
@@ -242,6 +270,10 @@ class GradebookService {
     },
     createdBy?: string
   ): Promise<number> {
+    if (dto.points != null) {
+      await this.enforceMaxPoints(schoolId, dto.points)
+    }
+
     const rows = await Promise.all(
       dto.course_period_ids.map(async (cpId) => {
         const campusId = await this.getCampusId(cpId)

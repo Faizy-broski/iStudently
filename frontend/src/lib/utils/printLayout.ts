@@ -339,6 +339,12 @@ export interface OpenPrintOptions {
    * Defaults to true for backward compatibility.
    */
   pluginActive?: boolean
+  /**
+   * When true, generate PDF in A4 landscape orientation (297 × 210 mm).
+   * Used by the "Two Copies Landscape" report card layout.
+   * Defaults to false (portrait).
+   */
+  landscape?: boolean
 }
 
 /**
@@ -554,7 +560,11 @@ export async function openPdfDownload(
   const {
     title, bodyHtml, bodyStyles, school,
     pdfSettings, accentColor = DEFAULT_ACCENT, pluginActive = true,
+    landscape = false,
   } = options
+
+  // A4 portrait: 794px wide @96dpi (210mm).  A4 landscape: 1123px wide (297mm).
+  const captureWidth = landscape ? 1123 : 794
 
   const printWindow = window.open("", "_blank")
   if (!printWindow) {
@@ -605,7 +615,7 @@ export async function openPdfDownload(
 window.addEventListener('DOMContentLoaded', function() {
   setTimeout(function() {
     var overlay  = document.getElementById('_pdf_overlay');
-    var h2cOpts  = { scale: 2, useCORS: true, logging: false, windowWidth: 794,
+    var h2cOpts  = { scale: 2, useCORS: true, logging: false, windowWidth: ${captureWidth},
                      ignoreElements: function(el) { return el.id === '_pdf_overlay'; } };
 
     var headerEl = document.querySelector('.pdf-header');
@@ -635,9 +645,9 @@ window.addEventListener('DOMContentLoaded', function() {
       });
     }).then(function(d) {
       var jsPDF = window.jspdf.jsPDF;
-      var pdf   = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      var W     = pdf.internal.pageSize.getWidth();   // 210 mm
-      var H     = pdf.internal.pageSize.getHeight();  // 297 mm
+      var pdf   = new jsPDF({ orientation: '${landscape ? 'landscape' : 'portrait'}', unit: 'mm', format: 'a4' });
+      var W     = pdf.internal.pageSize.getWidth();   // portrait: 210mm  landscape: 297mm
+      var H     = pdf.internal.pageSize.getHeight();  // portrait: 297mm  landscape: 210mm
 
       // Heights in mm — preserve aspect ratio, fill full page width.
       var hH = d.hC ? (d.hC.height / d.hC.width) * W : 0;

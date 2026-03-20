@@ -12,7 +12,7 @@ interface RoleGuardProps {
 }
 
 export function RoleGuard({ children, allowedRoles, redirectTo }: RoleGuardProps) {
-  const { profile, loading, profileFetchPending } = useAuth()
+  const { profile, loading, profileFetchPending, mustChangePassword } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
@@ -23,7 +23,13 @@ export function RoleGuard({ children, allowedRoles, redirectTo }: RoleGuardProps
         console.log('⏳ Profile fetch pending (server may have been unavailable), waiting for retry...')
         return
       }
-      
+
+      // If password change is required, send to change-password page
+      if (profile && mustChangePassword) {
+        router.replace('/auth/change-password')
+        return
+      }
+
       // If no profile after loading, redirect to login (clean redirect, no error)
       if (!profile) {
         console.log('🔒 No profile found, redirecting to login')
@@ -51,7 +57,7 @@ export function RoleGuard({ children, allowedRoles, redirectTo }: RoleGuardProps
         }
       }
     }
-  }, [profile, loading, profileFetchPending, allowedRoles, redirectTo, router])
+  }, [profile, loading, profileFetchPending, mustChangePassword, allowedRoles, redirectTo, router])
 
   // Show minimal loading state while checking authentication or profile fetch pending
   if (loading || profileFetchPending) {
@@ -61,6 +67,9 @@ export function RoleGuard({ children, allowedRoles, redirectTo }: RoleGuardProps
       </>
     )
   }
+
+  // Must change password — block all protected content
+  if (profile && mustChangePassword) return null
 
   // If user doesn't have permission, redirect immediately
   if (profile && !allowedRoles.includes(profile.role)) {

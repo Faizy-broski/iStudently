@@ -53,6 +53,9 @@ export class SchoolSettingsController {
           auto_attendance_enabled: true,
           auto_attendance_hour: '18:00',
           auto_attendance_days: [1, 2, 3, 4, 5],
+          absent_on_first_absence: false,
+          student_list_append_config: null,
+          assignment_max_points: null,
         },
       })
     } catch (error: any) {
@@ -81,6 +84,9 @@ export class SchoolSettingsController {
         auto_attendance_enabled,
         auto_attendance_hour,
         auto_attendance_days,
+        absent_on_first_absence,
+        student_list_append_config,
+        assignment_max_points,
         active_plugins,
         campus_id: bodyCampusId,
       } = req.body
@@ -134,6 +140,9 @@ export class SchoolSettingsController {
         auto_attendance_enabled,
         auto_attendance_hour,
         auto_attendance_days,
+        absent_on_first_absence,
+        student_list_append_config,
+        assignment_max_points: assignment_max_points != null ? Number(assignment_max_points) : null,
         active_plugins,
       }, campusId)
 
@@ -340,6 +349,87 @@ export class SchoolSettingsController {
       }
 
       res.json({ success: true, message: 'PDF header/footer settings saved' })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  }
+
+  /**
+   * POST /api/school-settings/convert-names-titlecase
+   * Convert first_name, last_name, father_name, grandfather_name in profiles
+   * to titlecase (first letter of each word uppercase) for the current campus.
+   * Mirrors RosarioSIS "Convert Names To Titlecase" plugin using INITCAP().
+   */
+  async convertNamesTitlecase(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const schoolId = req.profile?.school_id
+      if (!schoolId) {
+        res.status(403).json({ success: false, error: 'No school associated with your account' })
+        return
+      }
+
+      // Use PostgreSQL INITCAP via a direct update expression.
+      // Supabase JS client doesn't support column expressions in update(),
+      // so we fetch → transform in Node.js → batch update (idiomatic Supabase approach).
+      const FIELDS = ['first_name', 'last_name', 'father_name', 'grandfather_name'] as const
+
+      const { data: profiles, error: fetchError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, father_name, grandfather_name')
+        .eq('school_id', schoolId)
+
+      if (fetchError) {
+        res.status(500).json({ success: false, error: fetchError.message })
+        return
+      }
+
+      if (!profiles || profiles.length === 0) {
+        res.json({ success: true, data: { converted: 0 } })
+        return
+      }
+
+      // Apply titlecase: mirrors PostgreSQL INITCAP() — first letter of each word uppercase
+      const toTitleCase = (str: string | null): string | null => {
+        if (!str) return str
+        return str.replace(/\S+/g, word =>
+          word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        )
+      }
+
+      const updates = profiles
+        .map(p => {
+          const changed: Record<string, string | null> = { id: p.id }
+          let hasChange = false
+          for (const field of FIELDS) {
+            const converted = toTitleCase(p[field] as string | null)
+            if (converted !== p[field]) {
+              changed[field] = converted
+              hasChange = true
+            }
+          }
+          return hasChange ? changed : null
+        })
+        .filter(Boolean) as Record<string, string | null>[]
+
+      if (updates.length === 0) {
+        res.json({ success: true, data: { converted: 0 } })
+        return
+      }
+
+      // Batch upsert in chunks of 100
+      const CHUNK = 100
+      for (let i = 0; i < updates.length; i += CHUNK) {
+        const chunk = updates.slice(i, i + CHUNK)
+        const { error: upsertError } = await supabase
+          .from('profiles')
+          .upsert(chunk, { onConflict: 'id' })
+        if (upsertError) {
+          res.status(500).json({ success: false, error: upsertError.message })
+          return
+        }
+      }
+
+      res.json({ success: true, data: { converted: updates.length } })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
     }

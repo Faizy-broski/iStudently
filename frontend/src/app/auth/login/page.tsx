@@ -14,7 +14,7 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react'
 function LoginForm() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { signIn, profile, user, loading: authLoading } = useAuth()
+  const { signIn, profile, user, loading: authLoading, mustChangePassword } = useAuth()
 
   // Animation States
   const [isExpanded, setIsExpanded] = useState(false)
@@ -30,7 +30,7 @@ function LoginForm() {
 
   const error = searchParams.get('error')
 
-  // Redirect already logged-in users to their dashboard
+  // Redirect already logged-in users
   useEffect(() => {
     // Don't redirect if there's an error param (like session_expired)
     if (error) return
@@ -38,6 +38,11 @@ function LoginForm() {
     if (authLoading) return
     // Only redirect if user AND profile are loaded
     if (user && profile?.role) {
+      // Must change password — send to change-password page
+      if (mustChangePassword) {
+        router.replace('/auth/change-password')
+        return
+      }
       const dashboardMap: Record<string, string> = {
         'super_admin': '/superadmin/dashboard',
         'admin': '/admin/dashboard',
@@ -50,7 +55,7 @@ function LoginForm() {
       const dashboardUrl = dashboardMap[profile.role] || '/admin/dashboard'
       router.replace(dashboardUrl)
     }
-  }, [user, profile, authLoading, error, router])
+  }, [user, profile, authLoading, error, mustChangePassword, router])
 
   // Load saved credentials on mount
   useEffect(() => {
@@ -82,7 +87,14 @@ function LoginForm() {
     if (!justLoggedIn || !user) return
 
     if (profile?.role) {
-      // Profile loaded successfully, redirect
+      // If admin has forced a password change, redirect to change-password page first
+      if (mustChangePassword) {
+        router.push('/auth/change-password')
+        setLoading(false)
+        return
+      }
+
+      // Profile loaded successfully, redirect to dashboard
       toast.success('Welcome To iStudent.ly!')
 
       const dashboardMap: Record<string, string> = {

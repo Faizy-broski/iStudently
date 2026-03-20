@@ -99,6 +99,9 @@ export default function ReportCardsPage() {
   const [includeFreeText, setIncludeFreeText] = useState(false);
   const [includeMailingLabels, setIncludeMailingLabels] = useState(false);
 
+  // PDF layout
+  const [twoCopiesLandscape, setTwoCopiesLandscape] = useState(false);
+
   // Marking periods
   const [markingPeriods, setMarkingPeriods] = useState<MarkingPeriodItem[]>([]);
   const [selectedMpIds, setSelectedMpIds] = useState<string[]>([]);
@@ -223,7 +226,7 @@ export default function ReportCardsPage() {
       if (res.success) {
         const cards = res.data?.report_cards || res.data?.data?.report_cards || [];
         if (cards.length > 0) {
-          printReportCards("Report Card", cards as ReportCardData[], pdfSettings, selectedCampus?.name, selectedCampus ?? undefined, isPluginActive('pdf_header_footer'));
+          printReportCards("Report Card", cards as ReportCardData[], pdfSettings, selectedCampus?.name, selectedCampus ?? undefined, isPluginActive('pdf_header_footer'), twoCopiesLandscape);
         } else {
           toast.success(
             `Report cards generated for ${selectedStudentIds.length} student(s)`
@@ -619,6 +622,34 @@ export default function ReportCardsPage() {
             >
               Mailing Labels
             </Label>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── PDF Layout ──────────────────────────────────────── */}
+      <Card>
+        <CardContent className="pt-6 space-y-3">
+          <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+            PDF Layout
+          </h2>
+          <div className="flex items-start gap-2">
+            <Checkbox
+              id="two-copies-landscape"
+              checked={twoCopiesLandscape}
+              onCheckedChange={(v) => setTwoCopiesLandscape(!!v)}
+            />
+            <div className="space-y-0.5">
+              <Label
+                htmlFor="two-copies-landscape"
+                className="text-sm cursor-pointer font-medium"
+              >
+                Two Copies — Landscape
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Prints each report card twice side-by-side on a single A4 landscape page.
+                Useful for distributing one copy to the student and keeping one on file.
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>

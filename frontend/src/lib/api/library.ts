@@ -58,6 +58,13 @@ export async function deleteBook(bookId: string, token: string): Promise<ApiResp
   return res.json();
 }
 
+export async function getELibraryBooks(token: string): Promise<ApiResponse<Partial<Book>[]>> {
+  const res = await fetch(`${API_URL}/library/e-library`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.json();
+}
+
 // ==================== BOOK COPY API ====================
 
 export async function getBookCopies(bookId: string, token: string): Promise<ApiResponse<BookCopy[]>> {

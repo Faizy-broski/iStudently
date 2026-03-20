@@ -53,4 +53,22 @@ router.get('/generate/:studentId', reportCardsController.generateReportCard)
 // POST /report-cards/generate — batch generate for multiple students
 router.post('/generate', requireTeacher, reportCardsController.generateReportCards)
 
+// ============================================================================
+// TUTOR / HOMEROOM COMMENTS
+// Global per-student comment per marking period (not course-specific).
+// school_id scoped to effective campus_id for full tenant isolation.
+// ============================================================================
+
+// GET  /report-cards/tutor-comments/marking-periods?academic_year_id=&school_id=
+router.get('/tutor-comments/marking-periods', reportCardsController.getEligibleMarkingPeriods)
+
+// GET  /report-cards/tutor-comments/:studentId?marking_period_id=&academic_year_id=&campus_id=
+router.get('/tutor-comments/:studentId', reportCardsController.getTutorComment)
+
+// POST /report-cards/tutor-comments  (upsert — insert or update)
+router.post('/tutor-comments', requireTeacher, reportCardsController.upsertTutorComment)
+
+// DELETE /report-cards/tutor-comments/:id?campus_id=
+router.delete('/tutor-comments/:id', requireTeacher, reportCardsController.deleteTutorComment)
+
 export default router

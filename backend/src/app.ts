@@ -65,6 +65,7 @@ import icalRoutes from "./routes/ical.routes";
 import publicPagesRoutes from "./routes/public-pages.routes";
 import letterTemplateRoutes from "./routes/letter-template.routes";
 import mediaUploadRoutes from "./routes/media-upload.routes";
+import authRoutes from "./routes/auth.routes";
 
 const app = express();
 
@@ -254,6 +255,7 @@ registerRoutes("/marking-periods", markingPeriodsRoutes);
 registerRoutes("/billing-elements", billingElementsRoutes);
 registerRoutes("/class-diary", classDiaryRoutes);
 registerRoutes("/school-settings", schoolSettingsRoutes);
+registerRoutes("/auth", authRoutes);
 registerRoutes("/resource-dashboards", resourceDashboardsRoutes);
 registerRoutes("/resource-links", resourceLinksRoutes);
 registerRoutes("/attendance-calendars", attendanceCalendarsRoutes);

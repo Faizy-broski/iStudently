@@ -14,7 +14,15 @@ import {
   Minus,
   Save,
   Settings2,
+  Zap,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
@@ -58,6 +66,14 @@ export default function GradingScalesPage() {
   const [newSort, setNewSort] = useState("");
   const [newBreakOff, setNewBreakOff] = useState("");
   const [newIsPassing, setNewIsPassing] = useState(true);
+
+  // ── Generation (Grading Scale Generation feature) ────────────
+  const [genScaleId, setGenScaleId]     = useState<string>("");
+  const [genMin, setGenMin]             = useState("0");
+  const [genMax, setGenMax]             = useState("10");
+  const [genStep, setGenStep]           = useState("0.1");
+  const [genDecimal, setGenDecimal]     = useState<"." | ",">(".");
+  const [generating, setGenerating]     = useState(false);
 
   // ── Scale management ──────────────────────────────────────────
   const [scaleRows, setScaleRows] = useState<ScaleRow[]>([]);
@@ -216,6 +232,39 @@ export default function GradingScalesPage() {
       toast.error("Save failed");
     } finally {
       setSaving(false);
+    }
+  };
+
+  // ── Grading Scale Generation ─────────────────────────────────
+  const handleGenerateScale = async () => {
+    if (!genScaleId) { toast.error("Select a scale to generate into"); return; }
+    const min = parseFloat(genMin);
+    const max = parseFloat(genMax);
+    const step = parseFloat(genStep);
+    if (isNaN(min) || isNaN(max) || min >= max) {
+      toast.error("Maximum grade must be greater than minimum grade"); return;
+    }
+    if (!window.confirm(
+      `This will DELETE all existing grades in the selected scale and replace them with a generated numeric scale (${genMin}–${genMax}, step ${genStep}).\n\nContinue?`
+    )) return;
+
+    setGenerating(true);
+    try {
+      const res = await gradesApi.generateGradingScaleGrades(genScaleId, {
+        grade_min: min, grade_max: max, grade_step: step, decimal_separator: genDecimal,
+      });
+      if (res.success) {
+        toast.success(res.message || `Scale generated successfully`);
+        // Reload grades if the generated scale is currently active
+        if (activeTab === genScaleId) await loadGrades();
+        await loadScales();
+      } else {
+        toast.error(res.error || "Generation failed");
+      }
+    } catch {
+      toast.error("Generation failed");
+    } finally {
+      setGenerating(false);
     }
   };
 
@@ -930,6 +979,132 @@ export default function GradingScalesPage() {
           </TabsContent>
         </Tabs>
       )}
+
+      {/* ── Generate Scale ─────────────────────────────────────────────────── */}
+      {/* Mirrors RosarioSIS Grading_Scale_Generation plugin: auto-fills a     */}
+      {/* numeric scale (min–max–step) and replaces all existing grade entries. */}
+      <Card className="border-amber-200 bg-amber-50/40">
+        <CardContent className="pt-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-amber-600" />
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-amber-800">
+              Generate Grading Scale
+            </h2>
+          </div>
+          <p className="text-xs text-amber-700">
+            Automatically generates numeric grade entries (e.g. 0 → 10 at 0.1 step) and
+            replaces all existing grades in the selected scale. An &ldquo;N/A&rdquo; entry
+            is appended at the end.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            {/* Target scale */}
+            <div className="lg:col-span-2 space-y-1">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Scale
+              </label>
+              <Select value={genScaleId} onValueChange={setGenScaleId}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="Select scale…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {scales.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Min */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Min Grade
+              </label>
+              <input
+                type="number" min="0" max="99" step="1"
+                value={genMin}
+                onChange={(e) => setGenMin(e.target.value)}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs"
+              />
+            </div>
+
+            {/* Max */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Max Grade
+              </label>
+              <input
+                type="number" min="1" max="100" step="1"
+                value={genMax}
+                onChange={(e) => setGenMax(e.target.value)}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs"
+              />
+            </div>
+
+            {/* Step */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Step
+              </label>
+              <Select value={genStep} onValueChange={setGenStep}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {["1", "0.5", "0.25", "0.1", "0.05", "0.01"].map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 flex-wrap">
+            {/* Decimal separator */}
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Decimal separator:
+              </label>
+              <Select value={genDecimal} onValueChange={(v) => setGenDecimal(v as "." | ",")}>
+                <SelectTrigger className="h-8 w-20 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value=".">.</SelectItem>
+                  <SelectItem value=",">,</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Preview count */}
+            {genStep && genMin !== "" && genMax !== "" && parseFloat(genMax) > parseFloat(genMin) && (
+              <span className="text-xs text-muted-foreground">
+                ≈ {Math.round((parseFloat(genMax) - parseFloat(genMin)) / parseFloat(genStep)) + 1} grades + N/A
+              </span>
+            )}
+
+            <Button
+              onClick={handleGenerateScale}
+              disabled={generating || scales.length === 0 || !genScaleId}
+              className="ml-auto bg-amber-600 hover:bg-amber-700 text-white gap-2"
+              size="sm"
+            >
+              {generating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Zap className="h-4 w-4" />
+              )}
+              Generate
+            </Button>
+          </div>
+
+          <p className="text-xs text-amber-600 font-medium">
+            Warning: all existing grade entries in the selected scale will be deleted and replaced.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }

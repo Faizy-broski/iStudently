@@ -36,6 +36,22 @@ export class LibraryService {
   }
 
   /**
+   * Get all books that have a file_url (digital/e-library books) for the given school/campus.
+   * Used by the student E-Library browsing page.
+   */
+  async getELibraryBooks(schoolId: string) {
+    const { data, error } = await supabase
+      .from('library_books')
+      .select('id, title, author, cover_image_url, file_url, description, category_id, document_type, publisher, publication_year')
+      .eq('school_id', schoolId)
+      .not('file_url', 'is', null)
+      .order('title');
+
+    if (error) throw error;
+    return data as Partial<Book>[];
+  }
+
+  /**
    * Get a single book by ID
    */
   async getBookById(bookId: string, schoolId: string) {

@@ -186,6 +186,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Track when profile fetch failed due to network/server issues (not because profile doesn't exist)
   // When true, RoleGuard should NOT redirect - we're retrying
   const [profileFetchPending, setProfileFetchPending] = useState(false)
+  // True when the user's profile has force_password_change = true
+  const [mustChangePassword, setMustChangePassword] = useState(false)
   // Store raw access token to use for API calls
   const [accessToken, setAccessToken] = useState<string | null>(null)
 
@@ -1026,6 +1028,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, loading, LOADING_CIRCUIT_BREAKER_MS])
 
+  // Sync mustChangePassword whenever profile changes
+  useEffect(() => {
+    setMustChangePassword(profile?.force_password_change === true)
+  }, [profile])
+
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -1090,6 +1097,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profile,
       loading,
       profileFetchPending,
+      mustChangePassword,
       access_token: accessToken,
       signIn,
       signOut,

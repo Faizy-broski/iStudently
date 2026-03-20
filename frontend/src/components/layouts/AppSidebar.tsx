@@ -10,7 +10,8 @@ import { SidebarMenuItem } from '@/config/sidebar'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
 import { useAuth } from '@/context/AuthContext'
-import { useAcademic, type Quarter } from '@/context/AcademicContext'
+import { useAcademic, getStoredSelectedQuarterId } from '@/context/AcademicContext'
+import { getMarkingPeriods, type MarkingPeriod } from '@/lib/api/marking-periods'
 import { useCampus } from '@/context/CampusContext'
 import { ProfileViewContext } from '@/context/ProfileViewContext'
 import {
@@ -176,6 +177,56 @@ function AcademicSelectors() {
     currentAcademicYear,
     loading
   } = useAcademic()
+  const campusContext = useCampus()
+  const campusId = campusContext?.selectedCampus?.id
+
+  // Real quarters loaded from the database for the active campus
+  const [quarters, setQuarters] = React.useState<MarkingPeriod[]>([])
+  const [loadingQ, setLoadingQ] = React.useState(false)
+
+  React.useEffect(() => {
+    let active = true
+    async function load() {
+      setLoadingQ(true)
+      try {
+        const all = await getMarkingPeriods(campusId)
+        if (!active) return
+        const qtrs = all
+          .filter(mp => mp.mp_type === 'QTR')
+          .sort((a, b) => a.sort_order - b.sort_order)
+        setQuarters(qtrs)
+
+        if (qtrs.length === 0) {
+          setSelectedQuarter(null)
+          return
+        }
+
+        const today = new Date().toISOString().split('T')[0]
+
+        // 1. Restore from localStorage if the quarter still exists
+        const storedId = getStoredSelectedQuarterId()
+        if (storedId) {
+          const match = qtrs.find(q => q.id === storedId)
+          if (match) { setSelectedQuarter(match); return }
+        }
+
+        // 2. Auto-select the quarter whose date range contains today
+        const active_ = qtrs.find(
+          q => q.start_date && q.end_date && q.start_date <= today && today <= q.end_date
+        )
+        if (active_) { setSelectedQuarter(active_); return }
+
+        // 3. Fall back to first quarter
+        setSelectedQuarter(qtrs[0])
+      } catch {
+        if (active) setQuarters([])
+      } finally {
+        if (active) setLoadingQ(false)
+      }
+    }
+    load()
+    return () => { active = false }
+  }, [campusId]) // re-fetch whenever campus switches
 
   // Show for admin and librarian (librarian can toggle but not create)
   if (profile?.role !== 'admin' && profile?.role !== 'librarian') return null
@@ -217,21 +268,44 @@ function AcademicSelectors() {
         </Select>
       </div>
 
-      {/* Quarter Selector */}
+      {/* Quarter Selector — driven by real QTR marking periods from the DB */}
       <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
         <Calendar className="h-4 w-4 text-white/80 shrink-0" />
         <Select
-          value={selectedQuarter}
-          onValueChange={(value) => setSelectedQuarter(value as Quarter)}
+          value={selectedQuarter?.id ?? ''}
+          onValueChange={(id) => {
+            const mp = quarters.find(q => q.id === id) ?? null
+            setSelectedQuarter(mp)
+          }}
+          disabled={loadingQ}
         >
-          <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5">
-            <SelectValue />
+          <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 disabled:opacity-50">
+            <SelectValue placeholder={loadingQ ? 'Loading…' : 'No quarters'}>
+              {loadingQ
+                ? 'Loading…'
+                : selectedQuarter?.title ?? (quarters.length === 0 ? 'No quarters' : 'Select Quarter')}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="Quarter 1">Quarter 1</SelectItem>
-            <SelectItem value="Quarter 2">Quarter 2</SelectItem>
-            <SelectItem value="Quarter 3">Quarter 3</SelectItem>
-            <SelectItem value="Quarter 4">Quarter 4</SelectItem>
+            {quarters.length === 0 ? (
+              <div className="px-2 py-4 text-center text-sm text-gray-500">
+                <p>No quarters defined.</p>
+                <p className="text-xs mt-1">Add QTR periods in Marking Periods.</p>
+              </div>
+            ) : (
+              quarters.map((q) => (
+                <SelectItem key={q.id} value={q.id}>
+                  <div className="flex items-center gap-2">
+                    <span>{q.title}</span>
+                    {q.start_date && q.end_date &&
+                      new Date().toISOString().split('T')[0] >= q.start_date &&
+                      new Date().toISOString().split('T')[0] <= q.end_date && (
+                        <span className="text-xs text-green-500 font-medium">Active</span>
+                      )}
+                  </div>
+                </SelectItem>
+              ))
+            )}
           </SelectContent>
         </Select>
       </div>

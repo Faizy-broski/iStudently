@@ -8,6 +8,10 @@ const router = Router();
 // All routes require authentication
 router.use(authenticate);
 
+// ==================== E-LIBRARY (STUDENT-ACCESSIBLE) ====================
+// Returns only books with a file_url — safe for students to browse
+router.get('/e-library', requireRole('admin', 'teacher', 'librarian', 'student'), libraryController.getELibraryBooks);
+
 // ==================== BOOK ROUTES ====================
 router.get('/books', requireRole('admin', 'teacher', 'librarian'), libraryController.getBooks);
 router.get('/books/:id', requireRole('admin', 'teacher', 'librarian'), libraryController.getBookById);

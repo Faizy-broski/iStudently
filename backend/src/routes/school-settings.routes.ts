@@ -85,4 +85,14 @@ router.put('/pdf-header-footer', requireRole('admin', 'super_admin'), (req, res)
   controller.updatePdfHeaderFooter(req, res)
 )
 
+/**
+ * POST /api/school-settings/convert-names-titlecase
+ * Convert profile name fields to titlecase for the current campus.
+ * Mirrors RosarioSIS "Convert Names To Titlecase" plugin.
+ * Admin only — destructive one-time operation.
+ */
+router.post('/convert-names-titlecase', requireRole('admin', 'super_admin'), (req, res) =>
+  controller.convertNamesTitlecase(req, res)
+)
+
 export default router

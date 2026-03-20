@@ -49,6 +49,10 @@ router.post('/:scaleId/grades', requireAdmin, gradingScalesController.createGrad
 // POST /grading-scales/:scaleId/grades/bulk         - Bulk create grade entries (admin)
 router.post('/:scaleId/grades/bulk', requireAdmin, gradingScalesController.bulkCreateGrades)
 
+// POST /grading-scales/:scaleId/generate            - Auto-generate numeric scale (admin)
+// Replaces all existing grade entries with a generated min–max–step numeric scale.
+router.post('/:scaleId/generate', requireAdmin, gradingScalesController.generateGrades)
+
 // PUT /grading-scales/:scaleId/grades/:gradeId      - Update grade entry (admin)
 router.put('/:scaleId/grades/:gradeId', requireAdmin, gradingScalesController.updateGrade)
 

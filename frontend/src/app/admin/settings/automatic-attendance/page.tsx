@@ -29,6 +29,7 @@ export default function AutomaticAttendancePage() {
   const [aaEnabled, setAaEnabled] = useState(true)
   const [aaHour, setAaHour] = useState('18:00')
   const [aaDays, setAaDays] = useState<number[]>([0, 1, 2, 3, 4])
+  const [absentOnFirstAbsence, setAbsentOnFirstAbsence] = useState(false)
 
   const fetchSettings = useCallback(async () => {
     setLoading(true)
@@ -38,6 +39,7 @@ export default function AutomaticAttendancePage() {
         setAaEnabled(result.data.auto_attendance_enabled ?? true)
         setAaHour(result.data.auto_attendance_hour ?? '18:00')
         setAaDays(result.data.auto_attendance_days ?? [0, 1, 2, 3, 4])
+        setAbsentOnFirstAbsence(result.data.absent_on_first_absence ?? false)
       }
     } catch {
       toast.error('Failed to load settings')
@@ -56,6 +58,7 @@ export default function AutomaticAttendancePage() {
         auto_attendance_enabled: aaEnabled,
         auto_attendance_hour: aaHour,
         auto_attendance_days: aaDays,
+        absent_on_first_absence: absentOnFirstAbsence,
       })
       if (result.success) {
         toast.success('Automatic attendance settings saved')
@@ -115,6 +118,19 @@ export default function AutomaticAttendancePage() {
         </div>
       </div>
 
+      {/* Absent on First Absence banner */}
+      <div className="flex items-start gap-3 rounded-lg border border-orange-200 bg-orange-50 p-4 dark:border-orange-800 dark:bg-orange-950/20">
+        <Info className="mt-0.5 h-5 w-5 shrink-0 text-orange-600 dark:text-orange-400" />
+        <div className="text-sm text-orange-800 dark:text-orange-300">
+          <p className="font-medium">Absent for the Day on First Absence</p>
+          <p className="mt-1">
+            When enabled, a student is marked <strong>Absent for the whole day</strong> as soon as any
+            single Course Period is recorded as Absent — regardless of how many other periods they attended.
+            This overrides the default minute-based calculation and applies per campus.
+          </p>
+        </div>
+      </div>
+
       <div className="grid gap-6 md:grid-cols-2">
         {/* Enable + Hour */}
         <Card>
@@ -136,6 +152,16 @@ export default function AutomaticAttendancePage() {
                 </p>
               </div>
               <Switch checked={aaEnabled} onCheckedChange={setAaEnabled} />
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border border-orange-200 bg-orange-50/50 p-4 dark:border-orange-800 dark:bg-orange-950/10">
+              <div className="space-y-0.5">
+                <Label className="text-base font-medium">Absent on First Absence</Label>
+                <p className="text-sm text-muted-foreground">
+                  Mark the full day absent if any period is absent
+                </p>
+              </div>
+              <Switch checked={absentOnFirstAbsence} onCheckedChange={setAbsentOnFirstAbsence} />
             </div>
 
             <div className={!aaEnabled ? 'opacity-50 pointer-events-none' : ''}>

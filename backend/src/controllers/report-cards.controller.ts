@@ -258,3 +258,79 @@ export const generateReportCards = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: error.message })
   }
 }
+
+// ============================================================================
+// TUTOR / HOMEROOM COMMENTS
+// ============================================================================
+
+export const getEligibleMarkingPeriods = async (req: Request, res: Response) => {
+  try {
+    const schoolId = (req.query.school_id as string) || (req as AuthRequest).profile?.school_id
+    const { academic_year_id } = req.query
+    if (!schoolId) return res.status(400).json({ success: false, error: 'school_id is required' })
+    if (!academic_year_id) return res.status(400).json({ success: false, error: 'academic_year_id is required' })
+    const data = await reportCardsService.getEligibleMarkingPeriods(schoolId, academic_year_id as string)
+    res.json({ success: true, data })
+  } catch (error: any) {
+    console.error('Error in getEligibleMarkingPeriods:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+}
+
+export const getTutorComment = async (req: Request, res: Response) => {
+  try {
+    const { studentId } = req.params
+    const { marking_period_id, academic_year_id, campus_id } = req.query
+    const adminSchoolId = (req as AuthRequest).profile?.school_id
+    if (!adminSchoolId) return res.status(400).json({ success: false, error: 'Unauthorized' })
+    if (!marking_period_id || !academic_year_id) {
+      return res.status(400).json({ success: false, error: 'marking_period_id and academic_year_id are required' })
+    }
+    const data = await reportCardsService.getTutorComment(
+      studentId,
+      marking_period_id as string,
+      academic_year_id as string,
+      adminSchoolId,
+      campus_id as string | undefined
+    )
+    res.json({ success: true, data })
+  } catch (error: any) {
+    console.error('Error in getTutorComment:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+}
+
+export const upsertTutorComment = async (req: Request, res: Response) => {
+  try {
+    const adminSchoolId = (req as AuthRequest).profile?.school_id
+    const userId = (req as AuthRequest).user?.id
+    if (!adminSchoolId) return res.status(400).json({ success: false, error: 'Unauthorized' })
+    const { student_id, marking_period_id, academic_year_id, campus_id, comment, tutor_name } = req.body
+    if (!student_id || !marking_period_id || !academic_year_id || !comment) {
+      return res.status(400).json({ success: false, error: 'student_id, marking_period_id, academic_year_id, and comment are required' })
+    }
+    const data = await reportCardsService.upsertTutorComment(
+      { student_id, marking_period_id, academic_year_id, campus_id, comment, tutor_name },
+      adminSchoolId,
+      userId
+    )
+    res.json({ success: true, data })
+  } catch (error: any) {
+    console.error('Error in upsertTutorComment:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+}
+
+export const deleteTutorComment = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params
+    const adminSchoolId = (req as AuthRequest).profile?.school_id
+    const { campus_id } = req.query
+    if (!adminSchoolId) return res.status(400).json({ success: false, error: 'Unauthorized' })
+    await reportCardsService.deleteTutorComment(id, adminSchoolId, campus_id as string | undefined)
+    res.json({ success: true, message: 'Tutor comment deleted' })
+  } catch (error: any) {
+    console.error('Error in deleteTutorComment:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+}

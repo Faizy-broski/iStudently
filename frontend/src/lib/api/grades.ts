@@ -323,6 +323,21 @@ export async function deleteGradingScaleGrade(scaleId: string, gradeId: string) 
   return apiRequest(`/grading-scales/${scaleId}/grades/${gradeId}`, { method: 'DELETE' })
 }
 
+export async function generateGradingScaleGrades(
+  scaleId: string,
+  params: {
+    grade_min: number
+    grade_max: number
+    grade_step: number
+    decimal_separator: '.' | ','
+  }
+) {
+  return apiRequest<GradingScaleGrade[]>(`/grading-scales/${scaleId}/generate`, {
+    method: 'POST',
+    body: JSON.stringify(params),
+  })
+}
+
 // ============================================================================
 // COURSES API
 // ============================================================================

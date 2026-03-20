@@ -213,6 +213,114 @@ class GradingScalesService {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
+  // SCALE GENERATION
+  // Mirrors the RosarioSIS Grading_Scale_Generation plugin.
+  // Generates a numeric grading scale (min–max with step) and replaces all
+  // existing grade entries in the target scale.  Campus-isolated via
+  // ownership check (scale.school_id === adminSchoolId).
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Generate and replace all grade entries for a grading scale.
+   *
+   * @param scaleId          Target grading scale ID
+   * @param adminSchoolId    Admin's school_id — used to validate ownership
+   * @param gradeMin         Minimum grade value (integer 0–99)
+   * @param gradeMax         Maximum grade value (integer 1–100, > gradeMin)
+   * @param gradeStep        Step increment: 1 | 0.5 | 0.25 | 0.1 | 0.05 | 0.01
+   * @param decimalSeparator Display separator for grade titles ('.' | ',')
+   */
+  async generateGrades(
+    scaleId: string,
+    adminSchoolId: string,
+    gradeMin: number,
+    gradeMax: number,
+    gradeStep: number,
+    decimalSeparator: '.' | ','
+  ): Promise<GradingScaleGrade[]> {
+    // Ownership validation — prevents cross-campus tampering
+    const scale = await this.getScaleById(scaleId)
+    if (!scale) throw new Error('Grading scale not found')
+    if (scale.school_id !== adminSchoolId) {
+      throw new Error('Access denied: grading scale belongs to a different school')
+    }
+
+    // Sanitise inputs (mirrors PHP plugin's clamping)
+    const min  = Math.max(0, Math.floor(gradeMin))
+    const max  = Math.min(100, Math.floor(gradeMax))
+    if (max <= min) throw new Error('Maximum grade must be greater than minimum grade')
+
+    // Supported steps and their integer stepsPerUnit (PHP $steps variable)
+    const STEPS_MAP: Record<string, number> = {
+      '1': 1, '0.5': 2, '0.25': 4, '0.1': 10, '0.05': 20, '0.01': 100,
+    }
+    const stepKey     = String(gradeStep)
+    const stepsPerUnit = STEPS_MAP[stepKey] ?? Math.round(1 / gradeStep)
+    const step         = 1 / stepsPerUnit   // normalised
+
+    // Decimal places needed for consistent formatting
+    const decimalPlaces = step < 1 ? Math.ceil(-Math.log10(step)) : 0
+
+    // ── Generate grade values max → min (same traversal as PHP plugin) ──────
+    const gradeValues: number[] = []
+    for (let i = max; i >= min; i--) {
+      if (step === 1 || i === max) {
+        gradeValues.push(i)
+        continue
+      }
+      for (let j = stepsPerUnit - 1; j >= 0; j--) {
+        // Round to avoid floating-point drift (e.g. 9.000000001)
+        gradeValues.push(
+          parseFloat((i + step * j).toFixed(decimalPlaces))
+        )
+      }
+    }
+
+    // ── Format title (apply decimal separator) ───────────────────────────────
+    const formatTitle = (v: number): string => {
+      const fixed = v.toFixed(decimalPlaces)
+      return decimalSeparator === ',' ? fixed.replace('.', ',') : fixed
+    }
+
+    // ── Compute break_off thresholds (midpoint formula from PHP plugin) ───────
+    // break_off = ( (grade/max) + (nextGrade/max  or 0) ) / 2 * 100
+    const rows: CreateGradingScaleGradeDTO[] = gradeValues.map((grade, idx) => {
+      const next     = gradeValues[idx + 1] ?? null
+      const breakOff = parseFloat(
+        (((grade / max) + (next !== null ? next / max : 0)) / 2 * 100).toFixed(2)
+      )
+      return {
+        title:      formatTitle(grade),
+        gpa_value:  grade,
+        break_off:  breakOff,
+        sort_order: idx + 1,
+      }
+    })
+
+    // ── Append N/A grade (no GPA value, lowest break_off) ────────────────────
+    rows.push({ title: 'N/A', gpa_value: 0, break_off: 0, sort_order: rows.length + 1 })
+
+    // ── Replace existing grades atomically ───────────────────────────────────
+    const { error: deleteError } = await supabase
+      .from('grading_scale_grades')
+      .delete()
+      .eq('grading_scale_id', scaleId)
+
+    if (deleteError) throw new Error(`Failed to clear existing grades: ${deleteError.message}`)
+
+    // Chunk inserts (Supabase limit ~1000 rows per call)
+    const CHUNK = 500
+    const inserted: GradingScaleGrade[] = []
+    for (let start = 0; start < rows.length; start += CHUNK) {
+      const chunk  = rows.slice(start, start + CHUNK)
+      const result = await this.bulkCreateGrades(scaleId, adminSchoolId, chunk)
+      inserted.push(...result)
+    }
+
+    return inserted
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
   // CALCULATION HELPERS
   // ──────────────────────────────────────────────────────────────────────────
 

@@ -18,6 +18,7 @@ export interface Book {
   reference: string | null
   document_type: string
   file_url: string | null
+  cover_image_url: string | null
   custom_fields: Record<string, any>
   publisher: string | null
   publication_year: number | null
@@ -128,6 +129,7 @@ export interface Profile {
   last_name: string | null
   email: string | null
   is_active: boolean
+  force_password_change: boolean
   created_at: string
   updated_at: string
   // Extended fields for role-specific data
@@ -191,6 +193,8 @@ export interface AuthContextType {
   // True when user exists but profile fetch failed due to network/server issues (retrying)
   // RoleGuard should NOT redirect when this is true
   profileFetchPending: boolean
+  // True when the user must change their password before accessing any page
+  mustChangePassword: boolean
   // Access token for authenticated API calls (optional)
   access_token?: string | null
   signIn: (email: string, password: string) => Promise<void>

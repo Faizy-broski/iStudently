@@ -177,6 +177,7 @@ export interface Book {
   reference: string | null;
   document_type: string;
   file_url: string | null;
+  cover_image_url: string | null;
   custom_fields: Record<string, any>;
   publisher: string | null;
   publication_year: number | null;

@@ -188,6 +188,61 @@ export async function uploadLibraryDocument(
 }
 
 /**
+ * Upload a book cover image to Supabase Storage ('books' bucket)
+ * Path structure: {school_id}/covers/{timestamp}-{filename}
+ * Accepts: JPEG, PNG, WebP — max 5 MB
+ */
+export async function uploadLibraryCoverImage(
+  file: File,
+  schoolId: string
+): Promise<{ success: boolean; url?: string; path?: string; error?: string }> {
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+  const MAX_SIZE = 5 * 1024 * 1024 // 5 MB
+
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return { success: false, error: 'Only JPEG, PNG, or WebP images are allowed for cover images.' }
+  }
+  if (file.size > MAX_SIZE) {
+    return { success: false, error: 'Cover image must be smaller than 5 MB.' }
+  }
+
+  try {
+    const timestamp = Date.now()
+    const fileExt = file.name.split('.').pop()
+    const safeName = file.name
+      .replace(/\.[^/.]+$/, '')
+      .replace(/[^a-zA-Z0-9_-]/g, '_')
+      .substring(0, 50)
+    const fileName = `${timestamp}-${safeName}.${fileExt}`
+    const filePath = `${schoolId}/covers/${fileName}`
+
+    const { data, error } = await supabase.storage
+      .from('books')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+      })
+
+    if (error) {
+      console.error('Cover image upload error:', error)
+      return { success: false, error: error.message }
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('books')
+      .getPublicUrl(data.path)
+
+    return { success: true, url: publicUrl, path: data.path }
+  } catch (error: unknown) {
+    console.error('Cover image upload error:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to upload cover image',
+    }
+  }
+}
+
+/**
  * Delete a library document file from Supabase Storage ('books' bucket)
  */
 export async function deleteLibraryDocument(

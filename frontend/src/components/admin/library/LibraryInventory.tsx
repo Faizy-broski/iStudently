@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, BookOpen, Search, Layers, Barcode, Users, FileText, AlertTriangle, CheckCircle, Zap, Upload } from "lucide-react";
+import { Plus, BookOpen, Search, Layers, Barcode, Users, FileText, AlertTriangle, CheckCircle, Zap, Upload, ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { getBooks, type Book } from "@/lib/api/library";
@@ -241,6 +241,7 @@ export function LibraryInventory() {
                   <table className="min-w-full divide-y divide-muted">
                     <thead>
                       <tr className="bg-muted">
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-12">Cover</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Title</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Author</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ref / ISBN</th>
@@ -252,7 +253,7 @@ export function LibraryInventory() {
                     <tbody className="bg-background divide-y divide-muted">
                       {filteredBooks.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                          <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                             {searchQuery ? "No books found matching your search." : "No books in the library yet."}
                           </td>
                         </tr>
@@ -261,6 +262,20 @@ export function LibraryInventory() {
                           const catColor = getCategoryColor(book.category_id);
                           return (
                             <tr key={book.id} className="hover:bg-muted/50 transition-colors">
+                              <td className="px-4 py-2">
+                                <div className="w-9 h-12 rounded overflow-hidden border bg-muted/40 flex items-center justify-center shrink-0">
+                                  {book.cover_image_url ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                      src={book.cover_image_url}
+                                      alt=""
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <ImageIcon className="h-4 w-4 text-muted-foreground/40" />
+                                  )}
+                                </div>
+                              </td>
                               <td className="px-4 py-4 whitespace-nowrap">
                                 <div className="flex items-center gap-2">
                                   {catColor && (

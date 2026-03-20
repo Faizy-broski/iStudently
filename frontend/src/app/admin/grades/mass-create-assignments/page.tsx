@@ -26,6 +26,7 @@ import type {
   CoursePeriod,
   MarkingPeriodOption,
 } from "@/lib/api/grades";
+import { getSchoolSettings } from "@/lib/api/school-settings";
 
 export default function MassCreateAssignmentsPage() {
   useAuth(); // ensure authenticated
@@ -64,6 +65,20 @@ export default function MassCreateAssignmentsPage() {
   const [dueDate, setDueDate] = useState("");
   const [enableSubmission, setEnableSubmission] = useState(false);
   const [creating, setCreating] = useState(false);
+
+  // ── Assignment Max Points cap (campus setting) ─────────────────
+  const [maxPointsCap, setMaxPointsCap] = useState<number | null>(null);
+
+  useEffect(() => {
+    getSchoolSettings().then(res => {
+      if (res.success && res.data?.assignment_max_points != null) {
+        setMaxPointsCap(res.data.assignment_max_points);
+      }
+    }).catch(() => {});
+  }, []);
+
+  const pointsNum = points ? parseFloat(points) : 0;
+  const pointsOverCap = maxPointsCap != null && pointsNum > maxPointsCap;
 
   // ── Load Assignment Types ─────────────────────────────────────
   const loadAssignmentTypes = useCallback(async () => {
@@ -262,7 +277,8 @@ export default function MassCreateAssignmentsPage() {
             !title.trim() ||
             !points ||
             !selectedTypeId ||
-            selectedCpIds.size === 0
+            selectedCpIds.size === 0 ||
+            pointsOverCap
           }
           className="bg-[#0369a1] hover:bg-[#025d8c] text-white gap-2"
         >
@@ -316,7 +332,16 @@ export default function MassCreateAssignmentsPage() {
                 value={points}
                 onChange={(e) => setPoints(e.target.value)}
                 placeholder="100"
+                className={pointsOverCap ? "border-destructive focus-visible:ring-destructive" : ""}
               />
+              {pointsOverCap && (
+                <p className="text-xs text-destructive">
+                  Points exceed the campus maximum of {maxPointsCap}. Please correct.
+                </p>
+              )}
+              {maxPointsCap != null && !pointsOverCap && points && (
+                <p className="text-xs text-muted-foreground">Max allowed: {maxPointsCap}</p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="defaultPoints">Default Points</Label>

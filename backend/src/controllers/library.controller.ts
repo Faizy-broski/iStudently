@@ -18,6 +18,19 @@ function libSchoolId(req: AuthRequest): string | null {
 export class LibraryController {
   // ==================== BOOK ENDPOINTS ====================
 
+  async getELibraryBooks(req: AuthRequest, res: Response) {
+    try {
+      const schoolId = libSchoolId(req);
+      if (!schoolId) {
+        return res.status(400).json({ error: 'School ID is required' });
+      }
+      const books = await libraryService.getELibraryBooks(schoolId);
+      res.json({ success: true, data: books });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
   async getBooks(req: AuthRequest, res: Response) {
     try {
       const schoolId = libSchoolId(req);

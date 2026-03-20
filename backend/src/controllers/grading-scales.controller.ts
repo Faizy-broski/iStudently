@@ -180,6 +180,39 @@ export const deleteGrade = async (req: Request, res: Response) => {
   }
 }
 
+export const generateGrades = async (req: Request, res: Response) => {
+  try {
+    const { scaleId } = req.params
+    const adminSchoolId = (req as AuthRequest).profile?.school_id
+    if (!adminSchoolId) {
+      return res.status(400).json({ success: false, error: 'Unauthorized' })
+    }
+
+    const { grade_min, grade_max, grade_step, decimal_separator } = req.body
+
+    if (grade_min === undefined || grade_max === undefined || !grade_step) {
+      return res.status(400).json({
+        success: false,
+        error: 'grade_min, grade_max, and grade_step are required',
+      })
+    }
+
+    const data = await gradingScalesService.generateGrades(
+      scaleId,
+      adminSchoolId,
+      parseFloat(grade_min),
+      parseFloat(grade_max),
+      parseFloat(grade_step),
+      decimal_separator === ',' ? ',' : '.'
+    )
+
+    res.json({ success: true, data, message: `Generated ${data.length} grade entries` })
+  } catch (error: any) {
+    console.error('Error in generateGrades:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+}
+
 export const calculateLetterGrade = async (req: Request, res: Response) => {
   try {
     const { scaleId } = req.params

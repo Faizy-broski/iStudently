@@ -202,9 +202,39 @@ const REPORT_BODY_STYLES = `
   .no-grades { font-size: 12px; color: #999; padding: 12px 0; }
 `;
 
+// ─── Two-copies landscape styles ─────────────────────────────────────────────
+// Cards are rendered inside a 50%-wide flex column — scale fonts/padding down.
+const TWO_COPIES_BODY_STYLES = `
+  /* Each landscape page = one two-copies row; page break wraps the row. */
+  .two-copies-row { display: flex; align-items: flex-start; gap: 0; page-break-after: always; height: 100%; }
+  .two-copies-row:last-child { page-break-after: avoid; }
+  .copy-cell { flex: 1; min-width: 0; padding: 12px 14px; }
+  /* Vertical divider between the two copies */
+  .copy-divider { width: 1px; background: #ccc; align-self: stretch; flex-shrink: 0; margin: 8px 0; }
+  /* Override single-card styles for compact two-copy layout */
+  .report-card { page-break-after: unset !important; padding: 0; max-width: none; margin: 0; }
+  .report-card-school { padding: 7px 10px; margin-bottom: 8px; }
+  .school-logo { height: 36px; width: 36px; }
+  .school-info .school-name { font-size: 12px; }
+  .school-info .school-detail { font-size: 9px; }
+  .report-title { font-size: 12px; margin: 8px 0 10px; }
+  .student-info { font-size: 10px; padding: 7px 10px; margin-bottom: 10px; gap: 3px 12px; }
+  .grades-table { font-size: 10px; margin-bottom: 10px; }
+  .grades-table th { padding: 4px 7px; font-size: 9px; }
+  .grades-table td { padding: 3px 7px; }
+  .summary-row { font-size: 10px; padding: 5px 10px; margin-bottom: 8px; }
+  .comments-section { font-size: 9px; }
+  .comments-section h4 { font-size: 10px; }
+  .no-grades { font-size: 10px; }
+`;
+
 /**
  * Generates and downloads a PDF with all report cards.
  * No print dialog — directly downloads as a PDF file.
+ *
+ * @param twoCopies - When true, prints two copies side-by-side on A4 landscape
+ *   (mirrors RosarioSIS Report_Cards_PDF_2_Copies_Landscape plugin).
+ *   Campus-specific: each campus can choose portrait or landscape layout.
  */
 export async function printReportCards(
   title: string,
@@ -213,13 +243,10 @@ export async function printReportCards(
   campusName?: string,
   school?: PrintSchool,
   pluginActive?: boolean,
+  twoCopies?: boolean,
 ): Promise<void> {
   const validCards = reportCards.filter((c) => !c.error);
   if (validCards.length === 0) return;
-
-  const bodyHtml = validCards
-    .map((card) => buildCardHtml(card, title))
-    .join("\n");
 
   const resolvedSchool: PrintSchool = school ?? {
     name: campusName || "",
@@ -228,14 +255,46 @@ export async function printReportCards(
     phone: validCards[0]?.school?.phone || validCards[0]?.student?.school?.phone,
   };
 
-  await openPdfDownload({
-    title,
-    bodyHtml,
-    bodyStyles: REPORT_BODY_STYLES,
-    school: resolvedSchool,
-    pdfSettings,
-    pluginActive,
-  });
+  if (twoCopies) {
+    // ── Two-copies landscape mode ───────────────────────────────────────────
+    // Each PDF page contains the same report card twice, side-by-side.
+    // Mirrors the RosarioSIS two-copies plugin: __REPORT_CARD__ × 2 in a table.
+    const bodyHtml = validCards
+      .map((card) => {
+        const cardHtml = buildCardHtml(card, title);
+        return `<div class="two-copies-row">
+  <div class="copy-cell">${cardHtml}</div>
+  <div class="copy-divider"></div>
+  <div class="copy-cell">${cardHtml}</div>
+</div>`;
+      })
+      .join("\n");
+
+    await openPdfDownload({
+      title,
+      bodyHtml,
+      bodyStyles: TWO_COPIES_BODY_STYLES,
+      school: resolvedSchool,
+      pdfSettings,
+      pluginActive,
+      landscape: true,
+    });
+  } else {
+    // ── Standard portrait mode ──────────────────────────────────────────────
+    const bodyHtml = validCards
+      .map((card) => buildCardHtml(card, title))
+      .join("\n");
+
+    await openPdfDownload({
+      title,
+      bodyHtml,
+      bodyStyles: REPORT_BODY_STYLES,
+      school: resolvedSchool,
+      pdfSettings,
+      pluginActive,
+      landscape: false,
+    });
+  }
 }
 
 /**

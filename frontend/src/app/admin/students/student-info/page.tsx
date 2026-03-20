@@ -19,6 +19,7 @@ import { EditStudentForm } from "@/components/admin";
 import { type Student } from "@/lib/api/students";
 import { useStudents } from "@/hooks/useStudents";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { getSchoolSettings, type StudentListAppendConfig } from "@/lib/api/school-settings";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,6 +45,38 @@ import {
   PaginationNext,
 } from "@/components/ui/pagination";
 
+/**
+ * Resolves a field path like "system.username" or "profile.email"
+ * against a student record. Returns the value as a string, or null.
+ */
+function resolveStudentField(student: Student, fieldPath: string): string | null {
+  if (!fieldPath) return null
+  const [category, key] = fieldPath.split('.')
+  if (category === 'profile') {
+    const v = (student.profile as Record<string, unknown>)?.[key]
+    return v != null ? String(v) : null
+  }
+  const v = student.custom_fields?.[category]?.[key]
+  return v != null ? String(v) : null
+}
+
+/**
+ * Builds the grade display string using the append config.
+ * e.g. "Grade 9" or "Grade 9 / john.doe"
+ */
+function buildGradeDisplay(student: Student, grade: string, cfg: StudentListAppendConfig | null | undefined): string {
+  if (!cfg?.enabled || !cfg.field) return grade
+  const sep = cfg.separator ?? ' / '
+  const v1 = resolveStudentField(student, cfg.field)
+  const parts = [grade]
+  if (v1) parts.push(v1)
+  if (cfg.field2) {
+    const v2 = resolveStudentField(student, cfg.field2)
+    if (v2) parts.push(v2)
+  }
+  return parts.join(sep)
+}
+
 export default function StudentInfoPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -59,6 +92,16 @@ export default function StudentInfoPage() {
   const [showParentDialog, setShowParentDialog] = useState(false);
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
   const itemsPerPage = 10;
+  const [appendConfig, setAppendConfig] = useState<StudentListAppendConfig | null>(null);
+
+  // Load the "Append Custom Field to Grade Level" campus setting once on mount
+  useEffect(() => {
+    getSchoolSettings().then(res => {
+      if (res.success && res.data?.student_list_append_config) {
+        setAppendConfig(res.data.student_list_append_config)
+      }
+    }).catch(() => {})
+  }, []);
 
   // Debounce search query to avoid excessive API calls
   const debouncedSearch = useDebouncedValue(searchQuery, 500);
@@ -271,7 +314,7 @@ export default function StudentInfoPage() {
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell>{student.grade_level || 'N/A'}</TableCell>
+                            <TableCell>{buildGradeDisplay(student, student.grade_level || 'N/A', appendConfig)}</TableCell>
                             <TableCell>{getStatusBadge(student.profile?.is_active ? 'active' : 'inactive')}</TableCell>
                             <TableCell>
                               <div className="text-sm">

@@ -1,11 +1,14 @@
 import { supabase } from '../config/supabase'
 import { finalGradesService } from './final-grades.service'
+import { getEffectiveSchoolId } from '../utils/campus-validation'
 import type {
   ReportCardCommentCategory,
   ReportCardComment,
   CommentCodeScale,
   CommentCode,
   StudentReportCardComment,
+  StudentMPTutorComment,
+  UpsertTutorCommentDTO,
 } from '../types/grades.types'
 
 // ============================================================================
@@ -278,6 +281,137 @@ class ReportCardsService {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
+  // TUTOR / HOMEROOM COMMENTS
+  // Global per-student comment (not course-specific) for report cards.
+  // school_id is always the effective campus_id to enforce tenant isolation.
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Marking periods eligible for tutor comments:
+   * does_grades=true AND does_comments=true, ordered by sort_order.
+   */
+  async getEligibleMarkingPeriods(
+    schoolId: string,
+    academicYearId: string
+  ): Promise<{ id: string; title: string; short_name: string; mp_type: string; sort_order: number }[]> {
+    const { data, error } = await supabase
+      .from('marking_periods')
+      .select('id, title, short_name, mp_type, sort_order')
+      .eq('school_id', schoolId)
+      .eq('academic_year_id', academicYearId)
+      .eq('does_grades', true)
+      .eq('does_comments', true)
+      .eq('is_active', true)
+      .order('sort_order')
+
+    if (error) throw new Error(`Failed to fetch eligible marking periods: ${error.message}`)
+    return data || []
+  }
+
+  /**
+   * Get tutor comment for one student × marking period.
+   * Scoped to effective campus.
+   */
+  async getTutorComment(
+    studentId: string,
+    markingPeriodId: string,
+    academicYearId: string,
+    adminSchoolId: string,
+    requestedCampusId?: string
+  ): Promise<StudentMPTutorComment | null> {
+    const schoolId = await getEffectiveSchoolId(adminSchoolId, requestedCampusId)
+
+    const { data, error } = await supabase
+      .from('student_mp_tutor_comments')
+      .select('*, marking_period:marking_periods(id, title, mp_type)')
+      .eq('student_id', studentId)
+      .eq('marking_period_id', markingPeriodId)
+      .eq('academic_year_id', academicYearId)
+      .eq('school_id', schoolId)
+      .maybeSingle()
+
+    if (error) throw new Error(`Failed to fetch tutor comment: ${error.message}`)
+    return data as StudentMPTutorComment | null
+  }
+
+  /**
+   * Get ALL tutor comments for a student in an academic year.
+   * Used internally by report card generation.
+   */
+  async getTutorCommentsForStudent(
+    studentId: string,
+    academicYearId: string,
+    adminSchoolId: string,
+    requestedCampusId?: string
+  ): Promise<StudentMPTutorComment[]> {
+    const schoolId = await getEffectiveSchoolId(adminSchoolId, requestedCampusId)
+
+    const { data, error } = await supabase
+      .from('student_mp_tutor_comments')
+      .select('*, marking_period:marking_periods(id, title, mp_type)')
+      .eq('student_id', studentId)
+      .eq('academic_year_id', academicYearId)
+      .eq('school_id', schoolId)
+      .order('created_at')
+
+    if (error) throw new Error(`Failed to fetch tutor comments: ${error.message}`)
+    return (data || []) as StudentMPTutorComment[]
+  }
+
+  /**
+   * Upsert a tutor comment (insert or update on conflict).
+   * Conflict key: (student_id, academic_year_id, marking_period_id).
+   */
+  async upsertTutorComment(
+    dto: UpsertTutorCommentDTO,
+    adminSchoolId: string,
+    createdBy?: string
+  ): Promise<StudentMPTutorComment> {
+    const schoolId = await getEffectiveSchoolId(adminSchoolId, dto.campus_id)
+
+    const { data, error } = await supabase
+      .from('student_mp_tutor_comments')
+      .upsert(
+        {
+          school_id: schoolId,
+          student_id: dto.student_id,
+          academic_year_id: dto.academic_year_id,
+          marking_period_id: dto.marking_period_id,
+          comment: dto.comment,
+          tutor_name: dto.tutor_name ?? null,
+          created_by: createdBy ?? null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'student_id,academic_year_id,marking_period_id' }
+      )
+      .select()
+      .single()
+
+    if (error) throw new Error(`Failed to upsert tutor comment: ${error.message}`)
+    return data as StudentMPTutorComment
+  }
+
+  /**
+   * Delete a tutor comment by id.
+   * school_id guard prevents cross-campus deletion.
+   */
+  async deleteTutorComment(
+    id: string,
+    adminSchoolId: string,
+    requestedCampusId?: string
+  ): Promise<void> {
+    const schoolId = await getEffectiveSchoolId(adminSchoolId, requestedCampusId)
+
+    const { error } = await supabase
+      .from('student_mp_tutor_comments')
+      .delete()
+      .eq('id', id)
+      .eq('school_id', schoolId)
+
+    if (error) throw new Error(`Failed to delete tutor comment: ${error.message}`)
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
   // REPORT CARD GENERATION
   // ──────────────────────────────────────────────────────────────────────────
 
@@ -294,6 +428,7 @@ class ReportCardsService {
     school: any
     marking_period: any
     academic_year: any
+    tutor_comment: StudentMPTutorComment | null
     grades: Array<{
       course_title: string
       subject_name: string
@@ -336,8 +471,22 @@ class ReportCardsService {
 
     if (studentResult.error) throw new Error(`Student not found: ${studentResult.error.message}`)
 
-    // Get final grades for this student + marking period
-    const finalGrades = await finalGradesService.getStudentFinalGrades(studentId, academicYearId)
+    // Derive campus school_id from the student's section for tutor comment lookup
+    const studentSchoolId: string = (studentResult.data as any)?.school?.id || ''
+
+    // Get final grades + tutor comment in parallel
+    const [finalGrades, tutorComment] = await Promise.all([
+      finalGradesService.getStudentFinalGrades(studentId, academicYearId),
+      supabase
+        .from('student_mp_tutor_comments')
+        .select('*, marking_period:marking_periods(id, title, mp_type)')
+        .eq('student_id', studentId)
+        .eq('marking_period_id', markingPeriodId)
+        .eq('academic_year_id', academicYearId)
+        .eq('school_id', studentSchoolId)
+        .maybeSingle()
+        .then(({ data }) => data as StudentMPTutorComment | null),
+    ])
     const mpGrades = finalGrades.filter((g) => g.marking_period_id === markingPeriodId)
 
     // Fetch teacher names for all unique teacher_ids
@@ -393,6 +542,7 @@ class ReportCardsService {
       school: (studentResult.data as any)?.school,
       marking_period: mpResult.data,
       academic_year: ayResult.data,
+      tutor_comment: tutorComment,
       grades,
       summary: {
         total_credits_attempted: totalCreditsAttempted,

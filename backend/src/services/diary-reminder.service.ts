@@ -88,6 +88,9 @@ export class DiaryReminderService {
     auto_attendance_enabled?: boolean
     auto_attendance_hour?: string
     auto_attendance_days?: number[]
+    absent_on_first_absence?: boolean
+    student_list_append_config?: Record<string, unknown> | null
+    assignment_max_points?: number | null
     active_plugins?: Record<string, boolean>
   }, campusId?: string | null) {
     const VALID_PAYMENT_METHODS = ['cash', 'online', 'bank_deposit', 'cheque']
@@ -107,6 +110,9 @@ export class DiaryReminderService {
     if (settings.auto_attendance_enabled !== undefined) updates.auto_attendance_enabled = settings.auto_attendance_enabled
     if (settings.auto_attendance_hour !== undefined) updates.auto_attendance_hour = settings.auto_attendance_hour
     if (settings.auto_attendance_days !== undefined) updates.auto_attendance_days = settings.auto_attendance_days
+    if (settings.absent_on_first_absence !== undefined) updates.absent_on_first_absence = settings.absent_on_first_absence
+    if (settings.student_list_append_config !== undefined) updates.student_list_append_config = settings.student_list_append_config
+    if (settings.assignment_max_points !== undefined) updates.assignment_max_points = settings.assignment_max_points
     if (settings.active_plugins !== undefined) {
       // Merge incoming plugin states with existing — never replace entire object
       updates.active_plugins = settings.active_plugins

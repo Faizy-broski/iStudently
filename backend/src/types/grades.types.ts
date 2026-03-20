@@ -542,6 +542,34 @@ export interface StudentReportCardComment {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// TUTOR / HOMEROOM COMMENTS (global per student × marking period)
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface StudentMPTutorComment {
+  id: string
+  school_id: string
+  student_id: string
+  academic_year_id: string
+  marking_period_id: string
+  comment: string
+  tutor_name?: string | null
+  created_by?: string | null
+  created_at: string
+  updated_at: string
+  // Joined
+  marking_period?: { id: string; title: string; mp_type: string }
+}
+
+export interface UpsertTutorCommentDTO {
+  student_id: string
+  marking_period_id: string
+  academic_year_id: string
+  campus_id?: string       // optional: target campus (validated against admin's school)
+  comment: string
+  tutor_name?: string
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // HONOR ROLL
 // ────────────────────────────────────────────────────────────────────────────
 

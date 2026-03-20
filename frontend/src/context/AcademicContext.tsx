@@ -4,8 +4,7 @@ import { createContext, useContext, useEffect, useState, ReactNode, useCallback 
 import { useAuth } from './AuthContext'
 import * as academicsApi from '@/lib/api/academics'
 import { useVisibilityRefetch } from '@/hooks/useVisibilityRefetch'
-
-export type Quarter = 'Quarter 1' | 'Quarter 2' | 'Quarter 3' | 'Quarter 4'
+import type { MarkingPeriod } from '@/lib/api/marking-periods'
 
 export interface AcademicYear {
   id: string
@@ -19,9 +18,10 @@ export interface AcademicYear {
 interface AcademicContextType {
   academicYears: AcademicYear[]
   selectedAcademicYear: string | null
-  selectedQuarter: Quarter
+  /** The currently selected QTR marking period. Set by the sidebar after loading real quarters. */
+  selectedQuarter: MarkingPeriod | null
   setSelectedAcademicYear: (yearId: string) => void
-  setSelectedQuarter: (quarter: Quarter) => void
+  setSelectedQuarter: (mp: MarkingPeriod | null) => void
   loading: boolean
   currentAcademicYear: AcademicYear | null
 }
@@ -32,7 +32,8 @@ const AcademicContext = createContext<AcademicContextType | undefined>(undefined
 const CACHE_DURATION = 10 * 60 * 1000
 const CACHE_KEY = 'studently_academic_cache'
 const SELECTED_ACADEMIC_YEAR_KEY = 'studently_selected_academic_year'
-const SELECTED_QUARTER_KEY = 'studently_selected_quarter'
+/** Persists the selected quarter's DB id (not a display name) */
+const SELECTED_QUARTER_ID_KEY = 'studently_selected_quarter_id'
 
 // Helper to get cached data from sessionStorage
 function getCachedAcademicYears(): { years: AcademicYear[], timestamp: number, userId: string } | null {
@@ -72,18 +73,17 @@ function getStoredSelectedYear(): string | null {
   }
 }
 
-// Helper to get selected quarter from localStorage
-function getStoredSelectedQuarter(): Quarter {
-  if (typeof window === 'undefined') return 'Quarter 3'
+/**
+ * Returns the persisted quarter ID from localStorage.
+ * Used by AcademicSelectors in the sidebar to restore the selection after loading.
+ */
+export function getStoredSelectedQuarterId(): string | null {
+  if (typeof window === 'undefined') return null
   try {
-    const stored = localStorage.getItem(SELECTED_QUARTER_KEY)
-    if (stored && ['Quarter 1', 'Quarter 2', 'Quarter 3', 'Quarter 4'].includes(stored)) {
-      return stored as Quarter
-    }
+    return localStorage.getItem(SELECTED_QUARTER_ID_KEY)
   } catch {
-    // Ignore
+    return null
   }
-  return 'Quarter 3'
 }
 
 export function useAcademic() {
@@ -111,9 +111,10 @@ export function AcademicProvider({ children }: AcademicProviderProps) {
     return getStoredSelectedYear()
   })
 
-  const [selectedQuarter, setSelectedQuarterState] = useState<Quarter>(() => {
-    return getStoredSelectedQuarter()
-  })
+  // Quarter is now a real MarkingPeriod object (or null).
+  // It is populated by AcademicSelectors in the sidebar after it loads
+  // the real QTR marking periods for the active campus.
+  const [selectedQuarter, setSelectedQuarterState] = useState<MarkingPeriod | null>(null)
 
   // Start with loading=false if we have cached data
   const [loading, setLoading] = useState(() => {
@@ -131,11 +132,15 @@ export function AcademicProvider({ children }: AcademicProviderProps) {
     }
   }
 
-  // Wrapper to persist selected quarter
-  const setSelectedQuarter = (quarter: Quarter) => {
-    setSelectedQuarterState(quarter)
+  // Wrapper to persist selected quarter ID
+  const setSelectedQuarter = (mp: MarkingPeriod | null) => {
+    setSelectedQuarterState(mp)
     try {
-      localStorage.setItem(SELECTED_QUARTER_KEY, quarter)
+      if (mp) {
+        localStorage.setItem(SELECTED_QUARTER_ID_KEY, mp.id)
+      } else {
+        localStorage.removeItem(SELECTED_QUARTER_ID_KEY)
+      }
     } catch {
       // Ignore storage errors
     }
