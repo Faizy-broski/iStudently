@@ -129,7 +129,7 @@ class SalaryService {
 
         const { data, error } = await supabase
             .from('payroll_settings')
-            .upsert(insertObj, { onConflict: ['school_id', 'campus_id'] })
+            .upsert(insertObj, { onConflict: 'school_id,campus_id' })
             .select()
             .single()
 

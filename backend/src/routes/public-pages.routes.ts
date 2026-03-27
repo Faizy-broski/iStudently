@@ -14,6 +14,7 @@ import {
   getPublicStaff,
   ALL_PUBLIC_PAGES,
 } from '../services/public-pages.service'
+import { supabase } from '../config/supabase'
 
 const router = Router()
 
@@ -114,6 +115,60 @@ router.put(
 // ============================================================================
 // PUBLIC ROUTES — no authentication required
 // ============================================================================
+
+/**
+ * GET /api/public/social-login-config
+ * Returns which social login providers are enabled AND have credentials configured.
+ * No authentication required — the login page needs this before the user signs in.
+ * Returns school_id so the login page can pass it to the OAuth initiation endpoint.
+ */
+router.get('/social-login-config', async (_req: Request, res: Response) => {
+  try {
+    // Find parent schools (schools without a parent_school_id)
+    const { data: parentSchools, error: schoolError } = await supabase
+      .from('schools')
+      .select('id')
+      .is('parent_school_id', null)
+      .eq('status', 'active')
+      .limit(1)
+
+    if (schoolError || !parentSchools?.length) {
+      return res.json({
+        success: true,
+        data: { google_enabled: false, microsoft_enabled: false, school_id: null },
+      })
+    }
+
+    const schoolId = parentSchools[0].id
+
+    // Get school-level settings (campus_id IS NULL)
+    const { data: settings } = await supabase
+      .from('school_settings')
+      .select('active_plugins, social_login_config')
+      .eq('school_id', schoolId)
+      .is('campus_id', null)
+      .maybeSingle()
+
+    const cfg = settings?.social_login_config ?? {}
+
+    // Only show a provider as enabled if both: plugin is active AND credentials are configured
+    const googleEnabled = settings?.active_plugins?.google_social_login === true &&
+      !!cfg.google_client_id && !!cfg.google_client_secret
+    const microsoftEnabled = settings?.active_plugins?.microsoft_social_login === true &&
+      !!cfg.microsoft_client_id && !!cfg.microsoft_client_secret
+
+    res.json({
+      success: true,
+      data: {
+        google_enabled: googleEnabled,
+        microsoft_enabled: microsoftEnabled,
+        school_id: schoolId,
+      },
+    })
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message })
+  }
+})
 
 /**
  * GET /api/public/:slug

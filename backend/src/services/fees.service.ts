@@ -832,6 +832,7 @@ class FeesService {
             comment?: string
             is_lunch_payment?: boolean
             file_url?: string
+            receipt_number?: string
         }
     ): Promise<any> {
         const { data, error } = await supabase
@@ -1325,15 +1326,6 @@ class FeesService {
 
         } catch (error: any) {
             throw new Error(`Failed to generate monthly fees: ${error.message}`)
-        }
-
-        // The function returns a table, so data is an array
-        const result = data?.[0] || { students_processed: 0, fees_created: 0, total_amount: 0 }
-
-        return {
-            studentsProcessed: result.students_processed,
-            feesCreated: result.fees_created,
-            totalAmount: result.total_amount
         }
     }
 

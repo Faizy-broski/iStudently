@@ -1,5 +1,6 @@
 'use client'
 
+import { SetupAssistantPanel } from '@/components/setup-assistant/SetupAssistantPanel'
 import { useParentDashboard } from '@/context/ParentDashboardContext'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -90,6 +91,8 @@ export default function ParentDashboardPage() {
         </div>
         <StudentSelector />
       </div>
+
+      <SetupAssistantPanel />
 
       {/* Selected Student Card */}
       {student && (

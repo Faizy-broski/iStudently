@@ -67,6 +67,29 @@ export class EveningLeaveService {
     }));
   }
 
+  static async getActive(date?: string) {
+    const target = date || new Date().toISOString().split('T')[0];
+    const { data, error } = await supabase
+      .from('evening_leaves')
+      .select(`
+        *,
+        students (
+          id,
+          profiles ( first_name, last_name )
+        )
+      `)
+      .eq('is_active', true)
+      .lte('start_date', target)
+      .gte('end_date', target);
+    if (error) throw error;
+    return (data || []).map((leave: any) => ({
+      ...leave,
+      student_name: leave.students?.profiles
+        ? `${leave.students.profiles.first_name || ''} ${leave.students.profiles.last_name || ''}`.trim()
+        : null,
+    }));
+  }
+
   static async getById(id: string) {
     const { data, error } = await supabase
       .from("evening_leaves")

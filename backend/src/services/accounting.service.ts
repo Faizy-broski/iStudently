@@ -31,6 +31,7 @@ export interface AccountingIncome {
     income_date: string
     comments?: string
     file_attached?: string
+    payment_method?: string
     created_by?: string
     created_at: string
     updated_at: string
@@ -48,6 +49,7 @@ export interface AccountingPayment {
     payment_date: string
     comments?: string
     file_attached?: string
+    payment_method?: string
     created_by?: string
     created_at: string
     updated_at: string

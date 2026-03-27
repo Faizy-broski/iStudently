@@ -413,7 +413,7 @@ export const createAcademicYear = async (
 
     // If setting as next, unset other next years (graceful if column missing)
     if (dto.is_next) {
-      const { error: nextErr } = await supabase
+      const { error: nextErr } = await (supabase as any)
         .from('academic_years')
         .update({ is_next: false } as any)
         .eq('school_id', dto.school_id)
@@ -485,11 +485,11 @@ export const updateAcademicYear = async (
         .single()
 
       if (year) {
-        const { error: nextErr } = await supabase
+        const { error: nextErr } = await (supabase as any)
           .from('academic_years')
-          .update({ is_next: false } as any)
+          .update({ is_next: false })
           .eq('school_id', year.school_id)
-          .eq('is_next' as any, true)
+          .eq('is_next', true)
           .neq('id', yearId)
         if (nextErr) {
           console.warn('is_next column not available yet, skipping:', nextErr.message)

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import supabase from '../config/supabase';
+import { supabase } from '../config/supabase';
 import type {
   StudentEnrollment,
   CreateEnrollmentRequest,
@@ -231,7 +231,7 @@ export async function bulkSetRolloverStatus(req: Request, res: Response): Promis
       query = query.in('student_id', filters.student_ids);
     }
 
-    const { data, error, count } = await query.select('id', { count: 'exact' });
+    const { data, error, count } = await (query as any).select('id', { count: 'exact' });
 
     if (error) {
       console.error('Bulk set rollover status error:', error);

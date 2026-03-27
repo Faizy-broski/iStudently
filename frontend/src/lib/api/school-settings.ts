@@ -78,6 +78,21 @@ export interface StudentListAppendConfig {
   separator: string
 }
 
+export interface SocialLoginConfig {
+  /** Restrict Google login to this Google Workspace domain (e.g. school.edu) */
+  google_hosted_domain?: string | null
+  /** Restrict Microsoft login to this Azure AD tenant ID or 'organizations'/'common' */
+  microsoft_tenant?: string | null
+  /** Google OAuth Client ID */
+  google_client_id?: string | null
+  /** Google OAuth Client Secret (masked when read) */
+  google_client_secret?: string | null
+  /** Microsoft OAuth Client ID */
+  microsoft_client_id?: string | null
+  /** Microsoft OAuth Client Secret (masked when read) */
+  microsoft_client_secret?: string | null
+}
+
 export interface SchoolSettings {
   id: string
   school_id: string
@@ -99,6 +114,12 @@ export interface SchoolSettings {
   // Assignment Max Points (mirrors RosarioSIS plugin) — null = disabled
   assignment_max_points?: number | null
   active_plugins: Record<string, boolean>
+  // Social Login
+  social_login_config?: SocialLoginConfig | null
+  // Custom Menu Order
+  custom_menu_order?: Record<string, string[]> | null
+  // Setup Assistant
+  setup_assistant_config?: Record<string, boolean> | null
   created_at: string
   updated_at: string
 }
@@ -121,6 +142,12 @@ export interface UpdateSchoolSettings {
   assignment_max_points?: number | null
   // Plugin activation
   active_plugins?: Record<string, boolean>
+  // Social Login
+  social_login_config?: SocialLoginConfig | null
+  // Custom Menu Order
+  custom_menu_order?: Record<string, string[]> | null
+  // Setup Assistant
+  setup_assistant_config?: Record<string, boolean> | null
 }
 
 // ─── SMTP Settings ────────────────────────────────────────────────────────────
@@ -198,6 +225,37 @@ export async function testSmtpSettings(params: Partial<SmtpSettings> & { test_em
   return apiRequest<{ message: string }>(`/school-settings/smtp/test${qs}`, {
     method: 'POST',
     body: JSON.stringify({ ...params, campus_id: campusId || undefined }),
+  })
+}
+
+// ─── Social Login Credentials ─────────────────────────────────────────────────
+
+export interface SocialLoginSettings {
+  google_enabled: boolean
+  google_client_id: string
+  google_client_secret: string
+  google_hosted_domain: string
+  has_google_secret: boolean
+  microsoft_enabled: boolean
+  microsoft_client_id: string
+  microsoft_client_secret: string
+  microsoft_tenant: string
+  has_microsoft_secret: boolean
+}
+
+export async function getSocialLoginSettings(campusId?: string | null) {
+  const qs = campusId ? `?campus_id=${encodeURIComponent(campusId)}` : ''
+  return apiRequest<SocialLoginSettings>(`/school-settings/social-login${qs}`)
+}
+
+export async function updateSocialLoginSettings(
+  settings: Partial<SocialLoginSettings>,
+  campusId?: string | null
+) {
+  const qs = campusId ? `?campus_id=${encodeURIComponent(campusId)}` : ''
+  return apiRequest<{ message: string }>(`/school-settings/social-login${qs}`, {
+    method: 'PUT',
+    body: JSON.stringify({ ...settings, campus_id: campusId || undefined }),
   })
 }
 

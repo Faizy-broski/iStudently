@@ -7,6 +7,7 @@ interface AuthRequest extends Request {
     id: string
     school_id: string
     role: string
+    campus_id?: string
   }
 }
 

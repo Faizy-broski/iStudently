@@ -92,6 +92,7 @@ export class DiaryReminderService {
     student_list_append_config?: Record<string, unknown> | null
     assignment_max_points?: number | null
     active_plugins?: Record<string, boolean>
+    social_login_config?: Record<string, unknown> | null
   }, campusId?: string | null) {
     const VALID_PAYMENT_METHODS = ['cash', 'online', 'bank_deposit', 'cheque']
     const now = new Date().toISOString()
@@ -117,6 +118,7 @@ export class DiaryReminderService {
       // Merge incoming plugin states with existing — never replace entire object
       updates.active_plugins = settings.active_plugins
     }
+    if (settings.social_login_config !== undefined) updates.social_login_config = settings.social_login_config
 
     // Check if a row already exists for this school + campus combination
     const existingQuery = supabase

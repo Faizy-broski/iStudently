@@ -88,6 +88,7 @@ export class SchoolSettingsController {
         student_list_append_config,
         assignment_max_points,
         active_plugins,
+        social_login_config,
         campus_id: bodyCampusId,
       } = req.body
 
@@ -144,6 +145,7 @@ export class SchoolSettingsController {
         student_list_append_config,
         assignment_max_points: assignment_max_points != null ? Number(assignment_max_points) : null,
         active_plugins,
+        social_login_config,
       }, campusId)
 
       res.json({ success: true, data: settings })
@@ -435,6 +437,126 @@ export class SchoolSettingsController {
     }
   }
 
+  // ─── Social Login Credentials (mirrors SMTP pattern) ──────────────────────
+
+  /**
+   * GET /api/school-settings/social-login
+   * Get social login credentials (secrets masked).
+   */
+  async getSocialLoginSettings(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const schoolId = req.profile?.school_id
+      if (!schoolId) { res.status(403).json({ success: false, error: 'No school associated' }); return }
+
+      const campusId = req.query.campus_id as string | undefined
+
+      let query = supabase
+        .from('school_settings')
+        .select('social_login_config, active_plugins')
+        .eq('school_id', schoolId)
+
+      query = campusId ? query.eq('campus_id', campusId) : query.is('campus_id', null)
+
+      const { data } = await query.maybeSingle()
+
+      const cfg = data?.social_login_config ?? {}
+      const plugins = data?.active_plugins ?? {}
+
+      res.json({
+        success: true,
+        data: {
+          google_enabled: plugins.google_social_login === true,
+          google_client_id: cfg.google_client_id || '',
+          google_client_secret: cfg.google_client_secret ? '••••••••' : '',
+          google_hosted_domain: cfg.google_hosted_domain || '',
+          has_google_secret: !!cfg.google_client_secret,
+          microsoft_enabled: plugins.microsoft_social_login === true,
+          microsoft_client_id: cfg.microsoft_client_id || '',
+          microsoft_client_secret: cfg.microsoft_client_secret ? '••••••••' : '',
+          microsoft_tenant: cfg.microsoft_tenant || '',
+          has_microsoft_secret: !!cfg.microsoft_client_secret,
+        },
+      })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  }
+
+  /**
+   * PUT /api/school-settings/social-login
+   * Save social login credentials.
+   */
+  async updateSocialLoginSettings(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const schoolId = req.profile?.school_id
+      if (!schoolId) { res.status(403).json({ success: false, error: 'No school associated' }); return }
+
+      const campusId = (req.query.campus_id as string | undefined) || req.body.campus_id || null
+      const {
+        google_enabled,
+        google_client_id,
+        google_client_secret,
+        google_hosted_domain,
+        microsoft_enabled,
+        microsoft_client_id,
+        microsoft_client_secret,
+        microsoft_tenant,
+      } = req.body
+
+      // Build active_plugins update
+      let query = supabase
+        .from('school_settings')
+        .select('active_plugins, social_login_config')
+        .eq('school_id', schoolId)
+      query = campusId ? query.eq('campus_id', campusId) : query.is('campus_id', null)
+      const { data: existing } = await query.maybeSingle()
+
+      const currentPlugins = existing?.active_plugins ?? {}
+      const currentConfig = existing?.social_login_config ?? {}
+
+      // Only update provided fields
+      const updatedPlugins: Record<string, any> = { ...currentPlugins }
+      if (google_enabled !== undefined) updatedPlugins.google_social_login = google_enabled
+      if (microsoft_enabled !== undefined) updatedPlugins.microsoft_social_login = microsoft_enabled
+
+      const updatedConfig: Record<string, any> = { ...currentConfig }
+      if (google_client_id !== undefined) updatedConfig.google_client_id = google_client_id || null
+      if (google_client_secret !== undefined && google_client_secret !== '••••••••' && google_client_secret !== '') {
+        updatedConfig.google_client_secret = google_client_secret
+      }
+      if (google_hosted_domain !== undefined) updatedConfig.google_hosted_domain = google_hosted_domain || null
+      if (microsoft_client_id !== undefined) updatedConfig.microsoft_client_id = microsoft_client_id || null
+      if (microsoft_client_secret !== undefined && microsoft_client_secret !== '••••••••' && microsoft_client_secret !== '') {
+        updatedConfig.microsoft_client_secret = microsoft_client_secret
+      }
+      if (microsoft_tenant !== undefined) updatedConfig.microsoft_tenant = microsoft_tenant || null
+
+      const updates: Record<string, any> = {
+        updated_at: new Date().toISOString(),
+        active_plugins: updatedPlugins,
+        social_login_config: updatedConfig,
+      }
+
+      // Upsert pattern (same as SMTP)
+      let updateQ = supabase.from('school_settings').update(updates).eq('school_id', schoolId)
+      updateQ = campusId ? updateQ.eq('campus_id', campusId) : updateQ.is('campus_id', null)
+
+      const { data: updatedRows, error: updateError } = await updateQ.select('id')
+      if (updateError) throw new Error(updateError.message)
+
+      if (!updatedRows || updatedRows.length === 0) {
+        const { error: insertError } = await supabase
+          .from('school_settings')
+          .insert({ school_id: schoolId, campus_id: campusId ?? null, ...updates })
+        if (insertError) throw new Error(insertError.message)
+      }
+
+      res.json({ success: true, message: 'Social login settings saved' })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  }
+
   /**
    * POST /api/school-settings/smtp/test
    * Test SMTP connection and send a test email
@@ -487,6 +609,91 @@ export class SchoolSettingsController {
       res.json({ success: true, message: `Test email sent to ${toEmail}` })
     } catch (error: any) {
       res.status(400).json({ success: false, error: error.message })
+    }
+  }
+
+  // ─── Custom Menu Order ─────────────────────────────────────────────────────
+
+  /**
+   * GET /api/school-settings/custom-menu-order
+   * Get the custom sidebar section order for the current school/campus.
+   */
+  async getCustomMenuOrder(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const schoolId = req.profile?.school_id
+      if (!schoolId) { res.status(403).json({ success: false, error: 'No school associated' }); return }
+
+      const campusId = req.query.campus_id as string | undefined
+
+      let query = supabase
+        .from('school_settings')
+        .select('custom_menu_order')
+        .eq('school_id', schoolId)
+
+      query = campusId ? query.eq('campus_id', campusId) : query.is('campus_id', null)
+
+      const { data } = await query.maybeSingle()
+
+      res.json({ success: true, data: data?.custom_menu_order ?? {} })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  }
+
+  /**
+   * PUT /api/school-settings/custom-menu-order
+   * Save sidebar section order. Body: { role: string, order: string[] }
+   */
+  async updateCustomMenuOrder(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const schoolId = req.profile?.school_id
+      if (!schoolId) { res.status(403).json({ success: false, error: 'No school associated' }); return }
+
+      const campusId = (req.query.campus_id as string | undefined) || req.body.campus_id || null
+      const { role, order } = req.body
+
+      const VALID_ROLES = ['admin', 'teacher', 'student', 'parent', 'librarian']
+      if (!role || !VALID_ROLES.includes(role)) {
+        res.status(400).json({ success: false, error: 'Invalid role' })
+        return
+      }
+      if (!Array.isArray(order) || !order.every((t: unknown) => typeof t === 'string')) {
+        res.status(400).json({ success: false, error: 'order must be an array of strings' })
+        return
+      }
+
+      // Get existing menu order
+      let existQuery = supabase
+        .from('school_settings')
+        .select('id, custom_menu_order')
+        .eq('school_id', schoolId)
+      existQuery = campusId ? existQuery.eq('campus_id', campusId) : existQuery.is('campus_id', null)
+      const { data: existing } = await existQuery.maybeSingle()
+
+      const currentOrder = existing?.custom_menu_order ?? {}
+      const updatedOrder = { ...currentOrder, [role]: order }
+
+      const updates = {
+        custom_menu_order: updatedOrder,
+        updated_at: new Date().toISOString(),
+      }
+
+      if (existing?.id) {
+        const { error } = await supabase
+          .from('school_settings')
+          .update(updates)
+          .eq('id', existing.id)
+        if (error) throw new Error(error.message)
+      } else {
+        const { error } = await supabase
+          .from('school_settings')
+          .insert({ school_id: schoolId, campus_id: campusId ?? null, ...updates })
+        if (error) throw new Error(error.message)
+      }
+
+      res.json({ success: true, data: updatedOrder })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
     }
   }
 }

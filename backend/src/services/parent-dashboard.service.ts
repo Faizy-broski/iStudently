@@ -783,7 +783,7 @@ class ParentDashboardService {
         payment_date: payment.payment_date,
         notes: payment.notes,
         received_by: payment.received_by 
-          ? `${payment.received_by.first_name} ${payment.received_by.last_name}`
+          ? `${(payment.received_by as any).first_name ?? (payment.received_by as any)[0]?.first_name} ${(payment.received_by as any).last_name ?? (payment.received_by as any)[0]?.last_name}`
           : null
       })
     }

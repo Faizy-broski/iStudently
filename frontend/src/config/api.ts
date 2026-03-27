@@ -5,7 +5,7 @@
  */
 
 export const getApiUrl = (): string => {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://demo.istudent.ly/api';
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL;
   return baseUrl.replace(/\/$/, ''); // Remove trailing slash if present
 };
 

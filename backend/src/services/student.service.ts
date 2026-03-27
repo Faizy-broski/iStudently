@@ -210,6 +210,20 @@ export class StudentService {
   }
 
   /**
+   * Check if a student exists and belongs to a school (for updates)
+   */
+  async checkStudentOwnership(studentId: string, schoolId: string): Promise<boolean> {
+    const { data, error } = await supabase
+      .from('students')
+      .select('id')
+      .eq('id', studentId)
+      .eq('school_id', schoolId)
+      .single()
+
+    return !error && !!data
+  }
+
+  /**
    * Get student by student number with tenant isolation
    */
   async getStudentByNumber(studentNumber: string, schoolId: string): Promise<Student | null> {
@@ -369,14 +383,44 @@ export class StudentService {
     updateData: UpdateStudentDTO
   ): Promise<Student> {
     // First verify the student belongs to this school
-    const existing = await this.getStudentById(studentId, schoolId)
-    if (!existing) {
+    const studentExists = await this.checkStudentOwnership(studentId, schoolId)
+    if (!studentExists) {
       throw new Error('Student not found or does not belong to this school')
+    }
+
+    // Get the existing student data for the update
+    let existing = await this.getStudentById(studentId, schoolId)
+    if (!existing) {
+      // If getStudentById fails (e.g., no parent links), get basic student data
+      const { data, error } = await supabase
+        .from('students')
+        .select(`
+          *,
+          profile:profiles(
+            id,
+            first_name,
+            last_name,
+            email,
+            phone,
+            avatar_url,
+            is_active,
+            role
+          )
+        `)
+        .eq('id', studentId)
+        .eq('school_id', schoolId)
+        .single()
+
+      if (error || !data) {
+        throw new Error('Student not found or does not belong to this school')
+      }
+      existing = data
     }
 
     // Update profile if profile data is provided
     if (updateData.first_name || updateData.father_name || updateData.grandfather_name || 
-        updateData.last_name || updateData.email || updateData.phone || updateData.profile_photo_url) {
+        updateData.last_name || updateData.email || updateData.phone || updateData.profile_photo_url || 
+        updateData.is_active !== undefined) {
       const profileUpdates: any = {}
       if (updateData.first_name !== undefined) profileUpdates.first_name = updateData.first_name
       if (updateData.father_name !== undefined) profileUpdates.father_name = updateData.father_name
@@ -385,6 +429,7 @@ export class StudentService {
       if (updateData.email !== undefined) profileUpdates.email = updateData.email
       if (updateData.phone !== undefined) profileUpdates.phone = updateData.phone
       if (updateData.profile_photo_url !== undefined) profileUpdates.profile_photo_url = updateData.profile_photo_url
+      if (updateData.is_active !== undefined) profileUpdates.is_active = updateData.is_active
 
       if (Object.keys(profileUpdates).length > 0 && existing.profile_id) {
         const { error: profileError } = await supabase
@@ -592,45 +637,105 @@ export class StudentService {
     }
   }
 
+  /**
+   * Get students info for printing with selected categories
+   * Returns students with their full profile, grade/section info, campus info, and custom fields
+   */
   async getStudentsPrintInfo(
     schoolId: string,
     studentIds: string[],
     categoryIds: string[]
-  ) {
-    // Fetch students with full profile, academic, medical, parent links, and custom fields
-    const { data: studentsData, error: studentsError } = await supabase
+  ): Promise<{
+    students: any[],
+    categories: { id: string, name: string }[],
+    campus: { id: string, name: string } | null
+  }> {
+    // Get campus/school info
+    const { data: schoolData, error: schoolError } = await supabase
+      .from('schools')
+      .select('id, name, logo_url')
+      .eq('id', schoolId)
+      .single()
+
+    if (schoolError) {
+      console.error('Failed to fetch school info:', schoolError)
+    }
+
+    // Get custom field definitions for requested categories
+    const { data: fieldDefinitions, error: fieldDefError } = await supabase
+      .from('custom_field_definitions')
+      .select('*')
+      .eq('school_id', schoolId)
+      .eq('entity_type', 'student')
+      .in('category_id', categoryIds)
+      .eq('is_active', true)
+      .order('category_order', { ascending: true })
+      .order('sort_order', { ascending: true })
+
+    if (fieldDefError) {
+      console.error('Failed to fetch custom field definitions:', fieldDefError)
+    }
+
+    // Get unique categories with their names
+    const categoryMap = new Map<string, string>()
+    
+    // Add standard categories
+    const standardCategories: Record<string, string> = {
+      'personal': 'Personal Information',
+      'academic': 'Academic Information', 
+      'medical': 'Medical Information',
+      'family': 'Family & Emergency',
+      'services': 'Services',
+      'system': 'System Information'
+    }
+
+    categoryIds.forEach(catId => {
+      if (standardCategories[catId]) {
+        categoryMap.set(catId, standardCategories[catId])
+      }
+    })
+
+    // Add custom categories from field definitions
+    if (fieldDefinitions) {
+      fieldDefinitions.forEach((field: any) => {
+        if (field.category_name && !categoryMap.has(field.category_id)) {
+          categoryMap.set(field.category_id, field.category_name)
+        }
+      })
+    }
+
+    // Get students with all required data
+    const { data: students, error: studentsError } = await supabase
       .from('students')
       .select(`
         id,
         student_number,
+        grade_level,
         grade_level_id,
         section_id,
-        admission_date,
         custom_fields,
+        medical_info,
         created_at,
         profile:profiles(
           id,
           first_name,
-          last_name,
           father_name,
           grandfather_name,
+          last_name,
           email,
           phone,
           profile_photo_url,
           is_active
         ),
-        grade:grade_levels!grade_level_id(
+        grade:grade_levels(
           id,
           name
         ),
-        section:sections!section_id(
+        section:sections(
           id,
           name
         ),
-        medical_info,
         parent_links:parent_student_links(
-          relationship,
-          relation_type,
           parent:parents(
             id,
             profile:profiles(
@@ -639,24 +744,27 @@ export class StudentService {
               email,
               phone
             )
-          )
+          ),
+          relationship,
+          relation_type
         )
       `)
       .eq('school_id', schoolId)
       .in('id', studentIds)
 
-    if (studentsError) throw new Error(studentsError.message)
+    if (studentsError) {
+      throw new Error(`Failed to fetch students: ${studentsError.message}`)
+    }
 
-    const students = (studentsData || []).map((s: any) => {
-      const profile = Array.isArray(s.profile) ? s.profile[0] : s.profile
-      const grade = Array.isArray(s.grade) ? s.grade[0] : s.grade
-      const section = Array.isArray(s.section) ? s.section[0] : s.section
-      const medical = s.medical_info || {}
+    // Process students data
+    const processedStudents = (students || []).map(student => {
+      const profile = Array.isArray(student.profile) ? student.profile[0] : student.profile
+      const grade = Array.isArray(student.grade) ? student.grade[0] : student.grade
+      const section = Array.isArray(student.section) ? student.section[0] : student.section
 
       return {
-        id: s.id,
-        student_number: s.student_number,
-        created_at: s.created_at,
+        id: student.id,
+        student_number: student.student_number,
         profile: {
           first_name: profile?.first_name || '',
           father_name: profile?.father_name || '',
@@ -665,52 +773,42 @@ export class StudentService {
           email: profile?.email || '',
           phone: profile?.phone || '',
           profile_photo_url: profile?.profile_photo_url || null,
-          is_active: profile?.is_active ?? true,
+          is_active: profile?.is_active || false
         },
         academic: {
-          grade_level: grade?.name || '',
+          grade_level: grade?.name || student.grade_level || '',
           section: section?.name || '',
-          admission_date: s.admission_date || '',
+          admission_date: student.custom_fields?.academic?.admissionDate || student.created_at
         },
-        medical_info: medical,
-        custom_fields: s.custom_fields || {},
-        parent_links: (s.parent_links || []).map((link: any) => ({
-          relationship: link.relationship,
-          relation_type: link.relation_type,
-          parent: {
-            id: link.parent?.id,
-            profile: {
-              first_name: link.parent?.profile?.first_name || '',
-              last_name: link.parent?.profile?.last_name || '',
-              email: link.parent?.profile?.email || '',
-              phone: link.parent?.profile?.phone || '',
-            },
-          },
-        })),
+        medical_info: student.medical_info || {},
+        custom_fields: student.custom_fields || {},
+        parent_links: student.parent_links || [],
+        created_at: student.created_at
       }
     })
 
-    // Fetch custom field category names for the requested category IDs
-    const { data: categoriesData } = categoryIds.length > 0
-      ? await supabase
-          .from('custom_field_categories')
-          .select('id, name')
-          .eq('school_id', schoolId)
-          .in('id', categoryIds)
-      : { data: [] }
-
-    // Fetch campus info
-    const { data: campusData } = await supabase
-      .from('schools')
-      .select('id, name')
-      .eq('id', schoolId)
-      .maybeSingle()
-
     return {
-      students,
-      categories: (categoriesData || []).map((c: any) => ({ id: c.id, name: c.name })),
-      campus: campusData ? { id: campusData.id, name: campusData.name } : null,
+      students: processedStudents,
+      categories: Array.from(categoryMap.entries()).map(([id, name]) => ({ id, name })),
+      campus: schoolData ? { id: schoolData.id, name: schoolData.name } : null
     }
   }
-}
 
+  async bulkImportStudents(students: any[], schoolId: string): Promise<{ success_count: number; error_count: number; errors: any[] }> {
+    let success_count = 0
+    let error_count = 0
+    const errors: any[] = []
+
+    for (const student of students) {
+      try {
+        await this.createStudent({ ...student, school_id: schoolId })
+        success_count++
+      } catch (err: any) {
+        error_count++
+        errors.push({ student, error: err.message || String(err) })
+      }
+    }
+
+    return { success_count, error_count, errors }
+  }
+}

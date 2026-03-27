@@ -1,5 +1,6 @@
 'use client';
 
+import { SetupAssistantPanel } from '@/components/setup-assistant/SetupAssistantPanel'
 import Link from 'next/link'
 import {
     BookOpen,
@@ -67,6 +68,10 @@ export default function LibrarianDashboard() {
                     <RefreshCw className={`h-4 w-4 ${isValidating ? 'animate-spin' : ''}`} />
                     Refresh
                 </Button>
+            </div>
+
+            <div className="mb-8">
+              <SetupAssistantPanel />
             </div>
 
             {/* Quick Actions */}

@@ -1,5 +1,6 @@
 'use client'
 
+import { SetupAssistantPanel } from '@/components/setup-assistant/SetupAssistantPanel'
 import { useStudentDashboard } from '@/hooks/useStudentDashboard'
 import { Clock, BookOpen, AlertCircle, TrendingUp, Calendar } from 'lucide-react'
 import { format, formatDistance, isToday, isTomorrow } from 'date-fns'
@@ -63,6 +64,8 @@ export default function StudentDashboardPage() {
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Welcome Back!</h1>
         <p className="text-gray-600 mt-1">Here's what's happening today</p>
       </div>
+
+      <SetupAssistantPanel />
 
       {/* At a Glance Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -70,6 +70,22 @@ router.post('/smtp/test', requireRole('admin', 'super_admin'), (req, res) =>
 )
 
 /**
+ * GET /api/school-settings/social-login
+ * Get social login OAuth credentials (secrets masked)
+ */
+router.get('/social-login', requireRole('admin', 'super_admin'), (req, res) =>
+  controller.getSocialLoginSettings(req, res)
+)
+
+/**
+ * PUT /api/school-settings/social-login
+ * Save social login OAuth credentials
+ */
+router.put('/social-login', requireRole('admin', 'super_admin'), (req, res) =>
+  controller.updateSocialLoginSettings(req, res)
+)
+
+/**
  * GET /api/school-settings/pdf-header-footer
  * Get PDF header/footer settings
  */
@@ -93,6 +109,22 @@ router.put('/pdf-header-footer', requireRole('admin', 'super_admin'), (req, res)
  */
 router.post('/convert-names-titlecase', requireRole('admin', 'super_admin'), (req, res) =>
   controller.convertNamesTitlecase(req, res)
+)
+
+/**
+ * GET /api/school-settings/custom-menu-order
+ * Get sidebar section order for the current school/campus
+ */
+router.get('/custom-menu-order', requireRole('admin', 'super_admin'), (req, res) =>
+  controller.getCustomMenuOrder(req, res)
+)
+
+/**
+ * PUT /api/school-settings/custom-menu-order
+ * Save sidebar section order. Body: { role, order: string[] }
+ */
+router.put('/custom-menu-order', requireRole('admin', 'super_admin'), (req, res) =>
+  controller.updateCustomMenuOrder(req, res)
 )
 
 export default router

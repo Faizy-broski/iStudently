@@ -1,5 +1,6 @@
 "use client"
 
+import { SetupAssistantPanel } from "@/components/setup-assistant/SetupAssistantPanel"
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -267,6 +268,8 @@ export default function TeacherDashboard() {
           </p>
         </div>
       </div>
+
+      <SetupAssistantPanel />
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

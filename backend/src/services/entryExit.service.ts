@@ -549,7 +549,7 @@ export class EntryExitService {
     // Active evening leaves that cover today
     const { data: leaves, error: lvErr } = await supabase
       .from("evening_leaves")
-      .select("student_id, authorized_return_time, checkpoint_id")
+      .select("student_id, authorized_return_time, checkpoint_id, days_of_week")
       .eq("school_id", schoolId)
       .eq("is_active", true)
       .lte("start_date", date)

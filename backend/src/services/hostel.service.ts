@@ -673,6 +673,8 @@ export class HostelService {
     if (schoolId) query = query.eq("school_id", schoolId);
     if (campusId) query = query.eq("campus_id", campusId);
 
+    const { data: assignments, error } = await query;
+
     if (error) {
       console.error("Error fetching hostel assignments for cleanup:", error);
       return { released: 0 };

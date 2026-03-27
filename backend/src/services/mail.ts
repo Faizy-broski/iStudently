@@ -5,8 +5,8 @@ interface SendEmailOptions {
   subject: string;
   html?: string;
   text?: string;
-  transporter: nodemailer.Transporter;
-  fromAddress: string;
+  transporter?: nodemailer.Transporter;
+  fromAddress?: string;
 }
 
 export const sendEmail = async ({
@@ -14,8 +14,18 @@ export const sendEmail = async ({
   subject,
   html,
   text,
-  transporter,
+  transporter: externalTransporter,
   fromAddress,
 }: SendEmailOptions) => {
-  return await transporter.sendMail({ from: fromAddress, to, subject, text, html });
+  const t = externalTransporter ?? nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT) || 587,
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+  const from = fromAddress ?? process.env.SMTP_FROM ?? process.env.SMTP_USER ?? '';
+  return await t.sendMail({ from, to, subject, text, html });
 };

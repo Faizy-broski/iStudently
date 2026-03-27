@@ -63,9 +63,12 @@ import humanResourcesRoutes from "./routes/human-resources.routes";
 import quizRoutes from "./routes/quiz.routes";
 import icalRoutes from "./routes/ical.routes";
 import publicPagesRoutes from "./routes/public-pages.routes";
+import socialAuthRoutes from "./routes/social-auth.routes";
 import letterTemplateRoutes from "./routes/letter-template.routes";
 import mediaUploadRoutes from "./routes/media-upload.routes";
 import authRoutes from "./routes/auth.routes";
+import parentAgreementRoutes from "./routes/parent-agreement.routes";
+import setupAssistantRoutes from "./routes/setup-assistant.routes";
 
 const app = express();
 
@@ -217,6 +220,10 @@ registerRoutes("", icalRoutes); // /api/ical/link  (auth)  and /api/ical/subscri
 // admin config routes (/api/public/config/settings) with inline auth middleware.
 registerRoutes("/public", publicPagesRoutes);
 
+// Social Auth — public OAuth routes (no auth required).
+// Initiates and handles Google/Microsoft OAuth callbacks.
+registerRoutes("/auth/social", socialAuthRoutes);
+
 // Register all routes using helper for dual-path support
 registerRoutes("/schools", schoolRoutes);
 registerRoutes("/dashboard", dashboardRoutes);
@@ -242,6 +249,7 @@ registerRoutes("/periods", periodsRoutes);
 registerRoutes("/portal", portalRoutes);
 registerRoutes("/student-dashboard", studentDashboardRoutes);
 registerRoutes("/parent-dashboard", parentDashboardRoutes);
+registerRoutes("/parent-agreement", parentAgreementRoutes);
 registerRoutes("/staff-designations", staffDesignationRoutes);
 registerRoutes("/accounting", accountingRoutes);
 registerRoutes("/id-card-templates", idCardTemplateRoutes);
@@ -255,6 +263,7 @@ registerRoutes("/marking-periods", markingPeriodsRoutes);
 registerRoutes("/billing-elements", billingElementsRoutes);
 registerRoutes("/class-diary", classDiaryRoutes);
 registerRoutes("/school-settings", schoolSettingsRoutes);
+registerRoutes("/setup-assistant", setupAssistantRoutes);
 registerRoutes("/auth", authRoutes);
 registerRoutes("/resource-dashboards", resourceDashboardsRoutes);
 registerRoutes("/resource-links", resourceLinksRoutes);

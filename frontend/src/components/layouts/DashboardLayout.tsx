@@ -15,6 +15,7 @@ import { getDashboards } from '@/lib/api/dashboards'
 import { useSchoolSettings } from '@/context/SchoolSettingsContext'
 import { PLUGIN_REGISTRY } from '@/config/plugins'
 import { LayoutDashboard } from 'lucide-react'
+import { UnsavedChangesProvider } from '@/components/unsaved-changes/UnsavedChangesProvider'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -99,7 +100,7 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
   const baseMenuItems = effectiveRole ? getSidebarConfig(effectiveRole) : []
 
   // Plugin injection: only for admin role, uses SchoolSettingsContext
-  const { isPluginActive } = useSchoolSettings()
+  const { isPluginActive, settings } = useSchoolSettings()
 
   const menuItems = React.useMemo(() => {
     let items = baseMenuItems
@@ -140,8 +141,29 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
       }
     }
 
+    // 3. Apply custom menu order (if plugin active & order saved for this role)
+    if (effectiveRole && isPluginActive('custom_menu')) {
+      const roleOrder = settings?.custom_menu_order?.[effectiveRole]
+      if (roleOrder && roleOrder.length > 0) {
+        const itemMap = new Map(items.map((i) => [i.title, i]))
+        const ordered: SidebarMenuItemType[] = []
+        for (const title of roleOrder) {
+          const item = itemMap.get(title)
+          if (item) {
+            ordered.push(item)
+            itemMap.delete(title)
+          }
+        }
+        // Append any sections not in the saved order (new sections, plugin injections)
+        for (const item of itemMap.values()) {
+          ordered.push(item)
+        }
+        items = ordered
+      }
+    }
+
     return items
-  }, [baseMenuItems, dynamicDashboards, effectiveRole, isPluginActive])
+  }, [baseMenuItems, dynamicDashboards, effectiveRole, isPluginActive, settings])
 
   // Render dashboard immediately - no loading screens after auth
   // Setup check happens in background and redirects if needed
@@ -170,10 +192,23 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
 export function DashboardLayout({ children, className, role }: DashboardLayoutProps) {
   return (
     <SidebarProvider>
-      <DashboardContent className={className} role={role}>
-        {children}
-      </DashboardContent>
+      <UnsavedChangesGuard>
+        <DashboardContent className={className} role={role}>
+          {children}
+        </DashboardContent>
+      </UnsavedChangesGuard>
       <Toaster />
     </SidebarProvider>
   )
+}
+
+/** Conditionally wraps children with UnsavedChangesProvider when the plugin is active. */
+function UnsavedChangesGuard({ children }: { children: React.ReactNode }) {
+  const { isPluginActive } = useSchoolSettings()
+
+  if (!isPluginActive('unsaved_changes_warning')) {
+    return <>{children}</>
+  }
+
+  return <UnsavedChangesProvider>{children}</UnsavedChangesProvider>
 }

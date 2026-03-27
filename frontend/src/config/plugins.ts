@@ -36,6 +36,9 @@ import {
   MessageSquare,
   Copy,
   Zap,
+  LogIn,
+  Sparkles,
+  AlertTriangle,
   type LucideIcon,
 } from 'lucide-react'
 import type { SidebarMenuItem } from './sidebar'
@@ -331,6 +334,71 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     icon: Zap,
     category: 'Grades',
     settingsHref: '/admin/grades/grading-scales',
+    sidebarInjections: [],
+  },
+
+  // ── Google Social Login ──────────────────────────────────────────────────
+  {
+    id: 'google_social_login',
+    name: 'Google Social Login',
+    description:
+      'Allow users to sign in with their Google account. Only existing users whose email matches a profile can log in — no automatic registration. Optionally restrict to a Google Workspace domain (e.g. school.edu).',
+    icon: LogIn,
+    category: 'Security',
+    settingsHref: '/admin/settings/google-social-login',
+    sidebarInjections: [],
+  },
+
+  // ── Microsoft Social Login ──────────────────────────────────────────────
+  {
+    id: 'microsoft_social_login',
+    name: 'Microsoft Social Login',
+    description:
+      'Allow users to sign in with their Microsoft account. Only existing users whose email matches a profile can log in — no automatic registration. Optionally restrict to an Azure AD tenant.',
+    icon: LogIn,
+    category: 'Security',
+    settingsHref: '/admin/settings/microsoft-social-login',
+    sidebarInjections: [],
+  },
+
+  // ── Parent Agreement ─────────────────────────────────────────────────────
+  {
+    id: 'parent_agreement',
+    name: 'Parent Agreement',
+    description:
+      'Requires parents to accept a school agreement each academic year before accessing the parent portal. Students with linked parents are blocked until their parent accepts. Students without parents are unaffected. Agreement title and content are configurable per campus.',
+    icon: FileText,
+    category: 'Compliance',
+    settingsHref: '/admin/settings/parent-agreement',
+    sidebarInjections: [],
+  },
+
+  {
+    id: 'custom_menu',
+    name: 'Custom Menu',
+    description: 'Reorder sidebar menu sections per role via drag and drop. Campus-specific.',
+    icon: LayoutTemplate,
+    category: 'Customisation',
+    settingsHref: '/admin/settings/custom-menu',
+    sidebarInjections: [],
+  },
+
+  {
+    id: 'setup_assistant',
+    name: 'Setup Assistant',
+    description: 'Displays a guided setup checklist on each role\'s dashboard with step-by-step tasks. Users can check off completed steps and dismiss the assistant when done. Campus-specific.',
+    icon: Sparkles,
+    category: 'Onboarding',
+    settingsHref: '/admin/settings/setup-assistant',
+    sidebarInjections: [],
+  },
+
+  {
+    id: 'unsaved_changes_warning',
+    name: 'Unsaved Changes Warning',
+    description: 'Warns users when navigating away from a page with unsaved form changes. Detects input modifications automatically and shows a confirmation dialog before leaving. Also guards against browser close/reload.',
+    icon: AlertTriangle,
+    category: 'User Experience',
     sidebarInjections: [],
   },
 

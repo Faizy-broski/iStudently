@@ -437,7 +437,7 @@ export const getAbsenceBreakdown = async (
       const month = row.start_date?.slice(0, 7) || ''
       const key = `${row.staff_id}::${month}`
       const staffName = row.staff
-        ? `${row.staff.first_name || ''} ${row.staff.last_name || ''}`.trim()
+        ? `${(row.staff as any).first_name || (row.staff as any)[0]?.first_name || ''} ${(row.staff as any).last_name || (row.staff as any)[0]?.last_name || ''}`.trim()
         : row.staff_id
 
       // Calculate days absent (difference in days)
