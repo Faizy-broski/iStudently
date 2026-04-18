@@ -15,22 +15,22 @@ export class RecordService {
   }
 
   static async create(data: CreateRecordDTO) {
-    const last = await this.getLastRecord(data.personId);
+    const last = await this.getLastRecord(data.person_id);
 
-    if (data.recordType === "ENTRY" && last?.record_type === "ENTRY") {
+    if (data.record_type === "ENTRY" && last?.record_type === "ENTRY") {
       throw new Error("Person already inside");
     }
 
-    if (data.recordType === "EXIT" && last?.record_type !== "ENTRY") {
+    if (data.record_type === "EXIT" && last?.record_type !== "ENTRY") {
       throw new Error("Cannot exit without entry");
     }
 
     const { data: inserted, error } = await supabase
       .from("entry_exit_records")
       .insert({
-        person_id: data.personId,
-        person_type: data.personType,
-        record_type: data.recordType,
+        person_id: data.person_id,
+        person_type: data.person_type,
+        record_type: data.record_type,
         description: data.description
       })
       .select()
