@@ -243,6 +243,7 @@ export async function getStudentsForGrades(params?: {
   campus_id?: string
   grade_level?: string
   section_id?: string
+  course_period_id?: string
   search?: string
   page?: number
   limit?: number
@@ -251,6 +252,7 @@ export async function getStudentsForGrades(params?: {
   if (params?.campus_id) qp.append('campus_id', params.campus_id)
   if (params?.grade_level) qp.append('grade_level', params.grade_level)
   if (params?.section_id) qp.append('section_id', params.section_id)
+  if (params?.course_period_id) qp.append('course_period_id', params.course_period_id)
   if (params?.search) qp.append('search', params.search)
   if (params?.page) qp.append('page', params.page.toString())
   if (params?.limit) qp.append('limit', (params.limit || 100).toString())
@@ -782,6 +784,97 @@ export async function saveGradebookConfig(data: Partial<GradebookConfig>, campus
 }
 
 // ============================================================================
+// GRADEBOOK MATRIX VIEW & GRADE ENTRY
+// ============================================================================
+
+export interface GradebookMatrixStudent {
+  id: string
+  student_number: string
+  first_name: string
+  last_name: string
+}
+
+export interface GradebookMatrixAssignment {
+  id: string
+  title: string
+  points: number
+  due_date: string | null
+  assignment_type_id: string
+  is_active: boolean
+  is_extra_credit: boolean
+}
+
+export interface GradebookMatrixGrade {
+  id: string
+  student_id: string
+  assignment_id: string
+  course_period_id: string
+  points: number | null
+  letter_grade: string | null
+  comment: string | null
+  is_exempt: boolean
+  is_late: boolean
+  is_missing: boolean
+}
+
+export interface GradebookMatrix {
+  assignment_types: Array<{ id: string; title: string; final_grade_percent: number; sort_order: number }>
+  assignments: GradebookMatrixAssignment[]
+  students: GradebookMatrixStudent[]
+  grades: GradebookMatrixGrade[]
+}
+
+export async function getGradebookMatrix(coursePeriodId: string, sectionId: string) {
+  return apiRequest<GradebookMatrix>(`/gradebook/view?course_period_id=${coursePeriodId}&section_id=${sectionId}`)
+}
+
+export async function getGradesForAssignment(assignmentId: string) {
+  return apiRequest<GradebookMatrixGrade[]>(`/gradebook/grades/assignment/${assignmentId}`)
+}
+
+export async function enterGrade(data: {
+  assignment_id: string
+  student_id: string
+  course_period_id: string
+  points?: number | null
+  letter_grade?: string | null
+  comment?: string | null
+  is_exempt?: boolean
+  is_late?: boolean
+  is_missing?: boolean
+}) {
+  return apiRequest('/gradebook/grades', { method: 'POST', body: JSON.stringify(data) })
+}
+
+export async function bulkEnterGrades(data: {
+  assignment_id: string
+  course_period_id: string
+  grades: Array<{
+    student_id: string
+    points?: number | null
+    letter_grade?: string | null
+    comment?: string | null
+    is_exempt?: boolean
+    is_late?: boolean
+    is_missing?: boolean
+  }>
+}) {
+  return apiRequest('/gradebook/grades/bulk', { method: 'POST', body: JSON.stringify(data) })
+}
+
+export async function createGradebookAssignment(data: {
+  title: string
+  course_period_id: string
+  assignment_type_id: string
+  points: number
+  due_date?: string | null
+  assigned_date?: string | null
+  description?: string | null
+}) {
+  return apiRequest('/gradebook/assignments', { method: 'POST', body: JSON.stringify(data) })
+}
+
+// ============================================================================
 // REPORT CARD COMMENTS API
 // ============================================================================
 
@@ -1281,4 +1374,168 @@ export async function importGradebookGrades(data: ImportGradebookGradesDTO) {
     method: 'POST',
     body: JSON.stringify(data),
   })
+}
+
+// ============================================================================
+// ANOMALOUS GRADES (ADVANCED) 
+// ============================================================================
+
+export interface AnomalousGradesAdvancedParams {
+  course_period_id?: string
+  student_id?: string
+  include_all_courses?: boolean
+  include_inactive?: boolean
+  missing?: boolean
+  negative?: boolean
+  exceed_max?: boolean
+  max_ratio?: number
+  extra_credit?: boolean
+  advanced?: boolean
+}
+
+export async function getAnomalousGradesAdvanced(params: AnomalousGradesAdvancedParams) {
+  const qp = new URLSearchParams()
+  if (params.course_period_id) qp.append('course_period_id', params.course_period_id)
+  if (params.student_id) qp.append('student_id', params.student_id)
+  if (params.include_all_courses) qp.append('include_all_courses', 'true')
+  if (params.include_inactive) qp.append('include_inactive', 'true')
+  if (params.missing !== undefined) qp.append('missing', params.missing.toString())
+  if (params.negative !== undefined) qp.append('negative', params.negative.toString())
+  if (params.exceed_max !== undefined) qp.append('exceed_max', params.exceed_max.toString())
+  if (params.max_ratio !== undefined) qp.append('max_ratio', params.max_ratio.toString())
+  if (params.extra_credit !== undefined) qp.append('extra_credit', params.extra_credit.toString())
+  qp.append('advanced', 'true')
+
+  return apiRequest<any[]>(`/gradebook/anomalous?${qp}`)
+}
+
+// ============================================================================
+// ASSIGNMENT TYPES
+// ============================================================================
+
+export interface AssignmentType {
+  id: string
+  course_period_id?: string
+  course_id: string
+  title: string
+  sort_order?: number
+  color?: string
+  school_id: string
+}
+
+export async function getAssignmentTypes(coursePeriodId: string) {
+  return apiRequest<AssignmentType[]>(`/gradebook/assignment-types?course_period_id=${coursePeriodId}`)
+}
+
+export async function createAssignmentType(data: Partial<AssignmentType>) {
+  return apiRequest<AssignmentType>('/gradebook/assignment-types', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
+}
+
+export async function updateAssignmentType(id: string, data: Partial<AssignmentType>) {
+  return apiRequest<AssignmentType>(`/gradebook/assignment-types/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  })
+}
+
+export async function deleteAssignmentType(id: string) {
+  return apiRequest(`/gradebook/assignment-types/${id}`, { method: 'DELETE' })
+}
+
+// ============================================================================
+// ASSIGNMENTS
+// ============================================================================
+
+export interface Assignment {
+  id: string
+  assignment_type_id: string
+  course_period_id: string
+  marking_period_id: string
+  title: string
+  points: number
+  default_points?: number
+  weight?: number
+  description?: string
+  file_url?: string
+  assigned_date: string
+  due_date: string
+  enable_submission: boolean
+}
+
+export async function getAssignmentsByStaff(coursePeriodId: string, markingPeriodId: string, assignmentTypeId?: string) {
+  const qp = new URLSearchParams()
+  qp.append('course_period_id', coursePeriodId)
+  qp.append('marking_period_id', markingPeriodId)
+  if (assignmentTypeId) qp.append('assignment_type_id', assignmentTypeId)
+  return apiRequest<Assignment[]>(`/gradebook/assignments/staff?${qp}`)
+}
+
+export async function getAssignments(coursePeriodId: string, assignmentTypeId?: string) {
+  const qp = new URLSearchParams()
+  qp.append('course_period_id', coursePeriodId)
+  if (assignmentTypeId) qp.append('assignment_type_id', assignmentTypeId)
+  return apiRequest<Assignment[]>(`/gradebook/assignments?${qp}`)
+}
+
+export async function createAssignment(data: Partial<Assignment>) {
+  return apiRequest<Assignment>('/gradebook/assignments', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
+}
+
+export async function updateAssignment(id: string, data: Partial<Assignment>) {
+  return apiRequest<Assignment>(`/gradebook/assignments/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  })
+}
+
+export async function deleteAssignment(id: string) {
+  return apiRequest(`/gradebook/assignments/${id}`, { method: 'DELETE' })
+}
+
+// ============================================================================
+// STUDENT GRADES DASHBOARD
+// ============================================================================
+
+export interface StudentCourseGradeSummary {
+  course_period_id: string
+  course_title: string
+  teacher_name?: string
+  percent?: number
+  letter?: string
+  ungraded_count?: number
+}
+
+export interface StudentAssignmentGrade {
+  assignment_id: string
+  title: string
+  category: string
+  points_received?: number
+  points_possible: number
+  percent?: number
+  letter?: string
+  comment?: string
+  due_date?: string
+  assigned_date?: string
+  description?: string
+  teacher_name?: string
+  course_title?: string
+}
+
+export async function getStudentGradesSummaryAPI(studentId: string, markingPeriodId?: string, campusId?: string) {
+  const qp = new URLSearchParams()
+  if (markingPeriodId) qp.append('marking_period_id', markingPeriodId)
+  if (campusId) qp.append('campus_id', campusId)
+  return apiRequest<StudentCourseGradeSummary[]>(`/gradebook/grades/summary/student/${studentId}?${qp}`)
+}
+
+export async function getStudentCourseDetailedGrades(studentId: string, coursePeriodId: string) {
+  const qp = new URLSearchParams()
+  qp.append('course_period_id', coursePeriodId)
+  return apiRequest<StudentAssignmentGrade[]>(`/gradebook/grades/student/${studentId}?${qp}`)
 }

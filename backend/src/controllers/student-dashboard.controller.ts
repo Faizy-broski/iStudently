@@ -5,6 +5,20 @@ import { StudentDashboardService } from '../services/student-dashboard.service'
 const dashboardService = new StudentDashboardService()
 
 export class StudentDashboardController {
+  private getStudentId(req: AuthRequest): string | undefined {
+    if (!req.profile) return undefined
+    const role = typeof req.profile.role === 'string' ? req.profile.role.toLowerCase() : ''
+    if (role !== 'student') return undefined
+    return req.profile.student_id || req.profile.id
+  }
+
+  private sendMissingStudentProfile(res: Response): void {
+    res.status(403).json({
+      success: false,
+      error: 'No student profile found'
+    })
+  }
+
   /**
    * GET /api/student-dashboard/overview
    * Get student dashboard overview (At a Glance)
@@ -12,13 +26,10 @@ export class StudentDashboardController {
    */
   async getDashboardOverview(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const studentId = req.profile?.student_id
+      const studentId = this.getStudentId(req)
 
       if (!studentId) {
-        res.status(403).json({
-          success: false,
-          error: 'No student profile found'
-        })
+        this.sendMissingStudentProfile(res)
         return
       }
 
@@ -43,13 +54,10 @@ export class StudentDashboardController {
    */
   async getTodayTimetable(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const studentId = req.profile?.student_id
+      const studentId = this.getStudentId(req)
 
       if (!studentId) {
-        res.status(403).json({
-          success: false,
-          error: 'No student profile found'
-        })
+        this.sendMissingStudentProfile(res)
         return
       }
 
@@ -74,13 +82,10 @@ export class StudentDashboardController {
    */
   async getWeeklyTimetable(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const studentId = req.profile?.student_id
+      const studentId = this.getStudentId(req)
 
       if (!studentId) {
-        res.status(403).json({
-          success: false,
-          error: 'No student profile found'
-        })
+        this.sendMissingStudentProfile(res)
         return
       }
 
@@ -105,13 +110,10 @@ export class StudentDashboardController {
    */
   async getDueAssignments(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const studentId = req.profile?.student_id
+      const studentId = this.getStudentId(req)
 
       if (!studentId) {
-        res.status(403).json({
-          success: false,
-          error: 'No student profile found'
-        })
+        this.sendMissingStudentProfile(res)
         return
       }
 
@@ -136,14 +138,11 @@ export class StudentDashboardController {
    */
   async getStudentAssignments(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const studentId = req.profile?.student_id
+      const studentId = this.getStudentId(req)
       const { status } = req.query
 
       if (!studentId) {
-        res.status(403).json({
-          success: false,
-          error: 'No student profile found'
-        })
+        this.sendMissingStudentProfile(res)
         return
       }
 
@@ -171,14 +170,11 @@ export class StudentDashboardController {
    */
   async getRecentFeedback(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const studentId = req.profile?.student_id
+      const studentId = this.getStudentId(req)
       const limit = parseInt(req.query.limit as string) || 5
 
       if (!studentId) {
-        res.status(403).json({
-          success: false,
-          error: 'No student profile found'
-        })
+        this.sendMissingStudentProfile(res)
         return
       }
 
@@ -203,13 +199,10 @@ export class StudentDashboardController {
    */
   async getAttendanceSummary(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const studentId = req.profile?.student_id
+      const studentId = this.getStudentId(req)
 
       if (!studentId) {
-        res.status(403).json({
-          success: false,
-          error: 'No student profile found'
-        })
+        this.sendMissingStudentProfile(res)
         return
       }
 
@@ -235,14 +228,11 @@ export class StudentDashboardController {
    */
   async getSubjectWiseAttendance(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const studentId = req.profile?.student_id
+      const studentId = this.getStudentId(req)
       const month = req.query.month as string | undefined
 
       if (!studentId) {
-        res.status(403).json({
-          success: false,
-          error: 'No student profile found'
-        })
+        this.sendMissingStudentProfile(res)
         return
       }
 
@@ -268,13 +258,10 @@ export class StudentDashboardController {
    */
   async getDetailedAttendance(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const studentId = req.profile?.student_id
+      const studentId = this.getStudentId(req)
 
       if (!studentId) {
-        res.status(403).json({
-          success: false,
-          error: 'No student profile found'
-        })
+        this.sendMissingStudentProfile(res)
         return
       }
 
@@ -302,13 +289,10 @@ export class StudentDashboardController {
    */
   async getUpcomingExams(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const studentId = req.profile?.student_id
+      const studentId = this.getStudentId(req)
 
       if (!studentId) {
-        res.status(403).json({
-          success: false,
-          error: 'No student profile found'
-        })
+        this.sendMissingStudentProfile(res)
         return
       }
 
@@ -328,18 +312,224 @@ export class StudentDashboardController {
   }
 
   /**
+   * GET /api/student-dashboard/grades
+   * Get all grades for the logged-in student, grouped by subject/course-period
+   */
+  async getStudentGrades(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const studentId = this.getStudentId(req)
+      if (!studentId) {
+        this.sendMissingStudentProfile(res)
+        return
+      }
+      const data = await dashboardService.getStudentGrades(studentId)
+      res.json({ success: true, data })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message || 'Failed to fetch grades' })
+    }
+  }
+
+  /**
+   * GET /api/student-dashboard/report-card
+   * Get the student's report card summary (subject averages + comments)
+   * Query params: ?marking_period_id=xxx (optional)
+   */
+  async getStudentReportCard(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const studentId = this.getStudentId(req)
+      if (!studentId) {
+        this.sendMissingStudentProfile(res)
+        return
+      }
+      const markingPeriodId = req.query.marking_period_id as string | undefined
+      const data = await dashboardService.getStudentReportCard(studentId, markingPeriodId)
+      res.json({ success: true, data })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message || 'Failed to fetch report card' })
+    }
+  }
+
+  /**
+   * GET /api/student-dashboard/discipline
+   * Get logged-in student's own discipline referrals
+   */
+  async getStudentDiscipline(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const studentId = this.getStudentId(req)
+      if (!studentId) {
+        this.sendMissingStudentProfile(res)
+        return
+      }
+      const data = await dashboardService.getStudentDisciplineReferrals(studentId)
+      res.json({ success: true, data })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message || 'Failed to fetch discipline referrals' })
+    }
+  }
+
+  /**
+   * GET /api/student-dashboard/activities
+   * Get activities the logged-in student is enrolled in
+   */
+  async getStudentActivities(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const studentId = this.getStudentId(req)
+      if (!studentId) {
+        this.sendMissingStudentProfile(res)
+        return
+      }
+      const data = await dashboardService.getStudentEnrolledActivities(studentId)
+      res.json({ success: true, data })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message || 'Failed to fetch activities' })
+    }
+  }
+
+  /**
+   * GET /api/student-dashboard/hostel
+   * Get student's hostel room assignment
+   */
+  async getHostelAssignment(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const studentId = this.getStudentId(req)
+      if (!studentId) {
+        this.sendMissingStudentProfile(res)
+        return
+      }
+      const data = await dashboardService.getHostelAssignment(studentId)
+      res.json({ success: true, data })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message || 'Failed to fetch hostel assignment' })
+    }
+  }
+
+  /**
+   * GET /api/student-dashboard/class-diary
+   * Get class diary entries for student's section
+   */
+  async getClassDiary(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const studentId = this.getStudentId(req)
+      if (!studentId) {
+        this.sendMissingStudentProfile(res)
+        return
+      }
+      const data = await dashboardService.getClassDiaryEntries(studentId)
+      res.json({ success: true, data })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message || 'Failed to fetch class diary' })
+    }
+  }
+
+  async getStudentFees(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const studentId = this.getStudentId(req)
+      if (!studentId) { this.sendMissingStudentProfile(res); return }
+      const data = await dashboardService.getStudentFees(studentId)
+      res.json({ success: true, data })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message || 'Failed to fetch fees' })
+    }
+  }
+
+  async getStudentPaymentHistory(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const studentId = this.getStudentId(req)
+      if (!studentId) { this.sendMissingStudentProfile(res); return }
+      const data = await dashboardService.getStudentPaymentHistory(studentId)
+      res.json({ success: true, data })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message || 'Failed to fetch payments' })
+    }
+  }
+
+  async getStudentCourses(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const studentId = this.getStudentId(req)
+      if (!studentId) { this.sendMissingStudentProfile(res); return }
+      const data = await dashboardService.getStudentCourses(studentId)
+      res.json({ success: true, data })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message || 'Failed to fetch courses' })
+    }
+  }
+
+  async getStudentFinalGrades(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const studentId = this.getStudentId(req)
+      if (!studentId) { this.sendMissingStudentProfile(res); return }
+      const data = await dashboardService.getStudentFinalGrades(studentId)
+      res.json({ success: true, data })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message || 'Failed to fetch final grades' })
+    }
+  }
+
+  async getStudentGpaRank(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const studentId = this.getStudentId(req)
+      if (!studentId) { this.sendMissingStudentProfile(res); return }
+      const data = await dashboardService.getStudentGpaRank(studentId)
+      res.json({ success: true, data })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message || 'Failed to fetch GPA/rank' })
+    }
+  }
+
+  /**
+   * GET /api/student-dashboard/scheduling/class-pictures
+   */
+  async getClassPictures(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const studentId = this.getStudentId(req)
+      if (!studentId) { this.sendMissingStudentProfile(res); return }
+      const data = await dashboardService.getStudentClassPictures(studentId)
+      res.json({ success: true, data })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message || 'Failed to fetch class pictures' })
+    }
+  }
+
+  /**
+   * GET /api/student-dashboard/scheduling/lesson-plans
+   */
+  async getLessonPlans(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const studentId = this.getStudentId(req)
+      if (!studentId) { this.sendMissingStudentProfile(res); return }
+      const coursePeriodId = req.query.course_period_id as string | undefined
+      const data = await dashboardService.getStudentLessonPlans(studentId, coursePeriodId)
+      res.json({ success: true, data })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message || 'Failed to fetch lesson plans' })
+    }
+  }
+
+  /**
+   * GET /api/student-dashboard/info
+   * Get comprehensive student info (General Info + Addresses & Contacts)
+   */
+  async getStudentInfo(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const studentId = this.getStudentId(req)
+      if (!studentId) { this.sendMissingStudentProfile(res); return }
+      const info = await dashboardService.getStudentInfo(studentId)
+      res.json({ success: true, data: info })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message || 'Failed to fetch student info' })
+    }
+  }
+
+  /**
    * GET /api/student-dashboard/profile/id-card
    * Get student's digital ID card information
    */
   async getDigitalIdCard(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const studentId = req.profile?.student_id
+      const studentId = this.getStudentId(req)
 
       if (!studentId) {
-        res.status(403).json({
-          success: false,
-          error: 'No student profile found'
-        })
+        this.sendMissingStudentProfile(res)
         return
       }
 

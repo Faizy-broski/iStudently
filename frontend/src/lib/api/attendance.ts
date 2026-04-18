@@ -696,3 +696,60 @@ export async function markAttendanceCompleted(data: {
     body: JSON.stringify(data)
   })
 }
+
+// ============================================================================
+// ZERO-TRUST ROLE ENDPOINTS (Staff / Student / Parent)
+// ============================================================================
+
+export async function getStaffTakeAttendance(
+  date: string,
+  periodId: string
+): Promise<ApiResponse<any>> {
+  const params = new URLSearchParams({ date, period_id: periodId })
+  return apiRequest<any>(`/attendance/staff/take?${params}`)
+}
+
+export async function submitStaffAttendance(data: {
+  date: string
+  period_id: string
+  changes: { record_id: string; attendance_code_id: string }[]
+}): Promise<ApiResponse<{ updated: number }>> {
+  return apiRequest<{ updated: number }>('/attendance/staff/take', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
+}
+
+export async function getStaffAttendanceChart(
+  startDate: string,
+  endDate: string
+): Promise<ApiResponse<AttendanceChartData>> {
+  const params = new URLSearchParams({
+    start_date: startDate,
+    end_date: endDate
+  })
+  return apiRequest<AttendanceChartData>(`/attendance/staff/chart?${params}`)
+}
+
+export async function getStudentDailySummary(
+  startDate: string,
+  endDate: string
+): Promise<ApiResponse<AttendanceSummaryRow[]>> {
+  const params = new URLSearchParams({
+    start_date: startDate,
+    end_date: endDate
+  })
+  return apiRequest<AttendanceSummaryRow[]>(`/attendance/student/summary?${params}`)
+}
+
+export async function getParentDailySummary(
+  startDate: string,
+  endDate: string
+): Promise<ApiResponse<AttendanceSummaryRow[]>> {
+  const params = new URLSearchParams({
+    start_date: startDate,
+    end_date: endDate
+  })
+  return apiRequest<AttendanceSummaryRow[]>(`/attendance/parent/summary?${params}`)
+}
+

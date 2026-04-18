@@ -136,4 +136,44 @@ router.get('/report-card/:studentId', (req, res) =>
   parentDashboardController.getReportCard(req, res)
 )
 
+/**
+ * GET /api/parent-dashboard/discipline/:studentId
+ * Get discipline referrals for a student
+ */
+router.get('/discipline/:studentId', (req, res) =>
+  parentDashboardController.getDiscipline(req, res)
+)
+
+/**
+ * GET /api/parent-dashboard/activities/:studentId
+ * Get activities a student is enrolled in
+ */
+router.get('/activities/:studentId', (req, res) =>
+  parentDashboardController.getActivities(req, res)
+)
+
+/**
+ * GET /api/parent-dashboard/class-diary/:studentId
+ * Get class diary entries for a student's section
+ */
+router.get('/class-diary/:studentId', (req, res) =>
+  parentDashboardController.getDiaryEntries(req, res)
+)
+
+/**
+ * GET /api/parent-dashboard/grades/:studentId/final
+ * Get exam-based final grades grouped by subject
+ */
+router.get('/grades/:studentId/final', (req, res) =>
+  parentDashboardController.getFinalGrades(req, res)
+)
+
+/**
+ * GET /api/parent-dashboard/grades/:studentId/gpa-rank
+ * Get GPA and class rank for a student
+ */
+router.get('/grades/:studentId/gpa-rank', (req, res) =>
+  parentDashboardController.getGpaRank(req, res)
+)
+
 export default router

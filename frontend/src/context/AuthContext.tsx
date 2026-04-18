@@ -850,6 +850,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     .single()
 
                   if (!retryError && retryProfile && isMounted) {
+                    // CRITICAL: Enrich with staff_id/campus_id just like the main path
+                    // Without this, teachers lose staff_id and see "Not authorized"
+                    if (retryProfile.role === 'teacher' || retryProfile.role === 'staff' || retryProfile.role === 'librarian') {
+                      const { data: staffData } = await supabase
+                        .from('staff')
+                        .select('id, school_id')
+                        .eq('profile_id', retryProfile.id)
+                        .single()
+
+                      if (staffData) {
+                        retryProfile.staff_id = staffData.id
+                        retryProfile.campus_id = staffData.school_id || null
+                      }
+                    }
+
+                    if (retryProfile.role === 'student') {
+                      const { data: studentData } = await supabase
+                        .from('students')
+                        .select('id, section_id, section:sections(campus_id)')
+                        .eq('profile_id', retryProfile.id)
+                        .single()
+
+                      if (studentData) {
+                        retryProfile.student_id = studentData.id
+                        retryProfile.section_id = studentData.section_id
+                        // @ts-expect-error - section data structure from Supabase query
+                        retryProfile.campus_id = studentData.section?.campus_id || null
+                      }
+                    }
+
+                    if (retryProfile.role === 'parent') {
+                      retryProfile.campus_id = retryProfile.school_id
+
+                      const { data: parentData } = await supabase
+                        .from('parents')
+                        .select('id')
+                        .eq('profile_id', retryProfile.id)
+                        .single()
+
+                      if (parentData) {
+                        retryProfile.parent_id = parentData.id
+                      }
+                    }
+
                     console.log('✅ Profile fetch retry succeeded!')
                     setProfile(retryProfile)
                     profileCache = { profile: retryProfile, userId: session.user.id, timestamp: Date.now() }
@@ -911,6 +955,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 profile.staff_id = staffData.id
                 // In staff table, school_id references the campus (which is stored in schools table)
                 profile.campus_id = staffData.school_id || null
+              } else if (profileCache?.profile?.staff_id && profileCache.profile.id === profile.id) {
+                // Staff query failed silently — preserve enriched fields from cached profile
+                // This prevents "Not authorized as teacher" during background token refreshes
+                profile.staff_id = profileCache.profile.staff_id
+                profile.campus_id = profileCache.profile.campus_id
               }
             }
 
@@ -927,6 +976,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 profile.section_id = studentData.section_id
                 // @ts-expect-error - section data structure from Supabase query
                 profile.campus_id = studentData.section?.campus_id || null
+              } else if (profileCache?.profile?.student_id && profileCache.profile.id === profile.id) {
+                // Query failed silently — preserve enriched fields from cached profile
+                profile.student_id = profileCache.profile.student_id
+                profile.section_id = profileCache.profile.section_id
+                profile.campus_id = profileCache.profile.campus_id
               }
             }
 

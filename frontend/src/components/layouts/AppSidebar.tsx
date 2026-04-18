@@ -733,8 +733,8 @@ function MobileSidebar({ menuItems }: AppSidebarProps) {
           style={{ backgroundImage: 'url(/images/sidebar-bg.svg)' }}
         />
 
-        <div className="relative z-10 flex flex-col h-full">
-          <div className="flex items-center justify-end px-4 pt-3">
+        <div className="relative z-10 flex flex-col h-full overflow-y-auto scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-transparent">
+          <div className="flex items-center justify-end px-4 pt-3 shrink-0">
             <Button
               variant="ghost"
               size="icon"
@@ -752,7 +752,7 @@ function MobileSidebar({ menuItems }: AppSidebarProps) {
           {/* Academic Year & Quarter Selectors */}
           <AcademicSelectors />
 
-          <nav className="flex-1 overflow-y-auto pl-3 pr-0 space-y-2">
+          <nav className="pl-3 pr-0 space-y-2 pb-6">
             {menuItems.map((item) => (
               <SidebarItem
                 key={item.href}

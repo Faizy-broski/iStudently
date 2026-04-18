@@ -21,6 +21,9 @@ router.get('/student/:studentId', finalGradesController.getStudentFinalGrades)
 // POST /final-grades (teacher - save single final grade)
 router.post('/', requireTeacher, finalGradesController.saveFinalGrade)
 
+// POST /final-grades/import-gradebook (teacher - import from gradebook average)
+router.post('/import-gradebook', requireTeacher, finalGradesController.importFromGradebook)
+
 // POST /final-grades/calculate (teacher - auto-calculate all for a course_period)
 router.post('/calculate', requireTeacher, finalGradesController.calculateAndSaveFinalGrades)
 

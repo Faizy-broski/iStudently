@@ -620,9 +620,9 @@ window.addEventListener('DOMContentLoaded', function() {
 
     var headerEl = document.querySelector('.pdf-header');
     var footerEl = document.querySelector('.pdf-footer');
-    var pageEls  = Array.from(document.querySelectorAll('.print-report > div > div'));
+    var pageEls  = Array.from(document.querySelectorAll('.class-page, .schedule-page, .statement-page, .print-page'));
     if (pageEls.length === 0) {
-      pageEls = [document.querySelector('.print-report') || document.body];
+      pageEls = [document.querySelector('.print-body-content') || document.body];
     }
 
     function h2c(el) { return html2canvas(el, h2cOpts); }
@@ -709,7 +709,7 @@ window.addEventListener('DOMContentLoaded', function() {
 <body>
 ${loadingOverlay}
 ${headerMarkup}
-<div style="padding: 6px 20px;">${bodyHtml}</div>
+<div class="print-body-content" style="padding: 6px 20px; background: #fff;">${bodyHtml}</div>
 ${footerMarkup}
 ${autoGenerateScript}
 </body>

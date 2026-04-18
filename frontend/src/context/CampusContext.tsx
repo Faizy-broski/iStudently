@@ -84,8 +84,30 @@ export function CampusProvider({ children }: { children: ReactNode }) {
     }
 
     const refreshCampuses = async (forceRefresh = false) => {
-        if (!profile?.school_id || (profile.role !== 'admin' && profile.role !== 'librarian')) {
+        if (!profile?.school_id) {
             setLoading(false)
+            return
+        }
+
+        // For non-admin/librarian roles, fetch their single assigned campus
+        if (profile.role !== 'admin' && profile.role !== 'librarian') {
+            if (profile.campus_id && !selectedCampus) {
+                try {
+                    setLoading(true)
+                    const campus = await getCampusById(profile.campus_id)
+                    if (campus) {
+                        setCampuses([campus])
+                        setSelectedCampus(campus)
+                        setCampusCache([campus], profile.school_id)
+                    }
+                } catch {
+                    // Silent fail
+                } finally {
+                    setLoading(false)
+                }
+            } else {
+                setLoading(false)
+            }
             return
         }
 
@@ -180,7 +202,7 @@ export function CampusProvider({ children }: { children: ReactNode }) {
         let isMounted = true
 
         const loadCampuses = async () => {
-            if (profile?.school_id && (profile?.role === 'admin' || profile?.role === 'librarian')) {
+            if (profile?.school_id) {
                 try {
                     await refreshCampuses(false)
                 } catch {
@@ -202,7 +224,7 @@ export function CampusProvider({ children }: { children: ReactNode }) {
     // Refetch data when tab becomes visible again
     useVisibilityRefetch(
         useCallback(() => {
-            if (profile?.school_id && (profile?.role === 'admin' || profile?.role === 'librarian')) {
+            if (profile?.school_id) {
                 refreshCampuses(true) // Force refresh when returning to tab
             }
             // eslint-disable-next-line react-hooks/exhaustive-deps

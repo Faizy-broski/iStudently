@@ -1398,3 +1398,63 @@ export async function deletePayeePayment(campusId: string, paymentId: string): P
         throw new Error(error.error || 'Failed to delete payment')
     }
 }
+
+// ============================================================================
+// ZERO-TRUST STAFF METHODS (Teachers)
+// ==========================================
+
+export async function getStaffOwnSalaries(campusId?: string, academicYear?: string): Promise<{ data: AccountingSalary[] }> {
+    const token = await getAuthToken()
+    if (!token) {
+        await handleSessionExpiry()
+        throw new Error('Session expired')
+    }
+
+    const params = new URLSearchParams()
+    if (campusId) params.append('campus_id', campusId)
+    if (academicYear) params.append('academic_year', academicYear)
+
+    const response = await simpleFetch(`${API_URL}/accounting/staff/salaries?${params}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` }
+    })
+
+    if (!response.ok) {
+        if (response.status === 401) {
+            await handleSessionExpiry()
+            throw new Error('Session expired')
+        }
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to fetch own salaries')
+    }
+
+    return response.json()
+}
+
+export async function getStaffOwnPayments(campusId?: string, academicYear?: string): Promise<{ data: AccountingExpense[] }> {
+    const token = await getAuthToken()
+    if (!token) {
+        await handleSessionExpiry()
+        throw new Error('Session expired')
+    }
+
+    const params = new URLSearchParams()
+    if (campusId) params.append('campus_id', campusId)
+    if (academicYear) params.append('academic_year', academicYear)
+
+    const response = await simpleFetch(`${API_URL}/accounting/staff/payments?${params}`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` }
+    })
+
+    if (!response.ok) {
+        if (response.status === 401) {
+            await handleSessionExpiry()
+            throw new Error('Session expired')
+        }
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to fetch own payments')
+    }
+
+    return response.json()
+}

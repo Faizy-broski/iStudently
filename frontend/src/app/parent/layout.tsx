@@ -7,6 +7,7 @@ import { ParentAgreementGuard } from '@/components/auth/ParentAgreementGuard'
 import { ParentDashboardProvider } from '@/context/ParentDashboardContext'
 import { RefreshOnReturn } from '@/components/RefreshOnReturn'
 import { SchoolSettingsProvider } from '@/context/SchoolSettingsContext'
+import { CampusProvider } from '@/context/CampusContext'
 
 export default function ParentLayout({
   children,
@@ -17,13 +18,15 @@ export default function ParentLayout({
     <AuthLoadingGuard>
       <RoleGuard allowedRoles={['parent']}>
         <SchoolSettingsProvider>
-          <ParentAgreementGuard role="parent">
-            <ParentDashboardProvider>
-              <DashboardLayout role="parent">
-                <RefreshOnReturn>{children}</RefreshOnReturn>
-              </DashboardLayout>
-            </ParentDashboardProvider>
-          </ParentAgreementGuard>
+          <CampusProvider>
+            <ParentAgreementGuard role="parent">
+              <ParentDashboardProvider>
+                <DashboardLayout role="parent">
+                  <RefreshOnReturn>{children}</RefreshOnReturn>
+                </DashboardLayout>
+              </ParentDashboardProvider>
+            </ParentAgreementGuard>
+          </CampusProvider>
         </SchoolSettingsProvider>
       </RoleGuard>
     </AuthLoadingGuard>

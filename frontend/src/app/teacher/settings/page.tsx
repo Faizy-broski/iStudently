@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Loader2, User, Bell, Lock, Save, Mail, Phone } from 'lucide-react'
 import { toast } from 'sonner'
+import { updateProfile, changePassword } from '@/lib/api/auth'
 
 export default function SettingsPage() {
   const { profile } = useAuth()
@@ -38,8 +39,12 @@ export default function SettingsPage() {
   const handleSaveProfile = async () => {
     setLoading(true)
     try {
-      // Placeholder - implement actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      const result = await updateProfile({
+        first_name: profileForm.first_name,
+        last_name: profileForm.last_name,
+        phone: profileForm.phone,
+      })
+      if (!result.success) throw new Error(result.error)
       toast.success('Profile updated successfully')
     } catch (error: any) {
       toast.error(error.message || 'Failed to update profile')

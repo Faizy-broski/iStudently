@@ -127,16 +127,19 @@ export const authenticate = async (
       })
     }
 
-    // If user is a student, fetch their student record
-    if (profile.role === 'student') {
+    // If user is a student, fetch their student record.
+    // Some installations may store the student row with the profile id as either profile_id or id.
+    if (typeof profile.role === 'string' && profile.role.toLowerCase() === 'student') {
       const { data: studentRecord, error: studentError } = await supabase
         .from('students')
         .select('id')
-        .eq('profile_id', profile.id)
+        .or(`profile_id.eq.${profile.id},id.eq.${profile.id}`)
         .single()
 
       if (!studentError && studentRecord) {
         profile.student_id = studentRecord.id
+      } else if (studentError && studentError.code !== 'PGRST116') {
+        console.warn('⚠️ Student record lookup failed for profile:', profile.id, studentError)
       }
     }
 

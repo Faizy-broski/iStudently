@@ -625,6 +625,77 @@ async function updateGradebookFromQuiz(quizId: string, studentId: string) {
 }
 
 // ============================================================================
+// STUDENT QUIZ LIST
+// Returns quizzes available to a student based on their section's course periods
+// ============================================================================
+
+export const getStudentQuizzes = async (studentId: string) => {
+  // Get student's section and school
+  const { data: student } = await supabase
+    .from('students')
+    .select('section_id, school_id')
+    .eq('id', studentId)
+    .single()
+
+  if (!student?.section_id) return []
+
+  // Get course periods for this section
+  const { data: cps } = await supabase
+    .from('course_periods')
+    .select('id')
+    .eq('section_id', student.section_id)
+
+  const cpIds = (cps || []).map(cp => cp.id)
+  if (cpIds.length === 0) return []
+
+  // Get quizzes linked to those course periods
+  const { data: quizzes, error } = await supabase
+    .from('quizzes')
+    .select(`
+      id, title, description, show_correct_answers, shuffle,
+      created_at, course_period_id, assignment_id, academic_year_id,
+      assignment:gradebook_assignments(id, title, points, due_date, assigned_date)
+    `)
+    .in('course_period_id', cpIds)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+
+  // For each quiz, check if student has submitted
+  const quizIds = (quizzes || []).map(q => q.id)
+  let submissionMap = new Map<string, boolean>()
+
+  if (quizIds.length > 0) {
+    // Get quiz_question_map ids for all quizzes
+    const { data: maps } = await supabase
+      .from('quiz_question_map')
+      .select('id, quiz_id')
+      .in('quiz_id', quizIds)
+
+    const mapIds = (maps || []).map(m => m.id)
+
+    if (mapIds.length > 0) {
+      const { data: answers } = await supabase
+        .from('quiz_answers')
+        .select('quiz_question_map_id, quiz_question_map:quiz_question_map(quiz_id)')
+        .eq('student_id', studentId)
+        .in('quiz_question_map_id', mapIds)
+
+      ;(answers || []).forEach((a: any) => {
+        const qid = a.quiz_question_map?.quiz_id
+        if (qid) submissionMap.set(qid, true)
+      })
+    }
+  }
+
+  return (quizzes || []).map(q => ({
+    ...q,
+    submitted: submissionMap.has(q.id),
+    question_count: undefined,
+  }))
+}
+
+// ============================================================================
 // ANSWER BREAKDOWN (Premium)
 // ============================================================================
 

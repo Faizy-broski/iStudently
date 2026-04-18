@@ -15,6 +15,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 
+import { type PdfHeaderFooterSettings, getPdfHeaderFooter } from "@/lib/api/school-settings"
+
 export function PrintClassPictures() {
   const { user } = useAuth()
   const campusContext = useCampus()
@@ -23,9 +25,11 @@ export function PrintClassPictures() {
   const campus = campusContext?.selectedCampus
   const campusName = campus?.name || ""
 
-  const [pdfSettings, setPdfSettings] = useState<import("@/lib/api/school-settings").PdfHeaderFooterSettings | null>(null)
+  const [pdfSettings, setPdfSettings] = useState<PdfHeaderFooterSettings | null>(null)
   useEffect(() => {
-    if (campusId) import("@/lib/api/school-settings").then(m => m.getPdfHeaderFooter(campusId)).then(r => { if (r.success && r.data) setPdfSettings(r.data) })
+    if (campusId) {
+      getPdfHeaderFooter(campusId).then(r => { if (r.success && r.data) setPdfSettings(r.data) })
+    }
   }, [campusId])
 
   const [selectedCPIds, setSelectedCPIds] = useState<Set<string>>(new Set())

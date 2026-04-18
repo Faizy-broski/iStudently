@@ -278,7 +278,40 @@ export const getGradebookView = async (req: Request, res: Response) => {
 
 export const getAnomalousGrades = async (req: Request, res: Response) => {
   try {
-    const { course_period_id, threshold } = req.query
+    const {
+      course_period_id,
+      threshold,
+      advanced,
+      student_id,
+      include_all_courses,
+      include_inactive,
+      missing,
+      negative,
+      exceed_max,
+      max_ratio,
+      extra_credit,
+    } = req.query
+
+    // If 'advanced' flag is passed, use the new AnomalousGrades.php equivalent
+    if (advanced === 'true') {
+      const staffId = (req as AuthRequest).user?.id
+
+      const data = await gradebookService.getAnomalousGradesAdvanced({
+        coursePeriodId: course_period_id as string | undefined,
+        staffId: staffId as string | undefined,
+        studentId: student_id as string | undefined,
+        includeAllCourses: include_all_courses === 'true',
+        includeInactive: include_inactive === 'true',
+        missing: missing !== 'false', // default true
+        negative: negative !== 'false',
+        exceedMaxPercent: exceed_max !== 'false',
+        maxAllowedRatio: max_ratio ? parseFloat(max_ratio as string) : 1.0,
+        includeExtraCredit: extra_credit !== 'false',
+      })
+      return res.json({ success: true, data })
+    }
+
+    // Otherwise, use the old average threshold logic
     if (!course_period_id) {
       return res.status(400).json({ success: false, error: 'course_period_id is required' })
     }
@@ -289,6 +322,56 @@ export const getAnomalousGrades = async (req: Request, res: Response) => {
     res.json({ success: true, data })
   } catch (error: any) {
     console.error('Error in getAnomalousGrades:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+}
+
+export const getStudentGradesSummary = async (req: Request, res: Response) => {
+  try {
+    const { studentId } = req.params
+    const { marking_period_id, expand_course_period_id, include_inactive, staff_only } = req.query
+    
+    if (!marking_period_id) {
+      return res.status(400).json({ success: false, error: 'marking_period_id is required' })
+    }
+
+    const staffId = staff_only === 'true' ? (req as AuthRequest).user?.id : undefined
+
+    const data = await gradebookService.getStudentGradesSummary(
+      studentId,
+      marking_period_id as string,
+      {
+        expandCoursePeriodId: expand_course_period_id as string | undefined,
+        includeInactive: include_inactive === 'true',
+        staffId,
+      }
+    )
+    res.json({ success: true, data })
+  } catch (error: any) {
+    console.error('Error in getStudentGradesSummary:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+}
+
+export const getAssignmentsByStaff = async (req: Request, res: Response) => {
+  try {
+    const staffId = (req as AuthRequest).user?.id
+    if (!staffId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' })
+    }
+
+    const { course_period_id, marking_period_id, assignment_type_id, all_courses } = req.query
+
+    const data = await gradebookService.getAssignmentsByStaff({
+      staffId,
+      coursePeriodId: course_period_id as string | undefined,
+      markingPeriodId: marking_period_id as string | undefined,
+      assignmentTypeId: assignment_type_id as string | undefined,
+      includeAllCoursePeriods: all_courses === 'true',
+    })
+    res.json({ success: true, data })
+  } catch (error: any) {
+    console.error('Error in getAssignmentsByStaff:', error)
     res.status(500).json({ success: false, error: error.message })
   }
 }

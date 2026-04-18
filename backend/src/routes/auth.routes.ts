@@ -11,6 +11,9 @@ router.use(authenticate)
 // POST /auth/change-password  — any authenticated user can change their own password
 router.post('/change-password', authController.changePassword)
 
+// PUT /auth/profile  — any authenticated user can update their own profile
+router.put('/profile', authController.updateProfile)
+
 // ── Admin-only force-password-change operations ──────────────────────────────
 
 // GET  /auth/force-password-change/status   — how many users have the flag set

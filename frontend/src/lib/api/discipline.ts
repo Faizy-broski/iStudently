@@ -276,3 +276,31 @@ export async function getAllDisciplineReferrals(params: {
   if (params.end_date) urlParams.append('end_date', params.end_date);
   return apiRequest<DisciplineReferral[]>(`/discipline/referrals?${urlParams}`);
 }
+
+// ============================================================================
+// ZERO-TRUST ROLE ENDPOINTS (Staff / Student / Parent)
+// ============================================================================
+
+export async function getStaffDisciplineReferrals(): Promise<ApiResponse<DisciplineReferral[]>> {
+  return apiRequest<DisciplineReferral[]>('/discipline/staff/referrals');
+}
+
+export async function createStaffDisciplineReferral(data: {
+  student_id: string;
+  incident_date?: string;
+  field_values?: Record<string, any>;
+}): Promise<ApiResponse<DisciplineReferral>> {
+  return apiRequest<DisciplineReferral>('/discipline/staff/referrals', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getStudentDisciplineReferrals(): Promise<ApiResponse<DisciplineReferral[]>> {
+  return apiRequest<DisciplineReferral[]>('/discipline/student/referrals');
+}
+
+export async function getParentDisciplineReferrals(): Promise<ApiResponse<DisciplineReferral[]>> {
+  return apiRequest<DisciplineReferral[]>('/discipline/parent/referrals');
+}
+

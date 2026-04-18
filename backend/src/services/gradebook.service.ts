@@ -822,9 +822,595 @@ class GradebookService {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // PROGRESS REPORTS (batch generation for printing)
+  // ANOMALOUS GRADES — ADVANCED (mirrors AnomalousGrades.php)
+  // Filters: missing | negative/excused | exceed max percent | extra credit
+  // Optional scoping: single student, include_all_courses
   // ──────────────────────────────────────────────────────────────────────────
 
+  /**
+   * AnomalousGrades.php equivalent.
+   *
+   * Returns assignments where the grade is anomalous for one or more reasons:
+   *   - missing:    no grade entered but assignment is past due
+   *   - negative:   grade < 0 (excused = -1 or truly negative)
+   *   - exceed:     grade > points × max_allowed_ratio (configurable, default 1.0)
+   *
+   * Scoping:
+   *   - If coursePeriodId is supplied, only that course period is checked.
+   *   - If staffId is supplied without coursePeriodId, all course_periods
+   *     where teacher_id = staffId are checked (include_all_courses mode).
+   *   - If studentId is supplied, results are filtered to that student only.
+   */
+  async getAnomalousGradesAdvanced(options: {
+    coursePeriodId?: string
+    staffId?: string
+    studentId?: string
+    includeAllCourses?: boolean
+    includeInactive?: boolean
+    missing?: boolean
+    negative?: boolean
+    exceedMaxPercent?: boolean
+    maxAllowedRatio?: number   // 1.0 = 100% (default)
+    includeExtraCredit?: boolean
+  }): Promise<Array<{
+    student_id: string
+    student_name: string
+    student_number: string
+    course_period_id: string
+    course_title: string
+    assignment_id: string
+    assignment_title: string
+    category_title: string
+    points_earned: number | null
+    points_possible: number
+    problem_type: 'missing' | 'negative' | 'excused' | 'exceed_max' | 'extra_credit'
+    comment: string | null
+  }>> {
+    const {
+      coursePeriodId,
+      staffId,
+      studentId,
+      includeAllCourses = false,
+      includeInactive = false,
+      missing = true,
+      negative = true,
+      exceedMaxPercent = true,
+      maxAllowedRatio = 1.0,
+      includeExtraCredit = true,
+    } = options
+
+    // 1. Determine which course periods to scan
+    let cpIds: string[] = []
+    if (coursePeriodId) {
+      cpIds = [coursePeriodId]
+    } else if (staffId) {
+      const { data: cps } = await supabase
+        .from('course_periods')
+        .select('id')
+        .eq('teacher_id', staffId)
+        .eq('is_active', true)
+      cpIds = (cps || []).map((cp: any) => cp.id)
+    }
+    if (cpIds.length === 0) return []
+
+    // 2. Get assignments for these course periods
+    const { data: assignments } = await supabase
+      .from('gradebook_assignments')
+      .select(`
+        id, title, points, due_date, assigned_date,
+        assignment_type:gradebook_assignment_types(id, title),
+        course_period:course_periods(id, title)
+      `)
+      .in('course_period_id', cpIds)
+      .eq('is_active', true)
+
+    if (!assignments || assignments.length === 0) return []
+
+    // 3. Get all grades for these assignments (optionally filtered by student)
+    let gradesQuery = supabase
+      .from('gradebook_grades')
+      .select('assignment_id, student_id, points, comment, course_period_id')
+      .in('assignment_id', assignments.map((a: any) => a.id))
+
+    if (studentId) {
+      gradesQuery = gradesQuery.eq('student_id', studentId)
+    }
+    const { data: grades } = await gradesQuery
+
+    // Index grades by assignment_id + student_id
+    const gradeMap = new Map<string, any>()
+    for (const g of grades || []) {
+      gradeMap.set(`${g.assignment_id}__${g.student_id}`, g)
+    }
+
+    // 4. Get students in the relevant sections
+    const cpSet = new Set(cpIds)
+    const { data: cpRows } = await supabase
+      .from('course_periods')
+      .select('id, section_id, title')
+      .in('id', cpIds)
+
+    const sectionIds = [...new Set((cpRows || []).map((cp: any) => cp.section_id).filter(Boolean))]
+    const cpTitleMap = new Map<string, string>((cpRows || []).map((cp: any) => [cp.id, cp.title]))
+    const cpSectionMap = new Map<string, string>((cpRows || []).map((cp: any) => [cp.id, cp.section_id]))
+
+    let studentsQuery = supabase
+      .from('students')
+      .select('id, student_number, profile:profiles(first_name, last_name)')
+      .in('section_id', sectionIds)
+
+    if (studentId) studentsQuery = studentsQuery.eq('id', studentId)
+    if (!includeInactive) studentsQuery = studentsQuery.eq('is_active', true)
+
+    const { data: students } = await studentsQuery
+    const studentMap = new Map<string, { name: string; student_number: string }>(
+      (students || []).map((s: any) => [
+        s.id,
+        {
+          name: `${s.profile?.first_name || ''} ${s.profile?.last_name || ''}`.trim(),
+          student_number: s.student_number || '',
+        },
+      ])
+    )
+
+    // 5. Build anomaly list
+    const today = new Date().toISOString().split('T')[0]
+    const results: any[] = []
+
+    for (const assignment of assignments as any[]) {
+      const cpId = (assignment.course_period as any)?.id || ''
+      const sectionId = cpSectionMap.get(cpId)
+      if (!sectionId) continue
+
+      // Students enrolled in this course period's section
+      const enrolledStudents = (students || []).filter(
+        (s: any) => s.section_id === sectionId
+      )
+
+      for (const student of enrolledStudents) {
+        if (studentId && student.id !== studentId) continue
+
+        const gradeKey = `${assignment.id}__${student.id}`
+        const grade = gradeMap.get(gradeKey)
+        const earned = grade ? grade.points : null
+        const possible = assignment.points || 0
+        const isPastDue =
+          !assignment.due_date || assignment.due_date <= today
+        const isAfterAssigned =
+          !assignment.assigned_date || assignment.assigned_date <= today
+
+        let problemType: string | null = null
+
+        if (missing && earned === null && isPastDue && isAfterAssigned) {
+          problemType = 'missing'
+        } else if (negative && earned !== null && earned === -1) {
+          problemType = 'excused'
+        } else if (negative && earned !== null && earned < 0 && earned !== -1) {
+          problemType = 'negative'
+        } else if (exceedMaxPercent && earned !== null && possible > 0 && earned > possible * maxAllowedRatio) {
+          problemType = 'exceed_max'
+        } else if (includeExtraCredit && possible === 0 && earned !== null && earned > 0) {
+          problemType = 'extra_credit'
+        }
+
+        if (!problemType) continue
+
+        const studentInfo = studentMap.get(student.id)
+        results.push({
+          student_id: student.id,
+          student_name: studentInfo?.name || '',
+          student_number: studentInfo?.student_number || '',
+          course_period_id: cpId,
+          course_title: cpTitleMap.get(cpId) || '',
+          assignment_id: assignment.id,
+          assignment_title: assignment.title,
+          category_title: (assignment.assignment_type as any)?.title || '',
+          points_earned: earned,
+          points_possible: possible,
+          problem_type: problemType as any,
+          comment: grade?.comment || null,
+        })
+      }
+    }
+
+    return results
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // STUDENT GRADES SUMMARY (mirrors StudentGrades.php)
+  // Returns per-course totals + ungraded count + percent/letter for a student
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * StudentGrades.php equivalent — course-level grade summary for one student.
+   *
+   * Returns an array of courses the student is enrolled in, each with:
+   *   - current weighted percent + letter grade
+   *   - ungraded assignment count
+   *   - list of assignments with individual grades (when expandCourseId is set)
+   */
+  async getStudentGradesSummary(
+    studentId: string,
+    markingPeriodId: string,
+    options: {
+      expandCoursePeriodId?: string   // if set, also return per-assignment detail
+      includeInactive?: boolean
+      staffId?: string                 // teacher role: only show teacher's own course periods
+    } = {}
+  ): Promise<Array<{
+    course_period_id: string
+    course_title: string
+    teacher_name: string
+    percent_grade: number | null
+    letter_grade: string | null
+    ungraded_count: number
+    assignments: Array<{
+      id: string
+      title: string
+      category: string
+      points_earned: number | null
+      points_possible: number
+      percent: number | null
+      comment: string | null
+      due_date: string | null
+    }>
+  }>> {
+    const { expandCoursePeriodId, includeInactive = false, staffId } = options
+
+    // 1. Get student's section
+    const { data: studentRow } = await supabase
+      .from('students')
+      .select('section_id')
+      .eq('id', studentId)
+      .single()
+
+    if (!studentRow?.section_id) return []
+
+    // 2. Get course periods in this section
+    let cpQuery = supabase
+      .from('course_periods')
+      .select(`
+        id, title,
+        course:courses(id, title, subject:subjects(id, name)),
+        teacher:staff(id, profile:profiles!profile_id(first_name, last_name)),
+        grading_scale_id
+      `)
+      .eq('section_id', studentRow.section_id)
+      .eq('is_active', true)
+
+    if (staffId) cpQuery = cpQuery.eq('teacher_id', staffId)
+
+    const { data: cps } = await cpQuery
+    if (!cps || cps.length === 0) return []
+
+    const results: any[] = []
+    const today = new Date().toISOString().split('T')[0]
+
+    for (const cp of cps as any[]) {
+      // 3. Get assignments for this course period visible to student (past assigned date)
+      const { data: assignments } = await supabase
+        .from('gradebook_assignments')
+        .select(`
+          id, title, points, due_date, assigned_date, is_extra_credit,
+          assignment_type:gradebook_assignment_types(id, title, final_grade_percent)
+        `)
+        .eq('course_period_id', cp.id)
+        .eq('is_active', true)
+        .lte('assigned_date', today)
+        .order('due_date', { ascending: false })
+
+      if (!assignments || assignments.length === 0) {
+        results.push({
+          course_period_id: cp.id,
+          course_title: cp.course?.title || cp.title,
+          teacher_name: `${cp.teacher?.profile?.first_name || ''} ${cp.teacher?.profile?.last_name || ''}`.trim(),
+          percent_grade: null,
+          letter_grade: null,
+          ungraded_count: 0,
+          assignments: [],
+        })
+        continue
+      }
+
+      // 4. Get grades for this student in these assignments
+      const { data: grades } = await supabase
+        .from('gradebook_grades')
+        .select('assignment_id, points, comment, is_exempt')
+        .eq('student_id', studentId)
+        .eq('course_period_id', cp.id)
+        .in('assignment_id', assignments.map((a: any) => a.id))
+
+      const gradeByAssignment = new Map<string, any>(
+        (grades || []).map((g) => [g.assignment_id, g])
+      )
+
+      // 5. Count ungraded (past due, no grade, points > 0)
+      let ungradedCount = 0
+      let totalEarned = 0
+      let totalPossible = 0
+      let totalWeighted = 0
+      let totalWeight = 0
+      const assignmentResults: any[] = []
+
+      // Group by type for weighted calculation
+      const typeMap = new Map<string, { earned: number; possible: number; weight: number }>()
+
+      for (const a of assignments as any[]) {
+        const grade = gradeByAssignment.get(a.id)
+        const earned = grade ? grade.points : null
+        const isPastDue = !a.due_date || a.due_date <= today
+
+        if (earned === null && isPastDue && a.points > 0) ungradedCount++
+
+        const typeId = a.assignment_type?.id
+        const typeWeight = a.assignment_type?.final_grade_percent || 0
+
+        if (!typeMap.has(typeId) && typeWeight > 0) {
+          typeMap.set(typeId, { earned: 0, possible: 0, weight: typeWeight })
+        }
+
+        if (earned !== null && earned >= 0 && a.points > 0) {
+          const typeEntry = typeMap.get(typeId)
+          if (typeEntry) {
+            typeEntry.earned += earned
+            typeEntry.possible += a.points
+          }
+          totalEarned += earned
+          totalPossible += a.points
+        }
+
+        // Per-assignment row (only when expand mode)
+        if (expandCoursePeriodId === cp.id) {
+          const pct = a.points > 0 && earned !== null && earned >= 0
+            ? Math.round((earned / a.points) * 10000) / 100
+            : null
+          assignmentResults.push({
+            id: a.id,
+            title: a.title,
+            category: a.assignment_type?.title || '',
+            points_earned: earned === -1 ? null : earned, // -1 = excused
+            points_possible: a.points,
+            percent: earned === -1 ? null : pct,
+            comment: grade?.comment || null,
+            due_date: a.due_date || null,
+          })
+        }
+      }
+
+      // 6. Calculate weighted percent
+      let percentGrade: number | null = null
+      for (const [, t] of typeMap) {
+        if (t.possible > 0) {
+          totalWeighted += (t.earned / t.possible) * t.weight
+          totalWeight += t.weight
+        }
+      }
+      if (totalWeight > 0) {
+        percentGrade = Math.round((totalWeighted / totalWeight) * 100 * 100) / 100
+      } else if (totalPossible > 0) {
+        percentGrade = Math.round((totalEarned / totalPossible) * 100 * 100) / 100
+      }
+
+      // 7. Lookup letter grade
+      let letterGrade: string | null = null
+      const scaleId = cp.grading_scale_id
+      if (scaleId && percentGrade !== null) {
+        const { data: gradeEntry } = await supabase
+          .from('grading_scale_grades')
+          .select('title')
+          .eq('grading_scale_id', scaleId)
+          .eq('is_active', true)
+          .lte('break_off', percentGrade)
+          .order('break_off', { ascending: false })
+          .limit(1)
+          .single()
+        letterGrade = gradeEntry?.title || null
+      }
+
+      results.push({
+        course_period_id: cp.id,
+        course_title: cp.course?.title || cp.title,
+        teacher_name: `${cp.teacher?.profile?.first_name || ''} ${cp.teacher?.profile?.last_name || ''}`.trim(),
+        percent_grade: percentGrade,
+        letter_grade: letterGrade,
+        ungraded_count: ungradedCount,
+        assignments: assignmentResults,
+      })
+    }
+
+    return results
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // ASSIGNMENTS BY STAFF (mirrors Assignments.php teacher-scoped fetch)
+  // Returns assignments for the current marking period scoped to a teacher
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Assignments.php + Assignments-new.php teacher-scoped list.
+   *
+   * Returns assignments for `staffId` for the given marking_period_id.
+   * Can be filtered by assignment_type_id or course_period_id.
+   * Applies the COURSE_ID="all course periods" vs COURSE_PERIOD_ID="this section only" concept.
+   */
+  async getAssignmentsByStaff(options: {
+    staffId: string
+    coursePeriodId?: string
+    markingPeriodId?: string
+    assignmentTypeId?: string
+    includeAllCoursePeriods?: boolean
+  }): Promise<GradebookAssignment[]> {
+    const { staffId, coursePeriodId, markingPeriodId, assignmentTypeId, includeAllCoursePeriods } = options
+
+    let query = supabase
+      .from('gradebook_assignments')
+      .select(`
+        *,
+        assignment_type:gradebook_assignment_types(id, title, final_grade_percent)
+      `)
+      .eq('created_by', staffId)
+      .eq('is_active', true)
+
+    if (coursePeriodId && !includeAllCoursePeriods) {
+      query = query.eq('course_period_id', coursePeriodId)
+    } else if (includeAllCoursePeriods) {
+      // Return assignments for ALL course periods this teacher teaches
+      const { data: teacherCPs } = await supabase
+        .from('course_periods')
+        .select('id')
+        .eq('teacher_id', staffId)
+        .eq('is_active', true)
+      const cpIds = (teacherCPs || []).map((cp: any) => cp.id)
+      if (cpIds.length > 0) query = query.in('course_period_id', cpIds)
+    }
+
+    if (markingPeriodId) {
+      const { data: mp, error: mpErr } = await supabase
+        .from('marking_periods')
+        .select('start_date, end_date')
+        .eq('id', markingPeriodId)
+        .single()
+
+      if (mpErr) {
+        throw new Error(`Failed to fetch marking period: ${mpErr.message}`)
+      }
+
+      if (mp?.start_date) {
+        query = (query as any).gte('due_date', mp.start_date)
+      }
+      if (mp?.end_date) {
+        query = (query as any).lte('due_date', mp.end_date)
+      }
+    }
+
+    if (assignmentTypeId) {
+      query = query.eq('assignment_type_id', assignmentTypeId)
+    }
+
+    const { data, error } = await query.order('due_date', { ascending: false })
+    if (error) throw new Error(`Failed to fetch teacher assignments: ${error.message}`)
+    return (data || []) as GradebookAssignment[]
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // IMPORT FINAL GRADES FROM GRADEBOOK (mirrors InputFinalGrades.php modfunc=gradebook)
+  // Calculates final grade from gradebook average and saves to student_final_grades
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * InputFinalGrades.php modfunc=gradebook equivalent.
+   *
+   * Reads each student's current gradebook average for the given course_period
+   * and saves it as their final grade for the given marking_period.
+   * Does NOT overwrite grades already marked as is_override=true.
+   */
+  async importFinalGradesFromGradebook(
+    schoolId: string,
+    coursePeriodId: string,
+    markingPeriodId: string,
+    academicYearId: string,
+    options: {
+      overrideExisting?: boolean  // default false — skip already-saved grades
+      staffId?: string            // teacher performing action
+    } = {}
+  ): Promise<{ saved: number; skipped: number; errors: string[] }> {
+    const { overrideExisting = false, staffId } = options
+
+    // 1. Get section from course period → students
+    const { data: cp } = await supabase
+      .from('course_periods')
+      .select('section_id, grading_scale_id, course:courses(credit_hours, grading_scale_id)')
+      .eq('id', coursePeriodId)
+      .single()
+
+    if (!cp?.section_id) throw new Error('Course period has no section')
+
+    const { data: students } = await supabase
+      .from('students')
+      .select('id')
+      .eq('section_id', cp.section_id)
+      .eq('is_active', true)
+
+    if (!students || students.length === 0) {
+      return { saved: 0, skipped: 0, errors: [] }
+    }
+
+    // 2. Get existing final grades for this CP + MP (to check for override)
+    const { data: existingGrades } = await supabase
+      .from('student_final_grades')
+      .select('student_id, is_override')
+      .eq('course_period_id', coursePeriodId)
+      .eq('marking_period_id', markingPeriodId)
+
+    const overrideSet = new Set<string>(
+      (existingGrades || [])
+        .filter((g) => g.is_override)
+        .map((g) => g.student_id)
+    )
+    const existingSet = new Set<string>(
+      (existingGrades || []).map((g) => g.student_id)
+    )
+
+    const scaleId = cp.grading_scale_id || (cp.course as any)?.grading_scale_id
+    const creditHours = (cp.course as any)?.credit_hours || 1
+
+    let saved = 0
+    let skipped = 0
+    const errors: string[] = []
+
+    for (const student of students) {
+      try {
+        // Skip if override grade exists and we're not overriding
+        if (overrideSet.has(student.id) && !overrideExisting) {
+          skipped++
+          continue
+        }
+        // Skip if already has a grade and not overriding
+        if (existingSet.has(student.id) && !overrideExisting) {
+          skipped++
+          continue
+        }
+
+        // Calculate gradebook average
+        const avg = await this.calculateStudentAverage(student.id, coursePeriodId)
+        if (avg.percentage === null) {
+          skipped++
+          continue
+        }
+
+        // Save final grade
+        const campusId = await this.getCampusId(coursePeriodId)
+        const { error: upsertErr } = await supabase
+          .from('student_final_grades')
+          .upsert({
+            school_id: schoolId,
+            campus_id: campusId,
+            student_id: student.id,
+            course_period_id: coursePeriodId,
+            marking_period_id: markingPeriodId,
+            academic_year_id: academicYearId,
+            percent_grade: Math.round(avg.percentage * 100) / 100,
+            letter_grade: avg.letter_grade,
+            gpa_value: avg.gpa_value,
+            grade_points: avg.gpa_value ? avg.gpa_value * creditHours : null,
+            credit_attempted: creditHours,
+            credit_earned: avg.percentage >= 50 ? creditHours : 0,
+            gradebook_percent: avg.percentage,
+            grade_source: 'gradebook_import',
+            is_override: false,
+            graded_by: staffId,
+            graded_at: new Date().toISOString(),
+          }, { onConflict: 'student_id,course_period_id,marking_period_id' })
+
+        if (upsertErr) throw new Error(upsertErr.message)
+        saved++
+      } catch (err: any) {
+        errors.push(`Student ${student.id}: ${err.message}`)
+      }
+    }
+
+    return { saved, skipped, errors }
+  }
   /**
    * Generate progress report data for multiple students.
    * Returns data shaped like ReportCardData[] for the frontend print flow.

@@ -139,10 +139,10 @@ export function Courses() {
 
   // ── Data fetching ───────────────────────────────────────────────────
 
-  const subjectsCacheKey = user ? ["courses-page-subjects"] : null
+  const subjectsCacheKey = user ? ["courses-page-subjects", campusId] : null
   const { data: subjectsRes, isLoading: subjectsLoading } = useSWR(
     subjectsCacheKey,
-    async () => getSubjects(),
+    async () => getSubjects(undefined, campusId),
     { revalidateOnFocus: false }
   )
 

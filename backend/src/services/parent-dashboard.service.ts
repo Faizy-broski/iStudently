@@ -1045,6 +1045,207 @@ class ParentDashboardService {
   }
 
   /**
+   * Get discipline referrals for a student (parent view of child)
+   */
+  async getDisciplineReferrals(studentId: string): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('discipline_referrals')
+      .select(`
+        id,
+        incident_date,
+        field_values,
+        created_at,
+        reporter:staff!reporter_id(
+          id,
+          profile:profiles!staff_profile_id_fkey(first_name, last_name)
+        )
+      `)
+      .eq('student_id', studentId)
+      .order('incident_date', { ascending: false })
+
+    if (error) throw new Error(`Failed to fetch discipline referrals: ${error.message}`)
+    return data || []
+  }
+
+  /**
+   * Get activities a student is enrolled in (parent view of child)
+   */
+  async getEnrolledActivities(studentId: string): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('student_activities')
+      .select(`
+        id,
+        created_at,
+        activity:activities(
+          id,
+          title,
+          start_date,
+          end_date,
+          comment,
+          is_active
+        )
+      `)
+      .eq('student_id', studentId)
+      .order('created_at', { ascending: false })
+
+    if (error) throw new Error(`Failed to fetch enrolled activities: ${error.message}`)
+    return data || []
+  }
+
+  /**
+   * Get class diary entries for a student's section (parent read view)
+   */
+  async getClassDiaryEntries(studentId: string): Promise<any[]> {
+    // Resolve section_id from student record
+    const { data: student } = await supabase
+      .from('students')
+      .select('section_id')
+      .eq('id', studentId)
+      .single()
+
+    if (!student?.section_id) return []
+
+    const { data, error } = await supabase
+      .from('class_diary_entries')
+      .select(`
+        id,
+        diary_date,
+        content,
+        enable_comments,
+        is_published,
+        created_at,
+        teacher:staff!teacher_id(
+          id,
+          profile:profiles!profile_id(first_name, last_name)
+        )
+      `)
+      .eq('section_id', student.section_id)
+      .order('diary_date', { ascending: false })
+      .limit(50)
+
+    if (error) throw new Error(`Failed to fetch class diary: ${error.message}`)
+    return data || []
+  }
+
+  /**
+   * Get exam results grouped by subject for a student (parent Final Grades view)
+   */
+  async getFinalGrades(studentId: string): Promise<any[]> {
+    const { data: results, error } = await supabase
+      .from('exam_results')
+      .select(`
+        id,
+        marks_obtained,
+        exam:exams!inner(
+          id,
+          exam_name,
+          max_marks,
+          exam_date,
+          exam_type:exam_types(name),
+          subject:subjects(id, name, code)
+        )
+      `)
+      .eq('student_id', studentId)
+      .not('marks_obtained', 'is', null)
+      .order('exam(exam_date)', { ascending: false })
+
+    if (error) return []
+
+    const subjectMap = new Map<string, any>()
+    for (const r of results || []) {
+      const exam = (r as any).exam
+      const subject = exam?.subject
+      if (!subject) continue
+      if (!subjectMap.has(subject.id)) {
+        subjectMap.set(subject.id, {
+          subject_id: subject.id, subject_name: subject.name, subject_code: subject.code,
+          total_obtained: 0, total_possible: 0, exams: [],
+        })
+      }
+      const entry = subjectMap.get(subject.id)
+      entry.total_obtained += r.marks_obtained
+      entry.total_possible += exam.max_marks || 100
+      entry.exams.push({
+        exam_name: exam.exam_name, exam_type: exam.exam_type?.name || 'Exam',
+        exam_date: exam.exam_date, marks_obtained: r.marks_obtained, max_marks: exam.max_marks || 100,
+      })
+    }
+
+    return Array.from(subjectMap.values()).map(s => ({
+      ...s,
+      percentage: s.total_possible > 0 ? Math.round((s.total_obtained / s.total_possible) * 1000) / 10 : 0,
+      grade: this.calculateGrade(s.total_possible > 0 ? (s.total_obtained / s.total_possible) * 100 : 0),
+    }))
+  }
+
+  /**
+   * Get GPA and class rank for a student (parent view)
+   */
+  async getGpaRank(studentId: string): Promise<any> {
+    const { data: student } = await supabase
+      .from('students')
+      .select('section_id')
+      .eq('id', studentId)
+      .single()
+
+    if (!student?.section_id) return { gpa: null, rank: null, total_students: null, percentage: null }
+
+    const { data: myGrades } = await supabase
+      .from('gradebook_grades')
+      .select('points, assignment:gradebook_assignments(points)')
+      .eq('student_id', studentId)
+      .not('points', 'is', null)
+
+    const myEarned = (myGrades || []).reduce((s: number, g: any) => s + (g.points || 0), 0)
+    const myPossible = (myGrades || []).reduce((s: number, g: any) => s + (g.assignment?.points || 0), 0)
+    const myPercent = myPossible > 0 ? (myEarned / myPossible) * 100 : 0
+
+    const { data: sectionStudents } = await supabase
+      .from('students')
+      .select('id')
+      .eq('section_id', student.section_id)
+      .eq('is_active', true)
+
+    const studentIds = (sectionStudents || []).map((s: any) => s.id)
+
+    const { data: allGrades } = await supabase
+      .from('gradebook_grades')
+      .select('student_id, points, assignment:gradebook_assignments(points)')
+      .in('student_id', studentIds)
+      .not('points', 'is', null)
+
+    const earned = new Map<string, number>()
+    const possible = new Map<string, number>()
+    for (const g of allGrades || []) {
+      const sid = (g as any).student_id
+      earned.set(sid, (earned.get(sid) || 0) + (g.points || 0))
+      possible.set(sid, (possible.get(sid) || 0) + ((g as any).assignment?.points || 0))
+    }
+    const avgMap = new Map<string, number>()
+    for (const sid of studentIds) {
+      const p = possible.get(sid) || 0
+      const e = earned.get(sid) || 0
+      avgMap.set(sid, p > 0 ? (e / p) * 100 : 0)
+    }
+
+    const sorted = Array.from(avgMap.entries()).sort((a, b) => b[1] - a[1])
+    const rank = sorted.findIndex(([sid]) => sid === studentId) + 1
+
+    const gpa4 = myPercent >= 93 ? 4.0 : myPercent >= 90 ? 3.7 : myPercent >= 87 ? 3.3
+      : myPercent >= 83 ? 3.0 : myPercent >= 80 ? 2.7 : myPercent >= 77 ? 2.3
+      : myPercent >= 73 ? 2.0 : myPercent >= 70 ? 1.7 : myPercent >= 67 ? 1.3
+      : myPercent >= 60 ? 1.0 : 0.0
+
+    return {
+      gpa: Math.round(gpa4 * 100) / 100,
+      rank: rank > 0 ? rank : null,
+      total_students: studentIds.length,
+      percentage: Math.round(myPercent * 10) / 10,
+      grade: this.calculateGrade(myPercent),
+    }
+  }
+
+  /**
    * Helper: Calculate letter grade from percentage
    */
   private calculateGrade(percentage: number): string {

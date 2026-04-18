@@ -6,6 +6,9 @@ import { requireAdmin, requireTeacher } from '../middlewares/role.middleware'
 const router = Router()
 router.use(authenticate)
 
+// Student quiz list — authenticated students only (no teacher role required)
+router.get('/student/quizzes', ctrl.getStudentQuizzes)
+
 // Helpers (read-only, teachers can access)
 router.get('/helpers/assignments', requireTeacher, ctrl.getAssignments)
 router.get('/helpers/course-periods', requireTeacher, ctrl.getCoursePeriods)
@@ -37,9 +40,9 @@ router.post('/:quizId/questions', requireTeacher, ctrl.addQuestionToQuiz)
 router.put('/:quizId/questions/:mapId', requireTeacher, ctrl.updateQuizQuestion)
 router.delete('/:quizId/questions/:mapId', requireTeacher, ctrl.removeQuestionFromQuiz)
 
-// Student submission (teachers/admins read; students submit via same route but student ID in body)
-router.get('/:quizId/submissions/:studentId', requireTeacher, ctrl.getStudentSubmission)
-router.post('/:quizId/submit', requireTeacher, ctrl.submitQuiz)                  // also used by student
+// Student submission — any authenticated user can submit or view their own
+router.get('/:quizId/submissions/:studentId', ctrl.getStudentSubmission)
+router.post('/:quizId/submit', ctrl.submitQuiz)
 router.put('/answers/:answerId/grade', requireTeacher, ctrl.gradeAnswer)
 
 // Answer Breakdown (Premium)

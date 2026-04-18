@@ -29,6 +29,7 @@ export class StudentController {
       const search = req.query.search as string
       const gradeLevel = req.query.grade_level as string
       const campusId = req.query.campus_id as string
+      const sectionId = req.query.section_id as string
 
       // Use campus_id if provided and not empty, otherwise use admin's school_id
       const effectiveSchoolId = (campusId && campusId.trim() !== '') ? campusId : schoolId
@@ -38,7 +39,8 @@ export class StudentController {
         page,
         limit,
         search,
-        gradeLevel
+        gradeLevel,
+        sectionId
       )
 
       res.json({

@@ -36,6 +36,25 @@ export const changePassword = async (req: Request, res: Response) => {
 }
 
 /**
+ * PUT /api/auth/profile
+ * Body: { first_name?, last_name?, phone? }
+ * Any authenticated user can update their own profile fields.
+ */
+export const updateProfile = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as AuthRequest).user?.id
+    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' })
+
+    const { first_name, last_name, phone } = req.body
+    await authService.updateProfile(userId, { first_name, last_name, phone })
+    res.json({ success: true, message: 'Profile updated successfully' })
+  } catch (error: any) {
+    console.error('Error in updateProfile:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+}
+
+/**
  * POST /api/auth/force-password-change
  * Body: { campus_id?: string }
  * Admin only — forces all users in the school/campus to change password on next login.

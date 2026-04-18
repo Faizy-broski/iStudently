@@ -221,6 +221,39 @@ export const getGradeBreakdown = async (req: Request, res: Response) => {
   }
 }
 
+export const importFromGradebook = async (req: Request, res: Response) => {
+  try {
+    const schoolId = (req as AuthRequest).profile?.school_id
+    if (!schoolId) {
+      return res.status(400).json({ success: false, error: 'school_id is required' })
+    }
+
+    const { course_period_id, marking_period_id, academic_year_id, override_existing } = req.body
+    if (!course_period_id || !marking_period_id || !academic_year_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'course_period_id, marking_period_id, and academic_year_id are required',
+      })
+    }
+
+    const userId = (req as AuthRequest).user?.id
+    const data = await finalGradesService.importFinalGradesFromGradebook(
+      schoolId,
+      course_period_id,
+      marking_period_id,
+      academic_year_id,
+      {
+        overrideExisting: override_existing,
+        staffId: userId,
+      }
+    )
+    res.json({ success: true, data })
+  } catch (error: any) {
+    console.error('Error in importFromGradebook:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+}
+
 // ============================================================================
 // FINAL GRADE LISTS (batch generation for printing)
 // ============================================================================

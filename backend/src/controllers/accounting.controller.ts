@@ -810,9 +810,44 @@ export class AccountingController {
             }
 
             await accountingService.deletePayeePayment(campusId, paymentId)
-            return res.json({ success: true, message: 'Payment deleted successfully' })
+            return res.json({ success: true, message: 'Payee payment deleted successfully' })
         } catch (error: any) {
             console.error('Error deleting payee payment:', error)
+            return res.status(500).json({ success: false, error: error.message })
+        }
+    }
+
+    // ==========================================
+    // ZERO-TRUST STAFF ROUTES (Teachers)
+    // ==========================================
+    async getTeacherOwnSalaries(req: Request, res: Response) {
+        try {
+            const profile = (req as any).profile;
+            if (!profile?.staff_id) return res.status(403).json({ success: false, error: 'Valid staff context required' })
+            
+            const campusId = req.query.campus_id as string || profile?.campus_id;
+            const academicYear = req.query.academic_year as string | undefined;
+
+            const salaries = await accountingService.getSalariesByStaff(campusId, profile.staff_id, academicYear)
+            return res.json({ success: true, data: salaries })
+        } catch (error: any) {
+            console.error('Error getting own salaries:', error)
+            return res.status(500).json({ success: false, error: error.message })
+        }
+    }
+
+    async getTeacherOwnPayments(req: Request, res: Response) {
+        try {
+            const profile = (req as any).profile;
+            if (!profile?.staff_id) return res.status(403).json({ success: false, error: 'Valid staff context required' })
+            
+            const campusId = req.query.campus_id as string || profile?.campus_id;
+            const academicYear = req.query.academic_year as string | undefined;
+
+            const payments = await accountingService.getStaffPaymentsByStaff(campusId, profile.staff_id, academicYear)
+            return res.json({ success: true, data: payments })
+        } catch (error: any) {
+            console.error('Error getting own payments:', error)
             return res.status(500).json({ success: false, error: error.message })
         }
     }

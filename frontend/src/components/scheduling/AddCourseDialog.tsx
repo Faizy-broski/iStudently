@@ -96,9 +96,9 @@ export function AddCourseDialog({
 
   // Fetch subjects
   const { data: subjectsData, isLoading: subjectsLoading } = useSWR(
-    ["subjects-for-scheduling"],
+    ["subjects-for-scheduling", campusContext?.selectedCampus?.id],
     async () => {
-      const response = await getSubjects()
+      const response = await getSubjects(undefined, campusContext?.selectedCampus?.id)
       if (!response.success) throw new Error(response.error || "Failed to fetch subjects")
       return response.data || []
     },

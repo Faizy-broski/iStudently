@@ -114,4 +114,26 @@ router.post('/utilities/duplicates/delete', requireAdmin, attendanceController.d
 
 router.post('/completed', requireTeacher, attendanceController.markAttendanceCompleted)
 
+// ============================================================================
+// ZERO-TRUST ROLE ENDPOINTS (Teacher / Student / Parent)
+// ============================================================================
+
+import { requireRole } from '../middlewares/role.middleware'
+
+// 1. TEACHER SCOPE
+// Get roster and current attendance for a specific course period owned by this teacher
+router.get('/staff/take', requireRole('teacher', 'admin', 'super_admin'), attendanceController.getStaffTakeAttendance)
+// Submit attendance records for a specific course period owned by this teacher
+router.post('/staff/take', requireRole('teacher', 'admin', 'super_admin'), attendanceController.submitStaffAttendance)
+// View attendance chart specifically scoped to students in a teacher's classes
+router.get('/staff/chart', requireRole('teacher', 'admin', 'super_admin'), attendanceController.getStaffAttendanceChart)
+
+// 2. STUDENT SCOPE
+// Get daily summary for the authenticated student only
+router.get('/student/summary', requireRole('student'), attendanceController.getStudentDailySummary)
+
+// 3. PARENT SCOPE
+// Get daily summary matching dependents of the authenticated parent only
+router.get('/parent/summary', requireRole('parent'), attendanceController.getParentDailySummary)
+
 export default router

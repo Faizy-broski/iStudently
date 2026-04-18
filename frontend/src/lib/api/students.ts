@@ -143,6 +143,8 @@ export async function getStudents(params?: {
   search?: string
   grade_level?: string
   campus_id?: string
+  /** Scope results to a specific section (used by teacher dashboard) */
+  section_id?: string
 }) {
   const queryParams = new URLSearchParams()
   if (params?.page) queryParams.append('page', params.page.toString())
@@ -150,6 +152,7 @@ export async function getStudents(params?: {
   if (params?.search) queryParams.append('search', params.search)
   if (params?.grade_level) queryParams.append('grade_level', params.grade_level)
   if (params?.campus_id) queryParams.append('campus_id', params.campus_id)
+  if (params?.section_id) queryParams.append('section_id', params.section_id)
 
   const query = queryParams.toString()
   return apiRequest<Student[]>(`/students${query ? `?${query}` : ''}`)

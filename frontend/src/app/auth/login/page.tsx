@@ -34,6 +34,8 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [justLoggedIn, setJustLoggedIn] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
+  const [redirecting, setRedirecting] = useState(false)
+  const [countdown, setCountdown] = useState(3)
 
   // Social login
   const [socialConfig, setSocialConfig] = useState<SocialLoginConfig | null>(null)
@@ -119,9 +121,7 @@ function LoginForm() {
         return
       }
 
-      // Profile loaded successfully, redirect to dashboard
-      toast.success('Welcome To iStudent.ly!')
-
+      // Profile loaded successfully, start redirect countdown
       const dashboardMap: Record<string, string> = {
         'super_admin': '/superadmin/dashboard',
         'admin': '/admin/dashboard',
@@ -133,7 +133,24 @@ function LoginForm() {
       }
 
       const dashboardUrl = dashboardMap[profile.role] || '/auth/login?error=role_not_supported'
-      router.push(dashboardUrl)
+      setRedirecting(true)
+      setCountdown(3)
+
+      toast.success('Welcome To iStudent.ly!', {
+        description: 'Redirecting to your dashboard...',
+        duration: 3000,
+      })
+
+      let count = 3
+      const interval = setInterval(() => {
+        count -= 1
+        setCountdown(count)
+        if (count <= 0) {
+          clearInterval(interval)
+          router.push(dashboardUrl)
+        }
+      }, 1000)
+
       setLoading(false)
     } else if (user && !profile) {
       // User logged in but profile not yet loaded
@@ -320,7 +337,7 @@ function LoginForm() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-900/70 hover:text-blue-900 dark:text-white/90 dark:hover:text-white transition-colors"
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -348,10 +365,14 @@ function LoginForm() {
             <div className={getAnimClass('delay-400')}>
               <Button
                 type="submit"
-                disabled={loading || authLoading}
-                className="w-full h-12 bg-white text-brand-blue hover:bg-white/90 font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all"
+                disabled={loading || authLoading || redirecting}
+                className="w-full h-12 bg-white text-brand-blue hover:bg-white/90 font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-70"
               >
-                {loading || authLoading ? <Loader2 className="animate-spin" /> : "Sign In"}
+                {redirecting ? (
+                  <span className="flex items-center gap-2"><Loader2 className="animate-spin" /> Redirecting in {countdown}s...</span>
+                ) : loading || authLoading ? (
+                  <Loader2 className="animate-spin" />
+                ) : "Sign In"}
               </Button>
             </div>
 

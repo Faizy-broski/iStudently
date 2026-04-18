@@ -559,3 +559,189 @@ export async function deleteReferral(req: Request, res: Response): Promise<void>
     res.status(500).json({ error: err.message || 'Internal server error' });
   }
 }
+
+// ---------------------------------------------------------------------------
+// ZERO-TRUST ROLE ENDPOINTS (Teacher / Student / Parent)
+// ---------------------------------------------------------------------------
+
+export async function getStaffReferrals(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const schoolId = resolveQuerySchoolId(req as Request);
+    const staffId = req.profile?.staff_id;
+
+    if (!schoolId || !staffId) {
+      res.status(400).json({ error: 'school_id and staff context are required' });
+      return;
+    }
+
+    const { data: rawData, error } = await supabase
+      .from('discipline_referrals')
+      .select(`
+        *,
+        students ( id, student_number, grade_level, section_id, profile:profiles(first_name, father_name, grandfather_name, last_name) ),
+        reporter:profiles!discipline_referrals_reporter_id_fkey ( id, first_name, last_name )
+      `)
+      .eq('school_id', schoolId)
+      .eq('reporter_id', req.profile.id) // Only referrals written by this exact profile
+      .order('incident_date', { ascending: false });
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    let data = rawData;
+    if (data && Array.isArray(data)) {
+      data = data.map((r: any) => {
+        if (r.reporter && r.reporter.first_name !== undefined) {
+          r.reporter.full_name = `${r.reporter.first_name || ''} ${r.reporter.last_name || ''}`.trim();
+        }
+        return r;
+      });
+    }
+
+    res.json({ data });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function createStaffReferral(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const schoolId = resolveSchoolId(req as Request);
+    if (!schoolId) {
+      res.status(400).json({ error: 'school_id is required' });
+      return;
+    }
+
+    const { student_id, field_values, incident_date } = req.body;
+    
+    // Zero-Trust: We ignore incoming reporter_id completely and lock it to the active session.
+    const reporterId = req.profile?.id;
+
+    if (!student_id || !reporterId) {
+      res.status(400).json({ error: 'student_id and valid staff profile are required' });
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('discipline_referrals')
+      .insert({
+        school_id: schoolId,
+        student_id,
+        reporter_id: reporterId, // strictly enforced
+        incident_date: incident_date || new Date().toISOString().slice(0, 10),
+        field_values: field_values || {}
+      })
+      .select(`
+        *,
+        students ( id, student_number, profile:profiles(first_name, father_name, grandfather_name, last_name) ),
+        reporter:profiles!discipline_referrals_reporter_id_fkey ( id, first_name, last_name )
+      `)
+      .single();
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    if (data && data.reporter && data.reporter.first_name !== undefined) {
+      data.reporter.full_name = `${data.reporter.first_name || ''} ${data.reporter.last_name || ''}`.trim();
+    }
+
+    res.status(201).json({ data });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function getStudentReferrals(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const studentId = req.profile?.student_id;
+    if (!studentId) {
+      res.status(400).json({ error: 'Valid student context required' });
+      return;
+    }
+
+    const { data: rawData, error } = await supabase
+      .from('discipline_referrals')
+      .select(`
+        *,
+        reporter:profiles!discipline_referrals_reporter_id_fkey ( id, first_name, last_name )
+      `)
+      .eq('student_id', studentId) // strictly scoped
+      .order('incident_date', { ascending: false });
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    let data = rawData;
+    if (data && Array.isArray(data)) {
+      data = data.map((r: any) => {
+        if (r.reporter && r.reporter.first_name !== undefined) {
+          r.reporter.full_name = `${r.reporter.first_name || ''} ${r.reporter.last_name || ''}`.trim();
+        }
+        return r;
+      });
+    }
+
+    res.json({ data });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function getParentReferrals(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const parentProfileId = req.profile?.id;
+    if (!parentProfileId) {
+      res.status(400).json({ error: 'Valid parent context required' });
+      return;
+    }
+
+    // 1. Fetch dependent student IDs securely
+    const { data: rels } = await supabase
+      .from('parent_student_associations')
+      .select('student_id')
+      .eq('parent_id', parentProfileId);
+
+    const studentIds = rels?.map(r => r.student_id) || [];
+    if (studentIds.length === 0) {
+      res.json({ data: [] });
+      return;
+    }
+
+    // 2. Query referrals but only IN the dependent student IDs securely
+    const { data: rawData, error } = await supabase
+      .from('discipline_referrals')
+      .select(`
+        *,
+        students ( id, student_number, profile:profiles(first_name, grandfather_name, last_name) ),
+        reporter:profiles!discipline_referrals_reporter_id_fkey ( id, first_name, last_name )
+      `)
+      .in('student_id', studentIds)
+      .order('incident_date', { ascending: false });
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    let data = rawData;
+    if (data && Array.isArray(data)) {
+      data = data.map((r: any) => {
+        if (r.reporter && r.reporter.first_name !== undefined) {
+          r.reporter.full_name = `${r.reporter.first_name || ''} ${r.reporter.last_name || ''}`.trim();
+        }
+        return r;
+      });
+    }
+
+    res.json({ data });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+}
+

@@ -71,4 +71,10 @@ router.delete('/payee-payments/:paymentId', (req, res) => accountingController.d
 // NOTE: Salaries are managed via the main /api/salary module with cron job auto-generation
 // Use /api/salary/records endpoints for salary management
 
+// ==========================================
+// ZERO-TRUST STAFF ROUTES
+// ==========================================
+router.get('/staff/salaries', (req, res) => accountingController.getTeacherOwnSalaries(req, res))
+router.get('/staff/payments', (req, res) => accountingController.getTeacherOwnPayments(req, res))
+
 export default router

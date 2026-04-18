@@ -12,6 +12,7 @@ import { useAuth } from '@/context/AuthContext'
 import { Settings, Bell, Lock, User, Mail, Phone, MapPin, Save } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { updateProfile } from '@/lib/api/auth'
 
 export default function ParentSettingsPage() {
   const { profile } = useAuth()
@@ -32,16 +33,25 @@ export default function ParentSettingsPage() {
     firstName: profile?.first_name || '',
     lastName: profile?.last_name || '',
     email: profile?.email || '',
-    phone: profile?.phone || '',
+    phone: '',
     address: ''
   })
 
   const handleSaveProfile = async () => {
     setIsSaving(true)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    toast.success('Profile updated successfully')
-    setIsSaving(false)
+    try {
+      const result = await updateProfile({
+        first_name: profileData.firstName,
+        last_name: profileData.lastName,
+        phone: profileData.phone,
+      })
+      if (!result.success) throw new Error(result.error)
+      toast.success('Profile updated successfully')
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update profile')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleSaveNotifications = async () => {

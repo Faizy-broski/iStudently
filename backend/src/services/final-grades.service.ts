@@ -24,6 +24,25 @@ class FinalGradesService {
     return data?.campus_id || null
   }
 
+  async importFinalGradesFromGradebook(
+    schoolId: string,
+    coursePeriodId: string,
+    markingPeriodId: string,
+    academicYearId: string,
+    options: {
+      overrideExisting?: boolean
+      staffId?: string
+    } = {}
+  ) {
+    return gradebookService.importFinalGradesFromGradebook(
+      schoolId,
+      coursePeriodId,
+      markingPeriodId,
+      academicYearId,
+      options
+    )
+  }
+
   // ──────────────────────────────────────────────────────────────────────────
   // FINAL GRADES
   // ──────────────────────────────────────────────────────────────────────────

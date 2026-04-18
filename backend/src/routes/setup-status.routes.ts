@@ -14,7 +14,8 @@ router.get('/status', requireRole('admin', 'super_admin'), setupStatusController
 // Campus management
 // GET campuses is accessible by admin, super_admin, AND librarian (for sidebar campus info)
 router.get('/campuses', requireRole('admin', 'super_admin', 'librarian'), setupStatusController.getCampuses)
-router.get('/campuses/:id', requireRole('admin', 'super_admin', 'librarian'), setupStatusController.getCampusById)
+// GET single campus is accessible by all authenticated roles so teachers/students/parents can load their campus info
+router.get('/campuses/:id', requireRole('admin', 'super_admin', 'librarian', 'teacher', 'student', 'parent', 'staff'), setupStatusController.getCampusById)
 router.get('/campuses/:id/stats', requireRole('admin', 'super_admin'), setupStatusController.getCampusStats)
 
 // Write operations remain admin-only

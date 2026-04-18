@@ -59,9 +59,22 @@ interface ClassItem {
 
 export default function TeacherDashboard() {
   const router = useRouter()
-  const { profile, loading: authLoading } = useAuth()
+  const { profile, loading: authLoading, profileFetchPending } = useAuth()
   const [currentTime, setCurrentTime] = useState(new Date())
   const todayDate = new Date().toISOString().split('T')[0]
+  const [staffIdGracePeriod, setStaffIdGracePeriod] = useState(true)
+
+  // Give a brief grace period for staff_id to be populated after auth state changes
+  // This prevents flash of "Not authorized" during background token refreshes
+  useEffect(() => {
+    if (profile && !profile.staff_id && staffIdGracePeriod) {
+      const timer = setTimeout(() => setStaffIdGracePeriod(false), 3000)
+      return () => clearTimeout(timer)
+    }
+    if (profile?.staff_id) {
+      setStaffIdGracePeriod(false)
+    }
+  }, [profile, profile?.staff_id, staffIdGracePeriod])
 
   // Update time every minute
   useEffect(() => {
@@ -214,8 +227,8 @@ export default function TeacherDashboard() {
 
   const isLoading = scheduleLoading || overviewLoading
 
-  // Show loading while auth is initializing, profile is not yet loaded, or while fetching initial data
-  if (authLoading || !profile || (isLoading && !schedule)) {
+  // Show loading while auth is initializing, profile is not yet loaded, profile fetch pending, or while fetching initial data
+  if (authLoading || !profile || profileFetchPending || (isLoading && !schedule)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -223,7 +236,16 @@ export default function TeacherDashboard() {
     )
   }
 
-  // Only show "not authorized" after auth has finished loading AND profile exists but has no staff_id
+  // Show loading during grace period while staff_id is being populated
+  if (!profile?.staff_id && staffIdGracePeriod) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  // Only show "not authorized" after grace period AND profile exists but has no staff_id
   if (!profile?.staff_id) {
     return (
       <div className="flex items-center justify-center min-h-screen">

@@ -1,7 +1,6 @@
 import { Router } from 'express'
 import { StudentDashboardController } from '../controllers/student-dashboard.controller'
 import { authenticate } from '../middlewares/auth.middleware'
-import { requireRole } from '../middlewares/role.middleware'
 
 const router = Router()
 const controller = new StudentDashboardController()
@@ -76,9 +75,65 @@ router.get('/attendance/detailed', (req, res) => controller.getDetailedAttendanc
 router.get('/exams/upcoming', (req, res) => controller.getUpcomingExams(req, res))
 
 /**
+ * GET /api/student-dashboard/grades
+ * Get all grades grouped by subject/course-period
+ */
+router.get('/grades', (req, res) => controller.getStudentGrades(req, res))
+
+/**
+ * GET /api/student-dashboard/report-card
+ * Get report card summary (subject averages + comments)
+ * Query params: ?marking_period_id=xxx (optional)
+ */
+router.get('/report-card', (req, res) => controller.getStudentReportCard(req, res))
+
+/**
+ * GET /api/student-dashboard/discipline
+ * Get logged-in student's own discipline referrals
+ */
+router.get('/discipline', (req, res) => controller.getStudentDiscipline(req, res))
+
+/**
+ * GET /api/student-dashboard/activities
+ * Get activities the logged-in student is enrolled in
+ */
+router.get('/activities', (req, res) => controller.getStudentActivities(req, res))
+
+/**
+ * GET /api/student-dashboard/hostel
+ * Get student's current hostel room assignment
+ */
+router.get('/hostel', (req, res) => controller.getHostelAssignment(req, res))
+
+/**
+ * GET /api/student-dashboard/class-diary
+ * Get class diary entries for student's section
+ */
+router.get('/class-diary', (req, res) => controller.getClassDiary(req, res))
+
+/**
+ * GET /api/student-dashboard/info
+ * Get comprehensive student info (profile, section, school)
+ */
+router.get('/info', (req, res) => controller.getStudentInfo(req, res))
+
+/**
  * GET /api/student-dashboard/profile/id-card
  * Get digital ID card information
  */
 router.get('/profile/id-card', (req, res) => controller.getDigitalIdCard(req, res))
+
+// Billing (zero-trust: student_id from JWT only)
+router.get('/billing/fees', (req, res) => controller.getStudentFees(req, res))
+router.get('/billing/payments', (req, res) => controller.getStudentPaymentHistory(req, res))
+
+// Scheduling
+router.get('/scheduling/courses', (req, res) => controller.getStudentCourses(req, res))
+router.get('/scheduling/class-pictures', (req, res) => controller.getClassPictures(req, res))
+router.get('/scheduling/lesson-plans', (req, res) => controller.getLessonPlans(req, res))
+
+// Grades detail
+router.get('/grades/final', (req, res) => controller.getStudentFinalGrades(req, res))
+router.get('/grades/gpa-rank', (req, res) => controller.getStudentGpaRank(req, res))
 
 export default router

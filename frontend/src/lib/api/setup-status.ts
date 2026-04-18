@@ -74,6 +74,7 @@ export interface Campus {
     principal_name?: string
     short_name?: string
     school_number?: string
+    website?: string | null
     logo_url?: string | null
     status: string
     parent_school_id: string

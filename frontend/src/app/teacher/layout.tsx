@@ -5,6 +5,7 @@ import { AuthLoadingGuard } from "@/components/auth/AuthLoadingGuard";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { RefreshOnReturn } from "@/components/RefreshOnReturn";
 import { SchoolSettingsProvider } from "@/context/SchoolSettingsContext";
+import { CampusProvider } from "@/context/CampusContext";
 
 export default function TeacherLayout({
   children,
@@ -15,9 +16,11 @@ export default function TeacherLayout({
     <AuthLoadingGuard>
       <RoleGuard allowedRoles={['teacher']}>
         <SchoolSettingsProvider>
-          <DashboardLayout role="teacher">
-            <RefreshOnReturn>{children}</RefreshOnReturn>
-          </DashboardLayout>
+          <CampusProvider>
+            <DashboardLayout role="teacher">
+              <RefreshOnReturn>{children}</RefreshOnReturn>
+            </DashboardLayout>
+          </CampusProvider>
         </SchoolSettingsProvider>
       </RoleGuard>
     </AuthLoadingGuard>

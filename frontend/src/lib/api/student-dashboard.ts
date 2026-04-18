@@ -331,6 +331,252 @@ export async function getDigitalIdCard() {
   return apiRequest<DigitalIdCard>('/student-dashboard/profile/id-card')
 }
 
+// ============================================================================
+// GRADES & REPORT CARD
+// ============================================================================
+
+export interface StudentGradeGroup {
+  course_period_id: string
+  subject: { id: string; name: string; code: string } | null
+  total_assignments: number
+  graded_count: number
+  average: number | null
+  letter_grade: string | null
+  grades: Array<{
+    id: string
+    points: number | null
+    letter_grade: string | null
+    comment: string | null
+    is_exempt: boolean
+    is_late: boolean
+    is_missing: boolean
+    graded_at: string | null
+    assignment: {
+      id: string
+      title: string
+      points: number
+      due_date: string | null
+      assignment_type: { id: string; title: string; final_grade_percent: number } | null
+    } | null
+  }>
+}
+
+export interface StudentReportCard {
+  subjects: Array<{
+    subject: { id: string; name: string; code: string } | null
+    course_period_id: string
+    average: number | null
+    letter_grade: string | null
+    grade_count: number
+  }>
+  comments: Array<{
+    id: string
+    comment: { code: string; comment: string } | null
+    marking_period_id: string | null
+    course_period_id: string | null
+  }>
+}
+
+export async function getStudentGrades() {
+  return apiRequest<StudentGradeGroup[]>('/student-dashboard/grades')
+}
+
+export async function getStudentClassDiary() {
+  return apiRequest<any[]>('/student-dashboard/class-diary')
+}
+
+export async function getStudentDiscipline() {
+  return apiRequest<any[]>('/student-dashboard/discipline')
+}
+
+export async function getStudentActivities() {
+  return apiRequest<any[]>('/student-dashboard/activities')
+}
+
+export async function getStudentReportCard(markingPeriodId?: string) {
+  const q = markingPeriodId ? `?marking_period_id=${markingPeriodId}` : ''
+  return apiRequest<StudentReportCard>(`/student-dashboard/report-card${q}`)
+}
+
+// ============================================================================
+// BILLING (zero-trust: no student_id param, identity from JWT)
+// ============================================================================
+
+export interface ClassPicturesData {
+  course_periods: Array<{
+    id: string
+    title: string
+    course_title: string | null
+    teacher_name: string | null
+    teacher_photo_url: string | null
+  }>
+  students: Array<{
+    id: string
+    student_number: string
+    name: string
+    photo_url: string | null
+    is_self: boolean
+  }>
+}
+
+export interface LessonPlanItem {
+  id: string
+  sort_order: number
+  time_minutes?: number
+  teacher_activity?: string
+  learner_activity?: string
+  formative_assessment?: string
+  learning_materials?: string
+}
+
+export interface LessonPlanFile {
+  id: string
+  file_name: string
+  file_url: string
+  file_type?: string
+}
+
+export interface StudentLessonPlan {
+  id: string
+  title: string
+  on_date: string
+  lesson_number: number
+  length_minutes?: number
+  learning_objectives?: string
+  evaluation?: string
+  inclusiveness?: string
+  course_period_id: string
+  course_period: { id: string; title: string; course_title?: string; teacher_name?: string } | null
+  items: LessonPlanItem[]
+  files: LessonPlanFile[]
+}
+
+export interface StudentLessonPlansData {
+  course_periods: Array<{ id: string; title: string; course_title?: string; teacher_name?: string | null }>
+  lessons: StudentLessonPlan[]
+}
+
+export async function getStudentClassPictures() {
+  return apiRequest<ClassPicturesData>('/student-dashboard/scheduling/class-pictures')
+}
+
+export async function getStudentLessonPlans(coursePeriodId?: string) {
+  const qs = coursePeriodId ? `?course_period_id=${encodeURIComponent(coursePeriodId)}` : ''
+  return apiRequest<StudentLessonPlansData>(`/student-dashboard/scheduling/lesson-plans${qs}`)
+}
+
+export interface StudentInfo {
+  id: string
+  student_number: string
+  grade_level: string
+  admission_date: string
+  first_name: string | null
+  father_name: string | null
+  grandfather_name: string | null
+  last_name: string | null
+  email: string | null
+  phone: string | null
+  date_of_birth: string | null
+  age: string | null
+  gender: string | null
+  address: string | null
+  profile_photo_url: string | null
+  section_name: string | null
+  grade_level_name: string | null
+  school_name: string | null
+  school_address: string | null
+  school_phone: string | null
+}
+
+export async function getStudentInfo() {
+  return apiRequest<StudentInfo>('/student-dashboard/info')
+}
+
+export interface StudentFeeRecord {
+  id: string
+  fee_name: string
+  category: string
+  academic_year: string
+  base_amount: number
+  final_amount: number
+  amount_paid: number
+  balance: number
+  status: string
+  due_date: string
+}
+
+export interface StudentPaymentRecord {
+  id: string
+  student_fee_id: string
+  amount: number
+  payment_method: string
+  payment_reference?: string
+  payment_date: string
+  notes?: string
+  received_by?: string
+}
+
+export async function getStudentFees() {
+  return apiRequest<StudentFeeRecord[]>('/student-dashboard/billing/fees')
+}
+
+export async function getStudentPaymentHistory() {
+  return apiRequest<StudentPaymentRecord[]>('/student-dashboard/billing/payments')
+}
+
+// ============================================================================
+// SCHEDULING
+// ============================================================================
+
+export interface StudentCourse {
+  subject_id: string
+  subject_name: string
+  subject_code: string
+  description?: string
+  teacher_name: string
+}
+
+export async function getStudentCourses() {
+  return apiRequest<StudentCourse[]>('/student-dashboard/scheduling/courses')
+}
+
+// ============================================================================
+// GRADES DETAIL
+// ============================================================================
+
+export interface SubjectFinalGrade {
+  subject_id: string
+  subject_name: string
+  subject_code: string
+  total_obtained: number
+  total_possible: number
+  percentage: number
+  grade: string
+  exams: Array<{
+    exam_name: string
+    exam_type: string
+    exam_date: string
+    marks_obtained: number
+    max_marks: number
+  }>
+}
+
+export interface GpaRankData {
+  gpa: number | null
+  rank: number | null
+  total_students: number | null
+  percentage: number | null
+  grade: string | null
+}
+
+export async function getStudentFinalGrades() {
+  return apiRequest<SubjectFinalGrade[]>('/student-dashboard/grades/final')
+}
+
+export async function getStudentGpaRank() {
+  return apiRequest<GpaRankData>('/student-dashboard/grades/gpa-rank')
+}
+
 /**
  * Submit assignment
  */

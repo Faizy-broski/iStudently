@@ -315,3 +315,48 @@ export async function getReportCard(studentId: string, academicYear?: string): P
   const params = academicYear ? `?academic_year=${academicYear}` : ''
   return apiRequest<ReportCardData>(`/api/parent-dashboard/report-card/${studentId}${params}`)
 }
+
+export async function getStudentClassDiary(studentId: string): Promise<any[]> {
+  return apiRequest<any[]>(`/api/parent-dashboard/class-diary/${studentId}`)
+}
+
+export async function getStudentDiscipline(studentId: string): Promise<any[]> {
+  return apiRequest<any[]>(`/api/parent-dashboard/discipline/${studentId}`)
+}
+
+export async function getStudentEnrolledActivities(studentId: string): Promise<any[]> {
+  return apiRequest<any[]>(`/api/parent-dashboard/activities/${studentId}`)
+}
+
+export interface SubjectFinalGrade {
+  subject_id: string
+  subject_name: string
+  subject_code: string
+  total_obtained: number
+  total_possible: number
+  percentage: number
+  grade: string
+  exams: Array<{
+    exam_name: string
+    exam_type: string
+    exam_date: string
+    marks_obtained: number
+    max_marks: number
+  }>
+}
+
+export interface GpaRankData {
+  gpa: number | null
+  rank: number | null
+  total_students: number | null
+  percentage: number | null
+  grade: string | null
+}
+
+export async function getFinalGrades(studentId: string): Promise<SubjectFinalGrade[]> {
+  return apiRequest<SubjectFinalGrade[]>(`/api/parent-dashboard/grades/${studentId}/final`)
+}
+
+export async function getGpaRank(studentId: string): Promise<GpaRankData> {
+  return apiRequest<GpaRankData>(`/api/parent-dashboard/grades/${studentId}/gpa-rank`)
+}

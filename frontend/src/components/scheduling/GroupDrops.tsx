@@ -63,8 +63,8 @@ export function GroupDrops() {
 
   // Fetch marking periods
   const { data: markingPeriodsData } = useSWR(
-    academicYearId ? ["marking-periods-drops", academicYearId] : null,
-    async () => getMarkingPeriods(academicYearId!),
+    campusContext?.selectedCampus?.id ? ["marking-periods-drops", campusContext.selectedCampus.id] : null,
+    async () => getMarkingPeriods(campusContext?.selectedCampus?.id),
     { revalidateOnFocus: false }
   )
 
@@ -163,20 +163,22 @@ export function GroupDrops() {
               <div className="space-y-1">
                 <p className="text-sm font-medium">{selectedCoursePeriod.courseTitle}</p>
                 <p className="text-xs text-muted-foreground">{selectedCoursePeriod.periodLabel}</p>
-                <button
-                  className="text-primary hover:underline text-sm"
-                  onClick={() => setShowCoursePicker(!showCoursePicker)}
+                    <button
+                  type="button"
+                  onClick={() => setShowCoursePicker(prev => !prev)}
+                  className="px-4 py-2 bg-blue-950 text-white text-sm font-medium rounded-md shadow hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                 >
-                  Change Course
+                  Choose a Course
                 </button>
               </div>
             ) : (
-              <button
-                className="text-primary hover:underline text-sm"
-                onClick={() => setShowCoursePicker(!showCoursePicker)}
-              >
-                Choose a Course
-              </button>
+                 <button
+                  type="button"
+                  onClick={() => setShowCoursePicker(prev => !prev)}
+                  className="px-4 py-2 bg-blue-950 text-white text-sm font-medium rounded-md shadow hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                >
+                  Choose a Course
+                </button>
             )}
 
             {/* Drop Date */}

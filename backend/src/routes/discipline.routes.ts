@@ -75,9 +75,35 @@ router.delete('/discipline/referrals/:id', requireAdmin, disciplineController.de
 // ============================================================================
 
 /**
+/**
  * GET /api/discipline/score/:studentId
  * Query: school_id, campus_id?, academic_year_id?
  */
 router.get('/discipline/score/:studentId', requireTeacher, disciplineController.getStudentScore);
+
+// ============================================================================
+// STRICT ROLE-BASED ENDPOINTS (Zero-Trust)
+// ============================================================================
+
+import { requireRole } from '../middlewares/role.middleware';
+
+/**
+ * TEACHER SCOPE (Staff)
+ */
+// GET /api/discipline/staff/referrals - Get referrals tied to teacher
+router.get('/discipline/staff/referrals', requireRole('teacher', 'admin', 'super_admin'), disciplineController.getStaffReferrals);
+
+// POST /api/discipline/staff/referrals - Create referral as a teacher (forces reporter_id = staff_id)
+router.post('/discipline/staff/referrals', requireRole('teacher', 'admin', 'super_admin'), disciplineController.createStaffReferral);
+
+/**
+ * STUDENT SCOPE
+ */
+router.get('/discipline/student/referrals', requireRole('student'), disciplineController.getStudentReferrals);
+
+/**
+ * PARENT SCOPE
+ */
+router.get('/discipline/parent/referrals', requireRole('parent'), disciplineController.getParentReferrals);
 
 export default router;

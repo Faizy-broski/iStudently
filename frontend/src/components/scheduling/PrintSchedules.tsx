@@ -7,6 +7,7 @@ import { useAcademic } from "@/context/AcademicContext"
 import { useCampus } from "@/context/CampusContext"
 import { useSchoolSettings } from "@/context/SchoolSettingsContext"
 import { openPdfDownload } from "@/lib/utils/printLayout"
+import { type PdfHeaderFooterSettings, getPdfHeaderFooter } from "@/lib/api/school-settings"
 import * as studentsApi from "@/lib/api/students"
 import { getStudentSchedule, type StudentSchedule } from "@/lib/api/scheduling"
 import { getMarkingPeriods, type MarkingPeriod } from "@/lib/api/marking-periods"
@@ -39,9 +40,11 @@ export function PrintSchedules() {
   const campus = campusContext?.selectedCampus
   const schoolName = campus?.name || "School"
 
-  const [pdfSettings, setPdfSettings] = useState<import("@/lib/api/school-settings").PdfHeaderFooterSettings | null>(null)
+  const [pdfSettings, setPdfSettings] = useState<PdfHeaderFooterSettings | null>(null)
   useEffect(() => {
-    if (campusId) import("@/lib/api/school-settings").then(m => m.getPdfHeaderFooter(campusId)).then(r => { if (r.success && r.data) setPdfSettings(r.data) })
+    if (campusId) {
+      getPdfHeaderFooter(campusId).then(r => { if (r.success && r.data) setPdfSettings(r.data) })
+    }
   }, [campusId])
 
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set())

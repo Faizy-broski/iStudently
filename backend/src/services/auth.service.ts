@@ -26,6 +26,29 @@ class AuthService {
   }
 
   /**
+   * Update a user's own profile fields (first_name, last_name, phone).
+   * userId comes from the JWT so users can only update themselves.
+   */
+  async updateProfile(
+    userId: string,
+    data: { first_name?: string; last_name?: string; phone?: string }
+  ): Promise<void> {
+    const update: Record<string, string> = {}
+    if (data.first_name !== undefined) update.first_name = data.first_name.trim()
+    if (data.last_name !== undefined) update.last_name = data.last_name.trim()
+    if (data.phone !== undefined) update.phone = data.phone.trim()
+
+    if (Object.keys(update).length === 0) return
+
+    const { error } = await supabase
+      .from('profiles')
+      .update(update)
+      .eq('id', userId)
+
+    if (error) throw new Error(`Failed to update profile: ${error.message}`)
+  }
+
+  /**
    * Force all users in a school (or specific campus) to change their password.
    * campus_id is the child-school id; when provided only that campus is targeted.
    */

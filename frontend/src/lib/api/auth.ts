@@ -29,6 +29,19 @@ async function apiRequest<T = unknown>(
   return data
 }
 
+// ── User: update own profile ──────────────────────────────────────────────────
+
+export async function updateProfile(data: {
+  first_name?: string
+  last_name?: string
+  phone?: string
+}): Promise<ApiResponse> {
+  return apiRequest('/auth/profile', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
 // ── User: change own password ─────────────────────────────────────────────────
 
 export async function changePassword(newPassword: string): Promise<ApiResponse> {

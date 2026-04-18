@@ -34,6 +34,9 @@ router.delete('/assignment-types/:id', requireTeacher, gradebookController.delet
 // GET /gradebook/assignments?course_period_id=&assignment_type_id=
 router.get('/assignments', gradebookController.getAssignments)
 
+// GET /gradebook/assignments/staff (teacher - all assignments for current teacher)
+router.get('/assignments/staff', requireTeacher, gradebookController.getAssignmentsByStaff)
+
 // GET /gradebook/assignments/:id
 router.get('/assignments/:id', gradebookController.getAssignmentById)
 
@@ -55,6 +58,9 @@ router.post('/assignments/mass-create', requireTeacher, gradebookController.mass
 
 // GET /gradebook/grades/assignment/:assignmentId
 router.get('/grades/assignment/:assignmentId', gradebookController.getGradesForAssignment)
+
+// GET /gradebook/grades/summary/student/:studentId?marking_period_id=
+router.get('/grades/summary/student/:studentId', gradebookController.getStudentGradesSummary)
 
 // GET /gradebook/grades/student/:studentId?course_period_id=
 router.get('/grades/student/:studentId', gradebookController.getGradesForStudent)

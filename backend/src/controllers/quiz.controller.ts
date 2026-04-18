@@ -130,6 +130,26 @@ export const removeQuestionFromQuiz = async (req: Request, res: Response) => {
 }
 
 // ============================================================================
+// STUDENT QUIZ LIST
+// ============================================================================
+
+const resolveStudentId = (req: Request): string | undefined => {
+  const authReq = req as any
+  if (!authReq.profile) return undefined
+  const role = typeof authReq.profile.role === 'string' ? authReq.profile.role.toLowerCase() : ''
+  if (role !== 'student') return undefined
+  return authReq.profile.student_id || authReq.profile.id
+}
+
+export const getStudentQuizzes = async (req: Request, res: Response) => {
+  try {
+    const studentId = resolveStudentId(req)
+    if (!studentId) return err(res, { message: 'No student profile found' }, 403)
+    ok(res, await svc.getStudentQuizzes(studentId))
+  } catch (e) { err(res, e) }
+}
+
+// ============================================================================
 // STUDENT SUBMISSION
 // ============================================================================
 

@@ -15,6 +15,17 @@ import type {
 } from '../types/scheduling.types'
 import type { ApiResponse } from '../types'
 
+interface StudentProfileRecord {
+  first_name?: string | null
+  father_name?: string | null
+  last_name?: string | null
+}
+
+interface StudentNameRecord {
+  id: string
+  profiles?: StudentProfileRecord | StudentProfileRecord[]
+}
+
 // ============================================================================
 // SCHEDULING SERVICE
 // Individual student enrollment in course_periods + teacher availability
@@ -27,6 +38,34 @@ const getMainSchoolId = async (schoolId: string): Promise<string> => {
     .eq('id', schoolId)
     .single()
   return school?.parent_school_id || schoolId
+}
+
+const getStudentNamesByIds = async (studentIds: string[]): Promise<Map<string, string>> => {
+  if (studentIds.length === 0) return new Map()
+
+  const { data, error } = await supabase
+    .from('students')
+    .select('id, profiles!students_profile_id_fkey(first_name, father_name, last_name)')
+    .in('id', studentIds)
+
+  if (error) {
+    console.error('Failed to fetch student names for mass enroll/drop:', error)
+    return new Map()
+  }
+
+  const map = new Map<string, string>()
+  for (const student of data || []) {
+    const rawProfile = student.profiles
+    const profile: StudentProfileRecord | undefined = Array.isArray(rawProfile)
+      ? rawProfile[0]
+      : rawProfile
+
+    const name = profile
+      ? [profile.first_name, profile.father_name, profile.last_name].filter(Boolean).join(' ').trim()
+      : ''
+    map.set(student.id, name || student.id)
+  }
+  return map
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -169,6 +208,8 @@ export const massEnroll = async (
     const errors: string[] = []
     let enrolled = 0
 
+    const studentNames = await getStudentNamesByIds(dto.student_ids)
+
     for (const studentId of dto.student_ids) {
       const result = await enrollStudent(mainSchoolId, {
         student_id: studentId,
@@ -183,7 +224,8 @@ export const massEnroll = async (
       if (result.success) {
         enrolled++
       } else {
-        errors.push(`Student ${studentId}: ${result.error}`)
+        const studentName = studentNames.get(studentId) || studentId
+        errors.push(`Student ${studentName}: ${result.error}`)
       }
     }
 
@@ -204,6 +246,8 @@ export const massDrop = async (
     const errors: string[] = []
     let dropped = 0
 
+    const studentNames = await getStudentNamesByIds(dto.student_ids)
+
     for (const studentId of dto.student_ids) {
       const result = await dropStudent({
         student_id: studentId,
@@ -214,7 +258,8 @@ export const massDrop = async (
       if (result.success) {
         dropped++
       } else {
-        errors.push(`Student ${studentId}: ${result.error}`)
+        const studentName = studentNames.get(studentId) || studentId
+        errors.push(`Student ${studentName}: ${result.error}`)
       }
     }
 

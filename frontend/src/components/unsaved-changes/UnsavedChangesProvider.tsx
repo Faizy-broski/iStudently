@@ -110,11 +110,28 @@ export function UnsavedChangesProvider({ children }: Props) {
       dirtyRef.current = false
     }
 
-    // Reset when a submit-type button is clicked (covers React forms that
-    // call e.preventDefault() but still use type="submit" buttons).
+    // Reset when a save-like button is clicked.
+    // Many pages use custom save handlers instead of native form submit.
     const onSaveClick = (e: Event) => {
-      const btn = (e.target as HTMLElement).closest('button[type="submit"]')
-      if (btn) dirtyRef.current = false
+      const target = (e.target as HTMLElement).closest('button, input[type="button"], input[type="submit"]')
+      if (!target) return
+
+      const isSubmitButton = target instanceof HTMLButtonElement && target.type === 'submit'
+      const saveDataAttr = target.getAttribute('data-unsaved-save')
+      const title = (target.getAttribute('title') || '').toLowerCase()
+      const text = (target.textContent || '').toLowerCase()
+      const value = target instanceof HTMLInputElement ? (target.value || '').toLowerCase() : ''
+
+      const isSaveButton =
+        isSubmitButton ||
+        saveDataAttr === 'true' ||
+        title.includes('save') ||
+        text.includes('save') ||
+        value.includes('save')
+
+      if (isSaveButton) {
+        dirtyRef.current = false
+      }
     }
 
     document.addEventListener('input', onInput, true)

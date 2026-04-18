@@ -739,6 +739,128 @@ export class ParentDashboardController {
       })
     }
   }
+
+  /**
+   * GET /api/parent-dashboard/discipline/:studentId
+   * Get discipline referrals for a student (parent view)
+   */
+  async getDiscipline(req: AuthRequest, res: Response) {
+    try {
+      const profileId = req.profile?.id
+      const { studentId } = req.params
+
+      if (!profileId) return res.status(401).json({ success: false, error: 'Parent authentication required' })
+
+      const parentId = await this.getParentId(profileId)
+      if (!parentId) return res.status(404).json({ success: false, error: 'Parent record not found' })
+
+      const students = await parentDashboardService.getStudentsList(parentId)
+      if (!students.find(s => s.id === studentId)) {
+        return res.status(403).json({ success: false, error: 'Access denied to this student' })
+      }
+
+      const data = await parentDashboardService.getDisciplineReferrals(studentId)
+      return res.json({ success: true, data })
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message || 'Failed to fetch discipline records' })
+    }
+  }
+
+  /**
+   * GET /api/parent-dashboard/activities/:studentId
+   * Get activities a student is enrolled in (parent view)
+   */
+  async getActivities(req: AuthRequest, res: Response) {
+    try {
+      const profileId = req.profile?.id
+      const { studentId } = req.params
+
+      if (!profileId) return res.status(401).json({ success: false, error: 'Parent authentication required' })
+
+      const parentId = await this.getParentId(profileId)
+      if (!parentId) return res.status(404).json({ success: false, error: 'Parent record not found' })
+
+      const students = await parentDashboardService.getStudentsList(parentId)
+      if (!students.find(s => s.id === studentId)) {
+        return res.status(403).json({ success: false, error: 'Access denied to this student' })
+      }
+
+      const data = await parentDashboardService.getEnrolledActivities(studentId)
+      return res.json({ success: true, data })
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message || 'Failed to fetch activities' })
+    }
+  }
+
+  /**
+   * GET /api/parent-dashboard/grades/:studentId/final
+   * Get exam-based final grades for a student (grouped by subject)
+   */
+  async getFinalGrades(req: AuthRequest, res: Response) {
+    try {
+      const profileId = req.profile?.id
+      const { studentId } = req.params
+      if (!profileId) return res.status(401).json({ success: false, error: 'Parent authentication required' })
+      const parentId = await this.getParentId(profileId)
+      if (!parentId) return res.status(404).json({ success: false, error: 'Parent record not found' })
+      const students = await parentDashboardService.getStudentsList(parentId)
+      if (!students.find(s => s.id === studentId)) {
+        return res.status(403).json({ success: false, error: 'Access denied to this student' })
+      }
+      const data = await parentDashboardService.getFinalGrades(studentId)
+      return res.json({ success: true, data })
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message || 'Failed to fetch final grades' })
+    }
+  }
+
+  /**
+   * GET /api/parent-dashboard/grades/:studentId/gpa-rank
+   * Get GPA and class rank for a student
+   */
+  async getGpaRank(req: AuthRequest, res: Response) {
+    try {
+      const profileId = req.profile?.id
+      const { studentId } = req.params
+      if (!profileId) return res.status(401).json({ success: false, error: 'Parent authentication required' })
+      const parentId = await this.getParentId(profileId)
+      if (!parentId) return res.status(404).json({ success: false, error: 'Parent record not found' })
+      const students = await parentDashboardService.getStudentsList(parentId)
+      if (!students.find(s => s.id === studentId)) {
+        return res.status(403).json({ success: false, error: 'Access denied to this student' })
+      }
+      const data = await parentDashboardService.getGpaRank(studentId)
+      return res.json({ success: true, data })
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message || 'Failed to fetch GPA/rank' })
+    }
+  }
+
+  /**
+   * GET /api/parent-dashboard/class-diary/:studentId
+   * Get class diary entries for a student's section (parent view)
+   */
+  async getDiaryEntries(req: AuthRequest, res: Response) {
+    try {
+      const profileId = req.profile?.id
+      const { studentId } = req.params
+
+      if (!profileId) return res.status(401).json({ success: false, error: 'Parent authentication required' })
+
+      const parentId = await this.getParentId(profileId)
+      if (!parentId) return res.status(404).json({ success: false, error: 'Parent record not found' })
+
+      const students = await parentDashboardService.getStudentsList(parentId)
+      if (!students.find(s => s.id === studentId)) {
+        return res.status(403).json({ success: false, error: 'Access denied to this student' })
+      }
+
+      const data = await parentDashboardService.getClassDiaryEntries(studentId)
+      return res.json({ success: true, data })
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message || 'Failed to fetch class diary' })
+    }
+  }
 }
 
 export const parentDashboardController = new ParentDashboardController()

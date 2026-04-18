@@ -11,7 +11,8 @@ export class StudentService {
     page: number = 1,
     limit: number = 10,
     search?: string,
-    gradeLevel?: string
+    gradeLevel?: string,
+    sectionId?: string
   ) {
     const offset = (page - 1) * limit
 
@@ -140,6 +141,11 @@ export class StudentService {
     // Apply grade filter
     if (gradeLevel) {
       query = query.eq('grade_level', gradeLevel)
+    }
+
+    // Apply section filter
+    if (sectionId) {
+      query = query.eq('section_id', sectionId)
     }
 
     // Apply pagination

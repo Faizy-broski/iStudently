@@ -405,6 +405,46 @@ export function useStudentIdCard() {
 }
 
 /**
+ * Hook to fetch final grades
+ */
+export function useFinalGrades() {
+  const { user, profile, loading: authLoading } = useAuth()
+  const { selectedStudent } = useParentDashboard()
+
+  const swrKey = !authLoading && user && profile?.role === 'parent' && selectedStudent
+    ? ['final-grades', selectedStudent]
+    : null
+
+  const { data, error, isLoading, mutate } = useSWR(
+    swrKey,
+    () => api.getFinalGrades(selectedStudent!),
+    { revalidateOnFocus: false, dedupingInterval: 120000 }
+  )
+
+  return { finalGrades: data || [], isLoading, error, refresh: () => mutate() }
+}
+
+/**
+ * Hook to fetch GPA and class rank
+ */
+export function useGpaRank() {
+  const { user, profile, loading: authLoading } = useAuth()
+  const { selectedStudent } = useParentDashboard()
+
+  const swrKey = !authLoading && user && profile?.role === 'parent' && selectedStudent
+    ? ['gpa-rank', selectedStudent]
+    : null
+
+  const { data, error, isLoading, mutate } = useSWR(
+    swrKey,
+    () => api.getGpaRank(selectedStudent!),
+    { revalidateOnFocus: false, dedupingInterval: 120000 }
+  )
+
+  return { gpaRank: data || null, isLoading, error, refresh: () => mutate() }
+}
+
+/**
  * Hook to fetch report card
  */
 export function useReportCard(academicYear?: string) {

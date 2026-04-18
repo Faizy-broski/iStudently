@@ -53,14 +53,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import {
   Table,
   TableBody,
   TableCell,
@@ -481,19 +473,18 @@ export default function LessonPlanAdd() {
         </CardContent>
       </Card>
 
-      {/* Lesson Form Dialog */}
-      <Dialog open={showForm} onOpenChange={(open) => !open && setShowForm(false)}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
+      {/* Lesson Form */}
+      {showForm && (
+        <Card className="max-w-5xl">
+          <CardHeader>
+            <CardTitle>
               {editingLessonId ? "Edit Lesson Plan" : "New Lesson Plan"}
-            </DialogTitle>
-            <DialogDescription>
+            </CardTitle>
+            <CardDescription>
               Fill in the lesson details and add lesson parts below.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-6">
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
             {/* Basic Info */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="sm:col-span-2">
@@ -731,9 +722,8 @@ export default function LessonPlanAdd() {
                 />
               </div>
             </div>
-          </div>
 
-          <DialogFooter className="mt-6">
+          <div className="p-6 pt-0 flex justify-end gap-2">
             <Button
               variant="outline"
               onClick={() => setShowForm(false)}
@@ -749,9 +739,10 @@ export default function LessonPlanAdd() {
               )}
               {editingLessonId ? "Update" : "Create"} Lesson
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </CardContent>
+      </Card>
+      )}
 
       {/* Existing Lessons List */}
       {selectedCpId && (
