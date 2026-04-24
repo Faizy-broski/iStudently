@@ -1,405 +1,340 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { useStudentDashboard, useSubjectWiseAttendance, useDetailedAttendance } from '@/hooks/useStudentDashboard'
-import { 
-  TrendingUp, 
-  Calendar, 
-  CheckCircle, 
-  XCircle, 
-  BookOpen,
-  Loader2,
-  AlertCircle,
-  ChevronDown,
-  ChevronUp,
-  BarChart3,
-  ChevronLeft,
-  ChevronRight,
-  Filter
-} from 'lucide-react'
+/**
+ * Student Attendance Page — RosarioSIS-faithful interface
+ *
+ * Toggle: "Daily Summary" (Attendance Chart) | "Absence Summary"
+ *
+ * Daily Summary  — courses × school-dates grid, color-coded P/A/H badges
+ *                  (mirrors RosarioSIS DailySummary.php student view)
+ * Absence Summary — per-day list with daily state and period codes
+ *                  (mirrors RosarioSIS StudentSummary.php)
+ */
+
+import { useState, useCallback, useMemo } from 'react'
+import { useAuth } from '@/context/AuthContext'
+import { getDetailedAttendance } from '@/lib/api/student-dashboard'
+import type { DetailedAttendanceRecord } from '@/lib/api/student-dashboard'
+import { getStudentDailySummary } from '@/lib/api/attendance'
+import type { AttendanceSummaryRow } from '@/lib/api/attendance'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { format, parseISO } from 'date-fns'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Skeleton } from '@/components/ui/skeleton'
+import { IconLoader, IconDownload } from '@tabler/icons-react'
+import { toast } from 'sonner'
+
+// ── Attendance code badge — status-based (student records use string status)
+function StatusBadge({ status }: { status: 'present' | 'absent' | 'late' | 'excused' | null }) {
+  if (!status) return null
+  const configs: Record<string, { cls: string; label: string; title: string }> = {
+    present:  { cls: 'bg-green-100 text-green-800 border-green-300',  label: 'P', title: 'Present' },
+    absent:   { cls: 'bg-red-100 text-red-800 border-red-300',        label: 'A', title: 'Absent' },
+    late:     { cls: 'bg-yellow-100 text-yellow-800 border-yellow-300', label: 'L', title: 'Late' },
+    excused:  { cls: 'bg-blue-100 text-blue-800 border-blue-300',     label: 'E', title: 'Excused' },
+  }
+  const cfg = configs[status] ?? { cls: 'bg-muted text-muted-foreground border-border', label: status[0].toUpperCase(), title: status }
+  return (
+    <div
+      className={`inline-flex items-center justify-center w-7 h-7 rounded text-xs font-bold border ${cfg.cls}`}
+      title={cfg.title}
+    >
+      {cfg.label}
+    </div>
+  )
+}
+
+// ── State-value badge (for daily attendance: 1.0=P, 0.0=A, 0.5=H)
+function StateValueBadge({ value }: { value: number | null }) {
+  if (value === null || value === undefined) return <span className="text-muted-foreground text-xs">—</span>
+  if (value >= 1.0)
+    return <div className="inline-flex items-center justify-center w-7 h-7 rounded text-xs font-bold bg-green-100 text-green-800 border border-green-300" title="Present">P</div>
+  if (value === 0)
+    return <div className="inline-flex items-center justify-center w-7 h-7 rounded text-xs font-bold bg-red-100 text-red-800 border border-red-300" title="Absent">A</div>
+  return <div className="inline-flex items-center justify-center w-7 h-7 rounded text-xs font-bold bg-yellow-100 text-yellow-800 border border-yellow-300" title="Half Day">H</div>
+}
+
+function formatDateCol(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00')
+  return `${d.toLocaleString('en-US', { month: 'short' }).toUpperCase()} ${String(d.getDate()).padStart(2, '0')}`
+}
+
+function formatDateFull(dateStr: string): string {
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+  })
+}
 
 const MONTHS = [
-  { value: 1, label: 'January' },
-  { value: 2, label: 'February' },
-  { value: 3, label: 'March' },
-  { value: 4, label: 'April' },
-  { value: 5, label: 'May' },
-  { value: 6, label: 'June' },
-  { value: 7, label: 'July' },
-  { value: 8, label: 'August' },
-  { value: 9, label: 'September' },
-  { value: 10, label: 'October' },
-  { value: 11, label: 'November' },
-  { value: 12, label: 'December' }
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
 ]
 
-export default function AttendancePage() {
-  const currentDate = new Date()
-  const [expandedSubject, setExpandedSubject] = useState<string | null>(null)
-  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1)
-  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear())
+type ReportMode = 'chart' | 'absence'
 
-  // Format month as YYYY-MM for the API
-  const monthParam = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`
+export default function StudentAttendancePage() {
+  const { user } = useAuth()
 
-  const { overview, isLoading: overviewLoading, error: overviewError } = useStudentDashboard()
-  const { subjects, isLoading: subjectsLoading, error: subjectsError } = useSubjectWiseAttendance(monthParam)
-  const { records, isLoading: recordsLoading } = useDetailedAttendance(
-    expandedSubject ? selectedMonth : undefined,
-    expandedSubject ? selectedYear : undefined
-  )
+  const now = new Date()
+  const [report, setReport] = useState<ReportMode>('chart')
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth())
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear())
+  const [loading, setLoading] = useState(false)
+  const [search, setSearch] = useState('')
 
-  const isLoading = overviewLoading || subjectsLoading
+  // Daily Summary: detailed records (courses × dates grid)
+  const [records, setRecords] = useState<DetailedAttendanceRecord[] | null>(null)
+  // Absence Summary: aggregate row
+  const [summaryRow, setSummaryRow] = useState<AttendanceSummaryRow | null>(null)
 
-  // Filter records by expanded subject
-  const filteredRecords = expandedSubject 
-    ? records.filter(r => r.timetable_entry?.subject?.id === expandedSubject)
-    : []
-
-  const toggleSubject = (subjectId: string) => {
-    if (expandedSubject === subjectId) {
-      setExpandedSubject(null)
-    } else {
-      setExpandedSubject(subjectId)
-      // Reset to current month when opening a new subject
-      setSelectedMonth(currentDate.getMonth() + 1)
-      setSelectedYear(currentDate.getFullYear())
+  const handleGo = useCallback(async () => {
+    if (!user) return
+    setLoading(true)
+    setRecords(null)
+    setSummaryRow(null)
+    try {
+      if (report === 'absence') {
+        const startDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`
+        const lastDay = new Date(selectedYear, selectedMonth + 1, 0).getDate()
+        const endDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${lastDay}`
+        const res = await getStudentDailySummary(startDate, endDate)
+        if (res.success && res.data && res.data.length > 0) setSummaryRow(res.data[0])
+        else if (res.success) setSummaryRow(null)
+        else toast.error(res.error || 'Failed to load absence summary')
+      } else {
+        const res = await getDetailedAttendance(selectedMonth + 1, selectedYear)
+        if (res.success && res.data) setRecords(res.data)
+        else toast.error(res.error || 'Failed to load attendance records')
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Error loading data')
+    } finally {
+      setLoading(false)
     }
-  }
+  }, [user, report, selectedMonth, selectedYear])
 
-  const getAttendanceStatus = (percentage: number) => {
-    if (percentage >= 90) return { color: 'green', status: 'Excellent' }
-    if (percentage >= 80) return { color: 'blue', status: 'Good' }
-    if (percentage >= 75) return { color: 'yellow', status: 'Warning' }
-    return { color: 'red', status: 'Critical' }
-  }
+  // ── Build courses × dates grid from detailed records
+  const { courseCols, dateCols, grid } = useMemo(() => {
+    if (!records) return { courseCols: [], dateCols: [], grid: {} }
 
-  const getPercentageColor = (percentage: number) => {
-    if (percentage >= 90) return 'text-green-600'
-    if (percentage >= 80) return 'text-blue-600'
-    if (percentage >= 75) return 'text-yellow-600'
-    return 'text-red-600'
-  }
+    // Unique courses (by subject name + period)
+    const courseMap = new Map<string, { subjectName: string; periodName: string }>()
+    records.forEach(r => {
+      const key = `${r.timetable_entry.subject.name}||${r.timetable_entry.period.period_name}`
+      if (!courseMap.has(key)) {
+        courseMap.set(key, {
+          subjectName: r.timetable_entry.subject.name,
+          periodName: r.timetable_entry.period.period_name,
+        })
+      }
+    })
 
-  const getProgressColor = (percentage: number) => {
-    if (percentage >= 90) return 'bg-green-600'
-    if (percentage >= 80) return 'bg-blue-600'
-    if (percentage >= 75) return 'bg-yellow-600'
-    return 'bg-red-600'
-  }
+    // Unique sorted dates
+    const dateSet = new Set<string>()
+    records.forEach(r => dateSet.add(r.attendance_date))
+    const dateCols = Array.from(dateSet).sort()
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'present':
-        return <Badge className="bg-green-100 text-green-700 hover:bg-green-200">Present</Badge>
-      case 'absent':
-        return <Badge className="bg-red-100 text-red-700 hover:bg-red-200">Absent</Badge>
-      case 'late':
-        return <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-200">Late</Badge>
-      case 'excused':
-        return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200">Excused</Badge>
-      default:
-        return <Badge variant="outline">{status}</Badge>
-    }
-  }
+    // Build grid: courseKey → dateStr → status
+    const grid: Record<string, Record<string, DetailedAttendanceRecord['status']>> = {}
+    records.forEach(r => {
+      const key = `${r.timetable_entry.subject.name}||${r.timetable_entry.period.period_name}`
+      if (!grid[key]) grid[key] = {}
+      grid[key][r.attendance_date] = r.status
+    })
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
-  }
+    const courseCols = Array.from(courseMap.entries()).map(([key, val]) => ({ key, ...val }))
+    return { courseCols, dateCols, grid }
+  }, [records])
 
-  if (overviewError || subjectsError) {
-    return (
-      <div className="p-8">
-        <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
-          <CardContent className="p-6 flex items-center gap-4">
-            <AlertCircle className="h-8 w-8 text-red-600" />
-            <div>
-              <h3 className="font-semibold text-red-900 dark:text-red-200">Error loading attendance</h3>
-              <p className="text-red-700 dark:text-red-300">{(overviewError || subjectsError)?.message}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  const attendance = overview?.attendanceSummary
-  const status = getAttendanceStatus(attendance?.percentage || 0)
+  const filteredCourses = useMemo(() => {
+    const q = search.toLowerCase().trim()
+    if (!q) return courseCols
+    return courseCols.filter(c => c.subjectName.toLowerCase().includes(q))
+  }, [courseCols, search])
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">My Attendance</h1>
-          <p className="text-muted-foreground mt-1">View your attendance summary and records</p>
-        </div>
-        {/* Month/Year Selector */}
-        <div className="flex items-center gap-2">
-          <Select
-            value={selectedMonth.toString()}
-            onValueChange={(v) => setSelectedMonth(parseInt(v))}
-          >
-            <SelectTrigger className="w-[130px]">
-              <SelectValue placeholder="Month" />
-            </SelectTrigger>
-            <SelectContent>
-              {MONTHS.map(m => (
-                <SelectItem key={m.value} value={m.value.toString()}>
-                  {m.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={selectedYear.toString()}
-            onValueChange={(v) => setSelectedYear(parseInt(v))}
-          >
-            <SelectTrigger className="w-[100px]">
-              <SelectValue placeholder="Year" />
-            </SelectTrigger>
-            <SelectContent>
-              {[currentDate.getFullYear() - 1, currentDate.getFullYear()].map(y => (
-                <SelectItem key={y} value={y.toString()}>
-                  {y}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Overall Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <div className={`p-2 rounded-lg ${
-                status.color === 'green' ? 'bg-green-100 dark:bg-green-900/30' :
-                status.color === 'blue' ? 'bg-blue-100 dark:bg-blue-900/30' :
-                status.color === 'yellow' ? 'bg-yellow-100 dark:bg-yellow-900/30' :
-                'bg-red-100 dark:bg-red-900/30'
-              }`}>
-                <TrendingUp className={`h-5 w-5 ${
-                  status.color === 'green' ? 'text-green-600' :
-                  status.color === 'blue' ? 'text-blue-600' :
-                  status.color === 'yellow' ? 'text-yellow-600' :
-                  'text-red-600'
-                }`} />
-              </div>
-              <span className="text-sm text-muted-foreground">Overall</span>
-            </div>
-            <p className={`text-3xl font-bold ${getPercentageColor(attendance?.percentage || 0)}`}>
-              {attendance?.percentage}%
-            </p>
-            <Badge variant="outline" className="mt-2">{status.status}</Badge>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <Calendar className="h-5 w-5 text-gray-400" />
-              <span className="text-sm text-muted-foreground">Total Classes</span>
-            </div>
-            <p className="text-3xl font-bold">{attendance?.totalDays}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              <span className="text-sm text-muted-foreground">Present</span>
-            </div>
-            <p className="text-3xl font-bold text-green-600">{attendance?.presentDays}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-2">
-              <XCircle className="h-5 w-5 text-red-500" />
-              <span className="text-sm text-muted-foreground">Absent</span>
-            </div>
-            <p className="text-3xl font-bold text-red-600">{attendance?.absentDays}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Subject-wise Attendance with Expandable Details */}
+    <div className="space-y-4">
       <Card>
-        <CardHeader>
-          <CardTitle>Subject-wise Attendance</CardTitle>
-          <p className="text-sm text-muted-foreground">Click on any subject to view detailed records</p>
+        <CardHeader className="pb-2">
+          <CardTitle>Attendance Chart</CardTitle>
         </CardHeader>
-        <CardContent>
-          {subjects && subjects.length > 0 ? (
-            <div className="space-y-2">
-              {subjects.map((subject) => (
-                <div key={subject.subject_id}>
-                  {/* Subject Summary Row - Clickable */}
-                  <div
-                    className="p-4 rounded-lg border bg-card hover:bg-accent/50 cursor-pointer transition-colors"
-                    onClick={() => toggleSubject(subject.subject_id)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4 flex-1">
-                        <div className="p-2 bg-primary/10 rounded-lg">
-                          <BookOpen className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-semibold text-lg">{subject.subject_name}</h4>
-                            <Badge variant="outline">{subject.subject_code}</Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            {subject.total} classes • {subject.present} present • {subject.absent} absent
-                            {subject.late > 0 && ` • ${subject.late} late`}
-                          </p>
-                          <div className="mt-2">
-                            <Progress 
-                              value={subject.percentage} 
-                              className="h-2 w-full max-w-xs"
-                              indicatorClassName={getProgressColor(subject.percentage)}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <p className={`text-3xl font-bold ${getPercentageColor(subject.percentage)}`}>
-                          {subject.percentage}%
-                        </p>
-                        {expandedSubject === subject.subject_id ? (
-                          <ChevronUp className="h-5 w-5 text-muted-foreground" />
-                        ) : (
-                          <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                        )}
-                      </div>
-                    </div>
-                  </div>
+        <CardContent className="space-y-4">
 
-                  {/* Expanded Details */}
-                  {expandedSubject === subject.subject_id && (
-                    <div className="mt-2 p-4 border rounded-lg bg-muted/50">
-                      {/* Month Filter */}
-                      <div className="flex items-center justify-between mb-4 pb-3 border-b">
-                        <h5 className="font-semibold">Attendance Records</h5>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <Select 
-                            value={`${selectedMonth}-${selectedYear}`} 
-                            onValueChange={(value) => {
-                              const [month, year] = value.split('-')
-                              setSelectedMonth(parseInt(month))
-                              setSelectedYear(parseInt(year))
-                            }}
-                          >
-                            <SelectTrigger className="w-[180px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {MONTHS.map(month => (
-                                <SelectItem key={month.value} value={`${month.value}-${selectedYear}`}>
-                                  {month.label} {selectedYear}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
+          {/* ── Report toggle */}
+          <div>
+            <Select value={report} onValueChange={v => {
+              setReport(v as ReportMode)
+              setRecords(null)
+              setSummaryRow(null)
+              setSearch('')
+            }}>
+              <SelectTrigger className="w-50">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="chart">Daily Summary</SelectItem>
+                <SelectItem value="absence">Absence Summary</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-                      {/* Records Table */}
-                      {recordsLoading ? (
-                        <div className="flex items-center justify-center py-8">
-                          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                        </div>
-                      ) : filteredRecords.length > 0 ? (
-                        <div className="overflow-x-auto -mx-4">
-                          <table className="w-full text-sm">
-                            <thead className="border-b bg-muted/30">
-                              <tr className="text-xs text-muted-foreground uppercase tracking-wide">
-                                <th className="text-left py-2 px-4 font-semibold">Date</th>
-                                <th className="text-center py-2 px-2 font-semibold">Period</th>
-                                <th className="text-center py-2 px-3 font-semibold">Time</th>
-                                <th className="text-center py-2 px-3 font-semibold">Room</th>
-                                <th className="text-center py-2 px-4 font-semibold">Status</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                              {filteredRecords
-                                .sort((a, b) => b.attendance_date.localeCompare(a.attendance_date))
-                                .map((record) => (
-                                <tr key={record.id} className="hover:bg-accent/30 transition-colors">
-                                  <td className="py-1.5 px-4">
-                                    <div className="text-sm font-medium">
-                                      {format(parseISO(record.attendance_date), 'MMM d, yyyy')}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                      {format(parseISO(record.attendance_date), 'EEE')}
-                                    </div>
-                                  </td>
-                                  <td className="py-1.5 px-2 text-center font-semibold">
-                                    {record.timetable_entry?.period?.period_number || '-'}
-                                  </td>
-                                  <td className="py-1.5 px-3 text-center text-xs text-muted-foreground">
-                                    {record.timetable_entry?.period?.start_time?.slice(0, 5)} - {record.timetable_entry?.period?.end_time?.slice(0, 5)}
-                                  </td>
-                                  <td className="py-1.5 px-3 text-center text-xs">
-                                    {record.timetable_entry?.room_number || '-'}
-                                  </td>
-                                  <td className="py-1.5 px-4 text-center">
-                                    {getStatusBadge(record.status)}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      ) : (
-                        <div className="text-center py-8 text-muted-foreground">
-                          <Calendar className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                          <p>No records found for {MONTHS.find(m => m.value === selectedMonth)?.label}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">No attendance records found</p>
+          {/* ── Timeframe (month + year + GO) */}
+          <div className="flex flex-wrap items-end gap-2">
+            <span className="text-sm font-medium self-center">Timeframe:</span>
+            <Select value={String(selectedMonth)} onValueChange={v => setSelectedMonth(parseInt(v))}>
+              <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+              <SelectContent>{MONTHS.map((n, i) => <SelectItem key={i} value={String(i)}>{n}</SelectItem>)}</SelectContent>
+            </Select>
+            <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(parseInt(v))}>
+              <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {[now.getFullYear() - 1, now.getFullYear()].map(y =>
+                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+            <Button onClick={handleGo} disabled={loading || !user} className="min-w-[60px]">
+              {loading ? <IconLoader className="h-4 w-4 animate-spin" /> : 'GO'}
+            </Button>
+          </div>
+
+          {/* ── Search (chart mode) */}
+          {report === 'chart' && records !== null && (
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm text-muted-foreground">
+                {filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''} found.
+              </span>
+              <Input
+                placeholder="Search course..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="h-8 w-45"
+              />
             </div>
           )}
-        </CardContent>
-      </Card>
 
-      {/* Attendance Policy */}
-      <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
-        <CardContent className="p-6">
-          <h3 className="font-bold text-blue-900 dark:text-blue-200 mb-3 flex items-center gap-2">
-            <AlertCircle className="h-5 w-5" />
-            Attendance Policy
-          </h3>
-          <ul className="text-blue-800 dark:text-blue-300 text-sm space-y-2 list-disc list-inside">
-            <li>Minimum 75% attendance is required for semester eligibility</li>
-            <li>90% and above attendance is considered excellent</li>
-            <li>Late arrivals are counted separately and may affect your record</li>
-            <li>Contact your class teacher for any attendance discrepancies</li>
-          </ul>
+          {/* ── Loading */}
+          {loading && (
+            <div className="space-y-2">
+              {[1, 2, 3].map(i => <Skeleton key={i} className="h-10 w-full" />)}
+            </div>
+          )}
+
+          {/* ── Daily Summary: courses × dates grid */}
+          {!loading && report === 'chart' && records !== null && (
+            dateCols.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">No attendance records found for this month.</p>
+            ) : (
+              <div className="overflow-x-auto border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/40">
+                      <TableHead className="font-bold text-primary min-w-45">COURSE</TableHead>
+                      <TableHead className="font-bold text-primary min-w-27">PERIOD</TableHead>
+                      {dateCols.map(d => (
+                        <TableHead key={d} className="text-center font-bold text-[11px] min-w-13 px-1 whitespace-nowrap">
+                          {formatDateCol(d)}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredCourses.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={2 + dateCols.length} className="text-center py-10 text-muted-foreground">
+                          No courses match the search.
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredCourses.map(c => (
+                      <TableRow key={c.key} className="hover:bg-accent/20">
+                        <TableCell className="font-medium">{c.subjectName}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm">{c.periodName}</TableCell>
+                        {dateCols.map(d => (
+                          <TableCell key={d} className="text-center p-1">
+                            <StatusBadge status={(grid[c.key]?.[d] ?? null) as any} />
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )
+          )}
+
+          {/* ── Absence Summary: per-day records with period codes */}
+          {!loading && report === 'absence' && (
+            summaryRow ? (
+              <div className="space-y-4">
+                {/* Summary stats header */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { label: 'State Abs', value: summaryRow.days_absent + summaryRow.days_half, cls: 'text-red-700' },
+                    { label: 'Absent',    value: summaryRow.days_absent,  cls: 'text-red-600' },
+                    { label: 'Half Day',  value: summaryRow.days_half,    cls: 'text-yellow-700' },
+                    { label: 'Present',   value: summaryRow.days_present, cls: 'text-green-700' },
+                  ].map(stat => (
+                    <div key={stat.label} className="border rounded-md p-3 text-center bg-muted/20">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">{stat.label}</p>
+                      <p className={`text-2xl font-bold ${stat.cls}`}>{stat.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Code breakdown (if any) */}
+                {summaryRow.state_code_breakdown && Object.keys(summaryRow.state_code_breakdown).length > 0 && (
+                  <div className="border rounded-md overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/40">
+                          <TableHead className="font-bold text-primary">STUDENT</TableHead>
+                          <TableHead className="font-bold text-primary">STUDENT ID</TableHead>
+                          <TableHead className="font-bold text-primary">GRADE LEVEL</TableHead>
+                          <TableHead className="font-bold text-right">STATE ABS</TableHead>
+                          <TableHead className="font-bold text-right">ABSENT</TableHead>
+                          <TableHead className="font-bold text-right">TARDY</TableHead>
+                          <TableHead className="font-bold text-right">EXCUSED ABSENCE</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell className="font-medium text-primary">{summaryRow.student_name}</TableCell>
+                          <TableCell>{summaryRow.student_number || '—'}</TableCell>
+                          <TableCell>{summaryRow.grade_name || '—'}</TableCell>
+                          <TableCell className="text-right">{summaryRow.days_absent + summaryRow.days_half}</TableCell>
+                          <TableCell className="text-right">{summaryRow.days_absent}</TableCell>
+                          <TableCell className="text-right">
+                            {summaryRow.state_code_breakdown?.['Late'] ?? summaryRow.state_code_breakdown?.['Tardy'] ?? 0}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {summaryRow.state_code_breakdown?.['Excused Absence'] ?? summaryRow.state_code_breakdown?.['Excused'] ?? 0}
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+
+                {/* Attendance percentage */}
+                <p className="text-sm text-muted-foreground text-right">
+                  Attendance: <strong className="text-foreground">{summaryRow.attendance_percentage}%</strong>
+                  &nbsp;({summaryRow.total_days} total days)
+                </p>
+              </div>
+            ) : records === null && (
+              <p className="text-sm text-muted-foreground py-8 text-center">No absence records found for this month.</p>
+            )
+          )}
+
+          {/* ── Empty state */}
+          {!loading && records === null && summaryRow === null && (
+            <p className="text-sm text-muted-foreground py-10 text-center">
+              Select a month and click GO to view attendance data.
+            </p>
+          )}
+
         </CardContent>
       </Card>
     </div>

@@ -271,7 +271,7 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "Email Log", href: "/admin/email/log", icon: FileText },
       { title: "Notifications", href: "#", icon: Bell, isLabel: true },
       { title: "Email Notifications", href: "/admin/email/notifications", icon: Bell },
-   
+
     ],
   },
   {
@@ -404,8 +404,8 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "Add Absences", href: "/admin/attendance/add-absences", icon: Plus },
       { title: "Reports", href: "#", icon: BarChart3, isLabel: true },
       { title: "Teacher Completion", href: "/admin/attendance/teacher-completion", icon: CheckSquare },
-      { title: "Average Daily Attendance", href: "/admin/attendance/percent", icon: BarChart3 },
-      { title: "Attendance Chart", href: "/admin/attendance/daily-summary", icon: BarChart3 },
+      { title: "Average Daily Attendance", href: "/admin/attendance/average-daily", icon: BarChart3 },
+      { title: "Attendance Chart", href: "/admin/attendance/chart", icon: BarChart3 },
       { title: "Utilities", href: "#", icon: Settings, isLabel: true },
       { title: "Recalculate Daily Attendance", href: "/admin/attendance/fix-daily", icon: RefreshCw },
       { title: "Delete Duplicate Attendance", href: "/admin/attendance/duplicate", icon: AlertCircle },
@@ -704,7 +704,7 @@ const teacherMenuItems: SidebarMenuItem[] = [
     ],
   },
 
-   {
+  {
     title: "Activities",
     href: "/teacher/activities",
     icon: Star,
@@ -712,7 +712,7 @@ const teacherMenuItems: SidebarMenuItem[] = [
       { title: "Enter Eligibility", href: "/teacher/activities/eligibility", icon: Star },
     ],
   },
-  
+
   {
     title: "Discipline",
     href: "/teacher/discipline",
@@ -734,7 +734,7 @@ const teacherMenuItems: SidebarMenuItem[] = [
       { title: "Print Statements", href: "/teacher/accounting/print-statements", icon: FileText },
     ],
   },
- 
+
   {
     title: "Resources",
     href: "/teacher/learning-resources",
@@ -750,7 +750,7 @@ const teacherMenuItems: SidebarMenuItem[] = [
       { title: "Class Reports", href: "/teacher/reports", icon: BarChart3 },
     ],
   },
-    {
+  {
     title: "Portal",
     href: "/teacher/portal/notes",
     icon: Megaphone,
@@ -771,7 +771,7 @@ const teacherMenuItems: SidebarMenuItem[] = [
       { title: "Lesson Plan - Read", href: "/teacher/lesson-plan-read", icon: Eye },
     ],
   },
-  
+
   {
     title: "Student Learning",
     href: "/teacher/assignments",
@@ -783,8 +783,8 @@ const teacherMenuItems: SidebarMenuItem[] = [
       { title: "Quizzes", href: "/teacher/quiz", icon: HelpCircle },
     ],
   },
-  
-  
+
+
   { title: "Settings", href: "/teacher/settings", icon: Settings },
 ];
 
@@ -832,7 +832,7 @@ const studentMenuItems: SidebarMenuItem[] = [
     icon: Award,
     subItems: [
       { title: "Gradebook Grades", href: "/student/grades/student-grades", icon: Award },
-      { title: "Assignments", href: "/student/grades/student-assignments", icon: ClipboardList },
+      { title: "Assignments", href: "/student/assignments", icon: ClipboardList },
       { title: "Final Grades", href: "/student/grades/final-grades", icon: CheckSquare },
       { title: "Report Cards", href: "/student/grades/report-cards", icon: FileText },
       { title: "Progress Reports", href: "/student/grades/progress-reports", icon: ClipboardList },
@@ -967,7 +967,7 @@ const parentMenuItems: SidebarMenuItem[] = [
   },
   { title: "Class Diary", href: "/parent/class-diary", icon: BookOpen },
   { title: "Timetable", href: "/parent/timetable", icon: Clock },
-  { title: "Homework", href: "/parent/homework", icon: ClipboardList },
+
   {
     title: "Discipline",
     href: "/parent/discipline",

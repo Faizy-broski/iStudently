@@ -4,7 +4,6 @@ import { useMemo, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, BookOpen, Calendar, TrendingUp, GraduationCap, Bookmark, RefreshCw } from "lucide-react";
 import { useSchoolDashboard } from "@/hooks/useSchoolDashboard";
-import { SetupAssistantPanel } from "@/components/setup-assistant/SetupAssistantPanel";
 import { Spinner } from "@/components/ui/spinner";
 import { 
   Area, 
@@ -118,8 +117,6 @@ export default function AdminDashboard() {
           <span className="text-sm font-medium">Refresh</span>
         </button>
       </div>
-
-      <SetupAssistantPanel />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

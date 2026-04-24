@@ -176,4 +176,30 @@ router.get('/grades/:studentId/gpa-rank', (req, res) =>
   parentDashboardController.getGpaRank(req, res)
 )
 
+/**
+ * GET /api/parent-dashboard/student-info/:studentId
+ * Get full student profile info (RosarioSIS-style) for parent
+ */
+router.get('/student-info/:studentId', (req, res) =>
+  parentDashboardController.getStudentInfo(req, res)
+)
+
+/**
+ * GET /api/parent-dashboard/assignments/:studentId
+ * Get gradebook assignments (with submission status) for a child student
+ * Query params: ?status=todo|submitted|graded (optional)
+ * Uses the same proven student-dashboard service so data is always consistent.
+ */
+router.get('/assignments/:studentId', (req, res) =>
+  parentDashboardController.getStudentAssignments(req, res)
+)
+
+/**
+ * GET /api/parent-dashboard/lesson-plans/:studentId
+ * Get published lesson plans for a child student
+ */
+router.get('/lesson-plans/:studentId', (req, res) =>
+  parentDashboardController.getLessonPlans(req, res)
+)
+
 export default router

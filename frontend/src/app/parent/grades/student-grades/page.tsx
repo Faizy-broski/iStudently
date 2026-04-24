@@ -1,139 +1,174 @@
-'use client'
+"use client"
 
-import { useGradebook } from '@/hooks/useParentDashboard'
-import { useParentDashboard } from '@/context/ParentDashboardContext'
-import { Award, BookOpen, Loader2, AlertCircle, BarChart3 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
-
-function getAvgColor(avg: number | null) {
-  if (avg === null) return 'text-gray-400'
-  if (avg >= 90) return 'text-green-600'
-  if (avg >= 80) return 'text-blue-600'
-  if (avg >= 70) return 'text-yellow-600'
-  return 'text-red-600'
-}
+import { useState, useEffect } from "react"
+import useSWR from "swr"
+import { useParentDashboard } from "@/context/ParentDashboardContext"
+import { getStudentGrades, getMarkingPeriods, type StudentFinalGradeEntry, type MarkingPeriodOption } from "@/lib/api/grades"
+import { GraduationCap, Loader2, Search } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Input } from "@/components/ui/input"
+import { Card, CardContent } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function ParentStudentGradesPage() {
-  const { selectedStudent } = useParentDashboard()
-  const { gradebook, isLoading, error } = useGradebook()
+  const { selectedStudent, selectedStudentData, isLoading: studentLoading } = useParentDashboard()
 
-  if (!selectedStudent) {
+  const campusId = selectedStudentData?.campus_id
+  const [selectedMp, setSelectedMp] = useState<string>("all")
+  const [search, setSearch] = useState("")
+
+  const { data: mpRes } = useSWR(
+    campusId ? ["parent-sg-mps", campusId] : null,
+    () => getMarkingPeriods(campusId),
+    { revalidateOnFocus: false }
+  )
+  const markingPeriods: MarkingPeriodOption[] = mpRes?.data || []
+
+  const { data: gradesRes, isLoading: gradesLoading } = useSWR(
+    selectedStudent ? ["parent-sg-grades", selectedStudent, selectedMp, campusId] : null,
+    () => getStudentGrades({
+      student_id: selectedStudent!,
+      marking_period_id: selectedMp !== "all" ? selectedMp : undefined,
+      campus_id: campusId,
+    }),
+    { revalidateOnFocus: false }
+  )
+  const grades: StudentFinalGradeEntry[] = gradesRes?.data || []
+
+  const filtered = search.trim()
+    ? grades.filter((g) =>
+        g.course_title.toLowerCase().includes(search.toLowerCase()) ||
+        (g.teacher_name || "").toLowerCase().includes(search.toLowerCase())
+      )
+    : grades
+
+  if (studentLoading) {
     return (
-      <div className="p-8">
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (!selectedStudent || !selectedStudentData) {
+    return (
+      <div className="p-4 md:p-6">
         <Card>
-          <CardContent className="p-12 text-center">
-            <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-            <p className="text-muted-foreground">Please select a student from the dashboard</p>
+          <CardContent className="py-12 text-center">
+            <GraduationCap className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">Select a child to view their grades.</p>
           </CardContent>
         </Card>
       </div>
     )
   }
-
-  if (isLoading) return <div className="flex items-center justify-center min-h-[50vh]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-
-  if (error) {
-    return (
-      <div className="p-8">
-        <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
-          <CardContent className="p-6 flex items-center gap-4">
-            <AlertCircle className="h-8 w-8 text-red-600 shrink-0" />
-            <div>
-              <h3 className="font-semibold text-red-900 dark:text-red-200">Error loading grades</h3>
-              <p className="text-red-700 dark:text-red-300 text-sm">{error.message}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  const subjects: any[] = Array.isArray(gradebook) ? gradebook : []
-  const gradedSubjects = subjects.filter((s: any) => (s.average ?? s.percentage) !== null)
-  const overallAvg = gradedSubjects.length > 0
-    ? Math.round(gradedSubjects.reduce((sum, s) => sum + (s.average ?? s.percentage ?? 0), 0) / gradedSubjects.length)
-    : null
 
   return (
     <div className="p-6 space-y-6">
+      {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold">Gradebook</h1>
-        <p className="text-muted-foreground mt-1">Current subject averages</p>
+        <h1 className="text-3xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent flex items-center gap-2">
+          <GraduationCap className="h-8 w-8 text-[#57A3CC]" />
+          Student Grades
+        </h1>
+        <p className="text-muted-foreground mt-2">
+          {selectedStudentData.first_name} {selectedStudentData.last_name}
+          <span className="ml-1 font-medium">— {selectedStudentData.campus_name}</span>
+        </p>
       </div>
 
-      {overallAvg !== null && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="p-6 text-center">
-              <Award className="h-8 w-8 mx-auto text-primary mb-2" />
-              <p className="text-sm text-muted-foreground">Overall Average</p>
-              <p className={`text-4xl font-bold mt-1 ${getAvgColor(overallAvg)}`}>{overallAvg}%</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6 text-center">
-              <p className="text-3xl font-bold text-blue-600">{gradedSubjects.filter((s) => (s.average ?? s.percentage ?? 0) >= 80).length}</p>
-              <p className="text-sm text-muted-foreground mt-1">Subjects Above 80%</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6 text-center">
-              <p className="text-3xl font-bold text-red-600">{gradedSubjects.filter((s) => (s.average ?? s.percentage ?? 0) < 70).length}</p>
-              <p className="text-sm text-muted-foreground mt-1">Subjects Below 70%</p>
-            </CardContent>
-          </Card>
+      {/* Filters */}
+      <div className="flex items-center gap-4 flex-wrap">
+        <Select value={selectedMp} onValueChange={setSelectedMp}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="All Marking Periods" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Marking Periods</SelectItem>
+            {markingPeriods.map((mp) => (
+              <SelectItem key={mp.id} value={mp.id}>{mp.title}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <div className="relative w-64">
+          <Input
+            placeholder="Search course or teacher..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pr-8"
+          />
+          <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         </div>
-      )}
+        <span className="text-sm text-[#0369a1] font-medium">
+          {filtered.length} course{filtered.length !== 1 ? "s" : ""} found.
+        </span>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5" /> Subject Grades
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {subjects.length === 0 ? (
-            <div className="text-center py-10">
-              <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-              <p className="text-muted-foreground">No grade data available yet</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {subjects.map((s: any, i: number) => {
-                const avg = s.average ?? s.percentage ?? null
-                const name = s.subject?.name || s.subject_name || `Subject ${i + 1}`
-                const code = s.subject?.code || s.subject_code || null
-                return (
-                  <div key={s.course_period_id || i} className="p-4 rounded-lg border bg-card">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="p-2 bg-primary/10 rounded-lg shrink-0">
-                          <BookOpen className="h-4 w-4 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold truncate">{name}</p>
-                          {code && <Badge variant="outline" className="text-xs mt-0.5">{code}</Badge>}
-                          {avg !== null && (
-                            <div className="mt-2 max-w-xs">
-                              <Progress value={avg} className="h-1.5" />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        {s.letter_grade && <span className="text-lg font-bold text-primary mr-2">{s.letter_grade}</span>}
-                        <span className={`text-2xl font-bold ${getAvgColor(avg)}`}>{avg !== null ? `${avg}%` : '—'}</span>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Grades Table */}
+      <div className="border rounded-md overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-[#0369a1] hover:bg-[#0369a1]">
+              <TableHead className="text-white font-semibold">COURSE</TableHead>
+              <TableHead className="text-white font-semibold">TEACHER</TableHead>
+              <TableHead className="text-white font-semibold text-right">%</TableHead>
+              <TableHead className="text-white font-semibold">GRADE</TableHead>
+              <TableHead className="text-white font-semibold text-right">GPA POINTS</TableHead>
+              <TableHead className="text-white font-semibold">COMMENT</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {gradesLoading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell colSpan={6}><Skeleton className="h-5 w-full" /></TableCell>
+                </TableRow>
+              ))
+            ) : filtered.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                  No grades found for the selected period.
+                </TableCell>
+              </TableRow>
+            ) : (
+              filtered.map((g, idx) => (
+                <TableRow key={g.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                  <TableCell className="font-medium">{g.course_title}</TableCell>
+                  <TableCell>{g.teacher_name || "—"}</TableCell>
+                  <TableCell className="text-right">
+                    {g.percent_grade != null ? `${g.percent_grade.toFixed(1)}%` : "—"}
+                  </TableCell>
+                  <TableCell>
+                    {g.letter_grade ? (
+                      <span className="font-semibold text-primary">{g.letter_grade}</span>
+                    ) : "—"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {g.grade_points != null ? g.grade_points.toFixed(2) : "—"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {g.comment || "—"}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   )
 }

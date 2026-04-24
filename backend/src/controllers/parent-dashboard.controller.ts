@@ -837,6 +837,38 @@ export class ParentDashboardController {
   }
 
   /**
+   * GET /api/parent-dashboard/lesson-plans/:studentId
+   * Get published lesson plans for a child student
+   * Query params: ?course_period_id=xxx (optional)
+   */
+  async getLessonPlans(req: AuthRequest, res: Response) {
+    try {
+      const profileId = req.profile?.id
+      const { studentId } = req.params
+      const { course_period_id } = req.query
+
+      if (!profileId) return res.status(401).json({ success: false, error: 'Parent authentication required' })
+      if (!studentId) return res.status(400).json({ success: false, error: 'Student ID is required' })
+
+      const parentId = await this.getParentId(profileId)
+      if (!parentId) return res.status(404).json({ success: false, error: 'Parent record not found' })
+
+      // Verify parent owns this student
+      const students = await parentDashboardService.getStudentsList(parentId)
+      if (!students.find(s => s.id === studentId)) {
+        return res.status(403).json({ success: false, error: 'Access denied to this student' })
+      }
+
+      const data = await parentDashboardService.getLessonPlans(studentId, course_period_id as string | undefined)
+
+      return res.json({ success: true, data })
+    } catch (error: any) {
+      console.error('Error fetching student lesson plans for parent:', error)
+      return res.status(500).json({ success: false, error: error.message || 'Failed to fetch lesson plans' })
+    }
+  }
+
+  /**
    * GET /api/parent-dashboard/class-diary/:studentId
    * Get class diary entries for a student's section (parent view)
    */
@@ -861,6 +893,65 @@ export class ParentDashboardController {
       return res.status(500).json({ success: false, error: error.message || 'Failed to fetch class diary' })
     }
   }
+
+  /**
+   * GET /api/parent-dashboard/student-info/:studentId
+   */
+  async getStudentInfo(req: AuthRequest, res: Response) {
+    try {
+      const profileId = req.profile?.id
+      const { studentId } = req.params
+
+      if (!profileId) return res.status(401).json({ success: false, error: 'Parent authentication required' })
+      if (!studentId) return res.status(400).json({ success: false, error: 'Student ID is required' })
+
+      const parentId = await this.getParentId(profileId)
+      if (!parentId) return res.status(404).json({ success: false, error: 'Parent record not found' })
+
+      const data = await parentDashboardService.getStudentInfo(parentId, studentId)
+      return res.json({ success: true, data })
+    } catch (error: any) {
+      console.error('Error fetching student info:', error)
+      return res.status(500).json({ success: false, error: error.message || 'Failed to fetch student info' })
+    }
+  }
+
+  /**
+   * GET /api/parent-dashboard/assignments/:studentId
+   * Get gradebook assignments for a child (same data as student dashboard)
+   * Reuses StudentDashboardService so data is always consistent with what
+   * the student sees, including proper submission status.
+   */
+  async getStudentAssignments(req: AuthRequest, res: Response) {
+    try {
+      const profileId = req.profile?.id
+      const { studentId } = req.params
+      const { status } = req.query
+
+      if (!profileId) return res.status(401).json({ success: false, error: 'Parent authentication required' })
+      if (!studentId) return res.status(400).json({ success: false, error: 'Student ID is required' })
+
+      const parentId = await this.getParentId(profileId)
+      if (!parentId) return res.status(404).json({ success: false, error: 'Parent record not found' })
+
+      // Verify parent owns this student
+      const students = await parentDashboardService.getStudentsList(parentId)
+      if (!students.find(s => s.id === studentId)) {
+        return res.status(403).json({ success: false, error: 'Access denied to this student' })
+      }
+
+      // Reuse the student-dashboard service for consistent data
+      const { StudentDashboardService } = await import('../services/student-dashboard.service')
+      const studentDashboardService = new StudentDashboardService()
+      const data = await studentDashboardService.getStudentAssignments(studentId, status as string | undefined)
+
+      return res.json({ success: true, data })
+    } catch (error: any) {
+      console.error('Error fetching student assignments for parent:', error)
+      return res.status(500).json({ success: false, error: error.message || 'Failed to fetch assignments' })
+    }
+  }
 }
 
 export const parentDashboardController = new ParentDashboardController()
+

@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import useSWR from 'swr'
 import { useAuth } from '@/context/AuthContext'
-import { useCampus } from '@/context/CampusContext'
+import { useAcademic } from '@/context/AcademicContext'
 import {
-  getCoursePeriods, getGradebookMatrix, bulkEnterGrades,
+  getGradebookMatrix, bulkEnterGrades,
   createGradebookAssignment, type GradebookMatrix
 } from '@/lib/api/grades'
+import { getMyCoursePeriods, type CoursePeriod } from '@/lib/api/courses'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -32,12 +33,10 @@ function getPointColor(points: number | null, max: number) {
 }
 
 export default function TeacherGradebookPage() {
-  const { user, profile } = useAuth()
-  const campusContext = useCampus()
-  const campusId = campusContext?.selectedCampus?.id
+  const { user } = useAuth()
+  const { selectedAcademicYear, selectedQuarter } = useAcademic()
 
   const [selectedCPId, setSelectedCPId] = useState<string>('')
-  const [selectedSectionId, setSelectedSectionId] = useState<string>('')
 
   // Pending unsaved grade changes: {studentId_assignmentId: points}
   const [pendingGrades, setPendingGrades] = useState<Record<string, string>>({})
@@ -48,24 +47,22 @@ export default function TeacherGradebookPage() {
   const [newAssignment, setNewAssignment] = useState({ title: '', points: '100', due_date: '', assignment_type_id: '' })
   const [addingAssignment, setAddingAssignment] = useState(false)
 
-  // Load teacher's course periods
-  const { data: cpData } = useSWR(
-    user ? ['teacher-course-periods', campusId] : null,
-    () => getCoursePeriods(campusId),
+  // Load teacher's own course periods (already scoped to this teacher server-side)
+  const { data: teacherCPs = [] } = useSWR(
+    user ? ['teacher-my-cps-gradebook', selectedAcademicYear, selectedQuarter?.id] : null,
+    () => getMyCoursePeriods({
+      academic_year_id: selectedAcademicYear || undefined,
+      marking_period_id: selectedQuarter?.id || undefined,
+    }),
     { revalidateOnFocus: false }
   )
 
-  // Filter to teacher's own course periods
-  const teacherCPs = (cpData?.data || []).filter(cp =>
-    cp.teacher_id === profile?.staff_id || !cp.teacher_id
-  )
+  const selectedCP = teacherCPs.find((cp: CoursePeriod) => cp.id === selectedCPId)
 
-  const selectedCP = teacherCPs.find(cp => cp.id === selectedCPId)
-
-  // Load gradebook matrix when course period selected
+  // Load gradebook matrix when course period selected (section_id resolved server-side from CP)
   const { data: matrixData, isLoading: matrixLoading, mutate: refreshMatrix } = useSWR(
-    selectedCPId && selectedSectionId ? ['gradebook-matrix', selectedCPId, selectedSectionId] : null,
-    () => getGradebookMatrix(selectedCPId, selectedSectionId),
+    selectedCPId ? ['gradebook-matrix', selectedCPId] : null,
+    () => getGradebookMatrix(selectedCPId),
     { revalidateOnFocus: false }
   )
 
@@ -74,8 +71,6 @@ export default function TeacherGradebookPage() {
   const handleCPSelect = (cpId: string) => {
     setSelectedCPId(cpId)
     setPendingGrades({})
-    const cp = teacherCPs.find(c => c.id === cpId)
-    setSelectedSectionId(cp?.section_id || '')
   }
 
   const cellKey = (studentId: string, assignmentId: string) => `${studentId}_${assignmentId}`
@@ -212,11 +207,7 @@ export default function TeacherGradebookPage() {
         <Card>
           <CardContent className="p-12 text-center">
             <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-            <p className="text-muted-foreground">
-              {!selectedSectionId
-                ? 'This course period has no section assigned'
-                : 'No students found in this section'}
-            </p>
+            <p className="text-muted-foreground">No students found for this course period</p>
           </CardContent>
         </Card>
       ) : (

@@ -181,12 +181,12 @@ export function GroupSchedule() {
               </div>
             ) : (
                 <button
-        type="button"
-        onClick={() => setShowCoursePicker(prev => !prev)}
-        className="px-4 py-2 bg-blue-950 text-white text-sm font-medium rounded-md shadow hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-      >
-        Choose a Course
-      </button>
+                  type="button"
+                  onClick={() => setShowCoursePicker(prev => !prev)}
+                  className="px-4 py-2 bg-blue-950 text-white text-sm font-medium rounded-md shadow hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                >
+                  Choose a Course
+                </button>
             )}
 
             {/* Start Date */}

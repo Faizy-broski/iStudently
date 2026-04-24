@@ -300,6 +300,8 @@ export interface CreateGradebookAssignmentDTO {
   weight?: number
   is_extra_credit?: boolean
   sort_order?: number
+  file_url?: string
+  enable_submission?: boolean
 }
 
 export interface UpdateGradebookAssignmentDTO {
@@ -314,6 +316,8 @@ export interface UpdateGradebookAssignmentDTO {
   is_extra_credit?: boolean
   sort_order?: number
   is_active?: boolean
+  file_url?: string
+  enable_submission?: boolean
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -500,6 +504,7 @@ export interface CommentCodeScale {
   id: string
   school_id: string
   campus_id?: string | null
+  staff_id?: string | null
   title: string
   comment?: string | null
   sort_order: number
@@ -514,6 +519,7 @@ export interface CommentCode {
   id: string
   scale_id: string
   school_id: string
+  staff_id?: string | null
   title: string
   short_name?: string | null
   comment?: string | null

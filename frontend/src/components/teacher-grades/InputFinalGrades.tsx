@@ -307,7 +307,7 @@ export function InputFinalGrades() {
           <TableHeader className="bg-slate-50">
             <TableRow>
               <TableHead className="w-1/3 text-[#4A90E2] font-semibold">STUDENT</TableHead>
-              <TableHead className="w-1/4 text-[#4A90E2] font-semibold">ROSARIOSIS ID</TableHead>
+              <TableHead className="w-1/4 text-[#4A90E2] font-semibold">Studently ID</TableHead>
               <TableHead className="text-[#4A90E2] font-semibold">LETTER PERCENT</TableHead>
             </TableRow>
           </TableHeader>

@@ -91,7 +91,8 @@ export function CampusProvider({ children }: { children: ReactNode }) {
 
         // For non-admin/librarian roles, fetch their single assigned campus
         if (profile.role !== 'admin' && profile.role !== 'librarian') {
-            if (profile.campus_id && !selectedCampus) {
+            const hasCorrectCampus = selectedCampus?.id === profile.campus_id
+            if (profile.campus_id && !hasCorrectCampus) {
                 try {
                     setLoading(true)
                     const campus = await getCampusById(profile.campus_id)
@@ -99,6 +100,7 @@ export function CampusProvider({ children }: { children: ReactNode }) {
                         setCampuses([campus])
                         setSelectedCampus(campus)
                         setCampusCache([campus], profile.school_id)
+                        localStorage.setItem(SELECTED_CAMPUS_KEY, campus.id)
                     }
                 } catch {
                     // Silent fail

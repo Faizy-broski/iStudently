@@ -241,7 +241,7 @@ class CoursesService {
   /**
    * Get all course periods taught by a specific teacher.
    */
-  async getCoursePeriodsByTeacher(teacherId: string, academicYearId?: string): Promise<CoursePeriod[]> {
+  async getCoursePeriodsByTeacher(teacherId: string, academicYearId?: string, markingPeriodId?: string): Promise<CoursePeriod[]> {
     let query = supabase
       .from('course_periods')
       .select(`
@@ -249,6 +249,7 @@ class CoursesService {
         course:courses(id, title, short_name, credit_hours, subject:subjects(id, name, code)),
         section:sections(id, name, grade_level:grade_levels(id, name)),
         period:periods(id, period_name, period_number, start_time, end_time),
+        marking_period:marking_periods(id, title, short_name, mp_type),
         grading_scale:grading_scales(id, title, type)
       `)
       .eq('teacher_id', teacherId)
@@ -257,10 +258,46 @@ class CoursesService {
     if (academicYearId) {
       query = query.eq('academic_year_id', academicYearId)
     }
+    if (markingPeriodId) {
+      query = query.eq('marking_period_id', markingPeriodId)
+    }
 
     const { data, error } = await query.order('title')
     if (error) throw new Error(`Failed to fetch teacher course periods: ${error.message}`)
     return (data || []) as CoursePeriod[]
+  }
+
+  /**
+   * Get students enrolled in a course period's section.
+   * Verifies the course period belongs to the requesting teacher.
+   */
+  async getStudentsByCoursePeriod(cpId: string, teacherId: string): Promise<any[]> {
+    // Fetch course period and verify teacher ownership
+    const { data: cp, error: cpErr } = await supabase
+      .from('course_periods')
+      .select('id, section_id, school_id, teacher_id')
+      .eq('id', cpId)
+      .single()
+
+    if (cpErr || !cp) throw new Error('Course period not found')
+    if (cp.teacher_id !== teacherId) throw new Error('Access denied: not your course period')
+    if (!cp.section_id) return []
+
+    const { data, error } = await supabase
+      .from('students')
+      .select(`
+        id,
+        student_number,
+        section_id,
+        is_active,
+        profile:profiles!profile_id(first_name, last_name, email, phone)
+      `)
+      .eq('section_id', cp.section_id)
+      .eq('school_id', cp.school_id)
+      .eq('is_active', true)
+
+    if (error) throw new Error(`Failed to fetch students: ${error.message}`)
+    return data || []
   }
 
   /**
@@ -317,6 +354,28 @@ class CoursesService {
     if (academicYearId) query = query.eq('academic_year_id', academicYearId)
     const { data, error } = await query.order('title')
     if (error) throw new Error(`Failed to fetch student course periods: ${error.message}`)
+    return (data || []) as CoursePeriod[]
+  }
+
+  /**
+   * Get all course periods for a section (used by timetable admin to select CP when assigning a slot).
+   */
+  async getCoursePeriodsBySection(sectionId: string, academicYearId?: string): Promise<CoursePeriod[]> {
+    let query = supabase
+      .from('course_periods')
+      .select(`
+        *,
+        course:courses(id, title, short_name, subject:subjects(id, name, code)),
+        teacher:staff(id, profile_id, profile:profiles!profile_id(first_name, last_name)),
+        period:periods(id, period_name, period_number, start_time, end_time),
+        marking_period:marking_periods(id, title, short_name, mp_type)
+      `)
+      .eq('section_id', sectionId)
+      .eq('is_active', true)
+
+    if (academicYearId) query = query.eq('academic_year_id', academicYearId)
+    const { data, error } = await query.order('title')
+    if (error) throw new Error(`Failed to fetch section course periods: ${error.message}`)
     return (data || []) as CoursePeriod[]
   }
 

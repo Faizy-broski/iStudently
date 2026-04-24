@@ -1,124 +1,311 @@
 'use client'
 
-import useSWR from 'swr'
-import { useAuth } from '@/context/AuthContext'
+import { useState, useEffect, useMemo } from 'react'
 import { useParentDashboard } from '@/context/ParentDashboardContext'
-import { getUpcomingEvents, getEvents, type SchoolEvent } from '@/lib/api/events'
-import { ParentDashboardLayout } from '@/components/parent/ParentDashboardLayout'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Calendar, Clock } from 'lucide-react'
-import { format, parseISO, isToday, isPast } from 'date-fns'
-import { useState } from 'react'
+import { Loader2, BookOpen, FileText, Users, Zap, Bell, Calendar as CalendarIcon, GraduationCap } from 'lucide-react'
+import {
+  getEventsForRange,
+  getCategoryCounts,
+  type SchoolEvent,
+  type EventCategory,
+} from '@/lib/api/events'
+import { CalendarGrid } from '@/components/admin/CalendarGrid'
+import { EventDetailsDialog } from '@/components/admin/EventDetailsDialog'
+import {
+  getCalendars,
+  getCalendarDays,
+  type CalendarDay,
+  type AttendanceCalendar,
+} from '@/lib/api/attendance-calendars'
+import useSWR from 'swr'
+import moment from 'moment'
 
-const CATEGORY_COLORS: Record<string, string> = {
-  academic: 'bg-purple-100 text-purple-700 border-purple-200',
-  holiday: 'bg-orange-100 text-orange-700 border-orange-200',
-  exam: 'bg-red-100 text-red-700 border-red-200',
-  meeting: 'bg-blue-100 text-blue-700 border-blue-200',
-  activity: 'bg-green-100 text-green-700 border-green-200',
-  reminder: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+const EVENT_COLORS: Record<EventCategory, string> = {
+  academic: '#3b82f6',
+  holiday: '#ef4444',
+  exam:     '#f59e0b',
+  meeting:  '#8b5cf6',
+  activity: '#10b981',
+  reminder: '#6b7280',
+}
+
+const CATEGORY_LABELS: Record<EventCategory, string> = {
+  academic: 'Academic',
+  holiday:  'Holiday',
+  exam:     'Exam',
+  meeting:  'Meeting',
+  activity: 'Activity',
+  reminder: 'Reminder',
+}
+
+const CATEGORY_ICONS: Record<EventCategory, React.ReactNode> = {
+  academic: <BookOpen className="h-4 w-4" />,
+  holiday:  <CalendarIcon className="h-4 w-4" />,
+  exam:     <FileText className="h-4 w-4" />,
+  meeting:  <Users className="h-4 w-4" />,
+  activity: <Zap className="h-4 w-4" />,
+  reminder: <Bell className="h-4 w-4" />,
 }
 
 export default function ParentEventsPage() {
-  const { user, profile } = useAuth()
-  const [showPast, setShowPast] = useState(false)
+  const { selectedStudentData, isLoading: studentsLoading } = useParentDashboard()
+  const campusId = selectedStudentData?.campus_id
 
-  const { data: upcomingRes, isLoading } = useSWR(
-    user && profile?.role === 'parent' ? ['parent-upcoming-events', user.id] : null,
-    () => getUpcomingEvents(30, 'parent'),
-    { revalidateOnFocus: false, dedupingInterval: 60000 }
+  const [selectedCategory, setSelectedCategory] = useState<EventCategory | 'all'>('all')
+  const [currentMonth, setCurrentMonth] = useState(new Date())
+  const [activeTab, setActiveTab] = useState<'gregorian' | 'hijri'>('gregorian')
+  const [gregorianCalendar, setGregorianCalendar] = useState<AttendanceCalendar | null>(null)
+  const [hijriCalendar, setHijriCalendar] = useState<AttendanceCalendar | null>(null)
+  const [selectedEvent, setSelectedEvent] = useState<SchoolEvent | null>(null)
+  const [showEventDetails, setShowEventDetails] = useState(false)
+
+  const monthStr = useMemo(
+    () => moment(currentMonth).format('YYYY-MM'),
+    [currentMonth]
   )
 
-  const { data: allRes } = useSWR(
-    showPast && user ? ['parent-all-events', user.id] : null,
-    () => getEvents({ user_role: 'parent', limit: 100 }),
-    { revalidateOnFocus: false }
+  // Load attendance calendars
+  const { data: allCalendars } = useSWR(
+    campusId ? ['parent-calendars', campusId] : null,
+    async () => {
+      const res = await getCalendars(campusId)
+      return res.success && res.data ? res.data : []
+    }
   )
 
-  const upcoming: SchoolEvent[] = upcomingRes?.data || []
-  const all: SchoolEvent[] = allRes?.data || []
-  const past = all.filter(e => isPast(parseISO(e.start_at)) && !isToday(parseISO(e.start_at)))
+  // Set default calendars and jump to start month
+  useEffect(() => {
+    if (allCalendars && allCalendars.length > 0) {
+      const greg = allCalendars.find(c => c.calendar_type === 'gregorian' && c.is_default)
+                || allCalendars.find(c => c.calendar_type === 'gregorian')
+      const hij  = allCalendars.find(c => c.calendar_type === 'hijri' && c.is_default)
+                || allCalendars.find(c => c.calendar_type === 'hijri')
+      if (greg) setGregorianCalendar(greg)
+      if (hij)  setHijriCalendar(hij)
+      const active = activeTab === 'gregorian' ? greg : hij
+      if (active?.start_date) setCurrentMonth(new Date(active.start_date))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allCalendars])
+
+  // Load events for the current month
+  const category = selectedCategory === 'all' ? undefined : selectedCategory
+  const { data: events, isLoading: eventsLoading, isValidating } = useSWR(
+    campusId ? ['parent-events', monthStr, category, campusId] : null,
+    async () => {
+      const start = moment(currentMonth).startOf('month').toISOString()
+      const end   = moment(currentMonth).endOf('month').toISOString()
+      const res   = await getEventsForRange(start, end, category, 'parent', campusId)
+      return res.success && res.data ? res.data : []
+    },
+    { keepPreviousData: true, revalidateOnFocus: false }
+  )
+
+  // Category counts (for stat cards)
+  const activeCalendar = activeTab === 'gregorian' ? gregorianCalendar : hijriCalendar
+  const { data: categoryCounts } = useSWR(
+    campusId ? ['parent-category-counts', campusId, activeCalendar?.start_date, activeCalendar?.end_date] : null,
+    async () => {
+      const res = await getCategoryCounts(activeCalendar?.start_date, activeCalendar?.end_date, campusId)
+      return res.success && res.data ? res.data : null
+    },
+    { dedupingInterval: 30000, revalidateOnFocus: false }
+  )
+
+  const counts = categoryCounts || { academic: 0, holiday: 0, exam: 0, meeting: 0, activity: 0, reminder: 0 }
+
+  // Calendar days for school-day colouring
+  function getMonthRange(date: Date) {
+    const start = new Date(date.getFullYear(), date.getMonth(), 1)
+    const end   = new Date(date.getFullYear(), date.getMonth() + 1, 0)
+    return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) }
+  }
+
+  const { data: gregorianDays, isValidating: loadingGregorianDays } = useSWR(
+    gregorianCalendar ? ['parent-cal-days-greg', gregorianCalendar.id, monthStr] : null,
+    async () => {
+      const { start, end } = getMonthRange(currentMonth)
+      const res = await getCalendarDays(gregorianCalendar!.id, start, end)
+      return res.success && res.data ? res.data : []
+    }
+  )
+
+  const { data: hijriDays, isValidating: loadingHijriDays } = useSWR(
+    hijriCalendar ? ['parent-cal-days-hijri', hijriCalendar.id, monthStr] : null,
+    async () => {
+      const { start, end } = getMonthRange(currentMonth)
+      const res = await getCalendarDays(hijriCalendar!.id, start, end)
+      return res.success && res.data ? res.data : []
+    }
+  )
+
+  if (studentsLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (!selectedStudentData) {
+    return (
+      <div className="p-4 md:p-6">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <GraduationCap className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">Select a child to view the school calendar.</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
-    <ParentDashboardLayout>
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold">School Events</h2>
-          <p className="text-gray-500 mt-1">Stay updated with school activities and events</p>
-        </div>
+    <div className="p-4 md:p-6 space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#022172] dark:text-white">
+          School Events &amp; Calendar
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Academic events, holidays, and important dates &mdash;{' '}
+          <span className="text-[#022172] dark:text-blue-400 font-medium">{selectedStudentData.campus_name}</span>
+        </p>
+      </div>
 
-        {isLoading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : upcoming.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">No upcoming events</p>
+      {/* Category stat cards (click to filter) */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {(Object.entries(CATEGORY_LABELS) as [EventCategory, string][]).map(([cat, label]) => (
+          <Card
+            key={cat}
+            className={`cursor-pointer transition-all hover:shadow-md ${
+              selectedCategory === cat ? 'ring-2 ring-[#022172]' : ''
+            }`}
+            onClick={() => setSelectedCategory(selectedCategory === cat ? 'all' : cat)}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div
+                  className="p-2 rounded-lg"
+                  style={{ backgroundColor: EVENT_COLORS[cat] + '20', color: EVENT_COLORS[cat] }}
+                >
+                  {CATEGORY_ICONS[cat]}
+                </div>
+                <div>
+                  <div className="text-xl font-bold">{counts[cat]}</div>
+                  <div className="text-xs text-muted-foreground">{label}</div>
+                </div>
+              </div>
             </CardContent>
           </Card>
-        ) : (
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Upcoming Events</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {upcoming.map(event => <EventCard key={event.id} event={event} />)}
-            </div>
-          </div>
-        )}
-
-        {past.length > 0 && (
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Past Events</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 opacity-60">
-              {past.map(event => <EventCard key={event.id} event={event} isPast />)}
-            </div>
-          </div>
-        )}
+        ))}
       </div>
-    </ParentDashboardLayout>
-  )
-}
 
-function EventCard({ event, isPast = false }: { event: SchoolEvent; isPast?: boolean }) {
-  const start = parseISO(event.start_at)
-  const today = isToday(start)
-  const colorClass = CATEGORY_COLORS[event.category] || 'bg-gray-100 text-gray-700 border-gray-200'
+      {/* Active filter badge */}
+      {selectedCategory !== 'all' && (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Filtering by:</span>
+          <Badge
+            style={{ backgroundColor: EVENT_COLORS[selectedCategory as EventCategory] }}
+            className="text-white cursor-pointer"
+            onClick={() => setSelectedCategory('all')}
+          >
+            {CATEGORY_LABELS[selectedCategory as EventCategory]} ✕
+          </Badge>
+        </div>
+      )}
 
-  return (
-    <Card className={`${today && !isPast ? 'border-2 border-[#57A3CC] bg-blue-50' : ''} ${isPast ? 'grayscale' : ''}`}>
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <CardTitle className="text-lg mb-2">{event.title}</CardTitle>
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge className={colorClass}>{event.category}</Badge>
-              {today && !isPast && <Badge className="bg-[#57A3CC]">Today</Badge>}
-              {isPast && <Badge variant="outline">Completed</Badge>}
+      {/* Gregorian / Hijri tabs */}
+      <Tabs
+        defaultValue="gregorian"
+        className="w-full"
+        onValueChange={(v) => setActiveTab(v as 'gregorian' | 'hijri')}
+      >
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="gregorian">Gregorian Calendar</TabsTrigger>
+          <TabsTrigger value="hijri">Hijri Calendar</TabsTrigger>
+        </TabsList>
+
+        {/* ── Gregorian ── */}
+        <TabsContent value="gregorian" className="mt-6">
+          {eventsLoading ? (
+            <Card>
+              <CardContent className="p-12 text-center text-muted-foreground">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                Loading calendar…
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="relative">
+              {(isValidating || loadingGregorianDays) && (
+                <div className="absolute top-2 right-2 z-10">
+                  <div className="bg-background/90 backdrop-blur-sm px-3 py-1.5 rounded-full border shadow-sm">
+                    <div className="text-xs text-muted-foreground flex items-center gap-2">
+                      <div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse" />
+                      Updating…
+                    </div>
+                  </div>
+                </div>
+              )}
+              <CalendarGrid
+                events={events || []}
+                calendarDays={(gregorianDays as CalendarDay[]) || []}
+                currentMonth={currentMonth}
+                onMonthChange={setCurrentMonth}
+                onEventClick={(event) => { setSelectedEvent(event); setShowEventDetails(true) }}
+                calendarType="gregorian"
+                calendarStart={gregorianCalendar?.start_date}
+                calendarEnd={gregorianCalendar?.end_date}
+              />
             </div>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {event.description && (
-          <p className="text-sm text-gray-700 mb-4">{event.description}</p>
-        )}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm">
-            <Calendar className="h-4 w-4 text-gray-400" />
-            <span className="text-gray-600">{format(start, 'EEEE, MMMM d, yyyy')}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Clock className="h-4 w-4 text-gray-400" />
-            <span className="text-gray-600">
-              {event.is_all_day
-                ? 'All day'
-                : `${format(start, 'h:mm a')} – ${format(parseISO(event.end_at), 'h:mm a')}`}
-            </span>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+          )}
+        </TabsContent>
+
+        {/* ── Hijri ── */}
+        <TabsContent value="hijri" className="mt-6">
+          {eventsLoading ? (
+            <Card>
+              <CardContent className="p-12 text-center text-muted-foreground">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                Loading calendar…
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="relative">
+              {(isValidating || loadingHijriDays) && (
+                <div className="absolute top-2 right-2 z-10">
+                  <div className="bg-background/90 backdrop-blur-sm px-3 py-1.5 rounded-full border shadow-sm">
+                    <div className="text-xs text-muted-foreground flex items-center gap-2">
+                      <div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse" />
+                      Updating…
+                    </div>
+                  </div>
+                </div>
+              )}
+              <CalendarGrid
+                events={events || []}
+                calendarDays={(hijriDays as CalendarDay[]) || []}
+                currentMonth={currentMonth}
+                onMonthChange={setCurrentMonth}
+                onEventClick={(event) => { setSelectedEvent(event); setShowEventDetails(true) }}
+                calendarType="hijri"
+                calendarStart={hijriCalendar?.start_date}
+                calendarEnd={hijriCalendar?.end_date}
+              />
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+
+      {/* Event details — read-only (no onEdit / onDelete props) */}
+      <EventDetailsDialog
+        open={showEventDetails}
+        onOpenChange={setShowEventDetails}
+        event={selectedEvent}
+      />
+    </div>
   )
 }

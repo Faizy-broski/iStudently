@@ -824,8 +824,9 @@ export interface GradebookMatrix {
   grades: GradebookMatrixGrade[]
 }
 
-export async function getGradebookMatrix(coursePeriodId: string, sectionId: string) {
-  return apiRequest<GradebookMatrix>(`/gradebook/view?course_period_id=${coursePeriodId}&section_id=${sectionId}`)
+export async function getGradebookMatrix(coursePeriodId: string, sectionId?: string) {
+  const qs = sectionId ? `&section_id=${sectionId}` : ''
+  return apiRequest<GradebookMatrix>(`/gradebook/view?course_period_id=${coursePeriodId}${qs}`)
 }
 
 export async function getGradesForAssignment(assignmentId: string) {

@@ -224,6 +224,8 @@ class GradebookService {
         weight: dto.weight || 1.00,
         is_extra_credit: dto.is_extra_credit || false,
         sort_order: dto.sort_order || 0,
+        file_url: dto.file_url || null,
+        enable_submission: dto.enable_submission ?? false,
         created_by: createdBy,
       })
       .select()
@@ -234,9 +236,28 @@ class GradebookService {
   }
 
   async updateAssignment(id: string, dto: UpdateGradebookAssignmentDTO): Promise<GradebookAssignment> {
+    // Strip joined/computed fields that are not columns on the table
+    const { assignment_type_id, title, points, default_points, weight,
+            assigned_date, due_date, description, is_extra_credit,
+            sort_order, is_active, file_url, enable_submission } = dto as any
+    const updatePayload: Record<string, unknown> = {}
+    if (assignment_type_id !== undefined) updatePayload.assignment_type_id = assignment_type_id
+    if (title !== undefined) updatePayload.title = title
+    if (points !== undefined) updatePayload.points = points
+    if (default_points !== undefined) updatePayload.default_points = default_points
+    if (weight !== undefined) updatePayload.weight = weight
+    if (assigned_date !== undefined) updatePayload.assigned_date = assigned_date
+    if (due_date !== undefined) updatePayload.due_date = due_date
+    if (description !== undefined) updatePayload.description = description
+    if (is_extra_credit !== undefined) updatePayload.is_extra_credit = is_extra_credit
+    if (sort_order !== undefined) updatePayload.sort_order = sort_order
+    if (is_active !== undefined) updatePayload.is_active = is_active
+    if (file_url !== undefined) updatePayload.file_url = file_url
+    if (enable_submission !== undefined) updatePayload.enable_submission = enable_submission
+
     const { data, error } = await supabase
       .from('gradebook_assignments')
-      .update(dto)
+      .update(updatePayload)
       .eq('id', id)
       .select()
       .single()
@@ -526,12 +547,23 @@ class GradebookService {
   /**
    * Get a full gradebook view: all assignments x all students with grades.
    */
-  async getGradebookView(coursePeriodId: string, sectionId: string): Promise<{
+  async getGradebookView(coursePeriodId: string, sectionId?: string): Promise<{
     assignment_types: GradebookAssignmentType[]
     assignments: GradebookAssignment[]
     students: Array<{ id: string; student_number: string; first_name: string; last_name: string }>
     grades: GradebookGrade[]
   }> {
+    // If section_id not provided, look it up from the course period
+    let resolvedSectionId = sectionId
+    if (!resolvedSectionId) {
+      const { data: cp } = await supabase
+        .from('course_periods')
+        .select('section_id')
+        .eq('id', coursePeriodId)
+        .single()
+      resolvedSectionId = cp?.section_id || undefined
+    }
+
     // Parallel fetch
     const [typesResult, assignmentsResult, studentsResult, gradesResult] = await Promise.all([
       supabase
@@ -548,11 +580,14 @@ class GradebookService {
         .eq('is_active', true)
         .order('due_date'),
 
-      supabase
-        .from('students')
-        .select('id, student_number, profile:profiles(first_name, last_name)')
-        .eq('section_id', sectionId)
-        .order('student_number'),
+      resolvedSectionId
+        ? supabase
+            .from('students')
+            .select('id, student_number, profile:profiles(first_name, last_name)')
+            .eq('section_id', resolvedSectionId)
+            .eq('is_active', true)
+            .order('student_number')
+        : Promise.resolve({ data: [], error: null }),
 
       supabase
         .from('gradebook_grades')

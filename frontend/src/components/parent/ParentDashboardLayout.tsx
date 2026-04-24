@@ -1,7 +1,7 @@
 'use client'
 
 import { useParentDashboard } from '@/context/ParentDashboardContext'
-import { StudentSelector } from './StudentSelector'
+
 import { AtGlanceStats } from './AtGlanceStats'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -125,10 +125,7 @@ function Header({ studentName }: { studentName?: string }) {
           }
         </p>
       </div>
-      <div className="flex items-center gap-3">
-        <span className="text-sm text-muted-foreground hidden sm:inline">Child:</span>
-        <StudentSelector />
-      </div>
+
     </div>
   )
 }

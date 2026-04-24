@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import * as teacherService from '../services/teacher.service'
+import { coursesService } from '../services/courses.service'
 import { ApiResponse } from '../types'
 import { getEffectiveSchoolId, validateCampusAccess } from '../utils/campus-validation'
 
@@ -470,5 +471,46 @@ export const deletePeriod = async (req: Request, res: Response) => {
       success: false,
       error: error.message
     } as ApiResponse)
+  }
+}
+
+// ============================================================================
+// COURSE PERIOD CONTROLLER (teacher's own course periods)
+// ============================================================================
+
+export const getMyCoursePeriods = async (req: Request, res: Response) => {
+  try {
+    const profile = (req as AuthRequest).profile as any
+    const staffId = profile?.staff_id
+    if (!staffId) {
+      return res.status(403).json({ success: false, error: 'Staff record not found for this teacher' } as ApiResponse)
+    }
+
+    const academicYearId = req.query.academic_year_id as string | undefined
+    const markingPeriodId = req.query.marking_period_id as string | undefined
+
+    const data = await coursesService.getCoursePeriodsByTeacher(staffId, academicYearId, markingPeriodId)
+    res.json({ success: true, data })
+  } catch (error: any) {
+    console.error('Error in getMyCoursePeriods:', error)
+    res.status(500).json({ success: false, error: error.message } as ApiResponse)
+  }
+}
+
+export const getMyCoursePeriodStudents = async (req: Request, res: Response) => {
+  try {
+    const profile = (req as AuthRequest).profile as any
+    const staffId = profile?.staff_id
+    if (!staffId) {
+      return res.status(403).json({ success: false, error: 'Staff record not found for this teacher' } as ApiResponse)
+    }
+
+    const { cpId } = req.params
+    const data = await coursesService.getStudentsByCoursePeriod(cpId, staffId)
+    res.json({ success: true, data })
+  } catch (error: any) {
+    console.error('Error in getMyCoursePeriodStudents:', error)
+    const status = error.message?.includes('Access denied') ? 403 : 500
+    res.status(status).json({ success: false, error: error.message } as ApiResponse)
   }
 }

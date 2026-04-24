@@ -25,18 +25,18 @@ export default function ParentClassDiaryPage() {
   const entries: any[] = Array.isArray(data) ? data : []
 
   return (
-    <ParentDashboardLayout>
+    <ParentDashboardLayout hideStats={true}>
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold">Class Diary</h2>
-          <p className="text-gray-500 mt-1">Daily notes and activities from your child's teacher</p>
+          <h1 className="text-3xl font-bold">Class Diary</h1>
+          <p className="text-muted-foreground mt-1">Daily notes and activities from your child's teacher</p>
         </div>
 
         {!selectedStudent ? (
           <Card>
             <CardContent className="py-12 text-center">
-              <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">Select a student to view their class diary</p>
+              <BookOpen className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+              <p className="text-muted-foreground">Select a student to view their class diary</p>
             </CardContent>
           </Card>
         ) : isLoading ? (
@@ -46,9 +46,9 @@ export default function ParentClassDiaryPage() {
         ) : entries.length === 0 ? (
           <Card>
             <CardContent className="py-16 text-center">
-              <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="font-medium text-gray-500">No diary entries yet</p>
-              <p className="text-sm text-gray-400 mt-1">Your child's teacher hasn't posted any entries</p>
+              <BookOpen className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+              <p className="font-medium text-muted-foreground">No diary entries yet</p>
+              <p className="text-sm text-muted-foreground mt-1">Your child's teacher hasn't posted any entries</p>
             </CardContent>
           </Card>
         ) : (
@@ -69,16 +69,21 @@ export default function ParentClassDiaryPage() {
                           <p className="font-semibold">
                             {format(parseISO(entry.diary_date), 'EEEE, MMMM d, yyyy')}
                           </p>
-                          <p className="text-xs text-gray-500">By {teacherName}</p>
+                          <p className="text-xs text-muted-foreground">By {teacherName}</p>
                         </div>
                       </div>
-                      {entry.enable_comments && (
-                        <Badge variant="secondary" className="text-xs gap-1 shrink-0">
-                          <MessageSquare className="h-3 w-3" /> Comments on
-                        </Badge>
-                      )}
+                      <div className="flex gap-2 shrink-0">
+                        {entry.is_published && (
+                          <Badge variant="outline" className="text-xs">Published</Badge>
+                        )}
+                        {entry.enable_comments && (
+                          <Badge variant="secondary" className="text-xs gap-1">
+                            <MessageSquare className="h-3 w-3" /> Comments on
+                          </Badge>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap leading-relaxed">
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
                       {entry.content}
                     </p>
                   </CardContent>
@@ -86,6 +91,12 @@ export default function ParentClassDiaryPage() {
               )
             })}
           </div>
+        )}
+
+        {!isLoading && entries.length > 0 && (
+          <p className="text-xs text-center text-muted-foreground">
+            Showing {entries.length} entr{entries.length === 1 ? 'y' : 'ies'}
+          </p>
         )}
       </div>
     </ParentDashboardLayout>

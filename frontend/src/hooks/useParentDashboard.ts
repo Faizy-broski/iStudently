@@ -475,3 +475,67 @@ export function useReportCard(academicYear?: string) {
     refresh
   }
 }
+
+/**
+ * Hook to fetch gradebook assignments for the selected student (parent view)
+ * Returns the same rich AssignmentsByStatus shape as the student dashboard,
+ * including a `submission` object so we can show ✓/✗ per assignment.
+ */
+export function useParentStudentAssignments(status?: 'todo' | 'submitted' | 'graded') {
+  const { user, profile, loading: authLoading } = useAuth()
+  const { selectedStudent } = useParentDashboard()
+
+  const swrKey =
+    !authLoading && user && profile?.role === 'parent' && selectedStudent
+      ? ['parent-student-assignments', selectedStudent, status || 'all']
+      : null
+
+  const { data, error, isLoading, mutate } = useSWR(
+    swrKey,
+    () => api.getStudentAssignmentsForParent(selectedStudent!, status),
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 60000 // 1 minute
+    }
+  )
+
+  const refresh = useCallback(() => {
+    mutate()
+  }, [mutate])
+
+  return {
+    assignments: data || { todo: [], submitted: [], graded: [] },
+    isLoading: authLoading || isLoading,
+    error,
+    refresh
+  }
+}
+
+/**
+ * Hook for student lesson plans (published, for enrolled course periods) - Parent View
+ */
+export const useParentStudentLessonPlans = (coursePeriodId?: string) => {
+  const { user, profile, loading: authLoading } = useAuth()
+  const { selectedStudent } = useParentDashboard()
+
+  const swrKey = !authLoading && user && profile?.role === 'parent' && selectedStudent
+    ? ['parent-student-lesson-plans', selectedStudent, coursePeriodId || 'all']
+    : null
+
+  const { data, error, isLoading, mutate } = useSWR(
+    swrKey,
+    async () => {
+      const res = await api.getStudentLessonPlans(selectedStudent!, coursePeriodId)
+      return res
+    },
+    { revalidateOnFocus: false, dedupingInterval: 60000 }
+  )
+
+  return {
+    coursePeriods: data?.course_periods || [],
+    lessons: data?.lessons || [],
+    isLoading: authLoading || isLoading,
+    error,
+    refresh: mutate
+  }
+}

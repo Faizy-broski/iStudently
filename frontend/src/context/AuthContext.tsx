@@ -164,8 +164,8 @@ export async function handleSessionExpiry() {
       visibilityValidationPromise = null
     }
 
-    // Sign out from Supabase
-    await supabase.auth.signOut()
+    // Sign out from Supabase (local only — does not revoke other devices' sessions)
+    await supabase.auth.signOut({ scope: 'local' })
 
     // Redirect to login with session expired message
     if (typeof window !== 'undefined') {
@@ -244,7 +244,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Sign out and redirect to login
-    await supabase.auth.signOut()
+    await supabase.auth.signOut({ scope: 'local' })
     if (typeof window !== 'undefined') {
       window.location.href = '/auth/login?error=session_recovery'
     }
@@ -332,7 +332,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             if (refreshError || !data.session) {
               console.error('❌ Cannot refresh expired session, logging out')
-              await supabase.auth.signOut()
+              await supabase.auth.signOut({ scope: 'local' })
               setUser(null)
               setProfile(null)
               setAccessToken(null)
@@ -424,7 +424,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             sessionError.message.includes('Invalid Refresh Token')
 
           if (isRefreshTokenError) {
-            await supabase.auth.signOut()
+            await supabase.auth.signOut({ scope: 'local' })
             if (isMounted) {
               setUser(null)
               setProfile(null)
@@ -441,7 +441,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // If there's an auth error (like invalid refresh token), clear the session
         if (error) {
           console.warn('⚠️ Auth error during initialization:', error.message)
-          await supabase.auth.signOut()
+          await supabase.auth.signOut({ scope: 'local' })
           if (isMounted) {
             setUser(null)
             setProfile(null)
@@ -512,7 +512,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               // Still no profile - sign out silently and redirect to login
               // Don't show scary error - just let user log in again
               console.warn('⚠️ Profile not found after retry - signing out silently')
-              await supabase.auth.signOut()
+              await supabase.auth.signOut({ scope: 'local' })
               if (isMounted) {
                 setUser(null)
                 setProfile(null)
@@ -572,17 +572,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               }
             }
 
-            // For students, fetch their student_id and campus_id from section
+            // For students, fetch their student_id, school_id, and campus_id from section
             if (profile.role === 'student') {
               const { data: studentData } = await supabase
                 .from('students')
-                .select('id, section_id, section:sections(campus_id)')
+                .select('id, school_id, section_id, section:sections(campus_id)')
                 .eq('profile_id', profile.id)
                 .single()
 
               if (studentData) {
                 profile.student_id = studentData.id
                 profile.section_id = studentData.section_id
+                // Ensure school_id is set even if missing from base profile
+                if (!profile.school_id && studentData.school_id) {
+                  profile.school_id = studentData.school_id
+                }
                 // @ts-expect-error - section data structure from Supabase query
                 profile.campus_id = studentData.section?.campus_id || null
               }
@@ -591,8 +595,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // For parents, they belong to the main school, not a specific campus
             // They can access content from multiple campuses via student selection
             if (profile.role === 'parent') {
-              console.log('👨‍👩‍👧 Parent detected, setting main school as campus_id:', profile.school_id)
-
               // Parents use their main school_id as campus_id for basic access
               // The actual campus filtering happens via selected student in ParentDashboardContext
               profile.campus_id = profile.school_id
@@ -600,8 +602,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // Adding custom property for parents
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 ; (profile as any).campus_ids = [profile.school_id] // Main school only
-
-              console.log('✅ Parent campus_id set to main school:', profile.school_id)
             }
 
             if (isMounted) {
@@ -619,7 +619,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         console.error('❌ Error fetching user:', error)
         // Clear any invalid session
-        await supabase.auth.signOut()
+        await supabase.auth.signOut({ scope: 'local' })
         if (isMounted) {
           setUser(null)
           setProfile(null)
@@ -775,13 +775,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null)
 
         if (session?.user) {
-          // Check cache first
-          const now = Date.now()
-          if (profileCache &&
-            profileCache.userId === session.user.id &&
-            now - profileCache.timestamp < PROFILE_CACHE_TTL) {
-            console.log('✅ Using cached profile (auth state change)')
+          // Check cache first - if we already have this user's profile, USE IT.
+          // Don't refetch on every token refresh or tab focus, which causes spinners and unwanted signouts if network is flaky.
+          if (profileCache && profileCache.userId === session.user.id) {
             setProfile(profileCache.profile)
+            // Update timestamp to keep it alive
+            profileCache.timestamp = Date.now()
+            setProfileFetchPending(false)
+            setLoading(false)
           } else {
             // Wrap profile fetch in a timeout to handle cold database scenarios
             const PROFILE_FETCH_TIMEOUT_MS = 8000 // 8 seconds max for profile fetch
@@ -793,15 +794,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 .eq('id', session.user.id)
                 .single()
 
-              console.log('🔍 Profile fetch result (auth state change):', {
-                hasProfile: !!profile,
-                hasError: !!profileError,
-                errorMsg: profileError?.message
-              })
+                .single()
 
               // Check for error OR missing profile
               if (profileError || !profile) {
-                console.warn('⚠️ Profile fetch failed in auth state change, retrying...')
 
                 // Retry once after a short delay
                 await new Promise(resolve => setTimeout(resolve, 500))
@@ -823,7 +819,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             const timeoutPromise = new Promise<{ profile: null; shouldSignOut: false; timedOut: true }>((resolve) => {
               setTimeout(() => {
-                console.warn('⚠️ Profile fetch timed out after', PROFILE_FETCH_TIMEOUT_MS, 'ms')
                 resolve({ profile: null, shouldSignOut: false, timedOut: true })
               }, PROFILE_FETCH_TIMEOUT_MS)
             })
@@ -832,7 +827,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             // Handle timeout - server likely unavailable, mark pending and retry
             if ('timedOut' in result && result.timedOut) {
-              console.warn('⚠️ Profile fetch timed out - server may be unavailable, will retry...')
               // CRITICAL: Signal that profile fetch is pending (server issue, not missing profile)
               // RoleGuard should NOT redirect when this is true
               setProfileFetchPending(true)
@@ -841,7 +835,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               // Schedule a retry after 3 seconds
               setTimeout(async () => {
                 if (!isMounted) return
-                console.log('🔄 Retrying profile fetch after timeout...')
                 try {
                   const { data: retryProfile, error: retryError } = await supabase
                     .from('profiles')
@@ -924,7 +917,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
               // Not on auth page - sign out silently
               console.warn('⚠️ Profile not found after retry - signing out silently')
-              await supabase.auth.signOut()
+              await supabase.auth.signOut({ scope: 'local' })
               setUser(null)
               setProfile(null)
               profileCache = null
@@ -1019,7 +1012,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setProfile(profile)
             setProfileFetchPending(false) // Clear pending state on success
             // Update cache
-            profileCache = { profile, userId: session.user.id, timestamp: now }
+            profileCache = { profile, userId: session.user.id, timestamp: Date.now() }
           }
         } else {
           setProfile(null)
@@ -1136,8 +1129,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('studentlyRememberEmail')
     localStorage.removeItem('studentlyRememberPassword')
 
-    // Sign out from Supabase
-    await supabase.auth.signOut()
+    // Sign out from Supabase (local only — does not revoke other devices' sessions)
+    await supabase.auth.signOut({ scope: 'local' })
 
     // Force redirect to login page
     if (typeof window !== 'undefined') {

@@ -2,126 +2,72 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
-import { useAuth } from '@/context/AuthContext'
-import { getUpcomingEvents, getEvents, type SchoolEvent } from '@/lib/api/events'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Loader2, Calendar, Clock, ChevronRight } from 'lucide-react'
-import { format, parseISO, isFuture, isToday, isPast } from 'date-fns'
-
-const CATEGORY_COLORS: Record<string, string> = {
-  academic: 'bg-purple-100 text-purple-700 border-purple-200',
-  holiday: 'bg-orange-100 text-orange-700 border-orange-200',
-  exam: 'bg-red-100 text-red-700 border-red-200',
-  meeting: 'bg-blue-100 text-blue-700 border-blue-200',
-  activity: 'bg-green-100 text-green-700 border-green-200',
-  reminder: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-}
+import { useCampus } from '@/context/CampusContext'
+import { getCalendars, getCalendarDays } from '@/lib/api/attendance-calendars'
+import { useEvents } from '@/hooks/useEvents'
+import { CalendarGrid } from '@/components/admin/CalendarGrid'
+import { Calendar as CalendarIcon, Loader2 } from 'lucide-react'
 
 export default function StudentEventsPage() {
-  const { user } = useAuth()
-  const [showPast, setShowPast] = useState(false)
+  const campusContext = useCampus()
+  const campusId = campusContext?.selectedCampus?.id
+  const [currentMonth, setCurrentMonth] = useState<Date>(new Date())
 
-  const { data: upcomingRes, isLoading } = useSWR(
-    user ? ['student-upcoming-events', user.id] : null,
-    () => getUpcomingEvents(20, 'student'),
-    { revalidateOnFocus: false, dedupingInterval: 60000 }
-  )
+  // Fetch events for CalendarGrid
+  const { events, isLoading: eventsLoading } = useEvents({ currentMonth, selectedCategory: 'all' })
 
-  const { data: allRes, isLoading: loadingAll } = useSWR(
-    showPast && user ? ['student-all-events', user.id] : null,
-    () => getEvents({ user_role: 'student', limit: 50 }),
-    { revalidateOnFocus: false }
-  )
+  // Fetch calendars for CalendarGrid styling (school days vs holidays)
+  const { data: allCalendars } = useSWR(
+    campusId ? ["attendance-calendars", campusId] : null,
+    async () => {
+      const res = await getCalendars(campusId);
+      return res.success && res.data ? res.data : [];
+    }
+  );
+  
+  const defaultGregorian = allCalendars?.find(c => c.calendar_type === 'gregorian' && c.is_default) || allCalendars?.find(c => c.calendar_type === 'gregorian')
 
-  const upcoming = upcomingRes?.data || []
-  const all: SchoolEvent[] = allRes?.data || []
-  const past = all.filter(e => isPast(parseISO(e.start_at)) && !isToday(parseISO(e.start_at)))
+  const { data: calendarDays, isValidating: loadingDays } = useSWR(
+    defaultGregorian && currentMonth ? ["calendarDays", defaultGregorian.id, currentMonth.toISOString().slice(0, 7)] : null,
+    async () => {
+      const start = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).toISOString().slice(0, 10);
+      const end = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).toISOString().slice(0, 10);
+      const res = await getCalendarDays(defaultGregorian!.id, start, end);
+      return res.success && res.data ? res.data : [];
+    }
+  );
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">School Calendar</h1>
-        <p className="text-muted-foreground mt-1">Stay updated with upcoming school events</p>
+    <div className="p-6 space-y-6 bg-[#F8FAFC] min-h-screen">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-[#022172] flex items-center gap-3">
+          <CalendarIcon className="w-8 h-8" />
+          School Calendar
+        </h1>
+        <p className="text-muted-foreground mt-2">
+          View all academic events, holidays, exams, and important dates for the school year.
+        </p>
       </div>
-
-      {isLoading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      
+      {eventsLoading || loadingDays ? (
+        <div className="h-[60vh] bg-white rounded-xl border flex flex-col items-center justify-center shadow-sm">
+          <Loader2 className="w-8 h-8 text-[#022172] animate-spin" />
+          <p className="mt-4 text-sm text-gray-500 font-medium">Loading school calendar...</p>
         </div>
-      ) : upcoming.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Calendar className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
-            <p className="text-muted-foreground">No upcoming events</p>
-          </CardContent>
-        </Card>
       ) : (
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold">Upcoming Events</h2>
-          <div className="grid gap-3">
-            {upcoming.map(event => <EventCard key={event.id} event={event} />)}
-          </div>
-        </div>
-      )}
-
-      <div>
-        <Button variant="outline" size="sm" onClick={() => setShowPast(v => !v)}>
-          {showPast ? 'Hide' : 'Show'} Past Events
-          <ChevronRight className={`ml-1 h-4 w-4 transition-transform ${showPast ? 'rotate-90' : ''}`} />
-        </Button>
-      </div>
-
-      {showPast && (
-        <div className="space-y-3 opacity-70">
-          <h2 className="text-lg font-semibold">Past Events</h2>
-          {loadingAll ? (
-            <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
-          ) : past.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No past events found.</p>
-          ) : (
-            <div className="grid gap-3">
-              {past.map(event => <EventCard key={event.id} event={event} isPast />)}
-            </div>
-          )}
+        <div className="bg-white p-4 rounded-xl border shadow-sm">
+          <CalendarGrid
+            events={events}
+            calendarDays={calendarDays || []}
+            currentMonth={currentMonth}
+            onMonthChange={setCurrentMonth}
+            calendarType="gregorian"
+            calendarStart={defaultGregorian?.start_date}
+            calendarEnd={defaultGregorian?.end_date}
+            // By omitting onDateClick and onEventClick, we keep the calendar purely read-only
+          />
         </div>
       )}
     </div>
-  )
-}
-
-function EventCard({ event, isPast = false }: { event: SchoolEvent; isPast?: boolean }) {
-  const start = parseISO(event.start_at)
-  const today = isToday(start)
-  const colorClass = CATEGORY_COLORS[event.category] || CATEGORY_COLORS.reminder
-
-  return (
-    <Card className={today && !isPast ? 'border-2 border-primary' : ''}>
-      <CardContent className="p-4">
-        <div className="flex items-start gap-4">
-          <div className="min-w-[56px] text-center bg-muted rounded-lg p-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase">{format(start, 'MMM')}</p>
-            <p className="text-xl font-bold leading-none">{format(start, 'd')}</p>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap mb-1">
-              <h3 className="font-semibold truncate">{event.title}</h3>
-              <Badge className={`text-xs ${colorClass}`}>{event.category}</Badge>
-              {today && !isPast && <Badge className="text-xs">Today</Badge>}
-            </div>
-            {event.description && (
-              <p className="text-sm text-muted-foreground line-clamp-2">{event.description}</p>
-            )}
-            <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-              <Clock className="h-3 w-3" />
-              {event.is_all_day
-                ? 'All day'
-                : `${format(start, 'h:mm a')} – ${format(parseISO(event.end_at), 'h:mm a')}`}
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   )
 }

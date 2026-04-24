@@ -879,7 +879,7 @@ export const getStudentDailySummary = async (req: AuthRequest, res: Response) =>
 
     // Filter ONLY the active student
     if (result.data) {
-       result.data = result.data.filter((s:any) => s.id === studentId);
+       result.data = result.data.filter((s:any) => s.student_id === studentId);
     }
     
     res.json(result);
@@ -895,11 +895,22 @@ export const getParentDailySummary = async (req: AuthRequest, res: Response) => 
     const parentProfileId = req.profile?.id;
     if (!parentProfileId) return res.status(403).json({ error: 'Valid parent context required' });
 
+    // Lookup actual parent record
+    const { data: parentRec } = await supabase
+      .from('parents')
+      .select('id')
+      .eq('profile_id', parentProfileId)
+      .single();
+
+    if (!parentRec?.id) {
+      return res.json({ data: [] });
+    }
+
     // 1. Fetch dependent student IDs securely
     const { data: rels } = await supabase
-      .from('parent_student_associations')
+      .from('parent_student_links')
       .select('student_id')
-      .eq('parent_id', parentProfileId);
+      .eq('parent_id', parentRec.id);
 
     const studentIds = rels?.map(r => r.student_id) || [];
     if (studentIds.length === 0) {
@@ -919,7 +930,7 @@ export const getParentDailySummary = async (req: AuthRequest, res: Response) => 
 
     // Filter ONLY the parent's actual dependents
     if (result.data) {
-       result.data = result.data.filter((s:any) => studentIds.includes(s.id));
+       result.data = result.data.filter((s:any) => studentIds.includes(s.student_id));
     }
     
     res.json(result);

@@ -4,16 +4,18 @@ import * as React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
-import { Menu, X, ChevronLeft, ChevronRight, ChevronDown, Calendar, GraduationCap, User } from 'lucide-react'
+import { Menu, X, ChevronLeft, ChevronRight, ChevronDown, Calendar, GraduationCap, User, BookOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SidebarMenuItem } from '@/config/sidebar'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
 import { useAuth } from '@/context/AuthContext'
-import { useAcademic, getStoredSelectedQuarterId } from '@/context/AcademicContext'
+import { useAcademic, getStoredSelectedQuarterId, type SelectedCoursePeriod } from '@/context/AcademicContext'
 import { getMarkingPeriods, type MarkingPeriod } from '@/lib/api/marking-periods'
+import { getMyCoursePeriods, type CoursePeriod } from '@/lib/api/courses'
 import { useCampus } from '@/context/CampusContext'
 import { ProfileViewContext } from '@/context/ProfileViewContext'
+import { useParentDashboardSafe } from '@/context/ParentDashboardContext'
 import {
   Select,
   SelectContent,
@@ -165,60 +167,81 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
   )
 }
 
-// Academic Year & Quarter Selectors Component
+// Academic Year, Quarter & (for teachers) Course Period Selectors
 function AcademicSelectors() {
   const { profile } = useAuth()
   const {
     academicYears,
     selectedAcademicYear,
     selectedQuarter,
+    selectedCoursePeriod,
     setSelectedAcademicYear,
     setSelectedQuarter,
+    setSelectedCoursePeriod,
     currentAcademicYear,
     loading
   } = useAcademic()
   const campusContext = useCampus()
-  const campusId = campusContext?.selectedCampus?.id
+  // Admins/Librarians can switch campuses via the dropdown.
+  // Students/Teachers/Parents are bound to their assigned campus (or the main school if null).
+  const campusId = (profile?.role === 'admin' || profile?.role === 'librarian')
+    ? (campusContext?.selectedCampus?.id || profile?.campus_id)
+    : profile?.campus_id
 
-  // Real quarters loaded from the database for the active campus
+  const isTeacher = profile?.role === 'teacher'
+  const isVisible =
+    profile?.role === 'admin' ||
+    profile?.role === 'librarian' ||
+    profile?.role === 'student' ||
+    isTeacher
+
+  // ── Quarters (QTR marking periods) ──
   const [quarters, setQuarters] = React.useState<MarkingPeriod[]>([])
   const [loadingQ, setLoadingQ] = React.useState(false)
 
+  // ── Course Periods (teacher only) ──
+  const [coursePeriods, setCoursePeriods] = React.useState<CoursePeriod[]>([])
+  const [loadingCp, setLoadingCp] = React.useState(false)
+  // Ref so the load effect can read the current selection without being a dep
+  const selectedCoursePeriodRef = React.useRef(selectedCoursePeriod)
+  React.useEffect(() => { selectedCoursePeriodRef.current = selectedCoursePeriod }, [selectedCoursePeriod])
+
   React.useEffect(() => {
+    if (!isVisible) return
     let active = true
     async function load() {
       setLoadingQ(true)
       try {
-        const all = await getMarkingPeriods(campusId)
+        const all = await getMarkingPeriods(campusId || undefined)
+        
         if (!active) return
-        const qtrs = all
+        
+        const qtrs = (all || [])
           .filter(mp => mp.mp_type === 'QTR')
+          .filter(mp => {
+            if (!currentAcademicYear || !mp.start_date) return true
+            return mp.start_date >= currentAcademicYear.start_date && mp.start_date <= currentAcademicYear.end_date
+          })
           .sort((a, b) => a.sort_order - b.sort_order)
+        
         setQuarters(qtrs)
-
         if (qtrs.length === 0) {
           setSelectedQuarter(null)
           return
         }
 
         const today = new Date().toISOString().split('T')[0]
-
-        // 1. Restore from localStorage if the quarter still exists
         const storedId = getStoredSelectedQuarterId()
         if (storedId) {
           const match = qtrs.find(q => q.id === storedId)
           if (match) { setSelectedQuarter(match); return }
         }
-
-        // 2. Auto-select the quarter whose date range contains today
-        const active_ = qtrs.find(
+        
+        const activeMp = qtrs.find(
           q => q.start_date && q.end_date && q.start_date <= today && today <= q.end_date
         )
-        if (active_) { setSelectedQuarter(active_); return }
-
-        // 3. Fall back to first quarter
-        setSelectedQuarter(qtrs[0])
-      } catch {
+        setSelectedQuarter(activeMp ?? qtrs[0])
+      } catch (err: any) {
         if (active) setQuarters([])
       } finally {
         if (active) setLoadingQ(false)
@@ -226,14 +249,60 @@ function AcademicSelectors() {
     }
     load()
     return () => { active = false }
-  }, [campusId]) // re-fetch whenever campus switches
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campusId, isVisible, selectedAcademicYear])
 
-  // Show for admin and librarian (librarian can toggle but not create)
-  if (profile?.role !== 'admin' && profile?.role !== 'librarian') return null
+  React.useEffect(() => {
+    if (!isTeacher || !selectedAcademicYear) {
+      setCoursePeriods([])
+      return
+    }
+    let active = true
+    async function loadCp() {
+      setLoadingCp(true)
+      try {
+        // Filter by academic year only — courses may span Full Year or
+        // different marking period types, so never filter by QTR id here.
+        const cps = await getMyCoursePeriods({
+          academic_year_id: selectedAcademicYear!,
+        })
+        if (!active) return
+        setCoursePeriods(cps)
+
+        // Auto-select: restore stored if still valid, else pick first
+        if (cps.length === 0) { setSelectedCoursePeriod(null); return }
+        const current = selectedCoursePeriodRef.current
+        if (current && cps.some(cp => cp.id === current.id)) return
+        const first = cps[0]
+        setSelectedCoursePeriod({
+          id: first.id,
+          title: first.title ?? null,
+          short_name: first.short_name ?? null,
+          section_name: first.section?.name ?? null,
+          grade_name: first.section?.grade_level?.name ?? null,
+          course_title: first.course?.title ?? null,
+        })
+      } catch {
+        if (active) setCoursePeriods([])
+      } finally {
+        if (active) setLoadingCp(false)
+      }
+    }
+    loadCp()
+    return () => { active = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTeacher, selectedAcademicYear])
+
+  // Reset course period when year/quarter changes
+  React.useEffect(() => {
+    if (isTeacher) setSelectedCoursePeriod(null)
+  }, [selectedAcademicYear, selectedQuarter?.id])
+
+  if (!isVisible) return null
 
   return (
     <div className="px-3 mb-4 space-y-2">
-      {/* Academic Year Selector */}
+      {/* Academic Year */}
       <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
         <GraduationCap className="h-4 w-4 text-white/80 shrink-0" />
         <Select
@@ -242,8 +311,8 @@ function AcademicSelectors() {
           disabled={loading || academicYears.length === 0}
         >
           <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 disabled:opacity-50">
-            <SelectValue placeholder={loading ? 'Loading...' : (academicYears.length === 0 ? 'No Years' : 'Select Year')}>
-              {loading ? 'Loading...' : (currentAcademicYear?.name || (academicYears.length === 0 ? 'No Years' : 'Select Year'))}
+            <SelectValue placeholder={loading ? 'Loading...' : 'Select Year'}>
+              {loading ? 'Loading...' : (currentAcademicYear?.name || 'Select Year')}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -268,22 +337,17 @@ function AcademicSelectors() {
         </Select>
       </div>
 
-      {/* Quarter Selector — driven by real QTR marking periods from the DB */}
+      {/* Quarter */}
       <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
         <Calendar className="h-4 w-4 text-white/80 shrink-0" />
         <Select
           value={selectedQuarter?.id ?? ''}
-          onValueChange={(id) => {
-            const mp = quarters.find(q => q.id === id) ?? null
-            setSelectedQuarter(mp)
-          }}
+          onValueChange={(id) => setSelectedQuarter(quarters.find(q => q.id === id) ?? null)}
           disabled={loadingQ}
         >
           <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 disabled:opacity-50">
             <SelectValue placeholder={loadingQ ? 'Loading…' : 'No quarters'}>
-              {loadingQ
-                ? 'Loading…'
-                : selectedQuarter?.title ?? (quarters.length === 0 ? 'No quarters' : 'Select Quarter')}
+              {loadingQ ? 'Loading…' : (selectedQuarter?.title ?? (quarters.length === 0 ? 'No quarters' : 'Select Quarter'))}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -291,6 +355,242 @@ function AcademicSelectors() {
               <div className="px-2 py-4 text-center text-sm text-gray-500">
                 <p>No quarters defined.</p>
                 <p className="text-xs mt-1">Add QTR periods in Marking Periods.</p>
+              </div>
+            ) : (
+              quarters.map((q) => (
+                <SelectItem key={q.id} value={q.id}>
+                  <div className="flex items-center gap-2">
+                    <span>{q.title}</span>
+                    {q.start_date && q.end_date &&
+                      new Date().toISOString().split('T')[0] >= q.start_date &&
+                      new Date().toISOString().split('T')[0] <= q.end_date && (
+                        <span className="text-xs text-green-500 font-medium">Active</span>
+                      )}
+                  </div>
+                </SelectItem>
+              ))
+            )}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Course Period — teacher only */}
+      {isTeacher && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+          <BookOpen className="h-4 w-4 text-white/80 shrink-0" />
+          <Select
+            value={selectedCoursePeriod?.id ?? ''}
+            onValueChange={(id) => {
+              const cp = coursePeriods.find(c => c.id === id)
+              if (!cp) return
+              setSelectedCoursePeriod({
+                id: cp.id,
+                title: cp.title ?? null,
+                short_name: cp.short_name ?? null,
+                section_name: cp.section?.name ?? null,
+                grade_name: cp.section?.grade_level?.name ?? null,
+                course_title: cp.course?.title ?? null,
+              })
+            }}
+            disabled={loadingCp || !selectedAcademicYear}
+          >
+            <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 disabled:opacity-50">
+              <SelectValue placeholder={loadingCp ? 'Loading…' : 'Select Course'}>
+                {loadingCp
+                  ? 'Loading…'
+                  : (selectedCoursePeriod?.short_name || selectedCoursePeriod?.title || (coursePeriods.length === 0 ? 'No courses' : 'Select Course'))}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {coursePeriods.length === 0 ? (
+                <div className="px-2 py-4 text-center text-sm text-gray-500">
+                  <p>No course periods found.</p>
+                </div>
+              ) : (
+                coursePeriods.map((cp) => (
+                  <SelectItem key={cp.id} value={cp.id}>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{cp.short_name || cp.title}</span>
+                      {cp.course?.title && cp.course.title !== (cp.short_name || cp.title) && (
+                        <span className="text-xs text-muted-foreground">{cp.course.title}</span>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Parent: Child + Academic Year + Quarter selectors (parent role only)
+function ParentSelectors() {
+  const { profile } = useAuth()
+  const parentCtx = useParentDashboardSafe()
+  const {
+    academicYears,
+    selectedAcademicYear,
+    setSelectedAcademicYear,
+    selectedQuarter,
+    setSelectedQuarter,
+    currentAcademicYear,
+    loading: academicLoading,
+  } = useAcademic()
+
+  const isParent = profile?.role === 'parent'
+
+  const students = parentCtx?.students ?? []
+  const selectedStudent = parentCtx?.selectedStudent ?? null
+  const selectedStudentData = parentCtx?.selectedStudentData ?? null
+  const setSelectedStudent = parentCtx?.setSelectedStudent ?? (() => {})
+  const isLoadingStudents = parentCtx?.isLoading ?? false
+
+  // Use the selected child's campus_id — that's where marking periods live.
+  // Parents don't have a campus_id in their profile so we derive it from the child.
+  const childCampusId = selectedStudentData?.campus_id ?? undefined
+
+  const [quarters, setQuarters] = React.useState<MarkingPeriod[]>([])
+  const [loadingQ, setLoadingQ] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!isParent) return
+    // Note: We allow load even if childCampusId is null to support school-wide quarters for the child
+    let active = true
+    async function load() {
+      setLoadingQ(true)
+      try {
+        const all = await getMarkingPeriods(childCampusId || undefined)
+        
+        if (!active) return
+        
+        const qtrs = (all || [])
+          .filter(mp => mp.mp_type === 'QTR')
+          .filter(mp => {
+            if (!currentAcademicYear || !mp.start_date) return true
+            return mp.start_date >= currentAcademicYear.start_date && mp.start_date <= currentAcademicYear.end_date
+          })
+          .sort((a, b) => a.sort_order - b.sort_order)
+        
+        setQuarters(qtrs)
+        if (qtrs.length === 0) {
+          setSelectedQuarter(null)
+          return
+        }
+        
+        const today = new Date().toISOString().split('T')[0]
+        const storedId = getStoredSelectedQuarterId()
+        if (storedId) {
+          const match = qtrs.find(q => q.id === storedId)
+          if (match) { setSelectedQuarter(match); return }
+        }
+        
+        const activeMp = qtrs.find(
+          q => q.start_date && q.end_date && q.start_date <= today && today <= q.end_date
+        )
+        setSelectedQuarter(activeMp ?? qtrs[0])
+      } catch {
+        if (active) setQuarters([])
+      } finally {
+        if (active) setLoadingQ(false)
+      }
+    }
+    load()
+    return () => { active = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [childCampusId, isParent, selectedAcademicYear])
+
+  if (!isParent) return null
+
+  return (
+    <div className="px-3 mb-4 space-y-2">
+      {/* Child selector */}
+      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+        <User className="h-4 w-4 text-white/80 shrink-0" />
+        <Select
+          value={selectedStudent || ''}
+          onValueChange={(id) => setSelectedStudent(id)}
+          disabled={isLoadingStudents || students.length === 0}
+        >
+          <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 disabled:opacity-50">
+            <SelectValue placeholder={isLoadingStudents ? 'Loading...' : 'Select Child'}>
+              {isLoadingStudents
+                ? 'Loading...'
+                : selectedStudentData
+                  ? `${selectedStudentData.first_name} ${selectedStudentData.last_name}`
+                  : students.length === 0
+                    ? 'No children'
+                    : 'Select Child'}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {students.length === 0 ? (
+              <div className="px-2 py-4 text-center text-sm text-gray-500">
+                <p>No students linked.</p>
+              </div>
+            ) : (
+              students.map((student) => (
+                <SelectItem key={student.id} value={student.id}>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{student.first_name} {student.last_name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {student.grade_level}{student.section ? ` • ${student.section}` : ''}
+                    </span>
+                  </div>
+                </SelectItem>
+              ))
+            )}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Academic Year */}
+      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+        <GraduationCap className="h-4 w-4 text-white/80 shrink-0" />
+        <Select
+          value={selectedAcademicYear || ''}
+          onValueChange={setSelectedAcademicYear}
+          disabled={academicLoading}
+        >
+          <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 disabled:opacity-50">
+            <SelectValue placeholder={academicLoading ? 'Loading...' : 'No year'}>
+              {academicLoading ? 'Loading...' : (currentAcademicYear?.name || 'Select Year')}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {academicYears.map((year) => (
+              <SelectItem key={year.id} value={year.id}>
+                <div className="flex items-center gap-2">
+                  <span>{year.name}</span>
+                  {year.is_current && (
+                    <span className="text-xs text-green-600 font-medium">Current</span>
+                  )}
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Quarter */}
+      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+        <Calendar className="h-4 w-4 text-white/80 shrink-0" />
+        <Select
+          value={selectedQuarter?.id ?? ''}
+          onValueChange={(id) => setSelectedQuarter(quarters.find(q => q.id === id) ?? null)}
+          disabled={loadingQ}
+        >
+          <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 disabled:opacity-50">
+            <SelectValue placeholder={loadingQ ? 'Loading…' : 'No quarters'}>
+              {loadingQ ? 'Loading…' : (selectedQuarter?.title ?? (quarters.length === 0 ? 'No quarters' : 'Select Quarter'))}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {quarters.length === 0 ? (
+              <div className="px-2 py-4 text-center text-sm text-gray-500">
+                <p>No quarters defined.</p>
               </div>
             ) : (
               quarters.map((q) => (
@@ -659,8 +959,11 @@ function DesktopSidebar({ menuItems, className }: AppSidebarProps) {
         {/* Campus Switcher */}
         {!isCollapsed && <CampusSelector />}
 
-        {/* Academic Year & Quarter Selectors */}
+        {/* Academic Year & Quarter Selectors (admin/teacher/librarian) */}
         {!isCollapsed && <AcademicSelectors />}
+
+        {/* Child + Academic Year + Quarter (parent role) */}
+        {!isCollapsed && <ParentSelectors />}
 
         {/* Currently Viewed Profile Indicator */}
         {!isCollapsed && <ViewedProfileIndicator />}
@@ -749,8 +1052,11 @@ function MobileSidebar({ menuItems }: AppSidebarProps) {
           {/* Campus Switcher */}
           <CampusSelector />
 
-          {/* Academic Year & Quarter Selectors */}
+          {/* Academic Year & Quarter Selectors (admin/teacher/librarian) */}
           <AcademicSelectors />
+
+          {/* Child + Academic Year + Quarter (parent role) */}
+          <ParentSelectors />
 
           <nav className="pl-3 pr-0 space-y-2 pb-6">
             {menuItems.map((item) => (

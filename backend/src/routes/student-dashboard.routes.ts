@@ -43,6 +43,13 @@ router.get('/assignments/due', (req, res) => controller.getDueAssignments(req, r
 router.get('/assignments', (req, res) => controller.getStudentAssignments(req, res))
 
 /**
+ * POST /api/student-dashboard/assignments/submit
+ * Submit a gradebook assignment (Rosario-style)
+ * Body: { assignment_id, submission_text?, attachments? }
+ */
+router.post('/assignments/submit', (req, res) => controller.submitAssignment(req, res))
+
+/**
  * GET /api/student-dashboard/feedback/recent
  * Get recent feedback/grades
  * Query params: ?limit=5

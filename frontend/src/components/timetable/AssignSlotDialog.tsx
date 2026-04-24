@@ -13,11 +13,12 @@ import {
     SelectValue
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { AlertCircle, BookOpen, User, Loader2 } from "lucide-react";
-import { GlobalPeriod, Staff, DayOfWeek } from "@/lib/api/teachers";
+import { GlobalPeriod, DayOfWeek } from "@/lib/api/teachers";
 import * as timetableApi from "@/lib/api/timetable";
 import * as academicsApi from "@/lib/api/academics";
-import * as teachersApi from "@/lib/api/teachers";
+import * as coursesApi from "@/lib/api/courses";
 import { toast } from "sonner";
 import { useCampus } from "@/context/CampusContext";
 import { formatTimeRange } from "@/lib/utils/formatTime";
@@ -25,13 +26,6 @@ import { formatTimeRange } from "@/lib/utils/formatTime";
 const DAY_MAP: Record<string, number> = {
     Monday: 0, Tuesday: 1, Wednesday: 2, Thursday: 3, Friday: 4
 };
-
-interface Subject {
-    id: string;
-    name: string;
-    code?: string;
-    grade_name?: string;
-}
 
 interface AssignSlotDialogProps {
     open: boolean;
@@ -56,133 +50,125 @@ export function AssignSlotDialog({
     existingEntry,
     onSave
 }: AssignSlotDialogProps) {
-    const [selectedSubject, setSelectedSubject] = useState("");
-    const [selectedTeacher, setSelectedTeacher] = useState("");
+    const [selectedCpId, setSelectedCpId] = useState("");
     const [roomNumber, setRoomNumber] = useState("");
     const [conflictWarning, setConflictWarning] = useState("");
     const [loading, setLoading] = useState(false);
     const [loadingData, setLoadingData] = useState(false);
 
-    // Campus context for filtering
     const campusContext = useCampus();
     const selectedCampus = campusContext?.selectedCampus;
 
-    // All available subjects and teachers
-    const [subjects, setSubjects] = useState<Subject[]>([]);
-    const [teachers, setTeachers] = useState<Staff[]>([]);
+    const [coursePeriods, setCoursePeriods] = useState<coursesApi.CoursePeriod[]>([]);
     const [section, setSection] = useState<academicsApi.Section | null>(null);
 
-    // Load subjects and teachers when dialog opens
+    const selectedCp = coursePeriods.find(cp => cp.id === selectedCpId) || null;
+
     useEffect(() => {
         if (open) {
             loadData();
             if (existingEntry) {
-                setSelectedSubject(existingEntry.subject_id);
-                setSelectedTeacher(existingEntry.teacher_id);
+                // Try to find matching CP by teacher + subject
                 setRoomNumber(existingEntry.room_number || "");
             } else {
-                setSelectedSubject("");
-                setSelectedTeacher("");
+                setSelectedCpId("");
                 setRoomNumber("");
             }
             setConflictWarning("");
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, existingEntry]);
 
     const loadData = async () => {
         setLoadingData(true);
         try {
-            // Get section details first, with fallback
-            let sectionData = null;
-            let gradeId = null;
-
-            try {
-                const sectionRes = await academicsApi.getSectionById(sectionId);
-                sectionData = sectionRes.data;
-                gradeId = sectionData?.grade_level_id;
-                setSection(sectionData || null);
-            } catch (error) {
-                console.warn('Could not load section details:', error);
-            }
-
-            // Load subjects and teachers in parallel
-            const [subjectsRes, teachersRes] = await Promise.all([
-                academicsApi.getSubjects(gradeId || undefined, selectedCampus?.id || undefined).catch(() => ({ data: [] })),
-                teachersApi.getAllTeachers({ page: 1, limit: 100, campus_id: selectedCampus?.id }).catch(() => ({ data: [] }))
+            const [sectionRes, cpData] = await Promise.all([
+                academicsApi.getSectionById(sectionId).catch(() => ({ data: null })),
+                coursesApi.getSectionCoursePeriods(sectionId, academicYearId).catch(() => [])
             ]);
+            setSection(sectionRes.data || null);
+            setCoursePeriods(cpData);
 
-            setSubjects(subjectsRes.data || []);
-            setTeachers(teachersRes.data || []);
+            // Pre-select if editing and only one CP matches
+            if (existingEntry && cpData.length > 0) {
+                const match = cpData.find(
+                    cp => cp.teacher_id === existingEntry.teacher_id
+                );
+                if (match) setSelectedCpId(match.id);
+            }
         } catch (error) {
             console.error('Failed to load data:', error);
-            // Set empty arrays on error to prevent infinite loading
-            setSubjects([]);
-            setTeachers([]);
+            setCoursePeriods([]);
         } finally {
             setLoadingData(false);
         }
     };
 
-    // Check for conflicts when teacher changes
+    // Conflict check whenever CP selection changes
     useEffect(() => {
         const checkConflict = async () => {
-            if (!selectedTeacher) {
+            if (!selectedCp?.teacher_id) {
                 setConflictWarning("");
                 return;
             }
-
             try {
                 const dayNumber = DAY_MAP[day] as timetableApi.DayOfWeek;
                 const conflict = await timetableApi.checkTeacherConflict(
-                    selectedTeacher,
+                    selectedCp.teacher_id,
                     dayNumber,
                     period.id,
                     academicYearId,
                     existingEntry?.id
                 );
-
-                if (conflict.has_conflict) {
-                    setConflictWarning(`⚠️ ${conflict.conflict_details}`);
-                } else {
-                    setConflictWarning("");
-                }
-            } catch (error) {
-                console.error('Conflict check failed:', error);
+                setConflictWarning(conflict.has_conflict ? `⚠️ ${conflict.conflict_details}` : "");
+            } catch {
+                // ignore
             }
         };
-
         checkConflict();
-    }, [selectedTeacher, day, period.id, academicYearId, existingEntry]);
+    }, [selectedCpId, day, period.id, academicYearId, existingEntry]);
+
+    const getCpLabel = (cp: coursesApi.CoursePeriod) => {
+        const course = cp.course?.title || cp.title || "Untitled";
+        const teacher = cp.teacher?.profile
+            ? `${cp.teacher.profile.first_name || ''} ${cp.teacher.profile.last_name || ''}`.trim()
+            : "No teacher";
+        return `${course} — ${teacher}`;
+    };
 
     const handleSave = async () => {
-        if (!selectedSubject) {
-            toast.error("Please select a subject");
-            return;
-        }
-        if (!selectedTeacher) {
-            toast.error("Please select a teacher");
+        if (!selectedCp) {
+            toast.error("Please select a course period");
             return;
         }
 
         setLoading(true);
         try {
             const dayNumber = DAY_MAP[day];
+            const subjectId = selectedCp.course?.subject?.id;
+            const teacherId = selectedCp.teacher_id;
+            const room = roomNumber || selectedCp.room || undefined;
+
+            if (!subjectId || !teacherId) {
+                toast.error("Selected course period is missing subject or teacher");
+                return;
+            }
 
             if (existingEntry) {
                 await timetableApi.updateTimetableEntry(existingEntry.id, {
-                    subject_id: selectedSubject,
-                    teacher_id: selectedTeacher,
-                    room_number: roomNumber || undefined
+                    subject_id: subjectId,
+                    teacher_id: teacherId,
+                    room_number: room
                 });
             } else {
                 await timetableApi.createTimetableEntry({
                     section_id: sectionId,
-                    subject_id: selectedSubject,
-                    teacher_id: selectedTeacher,
+                    subject_id: subjectId,
+                    teacher_id: teacherId,
                     period_id: period.id,
                     day_of_week: dayNumber as DayOfWeek,
                     academic_year_id: academicYearId,
-                    room_number: roomNumber || undefined,
+                    room_number: room,
                     campus_id: selectedCampus?.id
                 });
             }
@@ -195,13 +181,6 @@ export function AssignSlotDialog({
         } finally {
             setLoading(false);
         }
-    };
-
-    const getTeacherName = (teacher: Staff) => {
-        if (teacher.profile) {
-            return `${teacher.profile.first_name || ''} ${teacher.profile.last_name || ''}`;
-        }
-        return 'Unknown Teacher';
     };
 
     return (
@@ -258,73 +237,78 @@ export function AssignSlotDialog({
                         </div>
                     ) : (
                         <>
-                            {/* Subject Selection */}
+                            {/* Course Period Selection */}
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                    <Label>Subject *</Label>
-                                    {section?.grade_name && (
-                                        <span className="text-xs text-muted-foreground">
-                                            {section.grade_name} subjects
-                                        </span>
+                                    <Label>Course Period *</Label>
+                                    <span className="text-xs text-muted-foreground">
+                                        {coursePeriods.length} available
+                                    </span>
+                                </div>
+                                <Select value={selectedCpId} onValueChange={setSelectedCpId}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a course period" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {coursePeriods.length === 0 ? (
+                                            <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                                                No course periods found for this section
+                                            </div>
+                                        ) : (
+                                            coursePeriods.map(cp => (
+                                                <SelectItem key={cp.id} value={cp.id}>
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span>{getCpLabel(cp)}</span>
+                                                        {cp.course?.subject && (
+                                                            <span className="text-xs text-muted-foreground">
+                                                                Subject: {cp.course.subject.name}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </SelectItem>
+                                            ))
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Auto-filled info from selected CP */}
+                            {selectedCp && (
+                                <div className="rounded-lg border bg-muted/30 p-3 space-y-2 text-sm">
+                                    {selectedCp.course?.subject && (
+                                        <div className="flex items-center gap-2">
+                                            <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
+                                            <span className="text-muted-foreground">Subject:</span>
+                                            <span className="font-medium">{selectedCp.course.subject.name}</span>
+                                            {selectedCp.course.subject.code && (
+                                                <Badge variant="outline" className="text-xs">{selectedCp.course.subject.code}</Badge>
+                                            )}
+                                        </div>
+                                    )}
+                                    {selectedCp.teacher?.profile && (
+                                        <div className="flex items-center gap-2">
+                                            <User className="h-3.5 w-3.5 text-muted-foreground" />
+                                            <span className="text-muted-foreground">Teacher:</span>
+                                            <span className="font-medium">
+                                                {`${selectedCp.teacher.profile.first_name || ''} ${selectedCp.teacher.profile.last_name || ''}`.trim()}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {selectedCp.room && (
+                                        <div className="text-muted-foreground text-xs">
+                                            Default room: {selectedCp.room}
+                                        </div>
                                     )}
                                 </div>
-                                <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select subject" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {subjects.length === 0 ? (
-                                            <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                                                {loadingData ? "Loading subjects..." : "No subjects available"}
-                                            </div>
-                                        ) : (
-                                            subjects.map(subject => (
-                                                <SelectItem key={subject.id} value={subject.id}>
-                                                    <div className="flex items-center gap-2">
-                                                        <BookOpen className="h-3 w-3" />
-                                                        <span>{subject.name}</span>
-                                                        {subject.code && <span className="text-muted-foreground">({subject.code})</span>}
-                                                    </div>
-                                                </SelectItem>
-                                            ))
-                                        )}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                            )}
 
-                            {/* Teacher Selection */}
+                            {/* Room override */}
                             <div className="space-y-2">
-                                <Label>Teacher *</Label>
-                                <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select teacher" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {teachers.length === 0 ? (
-                                            <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                                                {loadingData ? "Loading teachers..." : "No teachers available"}
-                                            </div>
-                                        ) : (
-                                            teachers.map(teacher => (
-                                                <SelectItem key={teacher.id} value={teacher.id}>
-                                                    <div className="flex items-center gap-2">
-                                                        <User className="h-3 w-3" />
-                                                        {getTeacherName(teacher)}
-                                                    </div>
-                                                </SelectItem>
-                                            ))
-                                        )}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {/* Room Number */}
-                            <div className="space-y-2">
-                                <Label>Room Number (Optional)</Label>
+                                <Label>Room Number {selectedCp?.room ? "(override)" : "(optional)"}</Label>
                                 <Input
                                     value={roomNumber}
                                     onChange={(e) => setRoomNumber(e.target.value)}
-                                    placeholder="e.g., Lab-1, Room-201"
+                                    placeholder={selectedCp?.room || "e.g., Lab-1, Room-201"}
                                 />
                             </div>
                         </>
@@ -337,7 +321,7 @@ export function AssignSlotDialog({
                         </Button>
                         <Button
                             onClick={handleSave}
-                            disabled={!selectedSubject || !selectedTeacher || !!conflictWarning || loading || loadingData}
+                            disabled={!selectedCp || !!conflictWarning || loading || loadingData}
                             className="bg-[#022172] hover:bg-[#022172]/90"
                         >
                             {loading ? "Saving..." : (existingEntry ? "Update" : "Assign")}

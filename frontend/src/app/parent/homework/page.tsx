@@ -17,7 +17,7 @@ import {
   Calendar,
   Filter
 } from 'lucide-react'
-import { StudentSelector } from '@/components/parent/StudentSelector'
+
 import { format, parseISO } from 'date-fns'
 
 const MONTHS = [
@@ -172,7 +172,7 @@ export default function ParentHomeworkPage() {
             {student ? `${student.first_name} ${student.last_name}'s assignments` : 'View assignments and homework status'}
           </p>
         </div>
-        <StudentSelector />
+
       </div>
 
       {/* Stats Cards */}

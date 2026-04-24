@@ -16,6 +16,7 @@ import { useSchoolSettings } from '@/context/SchoolSettingsContext'
 import { PLUGIN_REGISTRY } from '@/config/plugins'
 import { LayoutDashboard } from 'lucide-react'
 import { UnsavedChangesProvider } from '@/components/unsaved-changes/UnsavedChangesProvider'
+import { TourAssistantPanel } from '@/components/setup-assistant/TourAssistantPanel'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -185,6 +186,9 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
           {children}
         </main>
       </div>
+
+      {/* Tour Assistant — fixed overlay, persists across all pages */}
+      <TourAssistantPanel />
     </div>
   )
 }

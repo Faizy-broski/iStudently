@@ -14,12 +14,13 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
-import { Award, Plus, Loader2 } from "lucide-react";
+import { Award, Plus, Loader2, Paperclip, X as XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
 import * as gradesApi from "@/lib/api/grades";
 import type { AssignmentType, Assignment, CoursePeriod } from "@/lib/api/grades";
+import { uploadTeacherAssignmentFile } from "@/lib/api/storage";
 
 interface EditState {
   mode: "view" | "edit-type" | "add-type" | "edit-assignment" | "add-assignment";
@@ -55,6 +56,12 @@ export function TeacherAssignments() {
     typeData: {},
     assignmentData: {}
   });
+
+  // ── File upload ──────────────────────────────────────────────────────────
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+
+  // ── Apply to all periods ─────────────────────────────────────────────────
+  const [applyToAllPeriods, setApplyToAllPeriods] = useState(false)
 
   // ── Load CP / MP ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -124,6 +131,7 @@ export function TeacherAssignments() {
   };
 
   const handleAssignmentClick = (assignment: Assignment) => {
+    setSelectedFile(null);
     setActiveType(assignment.assignment_type_id);
     setActiveAssignment(assignment.id);
     setEditState({
@@ -148,6 +156,8 @@ export function TeacherAssignments() {
       toast.error("Please select an Assignment Type first.");
       return;
     }
+    setSelectedFile(null);
+    setApplyToAllPeriods(false);
     setActiveAssignment(null);
     setEditState({
       mode: "add-assignment",
@@ -201,15 +211,59 @@ export function TeacherAssignments() {
     }
     setSaving(true);
     try {
+      let fileUrl: string | undefined = editState.assignmentData.file_url as string | undefined;
+
+      if (selectedFile) {
+        const campusId = selectedCampus?.id;
+        const schoolId = selectedCampus?.school_id || selectedCampus?.id;
+        if (!campusId || !schoolId) {
+          toast.error("Campus context required for file upload");
+          setSaving(false);
+          return;
+        }
+        toast.info("Uploading file...");
+        const uploadResult = await uploadTeacherAssignmentFile(selectedFile, schoolId, campusId);
+        if (!uploadResult.success || !uploadResult.url) {
+          toast.error(uploadResult.error || "File upload failed");
+          setSaving(false);
+          return;
+        }
+        fileUrl = uploadResult.url;
+        toast.success("File uploaded!");
+      }
+
+      const payload = { ...editState.assignmentData, ...(fileUrl !== undefined ? { file_url: fileUrl } : {}) };
+
       if (editState.mode === "add-assignment") {
-        await gradesApi.createAssignment(editState.assignmentData);
-        toast.success("Assignment created");
+        if (applyToAllPeriods) {
+          // Find all course periods sharing the same course as the selected one
+          const selectedCpData = coursePeriods.find(cp => cp.id === selectedCp)
+          const siblingIds = coursePeriods
+            .filter(cp => cp.course_id === selectedCpData?.course_id)
+            .map(cp => cp.id)
+          await gradesApi.massCreateAssignment({
+            title: payload.title!,
+            assignment_type_id: payload.assignment_type_id!,
+            points: payload.points || 100,
+            weight: payload.weight || 1,
+            description: payload.description,
+            assigned_date: payload.assigned_date || null,
+            due_date: payload.due_date || null,
+            enable_submission: payload.enable_submission,
+            course_period_ids: siblingIds.length > 0 ? siblingIds : [selectedCp],
+          })
+          toast.success(`Assignment created for ${siblingIds.length || 1} period(s)`)
+        } else {
+          await gradesApi.createAssignment(payload);
+          toast.success("Assignment created");
+        }
       } else {
-        await gradesApi.updateAssignment(activeAssignment!, editState.assignmentData);
+        await gradesApi.updateAssignment(activeAssignment!, payload);
         toast.success("Assignment updated");
       }
+      setSelectedFile(null);
+      setApplyToAllPeriods(false);
       await loadTypesAndAssignments();
-      // Keep the type selected to quickly see the updated list
       setEditState(prev => ({ ...prev, mode: "edit-type", typeData: assignmentTypes.find(t => t.id === activeType) || {} }));
       setActiveAssignment(null);
     } catch (err) {
@@ -369,10 +423,37 @@ export function TeacherAssignments() {
             </div>
 
             <div className="col-span-2">
-              <div className="flex items-center">
-                 <input type="file" className="text-sm border border-slate-300 p-1 w-[300px] bg-white rounded" />
+              <Label className="text-xs text-slate-500 mb-1 block">File Attachment</Label>
+              <div className="flex items-center gap-2 flex-wrap">
+                <label className="flex items-center gap-2 cursor-pointer px-3 py-1.5 border border-slate-300 rounded bg-white hover:bg-slate-50 text-sm text-slate-600">
+                  <Paperclip className="h-4 w-4" />
+                  <span>{selectedFile ? selectedFile.name : "Choose file..."}</span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={e => setSelectedFile(e.target.files?.[0] || null)}
+                  />
+                </label>
+                {selectedFile && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFile(null)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <XIcon className="h-4 w-4" />
+                  </button>
+                )}
+                {!selectedFile && (editState.assignmentData as any).file_url && (
+                  <a
+                    href={(editState.assignmentData as any).file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-600 underline"
+                  >
+                    View current file
+                  </a>
+                )}
               </div>
-              <Label className="text-xs text-slate-500 mt-1 block">File</Label>
             </div>
 
             <div>
@@ -385,8 +466,20 @@ export function TeacherAssignments() {
               />
             </div>
             <div className="flex items-center mt-5">
-              <Checkbox id="apply-all" />
-              <Label htmlFor="apply-all" className="ml-2 text-sm">Apply to all Periods for this Course</Label>
+              <Checkbox
+                id="apply-all"
+                checked={applyToAllPeriods}
+                disabled={editState.mode === "edit-assignment"}
+                onCheckedChange={c => setApplyToAllPeriods(!!c)}
+              />
+              <Label htmlFor="apply-all" className="ml-2 text-sm">
+                Apply to all Periods for this Course
+                {applyToAllPeriods && editState.mode === "add-assignment" && (() => {
+                  const selectedCpData = coursePeriods.find(cp => cp.id === selectedCp)
+                  const count = coursePeriods.filter(cp => cp.course_id === selectedCpData?.course_id).length
+                  return count > 1 ? <span className="ml-1 text-xs text-blue-600">({count} periods)</span> : null
+                })()}
+              </Label>
             </div>
 
             <div>

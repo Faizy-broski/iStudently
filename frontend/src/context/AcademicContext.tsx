@@ -15,13 +15,26 @@ export interface AcademicYear {
   is_next?: boolean
 }
 
+/** Minimal shape for a selected course period stored in context */
+export interface SelectedCoursePeriod {
+  id: string
+  title: string | null
+  short_name: string | null
+  section_name?: string | null
+  grade_name?: string | null
+  course_title?: string | null
+}
+
 interface AcademicContextType {
   academicYears: AcademicYear[]
   selectedAcademicYear: string | null
   /** The currently selected QTR marking period. Set by the sidebar after loading real quarters. */
   selectedQuarter: MarkingPeriod | null
+  /** The currently selected course period (teacher role only). Set by sidebar. */
+  selectedCoursePeriod: SelectedCoursePeriod | null
   setSelectedAcademicYear: (yearId: string) => void
   setSelectedQuarter: (mp: MarkingPeriod | null) => void
+  setSelectedCoursePeriod: (cp: SelectedCoursePeriod | null) => void
   loading: boolean
   currentAcademicYear: AcademicYear | null
 }
@@ -34,6 +47,8 @@ const CACHE_KEY = 'studently_academic_cache'
 const SELECTED_ACADEMIC_YEAR_KEY = 'studently_selected_academic_year'
 /** Persists the selected quarter's DB id (not a display name) */
 const SELECTED_QUARTER_ID_KEY = 'studently_selected_quarter_id'
+/** Persists the selected course period as JSON */
+const SELECTED_COURSE_PERIOD_KEY = 'studently_selected_course_period'
 
 // Helper to get cached data from sessionStorage
 function getCachedAcademicYears(): { years: AcademicYear[], timestamp: number, userId: string } | null {
@@ -86,6 +101,16 @@ export function getStoredSelectedQuarterId(): string | null {
   }
 }
 
+export function getStoredSelectedCoursePeriod(): SelectedCoursePeriod | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(SELECTED_COURSE_PERIOD_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
 export function useAcademic() {
   const context = useContext(AcademicContext)
   if (!context) {
@@ -116,6 +141,10 @@ export function AcademicProvider({ children }: AcademicProviderProps) {
   // the real QTR marking periods for the active campus.
   const [selectedQuarter, setSelectedQuarterState] = useState<MarkingPeriod | null>(null)
 
+  const [selectedCoursePeriod, setSelectedCoursePeriodState] = useState<SelectedCoursePeriod | null>(
+    () => getStoredSelectedCoursePeriod()
+  )
+
   // Start with loading=false if we have cached data
   const [loading, setLoading] = useState(() => {
     const cached = getCachedAcademicYears()
@@ -140,6 +169,19 @@ export function AcademicProvider({ children }: AcademicProviderProps) {
         localStorage.setItem(SELECTED_QUARTER_ID_KEY, mp.id)
       } else {
         localStorage.removeItem(SELECTED_QUARTER_ID_KEY)
+      }
+    } catch {
+      // Ignore storage errors
+    }
+  }
+
+  const setSelectedCoursePeriod = (cp: SelectedCoursePeriod | null) => {
+    setSelectedCoursePeriodState(cp)
+    try {
+      if (cp) {
+        localStorage.setItem(SELECTED_COURSE_PERIOD_KEY, JSON.stringify(cp))
+      } else {
+        localStorage.removeItem(SELECTED_COURSE_PERIOD_KEY)
       }
     } catch {
       // Ignore storage errors
@@ -185,29 +227,19 @@ export function AcademicProvider({ children }: AcademicProviderProps) {
 
       try {
         let years: AcademicYear[] = []
-
-        // Parents and students should only see the current academic year
-        if (profile.role === 'parent' || profile.role === 'student') {
-          const currentYear = await academicsApi.getCurrentAcademicYear()
-          if (currentYear) {
-            years = [currentYear]
-          }
-        } else {
-          // For staff/admin/teachers, fetch all academic years
-          years = await academicsApi.getAcademicYears()
-        }
+        years = await academicsApi.getAcademicYears()
 
         if (!isMounted) return
 
         setAcademicYears(years)
         setAcademicYearCache(years, user.id)
 
-        // Auto-select current academic year if not already selected
-        if (!selectedAcademicYear) {
-          const currentYear = years.find(y => y.is_current)
-          if (currentYear) {
-            setSelectedAcademicYear(currentYear.id)
-          }
+        // Set default academic year if not already set
+        if (profile.role === 'admin' || profile.role === 'librarian' || profile.role === 'teacher' || profile.role === 'student' || profile.role === 'parent') {
+            const current = years.find(y => y.is_current)
+            if (current && !selectedAcademicYear) {
+                setSelectedAcademicYear(current.id)
+            }
         }
       } catch {
         // Silent fail - keep existing data if available
@@ -235,12 +267,7 @@ export function AcademicProvider({ children }: AcademicProviderProps) {
 
       try {
         let years: AcademicYear[] = []
-        if (profile.role === 'parent' || profile.role === 'student') {
-          const currentYear = await academicsApi.getCurrentAcademicYear()
-          if (currentYear) years = [currentYear]
-        } else {
-          years = await academicsApi.getAcademicYears()
-        }
+        years = await academicsApi.getAcademicYears()
         setAcademicYears(years)
         setAcademicYearCache(years, user.id)
       } catch {
@@ -258,8 +285,10 @@ export function AcademicProvider({ children }: AcademicProviderProps) {
         academicYears,
         selectedAcademicYear,
         selectedQuarter,
+        selectedCoursePeriod,
         setSelectedAcademicYear,
         setSelectedQuarter,
+        setSelectedCoursePeriod,
         loading,
         currentAcademicYear
       }}

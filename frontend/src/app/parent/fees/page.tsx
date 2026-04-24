@@ -20,7 +20,7 @@ import {
   Calendar,
   Printer
 } from 'lucide-react'
-import { StudentSelector } from '@/components/parent/StudentSelector'
+
 import { format, parseISO } from 'date-fns'
 
 const MONTHS = [
@@ -337,7 +337,7 @@ export default function ParentFeesPage() {
             {student ? `${student.first_name} ${student.last_name}'s fee status` : 'View fee status and payment history'}
           </p>
         </div>
-        <StudentSelector />
+
       </div>
 
       {/* Stats Cards */}

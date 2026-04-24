@@ -25,18 +25,18 @@ export default function ParentDisciplinePage() {
   const referrals: any[] = Array.isArray(data) ? data : []
 
   return (
-    <ParentDashboardLayout>
+    <ParentDashboardLayout hideStats={true}>
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold">Discipline Record</h2>
-          <p className="text-gray-500 mt-1">View your child's conduct and discipline history</p>
+          <h1 className="text-3xl font-bold">Discipline Record</h1>
+          <p className="text-muted-foreground mt-1">View your child's conduct and discipline history</p>
         </div>
 
         {!selectedStudent ? (
           <Card>
             <CardContent className="py-12 text-center">
-              <ShieldAlert className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">Select a student to view their discipline record</p>
+              <ShieldAlert className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+              <p className="text-muted-foreground">Select a student to view their discipline record</p>
             </CardContent>
           </Card>
         ) : isLoading ? (
@@ -47,13 +47,13 @@ export default function ParentDisciplinePage() {
           <Card>
             <CardContent className="py-16 text-center">
               <CheckCircle className="h-12 w-12 mx-auto mb-3 text-green-500" />
-              <p className="text-lg font-semibold">Clean Record</p>
-              <p className="text-gray-500 mt-1">No discipline referrals on record.</p>
+              <p className="text-lg font-semibold text-muted-foreground">Clean Record</p>
+              <p className="text-muted-foreground mt-1">No discipline referrals on record.</p>
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-3">
-            <p className="text-sm text-gray-500">{referrals.length} referral{referrals.length !== 1 ? 's' : ''} on record</p>
+            <p className="text-sm text-muted-foreground">{referrals.length} referral{referrals.length !== 1 ? 's' : ''} on record</p>
             {referrals.map((ref: any) => {
               const reporter = ref.reporter?.profile
               const reporterName = reporter
@@ -77,8 +77,8 @@ export default function ParentDisciplinePage() {
                       <div className="grid grid-cols-2 gap-2">
                         {Object.entries(fieldValues).map(([k, v]) => (
                           <div key={k} className="text-sm">
-                            <span className="font-medium text-gray-500 capitalize">{k.replace(/_/g, ' ')}: </span>
-                            <span>{String(v)}</span>
+                            <span className="font-medium text-muted-foreground capitalize">{k.replace(/_/g, ' ')}: </span>
+                            <span className="text-muted-foreground">{String(v)}</span>
                           </div>
                         ))}
                       </div>

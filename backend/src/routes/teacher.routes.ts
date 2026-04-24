@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import * as teacherController from '../controllers/teacher.controller'
+import * as reportCardsController from '../controllers/report-cards.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 import { requireAdmin, requireTeacher } from '../middlewares/role.middleware'
 
@@ -30,6 +31,19 @@ router.get('/periods', requireTeacher, teacherController.getPeriods)
 router.post('/periods', requireAdmin, teacherController.createPeriod)
 router.put('/periods/:id', requireAdmin, teacherController.updatePeriod)
 router.delete('/periods/:id', requireAdmin, teacherController.deletePeriod)
+
+// COURSE PERIOD ROUTES (teacher sees own course periods)
+router.get('/my-course-periods', requireTeacher, teacherController.getMyCoursePeriods)
+router.get('/my-course-periods/:cpId/students', requireTeacher, teacherController.getMyCoursePeriodStudents)
+
+// TEACHER SETUP — COMMENT CODES (teacher's own scoped codes)
+router.get('/setup/comment-codes', requireTeacher, reportCardsController.getTeacherCodeScales)
+router.post('/setup/comment-codes/scales', requireTeacher, reportCardsController.createTeacherCodeScale)
+router.put('/setup/comment-codes/scales/:id', requireTeacher, reportCardsController.updateTeacherCodeScale)
+router.delete('/setup/comment-codes/scales/:id', requireTeacher, reportCardsController.deleteTeacherCodeScale)
+router.post('/setup/comment-codes/scales/:scaleId/codes', requireTeacher, reportCardsController.createTeacherCode)
+router.put('/setup/comment-codes/:id', requireTeacher, reportCardsController.updateTeacherCode)
+router.delete('/setup/comment-codes/:id', requireTeacher, reportCardsController.deleteTeacherCode)
 
 // TEACHER CRUD ROUTES (must come after specific routes)
 router.get('/', requireTeacher, teacherController.getAllTeachers)

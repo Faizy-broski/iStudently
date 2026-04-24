@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { IconCalendar, IconLoader, IconEye } from '@tabler/icons-react'
+import { IconCalendar, IconLoader, IconEye, IconSearch } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import useSWR from 'swr'
 
@@ -81,7 +81,9 @@ export default function AdministrationPage() {
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth())
   const [selectedDay, setSelectedDay] = useState(today.getDate())
   const [selectedYear, setSelectedYear] = useState(today.getFullYear())
-  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('not_present')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [groupByFamily, setGroupByFamily] = useState(false)
   const [gradeFilter, setGradeFilter] = useState<string>('all')
   const [sectionFilter, setSectionFilter] = useState<string>('all')
   const [expandedView, setExpandedView] = useState(false)
@@ -141,12 +143,24 @@ export default function AdministrationPage() {
   )
   const sections = sectionsRes?.data || []
 
-  // Filter records by status and expanded view
+  // Filter records by search, status, and expanded view
   const filteredStudents = useMemo(() => {
     let students = gridStudents
 
+    const search = searchQuery.trim().toLowerCase()
+    if (search) {
+      students = students.filter(student => {
+        return [
+          student.student_name,
+          student.student_number ?? '',
+          student.grade_name ?? '',
+          student.section_name ?? '',
+          student.comment ?? ''
+        ].some(value => value.toLowerCase().includes(search))
+      })
+    }
+
     // In non-expanded view (default), only show students with non-present attendance
-    // Mirrors RosarioSIS WHERE EXISTS ... attendance_codes with non-default code
     if (!expandedView) {
       students = students.filter(s => {
         if (s.state_value !== null && s.state_value < 1.0) return true
@@ -168,8 +182,16 @@ export default function AdministrationPage() {
       students = students.filter(s => s.state_value === 0.5)
     }
 
+    if (groupByFamily) {
+      students = [...students].sort((a, b) => {
+        const aLast = a.student_name.split(' ').slice(-1)[0].toLowerCase()
+        const bLast = b.student_name.split(' ').slice(-1)[0].toLowerCase()
+        return aLast.localeCompare(bLast)
+      })
+    }
+
     return students
-  }, [gridStudents, statusFilter, expandedView])
+  }, [gridStudents, statusFilter, expandedView, searchQuery, groupByFamily])
 
   const stateLabel = (value: number | null) => {
     if (value === null || value === undefined) return '-'
@@ -363,14 +385,18 @@ export default function AdministrationPage() {
           </PopoverContent>
         </Popover>
 
+        <div className="relative flex-1">
+          <Input
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search students, ID, grade..."
+            className="pr-10"
+          />
+          <IconSearch className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        </div>
+
         <div className="ml-auto flex items-center gap-3">
-          {/* Expanded View toggle */}
-          <button
-            onClick={() => setExpandedView(!expandedView)}
-            className={`text-sm hover:underline ${expandedView ? 'text-teal-600 font-semibold' : 'text-muted-foreground'}`}
-          >
-            {expandedView ? '✓ Expanded View' : 'Expanded View'}
-          </button>
+         
 
           {/* Grade / Section Filters */}
           <Select value={gradeFilter} onValueChange={v => { setGradeFilter(v); setSectionFilter('all') }}>
@@ -442,6 +468,12 @@ export default function AdministrationPage() {
                   <TableHead className="text-teal-600 font-semibold sticky left-0 bg-background z-10 min-w-[180px]">
                     STUDENT
                   </TableHead>
+                  <TableHead className="text-teal-600 font-semibold text-center min-w-[120px]">
+                    Studently ID
+                  </TableHead>
+                  <TableHead className="text-teal-600 font-semibold text-center min-w-[140px]">
+                    GRADE LEVEL
+                  </TableHead>
                   {/* One column per school period */}
                   {gridPeriods.map(period => (
                     <TableHead key={period.id} className="text-teal-600 font-semibold text-center min-w-[80px]">
@@ -471,10 +503,13 @@ export default function AdministrationPage() {
                           className="text-left hover:text-teal-600 hover:underline"
                         >
                           <span className="font-medium">{student.student_name}</span>
-                          {student.student_number && (
-                            <span className="text-xs text-muted-foreground ml-1">({student.student_number})</span>
-                          )}
                         </button>
+                      </TableCell>
+                      <TableCell className="text-center text-sm text-muted-foreground">
+                        {student.student_number || '-'}
+                      </TableCell>
+                      <TableCell className="text-center text-sm text-muted-foreground">
+                        {student.grade_name || '-'}
                       </TableCell>
 
                       {/* Period code dropdown columns */}

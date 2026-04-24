@@ -1721,6 +1721,7 @@ export interface AttendanceSummaryRow {
   total_minutes: number;
   minutes_present: number;
   attendance_percentage: number;
+  state_abs?: number;
   state_code_breakdown: Record<string, number>;
 }
 

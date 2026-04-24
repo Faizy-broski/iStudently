@@ -369,11 +369,11 @@ export const getAverageDailyAttendance = async (
       if (sectionId) {
         studentQuery = studentQuery.eq('section_id', sectionId)
       } else if (gradeId) {
-        // Get sections for this grade, then students
+        // Get sections for this grade level, then students
         const { data: sections } = await supabase
           .from('sections')
           .select('id')
-          .eq('grade_id', gradeId)
+          .eq('grade_level_id', gradeId)
 
         if (sections && sections.length > 0) {
           studentQuery = studentQuery.in('section_id', sections.map(s => s.id))
@@ -471,18 +471,18 @@ export const getADAByGrade = async (
       .order('order_index', { ascending: true })
     if (gErr) throw gErr
 
-    // 3. Get sections per grade
+    // 3. Get sections per grade level
     const { data: sections, error: sErr } = await supabase
       .from('sections')
-      .select('id, grade_id')
+      .select('id, grade_level_id')
       .eq('school_id', schoolId)
     if (sErr) throw sErr
 
     const gradeToSections = new Map<string, string[]>()
     for (const s of (sections || [])) {
-      const arr = gradeToSections.get(s.grade_id) || []
+      const arr = gradeToSections.get(s.grade_level_id) || []
       arr.push(s.id)
-      gradeToSections.set(s.grade_id, arr)
+      gradeToSections.set(s.grade_level_id, arr)
     }
 
     // 4. Get students and map to grade
@@ -492,10 +492,10 @@ export const getADAByGrade = async (
       .eq('school_id', schoolId)
     if (stErr) throw stErr
 
-    // Map section -> grade
+    // Map section -> grade level
     const sectionToGrade = new Map<string, string>()
     for (const s of (sections || [])) {
-      sectionToGrade.set(s.id, s.grade_id)
+      sectionToGrade.set(s.id, s.grade_level_id)
     }
 
     const studentToGrade = new Map<string, string>()
@@ -653,7 +653,7 @@ export const getDailySummaryGrid = async (
       const { data: secs } = await supabase
         .from('sections')
         .select('id')
-        .eq('grade_id', gradeId)
+        .eq('grade_level_id', gradeId)
       if (secs && secs.length > 0) {
         studentQuery = studentQuery.in('section_id', secs.map(s => s.id))
       }

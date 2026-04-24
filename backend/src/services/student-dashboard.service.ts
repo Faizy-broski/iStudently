@@ -214,189 +214,335 @@ export class StudentDashboardService {
   }
 
   /**
-   * Get assignments due in next 48 hours
+   * Resolve course_period IDs for a student via their timetable.
+   * course_periods.section_id is NULL in this school's data, so we bridge through:
+   * timetable_entries (section→subject+teacher) → courses → course_periods
+   */
+  private async resolveStudentCoursePeriodIds(sectionId: string, schoolId: string): Promise<string[]> {
+    // Step 1: Get subject+teacher pairs from the student's timetable
+    // No academic_year_id filter — timetable entries may use campus-specific year IDs
+    const { data: timetableEntries } = await supabase
+      .from('timetable_entries')
+      .select('subject_id, teacher_id')
+      .eq('section_id', sectionId)
+      .eq('is_active', true)
+
+    if (!timetableEntries?.length) return []
+
+    const subjectIds = [...new Set(timetableEntries.map((e: any) => e.subject_id).filter(Boolean))]
+    const teacherIds = [...new Set(timetableEntries.map((e: any) => e.teacher_id).filter(Boolean))]
+
+    if (!subjectIds.length) return []
+
+    // Step 2: Find courses whose subject matches the student's timetable subjects
+    const { data: courses } = await supabase
+      .from('courses')
+      .select('id')
+      .in('subject_id', subjectIds)
+
+    const courseIds = (courses || []).map((c: any) => c.id)
+    if (!courseIds.length) return []
+
+    // Step 3: Find active course_periods for those courses
+    // Filter by teacher_id if we have them (narrows to this student's actual teachers)
+    let cpQuery = supabase
+      .from('course_periods')
+      .select('id')
+      .in('course_id', courseIds)
+      .eq('is_active', true)
+
+    if (teacherIds.length > 0) {
+      cpQuery = cpQuery.in('teacher_id', teacherIds)
+    }
+
+    const { data: coursePeriods } = await cpQuery
+    return (coursePeriods || []).map((cp: any) => cp.id)
+  }
+
+  /**
+   * Get assignments due in next 48 hours (Rosario gradebook_assignments)
    */
   async getDueAssignments(studentId: string) {
-    // Get student's section
     const { data: student, error: studentError } = await supabase
       .from('students')
       .select('section_id, school_id')
       .eq('id', studentId)
       .single()
 
-    if (studentError || !student?.section_id) {
-      return []
-    }
+    if (studentError || !student?.section_id) return []
+
+    const cpIds = await this.resolveStudentCoursePeriodIds(student.section_id, student.school_id)
+    if (cpIds.length === 0) return []
 
     const now = new Date()
     const fortyEightHoursLater = new Date(now.getTime() + 48 * 60 * 60 * 1000)
 
     const { data: assignments, error } = await supabase
-      .from('assignments')
+      .from('gradebook_assignments')
       .select(`
-        id,
-        title,
-        description,
-        instructions,
-        attachments,
-        due_date,
-        max_score,
-        subject:subjects(id, name, code),
-        teacher:staff!teacher_id(
-          id,
-          profile:profiles!staff_profile_id_fkey(first_name, last_name)
-        ),
-        submission:assignment_submissions!left(
-          id,
-          submitted_at,
-          score,
-          feedback,
-          status
-        )
-      `)
-      .eq('section_id', student.section_id)
-      .gte('due_date', now.toISOString())
-      .lte('due_date', fortyEightHoursLater.toISOString())
-      .order('due_date', { ascending: true })
-
-    if (error) {
-      console.error('Error fetching due assignments:', error)
-      return []
-    }
-
-    // Filter submission to only current student
-    return (assignments || []).map((assignment: any) => ({
-      ...assignment,
-      submission: assignment.submission?.find((s: any) => s.student_id === studentId) || null
-    }))
-  }
-
-  /**
-   * Get all student assignments with optional status filter
-   */
-  async getStudentAssignments(studentId: string, status?: string) {
-    // Get student's section and school
-    const { data: student, error: studentError } = await supabase
-      .from('students')
-      .select('section_id, school_id')
-      .eq('id', studentId)
-      .single()
-
-    if (studentError || !student?.section_id) {
-      return {
-        todo: [],
-        submitted: [],
-        graded: []
-      }
-    }
-
-    const { data: assignments, error } = await supabase
-      .from('assignments')
-      .select(`
-        id,
-        title,
-        description,
-        instructions,
-        attachments,
-        due_date,
-        max_score,
-        is_graded,
-        allow_late_submission,
-        created_at,
-        academic_year_id,
-        subject:subjects(id, name, code),
-        teacher:staff!teacher_id(
-          id,
-          profile:profiles!staff_profile_id_fkey(first_name, last_name)
-        )
-      `)
-      .eq('section_id', student.section_id)
-      .eq('is_published', true)
-      .eq('is_archived', false)
-      .order('due_date', { ascending: false })
-      .limit(50)
-
-    if (error) {
-      console.error('Error fetching student assignments:', error)
-      return { todo: [], submitted: [], graded: [] }
-    }
-
-    // Get submissions for this student
-    const assignmentIds = (assignments || []).map((a: any) => a.id)
-    const { data: submissions } = await supabase
-      .from('assignment_submissions')
-      .select('*')
-      .in('assignment_id', assignmentIds)
-      .eq('student_id', studentId)
-
-    const submissionsMap = new Map(
-      (submissions || []).map((s: any) => [s.assignment_id, s])
-    )
-
-    // Categorize assignments
-    const todo: any[] = [];
-    const submitted: any[] = [];
-    const graded: any[] = [];
-
-    (assignments || []).forEach((assignment: any) => {
-      const submission = submissionsMap.get(assignment.id)
-      const assignmentWithSubmission = {
-        ...assignment,
-        submission: submission || null
-      }
-
-      if (!submission) {
-        todo.push(assignmentWithSubmission)
-      } else if (submission.status === 'graded') {
-        graded.push(assignmentWithSubmission)
-      } else {
-        submitted.push(assignmentWithSubmission)
-      }
-    })
-
-    // Return based on status filter
-    if (status === 'todo') return { todo, submitted: [], graded: [] }
-    if (status === 'submitted') return { todo: [], submitted, graded: [] }
-    if (status === 'graded') return { todo: [], submitted: [], graded }
-
-    return { todo, submitted, graded }
-  }
-
-  /**
-   * Get recent feedback (graded assignments)
-   */
-  async getRecentFeedback(studentId: string, limit: number = 5) {
-    const { data: submissions, error } = await supabase
-      .from('assignment_submissions')
-      .select(`
-        id,
-        submitted_at,
-        score,
-        feedback,
-        graded_at,
-        assignment:assignments(
-          id,
-          title,
-          max_score,
-          subject:subjects(id, name, code),
+        id, title, description, assigned_date, due_date, points,
+        assignment_type:gradebook_assignment_types(id, title),
+        course_period:course_periods(
+          id, title,
+          course:courses!course_id(id, title),
           teacher:staff!teacher_id(
             id,
             profile:profiles!staff_profile_id_fkey(first_name, last_name)
           )
         )
       `)
+      .in('course_period_id', cpIds)
+      .eq('is_active', true)
+      .gte('due_date', now.toISOString())
+      .lte('due_date', fortyEightHoursLater.toISOString())
+      .order('due_date', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching due gradebook assignments:', error)
+      return []
+    }
+
+    const assignmentIds = (assignments || []).map((a: any) => a.id)
+    const { data: submissions } = assignmentIds.length > 0
+      ? await supabase.from('student_assignments').select('assignment_id, submitted_at, status').in('assignment_id', assignmentIds).eq('student_id', studentId)
+      : { data: [] }
+    const { data: grades } = assignmentIds.length > 0
+      ? await supabase.from('gradebook_grades').select('assignment_id, points, comment, graded_at').in('assignment_id', assignmentIds).eq('student_id', studentId)
+      : { data: [] }
+
+    const submissionsMap = new Map((submissions || []).map((s: any) => [s.assignment_id, s]))
+    const gradesMap = new Map((grades || []).map((g: any) => [g.assignment_id, g]))
+
+    return (assignments || []).map((assignment: any) => {
+      const cp = assignment.course_period
+      const submission = submissionsMap.get(assignment.id) || null
+      const grade = gradesMap.get(assignment.id) || null
+      return {
+        id: assignment.id,
+        title: assignment.title,
+        description: assignment.description,
+        assigned_date: assignment.assigned_date,
+        due_date: assignment.due_date,
+        max_score: assignment.points,
+        subject: { id: cp?.id || '', name: cp?.course?.title || cp?.title || 'Course', code: '' },
+        teacher: cp?.teacher || null,
+        submission: submission ? {
+          id: submission.id,
+          submitted_at: submission.submitted_at,
+          marks_obtained: grade?.points ?? null,
+          feedback: grade?.comment ?? null,
+          status: grade ? 'graded' : 'submitted',
+        } : null,
+      }
+    })
+  }
+
+  /**
+   * Get all student assignments with optional status filter (Rosario gradebook_assignments)
+   */
+  async getStudentAssignments(studentId: string, status?: string) {
+    const { data: student, error: studentError } = await supabase
+      .from('students')
+      .select('section_id, school_id')
+      .eq('id', studentId)
+      .single()
+
+    if (studentError || !student?.section_id) return { todo: [], submitted: [], graded: [] }
+
+    const cpIds = await this.resolveStudentCoursePeriodIds(student.section_id, student.school_id)
+    if (cpIds.length === 0) return { todo: [], submitted: [], graded: [] }
+
+    const { data: assignments, error } = await supabase
+      .from('gradebook_assignments')
+      .select(`
+        id, title, description, assigned_date, due_date, points, enable_submission, file_url,
+        assignment_type:gradebook_assignment_types(id, title),
+        course_period:course_periods(
+          id, title,
+          course:courses!course_id(id, title),
+          teacher:staff!teacher_id(
+            id,
+            profile:profiles!staff_profile_id_fkey(first_name, last_name)
+          )
+        )
+      `)
+      .in('course_period_id', cpIds)
+      .eq('is_active', true)
+      .order('due_date', { ascending: false })
+      .limit(50)
+
+    if (error) {
+      console.error('Error fetching gradebook assignments for student:', error)
+      return { todo: [], submitted: [], graded: [] }
+    }
+
+    const assignmentIds = (assignments || []).map((a: any) => a.id)
+
+    const [{ data: submissions }, { data: grades }] = await Promise.all([
+      assignmentIds.length > 0
+        ? supabase.from('student_assignments').select('id, assignment_id, submission_text, attachments, submitted_at, status').in('assignment_id', assignmentIds).eq('student_id', studentId)
+        : Promise.resolve({ data: [] }),
+      assignmentIds.length > 0
+        ? supabase.from('gradebook_grades').select('assignment_id, points, letter_grade, comment, graded_at').in('assignment_id', assignmentIds).eq('student_id', studentId)
+        : Promise.resolve({ data: [] }),
+    ])
+
+    const submissionsMap = new Map((submissions || []).map((s: any) => [s.assignment_id, s]))
+    const gradesMap = new Map((grades || []).map((g: any) => [g.assignment_id, g]))
+
+    const todo: any[] = []
+    const submitted: any[] = []
+    const graded: any[] = []
+
+    for (const assignment of assignments || []) {
+      const cp = assignment.course_period as any
+      const submission = submissionsMap.get(assignment.id) || null
+      const grade = gradesMap.get(assignment.id) || null
+
+      const normalized = {
+        id: assignment.id,
+        title: assignment.title,
+        description: assignment.description,
+        assigned_date: assignment.assigned_date,
+        due_date: assignment.due_date,
+        max_score: assignment.points,
+        enable_submission: (assignment as any).enable_submission !== false,
+        file_url: (assignment as any).file_url || null,
+        assignment_type: assignment.assignment_type,
+        subject: { id: cp?.id || '', name: cp?.course?.title || cp?.title || 'Course', code: '' },
+        teacher: cp?.teacher || null,
+        submission: submission ? {
+          id: submission.id,
+          submitted_at: submission.submitted_at,
+          submission_text: submission.submission_text,
+          attachments: submission.attachments,
+          score: grade?.points ?? null,
+          feedback: grade?.comment ?? null,
+          letter_grade: grade?.letter_grade ?? null,
+          graded_at: grade?.graded_at ?? null,
+          marks_obtained: grade?.points ?? null,
+          status: grade ? 'graded' : 'submitted',
+        } : null,
+      }
+
+      if (grade) graded.push(normalized)
+      else if (submission) submitted.push(normalized)
+      else todo.push(normalized)
+    }
+
+    if (status === 'todo') return { todo, submitted: [], graded: [] }
+    if (status === 'submitted') return { todo: [], submitted, graded: [] }
+    if (status === 'graded') return { todo: [], submitted: [], graded }
+    return { todo, submitted, graded }
+  }
+
+  /**
+   * Submit a gradebook assignment (Rosario-style)
+   * Upserts a record in student_assignments
+   */
+  async submitGradebookAssignment(
+    studentId: string,
+    assignmentId: string,
+    data: { submission_text?: string; attachments?: any[] }
+  ) {
+    const { data: student } = await supabase
+      .from('students')
+      .select('school_id')
+      .eq('id', studentId)
+      .single()
+
+    const payload = {
+      student_id: studentId,
+      assignment_id: assignmentId,
+      school_id: student?.school_id || null,
+      submission_text: data.submission_text || null,
+      attachments: data.attachments || [],
+      submitted_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      status: 'submitted',
+    }
+
+    const { data: existing } = await supabase
+      .from('student_assignments')
+      .select('id')
       .eq('student_id', studentId)
-      .eq('status', 'graded')
-      .not('score', 'is', null)
+      .eq('assignment_id', assignmentId)
+      .maybeSingle()
+
+    if (existing) {
+      const { data: updated, error } = await supabase
+        .from('student_assignments')
+        .update(payload)
+        .eq('id', existing.id)
+        .select()
+        .single()
+      if (error) throw new Error(`Failed to update submission: ${error.message}`)
+      return updated
+    }
+
+    const { data: created, error } = await supabase
+      .from('student_assignments')
+      .insert(payload)
+      .select()
+      .single()
+    if (error) throw new Error(`Failed to create submission: ${error.message}`)
+    return created
+  }
+
+  /**
+   * Get recent feedback (graded assignments from gradebook_grades)
+   */
+  async getRecentFeedback(studentId: string, limit: number = 5) {
+    const { data: grades, error } = await supabase
+      .from('gradebook_grades')
+      .select(`
+        id,
+        points,
+        letter_grade,
+        comment,
+        graded_at,
+        assignment:gradebook_assignments(
+          id,
+          title,
+          points,
+          course_period:course_periods(
+            id, title,
+            course:courses!course_id(id, title),
+            teacher:staff!teacher_id(
+              id,
+              profile:profiles!staff_profile_id_fkey(first_name, last_name)
+            )
+          )
+        )
+      `)
+      .eq('student_id', studentId)
+      .not('points', 'is', null)
       .order('graded_at', { ascending: false })
       .limit(limit)
 
     if (error) {
-      console.error('Error fetching recent feedback:', error)
+      console.error('Error fetching recent feedback from gradebook:', error)
       return []
     }
 
-    return submissions || []
+    return (grades || []).map((g: any) => {
+      const assignment = g.assignment
+      const cp = assignment?.course_period
+      return {
+        id: g.id,
+        submitted_at: g.graded_at,
+        marks_obtained: g.points,
+        feedback: g.comment,
+        graded_at: g.graded_at,
+        assignment: {
+          id: assignment?.id || '',
+          title: assignment?.title || '',
+          max_score: assignment?.points || 0,
+          subject: { id: cp?.id || '', name: cp?.course?.title || cp?.title || 'Course', code: '' },
+          teacher: cp?.teacher || null,
+        },
+      }
+    })
   }
 
   /**
@@ -1057,7 +1203,7 @@ export class StudentDashboardService {
     const { data: entries, error } = await supabase
       .from('timetable_entries')
       .select(`
-        subject:subjects(id, name, code, description),
+        subject:subjects(id, name, code),
         teacher:staff!teacher_id(
           id,
           profile:profiles!staff_profile_id_fkey(first_name, last_name)
@@ -1072,6 +1218,7 @@ export class StudentDashboardService {
     // Deduplicate by subject id
     const seen = new Set<string>()
     const courses: any[] = []
+    
     for (const entry of entries || []) {
       const subj = (entry as any).subject
       if (subj && !seen.has(subj.id)) {
@@ -1079,10 +1226,10 @@ export class StudentDashboardService {
         courses.push({
           subject_id: subj.id,
           subject_name: subj.name,
-          subject_code: subj.code,
-          description: subj.description,
+          subject_code: subj.code || '',
+          description: '',
           teacher_name: (entry as any).teacher?.profile
-            ? `${(entry as any).teacher.profile.first_name} ${(entry as any).teacher.profile.last_name}`.trim()
+            ? `${(entry as any).teacher.profile.first_name || ''} ${(entry as any).teacher.profile.last_name || ''}`.trim()
             : 'Unassigned',
         })
       }
@@ -1111,7 +1258,7 @@ export class StudentDashboardService {
       .eq('is_current', true)
       .maybeSingle()
 
-    // Get course periods for this section
+    // Get course periods for this section (section_id is campus-scoped UUID)
     const { data: coursePeriods } = await supabase
       .from('course_periods')
       .select(`
@@ -1124,7 +1271,6 @@ export class StudentDashboardService {
         )
       `)
       .eq('section_id', student.section_id)
-      .eq('school_id', mainSchoolId)
 
     // Get all students in the same section with photos
     const { data: classmates } = await supabase
@@ -1174,7 +1320,7 @@ export class StudentDashboardService {
 
     const mainSchoolId = await getMainSchoolId(student.school_id)
 
-    // Get student's course periods via their section
+    // Get student's course periods via their section (section_id is campus-scoped UUID)
     const { data: coursePeriods } = await supabase
       .from('course_periods')
       .select(`
@@ -1184,7 +1330,6 @@ export class StudentDashboardService {
         teacher:staff!teacher_id(id, profile:profiles!profile_id(first_name, last_name))
       `)
       .eq('section_id', student.section_id)
-      .eq('school_id', mainSchoolId)
 
     const allowedIds = new Set((coursePeriods || []).map((cp: any) => cp.id))
 

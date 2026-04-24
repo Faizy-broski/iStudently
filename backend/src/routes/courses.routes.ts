@@ -59,4 +59,7 @@ router.get('/teacher/:teacherId', requireTeacher, coursesController.getCoursePer
 // GET /courses/student/:studentId           - Course periods for a student
 router.get('/student/:studentId', coursesController.getCoursePeriodsByStudent)
 
+// GET /courses/section/:sectionId           - Course periods for a section (for timetable assignment)
+router.get('/section/:sectionId', requireAdmin, coursesController.getCoursePeriodsBySection)
+
 export default router

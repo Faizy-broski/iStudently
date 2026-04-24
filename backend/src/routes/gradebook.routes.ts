@@ -97,6 +97,9 @@ router.get('/config', gradebookController.getConfig)
 // POST /gradebook/config (admin)
 router.post('/config', requireAdmin, gradebookController.setConfig)
 
+// PUT /gradebook/config (teacher — per-CP overrides only, ownership enforced)
+router.put('/config', requireTeacher, gradebookController.setConfigAsTeacher)
+
 // ============================================================================
 // PROGRESS REPORTS (batch generation for printing)
 // ============================================================================

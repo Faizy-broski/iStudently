@@ -74,9 +74,9 @@ export default function TeacherStudentInfoPage() {
         <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
           <BookOpen className="h-8 w-8 text-muted-foreground" />
         </div>
-        <h2 className="text-xl font-semibold">No Sections Assigned</h2>
+        <h2 className="text-xl font-semibold">No Course Periods Assigned</h2>
         <p className="text-muted-foreground max-w-sm">
-          You have not been assigned to any sections yet. Contact your administrator to get assigned to a section.
+          You have not been assigned to any course periods yet. Contact your administrator to get course periods assigned to you.
         </p>
       </div>
     );

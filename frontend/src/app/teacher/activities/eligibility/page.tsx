@@ -350,7 +350,7 @@ export default function EligibilityPage() {
             <thead className="bg-gray-50 border-b">
               <tr>
                 <th className="px-4 py-3 text-brand-blue font-bold uppercase tracking-wider">STUDENT</th>
-                <th className="px-4 py-3 text-brand-blue font-bold uppercase tracking-wider">ROSARIOSIS ID</th>
+                <th className="px-4 py-3 text-brand-blue font-bold uppercase tracking-wider"> ID</th>
                 <th className="px-4 py-3 text-brand-blue font-bold uppercase tracking-wider">GRADE LEVEL</th>
                 <th className="px-4 py-3 text-brand-blue font-bold uppercase tracking-wider text-center">PASSING</th>
                 <th className="px-4 py-3 text-brand-blue font-bold uppercase tracking-wider text-center">BORDERLINE</th>

@@ -113,6 +113,123 @@ export async function uploadMultipleFiles(
 }
 
 /**
+ * Upload teacher assignment file (e.g. instructions PDF) to Supabase Storage
+ * Path: {schoolId}/{campusId}/teacher-assignments/{timestamp}-{filename}
+ */
+export async function uploadTeacherAssignmentFile(
+  file: File,
+  schoolId: string,
+  campusId: string
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  try {
+    const timestamp = Date.now()
+    const fileExt = file.name.split('.').pop()
+    const safeName = file.name
+      .replace(/\.[^/.]+$/, '')
+      .replace(/[^a-zA-Z0-9_-]/g, '_')
+      .substring(0, 50)
+    const fileName = `${timestamp}-${safeName}.${fileExt}`
+    const filePath = `${schoolId}/${campusId}/teacher-assignments/${fileName}`
+
+    const { data, error } = await supabase.storage
+      .from('Assignments_uploads')
+      .upload(filePath, file, { cacheControl: '3600', upsert: false })
+
+    if (error) {
+      return { success: false, error: error.message }
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('Assignments_uploads')
+      .getPublicUrl(data.path)
+
+    return { success: true, url: publicUrl }
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to upload file',
+    }
+  }
+}
+
+/**
+ * Upload student submission files without requiring academic year ID
+ * Path: {schoolId}/{campusId}/submissions/{assignmentId}/{userId}/{timestamp}-{filename}
+ */
+export async function uploadStudentSubmissionFile(
+  file: File,
+  userId: string,
+  assignmentId: string,
+  schoolId: string,
+  campusId: string
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  try {
+    const timestamp = Date.now()
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExt}`
+    const filePath = `${schoolId}/${campusId}/submissions/${assignmentId}/${userId}/${fileName}`
+
+    const { data, error } = await supabase.storage
+      .from('Assignments_uploads')
+      .upload(filePath, file, { cacheControl: '3600', upsert: false })
+
+    if (error) {
+      return { success: false, error: error.message }
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('Assignments_uploads')
+      .getPublicUrl(data.path)
+
+    return { success: true, url: publicUrl }
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to upload file',
+    }
+  }
+}
+
+/**
+ * Upload multiple student submission files
+ */
+export async function uploadStudentSubmissionFiles(
+  files: File[],
+  userId: string,
+  assignmentId: string,
+  schoolId: string,
+  campusId: string,
+  onProgress?: (progress: number) => void
+): Promise<{ success: boolean; urls?: string[]; error?: string }> {
+  try {
+    const urls: string[] = []
+    let completed = 0
+
+    for (let i = 0; i < files.length; i += 3) {
+      const batch = files.slice(i, i + 3)
+      const results = await Promise.all(
+        batch.map(file => uploadStudentSubmissionFile(file, userId, assignmentId, schoolId, campusId))
+      )
+      for (const result of results) {
+        if (!result.success || !result.url) {
+          return { success: false, error: result.error || 'Failed to upload file' }
+        }
+        urls.push(result.url)
+        completed++
+        if (onProgress) onProgress((completed / files.length) * 100)
+      }
+    }
+
+    return { success: true, urls }
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to upload files',
+    }
+  }
+}
+
+/**
  * Delete file from storage
  */
 export async function deleteAssignmentFile(

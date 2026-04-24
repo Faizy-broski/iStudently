@@ -601,6 +601,109 @@ class ReportCardsService {
 
     return { report_cards: reportCards }
   }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // TEACHER-SCOPED COMMENT CODES
+  // Teachers can read all school-wide codes (staff_id IS NULL) plus their own.
+  // They can only create/update/delete scales/codes they own (staff_id = theirs).
+  // ──────────────────────────────────────────────────────────────────────────
+
+  async getTeacherCodeScales(schoolId: string, staffId: string): Promise<CommentCodeScale[]> {
+    const { data, error } = await supabase
+      .from('comment_code_scales')
+      .select(`*, codes:comment_codes(id, title, short_name, comment, sort_order, is_active)`)
+      .eq('school_id', schoolId)
+      .eq('is_active', true)
+      .or(`staff_id.eq.${staffId},staff_id.is.null`)
+      .order('sort_order')
+    if (error) throw new Error(`Failed to fetch teacher code scales: ${error.message}`)
+    return (data || []) as CommentCodeScale[]
+  }
+
+  async createTeacherCodeScale(schoolId: string, staffId: string, title: string, comment?: string): Promise<CommentCodeScale> {
+    const { data, error } = await supabase
+      .from('comment_code_scales')
+      .insert({ school_id: schoolId, staff_id: staffId, title, comment: comment || null, sort_order: 0 })
+      .select()
+      .single()
+    if (error) throw new Error(`Failed to create teacher code scale: ${error.message}`)
+    return data as CommentCodeScale
+  }
+
+  async updateTeacherCodeScale(id: string, staffId: string, updates: { title?: string; comment?: string | null }): Promise<CommentCodeScale> {
+    const { data, error } = await supabase
+      .from('comment_code_scales')
+      .update(updates)
+      .eq('id', id)
+      .eq('staff_id', staffId)
+      .select()
+      .single()
+    if (error) throw new Error(`Failed to update teacher code scale: ${error.message}`)
+    if (!data) throw new Error('Scale not found or you do not own it')
+    return data as CommentCodeScale
+  }
+
+  async deleteTeacherCodeScale(id: string, staffId: string): Promise<void> {
+    const { error } = await supabase
+      .from('comment_code_scales')
+      .update({ is_active: false })
+      .eq('id', id)
+      .eq('staff_id', staffId)
+    if (error) throw new Error(`Failed to delete teacher code scale: ${error.message}`)
+  }
+
+  async createTeacherCode(scaleId: string, staffId: string, schoolId: string, dto: {
+    title: string; short_name?: string; comment?: string; sort_order?: number
+  }): Promise<CommentCode> {
+    // Verify teacher owns the scale
+    const { data: scale } = await supabase
+      .from('comment_code_scales')
+      .select('staff_id')
+      .eq('id', scaleId)
+      .single()
+    if (!scale || scale.staff_id !== staffId) {
+      throw new Error('Cannot add codes to a school-wide scale')
+    }
+    const { data, error } = await supabase
+      .from('comment_codes')
+      .insert({
+        scale_id: scaleId,
+        school_id: schoolId,
+        staff_id: staffId,
+        title: dto.title,
+        short_name: dto.short_name || null,
+        comment: dto.comment || null,
+        sort_order: dto.sort_order ?? 0,
+      })
+      .select()
+      .single()
+    if (error) throw new Error(`Failed to create teacher code: ${error.message}`)
+    return data as CommentCode
+  }
+
+  async updateTeacherCode(id: string, staffId: string, dto: {
+    title?: string; short_name?: string | null; comment?: string | null; sort_order?: number
+  }): Promise<CommentCode> {
+    const { data, error } = await supabase
+      .from('comment_codes')
+      .update(dto)
+      .eq('id', id)
+      .eq('staff_id', staffId)
+      .select()
+      .single()
+    if (error) throw new Error(`Failed to update teacher code: ${error.message}`)
+    if (!data) throw new Error('Code not found or you do not own it')
+    return data as CommentCode
+  }
+
+  async deleteTeacherCode(id: string, staffId: string): Promise<void> {
+    const { error } = await supabase
+      .from('comment_codes')
+      .update({ is_active: false })
+      .eq('id', id)
+      .eq('staff_id', staffId)
+    if (error) throw new Error(`Failed to delete teacher code: ${error.message}`)
+  }
 }
 
 export const reportCardsService = new ReportCardsService()

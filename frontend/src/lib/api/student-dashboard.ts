@@ -578,17 +578,16 @@ export async function getStudentGpaRank() {
 }
 
 /**
- * Submit assignment
+ * Submit a gradebook assignment (Rosario-style)
  */
 export interface SubmitAssignmentDTO {
   assignment_id: string
-  student_id: string
   submission_text?: string
   attachments?: any[]
 }
 
 export async function submitAssignment(dto: SubmitAssignmentDTO) {
-  return apiRequest('/assignments/submit', {
+  return apiRequest('/student-dashboard/assignments/submit', {
     method: 'POST',
     body: JSON.stringify(dto)
   })

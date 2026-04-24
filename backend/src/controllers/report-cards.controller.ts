@@ -334,3 +334,104 @@ export const deleteTutorComment = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: error.message })
   }
 }
+
+// ============================================================================
+// TEACHER-SCOPED COMMENT CODES
+// No data leaks: teachers can read school-wide (staff_id IS NULL) + own codes;
+// create/update/delete are enforced to staff_id ownership in the service.
+// ============================================================================
+
+export const getTeacherCodeScales = async (req: Request, res: Response) => {
+  try {
+    const profile = (req as AuthRequest).profile
+    const schoolId = profile?.school_id
+    const staffId = profile?.staff_id
+    if (!schoolId || !staffId) return res.status(401).json({ success: false, error: 'Unauthorized' })
+    const data = await reportCardsService.getTeacherCodeScales(schoolId, staffId)
+    res.json({ success: true, data })
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message })
+  }
+}
+
+export const createTeacherCodeScale = async (req: Request, res: Response) => {
+  try {
+    const profile = (req as AuthRequest).profile
+    const schoolId = profile?.school_id
+    const staffId = profile?.staff_id
+    if (!schoolId || !staffId) return res.status(401).json({ success: false, error: 'Unauthorized' })
+    const { title, comment } = req.body
+    if (!title) return res.status(400).json({ success: false, error: 'title is required' })
+    const data = await reportCardsService.createTeacherCodeScale(schoolId, staffId, title, comment)
+    res.status(201).json({ success: true, data })
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message })
+  }
+}
+
+export const updateTeacherCodeScale = async (req: Request, res: Response) => {
+  try {
+    const profile = (req as AuthRequest).profile
+    const staffId = profile?.staff_id
+    if (!staffId) return res.status(401).json({ success: false, error: 'Unauthorized' })
+    const { id } = req.params
+    const { title, comment } = req.body
+    const data = await reportCardsService.updateTeacherCodeScale(id, staffId, { title, comment })
+    res.json({ success: true, data })
+  } catch (error: any) {
+    res.status(error.message.includes('not found') ? 404 : 500).json({ success: false, error: error.message })
+  }
+}
+
+export const deleteTeacherCodeScale = async (req: Request, res: Response) => {
+  try {
+    const profile = (req as AuthRequest).profile
+    const staffId = profile?.staff_id
+    if (!staffId) return res.status(401).json({ success: false, error: 'Unauthorized' })
+    await reportCardsService.deleteTeacherCodeScale(req.params.id, staffId)
+    res.json({ success: true, message: 'Scale deleted' })
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message })
+  }
+}
+
+export const createTeacherCode = async (req: Request, res: Response) => {
+  try {
+    const profile = (req as AuthRequest).profile
+    const schoolId = profile?.school_id
+    const staffId = profile?.staff_id
+    if (!schoolId || !staffId) return res.status(401).json({ success: false, error: 'Unauthorized' })
+    const { scaleId } = req.params
+    const { title, short_name, comment, sort_order } = req.body
+    if (!title) return res.status(400).json({ success: false, error: 'title is required' })
+    const data = await reportCardsService.createTeacherCode(scaleId, staffId, schoolId, { title, short_name, comment, sort_order })
+    res.status(201).json({ success: true, data })
+  } catch (error: any) {
+    res.status(error.message.includes('school-wide') ? 403 : 500).json({ success: false, error: error.message })
+  }
+}
+
+export const updateTeacherCode = async (req: Request, res: Response) => {
+  try {
+    const profile = (req as AuthRequest).profile
+    const staffId = profile?.staff_id
+    if (!staffId) return res.status(401).json({ success: false, error: 'Unauthorized' })
+    const { title, short_name, comment, sort_order } = req.body
+    const data = await reportCardsService.updateTeacherCode(req.params.id, staffId, { title, short_name, comment, sort_order })
+    res.json({ success: true, data })
+  } catch (error: any) {
+    res.status(error.message.includes('not found') ? 404 : 500).json({ success: false, error: error.message })
+  }
+}
+
+export const deleteTeacherCode = async (req: Request, res: Response) => {
+  try {
+    const profile = (req as AuthRequest).profile
+    const staffId = profile?.staff_id
+    if (!staffId) return res.status(401).json({ success: false, error: 'Unauthorized' })
+    await reportCardsService.deleteTeacherCode(req.params.id, staffId)
+    res.json({ success: true, message: 'Code deleted' })
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message })
+  }
+}

@@ -4,7 +4,6 @@ import { DashboardLayout } from '@/components/layouts'
 import { AuthLoadingGuard } from '@/components/auth/AuthLoadingGuard'
 import { RoleGuard } from '@/components/auth/RoleGuard'
 import { ParentAgreementGuard } from '@/components/auth/ParentAgreementGuard'
-import { RefreshOnReturn } from '@/components/RefreshOnReturn'
 import { SchoolSettingsProvider } from '@/context/SchoolSettingsContext'
 import { CampusProvider } from '@/context/CampusContext'
 
@@ -20,7 +19,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
           <CampusProvider>
             <ParentAgreementGuard role="student">
               <DashboardLayout role="student">
-                <RefreshOnReturn>{children}</RefreshOnReturn>
+                {children}
               </DashboardLayout>
             </ParentAgreementGuard>
           </CampusProvider>

@@ -123,7 +123,7 @@ router.get(
 
 router.get(
   '/academic-years',
-  requireStaff, // Only staff can view all academic years
+  requireRole('super_admin', 'admin', 'teacher', 'librarian', 'staff', 'student', 'parent'),
   academicsController.getAcademicYears
 )
 

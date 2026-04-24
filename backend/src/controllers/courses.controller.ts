@@ -185,6 +185,18 @@ export const getCoursePeriodsByStudent = async (req: Request, res: Response) => 
   }
 }
 
+export const getCoursePeriodsBySection = async (req: Request, res: Response) => {
+  try {
+    const { sectionId } = req.params
+    const academicYearId = req.query.academic_year_id as string | undefined
+    const data = await coursesService.getCoursePeriodsBySection(sectionId, academicYearId)
+    res.json({ success: true, data })
+  } catch (error: any) {
+    console.error('Error in getCoursePeriodsBySection:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+}
+
 export const syncFromTeacherAssignments = async (req: Request, res: Response) => {
   try {
     const schoolId = (req as AuthRequest).profile?.school_id

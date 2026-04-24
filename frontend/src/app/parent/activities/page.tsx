@@ -25,18 +25,18 @@ export default function ParentActivitiesPage() {
   const enrollments: any[] = Array.isArray(data) ? data : []
 
   return (
-    <ParentDashboardLayout>
+    <ParentDashboardLayout hideStats={true}>
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold">Activities</h2>
-          <p className="text-gray-500 mt-1">Activities and extracurriculars your child is enrolled in</p>
+          <h1 className="text-3xl font-bold">Activities</h1>
+          <p className="text-muted-foreground mt-1">Activities and extracurriculars your child is enrolled in</p>
         </div>
 
         {!selectedStudent ? (
           <Card>
             <CardContent className="py-12 text-center">
-              <Star className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">Select a student to view their activities</p>
+              <Star className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+              <p className="text-muted-foreground">Select a student to view their activities</p>
             </CardContent>
           </Card>
         ) : isLoading ? (
@@ -46,9 +46,9 @@ export default function ParentActivitiesPage() {
         ) : enrollments.length === 0 ? (
           <Card>
             <CardContent className="py-16 text-center">
-              <Star className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-lg font-semibold">No Activities</p>
-              <p className="text-gray-500 mt-1">Your child is not enrolled in any activities yet.</p>
+              <Star className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+              <p className="text-lg font-semibold text-muted-foreground">No Activities</p>
+              <p className="text-muted-foreground mt-1">Your child is not enrolled in any activities yet.</p>
             </CardContent>
           </Card>
         ) : (
@@ -71,7 +71,7 @@ export default function ParentActivitiesPage() {
                   </CardHeader>
                   <CardContent className="pt-0 space-y-2">
                     {(activity.start_date || activity.end_date) && (
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Calendar className="h-4 w-4" />
                         {activity.start_date && format(parseISO(activity.start_date), 'MMM d, yyyy')}
                         {activity.start_date && activity.end_date && ' – '}
@@ -79,9 +79,9 @@ export default function ParentActivitiesPage() {
                       </div>
                     )}
                     {activity.comment && (
-                      <p className="text-sm text-gray-500">{activity.comment}</p>
+                      <p className="text-sm text-muted-foreground">{activity.comment}</p>
                     )}
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-muted-foreground/60">
                       Enrolled {format(parseISO(enrollment.created_at), 'MMM d, yyyy')}
                     </p>
                   </CardContent>

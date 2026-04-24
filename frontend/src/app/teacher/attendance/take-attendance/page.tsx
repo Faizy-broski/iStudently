@@ -5,27 +5,25 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
-import { 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
-  AlertCircle, 
-  Search, 
-  Loader2, 
-  Save, 
+import {
+  CheckCircle,
+  XCircle,
+  Clock,
+  AlertCircle,
+  Loader2,
+  Save,
   ArrowLeft,
   Users,
   BookOpen,
   Calendar,
-  RefreshCw,
-  UserCheck,
-  UserX
+  RefreshCw
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
+import { useCampus } from "@/context/CampusContext"
 import * as timetableApi from "@/lib/api/timetable"
 import { TeacherSchedule } from "@/lib/api/teachers"
+import { getMarkingPeriods, type MarkingPeriod } from "@/lib/api/marking-periods"
 import { useSearchParams, useRouter } from "next/navigation"
 import useSWR from "swr"
 
@@ -56,39 +54,68 @@ export default function AttendancePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { profile } = useAuth()
+  const campusContext = useCampus()
+  const selectedCampus = campusContext?.selectedCampus
   const classId = searchParams.get("class")
+  const [selectedClassId, setSelectedClassId] = useState(classId || "")
 
   const [attendanceData, setAttendanceData] = useState<StudentWithAttendance[]>([])
   const [classInfo, setClassInfo] = useState<ClassInfo | null>(null)
   const [saving, setSaving] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [filterStatus, setFilterStatus] = useState<AttendanceStatus | "all">("all")
   const [hasChanges, setHasChanges] = useState(false)
   const [loadingAttendance, setLoadingAttendance] = useState(false)
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [todayDate] = useState(new Date().toISOString().split('T')[0])
+
+  const { data: markingPeriods = [], isLoading: periodsLoading } = useSWR(
+    selectedCampus?.id ? ["teacher-marking-periods", selectedCampus.id] : null,
+    () => getMarkingPeriods(selectedCampus?.id),
+    { revalidateOnFocus: false }
+  )
 
   // Fetch today's schedule for class selection
   const { data: schedule, isLoading: scheduleLoading } = useSWR(
-    profile?.staff_id ? `teacher-schedule-${profile.staff_id}` : null,
+    profile?.staff_id && selectedDate ? [`teacher-schedule-${profile.staff_id}`, selectedDate] : null,
     async () => {
-      if (!profile?.staff_id) return []
-      return await timetableApi.getTeacherSchedule(profile.staff_id, todayDate)
+      if (!profile?.staff_id || !selectedDate) return []
+      return await timetableApi.getTeacherSchedule(profile.staff_id, selectedDate)
     },
     { revalidateOnFocus: false }
   )
 
   const todayClasses = schedule || []
+  const selectedClass = useMemo(
+    () => todayClasses.find((s: TeacherSchedule) => s.id === selectedClassId) || null,
+    [todayClasses, selectedClassId]
+  )
+
+  useEffect(() => {
+    if (!selectedClassId && todayClasses.length > 0) {
+      setSelectedClassId(todayClasses[0].id)
+    } else if (
+      selectedClassId &&
+      todayClasses.length > 0 &&
+      !todayClasses.some((cls) => cls.id === selectedClassId)
+    ) {
+      setSelectedClassId(todayClasses[0].id)
+    }
+  }, [todayClasses, selectedClassId])
+
+  useEffect(() => {
+    if (selectedClassId) {
+      router.replace(`/teacher/attendance/take-attendance?class=${selectedClassId}`)
+    }
+  }, [selectedClassId, router])
 
   // Load attendance data function
   const loadAttendanceData = useCallback(async () => {
     try {
-      if (!classId) return
+      if (!selectedClassId) return
       setLoadingAttendance(true)
       
-      // Load attendance records for this class today
-      const records = await timetableApi.getAttendanceForClass(classId, todayDate)
+      // Load attendance records for this class and selected date
+      const records = await timetableApi.getAttendanceForClass(selectedClassId, selectedDate)
       
-      // Transform records to our component state
       const studentData: StudentWithAttendance[] = records.map((r) => ({
         id: r.id,
         student_id: r.student_id,
@@ -101,8 +128,6 @@ export default function AttendancePage() {
       
       setAttendanceData(studentData)
       
-      // Find class info from schedule
-      const selectedClass = schedule?.find((s: TeacherSchedule) => s.id === classId)
       if (selectedClass) {
         setClassInfo({
           id: selectedClass.id,
@@ -124,32 +149,50 @@ export default function AttendancePage() {
     } finally {
       setLoadingAttendance(false)
     }
-  }, [classId, schedule, todayDate])
+  }, [selectedClassId, selectedDate, selectedClass])
 
   // Fetch attendance data when class is selected
   useEffect(() => {
-    if (classId && schedule) {
+    if (selectedClassId && schedule) {
       loadAttendanceData()
     }
-  }, [classId, schedule, loadAttendanceData])
+  }, [selectedClassId, schedule, selectedDate, loadAttendanceData])
+
+  const selectedMarkingPeriod = useMemo(() => {
+    return markingPeriods.find((mp: MarkingPeriod) => {
+      if (!mp.start_date || !mp.end_date) return false
+      return selectedDate >= mp.start_date && selectedDate <= mp.end_date && (mp.mp_type === "QTR" || mp.mp_type === "PRO")
+    })
+  }, [markingPeriods, selectedDate])
+
+  const allowEdit = useMemo(() => {
+    if (!selectedMarkingPeriod) return false
+    if (selectedDate > todayDate) return false
+    if (selectedMarkingPeriod.post_start_date && selectedMarkingPeriod.post_end_date) {
+      return selectedDate >= selectedMarkingPeriod.post_start_date && selectedDate <= selectedMarkingPeriod.post_end_date
+    }
+    return true
+  }, [selectedMarkingPeriod, selectedDate, todayDate])
 
   // Quick toggle - direct status change
   const setStatus = useCallback((studentId: string, newStatus: AttendanceStatus) => {
+    if (!allowEdit) return
     setAttendanceData(prev => prev.map(s => 
       s.student_id === studentId 
         ? { ...s, status: newStatus }
         : s
     ))
     setHasChanges(true)
-  }, [])
+  }, [allowEdit])
 
   // Cycle through statuses on tap
   const cycleStatus = useCallback((studentId: string) => {
+    if (!allowEdit) return
+
     setAttendanceData(prev => {
       const student = prev.find(s => s.student_id === studentId)
       if (!student) return prev
       
-      // Cycle: present → absent → late → present
       const statusCycle: Record<AttendanceStatus, AttendanceStatus> = {
         "present": "absent",
         "absent": "late",
@@ -164,24 +207,39 @@ export default function AttendancePage() {
       )
     })
     setHasChanges(true)
-  }, [])
+  }, [allowEdit])
+
+  const updateRemarks = useCallback((studentId: string, remarks: string) => {
+    if (!allowEdit) return
+    setAttendanceData(prev => prev.map(s =>
+      s.student_id === studentId ? { ...s, remarks } : s
+    ))
+    setHasChanges(true)
+  }, [allowEdit])
 
   // Mark all as present
   const markAllPresent = useCallback(() => {
+    if (!allowEdit) return
     setAttendanceData(prev => prev.map(s => ({ ...s, status: "present" as AttendanceStatus })))
     setHasChanges(true)
     toast.success("Marked all students as present")
-  }, [])
+  }, [allowEdit])
 
   // Mark all as absent
   const markAllAbsent = useCallback(() => {
+    if (!allowEdit) return
     setAttendanceData(prev => prev.map(s => ({ ...s, status: "absent" as AttendanceStatus })))
     setHasChanges(true)
     toast.info("Marked all students as absent")
-  }, [])
+  }, [allowEdit])
 
   // Save attendance
   const handleSave = async () => {
+    if (!allowEdit) {
+      toast.error("Attendance cannot be edited for this date.")
+      return
+    }
+
     try {
       setSaving(true)
       
@@ -190,14 +248,13 @@ export default function AttendancePage() {
         return
       }
       
-      // Prepare bulk update data
       const updates = attendanceData.map(record => ({
         student_id: record.student_id,
         status: record.status,
         remarks: record.remarks
       }))
       
-      await timetableApi.bulkUpdateAttendance(classId, todayDate, updates)
+      await timetableApi.bulkUpdateAttendance(classId, selectedDate, updates)
       
       setHasChanges(false)
       toast.success("Attendance saved successfully!")
@@ -211,14 +268,7 @@ export default function AttendancePage() {
   }
 
   // Filter and search students
-  const filteredStudents = useMemo(() => {
-    return attendanceData.filter(student => {
-      const matchesSearch = student.student_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        student.student_number.toLowerCase().includes(searchQuery.toLowerCase())
-      const matchesFilter = filterStatus === "all" || student.status === filterStatus
-      return matchesSearch && matchesFilter
-    })
-  }, [attendanceData, searchQuery, filterStatus])
+  const filteredStudents = useMemo(() => attendanceData, [attendanceData])
 
   // Stats
   const stats = useMemo(() => ({
@@ -255,110 +305,6 @@ export default function AttendancePage() {
     )
   }
 
-  // No class selected - show class picker
-  if (!classId) {
-    return (
-      <div className="p-4 md:p-6 space-y-6 max-w-4xl mx-auto">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/teacher/dashboard')}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">Mark Attendance</h1>
-            <p className="text-muted-foreground mt-1">Select a class from today&apos;s schedule</p>
-          </div>
-        </div>
-
-        {/* Today's date */}
-        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-          <CardContent className="py-4">
-            <div className="flex items-center gap-3">
-              <Calendar className="h-6 w-6 text-blue-600" />
-              <div>
-                <p className="font-semibold text-blue-900">
-                  {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-                </p>
-                <p className="text-sm text-blue-700">
-                  {todayClasses.length} {todayClasses.length === 1 ? 'class' : 'classes'} scheduled
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Class List */}
-        {todayClasses.length === 0 ? (
-          <Card className="p-12 text-center">
-            <Calendar className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No Classes Today</h3>
-            <p className="text-muted-foreground">You don&apos;t have any classes scheduled for today.</p>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {todayClasses.map((cls: TeacherSchedule, index: number) => {
-              const now = new Date()
-              const currentTime = now.toTimeString().split(' ')[0].substring(0, 5)
-              const isInProgress = cls.start_time <= currentTime && currentTime < cls.end_time
-              const isCompleted = cls.end_time < currentTime
-              
-              return (
-                <Card 
-                  key={cls.id || index}
-                  className={`cursor-pointer transition-all hover:shadow-lg border-2 ${
-                    isInProgress ? 'border-green-500 bg-green-50' : 
-                    isCompleted ? 'border-gray-300' : 'border-blue-200 hover:border-blue-400'
-                  }`}
-                  onClick={() => router.push(`/teacher/attendance?class=${cls.id}`)}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4 flex-1">
-                        <div className={`h-14 w-14 rounded-lg flex flex-col items-center justify-center ${
-                          isInProgress ? 'bg-green-600' : 'bg-blue-600'
-                        } text-white`}>
-                          <span className="text-xs">Period</span>
-                          <span className="text-xl font-bold">{cls.period_number}</span>
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-bold text-lg">{cls.subject_name}</h3>
-                            {isInProgress && (
-                              <Badge className="bg-green-600 text-white">
-                                <span className="animate-pulse mr-1">●</span> Now
-                              </Badge>
-                            )}
-                            {isCompleted && (
-                              <Badge variant="outline" className="text-gray-500">Completed</Badge>
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            <span className="inline-flex items-center gap-1">
-                              <Users className="h-3 w-3" /> {cls.section_name}
-                            </span>
-                            <span className="mx-2">•</span>
-                            <span>{cls.grade_name}</span>
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-blue-600">
-                          {cls.start_time?.substring(0, 5)} - {cls.end_time?.substring(0, 5)}
-                        </p>
-                        {cls.room_number && (
-                          <p className="text-xs text-muted-foreground">Room {cls.room_number}</p>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-        )}
-      </div>
-    )
-  }
-
   // Loading attendance data
   if (loadingAttendance) {
     return (
@@ -375,48 +321,89 @@ export default function AttendancePage() {
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-4xl mx-auto pb-24">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.push('/teacher/attendance')}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">Mark Attendance</h1>
-          {classInfo && (
-            <p className="text-sm text-muted-foreground">
-              {classInfo.subject_name} • {classInfo.section_name} • Period {classInfo.period_number}
-            </p>
-          )}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => router.push('/teacher/attendance/take-attendance')}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">Mark Attendance</h1>
+            <p className="text-sm text-muted-foreground mt-1">Choose a class and date to update attendance.</p>
+          </div>
         </div>
-        <Button 
-          variant="outline" 
-          size="icon"
-          onClick={loadAttendanceData}
-          title="Refresh"
-        >
-          <RefreshCw className="h-4 w-4" />
-        </Button>
+
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-blue-600" />
+            <Input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="h-10"
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={loadAttendanceData}
+            title="Refresh"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
-      {/* Class Info Card */}
-      {classInfo && (
-        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-          <CardContent className="py-3">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-4">
-                <BookOpen className="h-5 w-5 text-blue-600" />
-                <div>
-                  <p className="font-semibold">{classInfo.subject_name}</p>
-                  <p className="text-sm text-muted-foreground">{classInfo.section_name} - {classInfo.grade_name}</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-medium">{classInfo.start_time?.substring(0,5)} - {classInfo.end_time?.substring(0,5)}</p>
-                {classInfo.room_number && <p className="text-xs text-muted-foreground">Room {classInfo.room_number}</p>}
-              </div>
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-slate-700">Select class</label>
+            <select
+              value={selectedClassId}
+              onChange={(e) => setSelectedClassId(e.target.value)}
+              className="w-full max-w-md rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="" disabled>Select a class for {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</option>
+              {todayClasses.map((cls: TeacherSchedule) => (
+                <option key={cls.id} value={cls.id}>
+                  {`Period ${cls.period_number} — ${cls.subject_name} · ${cls.section_name}`}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {selectedClass && (
+            <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-sm text-slate-500">Current class</p>
+              <p className="text-lg font-semibold text-slate-900">{selectedClass.subject_name} • {selectedClass.section_name}</p>
+              <p className="text-sm text-slate-500">Period {selectedClass.period_number} · {selectedClass.grade_name}</p>
+              <p className="text-sm text-slate-500">{selectedClass.start_time?.substring(0, 5)} - {selectedClass.end_time?.substring(0, 5)}{selectedClass.room_number ? ` · Room ${selectedClass.room_number}` : ''}</p>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </div>
+
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-1">
+            <p className={`text-sm font-medium ${allowEdit ? 'text-green-700' : 'text-red-700'}`}>
+              {allowEdit ? 'Editable attendance' : 'Read-only attendance'}
+            </p>
+            <p className="text-xs text-slate-500">
+              {selectedMarkingPeriod?.post_start_date && selectedMarkingPeriod?.post_end_date
+                ? `Posting window: ${selectedMarkingPeriod.post_start_date} to ${selectedMarkingPeriod.post_end_date}`
+                : 'Attendance is only editable within the current marking period posting window.'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge className={allowEdit ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
+              {allowEdit ? 'Edit mode' : 'View only'}
+            </Badge>
+            {selectedMarkingPeriod && (
+              <Badge className="bg-blue-100 text-blue-700">
+                {selectedMarkingPeriod.mp_type} period
+              </Badge>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Stats Cards - Compact */}
       <div className="grid grid-cols-5 gap-2">
@@ -452,131 +439,97 @@ export default function AttendancePage() {
         </Card>
       </div>
 
-      {/* Quick Actions */}
-      <div className="flex gap-2 flex-wrap">
-        <Button variant="outline" size="sm" onClick={markAllPresent} className="flex-1 sm:flex-none">
-          <UserCheck className="h-4 w-4 mr-1" />
-          All Present
-        </Button>
-        <Button variant="outline" size="sm" onClick={markAllAbsent} className="flex-1 sm:flex-none">
-          <UserX className="h-4 w-4 mr-1" />
-          All Absent
-        </Button>
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+        <table className="min-w-full divide-y divide-slate-200 text-sm">
+          <thead className="bg-slate-50 text-left text-slate-600">
+            <tr>
+              <th className="px-4 py-3 font-semibold">Student</th>
+              <th className="px-4 py-3 font-semibold">Studently ID</th>
+              <th className="px-4 py-3 font-semibold">Grade Level</th>
+              <th className="px-4 py-3 font-semibold text-center">Absent</th>
+              <th className="px-4 py-3 font-semibold text-center">Present</th>
+              <th className="px-4 py-3 font-semibold text-center">Tardy</th>
+              <th className="px-4 py-3 font-semibold">Teacher Comment</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200">
+            {filteredStudents.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">
+                  No students found. Attendance records may not be generated yet.
+                </td>
+              </tr>
+            ) : (
+              filteredStudents.map((student, index) => (
+                <tr key={student.student_id} className="hover:bg-slate-50">
+                  <td className="px-4 py-3">
+                    <div className="font-medium">{student.student_name}</div>
+                    <div className="text-xs text-slate-500">#{index + 1}</div>
+                  </td>
+                  <td className="px-4 py-3 text-slate-600">{student.student_number}</td>
+                  <td className="px-4 py-3 text-slate-600">{classInfo?.grade_name || '—'}</td>
+                  <td className="px-4 py-3 text-center">
+                    <input
+                      type="radio"
+                      name={`status-${student.student_id}`}
+                      checked={student.status === 'absent'}
+                      disabled={!allowEdit}
+                      onChange={() => setStatus(student.student_id, 'absent')}
+                      className="h-4 w-4 text-red-600"
+                    />
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <input
+                      type="radio"
+                      name={`status-${student.student_id}`}
+                      checked={student.status === 'present'}
+                      disabled={!allowEdit}
+                      onChange={() => setStatus(student.student_id, 'present')}
+                      className="h-4 w-4 text-green-600"
+                    />
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <input
+                      type="radio"
+                      name={`status-${student.student_id}`}
+                      checked={student.status === 'late'}
+                      disabled={!allowEdit}
+                      onChange={() => setStatus(student.student_id, 'late')}
+                      className="h-4 w-4 text-yellow-600"
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Input
+                      value={student.remarks ?? ''}
+                      onChange={(e) => updateRemarks(student.student_id, e.target.value)}
+                      disabled={!allowEdit}
+                      placeholder="Enter comment"
+                      className={`${!allowEdit ? 'opacity-70' : ''}`}
+                    />
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
 
-      {/* Search and Filter */}
-      <div className="flex gap-2">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by name or roll number..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Tabs value={filterStatus} onValueChange={(v) => setFilterStatus(v as AttendanceStatus | "all")} className="w-auto">
-          <TabsList className="h-10">
-            <TabsTrigger value="all" className="px-3">All</TabsTrigger>
-            <TabsTrigger value="present" className="px-2">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-            </TabsTrigger>
-            <TabsTrigger value="absent" className="px-2">
-              <XCircle className="h-4 w-4 text-red-600" />
-            </TabsTrigger>
-            <TabsTrigger value="late" className="px-2">
-              <Clock className="h-4 w-4 text-yellow-600" />
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <p className="text-sm text-slate-500">
+          {filteredStudents.length} student{filteredStudents.length === 1 ? '' : 's'} found.
+        </p>
       </div>
-
-      {/* Instruction */}
-      <p className="text-xs text-center text-muted-foreground">
-        Tap on a student to cycle status: Present → Absent → Late → Present | Or use the quick buttons
-      </p>
-
-      {/* Student List */}
-      {attendanceData.length === 0 ? (
-        <Card className="p-8 text-center">
-          <AlertCircle className="h-12 w-12 mx-auto text-yellow-500 mb-3" />
-          <h3 className="font-semibold mb-1">No Students Found</h3>
-          <p className="text-sm text-muted-foreground">
-            Attendance records may not be generated yet. Please contact admin.
-          </p>
-        </Card>
-      ) : (
-        <div className="space-y-2">
-          {filteredStudents.map((student, index) => {
-            const styles = getStatusStyles(student.status)
-            
-            return (
-              <Card
-                key={student.student_id}
-                className={`cursor-pointer transition-all hover:shadow-md border-l-4 ${styles.border} ${styles.bg}`}
-                onClick={() => cycleStatus(student.student_id)}
-              >
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-3">
-                    {/* Serial Number */}
-                    <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium">
-                      {index + 1}
-                    </div>
-                    
-                    {/* Student Info */}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{student.student_name}</p>
-                      <p className="text-xs text-muted-foreground">{student.student_number}</p>
-                    </div>
-                    
-                    {/* Quick Status Buttons */}
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setStatus(student.student_id, "present"); }}
-                        className={`p-2 rounded-lg transition-colors ${
-                          student.status === "present" ? "bg-green-200" : "hover:bg-green-100"
-                        }`}
-                        title="Mark Present"
-                      >
-                        <CheckCircle className={`h-5 w-5 ${student.status === "present" ? "text-green-600" : "text-gray-400"}`} />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setStatus(student.student_id, "absent"); }}
-                        className={`p-2 rounded-lg transition-colors ${
-                          student.status === "absent" ? "bg-red-200" : "hover:bg-red-100"
-                        }`}
-                        title="Mark Absent"
-                      >
-                        <XCircle className={`h-5 w-5 ${student.status === "absent" ? "text-red-600" : "text-gray-400"}`} />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setStatus(student.student_id, "late"); }}
-                        className={`p-2 rounded-lg transition-colors ${
-                          student.status === "late" ? "bg-yellow-200" : "hover:bg-yellow-100"
-                        }`}
-                        title="Mark Late"
-                      >
-                        <Clock className={`h-5 w-5 ${student.status === "late" ? "text-yellow-600" : "text-gray-400"}`} />
-                      </button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      )}
 
       {/* Floating Save Button */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t shadow-lg md:max-w-4xl md:mx-auto md:left-auto md:right-auto md:rounded-t-xl">
         <Button
           onClick={handleSave}
-          disabled={saving || !hasChanges}
-          style={{ background: hasChanges ? 'var(--gradient-blue)' : undefined }}
+          disabled={saving || !hasChanges || !allowEdit}
+          style={{ background: hasChanges && allowEdit ? 'var(--gradient-blue)' : undefined }}
           className={`w-full h-12 text-lg font-semibold ${
-            hasChanges ? 'text-white shadow-lg' : ''
+            hasChanges && allowEdit ? 'text-white shadow-lg' : ''
           }`}
-          variant={hasChanges ? "default" : "outline"}
+          variant={hasChanges && allowEdit ? "default" : "outline"}
         >
           {saving ? (
             <>

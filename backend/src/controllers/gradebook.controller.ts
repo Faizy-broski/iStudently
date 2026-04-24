@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
 import { gradebookService } from '../services/gradebook.service'
+import { supabase } from '../config/supabase'
 
 // ============================================================================
 // ASSIGNMENT TYPES CONTROLLERS
@@ -265,10 +266,10 @@ export const calculateStudentAverage = async (req: Request, res: Response) => {
 export const getGradebookView = async (req: Request, res: Response) => {
   try {
     const { course_period_id, section_id } = req.query
-    if (!course_period_id || !section_id) {
-      return res.status(400).json({ success: false, error: 'course_period_id and section_id are required' })
+    if (!course_period_id) {
+      return res.status(400).json({ success: false, error: 'course_period_id is required' })
     }
-    const data = await gradebookService.getGradebookView(course_period_id as string, section_id as string)
+    const data = await gradebookService.getGradebookView(course_period_id as string, section_id as string | undefined)
     res.json({ success: true, data })
   } catch (error: any) {
     console.error('Error in getGradebookView:', error)
@@ -439,6 +440,37 @@ export const setConfig = async (req: Request, res: Response) => {
     res.json({ success: true, message: 'Config saved' })
   } catch (error: any) {
     console.error('Error in setConfig:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+}
+
+// Teacher-scoped: can only set config for CPs they own
+export const setConfigAsTeacher = async (req: Request, res: Response) => {
+  try {
+    const profile = (req as AuthRequest).profile
+    const schoolId = profile?.school_id
+    const staffId = profile?.staff_id
+    if (!schoolId || !staffId) return res.status(401).json({ success: false, error: 'Unauthorized' })
+
+    const { course_period_id, key, value } = req.body
+    if (!key || value === undefined) return res.status(400).json({ success: false, error: 'key and value are required' })
+
+    // Enforce CP ownership
+    if (course_period_id) {
+      const { data: cp } = await supabase
+        .from('course_periods')
+        .select('teacher_id')
+        .eq('id', course_period_id)
+        .single()
+      if (!cp || cp.teacher_id !== staffId) {
+        return res.status(403).json({ success: false, error: 'You do not own this course period' })
+      }
+    }
+
+    await gradebookService.setConfig(schoolId, course_period_id || null, key, value)
+    res.json({ success: true, message: 'Config saved' })
+  } catch (error: any) {
+    console.error('Error in setConfigAsTeacher:', error)
     res.status(500).json({ success: false, error: error.message })
   }
 }

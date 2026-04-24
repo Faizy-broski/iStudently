@@ -128,16 +128,35 @@ export const authenticate = async (
     }
 
     // If user is a student, fetch their student record.
-    // Some installations may store the student row with the profile id as either profile_id or id.
     if (typeof profile.role === 'string' && profile.role.toLowerCase() === 'student') {
       const { data: studentRecord, error: studentError } = await supabase
         .from('students')
-        .select('id')
+        .select('id, school_id')
         .or(`profile_id.eq.${profile.id},id.eq.${profile.id}`)
         .single()
 
       if (!studentError && studentRecord) {
         profile.student_id = studentRecord.id
+        
+        if (studentRecord.school_id) {
+          profile.campus_id = studentRecord.school_id
+          
+          // Resolve parent school so that getMarkingPeriods/getAcademicYears work.
+          // In this system, marking periods are linked to the main school.
+          const { data: campusRecord } = await supabase
+            .from('schools')
+            .select('id, parent_school_id')
+            .eq('id', studentRecord.school_id)
+            .single()
+
+          if (campusRecord?.parent_school_id) {
+            // The campus is a child school — set school_id to the parent
+            profile.school_id = campusRecord.parent_school_id
+          } else if (campusRecord) {
+            // If parent_school_id is null, the school_id is already the parent
+            profile.school_id = campusRecord.id
+          }
+        }
       } else if (studentError && studentError.code !== 'PGRST116') {
         console.warn('⚠️ Student record lookup failed for profile:', profile.id, studentError)
       }

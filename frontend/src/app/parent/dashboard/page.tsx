@@ -4,7 +4,7 @@ import { SetupAssistantPanel } from '@/components/setup-assistant/SetupAssistant
 import { useParentDashboard } from '@/context/ParentDashboardContext'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { StudentSelector } from '@/components/parent/StudentSelector'
+
 import { 
   GraduationCap, 
   BookOpen, 
@@ -89,7 +89,7 @@ export default function ParentDashboardPage() {
             Welcome back! Here&apos;s an overview of your child&apos;s progress.
           </p>
         </div>
-        <StudentSelector />
+
       </div>
 
       <SetupAssistantPanel />

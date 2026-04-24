@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useAuth } from '@/context/AuthContext'
-import { useCampus } from '@/context/CampusContext'
-import { Loader2 } from 'lucide-react'
+import { useParentDashboard } from '@/context/ParentDashboardContext'
+import { Loader2, GraduationCap } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   type MarkingPeriod,
   type MarkingPeriodType,
@@ -29,9 +29,7 @@ function isCurrentByDate(mp: MarkingPeriod): boolean {
 }
 
 export default function ParentMarkingPeriodsPage() {
-  const { profile } = useAuth()
-  const campusContext = useCampus()
-  const selectedCampus = campusContext?.selectedCampus
+  const { selectedStudentData, isLoading: studentsLoading } = useParentDashboard()
 
   const [grouped, setGrouped] = useState<GroupedMarkingPeriods>({
     FY: [], SEM: [], QTR: [], PRO: [],
@@ -39,19 +37,32 @@ export default function ParentMarkingPeriodsPage() {
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
+  const campusId = selectedStudentData?.campus_id
+
   const fetchData = useCallback(async () => {
-    if (!profile?.school_id) { setLoading(false); return }
+    if (!campusId) { setLoading(false); return }
+    setLoading(true)
     try {
-      const data = await getMarkingPeriodsGrouped(selectedCampus?.id)
+      const data = await getMarkingPeriodsGrouped(campusId)
       setGrouped(data)
     } catch {
       // silent — empty state shown
     } finally {
       setLoading(false)
     }
-  }, [profile?.school_id, selectedCampus?.id])
+  }, [campusId])
 
-  useEffect(() => { fetchData() }, [fetchData])
+  useEffect(() => {
+    if (!studentsLoading) fetchData()
+  }, [fetchData, studentsLoading])
+
+  // Auto-select the current active quarter when data loads
+  useEffect(() => {
+    if (grouped.QTR.length > 0 && !selectedId) {
+      const active = grouped.QTR.find(isCurrentByDate)
+      if (active) setSelectedId(active.id)
+    }
+  }, [grouped, selectedId])
 
   const selectedMP = selectedId
     ? Object.values(grouped).flat().find(mp => mp.id === selectedId) ?? null
@@ -81,10 +92,23 @@ export default function ParentMarkingPeriodsPage() {
     return items
   }
 
-  if (loading) {
+  if (studentsLoading || loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (!selectedStudentData) {
+    return (
+      <div className="p-4 md:p-6">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <GraduationCap className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">Select a child to view marking periods.</p>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -96,10 +120,14 @@ export default function ParentMarkingPeriodsPage() {
           Marking Periods
         </h1>
         <p className="text-muted-foreground">
-          Academic calendar hierarchy{selectedCampus ? ` — ${selectedCampus.name}` : ''}
+          Academic calendar hierarchy &mdash;{' '}
+          <span className="text-[#022172] dark:text-blue-400 font-medium">
+            {selectedStudentData.campus_name}
+          </span>
         </p>
       </div>
 
+      {/* Detail panel for selected period */}
       {selectedMP && (
         <div className="bg-white dark:bg-gray-900 rounded-lg border p-5 space-y-3">
           <div className="flex items-center gap-3 flex-wrap">
@@ -146,6 +174,7 @@ export default function ParentMarkingPeriodsPage() {
         </div>
       )}
 
+      {/* Four-column hierarchy grid (read-only) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {MP_TYPES.map(mpType => {
           const items = getFilteredItems(mpType)
@@ -170,7 +199,9 @@ export default function ParentMarkingPeriodsPage() {
                         key={mp.id}
                         onClick={() => setSelectedId(isSelected ? null : mp.id)}
                         className={`w-full text-left px-3 py-2 transition-colors text-sm ${
-                          isSelected ? 'bg-[#022172]/10 dark:bg-[#022172]/30' : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                          isSelected
+                            ? 'bg-[#022172]/10 dark:bg-[#022172]/30'
+                            : 'hover:bg-gray-50 dark:hover:bg-gray-800'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-2">
@@ -195,6 +226,17 @@ export default function ParentMarkingPeriodsPage() {
             </div>
           )
         })}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-green-500 inline-block" /> Currently active
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="text-blue-500 font-medium">G</span> Graded period
+        </span>
+        <span className="text-xs italic">Click any period to view details</span>
       </div>
     </div>
   )

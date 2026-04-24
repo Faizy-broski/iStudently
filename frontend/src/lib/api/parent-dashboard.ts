@@ -360,3 +360,95 @@ export async function getFinalGrades(studentId: string): Promise<SubjectFinalGra
 export async function getGpaRank(studentId: string): Promise<GpaRankData> {
   return apiRequest<GpaRankData>(`/api/parent-dashboard/grades/${studentId}/gpa-rank`)
 }
+
+export interface StudentEnrollment {
+  id: string
+  start_date: string | null
+  end_date: string | null
+  academic_year: string | null
+  school_name: string | null
+}
+
+export interface StudentInfoData {
+  id: string
+  student_number: string
+  first_name: string
+  last_name: string
+  father_name: string | null
+  grandfather_name: string | null
+  email: string | null
+  phone: string | null
+  date_of_birth: string | null
+  gender: string | null
+  address: string | null
+  profile_photo_url: string | null
+  grade_level: string | null
+  section_name: string | null
+  admission_date: string | null
+  blood_group: string | null
+  campus_name: string | null
+  age: { years: number; months: number; days: number } | null
+  enrollments: StudentEnrollment[]
+}
+
+export async function getStudentInfo(studentId: string): Promise<StudentInfoData> {
+  return apiRequest<StudentInfoData>(`/api/parent-dashboard/student-info/${studentId}`)
+}
+
+// ── Gradebook assignments (rich data, same shape as student dashboard) ─────────
+
+export interface AssignmentSubmission {
+  id: string
+  submitted_at: string
+  marks_obtained: number | null
+  feedback: string | null
+  status: string
+}
+
+export interface ParentAssignment {
+  id: string
+  title: string
+  description: string
+  due_date: string
+  assigned_date?: string
+  max_score: number
+  subject: {
+    id: string
+    name: string
+    code: string
+  }
+  teacher: {
+    id: string
+    profile: {
+      first_name: string
+      last_name: string
+    }
+  }
+  submission: AssignmentSubmission | null
+}
+
+export interface AssignmentsByStatus {
+  todo: ParentAssignment[]
+  submitted: ParentAssignment[]
+  graded: ParentAssignment[]
+}
+
+export async function getStudentAssignmentsForParent(
+  studentId: string,
+  status?: 'todo' | 'submitted' | 'graded'
+): Promise<AssignmentsByStatus> {
+  const query = status ? `?status=${status}` : ''
+  return apiRequest<AssignmentsByStatus>(
+    `/api/parent-dashboard/assignments/${studentId}${query}`
+  )
+}
+
+export async function getStudentLessonPlans(
+  studentId: string,
+  coursePeriodId?: string
+): Promise<{ course_periods: any[]; lessons: any[] }> {
+  const query = coursePeriodId ? `?course_period_id=${coursePeriodId}` : ''
+  return apiRequest<{ course_periods: any[]; lessons: any[] }>(
+    `/api/parent-dashboard/lesson-plans/${studentId}${query}`
+  )
+}

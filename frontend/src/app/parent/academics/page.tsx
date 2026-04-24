@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { GraduationCap, BookOpen, Award, TrendingUp, Calendar, RefreshCw, AlertCircle } from 'lucide-react'
-import { StudentSelector } from '@/components/parent/StudentSelector'
+
 
 export default function ParentAcademicsPage() {
   const { selectedStudent, students, isLoading: studentsLoading } = useParentDashboard()
@@ -43,7 +43,7 @@ export default function ParentAcademicsPage() {
             View academic performance and grades
           </p>
         </div>
-        <StudentSelector />
+
       </div>
 
       {student && (

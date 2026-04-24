@@ -835,7 +835,7 @@ class ParentDashboardService {
           name,
           address,
           phone,
-          email,
+          contact_email,
           logo_url
         )
       `)
@@ -867,7 +867,7 @@ class ParentDashboardService {
       '{{school_name}}': school?.name || '',
       '{{school_address}}': school?.address || '',
       '{{school_phone}}': school?.phone || '',
-      '{{school_email}}': school?.email || '',
+      '{{school_email}}': school?.contact_email || '',
       '{{photo}}': profile?.profile_photo_url || '/default-avatar.png',
       '{{school_logo}}': school?.logo_url || ''
     }
@@ -1242,6 +1242,187 @@ class ParentDashboardService {
       total_students: studentIds.length,
       percentage: Math.round(myPercent * 10) / 10,
       grade: this.calculateGrade(myPercent),
+    }
+  }
+
+  /**
+   * Get published lesson plans for a student's enrolled course periods
+   */
+  async getLessonPlans(studentId: string, coursePeriodId?: string) {
+    const { data: student, error: sErr } = await supabase
+      .from('students')
+      .select('section_id, school_id')
+      .eq('id', studentId)
+      .single()
+
+    if (sErr || !student?.section_id) return { course_periods: [], lessons: [] }
+
+    // Get main school ID (academic years/lesson plans are on main school)
+    const { data: school } = await supabase
+      .from('schools')
+      .select('id, parent_school_id')
+      .eq('id', student.school_id)
+      .single()
+    const mainSchoolId = school?.parent_school_id || student.school_id
+
+    // Get student's course periods via their section
+    const { data: coursePeriods } = await supabase
+      .from('course_periods')
+      .select(`
+        id, title,
+        course:courses!course_id(id, title),
+        period:periods!period_id(id, title, short_name),
+        teacher:staff!teacher_id(id, profile:profiles!profile_id(first_name, last_name))
+      `)
+      .eq('section_id', student.section_id)
+
+    const allowedIds = new Set((coursePeriods || []).map((cp: any) => cp.id))
+
+    // If a specific course_period_id is requested, verify enrollment
+    const targetCpId = coursePeriodId && allowedIds.has(coursePeriodId) ? coursePeriodId : null
+    if (coursePeriodId && !targetCpId) return { course_periods: [], lessons: [] }
+
+    // Fetch published lesson plans
+    let query = supabase
+      .from('lesson_plan_lessons')
+      .select(`
+        id, title, on_date, lesson_number, length_minutes,
+        learning_objectives, evaluation, inclusiveness,
+        course_period_id,
+        items:lesson_plan_items(id, sort_order, time_minutes, teacher_activity, learner_activity, formative_assessment, learning_materials),
+        files:lesson_plan_files(id, file_name, file_url, file_type)
+      `)
+      .eq('school_id', mainSchoolId)
+      .eq('is_published', true)
+      .order('on_date', { ascending: false })
+      .order('lesson_number', { ascending: true })
+
+    if (targetCpId) {
+      query = query.eq('course_period_id', targetCpId)
+    } else {
+      if (allowedIds.size > 0) {
+        query = query.in('course_period_id', Array.from(allowedIds))
+      } else {
+        return { course_periods: [], lessons: [] }
+      }
+    }
+
+    const { data: lessons } = await query
+
+    const cpMap = new Map((coursePeriods || []).map((cp: any) => [cp.id, cp]))
+
+    const lessonList = (lessons || []).map((l: any) => ({
+      ...l,
+      items: (l.items || []).sort((a: any, b: any) => a.sort_order - b.sort_order),
+      course_period: cpMap.get(l.course_period_id) || null,
+    }))
+
+    const cpList = (coursePeriods || []).map((cp: any) => ({
+      id: cp.id,
+      title: cp.title || cp.course?.title || 'Course',
+      course_title: cp.course?.title,
+      teacher_name: cp.teacher?.profile
+        ? `${cp.teacher.profile.first_name} ${cp.teacher.profile.last_name}`.trim()
+        : null,
+    }))
+
+    return { course_periods: cpList, lessons: lessonList }
+  }
+
+  /**
+   * Get detailed student info for parent view (RosarioSIS-style)
+   */
+  async getStudentInfo(parentId: string, studentId: string): Promise<any> {
+    // Verify parent owns this student using the same approach as other methods
+    const students = await this.getStudentsList(parentId)
+    if (!students.find(s => s.id === studentId)) {
+      throw new Error('Access denied to this student')
+    }
+
+    // Fetch full student + profile info
+    const { data: student, error: studentError } = await supabase
+      .from('students')
+      .select(`
+        id,
+        student_number,
+        grade_level,
+        admission_date,
+        school_id,
+        profile:profiles!students_profile_id_fkey(
+          first_name,
+          last_name,
+          father_name,
+          grandfather_name,
+          email,
+          phone,
+          profile_photo_url
+        ),
+        sections(
+          id,
+          name
+        ),
+        school:schools!students_school_id_fkey(
+          name,
+          address,
+          phone,
+          contact_email,
+          logo_url
+        )
+      `)
+      .eq('id', studentId)
+      .single()
+
+    if (studentError) {
+      console.error('Supabase error fetching student info:', studentError)
+      throw new Error(`Student lookup failed: ${studentError.message || studentError.details || 'Unknown DB error'}`)
+    }
+    if (!student) {
+      throw new Error('Student not found in database')
+    }
+
+    // Fetch enrollment history
+    const { data: enrollments } = await supabase
+      .from('student_enrollment')
+      .select(`
+        id,
+        start_date,
+        end_date,
+        academic_year:academic_years(name),
+        school:schools!student_enrollment_school_id_fkey(name)
+      `)
+      .eq('student_id', studentId)
+      .order('start_date', { ascending: false })
+
+    const profile = student.profile as any
+    const section = student.sections as any
+    const school = student.school as any
+
+    return {
+      id: student.id,
+      student_number: student.student_number,
+      first_name: profile?.first_name || '',
+      last_name: profile?.last_name || '',
+      father_name: profile?.father_name || null,
+      grandfather_name: profile?.grandfather_name || null,
+      email: profile?.email || null,
+      phone: profile?.phone || null,
+      date_of_birth: null,
+      gender: null,
+      address: null,
+      profile_photo_url: profile?.profile_photo_url || null,
+      grade_level: student.grade_level || null,
+      section_name: section?.name || null,
+      admission_date: student.admission_date || null,
+      blood_group: null,
+      campus_name: school?.name || null,
+      age: null,
+      enrollments: (enrollments || []).map((e: any) => ({
+        id: e.id,
+        start_date: e.start_date,
+        end_date: e.end_date,
+        academic_year: e.academic_year?.name || null,
+        school_name: e.school?.name || null,
+      })),
     }
   }
 

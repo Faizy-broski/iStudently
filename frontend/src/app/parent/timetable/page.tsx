@@ -19,7 +19,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
-import { StudentSelector } from '@/components/parent/StudentSelector'
+
 
 // Days of week constant - Monday = 1, Sunday = 7
 const DAYS: Record<number, string> = {
@@ -286,7 +286,7 @@ export default function ParentTimetablePage() {
             {student ? `${student.first_name} ${student.last_name}'s class schedule` : 'View class schedule for the week'}
           </p>
         </div>
-        <StudentSelector />
+
       </div>
 
       {/* Stats Cards */}

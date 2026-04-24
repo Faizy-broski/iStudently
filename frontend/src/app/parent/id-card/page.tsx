@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CreditCard, Download, Printer, User } from 'lucide-react'
-import { StudentSelector } from '@/components/parent/StudentSelector'
+
 import Image from 'next/image'
 import { useRef, useState } from 'react'
 
@@ -66,7 +66,7 @@ export default function ParentIdCardPage() {
             View and download student ID card
           </p>
         </div>
-        <StudentSelector />
+
       </div>
 
       {student && (

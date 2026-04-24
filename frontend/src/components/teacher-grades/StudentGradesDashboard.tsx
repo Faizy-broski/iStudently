@@ -1,322 +1,473 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Award, CloudDownload, Search, Loader2, X } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Award, CloudDownload, Search, Loader2, ArrowLeft, ChevronRight } from "lucide-react";
+import { useAcademic } from "@/context/AcademicContext";
 import { useCampus } from "@/context/CampusContext";
 import * as gradesApi from "@/lib/api/grades";
-import type { StudentCourseGradeSummary, StudentAssignmentGrade } from "@/lib/api/grades";
+import type { StudentCourseGradeSummary } from "@/lib/api/grades";
 import { useTeacherStudents } from "@/hooks/useTeacherStudents";
+import type { CoursePeriodStudent } from "@/lib/api/courses";
+import { getMarkingPeriods } from "@/lib/api/marking-periods";
 
-export function StudentGradesDashboard() {
-  const { user } = useAuth();
-  const campusContext = useCampus();
-  const selectedCampus = campusContext?.selectedCampus;
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-  // ── Flow State ────────────────────────────────────────────────────────
-  // Levels: 0 = Students List, 1 = Courses for Student, 2 = Assignments for Course
-  const [level, setLevel] = useState<0 | 1 | 2>(0);
-  
-  // Selections
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  const [selectedCourse, setSelectedCourse] = useState<StudentCourseGradeSummary | null>(null);
+interface IncludeOptions {
+  teacher: boolean;
+  comments: boolean;
+  percents: boolean;
+  minmax: boolean;
+  ytd_absences: boolean;
+  mp_absences: boolean;
+  period_absences: boolean;
+}
 
-  // Modal State
-  const [modalAssignment, setModalAssignment] = useState<StudentAssignmentGrade | null>(null);
+interface GradeRow {
+  student_id: string;
+  student_name: string;
+  student_number: string;
+  grade_level: string;
+  course_title: string;
+  teacher_name: string;
+  grades: Record<string, { letter?: string; percent?: number }>; // keyed by mp_id
+}
 
-  // ── Level 0: Students ──────────────────────────────────────────────────
-  const [searchQuery, setSearchQuery] = useState("");
-  const { students, loading: loadingStudents, refresh } = useTeacherStudents({
-    search: searchQuery,
-    limit: 100
+// ─── Phase 1: Student Selection Form ──────────────────────────────────────────
+
+function SelectionPhase({
+  onGenerate,
+}: {
+  onGenerate: (studentIds: string[], mpIds: string[], options: IncludeOptions) => void;
+}) {
+  const { selectedAcademicYear } = useAcademic();
+  const campusCtx = useCampus();
+  const campusId = campusCtx?.selectedCampus?.id;
+
+  const [search, setSearch] = useState("");
+  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
+  const [quarters, setQuarters] = useState<{ id: string; title: string; short_name: string }[]>([]);
+  const [selectedMps, setSelectedMps] = useState<Set<string>>(new Set());
+  const [options, setOptions] = useState<IncludeOptions>({
+    teacher: true,
+    comments: true,
+    percents: false,
+    minmax: false,
+    ytd_absences: true,
+    mp_absences: true,
+    period_absences: false,
   });
 
-  // ── Level 1: Course Summaries ──────────────────────────────────────────
-  const [loadingCourses, setLoadingCourses] = useState(false);
-  const [courseSummaries, setCourseSummaries] = useState<StudentCourseGradeSummary[]>([]);
+  const { students, loading: loadingStudents } = useTeacherStudents({ search, limit: 500 });
 
-  // ── Level 2: Detailed Assignments ──────────────────────────────────────
-  const [loadingAssignments, setLoadingAssignments] = useState(false);
-  const [assignmentGrades, setAssignmentGrades] = useState<StudentAssignmentGrade[]>([]);
+  // Load quarters
+  useEffect(() => {
+    if (!campusId && !selectedAcademicYear) return;
+    getMarkingPeriods(campusId).then((all) => {
+      const qtrs = all
+        .filter((mp) => mp.mp_type === "QTR")
+        .sort((a, b) => a.sort_order - b.sort_order);
+      setQuarters(qtrs);
+    }).catch(() => {});
+  }, [campusId, selectedAcademicYear]);
 
-  // View toggles
-  const [includeAnonymous, setIncludeAnonymous] = useState(false);
+  const allSelected = students.length > 0 && selectedStudents.size === students.length;
 
-  // Actions
-  const handleStudentClick = async (student: any) => {
-    setSelectedStudent(student);
-    setLoadingCourses(true);
-    try {
-      const res = await gradesApi.getStudentGradesSummaryAPI(student.id, undefined, selectedCampus?.id);
-      if (res.success && res.data) {
-        setCourseSummaries(res.data);
-      }
-    } catch {
-      setCourseSummaries([]);
-    } finally {
-      setLoadingCourses(false);
-      setLevel(1);
+  const toggleStudent = (id: string) => {
+    setSelectedStudents((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelectedStudents(new Set());
+    } else {
+      setSelectedStudents(new Set(students.map((s: CoursePeriodStudent) => s.id)));
     }
   };
 
-  const handleCourseClick = async (course: StudentCourseGradeSummary) => {
-    setSelectedCourse(course);
-    setLoadingAssignments(true);
-    try {
-      const res = await gradesApi.getStudentCourseDetailedGrades(selectedStudent.id, course.course_period_id);
-      if (res.success && res.data) {
-        setAssignmentGrades(res.data);
-      }
-    } catch {
-      setAssignmentGrades([]);
-    } finally {
-      setLoadingAssignments(false);
-      setLevel(2);
-    }
+  const toggleMp = (id: string) => {
+    setSelectedMps((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      return next;
+    });
   };
 
-  // ── Render Helpers ─────────────────────────────────────────────────────
-  const renderBreadcrumb = () => {
-    if (level === 0) return null;
-    if (level === 1) {
-      return (
-        <div className="flex items-center justify-between bg-slate-50 border-b px-4 py-2 border-slate-200">
-          <button className="text-slate-700 font-medium hover:text-[#4A90E2]" onClick={() => setLevel(0)}>
-            Totals
-          </button>
-          <div className="flex items-center gap-4 text-sm">
-            <button className="text-[#4A90E2] hover:underline">Expand All</button>
-            <div className="flex items-center gap-2">
-              <Checkbox id="anon-stats" checked={includeAnonymous} onCheckedChange={(c) => setIncludeAnonymous(!!c)} />
-              <label htmlFor="anon-stats" className="cursor-pointer">Include Anonymous Statistics</label>
-            </div>
-          </div>
-        </div>
-      );
-    }
-    if (level === 2) {
-      return (
-        <div className="flex items-center justify-between bg-slate-50 border-b px-4 py-2 border-slate-200">
-          <div className="font-semibold text-slate-800">
-             {selectedCourse?.course_title} - {selectedCourse?.course_title}
-          </div>
-          <div className="flex items-center gap-4 text-sm">
-            <button className="text-[#4A90E2] hover:underline" onClick={() => setLevel(1)}>
-              Back to Totals
-            </button>
-            <div className="flex items-center gap-2">
-              <Checkbox id="anon-stats-2" checked={includeAnonymous} onCheckedChange={(c) => setIncludeAnonymous(!!c)} />
-              <label htmlFor="anon-stats-2" className="cursor-pointer">Include Anonymous Statistics</label>
-            </div>
-          </div>
-        </div>
-      );
-    }
+  const setOpt = (key: keyof IncludeOptions) =>
+    setOptions((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  const handleGenerate = () => {
+    if (selectedStudents.size === 0 || selectedMps.size === 0) return;
+    onGenerate(Array.from(selectedStudents), Array.from(selectedMps), options);
   };
+
+  const CreateBtn = (
+    <Button
+      onClick={handleGenerate}
+      disabled={selectedStudents.size === 0 || selectedMps.size === 0}
+      className="bg-[#5B8DB8] hover:bg-[#4a7aa6] text-white font-semibold uppercase text-xs tracking-wide px-4 py-2 rounded-sm"
+    >
+      Create Grade Lists for Selected Students
+    </Button>
+  );
 
   return (
-    <div className="space-y-4">
-      {/* ── Header ── */}
-      <div className="flex items-center gap-2">
-        <Award className="h-8 w-8 text-[#51B4C9]" />
-        <h1 className="text-3xl font-light text-slate-800">
-          Student Grades <span className="text-slate-600 font-normal">- Quarter 4</span>
-        </h1>
+    <div className="space-y-0 text-sm">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Award className="h-6 w-6 text-amber-500" />
+          <h1 className="text-2xl font-bold text-gray-800">Final Grades</h1>
+        </div>
+        {CreateBtn}
       </div>
 
-      {level === 0 && (
-        <div className="text-sm text-[#4A90E2]">
-          <button className="hover:underline">Expanded View</button> | <button className="hover:underline">Group by Family</button>
-        </div>
-      )}
-
-      {/* ── Dynamic Main Area ── */}
-      <div className="border border-slate-200 shadow-sm bg-white min-h-[400px]">
-        {renderBreadcrumb()}
-
-        <div className="p-4">
-          {/* LEVEL 0: Students List */}
-          {level === 0 && (
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                   {students.length} students were found.
-                   <CloudDownload className="h-5 w-5 text-black bg-white rounded cursor-pointer drop-shadow-md" />
-                </div>
-                <div className="relative">
-                  <Input 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search" 
-                    className="w-48 h-8 rounded-none border-slate-300 pr-8"
-                  />
-                  <Search className="h-4 w-4 absolute right-2 top-2 text-slate-500" />
-                </div>
-              </div>
-              
-              {loadingStudents ? (
-                <div className="py-12 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-slate-400" /></div>
-              ) : (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-50 border-b">
-                      <td className="p-2 text-[#4A90E2] font-semibold w-1/2 uppercase">Student</td>
-                      <td className="p-2 text-[#4A90E2] font-semibold w-1/4 uppercase">Rosariosis ID</td>
-                      <td className="p-2 text-[#4A90E2] font-semibold uppercase">Grade Level</td>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {students.map((student: any, i: number) => (
-                      <tr 
-                        key={student.id} 
-                        className={`border-b cursor-pointer hover:bg-blue-50 transition ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}
-                        onClick={() => handleStudentClick(student)}
-                      >
-                         <td className="p-2 text-[#4A90E2]">
-                           {student.profile ? `${student.profile.first_name} ${student.profile.last_name || ""}` : "Student S Student"}
-                         </td>
-                         <td className="p-2 text-slate-700">{student.student_number || i + 1}</td>
-                         <td className="p-2 text-slate-700">{student.grade_level || "Moyenne Section"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          )}
-
-          {/* LEVEL 1: Courses Summary */}
-          {level === 1 && (
-            <div>
-              <div className="flex items-center gap-2 text-sm text-slate-600 mb-2">
-                {courseSummaries.length} course{courseSummaries.length !== 1 ? 's' : ''} was found.
-              </div>
-              {loadingCourses ? (
-                <div className="py-12 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-slate-400" /></div>
-              ) : (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-50 border-b">
-                      <td className="p-2 text-[#4A90E2] font-semibold uppercase">Course Title</td>
-                      <td className="p-2 text-[#4A90E2] font-semibold uppercase">Teacher</td>
-                      <td className="p-2 text-[#4A90E2] font-semibold uppercase text-center">Ungraded</td>
-                      <td className="p-2 text-[#4A90E2] font-semibold uppercase text-center">Percent</td>
-                      <td className="p-2 text-[#4A90E2] font-semibold uppercase text-center">Letter</td>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {courseSummaries.length === 0 ? (
-                      <tr><td colSpan={5} className="p-4 text-center text-slate-500">No courses found with grades.</td></tr>
-                    ) : (
-                      courseSummaries.map((course, i) => (
-                        <tr 
-                          key={course.course_period_id} 
-                          className="border-b cursor-pointer hover:bg-blue-50 transition"
-                          onClick={() => handleCourseClick(course)}
-                        >
-                           <td className="p-2 text-[#4A90E2]">{course.course_title}</td>
-                           <td className="p-2 text-slate-700">{course.teacher_name || "Teach T Teacher"}</td>
-                           <td className="p-2 text-slate-700 text-center">{course.ungraded_count || ""}</td>
-                           <td className="p-2 text-slate-700 text-center">{course.percent != null ? `${course.percent}%` : ""}</td>
-                           <td className="p-2 font-bold text-slate-900 text-center">{course.letter || "-"}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          )}
-
-          {/* LEVEL 2: Detailed Assignment Grades */}
-          {level === 2 && (
-            <div>
-              <div className="flex items-center gap-2 text-sm text-slate-600 mb-2">
-                {assignmentGrades.length} assignment{assignmentGrades.length !== 1 ? 's' : ''} was found.
-                <CloudDownload className="h-5 w-5 text-black bg-white rounded cursor-pointer drop-shadow-md" />
-              </div>
-              {loadingAssignments ? (
-                <div className="py-12 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-slate-400" /></div>
-              ) : (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-50 border-b">
-                      <td className="p-2 text-[#4A90E2] font-semibold w-1/4 uppercase">Title</td>
-                      <td className="p-2 text-[#4A90E2] font-semibold uppercase">Category</td>
-                      <td className="p-2 text-[#4A90E2] font-semibold uppercase text-center">Points / Possible</td>
-                      <td className="p-2 text-[#4A90E2] font-semibold uppercase text-center">Percent</td>
-                      <td className="p-2 text-[#4A90E2] font-semibold uppercase text-center">Letter</td>
-                      <td className="p-2 text-[#4A90E2] font-semibold uppercase">Comment</td>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {assignmentGrades.length === 0 ? (
-                      <tr><td colSpan={6} className="p-4 text-center text-slate-500">No assignments recorded.</td></tr>
-                    ) : (
-                      assignmentGrades.map((a, i) => (
-                        <tr 
-                          key={a.assignment_id} 
-                          className="border-b cursor-pointer hover:bg-blue-50 transition"
-                          onClick={() => setModalAssignment(a)}
-                        >
-                           <td className="p-2 text-[#4A90E2]">{a.title}</td>
-                           <td className="p-2 text-slate-700">{a.category}</td>
-                           <td className="p-2 text-slate-700 text-center">{a.points_received ?? "-"} / {a.points_possible}</td>
-                           <td className="p-2 text-slate-700 text-center">{a.percent != null ? `${a.percent}%` : "-"}</td>
-                           <td className="p-2 font-bold text-slate-900 text-center">{a.letter || "-"}</td>
-                           <td className="p-2 text-slate-600 italic truncate max-w-[200px]">{a.comment || ""}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          )}
-        </div>
+      {/* Expand / Group links */}
+      <div className="text-[#4A90E2] text-sm mb-3">
+        <button className="hover:underline">Expanded View</button>
+        <span className="mx-2 text-gray-400">|</span>
+        <button className="hover:underline">Group by Family</button>
       </div>
 
-      {/* ── Detail Popup Modal ── */}
-      {modalAssignment && (
-        <div className="fixed inset-0 z-50 bg-black/20 flex items-center justify-center p-4">
-          <div className="bg-white rounded shadow-2xl overflow-hidden w-full max-w-2xl border border-slate-300 transform transition-all">
-            <div className="border-b px-4 py-2 flex justify-end bg-slate-50">
-              <button 
-                onClick={() => setModalAssignment(null)}
-                className="text-slate-400 hover:text-slate-600 transition"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="p-6 space-y-6">
-               <div className="grid grid-cols-2 gap-4 text-sm bg-slate-50 border p-4 rounded">
-                  <div className="space-y-2">
-                    <div className="flex gap-2"><span className="text-slate-500 w-24 block">Due Date</span> <span className="font-medium">{modalAssignment.due_date?.substring(0,10) || "N/A"}</span></div>
-                    <div className="flex gap-2"><span className="text-slate-500 w-24 block">Course Title</span> <span className="font-medium">{selectedCourse?.course_title || modalAssignment.course_title}</span></div>
-                    <div className="flex gap-2"><span className="text-slate-500 w-24 block">Title</span> <span className="font-medium text-slate-800">{modalAssignment.title}</span></div>
-                    <div className="flex gap-2"><span className="text-slate-500 w-24 block">Points</span> <span className="font-medium">{modalAssignment.points_possible}</span></div>
-                  </div>
-                  <div className="space-y-2 text-right">
-                     <div className="flex justify-end gap-2"><span className="text-slate-500 block">Assigned Date</span> <span className="font-medium">{modalAssignment.assigned_date?.substring(0,10) || "N/A"}</span></div>
-                     <div className="flex justify-end gap-2"><span className="text-slate-500 block">Teacher</span> <span className="font-medium">{selectedCourse?.teacher_name || modalAssignment.teacher_name}</span></div>
-                     <div className="flex justify-end gap-2 items-center">
-                        <span className="text-slate-500 block">Category</span> 
-                        <span className="font-medium border-l-4 border-blue-600 pl-1">{modalAssignment.category}</span>
-                     </div>
-                  </div>
-               </div>
-
-               <div className="text-sm prose prose-sm max-w-none text-slate-700">
-                  {/* Rich text is handled seamlessly */}
-                  <div dangerouslySetInnerHTML={{ __html: modalAssignment.description || '<i>No description provided</i>' }} />
-               </div>
-            </div>
+      {/* Include on Grade List */}
+      <div className="border border-gray-300 bg-white p-4 mb-0">
+        <p className="font-semibold text-gray-700 mb-3">Include on Grade List</p>
+        <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+          {/* Left col */}
+          <div className="space-y-2">
+            {[
+              { key: "teacher" as const, label: "Teacher" },
+              { key: "percents" as const, label: "Percents" },
+              { key: "ytd_absences" as const, label: "Year-to-date Daily Absences" },
+              { key: "mp_absences" as const, label: "Daily Absences this marking period" },
+              { key: "period_absences" as const, label: "Period-by-period absences" },
+            ].map(({ key, label }) => (
+              <div key={key} className="flex items-center gap-2">
+                <Checkbox
+                  id={`opt-${key}`}
+                  checked={options[key]}
+                  onCheckedChange={() => setOpt(key)}
+                  className="rounded-none h-4 w-4"
+                />
+                <label htmlFor={`opt-${key}`} className="cursor-pointer text-gray-700">{label}</label>
+              </div>
+            ))}
           </div>
+          {/* Right col */}
+          <div className="space-y-2">
+            {[
+              { key: "comments" as const, label: "Comments" },
+              { key: "minmax" as const, label: "Min. and Max. Grades" },
+            ].map(({ key, label }) => (
+              <div key={key} className="flex items-center gap-2">
+                <Checkbox
+                  id={`opt-${key}`}
+                  checked={options[key]}
+                  onCheckedChange={() => setOpt(key)}
+                  className="rounded-none h-4 w-4"
+                />
+                <label htmlFor={`opt-${key}`} className="cursor-pointer text-gray-700">{label}</label>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div className="border-t border-gray-300 bg-white px-4 py-3">
+        <div className="grid grid-cols-2 gap-x-8 gap-y-2 mb-1">
+          {quarters.map((q) => (
+            <div key={q.id} className="flex items-center gap-2">
+              <Checkbox
+                id={`mp-${q.id}`}
+                checked={selectedMps.has(q.id)}
+                onCheckedChange={() => toggleMp(q.id)}
+                className="rounded-none h-4 w-4"
+              />
+              <label htmlFor={`mp-${q.id}`} className="cursor-pointer text-gray-700">{q.title}</label>
+            </div>
+          ))}
+        </div>
+        <p className="text-xs text-gray-500 mt-1">Marking Periods</p>
+      </div>
+
+      {/* Student list */}
+      <div className="border-t border-gray-300 bg-gray-100 px-4 py-2">
+        <div className="flex items-center justify-between">
+          <span className="text-gray-600">
+            {loadingStudents ? "Loading..." : `${students.length} student${students.length !== 1 ? "s" : ""} were found.`}
+            <CloudDownload className="inline h-5 w-5 ml-2 text-black bg-white rounded cursor-pointer drop-shadow-sm" />
+          </span>
+          <div className="relative">
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search"
+              className="w-40 h-7 rounded-none border-gray-400 text-xs pr-7 bg-white"
+            />
+            <Search className="h-3.5 w-3.5 absolute right-2 top-1.5 text-gray-400" />
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white border border-gray-300">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-100 border-b border-gray-300">
+              <td className="p-2 w-8">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={toggleAll}
+                  className="rounded-none h-4 w-4"
+                />
+              </td>
+              <td className="p-2 w-8" />
+              <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs tracking-wide">Student</td>
+              <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs tracking-wide">Studently ID</td>
+              <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs tracking-wide">Grade Level</td>
+            </tr>
+          </thead>
+          <tbody>
+            {loadingStudents ? (
+              <tr>
+                <td colSpan={5} className="py-10 text-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-gray-400 mx-auto" />
+                </td>
+              </tr>
+            ) : students.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="py-8 text-center text-gray-400">No students found.</td>
+              </tr>
+            ) : (
+              students.map((student: CoursePeriodStudent, i: number) => {
+                const isChecked = selectedStudents.has(student.id);
+                const name = student.profile
+                  ? `${student.profile.first_name ?? ""} ${student.profile.last_name ?? ""}`.trim() || "—"
+                  : "—";
+                const gradeLevel = student.grade_level ?? "—";
+                return (
+                  <tr
+                    key={student.id}
+                    className={`border-b border-gray-200 cursor-pointer hover:bg-blue-50 transition-colors ${isChecked ? "bg-blue-50" : i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}
+                    onClick={() => toggleStudent(student.id)}
+                  >
+                    <td className="p-2" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={isChecked}
+                        onCheckedChange={() => toggleStudent(student.id)}
+                        className="rounded-none h-4 w-4"
+                      />
+                    </td>
+                    <td className="p-2 text-[#4A90E2]">
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </td>
+                    <td className="p-2 text-gray-800">{name}</td>
+                    <td className="p-2 text-gray-600">{student.student_number ?? i + 1}</td>
+                    <td className="p-2 text-gray-600">{gradeLevel}</td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Bottom create button */}
+      <div className="flex justify-center pt-4">
+        {CreateBtn}
+      </div>
+    </div>
+  );
+}
+
+// ─── Phase 2: Grade List View ──────────────────────────────────────────────────
+
+function GradeListPhase({
+  studentIds,
+  mpIds,
+  options,
+  onBack,
+}: {
+  studentIds: string[];
+  mpIds: string[];
+  options: IncludeOptions;
+  onBack: () => void;
+}) {
+  const campusCtx = useCampus();
+  const campusId = campusCtx?.selectedCampus?.id;
+
+  const [loading, setLoading] = useState(true);
+  const [rows, setRows] = useState<GradeRow[]>([]);
+  const [mpTitles, setMpTitles] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      try {
+        // Load MP titles
+        const allMps = await getMarkingPeriods(campusId).catch(() => []);
+        const titles: Record<string, string> = {};
+        allMps.forEach((mp) => { titles[mp.id] = mp.title; });
+        setMpTitles(titles);
+
+        // For each student × MP, fetch grade summary
+        const allRows: GradeRow[] = [];
+        await Promise.all(
+          studentIds.map(async (studentId) => {
+            // Fetch summary for each selected MP
+            const gradesByMp: Record<string, StudentCourseGradeSummary[]> = {};
+            await Promise.all(
+              mpIds.map(async (mpId) => {
+                const res = await gradesApi.getStudentGradesSummaryAPI(studentId, mpId, campusId).catch(() => ({ success: false, data: [] }));
+                gradesByMp[mpId] = (res.success && res.data) ? res.data : [];
+              })
+            );
+
+            // Collect all unique course periods across all MPs
+            const cpMap = new Map<string, { course_title: string; teacher_name: string }>();
+            for (const grades of Object.values(gradesByMp)) {
+              for (const g of grades) {
+                if (!cpMap.has(g.course_period_id)) {
+                  cpMap.set(g.course_period_id, {
+                    course_title: g.course_title,
+                    teacher_name: g.teacher_name ?? "",
+                  });
+                }
+              }
+            }
+
+            cpMap.forEach((info, cpId) => {
+              const gradesPerMp: Record<string, { letter?: string; percent?: number }> = {};
+              for (const [mpId, grades] of Object.entries(gradesByMp)) {
+                const match = grades.find((g) => g.course_period_id === cpId);
+                if (match) gradesPerMp[mpId] = { letter: match.letter, percent: match.percent };
+              }
+              allRows.push({
+                student_id: studentId,
+                student_name: "", // filled below
+                student_number: "",
+                grade_level: "",
+                course_title: info.course_title,
+                teacher_name: info.teacher_name,
+                grades: gradesPerMp,
+              });
+            });
+          })
+        );
+
+        setRows(allRows);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [studentIds, mpIds, campusId]);
+
+  const mpList = mpIds.map((id) => ({ id, title: mpTitles[id] || id }));
+
+  return (
+    <div className="space-y-4 text-sm">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <button onClick={onBack} className="flex items-center gap-1 text-[#4A90E2] hover:underline text-xs">
+          <ArrowLeft className="h-4 w-4" /> Back
+        </button>
+        <div className="flex items-center gap-2">
+          <Award className="h-6 w-6 text-amber-500" />
+          <h1 className="text-2xl font-bold text-gray-800">Final Grades</h1>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="text-center py-12 text-gray-400">
+          No grades were found for the selected students and marking periods.
+        </div>
+      ) : (
+        <div className="bg-white border border-gray-300 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-100 border-b border-gray-300">
+                <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs">Student</td>
+                <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs">Course</td>
+                {options.teacher && (
+                  <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs">Teacher</td>
+                )}
+                {mpList.map((mp) => (
+                  <td key={mp.id} className="p-2 text-[#4A90E2] font-semibold uppercase text-xs text-center">
+                    {mp.title}
+                  </td>
+                ))}
+                {options.percents && mpList.map((mp) => (
+                  <td key={`pct-${mp.id}`} className="p-2 text-[#4A90E2] font-semibold uppercase text-xs text-center">
+                    {mp.title} %
+                  </td>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, i) => (
+                <tr key={`${row.student_id}-${row.course_title}-${i}`} className={`border-b border-gray-200 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/40"}`}>
+                  <td className="p-2 text-[#4A90E2] font-medium">{row.student_name || `Student #${row.student_id.slice(-4)}`}</td>
+                  <td className="p-2 text-gray-700">{row.course_title}</td>
+                  {options.teacher && <td className="p-2 text-gray-600">{row.teacher_name || "—"}</td>}
+                  {mpList.map((mp) => (
+                    <td key={mp.id} className="p-2 text-center font-bold text-gray-800">
+                      {row.grades[mp.id]?.letter || "—"}
+                    </td>
+                  ))}
+                  {options.percents && mpList.map((mp) => (
+                    <td key={`pct-${mp.id}`} className="p-2 text-center text-gray-600">
+                      {row.grades[mp.id]?.percent != null ? `${row.grades[mp.id]!.percent}%` : "—"}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
   );
+}
+
+// ─── Root Component ────────────────────────────────────────────────────────────
+
+export function StudentGradesDashboard() {
+  const [phase, setPhase] = useState<"select" | "view">("select");
+  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+  const [selectedMps, setSelectedMps] = useState<string[]>([]);
+  const [options, setOptions] = useState<IncludeOptions>({
+    teacher: true, comments: true, percents: false, minmax: false,
+    ytd_absences: true, mp_absences: true, period_absences: false,
+  });
+
+  const handleGenerate = (sIds: string[], mpIds: string[], opts: IncludeOptions) => {
+    setSelectedStudents(sIds);
+    setSelectedMps(mpIds);
+    setOptions(opts);
+    setPhase("view");
+  };
+
+  if (phase === "view") {
+    return (
+      <GradeListPhase
+        studentIds={selectedStudents}
+        mpIds={selectedMps}
+        options={options}
+        onBack={() => setPhase("select")}
+      />
+    );
+  }
+
+  return <SelectionPhase onGenerate={handleGenerate} />;
 }

@@ -165,6 +165,41 @@ export class StudentDashboardController {
   }
 
   /**
+   * POST /api/student-dashboard/assignments/submit
+   * Submit a gradebook assignment (Rosario-based)
+   */
+  async submitAssignment(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const studentId = this.getStudentId(req)
+
+      if (!studentId) {
+        this.sendMissingStudentProfile(res)
+        return
+      }
+
+      const { assignment_id, submission_text, attachments } = req.body
+
+      if (!assignment_id) {
+        res.status(400).json({ success: false, error: 'assignment_id is required' })
+        return
+      }
+
+      const result = await dashboardService.submitGradebookAssignment(studentId, assignment_id, {
+        submission_text,
+        attachments,
+      })
+
+      res.json({ success: true, data: result })
+    } catch (error: any) {
+      console.error('Submit assignment error:', error)
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to submit assignment'
+      })
+    }
+  }
+
+  /**
    * GET /api/student-dashboard/feedback/recent
    * Get recent feedback/grades from teachers
    */
