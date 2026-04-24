@@ -1427,6 +1427,46 @@ class ParentDashboardService {
   }
 
   /**
+   * Get all courses (active + historical) a student is enrolled in
+   * Does NOT filter by end_date so production data is always returned
+   */
+  async getStudentCourses(parentId: string, studentId: string) {
+    const students = await this.getStudentsList(parentId)
+    if (!students.find((s) => s.id === studentId)) {
+      throw new Error('Access denied to this student')
+    }
+
+    const { data, error } = await supabase
+      .from('student_schedules')
+      .select(`
+        id,
+        course_id,
+        course_period_id,
+        start_date,
+        end_date,
+        course:courses(
+          id,
+          title,
+          short_name,
+          credit_hours,
+          subject:subjects(id, name, code)
+        ),
+        course_period:course_periods(
+          id,
+          short_name,
+          room,
+          teacher:staff!teacher_id(id, profile:profiles!profile_id(first_name, last_name)),
+          period:periods(id, period_name, period_number, start_time, end_time)
+        )
+      `)
+      .eq('student_id', studentId)
+      .order('created_at')
+
+    if (error) throw new Error(error.message)
+    return data || []
+  }
+
+  /**
    * Helper: Calculate letter grade from percentage
    */
   private calculateGrade(percentage: number): string {

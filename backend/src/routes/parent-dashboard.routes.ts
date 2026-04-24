@@ -202,4 +202,12 @@ router.get('/lesson-plans/:studentId', (req, res) =>
   parentDashboardController.getLessonPlans(req, res)
 )
 
+/**
+ * GET /api/parent-dashboard/student-courses/:studentId
+ * Get all enrolled courses for a child student (no end_date filter)
+ */
+router.get('/student-courses/:studentId', (req, res) =>
+  parentDashboardController.getStudentCourses(req, res)
+)
+
 export default router

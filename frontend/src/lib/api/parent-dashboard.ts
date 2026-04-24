@@ -452,3 +452,15 @@ export async function getStudentLessonPlans(
     `/api/parent-dashboard/lesson-plans/${studentId}${query}`
   )
 }
+
+export interface ParentStudentCourse {
+  subject_id: string
+  subject_name: string
+  subject_code: string
+  description: string
+  teacher_name: string
+}
+
+export async function getParentStudentCourses(studentId: string): Promise<ParentStudentCourse[]> {
+  return apiRequest<ParentStudentCourse[]>(`/api/parent-dashboard/student-courses/${studentId}`)
+}

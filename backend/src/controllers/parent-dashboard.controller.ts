@@ -951,6 +951,38 @@ export class ParentDashboardController {
       return res.status(500).json({ success: false, error: error.message || 'Failed to fetch assignments' })
     }
   }
+
+  /**
+   * GET /api/parent-dashboard/student-courses/:studentId
+   * Get all enrolled courses for a child (no end_date filter so production data shows)
+   */
+  async getStudentCourses(req: AuthRequest, res: Response) {
+    try {
+      const profileId = req.profile?.id
+      const { studentId } = req.params
+
+      if (!profileId) return res.status(401).json({ success: false, error: 'Parent authentication required' })
+      if (!studentId) return res.status(400).json({ success: false, error: 'Student ID is required' })
+
+      const parentId = await this.getParentId(profileId)
+      if (!parentId) return res.status(404).json({ success: false, error: 'Parent record not found' })
+
+      // Verify ownership
+      const students = await parentDashboardService.getStudentsList(parentId)
+      if (!students.find(s => s.id === studentId)) {
+        return res.status(403).json({ success: false, error: 'Access denied to this student' })
+      }
+
+      // Reuse the student-dashboard service for consistent data (same source as student portal)
+      const { StudentDashboardService } = await import('../services/student-dashboard.service')
+      const studentDashboardService = new StudentDashboardService()
+      const data = await studentDashboardService.getStudentCourses(studentId)
+      return res.json({ success: true, data })
+    } catch (error: any) {
+      console.error('Error fetching student courses for parent:', error)
+      return res.status(500).json({ success: false, error: error.message || 'Failed to fetch courses' })
+    }
+  }
 }
 
 export const parentDashboardController = new ParentDashboardController()
