@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,11 +10,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, ArrowRight, Save, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Save, Loader2, User, GraduationCap, Heart, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
 import { type Student, updateStudent } from "@/lib/api/students";
+import { useTranslations } from "next-intl";
+import { useGradeLevels } from "@/hooks/useAcademics";
 
 interface EditStudentFormProps {
   student: Student;
@@ -52,18 +54,22 @@ interface FormData {
   emergencyAddress: string;
 }
 
-const tabs = [
-  { id: 'personal', label: 'Personal' },
-  { id: 'academic', label: 'Academic' },
-  { id: 'medical', label: 'Medical' },
-  { id: 'emergency', label: 'Emergency' }
-];
-
 export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFormProps) {
+  const t = useTranslations("school.students.edit_student");
+  const tFields = useTranslations("school.students.fields");
+  const tCommon = useTranslations("common");
   const { user } = useAuth();
   const campusContext = useCampus();
   const [activeTab, setActiveTab] = useState('personal');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { gradeLevels } = useGradeLevels();
+
+  const tabs = [
+    { id: 'personal', label: t("personal_info"), icon: User },
+    { id: 'academic', label: t("academic_info"), icon: GraduationCap },
+    { id: 'medical', label: t("medical_info"), icon: Heart },
+    { id: 'emergency', label: t("emergency_contacts"), icon: Shield }
+  ];
   
   // Initialize form data with student information
   const [formData, setFormData] = useState<FormData>({
@@ -116,10 +122,10 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
 
   const getStepTitle = () => {
     const titles: Record<string, string> = {
-      personal: 'Personal Information',
-      academic: 'Academic Information', 
-      medical: 'Medical Information',
-      emergency: 'Emergency Contacts'
+      personal: t("personal_info"),
+      academic: t("academic_info"), 
+      medical: t("medical_info"),
+      emergency: t("emergency_contacts")
     };
     return titles[activeTab] || '';
   };
@@ -169,14 +175,14 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
       const result = await updateStudent(student.id, updateData, campusContext?.selectedCampus?.id);
       
       if (result.success) {
-        toast.success('Student updated successfully!');
+        toast.success(t("msg_update_success"));
         onSuccess();
       } else {
-        toast.error(result.error || 'Failed to update student');
+        toast.error(result.error || t("msg_update_failed"));
       }
     } catch (error) {
       console.error('Error updating student:', error);
-      toast.error('Failed to update student');
+      toast.error(t("msg_update_failed"));
     } finally {
       setIsSubmitting(false);
     }
@@ -187,28 +193,28 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-[#022172]">
-            Edit Student: {student.profile?.first_name} {student.profile?.last_name}
+          <h2 className="text-2xl font-bold text-[#022172] dark:text-white">
+            {t("title")}: {student.profile?.first_name} {student.profile?.last_name}
           </h2>
-          <p className="text-gray-600">Student Number: {student.student_number}</p>
+          <p className="text-gray-600 dark:text-gray-400">{t("student_number")}: {student.student_number}</p>
         </div>
         <Button variant="outline" onClick={onCancel}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to List
+          <ArrowLeft className="mr-2 h-4 w-4 rtl:rotate-180 rtl:ml-2 rtl:mr-0" />
+          {tCommon("back")}
         </Button>
       </div>
 
       {/* Progress Indicator */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-[#022172]">
-            Step {currentTabIndex + 1} of {tabs.length}
+          <span className="text-sm font-medium text-[#022172] dark:text-gray-200">
+            {t("step_of", { current: currentTabIndex + 1, total: tabs.length })}
           </span>
           <span className="text-sm text-muted-foreground">
             {getStepTitle()}
           </span>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
+        <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-2">
           <div
             className="bg-gradient-to-r from-[#57A3CC] to-[#022172] h-2 rounded-full transition-all duration-300"
             style={{ width: `${((currentTabIndex + 1) / tabs.length) * 100}%` }}
@@ -220,7 +226,8 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4">
           {tabs.map(tab => (
-            <TabsTrigger key={tab.id} value={tab.id}>
+            <TabsTrigger key={tab.id} value={tab.id} className="gap-2">
+              <tab.icon className="h-4 w-4 hidden sm:inline" />
               {tab.label}
             </TabsTrigger>
           ))}
@@ -230,64 +237,64 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
         <TabsContent value="personal" className="space-y-4 mt-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#022172]">Personal Information</CardTitle>
-              <CardDescription>Student's personal details and contact information</CardDescription>
+              <CardTitle className="text-[#022172] dark:text-white">{t("personal_info")}</CardTitle>
+              <CardDescription>{t("personal_info_desc")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="firstName">First Name *</Label>
+                  <Label htmlFor="firstName">{tFields("first_name")} *</Label>
                   <Input
                     id="firstName"
                     value={formData.firstName}
                     onChange={(e) => handleInputChange('firstName', e.target.value)}
-                    placeholder="First Name"
+                    placeholder={tFields("first_name")}
                     required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="lastName">Last Name *</Label>
+                  <Label htmlFor="lastName">{tFields("last_name")} *</Label>
                   <Input
                     id="lastName"
                     value={formData.lastName}
                     onChange={(e) => handleInputChange('lastName', e.target.value)}
-                    placeholder="Last Name"
+                    placeholder={tFields("last_name")}
                     required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{tFields("email")}</Label>
                   <Input
                     id="email"
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
-                    placeholder="Email"
+                    placeholder={tFields("email")}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="phone">Phone</Label>
+                  <Label htmlFor="phone">{tFields("phone_number")}</Label>
                   <Input
                     id="phone"
                     value={formData.phone}
                     onChange={(e) => handleInputChange('phone', e.target.value)}
-                    placeholder="Phone"
+                    placeholder={tFields("phone_number")}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="gender">Gender</Label>
+                  <Label htmlFor="gender">{tFields("gender")}</Label>
                   <Select value={formData.gender} onValueChange={(value) => handleInputChange('gender', value)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select gender" />
+                      <SelectValue placeholder={t("select_gender")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="male">Male</SelectItem>
-                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="male">{tCommon("male")}</SelectItem>
+                      <SelectItem value="female">{tCommon("female")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                  <Label htmlFor="dateOfBirth">{tFields("date_of_birth")}</Label>
                   <Input
                     id="dateOfBirth"
                     type="date"
@@ -296,12 +303,12 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <Label htmlFor="address">Address</Label>
+                  <Label htmlFor="address">{tFields("address")}</Label>
                   <Textarea
                     id="address"
                     value={formData.address}
                     onChange={(e) => handleInputChange('address', e.target.value)}
-                    placeholder="Address"
+                    placeholder={tFields("address")}
                     rows={2}
                   />
                 </div>
@@ -314,46 +321,47 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
         <TabsContent value="academic" className="space-y-4 mt-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#022172]">Academic Information</CardTitle>
-              <CardDescription>Student's academic details and school history</CardDescription>
+              <CardTitle className="text-[#022172] dark:text-white">{t("academic_info")}</CardTitle>
+              <CardDescription>{t("academic_info_desc")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="studentNumber">Student Number *</Label>
+                  <Label htmlFor="studentNumber">{tFields("student_number")} *</Label>
                   <Input
                     id="studentNumber"
                     value={formData.studentNumber}
                     onChange={(e) => handleInputChange('studentNumber', e.target.value)}
-                    placeholder="Student Number"
+                    placeholder={tFields("student_number")}
                     required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="gradeLevel">Grade Level</Label>
+                  <Label htmlFor="gradeLevel">{tFields("grade_level")}</Label>
                   <Select value={formData.gradeLevel} onValueChange={(value) => handleInputChange('gradeLevel', value)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select grade" />
+                      <SelectValue placeholder={t("select_grade")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Grade 9">Grade 9</SelectItem>
-                      <SelectItem value="Grade 10">Grade 10</SelectItem>
-                      <SelectItem value="Grade 11">Grade 11</SelectItem>
-                      <SelectItem value="Grade 12">Grade 12</SelectItem>
+                      {gradeLevels.map((grade) => (
+                        <SelectItem key={grade.id} value={grade.name}>
+                          {grade.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="username">Username</Label>
+                  <Label htmlFor="username">{tFields("username")}</Label>
                   <Input
                     id="username"
                     value={formData.username}
                     onChange={(e) => handleInputChange('username', e.target.value)}
-                    placeholder="Username"
+                    placeholder={tFields("username")}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="admissionDate">Admission Date</Label>
+                  <Label htmlFor="admissionDate">{tFields("admission_date")}</Label>
                   <Input
                     id="admissionDate"
                     type="date"
@@ -362,21 +370,21 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
                   />
                 </div>
                 <div>
-                  <Label htmlFor="previousSchool">Previous School</Label>
+                  <Label htmlFor="previousSchool">{tFields("previous_school")}</Label>
                   <Input
                     id="previousSchool"
                     value={formData.previousSchool}
                     onChange={(e) => handleInputChange('previousSchool', e.target.value)}
-                    placeholder="Previous School Name"
+                    placeholder={tFields("previous_school")}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="lastGrade">Last Grade Completed</Label>
+                  <Label htmlFor="lastGrade">{tFields("last_grade_completed")}</Label>
                   <Input
                     id="lastGrade"
                     value={formData.lastGrade}
                     onChange={(e) => handleInputChange('lastGrade', e.target.value)}
-                    placeholder="Last Grade"
+                    placeholder={tFields("last_grade_completed")}
                   />
                 </div>
               </div>
@@ -388,16 +396,16 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
         <TabsContent value="medical" className="space-y-4 mt-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#022172]">Medical Information</CardTitle>
-              <CardDescription>Student's health and medical details</CardDescription>
+              <CardTitle className="text-[#022172] dark:text-white">{t("medical_info")}</CardTitle>
+              <CardDescription>{t("medical_info_desc")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="bloodGroup">Blood Group</Label>
+                  <Label htmlFor="bloodGroup">{tFields("blood_group")}</Label>
                   <Select value={formData.bloodGroup} onValueChange={(value) => handleInputChange('bloodGroup', value)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select blood group" />
+                      <SelectValue placeholder={t("select_blood_group")} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="A+">A+</SelectItem>
@@ -412,21 +420,21 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="allergies">Allergies (comma-separated)</Label>
+                  <Label htmlFor="allergies">{tFields("allergies_list")}</Label>
                   <Input
                     id="allergies"
                     value={formData.allergies}
                     onChange={(e) => handleInputChange('allergies', e.target.value)}
-                    placeholder="e.g., Peanuts, Dust"
+                    placeholder={t("allergies_placeholder")}
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <Label htmlFor="medicalNotes">Medical Notes</Label>
+                  <Label htmlFor="medicalNotes">{tFields("medical_notes")}</Label>
                   <Textarea
                     id="medicalNotes"
                     value={formData.medicalNotes}
                     onChange={(e) => handleInputChange('medicalNotes', e.target.value)}
-                    placeholder="Medical notes and conditions"
+                    placeholder={t("medical_notes_placeholder")}
                     rows={3}
                   />
                 </div>
@@ -439,45 +447,45 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
         <TabsContent value="emergency" className="space-y-4 mt-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#022172]">Emergency Contact</CardTitle>
-              <CardDescription>Primary emergency contact information</CardDescription>
+              <CardTitle className="text-[#022172] dark:text-white">{t("emergency_contacts")}</CardTitle>
+              <CardDescription>{t("emergency_contact_desc")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="emergencyName">Contact Name</Label>
+                  <Label htmlFor="emergencyName">{tCommon("contact_name")}</Label>
                   <Input
                     id="emergencyName"
                     value={formData.emergencyName}
                     onChange={(e) => handleInputChange('emergencyName', e.target.value)}
-                    placeholder="Emergency contact name"
+                    placeholder={t("emergency_name_placeholder")}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="emergencyRelation">Relationship</Label>
+                  <Label htmlFor="emergencyRelation">{tCommon("contact_relationship")}</Label>
                   <Input
                     id="emergencyRelation"
                     value={formData.emergencyRelation}
                     onChange={(e) => handleInputChange('emergencyRelation', e.target.value)}
-                    placeholder="e.g., Father, Mother, Guardian"
+                    placeholder={t("emergency_relation_placeholder")}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="emergencyPhone">Phone Number</Label>
+                  <Label htmlFor="emergencyPhone">{tCommon("contact_phone")}</Label>
                   <Input
                     id="emergencyPhone"
                     value={formData.emergencyPhone}
                     onChange={(e) => handleInputChange('emergencyPhone', e.target.value)}
-                    placeholder="Emergency contact phone"
+                    placeholder={t("emergency_phone_placeholder")}
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <Label htmlFor="emergencyAddress">Address</Label>
+                  <Label htmlFor="emergencyAddress">{tFields("address")}</Label>
                   <Textarea
                     id="emergencyAddress"
                     value={formData.emergencyAddress}
                     onChange={(e) => handleInputChange('emergencyAddress', e.target.value)}
-                    placeholder="Emergency contact address"
+                    placeholder={t("emergency_address_placeholder")}
                     rows={2}
                   />
                 </div>
@@ -495,8 +503,8 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
           onClick={handlePrevious}
           disabled={isFirstTab || isSubmitting}
         >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Previous
+          <ArrowLeft className="mr-2 h-4 w-4 rtl:rotate-180 rtl:ml-2 rtl:mr-0" />
+          {tCommon("previous")}
         </Button>
         
         <div className="flex gap-2">
@@ -506,7 +514,7 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
             onClick={onCancel}
             disabled={isSubmitting}
           >
-            Cancel
+            {tCommon("cancel")}
           </Button>
           
           {isLastTab ? (
@@ -519,12 +527,12 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
+                  {t("btn_saving")}
                 </>
               ) : (
                 <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Changes
+                  <Save className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
+                  {t("btn_save_changes")}
                 </>
               )}
             </Button>
@@ -534,8 +542,8 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
               onClick={handleNext}
               className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white"
             >
-              Next
-              <ArrowRight className="ml-2 h-4 w-4" />
+              {tCommon("next")}
+              <ArrowRight className="ml-2 h-4 w-4 rtl:rotate-180 rtl:mr-2 rtl:ml-0" />
             </Button>
           )}
         </div>

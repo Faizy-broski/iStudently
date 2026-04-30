@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { useState, useMemo, useCallback } from "react"
 import useSWR from "swr"
 import { useAuth } from "@/context/AuthContext"
@@ -27,8 +28,11 @@ import {
 } from "@/components/scheduling/ChooseCourseDialog"
 
 export function GroupDrops() {
-  const { user } = useAuth()
+  const t = useTranslations("school.scheduling.group_drops")
+  const tCommon = useTranslations("common")
+
   const { selectedAcademicYear } = useAcademic()
+  const { user } = useAuth()
   const campusContext = useCampus()
 
   const academicYearId = selectedAcademicYear
@@ -100,11 +104,11 @@ export function GroupDrops() {
 
   const handleDropCourses = useCallback(async () => {
     if (selectedStudentIds.size === 0) {
-      toast.error("Please select at least one student")
+      toast.error(t("msg_select_student"))
       return
     }
     if (!selectedCoursePeriod) {
-      toast.error("Please choose a course to drop")
+      toast.error(t("msg_choose_drop"))
       return
     }
 
@@ -117,22 +121,19 @@ export function GroupDrops() {
         selectedCoursePeriod.coursePeriodId,
         endDate
       )
-      toast.success(`${result.dropped} student(s) dropped successfully`)
+      toast.success(t("msg_drop_success", { count: result.dropped }))
       if (result.errors.length > 0) {
-        toast.warning(`${result.errors.length} error(s): ${result.errors.slice(0, 3).join(", ")}`)
+        toast.warning(t("msg_errors", { count: result.errors.length, errors: result.errors.slice(0, 3).join(", ") }))
       }
       setSelectedStudentIds(new Set())
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to drop courses")
+      toast.error(err instanceof Error ? err.message : tCommon("error"))
     } finally {
       setSubmitting(false)
     }
-  }, [selectedStudentIds, selectedCoursePeriod, dropYear, dropMonth, dropDay])
+  }, [selectedStudentIds, selectedCoursePeriod, dropYear, dropMonth, dropDay, t, tCommon])
 
-  const months = [
-    "01", "02", "03", "04", "05", "06",
-    "07", "08", "09", "10", "11", "12",
-  ]
+  const months = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"))
   const days = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"))
   const years = Array.from({ length: 5 }, (_, i) => String(today.getFullYear() - 2 + i))
 
@@ -141,13 +142,13 @@ export function GroupDrops() {
       {/* Header */}
       <div className="flex items-center gap-2 border-b pb-4">
         <CalendarDays className="h-6 w-6 text-amber-500" />
-        <h1 className="text-2xl font-bold">Group Drops</h1>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
       </div>
 
       {/* Top action button */}
       <div className="flex justify-end">
         <Button variant="destructive" onClick={handleDropCourses} disabled={submitting}>
-          DROP COURSE FOR SELECTED STUDENTS
+          {t("btn_drop_course")}
         </Button>
       </div>
 
@@ -155,7 +156,7 @@ export function GroupDrops() {
       <div className="flex justify-center">
         <div className="border rounded-md w-full max-w-md">
           <div className="bg-muted/50 border-b px-4 py-2 text-center font-semibold text-sm uppercase">
-            Course to Drop
+            {t("panel_title")}
           </div>
           <div className="p-4 space-y-4">
             {/* Choose a Course link */}
@@ -168,7 +169,7 @@ export function GroupDrops() {
                   onClick={() => setShowCoursePicker(prev => !prev)}
                   className="px-4 py-2 bg-blue-950 text-white text-sm font-medium rounded-md shadow hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                 >
-                  Choose a Course
+                  {t("btn_choose_course")}
                 </button>
               </div>
             ) : (
@@ -177,21 +178,21 @@ export function GroupDrops() {
                   onClick={() => setShowCoursePicker(prev => !prev)}
                   className="px-4 py-2 bg-blue-950 text-white text-sm font-medium rounded-md shadow hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                 >
-                  Choose a Course
+                  {t("btn_choose_course")}
                 </button>
             )}
 
             {/* Drop Date */}
             <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Drop Date</label>
-              <div className="flex gap-2">
+              <label className="text-xs text-muted-foreground">{t("label_drop_date")}</label>
+              <div className="flex gap-2 flex-wrap">
                 <Select value={dropMonth} onValueChange={setDropMonth}>
-                  <SelectTrigger className="w-20 h-8">
+                  <SelectTrigger className="w-28 h-8">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {months.map((m) => (
-                      <SelectItem key={m} value={m}>{m}</SelectItem>
+                    {months.map((m, i) => (
+                      <SelectItem key={m} value={m}>{tCommon(`months.${i}`)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -220,10 +221,10 @@ export function GroupDrops() {
 
             {/* Marking Period */}
             <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Marking Period</label>
+              <label className="text-xs text-muted-foreground">{t("label_marking_period")}</label>
               <Select value={markingPeriodId} onValueChange={setMarkingPeriodId}>
                 <SelectTrigger className="h-8">
-                  <SelectValue placeholder="Select marking period" />
+                  <SelectValue placeholder={t("placeholder_select_mp")} />
                 </SelectTrigger>
                 <SelectContent>
                   {markingPeriods.map((mp) => (
@@ -253,29 +254,29 @@ export function GroupDrops() {
 
       {/* Expanded View | Group by Family links */}
       <div className="flex items-center gap-1 text-sm">
-        <button className="text-primary hover:underline">Expanded View</button>
+        <button className="text-primary hover:underline">{t("view_expanded")}</button>
         <span className="text-muted-foreground">|</span>
-        <button className="text-primary hover:underline">Group by Family</button>
+        <button className="text-primary hover:underline">{t("view_family")}</button>
       </div>
 
       {/* Count + Search */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span className="font-semibold text-foreground">
-            {filteredStudents.length} student{filteredStudents.length !== 1 ? "s" : ""} were found.
+            {t("found_students", { count: filteredStudents.length })}
           </span>
-          <button className="text-muted-foreground hover:text-foreground" title="Download">
+          <button className="text-muted-foreground hover:text-foreground" title={tCommon("download")}>
             <Download className="h-4 w-4" />
           </button>
         </div>
         <div className="relative w-64">
           <Input
-            placeholder="Search"
+            placeholder={tCommon("search")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pr-8"
+            className="pr-8 rtl:pl-8 rtl:pr-3"
           />
-          <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute right-2 rtl:left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         </div>
       </div>
 
@@ -297,14 +298,14 @@ export function GroupDrops() {
                     onCheckedChange={toggleAll}
                   />
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Student
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {t("th_student")}
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Student Number
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {t("th_student_number")}
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Grade Level
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {t("th_grade_level")}
                 </th>
               </tr>
             </thead>
@@ -312,7 +313,7 @@ export function GroupDrops() {
               {filteredStudents.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
-                    No students found.
+                    {t("no_students_found")}
                   </td>
                 </tr>
               ) : (
@@ -347,7 +348,7 @@ export function GroupDrops() {
       {/* Bottom action button */}
       <div className="flex justify-center pt-2">
         <Button variant="destructive" onClick={handleDropCourses} disabled={submitting}>
-          DROP COURSE FOR SELECTED STUDENTS
+          {t("btn_drop_course")}
         </Button>
       </div>
     </div>

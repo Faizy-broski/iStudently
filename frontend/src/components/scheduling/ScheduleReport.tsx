@@ -31,7 +31,12 @@ interface Subject {
 
 type ReportMode = "schedule" | "master"
 
+import { useTranslations } from "next-intl"
+
 export function ScheduleReport() {
+  const t = useTranslations("school.scheduling.schedule_report")
+  const tCommon = useTranslations("common")
+
   const { user } = useAuth()
   const { selectedAcademicYear } = useAcademic()
   const campusContext = useCampus()
@@ -208,7 +213,7 @@ export function ScheduleReport() {
       {/* Header */}
       <div className="flex items-center gap-2 border-b pb-4">
         <CalendarDays className="h-6 w-6 text-amber-500" />
-        <h1 className="text-2xl font-bold">Schedule Report</h1>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
       </div>
 
       {/* Report mode selector */}
@@ -217,15 +222,15 @@ export function ScheduleReport() {
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="schedule">Schedule Report</SelectItem>
-          <SelectItem value="master">Master Schedule Report</SelectItem>
+          <SelectItem value="schedule">{t("mode_schedule")}</SelectItem>
+          <SelectItem value="master">{t("mode_master")}</SelectItem>
         </SelectContent>
       </Select>
 
       {/* Breadcrumb */}
       <div className="flex items-center gap-1 text-sm text-primary">
         <button className="hover:underline" onClick={breadcrumbTopClick}>
-          Top
+          {t("top")}
         </button>
         {selectedSubjectId && <span className="text-muted-foreground"> › </span>}
         {selectedSubject && (
@@ -256,14 +261,14 @@ export function ScheduleReport() {
             className={`hover:underline ${listMode === "students" ? "font-bold underline" : "text-primary"}`}
             onClick={() => setListMode("students")}
           >
-            List Students
+            {t("list_students")}
           </button>
           <span className="text-muted-foreground">|</span>
           <button
             className={`hover:underline ${listMode === "unscheduled" ? "font-bold underline" : "text-primary"}`}
             onClick={() => setListMode("unscheduled")}
           >
-            List Unscheduled Students
+            {t("list_unscheduled")}
           </button>
         </div>
       )}
@@ -273,14 +278,14 @@ export function ScheduleReport() {
         {/* Subjects panel */}
         <div>
           <p className="text-sm text-amber-600 font-semibold mb-2">
-            {subjects.length} subject{subjects.length !== 1 ? "s" : ""} were found.
+            {t("found_subjects", { count: subjects.length })}
           </p>
           <div className="border rounded-md overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-muted/50 border-b">
-                  <th className="text-left px-4 py-2 font-semibold text-primary uppercase">
-                    Subject
+                  <th className="text-left rtl:text-right px-4 py-2 font-semibold text-primary uppercase">
+                    {t("th_subject")}
                   </th>
                 </tr>
               </thead>
@@ -294,7 +299,7 @@ export function ScheduleReport() {
                 ) : subjects.length === 0 ? (
                   <tr>
                     <td className="px-4 py-4 text-muted-foreground text-center">
-                      No subjects found.
+                      {t("no_subjects_found")}
                     </td>
                   </tr>
                 ) : (
@@ -326,26 +331,26 @@ export function ScheduleReport() {
           {selectedSubjectId && (
             <>
               <p className="text-sm text-amber-600 font-semibold mb-2">
-                {filteredCourses.length} course{filteredCourses.length !== 1 ? "s" : ""} {filteredCourses.length === 1 ? "was" : "were"} found.
+                {t("found_courses", { count: filteredCourses.length })}
               </p>
               <div className="border rounded-md overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-muted/50 border-b">
-                      <th className="text-left px-3 py-2 font-semibold text-primary uppercase">
-                        Course
+                      <th className="text-left rtl:text-right px-3 py-2 font-semibold text-primary uppercase">
+                        {t("th_course")}
                       </th>
                       <th className="text-center px-2 py-2 font-semibold text-primary uppercase">
-                        Requests
+                        {t("th_requests")}
                       </th>
                       <th className="text-center px-2 py-2 font-semibold text-primary uppercase">
-                        Open
+                        {t("th_open")}
                       </th>
                       <th className="text-center px-2 py-2 font-semibold text-primary uppercase">
-                        Filled
+                        {t("th_filled")}
                       </th>
                       <th className="text-center px-2 py-2 font-semibold text-primary uppercase">
-                        Total
+                        {t("th_total")}
                       </th>
                     </tr>
                   </thead>
@@ -353,7 +358,7 @@ export function ScheduleReport() {
                     {filteredCourses.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="px-3 py-4 text-muted-foreground text-center">
-                          No courses found.
+                          {t("no_courses_found")}
                         </td>
                       </tr>
                     ) : (
@@ -398,26 +403,26 @@ export function ScheduleReport() {
           {selectedCourseId && (
             <>
               <p className="text-sm text-amber-600 font-semibold mb-2">
-                {filteredCPs.length} course period{filteredCPs.length !== 1 ? "s" : ""} {filteredCPs.length === 1 ? "was" : "were"} found.
+                {t("found_cps", { count: filteredCPs.length })}
               </p>
               <div className="border rounded-md overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-muted/50 border-b">
-                      <th className="text-left px-3 py-2 font-semibold text-primary uppercase">
-                        Period Days - Short Name - Teacher
+                      <th className="text-left rtl:text-right px-3 py-2 font-semibold text-primary uppercase">
+                        {t("th_cp_label")}
                       </th>
                       <th className="text-center px-2 py-2 font-semibold text-primary uppercase">
-                        MP
+                        {t("th_mp")}
                       </th>
                       <th className="text-center px-2 py-2 font-semibold text-primary uppercase">
-                        Open
+                        {t("th_open")}
                       </th>
                       <th className="text-center px-2 py-2 font-semibold text-primary uppercase">
-                        Filled
+                        {t("th_filled")}
                       </th>
                       <th className="text-center px-2 py-2 font-semibold text-primary uppercase">
-                        Total
+                        {t("th_total")}
                       </th>
                     </tr>
                   </thead>
@@ -425,7 +430,7 @@ export function ScheduleReport() {
                     {filteredCPs.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="px-3 py-4 text-muted-foreground text-center">
-                          No course periods found.
+                          {t("no_cps_found")}
                         </td>
                       </tr>
                     ) : (
@@ -437,7 +442,7 @@ export function ScheduleReport() {
                         const teacherName = cp.teacher
                           ? `${cp.teacher.first_name} ${cp.teacher.last_name}`.trim()
                           : ""
-                        const label = [cp.room, teacherName].filter(Boolean).join(" - ") || "Period"
+                        const label = [cp.room, teacherName].filter(Boolean).join(" - ") || tCommon("period")
                         const mpLabel = cp.marking_period_id ? mpLookup[cp.marking_period_id] || "—" : "FY"
                         return (
                           <tr
@@ -477,20 +482,20 @@ export function ScheduleReport() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm">
               <span className="font-semibold text-amber-600">
-                {filteredStudents.length} student{filteredStudents.length !== 1 ? "s" : ""} were found.
+                {t("found_students", { count: filteredStudents.length })}
               </span>
-              <button className="text-muted-foreground hover:text-foreground" title="Download">
+              <button className="text-muted-foreground hover:text-foreground" title={tCommon("download")}>
                 <Download className="h-4 w-4" />
               </button>
             </div>
             <div className="relative w-64">
               <Input
-                placeholder="Search"
+                placeholder={tCommon("search")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pr-8"
+                className="pr-8 rtl:pl-8 rtl:pr-3"
               />
-              <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute right-2 rtl:left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             </div>
           </div>
 
@@ -505,14 +510,14 @@ export function ScheduleReport() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-muted/50 border-b">
-                    <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                      Student
+                    <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                      {t("th_student")}
                     </th>
-                    <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                      Grade Level
+                    <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                      {t("th_grade_level")}
                     </th>
-                    <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                      Birthdate
+                    <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                      {t("th_birthdate")}
                     </th>
                   </tr>
                 </thead>
@@ -520,7 +525,7 @@ export function ScheduleReport() {
                   {filteredStudents.length === 0 ? (
                     <tr>
                       <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
-                        No students found.
+                        {t("no_students_found")}
                       </td>
                     </tr>
                   ) : (

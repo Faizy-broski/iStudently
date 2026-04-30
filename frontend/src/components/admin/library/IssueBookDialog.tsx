@@ -28,8 +28,8 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { BookOpen, User, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { issueBook, checkStudentEligibility, searchBorrowers as searchBorrowersApi, type Book } from "@/lib/api/library";
-import { getStudents, type Student } from "@/lib/api/students";
+import { issueBook, checkStudentEligibility, searchStudents as searchLibraryStudents, searchBorrowers as searchBorrowersApi, type Book } from "@/lib/api/library";
+import { type Student } from "@/lib/api/students";
 import { useDebounce } from "@/hooks/useDebounce";
 import { Combobox } from "@/components/ui/combobox";
 import { cn } from "@/lib/utils";
@@ -110,9 +110,9 @@ export function IssueBookDialog({ open, onOpenChange, book, onBookIssued }: Issu
         setIsSearchingStudents(true);
 
         if (borrowerType === "student") {
-          const response = await getStudents({ search: trimmedSearch, limit: 50 });
+          const response = await searchLibraryStudents(trimmedSearch, user?.access_token || "");
           if (response.success && response.data) {
-            setStudents(response.data);
+            setStudents(response.data as Student[]);
           } else {
             setStudents([]);
           }

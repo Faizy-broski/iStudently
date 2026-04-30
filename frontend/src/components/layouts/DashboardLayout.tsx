@@ -124,11 +124,17 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
       })
     }
 
-    // 2. Inject sidebar items for each active plugin (admin only)
-    if (effectiveRole === 'admin') {
+    // 2. Inject sidebar items for each active plugin.
+    // Injections with no `roles` field default to admin-only (legacy behaviour).
+    // Injections with a `roles` array are applied to each listed role.
+    if (effectiveRole) {
       for (const plugin of PLUGIN_REGISTRY) {
         if (!isPluginActive(plugin.id)) continue
         for (const injection of plugin.sidebarInjections) {
+          const targetRoles = injection.roles && injection.roles.length > 0
+            ? injection.roles
+            : ['admin']
+          if (!targetRoles.includes(effectiveRole as string)) continue
           items = items.map((item) => {
             if (item.title === injection.parentTitle && item.subItems) {
               const existingHrefs = new Set(item.subItems.map((s) => s.href))

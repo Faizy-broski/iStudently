@@ -49,6 +49,7 @@ import { toast } from "sonner";
 import { useCampus } from "@/context/CampusContext";
 import { useGradeLevels, useSections } from "@/hooks/useAcademics";
 import { getStudents, Student } from "@/lib/api/students";
+import { useTranslations } from "next-intl";
 
 // Utility function for debouncing
 function debounce(
@@ -69,61 +70,62 @@ function debounce(
   return debounced;
 }
 
-// Available placeholder fields for certificates — same as ID card + certificate-specific
-const PLACEHOLDER_FIELDS = [
-  // Personal Information
-  { id: '__FULL_NAME__', label: 'Full Name', category: 'Personal' },
-  { id: '__FIRST_NAME__', label: 'First Name', category: 'Personal' },
-  { id: '__FATHER_NAME__', label: "Father's Name", category: 'Personal' },
-  { id: '__GRANDFATHER_NAME__', label: "Grandfather's Name", category: 'Personal' },
-  { id: '__LAST_NAME__', label: 'Last Name / Surname', category: 'Personal' },
-  { id: '__DATE_OF_BIRTH__', label: 'Date of Birth', category: 'Personal' },
-  { id: '__GENDER__', label: 'Gender', category: 'Personal' },
-  { id: '__BLOOD_GROUP__', label: 'Blood Group', category: 'Personal' },
-  
-  // Contact Information
-  { id: '__EMAIL__', label: 'Email', category: 'Contact' },
-  { id: '__PHONE__', label: 'Phone', category: 'Contact' },
-  { id: '__ADDRESS__', label: 'Address', category: 'Contact' },
-  
-  // Academic Information
-  { id: '__STUDENT_ID__', label: 'Student ID', category: 'Academic' },
-  { id: '__STUDENT_NUMBER__', label: 'Student Number', category: 'Academic' },
-  { id: '__ADMISSION_NUMBER__', label: 'Admission Number', category: 'Academic' },
-  { id: '__ROLL_NUMBER__', label: 'Roll Number', category: 'Academic' },
-  { id: '__GRADE_LEVEL__', label: 'Grade Level', category: 'Academic' },
-  { id: '__GRADE_ID__', label: 'Grade ID', category: 'Academic' },
-  { id: '__SECTION__', label: 'Section', category: 'Academic' },
-  { id: '__ADMISSION_DATE__', label: 'Admission Date', category: 'Academic' },
-  
-  // Parent/Guardian
-  { id: '__PARENT_NAME__', label: 'Parent Name', category: 'Family' },
-  { id: '__PARENT_PHONE__', label: 'Parent Phone', category: 'Family' },
-  { id: '__EMERGENCY_CONTACT__', label: 'Emergency Contact', category: 'Family' },
-  
-  // School Information
-  { id: '__SCHOOL_TITLE__', label: 'School Title', category: 'School' },
-  { id: '__SCHOOL_PRINCIPAL__', label: 'School Principal', category: 'School' },
-  { id: '__CAMPUS__', label: 'Campus Name', category: 'School' },
-  { id: '__CAMPUS_ADDRESS__', label: 'Campus Address', category: 'School' },
-  { id: '__CAMPUS_PHONE__', label: 'Campus Phone', category: 'School' },
-  { id: '__SCHOOL_YEAR__', label: 'School Year', category: 'School' },
-  
-  // Media
-  { id: '__PHOTO__', label: 'Student Photo', category: 'Media' },
-  { id: '__SCHOOL_LOGO__', label: 'School Logo', category: 'Media' },
-  
-  // System
-  { id: '__DATE__', label: 'Current Date', category: 'System' },
-  { id: '__VALID_UNTIL__', label: 'Valid Until Date', category: 'System' },
-];
-
 // Group fields by category
-const GROUPED_FIELDS = PLACEHOLDER_FIELDS.reduce((acc, field) => {
-  if (!acc[field.category]) acc[field.category] = [];
-  acc[field.category].push(field);
-  return acc;
-}, {} as Record<string, typeof PLACEHOLDER_FIELDS>);
+const GROUPED_FIELDS = (t: any) => {
+  const fields = [
+    // Personal Information
+    { id: '__FULL_NAME__', label: t('full_name'), category: 'personal' },
+    { id: '__FIRST_NAME__', label: t('first_name'), category: 'personal' },
+    { id: '__FATHER_NAME__', label: t('father_name'), category: 'personal' },
+    { id: '__GRANDFATHER_NAME__', label: t('grandfather_name'), category: 'personal' },
+    { id: '__LAST_NAME__', label: t('last_name'), category: 'personal' },
+    { id: '__DATE_OF_BIRTH__', label: t('date_of_birth'), category: 'personal' },
+    { id: '__GENDER__', label: t('gender'), category: 'personal' },
+    { id: '__BLOOD_GROUP__', label: t('blood_group'), category: 'personal' },
+    
+    // Contact Information
+    { id: '__EMAIL__', label: t('email'), category: 'contact' },
+    { id: '__PHONE__', label: t('phone'), category: 'contact' },
+    { id: '__ADDRESS__', label: t('address'), category: 'contact' },
+    
+    // Academic Information
+    { id: '__STUDENT_ID__', label: t('student_id'), category: 'academic' },
+    { id: '__STUDENT_NUMBER__', label: t('student_number'), category: 'academic' },
+    { id: '__ADMISSION_NUMBER__', label: t('admission_number'), category: 'academic' },
+    { id: '__ROLL_NUMBER__', label: t('roll_number'), category: 'academic' },
+    { id: '__GRADE_LEVEL__', label: t('grade_level'), category: 'academic' },
+    { id: '__GRADE_ID__', label: t('grade_id'), category: 'academic' },
+    { id: '__SECTION__', label: t('section'), category: 'academic' },
+    { id: '__ADMISSION_DATE__', label: t('admission_date'), category: 'academic' },
+    
+    // Parent/Guardian
+    { id: '__PARENT_NAME__', label: t('parent_name'), category: 'family' },
+    { id: '__PARENT_PHONE__', label: t('parent_phone'), category: 'family' },
+    { id: '__EMERGENCY_CONTACT__', label: t('emergency_contact'), category: 'family' },
+    
+    // School Information
+    { id: '__SCHOOL_TITLE__', label: t('school_title'), category: 'school' },
+    { id: '__SCHOOL_PRINCIPAL__', label: t('school_principal'), category: 'school' },
+    { id: '__CAMPUS__', label: t('campus'), category: 'school' },
+    { id: '__CAMPUS_ADDRESS__', label: t('campus_address'), category: 'school' },
+    { id: '__CAMPUS_PHONE__', label: t('campus_phone'), category: 'school' },
+    { id: '__SCHOOL_YEAR__', label: t('school_year'), category: 'school' },
+    
+    // Media
+    { id: '__PHOTO__', label: t('photo'), category: 'media' },
+    { id: '__SCHOOL_LOGO__', label: t('school_logo'), category: 'media' },
+    
+    // System
+    { id: '__DATE__', label: t('current_date'), category: 'system' },
+    { id: '__VALID_UNTIL__', label: t('valid_until'), category: 'system' },
+  ];
+
+  return fields.reduce((acc, field) => {
+    if (!acc[field.category]) acc[field.category] = [];
+    acc[field.category].push(field);
+    return acc;
+  }, {} as Record<string, typeof fields>);
+};
 
 // Default certificate template
 const DEFAULT_TEMPLATE = `<div style="text-align: center; padding: 40px 20px;">
@@ -150,8 +152,14 @@ const DEFAULT_TEMPLATE = `<div style="text-align: center; padding: 40px 20px;">
 </div>`;
 
 export default function CertificateEnrollmentPage() {
+  const t = useTranslations("school.students.certificate");
+  const tCommon = useTranslations("common");
+  const tFields = useTranslations("school.students.custom_fields.standard_fields");
+
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
+
+  const groupedFields = useMemo(() => GROUPED_FIELDS(tFields), [tFields]);
   
   // State for filters
   const [selectedGradeLevel, setSelectedGradeLevel] = useState<string>("all");
@@ -805,16 +813,16 @@ export default function CertificateEnrollmentPage() {
                 <Award className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">Certificate of Enrollment</h1>
+                <h1 className="text-2xl font-bold tracking-tight text-[#022172] dark:text-white">{t("title")}</h1>
               </div>
             </div>
             <Button 
               onClick={handleGenerate}
               disabled={selectedStudentIds.length === 0}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-[#022172] hover:bg-[#022172]/90"
             >
-              <Printer className="h-4 w-4 mr-2" />
-              Print Certificate for Selected Students
+              <Printer className="h-4 w-4 mr-2 rtl:ml-2 rtl:mr-0" />
+              {t("generate")}
             </Button>
           </div>
         )}
@@ -965,8 +973,8 @@ export default function CertificateEnrollmentPage() {
                   {/* Substitutions Field Selector */}
                   <div className="space-y-3">
                     <Label className="text-sm font-medium">
-                      Substitutions
-                      <span className="text-xs text-muted-foreground ml-2">(Select a field to insert placeholder)</span>
+                      {t("placeholder_fields", { defaultValue: "Insert Student Data Fields" })}
+                      <span className="text-xs text-muted-foreground ml-2 rtl:mr-2 rtl:ml-0">({t("placeholder_fields_hint", { defaultValue: "Select a field to insert placeholder" })})</span>
                     </Label>
                     <div className="flex items-center gap-3 flex-wrap">
                       <Select 
@@ -974,13 +982,13 @@ export default function CertificateEnrollmentPage() {
                         onValueChange={setSelectedField}
                       >
                         <SelectTrigger className="w-[200px]">
-                          <SelectValue placeholder="Select Field..." />
+                          <SelectValue placeholder={t("select_field")} />
                         </SelectTrigger>
                         <SelectContent side="bottom" align="start" sideOffset={5} className="max-h-[300px]">
-                          {Object.entries(GROUPED_FIELDS).map(([category, fields]) => (
+                          {Object.entries(groupedFields).map(([category, fields]) => (
                             <div key={category}>
                               <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted">
-                                {category}
+                                {tCommon(`categories.${category}`)}
                               </div>
                               {fields.map((field) => (
                                 <SelectItem key={field.id} value={field.id}>
@@ -993,7 +1001,7 @@ export default function CertificateEnrollmentPage() {
                       </Select>
                       
                       {selectedField && (
-                        <code className="px-3 py-2 bg-blue-600 text-white rounded text-sm font-mono">
+                        <code className="px-3 py-2 bg-[#022172] text-white rounded text-sm font-mono">
                           {selectedField}
                         </code>
                       )}
@@ -1001,18 +1009,18 @@ export default function CertificateEnrollmentPage() {
                       <Button
                         onClick={() => selectedField && insertPlaceholder(selectedField)}
                         disabled={!selectedField}
-                        className="bg-blue-600 hover:bg-blue-700"
+                        className="bg-[#022172] hover:bg-[#022172]/90"
                       >
-                        <ClipboardPaste className="h-4 w-4 mr-2" />
-                        Insert
+                        <ClipboardPaste className="h-4 w-4 mr-2 rtl:ml-2 rtl:mr-0" />
+                        {t("insert_placeholder")}
                       </Button>
                       <Button
                         variant="outline"
                         onClick={() => selectedField && copyPlaceholder(selectedField)}
                         disabled={!selectedField}
                       >
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy
+                        <Copy className="h-4 w-4 mr-2 rtl:ml-2 rtl:mr-0" />
+                        {t("copy")}
                       </Button>
                     </div>
                   </div>
@@ -1020,7 +1028,7 @@ export default function CertificateEnrollmentPage() {
                   <div className="flex items-center gap-2 text-xs text-muted-foreground bg-blue-50 p-3 rounded-lg border border-blue-200">
                     <Info className="h-4 w-4 text-blue-600 shrink-0" />
                     <span>
-                      <strong>How it works:</strong> Placeholders like <code className="px-1 py-0.5 bg-blue-100 rounded text-xs">__FULL_NAME__</code> will be automatically replaced with actual student data when you print certificates.
+                      <strong>{t("how_it_works", { defaultValue: "How it works:" })}</strong> {t("placeholder_info_desc", { defaultValue: "Placeholders like {example} will be automatically replaced with actual student data when you print certificates.", example: "__FULL_NAME__" })}
                     </span>
                   </div>
                 </CardContent>
@@ -1031,13 +1039,13 @@ export default function CertificateEnrollmentPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Settings className="h-5 w-5" />
-                    Design Settings
+                    {t("design_settings")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Background Image */}
                   <div>
-                    <Label className="text-sm font-medium">Background Image (.jpg, .png)</Label>
+                    <Label className="text-sm font-medium">{t("background_image", { defaultValue: "Background Image" })} (.jpg, .png)</Label>
                     <Input 
                       type="file" 
                       accept=".jpg,.jpeg,.png"
@@ -1058,13 +1066,13 @@ export default function CertificateEnrollmentPage() {
                     />
                     {designSettings.backgroundImage && (
                       <div className="mt-2 flex items-center gap-2">
-                        <Badge variant="secondary">Background set</Badge>
+                        <Badge variant="secondary">{t("background_set", { defaultValue: "Background set" })}</Badge>
                         <Button 
                           variant="ghost" 
                           size="sm"
                           onClick={() => setDesignSettings(prev => ({ ...prev, backgroundImage: "" }))}
                         >
-                          Remove
+                          {tCommon("remove", { defaultValue: "Remove" })}
                         </Button>
                       </div>
                     )}
@@ -1075,8 +1083,8 @@ export default function CertificateEnrollmentPage() {
                   {/* Hide Headers Toggle */}
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label className="text-sm font-medium">Hide Headers</Label>
-                      <p className="text-xs text-muted-foreground">Hide the page header when editing</p>
+                      <Label className="text-sm font-medium">{t("hide_headers", { defaultValue: "Hide Headers" })}</Label>
+                      <p className="text-xs text-muted-foreground">{t("hide_headers_desc", { defaultValue: "Hide the page header when editing" })}</p>
                     </div>
                     <Switch
                       checked={hideHeaders}
@@ -1089,8 +1097,8 @@ export default function CertificateEnrollmentPage() {
                   {/* Mailing Labels Toggle */}
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label className="text-sm font-medium">Mailing Labels</Label>
-                      <p className="text-xs text-muted-foreground">Format output as mailing labels</p>
+                      <Label className="text-sm font-medium">{t("mailing_labels", { defaultValue: "Mailing Labels" })}</Label>
+                      <p className="text-xs text-muted-foreground">{t("mailing_labels_desc", { defaultValue: "Format output as mailing labels" })}</p>
                     </div>
                     <Switch
                       checked={mailingLabels}
@@ -1171,31 +1179,31 @@ export default function CertificateEnrollmentPage() {
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Users className="h-5 w-5" />
-                    Select Students
+                    {t("select_students")}
                   </CardTitle>
                   <CardDescription>
-                    {selectedStudentIds.length} of {filteredStudents.length} selected
+                    {t("selected_count", { count: selectedStudentIds.length })}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {/* Filters */}
                   <div className="space-y-3">
                     <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground rtl:right-3 rtl:left-auto" />
                       <Input
-                        placeholder="Search students..."
+                        placeholder={t("search_students")}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-9"
+                        className="pl-9 rtl:pr-9 rtl:pl-3"
                       />
                     </div>
                     
                     <Select value={selectedGradeLevel} onValueChange={setSelectedGradeLevel}>
                       <SelectTrigger>
-                        <SelectValue placeholder="All Grade Levels" />
+                        <SelectValue placeholder={t("all_grades")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All Grade Levels</SelectItem>
+                        <SelectItem value="all">{t("all_grades")}</SelectItem>
                         {gradeLevels.map(grade => (
                           <SelectItem key={grade.id} value={grade.id}>
                             {grade.name}
@@ -1206,10 +1214,10 @@ export default function CertificateEnrollmentPage() {
                     
                     <Select value={selectedSection} onValueChange={setSelectedSection}>
                       <SelectTrigger>
-                        <SelectValue placeholder="All Sections" />
+                        <SelectValue placeholder={t("all_sections")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All Sections</SelectItem>
+                        <SelectItem value="all">{t("all_sections")}</SelectItem>
                         {filteredSections.map(section => (
                           <SelectItem key={section.id} value={section.id}>
                             {section.name}
@@ -1276,10 +1284,14 @@ export default function CertificateEnrollmentPage() {
                       <div className="flex items-center justify-between text-sm">
                         <div className="text-muted-foreground">
                           {selectedGradeLevel === 'all' && selectedSection === 'all' && !searchQuery ? (
-                            <span>Showing first 10 students</span>
+                            <span>{t("showing_first_n", { count: 10, defaultValue: "Showing first 10 students" })}</span>
                           ) : (
                             <span>
-                              {((currentPage - 1) * studentsPerPage) + 1}–{Math.min(currentPage * studentsPerPage, totalStudents)} of {totalStudents}
+                              {tCommon("showing_range", { 
+                                start: ((currentPage - 1) * studentsPerPage) + 1, 
+                                end: Math.min(currentPage * studentsPerPage, totalStudents), 
+                                total: totalStudents 
+                              })}
                             </span>
                           )}
                         </div>
@@ -1296,7 +1308,7 @@ export default function CertificateEnrollmentPage() {
                             </Button>
                             
                             <span className="text-xs">
-                              Page {currentPage} of {Math.ceil(totalStudents / studentsPerPage)}
+                              {tCommon("page_x_of_y", { current: currentPage, total: Math.ceil(totalStudents / studentsPerPage), defaultValue: `Page ${currentPage} of ${Math.ceil(totalStudents / studentsPerPage)}` })}
                             </span>
                             
                             <Button
@@ -1319,10 +1331,10 @@ export default function CertificateEnrollmentPage() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="10">10 / page</SelectItem>
-                                <SelectItem value="25">25 / page</SelectItem>
-                                <SelectItem value="50">50 / page</SelectItem>
-                                <SelectItem value="100">100 / page</SelectItem>
+                                <SelectItem value="10">10 / {tCommon("page", { defaultValue: "page" })}</SelectItem>
+                                <SelectItem value="25">25 / {tCommon("page", { defaultValue: "page" })}</SelectItem>
+                                <SelectItem value="50">50 / {tCommon("page", { defaultValue: "page" })}</SelectItem>
+                                <SelectItem value="100">100 / {tCommon("page", { defaultValue: "page" })}</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -1340,7 +1352,7 @@ export default function CertificateEnrollmentPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">
-                  Preview generated certificates. Use Print to create a hard copy.
+                  {t("preview_desc", { defaultValue: "Preview generated certificates. Use Print to create a hard copy." })}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -1348,15 +1360,15 @@ export default function CertificateEnrollmentPage() {
                   variant="outline"
                   onClick={() => setShowGeneratedCerts(false)}
                 >
-                  Back to Editor
+                  {t("back_to_editor", { defaultValue: "Back to Editor" })}
                 </Button>
                 <Button
                   onClick={handlePrint}
                   disabled={isGenerating}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-[#022172] hover:bg-[#022172]/90"
                 >
-                  <Printer className="h-4 w-4 mr-2" />
-                  Print Certificates
+                  <Printer className="h-4 w-4 mr-2 rtl:ml-2 rtl:mr-0" />
+                  {t("print")}
                 </Button>
               </div>
             </div>
@@ -1521,14 +1533,14 @@ export default function CertificateEnrollmentPage() {
       <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Insert Link</DialogTitle>
+            <DialogTitle>{tCommon("insert_link")}</DialogTitle>
             <DialogDescription>
-              Add a hyperlink to your certificate template
+              {t("link_dialog_desc", { defaultValue: "Add a hyperlink to your certificate template" })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="link-url">URL *</Label>
+              <Label htmlFor="link-url">{tCommon("url")} *</Label>
               <Input
                 id="link-url"
                 type="url"
@@ -1539,25 +1551,25 @@ export default function CertificateEnrollmentPage() {
               />
             </div>
             <div>
-              <Label htmlFor="link-text">Text to Display</Label>
+              <Label htmlFor="link-text">{tCommon("display_text")}</Label>
               <Input
                 id="link-text"
                 type="text"
-                placeholder="Click here (optional)"
+                placeholder={tCommon("optional")}
                 value={linkText}
                 onChange={(e) => setLinkText(e.target.value)}
                 className="mt-1"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Leave empty to use selected text
+                {t("link_text_hint", { defaultValue: "Leave empty to use selected text" })}
               </p>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setLinkDialogOpen(false)}>
-              Cancel
+              {tCommon("cancel")}
             </Button>
-            <Button onClick={handleInsertLink}>Insert Link</Button>
+            <Button onClick={handleInsertLink}>{tCommon("insert")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1566,14 +1578,14 @@ export default function CertificateEnrollmentPage() {
       <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Insert/Edit Image</DialogTitle>
+            <DialogTitle>{tCommon("insert_image")}</DialogTitle>
             <DialogDescription>
-              Add an image to your certificate template
+              {t("image_dialog_desc", { defaultValue: "Add an image to your certificate template" })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="cert-image-url">Image URL</Label>
+              <Label htmlFor="cert-image-url">{tCommon("image_url")}</Label>
               <Input
                 id="cert-image-url"
                 type="url"
@@ -1584,9 +1596,9 @@ export default function CertificateEnrollmentPage() {
                 className="mt-1"
               />
             </div>
-            <div className="text-center text-sm text-muted-foreground">OR</div>
+            <div className="text-center text-sm text-muted-foreground">{tCommon("or")}</div>
             <div>
-              <Label htmlFor="cert-image-file">Upload Image</Label>
+              <Label htmlFor="cert-image-file">{tCommon("upload_image")}</Label>
               <Input
                 id="cert-image-file"
                 type="file"
@@ -1602,16 +1614,16 @@ export default function CertificateEnrollmentPage() {
               />
               {imageFile && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  Selected: {imageFile.name}
+                  {tCommon("selected")}: {imageFile.name}
                 </p>
               )}
             </div>
             <div>
-              <Label htmlFor="cert-image-alt">Image Description (Alt Text)</Label>
+              <Label htmlFor="cert-image-alt">{tCommon("image_alt")}</Label>
               <Input
                 id="cert-image-alt"
                 type="text"
-                placeholder="Description of the image"
+                placeholder={tCommon("image_alt_placeholder")}
                 value={imageAlt}
                 onChange={(e) => setImageAlt(e.target.value)}
                 className="mt-1"
@@ -1619,11 +1631,11 @@ export default function CertificateEnrollmentPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="cert-image-width">Width (px)</Label>
+                <Label htmlFor="cert-image-width">{tCommon("width_px")}</Label>
                 <Input
                   id="cert-image-width"
                   type="number"
-                  placeholder="Auto"
+                  placeholder={tCommon("auto")}
                   value={imageWidth}
                   onChange={(e) => setImageWidth(e.target.value)}
                   className="mt-1"
@@ -1631,11 +1643,11 @@ export default function CertificateEnrollmentPage() {
                 />
               </div>
               <div>
-                <Label htmlFor="cert-image-height">Height (px)</Label>
+                <Label htmlFor="cert-image-height">{tCommon("height_px")}</Label>
                 <Input
                   id="cert-image-height"
                   type="number"
-                  placeholder="Auto"
+                  placeholder={tCommon("auto")}
                   value={imageHeight}
                   onChange={(e) => setImageHeight(e.target.value)}
                   className="mt-1"
@@ -1644,14 +1656,14 @@ export default function CertificateEnrollmentPage() {
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              Leave dimensions empty for auto-sizing. Images are draggable after insertion.
+              {t("image_dimensions_hint", { defaultValue: "Leave dimensions empty for auto-sizing. Images are draggable after insertion." })}
             </p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setImageDialogOpen(false)}>
-              Cancel
+              {tCommon("cancel")}
             </Button>
-            <Button onClick={handleInsertImage}>Insert Image</Button>
+            <Button onClick={handleInsertImage}>{tCommon("insert")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1660,7 +1672,7 @@ export default function CertificateEnrollmentPage() {
       <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
         <DialogContent className="max-w-[95vw] h-[95vh]">
           <DialogHeader>
-            <DialogTitle>Certificate Editor - Fullscreen Mode</DialogTitle>
+            <DialogTitle>{t("fullscreen_editor", { defaultValue: "Certificate Editor - Fullscreen Mode" })}</DialogTitle>
           </DialogHeader>
           <div className="flex-1 overflow-hidden">
             {showHtmlSource ? (
@@ -1700,7 +1712,7 @@ export default function CertificateEnrollmentPage() {
             )}
           </div>
           <DialogFooter>
-            <Button onClick={toggleFullscreen}>Close Fullscreen</Button>
+            <Button onClick={toggleFullscreen}>{t("close_fullscreen", { defaultValue: "Close Fullscreen" })}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

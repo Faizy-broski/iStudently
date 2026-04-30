@@ -40,8 +40,8 @@ import { getParentById, type Parent } from "@/lib/api/parents";
 import { format } from "date-fns";
 import DisciplineScoreTab from "@/components/admin/DisciplineScoreTab";
 import RelativesTab from "@/components/admin/RelativesTab";
+import { useTranslations } from "next-intl";
 
-// Type for emergency contacts stored in custom_fields
 interface EmergencyContact {
   name?: string;
   phone?: string;
@@ -49,33 +49,13 @@ interface EmergencyContact {
   address?: string;
 }
 
-// Helper to format dates
-const formatDate = (dateString: string | null | undefined) => {
-  if (!dateString) return "Not provided";
-  try {
-    return format(new Date(dateString), "MMMM d, yyyy");
-  } catch {
-    return dateString;
-  }
-};
-
-// Helper to get initials
 const getInitials = (firstName?: string | null, lastName?: string | null) => {
   return `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase() || "NA";
 };
 
-// Info Row Component
-const InfoRow = ({ label, value, icon: Icon }: { label: string; value: React.ReactNode; icon?: LucideIcon }) => (
-  <div className="flex flex-col gap-1">
-    <span className="text-sm text-muted-foreground flex items-center gap-2">
-      {Icon && <Icon className="h-4 w-4" />}
-      {label}
-    </span>
-    <span className="font-medium">{value || <span className="text-muted-foreground italic">Not provided</span>}</span>
-  </div>
-);
-
 export default function StudentDetailsPage() {
+  const t = useTranslations("school.students.student_details");
+  const tFields = useTranslations("school.students.fields");
   const params = useParams();
   const router = useRouter();
   const campusContext = useCampus();
@@ -85,7 +65,6 @@ export default function StudentDetailsPage() {
   const relativesActive = isPluginActive('relatives');
   const prevNextEnabled = isPluginActive('previous_next_student');
 
-  // Get student number from URL (URL-encoded, so decode it)
   const studentNumber = decodeURIComponent(params.studentNumber as string);
 
   const [currentStudent, setCurrentStudent] = useState<Student | null>(null);
@@ -94,27 +73,41 @@ export default function StudentDetailsPage() {
   const [loadingParent, setLoadingParent] = useState(false);
   const [activeTab, setActiveTab] = useState("personal");
 
-  // Fetch all students for navigation — only when plugin is active
   const { students, total, loading: studentsLoading } = useStudents(
     prevNextEnabled ? { page: 1, limit: 1000 } : { page: 1, limit: 0 }
   );
 
-  // Find current student index for prev/next navigation (by student_number)
   const currentIndex = prevNextEnabled ? students.findIndex((s) => s.student_number === studentNumber) : -1;
   const prevStudent = currentIndex > 0 ? students[currentIndex - 1] : null;
   const nextStudent = currentIndex < students.length - 1 ? students[currentIndex + 1] : null;
 
-  // Fetch student details
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return t("not_provided");
+    try {
+      return format(new Date(dateString), "MMMM d, yyyy");
+    } catch {
+      return dateString;
+    }
+  };
+
+  const InfoRow = ({ label, value, icon: Icon }: { label: string; value: React.ReactNode; icon?: LucideIcon }) => (
+    <div className="flex flex-col gap-1">
+      <span className="text-sm text-muted-foreground flex items-center gap-2">
+        {Icon && <Icon className="h-4 w-4" />}
+        {label}
+      </span>
+      <span className="font-medium">{value || <span className="text-muted-foreground italic">{t("not_provided")}</span>}</span>
+    </div>
+  );
+
   useEffect(() => {
     const fetchStudent = async () => {
       setLoading(true);
       try {
-        // Find student from the list by student_number
         const student = students.find((s) => s.student_number === studentNumber);
         if (student) {
           setCurrentStudent(student);
-          
-          // Update profile view context for sidebar indicator
+
           const studentFullName = `${student.profile?.first_name || ""} ${student.profile?.father_name || ""}`.trim() || student.student_number;
           setViewedProfile({
             id: student.student_number,
@@ -122,8 +115,7 @@ export default function StudentDetailsPage() {
             type: 'student',
             backUrl: '/admin/students/student-info'
           });
-          
-          // Fetch linked parent if exists
+
           const parentId = student.custom_fields?.family?.linked_parent_id;
           if (parentId) {
             setLoadingParent(true);
@@ -150,14 +142,12 @@ export default function StudentDetailsPage() {
     if (students.length > 0) {
       fetchStudent();
     }
-    
-    // Clear profile view when leaving the page
+
     return () => {
       clearViewedProfile();
     };
   }, [studentNumber, students, setViewedProfile, clearViewedProfile]);
 
-  // Navigate using student_number for readable URLs
   const navigateToStudent = (student: Student) => {
     router.push(`/admin/students/${encodeURIComponent(student.student_number)}`);
   };
@@ -175,18 +165,17 @@ export default function StudentDetailsPage() {
       <div className="p-6">
         <div className="text-center py-12">
           <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Student Not Found</h2>
-          <p className="text-muted-foreground mb-4">The student you&apos;re looking for doesn&apos;t exist or has been removed.</p>
+          <h2 className="text-xl font-semibold mb-2">{t("not_found_title")}</h2>
+          <p className="text-muted-foreground mb-4">{t("not_found_desc")}</p>
           <Button onClick={() => router.push("/admin/students/student-info")}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Students
+            <ArrowLeft className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0 rtl:rotate-180" />
+            {t("back_to_students")}
           </Button>
         </div>
       </div>
     );
   }
 
-  // Get section info from custom_fields if available
   const sectionName = currentStudent.custom_fields?.academic?.section_name;
   const campusName = currentStudent.custom_fields?.academic?.campus_name || campusContext?.selectedCampus?.name;
   const academicYearName = currentStudent.custom_fields?.academic?.academic_year_name;
@@ -199,20 +188,20 @@ export default function StudentDetailsPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => router.push("/admin/students/student-info")}>
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-5 w-5 rtl:rotate-180" />
           </Button>
           <div>
             <h1 className="text-2xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent dark:text-white">
-              Student Details
+              {t("title")}
             </h1>
             {prevNextEnabled && (
-            <p className="text-sm text-muted-foreground">
-              Viewing {currentIndex + 1} of {total} students
-            </p>
-          )}
+              <p className="text-sm text-muted-foreground">
+                {t("viewing_of", { current: currentIndex + 1, total })}
+              </p>
+            )}
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2">
           {prevNextEnabled && (
             <>
@@ -222,8 +211,8 @@ export default function StudentDetailsPage() {
                 disabled={!prevStudent}
                 onClick={() => prevStudent && navigateToStudent(prevStudent)}
               >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Previous
+                <ChevronLeft className="h-4 w-4 mr-1 rtl:rotate-180 rtl:ml-1 rtl:mr-0" />
+                {t("previous")}
               </Button>
               <Button
                 variant="outline"
@@ -231,8 +220,8 @@ export default function StudentDetailsPage() {
                 disabled={!nextStudent}
                 onClick={() => nextStudent && navigateToStudent(nextStudent)}
               >
-                Next
-                <ChevronRight className="h-4 w-4 ml-1" />
+                {t("next")}
+                <ChevronRight className="h-4 w-4 ml-1 rtl:rotate-180 rtl:mr-1 rtl:ml-0" />
               </Button>
               <Separator orientation="vertical" className="h-6" />
             </>
@@ -240,8 +229,8 @@ export default function StudentDetailsPage() {
           <Button
             onClick={() => router.push(`/admin/students/student-info?edit=${currentStudent.id}`)}
           >
-            <Edit className="h-4 w-4 mr-2" />
-            Edit Student
+            <Edit className="h-4 w-4 mr-2 rtl:ml-2 rtl:mr-0" />
+            {t("edit_student")}
           </Button>
         </div>
       </div>
@@ -250,7 +239,6 @@ export default function StudentDetailsPage() {
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row gap-6 items-start">
-            {/* Avatar */}
             <Avatar className="h-24 w-24 border-4 border-white shadow-lg">
               <AvatarImage
                 src={currentStudent.profile?.profile_photo_url || currentStudent.custom_fields?.personal?.student_photo}
@@ -261,18 +249,17 @@ export default function StudentDetailsPage() {
               </AvatarFallback>
             </Avatar>
 
-            {/* Basic Info */}
             <div className="flex-1">
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold">{fullName || "N/A"}</h2>
+                  <h2 className="text-2xl font-bold">{fullName || tCommon("noData")}</h2>
                   <p className="text-muted-foreground">
-                    {currentStudent.student_number} • {sectionName || "No Section"}
+                    {currentStudent.student_number} • {sectionName || t("no_section")}
                   </p>
                 </div>
                 <div className="flex gap-2">
                   <Badge className={currentStudent.profile?.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                    {currentStudent.profile?.is_active ? "Active" : "Inactive"}
+                    {currentStudent.profile?.is_active ? t("active") : t("inactive")}
                   </Badge>
                   {currentStudent.custom_fields?.personal?.gender && (
                     <Badge variant="outline" className="capitalize">
@@ -281,8 +268,7 @@ export default function StudentDetailsPage() {
                   )}
                 </div>
               </div>
-              
-              {/* Quick Contact Info */}
+
               <div className="flex flex-wrap gap-4 mt-4 text-sm">
                 {currentStudent.profile?.email && (
                   <span className="flex items-center gap-1 text-muted-foreground">
@@ -313,34 +299,34 @@ export default function StudentDetailsPage() {
         <TabsList className={`grid w-full lg:w-auto lg:inline-grid ${[disciplineScoreActive, relativesActive].filter(Boolean).length === 2 ? 'grid-cols-7' : [disciplineScoreActive, relativesActive].filter(Boolean).length === 1 ? 'grid-cols-6' : 'grid-cols-5'}`}>
           <TabsTrigger value="personal" className="gap-2">
             <User className="h-4 w-4" />
-            <span className="hidden sm:inline">Personal</span>
+            <span className="hidden sm:inline">{t("tab_personal")}</span>
           </TabsTrigger>
           <TabsTrigger value="academic" className="gap-2">
             <GraduationCap className="h-4 w-4" />
-            <span className="hidden sm:inline">Academic</span>
+            <span className="hidden sm:inline">{t("tab_academic")}</span>
           </TabsTrigger>
           <TabsTrigger value="medical" className="gap-2">
             <Heart className="h-4 w-4" />
-            <span className="hidden sm:inline">Medical</span>
+            <span className="hidden sm:inline">{t("tab_medical")}</span>
           </TabsTrigger>
           <TabsTrigger value="family" className="gap-2">
             <Users className="h-4 w-4" />
-            <span className="hidden sm:inline">Family</span>
+            <span className="hidden sm:inline">{t("tab_family")}</span>
           </TabsTrigger>
           <TabsTrigger value="system" className="gap-2">
             <Settings className="h-4 w-4" />
-            <span className="hidden sm:inline">System</span>
+            <span className="hidden sm:inline">{t("tab_system")}</span>
           </TabsTrigger>
           {disciplineScoreActive && (
             <TabsTrigger value="discipline" className="gap-2">
               <Shield className="h-4 w-4" />
-              <span className="hidden sm:inline">Discipline</span>
+              <span className="hidden sm:inline">{t("tab_discipline")}</span>
             </TabsTrigger>
           )}
           {relativesActive && (
             <TabsTrigger value="relatives" className="gap-2">
               <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Relatives</span>
+              <span className="hidden sm:inline">{t("tab_relatives")}</span>
             </TabsTrigger>
           )}
         </TabsList>
@@ -351,22 +337,22 @@ export default function StudentDetailsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
-                Personal Information
+                {t("personal_info")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <InfoRow label="First Name" value={currentStudent.profile?.first_name} />
-                <InfoRow label="Father's Name" value={currentStudent.profile?.father_name} />
-                <InfoRow label="Grandfather's Name" value={currentStudent.profile?.grandfather_name} />
-                <InfoRow label="Surname / Last Name" value={currentStudent.profile?.last_name} />
-                <InfoRow 
-                  label="Date of Birth" 
+                <InfoRow label={tFields("first_name")} value={currentStudent.profile?.first_name} />
+                <InfoRow label={tFields("father_name")} value={currentStudent.profile?.father_name} />
+                <InfoRow label={tFields("grandfather_name")} value={currentStudent.profile?.grandfather_name} />
+                <InfoRow label={tFields("last_name")} value={currentStudent.profile?.last_name} />
+                <InfoRow
+                  label={tFields("date_of_birth")}
                   value={formatDate(currentStudent.custom_fields?.personal?.date_of_birth)}
                   icon={Calendar}
                 />
-                <InfoRow 
-                  label="Gender" 
+                <InfoRow
+                  label={tFields("gender")}
                   value={
                     currentStudent.custom_fields?.personal?.gender ? (
                       <Badge variant="outline" className="capitalize">
@@ -375,10 +361,10 @@ export default function StudentDetailsPage() {
                     ) : null
                   }
                 />
-                <InfoRow label="Email" value={currentStudent.profile?.email} icon={Mail} />
-                <InfoRow label="Phone Number" value={currentStudent.profile?.phone} icon={Phone} />
+                <InfoRow label={tFields("email")} value={currentStudent.profile?.email} icon={Mail} />
+                <InfoRow label={tFields("phone_number")} value={currentStudent.profile?.phone} icon={Phone} />
                 <div className="md:col-span-2 lg:col-span-3">
-                  <InfoRow label="Address" value={currentStudent.custom_fields?.personal?.address} icon={MapPin} />
+                  <InfoRow label={tFields("address")} value={currentStudent.custom_fields?.personal?.address} icon={MapPin} />
                 </div>
               </div>
             </CardContent>
@@ -391,50 +377,38 @@ export default function StudentDetailsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <GraduationCap className="h-5 w-5" />
-                Academic Information
+                {t("academic_info")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <InfoRow label="Student Number / Roll No" value={currentStudent.student_number} />
-                <InfoRow label="Grade Level" value={currentStudent.grade_level} icon={BookOpen} />
-                <InfoRow 
-                  label="Section" 
-                  value={sectionName}
-                  icon={Building}
-                />
-                <InfoRow 
-                  label="Campus" 
-                  value={campusName}
-                  icon={Building}
-                />
-                <InfoRow 
-                  label="Admission Date" 
+                <InfoRow label={t("student_number")} value={currentStudent.student_number} />
+                <InfoRow label={t("grade_level")} value={currentStudent.grade_level} icon={BookOpen} />
+                <InfoRow label={t("section")} value={sectionName} icon={Building} />
+                <InfoRow label={t("campus")} value={campusName} icon={Building} />
+                <InfoRow
+                  label={tFields("admission_date")}
                   value={formatDate(currentStudent.custom_fields?.academic?.admission_date)}
                   icon={Calendar}
                 />
-                <InfoRow 
-                  label="Academic Year" 
-                  value={academicYearName}
-                />
+                <InfoRow label={t("academic_year")} value={academicYearName} />
               </div>
-              
-              {/* Previous School History */}
+
               {currentStudent.custom_fields?.academic?.previous_school && (
                 <>
                   <Separator className="my-6" />
-                  <h4 className="font-semibold mb-4">Previous School History</h4>
+                  <h4 className="font-semibold mb-4">{tFields("previous_school")}</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <InfoRow 
-                      label="School Name" 
+                    <InfoRow
+                      label={t("school_name")}
                       value={currentStudent.custom_fields.academic.previous_school.schoolName}
                     />
-                    <InfoRow 
-                      label="Last Grade Completed" 
+                    <InfoRow
+                      label={t("enrollment_date")}
                       value={currentStudent.custom_fields.academic.previous_school.lastGradeCompleted}
                     />
-                    <InfoRow 
-                      label="Transfer Date" 
+                    <InfoRow
+                      label={t("transfer_date")}
                       value={currentStudent.custom_fields.academic.previous_school.transferDate}
                     />
                   </div>
@@ -450,13 +424,13 @@ export default function StudentDetailsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Heart className="h-5 w-5" />
-                Medical Information
+                {t("medical_info")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <InfoRow 
-                  label="Blood Group" 
+                <InfoRow
+                  label={t("blood_group")}
                   value={
                     currentStudent.medical_info?.blood_group ? (
                       <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50">
@@ -465,22 +439,21 @@ export default function StudentDetailsPage() {
                     ) : null
                   }
                 />
-                <InfoRow 
-                  label="Has Allergies" 
+                <InfoRow
+                  label={t("allergies")}
                   value={
                     currentStudent.medical_info?.allergies && currentStudent.medical_info.allergies.length > 0 ? (
-                      <Badge variant="destructive">Yes</Badge>
+                      <Badge variant="destructive">{t("yes")}</Badge>
                     ) : (
-                      <Badge variant="secondary">No</Badge>
+                      <Badge variant="secondary">{t("no")}</Badge>
                     )
                   }
                 />
               </div>
-              
-              {/* Allergies List */}
+
               {currentStudent.medical_info?.allergies && currentStudent.medical_info.allergies.length > 0 && (
                 <div className="mt-6">
-                  <h4 className="text-sm text-muted-foreground mb-2">Allergies</h4>
+                  <h4 className="text-sm text-muted-foreground mb-2">{t("allergies")}</h4>
                   <div className="flex flex-wrap gap-2">
                     {currentStudent.medical_info.allergies.map((allergy, idx) => (
                       <Badge key={idx} variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
@@ -490,24 +463,22 @@ export default function StudentDetailsPage() {
                   </div>
                 </div>
               )}
-              
-              {/* Medical Notes */}
+
               {currentStudent.medical_info?.emergency_notes && (
                 <div className="mt-6">
-                  <h4 className="text-sm text-muted-foreground mb-2">Medical Notes</h4>
+                  <h4 className="text-sm text-muted-foreground mb-2">{tFields("medical_notes")}</h4>
                   <div className="p-4 bg-muted/50 rounded-lg">
                     <p className="whitespace-pre-wrap">{currentStudent.medical_info.emergency_notes}</p>
                   </div>
                 </div>
               )}
 
-              {/* No medical info placeholder */}
-              {!currentStudent.medical_info?.blood_group && 
+              {!currentStudent.medical_info?.blood_group &&
                (!currentStudent.medical_info?.allergies || currentStudent.medical_info.allergies.length === 0) &&
                !currentStudent.medical_info?.emergency_notes && (
                 <div className="text-center py-8 text-muted-foreground">
                   <Heart className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                  <p>No medical information recorded</p>
+                  <p>{t("no_allergies")}</p>
                 </div>
               )}
             </CardContent>
@@ -516,12 +487,11 @@ export default function StudentDetailsPage() {
 
         {/* Family & Emergency Tab */}
         <TabsContent value="family" className="mt-6 space-y-6">
-          {/* Linked Parent */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                Linked Parent / Guardian
+                {t("linked_parent")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -543,38 +513,37 @@ export default function StudentDetailsPage() {
                         {linkedParent.profile?.first_name} {linkedParent.profile?.last_name}
                       </h4>
                       <p className="text-sm text-muted-foreground capitalize">
-                        {currentStudent.custom_fields?.family?.parent_relation_type || "Guardian"}
+                        {currentStudent.custom_fields?.family?.parent_relation_type || t("relationship")}
                       </p>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-                    <InfoRow label="Email" value={linkedParent.profile?.email} icon={Mail} />
-                    <InfoRow label="Phone" value={linkedParent.profile?.phone} icon={Phone} />
-                    <InfoRow label="CNIC" value={linkedParent.cnic} />
-                    <InfoRow label="Occupation" value={linkedParent.occupation} />
-                    <InfoRow label="Workplace" value={linkedParent.workplace} />
-                    <InfoRow label="Address" value={linkedParent.address} icon={MapPin} />
+                    <InfoRow label={tFields("email")} value={linkedParent.profile?.email} icon={Mail} />
+                    <InfoRow label={tFields("phone_number")} value={linkedParent.profile?.phone} icon={Phone} />
+                    <InfoRow label={t("cnic")} value={linkedParent.cnic} />
+                    <InfoRow label={tFields("occupation")} value={linkedParent.occupation} />
+                    <InfoRow label={tFields("workplace")} value={linkedParent.workplace} />
+                    <InfoRow label={tFields("address")} value={linkedParent.address} icon={MapPin} />
                   </div>
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <Users className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                  <p>No parent/guardian linked to this student</p>
+                  <p>{t("no_parent")}</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Emergency Contacts */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Phone className="h-5 w-5" />
-                Emergency Contacts
+                {t("emergency_contacts")}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {currentStudent.custom_fields?.family?.emergency_contacts && 
+              {currentStudent.custom_fields?.family?.emergency_contacts &&
                currentStudent.custom_fields.family.emergency_contacts.length > 0 ? (
                 <div className="space-y-4">
                   {(currentStudent.custom_fields.family.emergency_contacts as EmergencyContact[]).map((contact, idx) => (
@@ -585,12 +554,12 @@ export default function StudentDetailsPage() {
                         </div>
                         <div>
                           <h4 className="font-semibold">{contact.name || "N/A"}</h4>
-                          <p className="text-sm text-muted-foreground capitalize">{contact.relationship || "Contact"}</p>
+                          <p className="text-sm text-muted-foreground capitalize">{contact.relationship || t("contact_relationship")}</p>
                         </div>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <InfoRow label="Phone" value={contact.phone} icon={Phone} />
-                        {contact.address && <InfoRow label="Address" value={contact.address} icon={MapPin} />}
+                        <InfoRow label={t("contact_phone")} value={contact.phone} icon={Phone} />
+                        {contact.address && <InfoRow label={tFields("address")} value={contact.address} icon={MapPin} />}
                       </div>
                     </div>
                   ))}
@@ -598,7 +567,7 @@ export default function StudentDetailsPage() {
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <Phone className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                  <p>No emergency contacts recorded</p>
+                  <p>{t("no_emergency_contacts")}</p>
                 </div>
               )}
             </CardContent>
@@ -629,45 +598,41 @@ export default function StudentDetailsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Settings className="h-5 w-5" />
-                System Information
+                {t("system_info")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <InfoRow label="Student ID" value={currentStudent.student_number} icon={Shield} />
-                <InfoRow 
-                  label="Username" 
-                  value={currentStudent.custom_fields?.system?.username}
-                />
-                <InfoRow 
-                  label="Account Status" 
+                <InfoRow label={t("student_id")} value={currentStudent.student_number} icon={Shield} />
+                <InfoRow label={t("username")} value={currentStudent.custom_fields?.system?.username} />
+                <InfoRow
+                  label={t("account_status")}
                   value={
                     <Badge className={currentStudent.profile?.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                      {currentStudent.profile?.is_active ? "Active" : "Inactive"}
+                      {currentStudent.profile?.is_active ? t("active") : t("inactive")}
                     </Badge>
                   }
                 />
-                <InfoRow 
-                  label="Created At" 
+                <InfoRow
+                  label={t("created_at")}
                   value={formatDate(currentStudent.created_at)}
                   icon={Clock}
                 />
-                <InfoRow 
-                  label="Profile ID" 
+                <InfoRow
+                  label={t("profile_id")}
                   value={<code className="text-xs bg-muted px-2 py-1 rounded">{currentStudent.profile_id}</code>}
                 />
-                <InfoRow 
-                  label="Student Record ID" 
+                <InfoRow
+                  label={t("record_id")}
                   value={<code className="text-xs bg-muted px-2 py-1 rounded">{currentStudent.id}</code>}
                 />
               </div>
 
-              {/* Services Subscribed */}
-              {currentStudent.custom_fields?.services?.selected_services && 
+              {currentStudent.custom_fields?.services?.selected_services &&
                currentStudent.custom_fields.services.selected_services.length > 0 && (
                 <>
                   <Separator className="my-6" />
-                  <h4 className="font-semibold mb-4">Subscribed Services</h4>
+                  <h4 className="font-semibold mb-4">{t("subscribed_services")}</h4>
                   <div className="flex flex-wrap gap-2">
                     {currentStudent.custom_fields.services.selected_services.map((serviceId: string, idx: number) => (
                       <Badge key={idx} variant="secondary">

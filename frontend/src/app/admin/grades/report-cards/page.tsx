@@ -31,6 +31,7 @@ import * as academicsApi from "@/lib/api/academics";
 import type { GradeLevel } from "@/lib/api/academics";
 import { printReportCards, type ReportCardData } from "@/components/grades/ReportPrintPreview";
 import { getPdfHeaderFooter, type PdfHeaderFooterSettings } from "@/lib/api/school-settings";
+import { useTranslations } from "next-intl";
 
 interface StudentItem {
   id: string;
@@ -52,6 +53,8 @@ interface MarkingPeriodItem {
 }
 
 export default function ReportCardsPage() {
+  const t = useTranslations("school.grades_module.report_cards")
+  const tc = useTranslations("school.grades_module.common")
   const { user } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
@@ -183,11 +186,11 @@ export default function ReportCardsPage() {
 
   const handleGenerate = async () => {
     if (selectedStudentIds.length === 0) {
-      toast.error("Please select at least one student");
+      toast.error(tc("select_student_error"));
       return;
     }
     if (selectedMpIds.length === 0) {
-      toast.error("Please select at least one marking period");
+      toast.error(tc("select_mp_error"));
       return;
     }
 
@@ -261,10 +264,10 @@ export default function ReportCardsPage() {
         <div>
           <h1 className="text-3xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent flex items-center gap-2">
             <FileText className="h-8 w-8 text-[#57A3CC]" />
-            Report Cards
+            {t("title")}
           </h1>
           <p className="text-muted-foreground mt-2">
-            Configure and generate report cards for selected students
+            {t("subtitle")}
             {selectedCampus && (
               <span className="ml-1 font-medium">
                 — {selectedCampus.name}
@@ -286,7 +289,7 @@ export default function ReportCardsPage() {
           ) : (
             <Printer className="h-4 w-4 mr-2" />
           )}
-          CREATE REPORT CARDS FOR SELECTED STUDENTS
+          {t("btn_create")}
         </Button>
       </div>
 
@@ -294,7 +297,7 @@ export default function ReportCardsPage() {
       <Card>
         <CardContent className="pt-6 space-y-5">
           <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">
-            Include on Report Card
+            {t("include_section")}
           </h2>
 
           {/* Row 1: Student Photo */}
@@ -305,7 +308,7 @@ export default function ReportCardsPage() {
               onCheckedChange={(v) => setIncludeStudentPhoto(!!v)}
             />
             <Label htmlFor="student-photo" className="text-sm cursor-pointer">
-              Student Photo
+              {t("student_photo")}
             </Label>
           </div>
 
@@ -318,7 +321,7 @@ export default function ReportCardsPage() {
                 onCheckedChange={(v) => setIncludeTeacher(!!v)}
               />
               <Label htmlFor="teacher" className="text-sm cursor-pointer">
-                Teacher
+                {tc("teacher")}
               </Label>
             </div>
             <div className="flex items-center gap-2">
@@ -328,7 +331,7 @@ export default function ReportCardsPage() {
                 onCheckedChange={(v) => setIncludeComments(!!v)}
               />
               <Label htmlFor="comments" className="text-sm cursor-pointer">
-                Comments
+                {tc("comments")}
               </Label>
             </div>
           </div>
@@ -342,7 +345,7 @@ export default function ReportCardsPage() {
                 onCheckedChange={(v) => setIncludePercents(!!v)}
               />
               <Label htmlFor="percents" className="text-sm cursor-pointer">
-                Percents
+                {tc("percents")}
               </Label>
             </div>
             <div className="flex items-center gap-2">
@@ -352,7 +355,7 @@ export default function ReportCardsPage() {
                 onCheckedChange={(v) => setIncludeMinMaxGrades(!!v)}
               />
               <Label htmlFor="min-max" className="text-sm cursor-pointer">
-                Min. and Max. Grades
+                {tc("min_max_grades")}
               </Label>
             </div>
           </div>
@@ -366,7 +369,7 @@ export default function ReportCardsPage() {
                 onCheckedChange={(v) => setIncludeCredits(!!v)}
               />
               <Label htmlFor="credits" className="text-sm cursor-pointer">
-                Credits
+                {tc("credits")}
               </Label>
             </div>
             <div className="flex items-center gap-2">
@@ -393,7 +396,7 @@ export default function ReportCardsPage() {
                 onCheckedChange={(v) => setIncludeClassRank(!!v)}
               />
               <Label htmlFor="class-rank" className="text-sm cursor-pointer">
-                Class Rank
+                {tc("class_rank")}
               </Label>
             </div>
             <div className="flex items-center gap-2">
@@ -420,7 +423,7 @@ export default function ReportCardsPage() {
                 onCheckedChange={(v) => setIncludeYtdAbsences(!!v)}
               />
               <Label htmlFor="ytd-absences" className="text-sm cursor-pointer">
-                Year-to-date Daily Absences
+                {tc("ytd_absences")}
               </Label>
             </div>
             <div className="flex items-center gap-3">
@@ -430,7 +433,7 @@ export default function ReportCardsPage() {
                 onCheckedChange={(v) => setIncludeOtherAttendanceYtd(!!v)}
               />
               <Label htmlFor="other-ytd" className="text-sm cursor-pointer">
-                Other Attendance Year-to-date:
+                {tc("other_attendance_ytd")}
               </Label>
               <Select
                 value={otherAttendanceYtdType}
@@ -440,9 +443,9 @@ export default function ReportCardsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Absent">Absent</SelectItem>
-                  <SelectItem value="Tardy">Tardy</SelectItem>
-                  <SelectItem value="Half Day">Half Day</SelectItem>
+                  <SelectItem value="Absent">{tc("absent")}</SelectItem>
+                  <SelectItem value="Tardy">{tc("tardy")}</SelectItem>
+                  <SelectItem value="Half Day">{tc("half_day")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -457,7 +460,7 @@ export default function ReportCardsPage() {
                 onCheckedChange={(v) => setIncludeMpAbsences(!!v)}
               />
               <Label htmlFor="mp-absences" className="text-sm cursor-pointer">
-                Daily Absences this marking period
+                {tc("mp_absences")}
               </Label>
             </div>
             <div className="flex items-center gap-3">
@@ -467,7 +470,7 @@ export default function ReportCardsPage() {
                 onCheckedChange={(v) => setIncludeOtherAttendanceMp(!!v)}
               />
               <Label htmlFor="other-mp" className="text-sm cursor-pointer">
-                Other Attendance this marking period:
+                {tc("other_attendance_mp")}
               </Label>
               <Select
                 value={otherAttendanceMpType}
@@ -477,9 +480,9 @@ export default function ReportCardsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Absent">Absent</SelectItem>
-                  <SelectItem value="Tardy">Tardy</SelectItem>
-                  <SelectItem value="Half Day">Half Day</SelectItem>
+                  <SelectItem value="Absent">{tc("absent")}</SelectItem>
+                  <SelectItem value="Tardy">{tc("tardy")}</SelectItem>
+                  <SelectItem value="Half Day">{tc("half_day")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -510,7 +513,7 @@ export default function ReportCardsPage() {
                   onCheckedChange={(v) => setLastRowTotal(!!v)}
                 />
                 <Label htmlFor="lr-total" className="text-sm cursor-pointer">
-                  Total
+                  {tc("total")}
                 </Label>
               </div>
               <div className="flex items-center gap-2">
@@ -520,7 +523,7 @@ export default function ReportCardsPage() {
                   onCheckedChange={(v) => setLastRowGpa(!!v)}
                 />
                 <Label htmlFor="lr-gpa" className="text-sm cursor-pointer">
-                  GPA
+                  {tc("gpa")}
                 </Label>
               </div>
             </div>
@@ -553,7 +556,7 @@ export default function ReportCardsPage() {
               </div>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground -mt-2">Last row</p>
+          <p className="text-xs text-muted-foreground -mt-2">{tc("last_row")}</p>
 
           <Separator />
 
@@ -565,8 +568,8 @@ export default function ReportCardsPage() {
               onCheckedChange={(v) => setIncludeFreeText(!!v)}
             />
             <Label htmlFor="free-text" className="text-sm cursor-pointer">
-              Free Text
-            </Label>
+                {t("free_text")}
+              </Label>
           </div>
         </CardContent>
       </Card>
@@ -597,11 +600,11 @@ export default function ReportCardsPage() {
                   </div>
                 </div>
               ))}
-              <p className="text-xs text-muted-foreground">Marking Periods</p>
+              <p className="text-xs text-muted-foreground">{tc("marking_periods")}</p>
             </>
           ) : (
             <p className="text-sm text-muted-foreground">
-              No marking periods configured.
+              {tc("no_marking_periods")}
             </p>
           )}
         </CardContent>
@@ -620,17 +623,17 @@ export default function ReportCardsPage() {
               htmlFor="mailing-labels"
               className="text-sm cursor-pointer font-medium"
             >
-              Mailing Labels
+              {tc("mailing_labels")}
             </Label>
           </div>
         </CardContent>
       </Card>
 
-      {/* ── PDF Layout ──────────────────────────────────────── */}
+      {/* ── {t("pdf_layout")} ──────────────────────────────────────── */}
       <Card>
         <CardContent className="pt-6 space-y-3">
           <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">
-            PDF Layout
+            {t("pdf_layout")}
           </h2>
           <div className="flex items-start gap-2">
             <Checkbox
@@ -643,11 +646,10 @@ export default function ReportCardsPage() {
                 htmlFor="two-copies-landscape"
                 className="text-sm cursor-pointer font-medium"
               >
-                Two Copies — Landscape
+                {t("two_copies_landscape")}
               </Label>
               <p className="text-xs text-muted-foreground">
-                Prints each report card twice side-by-side on a single A4 landscape page.
-                Useful for distributing one copy to the student and keeping one on file.
+                {t("two_copies_landscape_desc")}
               </p>
             </div>
           </div>
@@ -659,13 +661,13 @@ export default function ReportCardsPage() {
         <CardContent className="pt-6 space-y-4">
           {/* Grade filter */}
           <div className="flex items-center gap-4">
-            <Label className="text-sm font-medium">Filter by Grade:</Label>
+            <Label className="text-sm font-medium">{tc("filter_by_grade")}</Label>
             <Select value={gradeFilter} onValueChange={setGradeFilter}>
               <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="All Grades" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Grades</SelectItem>
+                <SelectItem value="all">{tc("all_grades")}</SelectItem>
                 {gradeLevels.map((gl) => (
                   <SelectItem key={gl.id} value={gl.name}>
                     {gl.name}
@@ -682,13 +684,12 @@ export default function ReportCardsPage() {
           ) : students.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Users className="h-12 w-12 mx-auto mb-3 opacity-40" />
-              <p>No students found</p>
+              <p>{tc("no_students_found")}</p>
             </div>
           ) : (
             <>
               <p className="text-sm text-[#0369a1] font-medium">
-                {students.length} student{students.length !== 1 ? "s" : ""} were
-                found.
+                {tc("students_found", { count: students.length })}
               </p>
 
               <div className="border rounded-md overflow-hidden">
@@ -706,14 +707,14 @@ export default function ReportCardsPage() {
                         />
                       </TableHead>
                       <TableHead className="text-white font-semibold">
-                        STUDENT
-                      </TableHead>
+                      {tc("student")}
+                    </TableHead>
                       <TableHead className="text-white font-semibold">
-                        STUDENT ID
-                      </TableHead>
+                      {tc("student_id")}
+                    </TableHead>
                       <TableHead className="text-white font-semibold">
-                        GRADE LEVEL
-                      </TableHead>
+                      {tc("grade_level_header")}
+                    </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -763,7 +764,7 @@ export default function ReportCardsPage() {
             ) : (
               <Printer className="h-4 w-4 mr-2" />
             )}
-            CREATE REPORT CARDS FOR SELECTED STUDENTS
+            {t("btn_create")}
           </Button>
         </div>
       )}

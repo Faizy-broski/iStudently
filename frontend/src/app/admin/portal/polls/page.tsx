@@ -27,13 +27,9 @@ import { useCampus } from "@/context/CampusContext"
 import * as portalApi from "@/lib/api/portal"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
 import { VisibilityPicker, type VisibilityState, type VisibilityMode } from "@/components/portal/visibility-picker"
+import { useTranslations } from "next-intl"
 
-const DATA_TYPES = [
-  { value: 'single_choice', label: 'Select One from Options' },
-  { value: 'multiple_choice', label: 'Select Multiple from Options' },
-  { value: 'rating', label: 'Rating (1-5)' },
-  { value: 'text', label: 'Text Response' },
-]
+// Data types are localized inside the component
 
 interface QuestionRow {
   id?: string
@@ -87,6 +83,15 @@ export default function PortalPollsPage() {
   const { profile } = useAuth()
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
+  const t = useTranslations("school.portal_polls")
+  const tCommon = useTranslations("common")
+
+  const DATA_TYPES = [
+    { value: 'single_choice', label: t("data_types.single_choice") },
+    { value: 'multiple_choice', label: t("data_types.multiple_choice") },
+    { value: 'rating', label: t("data_types.rating") },
+    { value: 'text', label: t("data_types.text") },
+  ]
 
   const [polls, setPolls] = useState<PollRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -110,7 +115,7 @@ export default function PortalPollsPage() {
       const data = await portalApi.getPollResults(pollId)
       setCurrentResults(data)
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Failed to load results'
+      const msg = error instanceof Error ? error.message : t("err_load_results")
       toast.error(msg)
     } finally {
       setLoadingResults(false)
@@ -169,7 +174,7 @@ export default function PortalPollsPage() {
       setPolls(mappedPolls)
     } catch (error) {
       console.error('Error fetching polls:', error)
-      toast.error('Failed to load polls')
+      toast.error(t("err_load_polls"))
       setPolls([createEmptyRow(0)])
     } finally {
       setLoading(false)
@@ -224,9 +229,9 @@ export default function PortalPollsPage() {
     if (poll.id) {
       try {
         await portalApi.deletePoll(poll.id)
-        toast.success('Poll deleted')
+        toast.success(t("success_deleted"))
       } catch (error) {
-        const msg = error instanceof Error ? error.message : 'Failed to delete'
+        const msg = error instanceof Error ? error.message : tCommon("error")
         toast.error(msg)
         return
       }
@@ -240,7 +245,7 @@ export default function PortalPollsPage() {
 
   const handleSave = async () => {
     if (!selectedCampus?.id) {
-      toast.error('Please select a campus first')
+      toast.error(tCommon("err_select_campus") || t("err_load_polls")) // Fallback
       return
     }
 
@@ -252,7 +257,7 @@ export default function PortalPollsPage() {
         const validQuestions = poll.questions.filter((q) => q.question_text.trim())
 
         const dto: portalApi.CreatePollDTO & { visible_to_grade_ids?: string[]; visible_to_user_ids?: string[] } = {
-          title: poll.title || 'Untitled Poll',
+          title: poll.title || tCommon("label_untitled"),
           sort_order: poll.sort_order,
           show_results: poll.show_results,
           visible_from: poll.visible_from || undefined,
@@ -277,10 +282,10 @@ export default function PortalPollsPage() {
           await portalApi.createPoll(dto)
         }
       }
-      toast.success('Polls saved successfully')
+      toast.success(t("success_saved"))
       fetchPolls()
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Failed to save polls'
+      const msg = error instanceof Error ? error.message : tCommon("error")
       toast.error(msg)
     } finally {
       setSaving(false)
@@ -291,8 +296,8 @@ export default function PortalPollsPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
         <BarChart3 className="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold mb-2">Select a Campus</h3>
-        <p className="text-muted-foreground">Please select a campus from the top bar to manage polls.</p>
+        <h3 className="text-lg font-semibold mb-2">{tCommon("select_campus") || "Select a Campus"}</h3>
+        <p className="text-muted-foreground">{t("prompt_select_campus_desc")}</p>
       </div>
     )
   }
@@ -312,7 +317,7 @@ export default function PortalPollsPage() {
         <div className="h-8 w-8 rounded-full bg-[#022172] flex items-center justify-center">
           <BarChart3 className="h-4 w-4 text-white" />
         </div>
-        <h1 className="text-2xl font-semibold text-gray-700">Portal Polls</h1>
+        <h1 className="text-2xl font-semibold text-gray-700">{t("title")}</h1>
       </div>
 
       {/* Top Buttons */}
@@ -322,7 +327,7 @@ export default function PortalPollsPage() {
           disabled={saving}
           className="bg-[#022172] hover:bg-[#022172]/90"
         >
-          {saving ? 'SAVING...' : 'SAVE'}
+          {saving ? t("btn_saving") : t("btn_save")}
         </Button>
       </div>
 
@@ -331,19 +336,19 @@ export default function PortalPollsPage() {
         <CardContent className="p-0">
           <p className="px-4 py-2 text-sm text-gray-500 italic">
             {polls.filter((p) => p.id).length === 0
-              ? 'No polls were found.'
-              : `${polls.filter((p) => p.id).length} poll(s) found.`}
+              ? t("no_polls")
+              : t("polls_found", { count: polls.filter((p) => p.id).length })}
           </p>
 
           {/* Table Header */}
           <div className="grid grid-cols-[40px_100px_1fr_100px_80px_180px_140px] gap-2 px-4 py-2 bg-gray-50 border-y text-xs font-medium text-gray-600 uppercase tracking-wide">
             <div></div>
-            <div>Title</div>
-            <div>Poll</div>
-            <div>Results</div>
-            <div>Sort Order</div>
-            <div>Visible Between</div>
-            <div>Visible To</div>
+            <div>{t("table_title")}</div>
+            <div>{t("table_poll")}</div>
+            <div>{t("table_results")}</div>
+            <div>{t("table_sort")}</div>
+            <div>{t("table_visible_between")}</div>
+            <div>{t("table_visible_to")}</div>
           </div>
 
           {/* Table Rows */}
@@ -383,7 +388,7 @@ export default function PortalPollsPage() {
                   <div key={qIndex} className="space-y-2 p-3 border border-gray-200 rounded-lg bg-gray-50/50">
                     <div className="flex items-start gap-2">
                       <div className="flex-1">
-                        <label className="text-xs font-medium text-gray-600 mb-1 block">Question Title</label>
+                        <label className="text-xs font-medium text-gray-600 mb-1 block">{t("label_question_title")}</label>
                         <Input
                           value={question.question_text}
                           onChange={(e) => updateQuestion(pollIndex, qIndex, 'question_text', e.target.value)}
@@ -404,7 +409,7 @@ export default function PortalPollsPage() {
                     </div>
 
                     <div>
-                      <label className="text-xs font-medium text-gray-600 mb-1 block">Options (One per line)</label>
+                      <label className="text-xs font-medium text-gray-600 mb-1 block">{t("label_options_help")}</label>
                       <Textarea
                         value={question.options}
                         onChange={(e) => updateQuestion(pollIndex, qIndex, 'options', e.target.value)}
@@ -414,7 +419,7 @@ export default function PortalPollsPage() {
                     </div>
 
                     <div>
-                      <label className="text-xs font-medium text-gray-600 mb-1 block">Data Type</label>
+                      <label className="text-xs font-medium text-gray-600 mb-1 block">{t("label_data_type")}</label>
                       <Select
                         value={question.question_type}
                         onValueChange={(v) => updateQuestion(pollIndex, qIndex, 'question_type', v)}
@@ -440,7 +445,7 @@ export default function PortalPollsPage() {
                   className="text-[#022172] text-sm hover:text-[#022172]/80 flex items-center gap-1 font-medium"
                 >
                   <Plus className="h-3 w-3" />
-                  New Question
+                  {t("btn_new_question")}
                 </button>
               </div>
 
@@ -452,7 +457,7 @@ export default function PortalPollsPage() {
                     onCheckedChange={(checked) => updateRow(pollIndex, { show_results: !!checked })}
                     className="h-4 w-4"
                   />
-                  <span className="text-xs text-gray-600">Show to Users</span>
+                  <span className="text-xs text-gray-600">{t("label_show_to_users")}</span>
                 </label>
                 {poll.id && (
                   <Button
@@ -461,7 +466,7 @@ export default function PortalPollsPage() {
                     onClick={() => openResultsDialog(poll.id!)}
                   >
                     <Eye className="h-3 w-3 mr-1.5" />
-                    View Results
+                    {t("btn_view_results")}
                   </Button>
                 )}
               </div>
@@ -509,7 +514,7 @@ export default function PortalPollsPage() {
           disabled={saving}
           className="bg-[#022172] hover:bg-[#022172]/90 px-8"
         >
-          {saving ? 'SAVING...' : 'SAVE'}
+          {saving ? t("btn_saving") : t("btn_save")}
         </Button>
       </div>
 
@@ -519,7 +524,7 @@ export default function PortalPollsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-[#022172]" />
-              Poll Results
+              {t("results_title")}
             </DialogTitle>
           </DialogHeader>
 
@@ -537,7 +542,9 @@ export default function PortalPollsPage() {
                 <div>
                   <h3 className="font-semibold text-gray-800">{currentResults.poll.title}</h3>
                   <p className="text-sm text-gray-600">
-                    <span className="font-medium text-[#022172]">{currentResults.total_responses}</span> total response{currentResults.total_responses !== 1 ? 's' : ''}
+                    <span className="font-medium text-[#022172]">
+                      {t("total_responses", { count: currentResults.total_responses })}
+                    </span>
                   </p>
                 </div>
               </div>
@@ -552,12 +559,12 @@ export default function PortalPollsPage() {
                       </span>
                       {question.question_text}
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {question.total_responses} response{question.total_responses !== 1 ? 's' : ''} •
-                      {question.question_type === 'single_choice' && ' Single Choice'}
-                      {question.question_type === 'multiple_choice' && ' Multiple Choice'}
-                      {question.question_type === 'rating' && ' Rating'}
-                      {question.question_type === 'text' && ' Text Response'}
+                     <p className="text-xs text-gray-500 mt-1">
+                      {t("total_responses_short", { count: question.total_responses })} •
+                      {question.question_type === 'single_choice' && ` ${t("data_types.single_choice")}`}
+                      {question.question_type === 'multiple_choice' && ` ${t("data_types.multiple_choice")}`}
+                      {question.question_type === 'rating' && ` ${t("data_types.rating")}`}
+                      {question.question_type === 'text' && ` ${t("data_types.text")}`}
                     </p>
                   </div>
 
@@ -592,7 +599,7 @@ export default function PortalPollsPage() {
                           <p className="text-xl font-bold text-gray-800">
                             {question.average_rating?.toFixed(1) || '0.0'}
                           </p>
-                          <p className="text-xs text-gray-500">Average Rating</p>
+                          <p className="text-xs text-gray-500">{t("label_average_rating")}</p>
                         </div>
                       </div>
                       {question.rating_distribution && (
@@ -624,7 +631,7 @@ export default function PortalPollsPage() {
                   {question.question_type === 'text' && question.text_responses && (
                     <div className="space-y-2 max-h-40 overflow-y-auto">
                       {question.text_responses.length === 0 ? (
-                        <p className="text-sm text-gray-500 italic">No responses yet</p>
+                        <p className="text-sm text-gray-500 italic">{t("no_responses")}</p>
                       ) : (
                         question.text_responses.map((response, rIndex) => (
                           <div key={rIndex} className="flex items-start gap-2 p-2 bg-gray-50 rounded">
@@ -639,7 +646,7 @@ export default function PortalPollsPage() {
               ))}
 
               {currentResults.questions.length === 0 && (
-                <p className="text-center text-gray-500 py-4">No questions in this poll</p>
+                <p className="text-center text-gray-500 py-4">{t("no_questions")}</p>
               )}
             </div>
           )}

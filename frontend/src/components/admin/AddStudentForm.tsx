@@ -30,6 +30,7 @@ import FeeChallanModal from "@/components/admin/FeeChallanModal";
 import * as servicesApi from "@/lib/api/services";
 import { getFieldDefinitions, CustomFieldDefinition } from "@/lib/api/custom-fields";
 import { getFieldOrders, getEffectiveFieldOrder, DefaultFieldOrder } from '@/lib/utils/field-ordering';
+import { useTranslations, useLocale } from "next-intl";
 import {
   StudentFormData,
   Gender,
@@ -42,90 +43,47 @@ import {
 } from "@/types";
 
 // Zod Validation Schema
-const studentSchema = z.object({
-  // Personal Information (Required) - 4 Name Fields
-  firstName: z.string().min(2, "First name must be at least 2 characters"),
-  fatherName: z.string().min(2, "Father's name must be at least 2 characters"),
-  grandfatherName: z.string().optional(),
-  lastName: z.string().min(2, "Surname/Last name must be at least 2 characters"),
-  dateOfBirth: z.date({ message: "Date of birth is required" }),
-  gender: z.enum(["male", "female"], { message: "Gender is required" }),
-
-  // Academic Information (Required)
-  gradeLevel: z.string().optional(), // Legacy field - not required anymore
-  grade_level_id: z.string().min(1, "Grade level is required"),
-  section_id: z.string().min(1, "Section is required"),
-  admissionDate: z.date({ message: "Admission date is required" }),
-
-  // Medical Information (Required) - Removed N/A
-  bloodGroup: z.enum(["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"], { message: "Blood group is required" }),
-  hasAllergies: z.boolean(),
-  allergiesList: z.array(z.string()).min(0),
-
-  // Optional fields
-  studentId: z.string(),
-  username: z.string(),
-  password: z.string(),
-  status: z.enum(["active", "inactive", "suspended"]),
-  studentPhoto: z.string().optional(),
-  address: z.string().optional(),
-  email: z.string().min(1, "Email is required").email("Invalid email address"),
-  phoneNumber: z.string().optional(),
-  previousSchoolHistory: z.object({
-    schoolName: z.string(),
-    transferDate: z.string(),
-    lastGradeCompleted: z.string(),
-  }),
-  medicalNotes: z.string(),
-  linkedParentId: z.string(),
-  parentRelationType: z.enum(["father", "mother", "guardian", "other"]),
-  emergencyContacts: z.array(z.object({
-    name: z.string(),
-    relationship: z.string(),
-    phone: z.string(),
-    address: z.string(),
-  })),
-});
+  // Validation Schema moved inside component to use translations
 
 // Standard Field Definitions with Sort Orders for Students
 const STANDARD_FIELDS = [
   // PERSONAL INFORMATION (Category: personal)
-  { id: 'firstName', label: 'First Name', type: 'text', category: 'personal', sort_order: 1, required: true, width: 'half' },
-  { id: 'fatherName', label: "Father's Name", type: 'text', category: 'personal', sort_order: 2, required: true, width: 'half' },
-  { id: 'grandfatherName', label: "Grandfather's Name", type: 'text', category: 'personal', sort_order: 3, required: false, width: 'half' },
-  { id: 'lastName', label: 'Surname', type: 'text', category: 'personal', sort_order: 4, required: true, width: 'half' },
-  { id: 'dateOfBirth', label: 'Date of Birth', type: 'date', category: 'personal', sort_order: 5, required: true, width: 'half' },
-  { id: 'gender', label: 'Gender', type: 'select', category: 'personal', sort_order: 6, required: true, width: 'half', options: ['male', 'female'] },
-  { id: 'studentPhoto', label: 'Student Photo', type: 'photo', category: 'personal', sort_order: 7, required: false, width: 'full' },
-  { id: 'address', label: 'Address', type: 'textarea', category: 'personal', sort_order: 8, required: false, width: 'full' },
-  { id: 'email', label: 'Email', type: 'email', category: 'personal', sort_order: 9, required: true, width: 'half' },
-  { id: 'phoneNumber', label: 'Phone Number', type: 'text', category: 'personal', sort_order: 10, required: false, width: 'half' },
+  { id: 'firstName', label: 'first_name', type: 'text', category: 'personal', sort_order: 1, required: true, width: 'half' },
+  { id: 'fatherName', label: "father_name", type: 'text', category: 'personal', sort_order: 2, required: true, width: 'half' },
+  { id: 'grandfatherName', label: "grandfather_name", type: 'text', category: 'personal', sort_order: 3, required: false, width: 'half' },
+  { id: 'lastName', label: 'last_name', type: 'text', category: 'personal', sort_order: 4, required: true, width: 'half' },
+  { id: 'dateOfBirth', label: 'date_of_birth', type: 'date', category: 'personal', sort_order: 5, required: true, width: 'half' },
+  { id: 'gender', label: 'gender', type: 'select', category: 'personal', sort_order: 6, required: true, width: 'half', options: ['male', 'female'] },
+  { id: 'studentPhoto', label: 'student_photo', type: 'photo', category: 'personal', sort_order: 7, required: false, width: 'full' },
+  { id: 'address', label: 'address', type: 'textarea', category: 'personal', sort_order: 8, required: false, width: 'full' },
+  { id: 'email', label: 'email', type: 'email', category: 'personal', sort_order: 9, required: true, width: 'half' },
+  { id: 'phoneNumber', label: 'phone_number', type: 'text', category: 'personal', sort_order: 10, required: false, width: 'half' },
 
   // ACADEMIC INFORMATION (Category: academic)
-  { id: 'grade_level_id', label: 'Grade Level', type: 'grade_select', category: 'academic', sort_order: 1, required: true, width: 'half' },
-  { id: 'section_id', label: 'Section', type: 'section_select', category: 'academic', sort_order: 2, required: true, width: 'half' },
-  { id: 'admissionDate', label: 'Admission Date', type: 'date', category: 'academic', sort_order: 3, required: true, width: 'half' },
-  { id: 'previousSchoolHistory', label: 'Previous School History', type: 'school_history', category: 'academic', sort_order: 4, required: false, width: 'full' },
+  { id: 'grade_level_id', label: 'grade_level', type: 'grade_select', category: 'academic', sort_order: 1, required: true, width: 'half' },
+  { id: 'section_id', label: 'section', type: 'section_select', category: 'academic', sort_order: 2, required: true, width: 'half' },
+  { id: 'admissionDate', label: 'admission_date', type: 'date', category: 'academic', sort_order: 3, required: true, width: 'half' },
+  { id: 'previousSchoolHistory', label: 'previous_school', type: 'school_history', category: 'academic', sort_order: 4, required: false, width: 'full' },
 
   // MEDICAL INFORMATION (Category: medical)
-  { id: 'bloodGroup', label: 'Blood Group', type: 'select', category: 'medical', sort_order: 1, required: true, width: 'half', options: ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'] },
-  { id: 'hasAllergies', label: 'Has Allergies?', type: 'checkbox', category: 'medical', sort_order: 2, required: false, width: 'half' },
-  { id: 'allergiesList', label: 'Allergies List', type: 'tags', category: 'medical', sort_order: 3, required: false, width: 'full' },
-  { id: 'medicalNotes', label: 'Medical Notes', type: 'textarea', category: 'medical', sort_order: 4, required: false, width: 'full' },
+  { id: 'bloodGroup', label: 'blood_group', type: 'select', category: 'medical', sort_order: 1, required: true, width: 'half', options: ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'] },
+  { id: 'hasAllergies', label: 'has_allergies', type: 'checkbox', category: 'medical', sort_order: 2, required: false, width: 'half' },
+  { id: 'allergiesList', label: 'allergies_list', type: 'tags', category: 'medical', sort_order: 3, required: false, width: 'full' },
+  { id: 'medicalNotes', label: 'medical_notes', type: 'textarea', category: 'medical', sort_order: 4, required: false, width: 'full' },
 
   // FAMILY & EMERGENCY (Category: family)
-  { id: 'linkedParentId', label: 'Link to Parent', type: 'parent_search', category: 'family', sort_order: 1, required: false, width: 'full' },
-  { id: 'parentRelationType', label: 'Relationship Type', type: 'select', category: 'family', sort_order: 2, required: false, width: 'half', options: ['father', 'mother', 'guardian', 'other'] },
-  { id: 'emergencyContacts', label: 'Emergency Contacts', type: 'emergency_contacts', category: 'family', sort_order: 3, required: false, width: 'full' },
+  { id: 'linkedParentId', label: 'link_parent', type: 'parent_search', category: 'family', sort_order: 1, required: false, width: 'full' },
+  { id: 'parentRelationType', label: 'relationship_type', type: 'select', category: 'family', sort_order: 2, required: false, width: 'half', options: ['father', 'mother', 'guardian', 'other'] },
+  { id: 'emergencyContacts', label: 'emergency_contacts', type: 'emergency_contacts', category: 'family', sort_order: 3, required: false, width: 'full' },
 
   // SERVICES (Category: services)
-  { id: 'selectedServices', label: 'School Services', type: 'service_select', category: 'services', sort_order: 1, required: false, width: 'full' },
+  { id: 'selectedServices', label: 'school_services', type: 'service_select', category: 'services', sort_order: 1, required: false, width: 'full' },
 
   // SYSTEM (Category: system)
-  { id: 'studentId', label: 'Student ID / Roll Number', type: 'text', category: 'system', sort_order: 1, required: false, width: 'half' },
-  { id: 'username', label: 'Username', type: 'text', category: 'system', sort_order: 2, required: false, width: 'half' },
-  { id: 'password', label: 'Password (Default)', type: 'text', category: 'system', sort_order: 3, required: false, width: 'half' },
-  { id: 'status', label: 'Status', type: 'select', category: 'system', sort_order: 4, required: false, width: 'half', options: ['active', 'inactive', 'suspended'] },
+  { id: 'studentId', label: 'student_id', type: 'text', category: 'system', sort_order: 1, required: false, width: 'half' },
+  { id: 'username', label: 'username', type: 'text', category: 'system', sort_order: 2, required: false, width: 'half' },
+  { id: 'password', label: 'password', type: 'text', category: 'system', sort_order: 3, required: false, width: 'half' },
+  { id: 'status', label: 'status', type: 'select', category: 'system', sort_order: 4, required: false, width: 'half', options: ['active', 'inactive', 'suspended'] },
 ];
 
 interface AddStudentFormProps {
@@ -133,9 +91,51 @@ interface AddStudentFormProps {
 }
 
 export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
+  const t = useTranslations("school.students");
+  const tAdd = useTranslations("school.students.add_student");
+  const tCommon = useTranslations("common");
+  const locale = useLocale();
   const { profile } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
+
+  const studentSchema = useMemo(() => z.object({
+    firstName: z.string().min(2, t("validation.first_name_min")),
+    fatherName: z.string().min(2, t("validation.father_name_min")),
+    grandfatherName: z.string().optional(),
+    lastName: z.string().min(2, t("validation.last_name_min")),
+    dateOfBirth: z.date({ message: t("validation.dob_required") }),
+    gender: z.enum(["male", "female"], { message: t("validation.gender_required") }),
+    gradeLevel: z.string().optional(),
+    grade_level_id: z.string().min(1, t("validation.grade_required")),
+    section_id: z.string().min(1, t("validation.section_required")),
+    admissionDate: z.date({ message: t("validation.admission_date_required") }),
+    bloodGroup: z.enum(["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"], { message: t("validation.blood_group_required") }),
+    hasAllergies: z.boolean(),
+    allergiesList: z.array(z.string()).min(0),
+    studentId: z.string(),
+    username: z.string(),
+    password: z.string(),
+    status: z.enum(["active", "inactive", "suspended"]),
+    studentPhoto: z.string().optional(),
+    address: z.string().optional(),
+    email: z.string().min(1, t("validation.email_required")).email(t("validation.email_invalid")),
+    phoneNumber: z.string().optional(),
+    previousSchoolHistory: z.object({
+      schoolName: z.string(),
+      transferDate: z.string(),
+      lastGradeCompleted: z.string(),
+    }),
+    medicalNotes: z.string(),
+    linkedParentId: z.string(),
+    parentRelationType: z.enum(["father", "mother", "guardian", "other"]),
+    emergencyContacts: z.array(z.object({
+      name: z.string(),
+      relationship: z.string(),
+      phone: z.string(),
+      address: z.string(),
+    })),
+  }), [t]);
   
   // API-based custom fields (replacing localStorage approach)
   const [customFields, setCustomFields] = useState<CustomFieldDefinition[]>([]);
@@ -476,17 +476,17 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
       if (showNewParentForm) {
         // Validate new parent data - CNIC and Address are mandatory
         if (!newParentData.first_name || !newParentData.last_name || !newParentData.relationship) {
-          toast.error("Please fill in all required parent fields (First Name, Last Name, Relationship)");
+          toast.error(tCommon("fill_required_fields"));
           setIsSubmitting(false);
           return;
         }
         if (!newParentData.cnic) {
-          toast.error("Parent CNIC is required");
+          toast.error(tCommon("cnic_required"));
           setIsSubmitting(false);
           return;
         }
         if (!newParentData.address || !newParentData.city) {
-          toast.error("Parent address (Street Address and City) is required");
+          toast.error(tCommon("address_required"));
           setIsSubmitting(false);
           return;
         }
@@ -499,9 +499,9 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
           if (parentResponse.success && parentResponse.data) {
             finalLinkedParentId = parentResponse.data.id;
             finalRelationType = newParentData.relationship.toLowerCase() as any;
-            toast.success("Parent profile created successfully");
+            toast.success(tCommon("msg_parent_created"));
           } else {
-            throw new Error(parentResponse.error || "Failed to create parent profile");
+            throw new Error(parentResponse.error || tCommon("msg_parent_create_failed"));
           }
         } catch (err: any) {
           toast.error(err.message);
@@ -631,10 +631,10 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
           }
         }
 
-        toast.success("Student added successfully!");
+        toast.success(tAdd("msg_enroll_success"));
         onSuccess();
       } else {
-        toast.error(response.error || "Failed to add student");
+        toast.error(response.error || tAdd("msg_enroll_error"));
       }
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -659,21 +659,21 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
         // Switch to first tab with errors
         if (errorsByTab.personal > 0) {
           setActiveTab("personal");
-          toast.error(`${errorsByTab.personal} error(s) in Personal Information`);
+          toast.error(tCommon("errors_in_tab", { tab: tAdd("personal_tab"), count: errorsByTab.personal }));
         } else if (errorsByTab.academic > 0) {
           setActiveTab("academic");
-          toast.error(`${errorsByTab.academic} error(s) in Academic Information`);
+          toast.error(tCommon("errors_in_tab", { tab: tAdd("academic_tab"), count: errorsByTab.academic }));
         } else if (errorsByTab.medical > 0) {
           setActiveTab("medical");
-          toast.error(`${errorsByTab.medical} error(s) in Medical Information`);
+          toast.error(tCommon("errors_in_tab", { tab: tAdd("medical_tab"), count: errorsByTab.medical }));
         } else if (errorsByTab.family > 0) {
           setActiveTab("family");
-          toast.error(`${errorsByTab.family} error(s) in Family & Emergency`);
+          toast.error(tCommon("errors_in_tab", { tab: tAdd("family_tab"), count: errorsByTab.family }));
         } else {
-          toast.error(`Validation failed. Check fields.`);
+          toast.error(tCommon("validation_failed"));
         }
       } else {
-        toast.error("An error occurred while adding the student");
+        toast.error(tCommon("error_occurred"));
         console.error('❌ Submission error:', error);
       }
     } finally {
@@ -722,6 +722,8 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
   // Render a single field (standard or custom)
   const renderField = (field: any) => {
     const isCustom = !!field.isCustom;
+    // For custom fields use the raw label; for standard fields translate via messages
+    const fieldDisplayLabel = isCustom ? field.label : t(`fields.${field.label}` as Parameters<typeof t>[0]);
     // Initialize multi-select fields as arrays
     const defaultValue = field.type === 'multi-select' ? [] : '';
     const value = isCustom ? (customFieldValues[field.field_key] ?? defaultValue) : (formData[field.id as keyof StudentFormData] ?? defaultValue);
@@ -748,12 +750,12 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
       if (field.type === 'photo') {
         return (
           <div key={field.id} className={wrapperClass}>
-            <Label>{field.label}</Label>
+            <Label>{t("fields." + field.label)}</Label>
             <StudentPhotoUpload
               value={formData.studentPhoto || ''}
               onChange={(url) => updateFormData("studentPhoto", url)}
               schoolId={profile?.school_id || ''}
-              label="Click to upload photo"
+              label={tCommon("click_to_upload")}
             />
             {error && <p className="text-sm text-red-500">{error}</p>}
           </div>
@@ -807,9 +809,9 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
               <SelectTrigger className={error ? "border-red-500" : ""}>
                 <SelectValue
                   placeholder={
-                    !selectedGradeId ? "Select grade first" :
-                      isLoadingSections ? "Loading sections..." :
-                        sections.length === 0 ? "No sections available" : "Select section"
+                    !selectedGradeId ? t("select_grade_first") :
+                      isLoadingSections ? tCommon("loading") :
+                        sections.length === 0 ? t("no_sections_available") : tCommon("select_section")
                   }
                 />
               </SelectTrigger>
@@ -822,7 +824,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
               </SelectContent>
             </Select>
             {selectedGradeId && sections.length === 0 && !isLoadingSections && (
-              <p className="text-sm text-amber-600">⚠️ No sections available for this grade.</p>
+              <p className="text-sm text-amber-600">⚠️ {t("no_sections_available_grade")}</p>
             )}
             {error && <p className="text-sm text-red-500">{error}</p>}
           </div>
@@ -834,9 +836,9 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
         return (
           <div key={field.id} className="col-span-1 md:col-span-2 space-y-4">
             <Separator className="my-4" />
-            <h3 className="font-semibold text-[#022172]">Previous School History</h3>
+            <h3 className="font-semibold text-[#022172]">{t("fields.previous_school")}</h3>
             <div className="space-y-2">
-              <Label htmlFor="previousSchoolName">Previous School Name</Label>
+              <Label htmlFor="previousSchoolName">{t("previous_school_name")}</Label>
               <Input
                 id="previousSchoolName"
                 value={formData.previousSchoolHistory.schoolName}
@@ -845,7 +847,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="transferDate">Transfer Date</Label>
+                <Label htmlFor="transferDate">{t("transfer_date")}</Label>
                 <Input
                   id="transferDate"
                   type="date"
@@ -854,7 +856,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lastGradeCompleted">Last Grade Completed</Label>
+                <Label htmlFor="lastGradeCompleted">{t("last_grade_completed")}</Label>
                 <Input
                   id="lastGradeCompleted"
                   value={formData.previousSchoolHistory.lastGradeCompleted}
@@ -870,11 +872,11 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
       if (field.type === 'tags') {
         return (
           <div key={field.id} className={wrapperClass}>
-            <Label>{field.label}</Label>
+            <Label>{t("fields." + field.label)}</Label>
             <TagsInput
               value={formData.allergiesList || []}
               onChange={(tags) => updateFormData("allergiesList", tags)}
-              placeholder={`Add ${field.label.toLowerCase()}`}
+              placeholder={t("add_tag", { name: t("fields." + field.label).toLowerCase() })}
             />
             {error && <p className="text-sm text-red-500">{error}</p>}
           </div>
@@ -891,7 +893,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
     return (
       <div key={field.id} className={wrapperClass}>
         <Label htmlFor={field.id}>
-          {field.label} {field.required && <span className="text-red-500">*</span>}
+          {fieldDisplayLabel} {field.required && <span className="text-red-500">*</span>}
         </Label>
 
         {(field.type === 'text' || field.type === 'email' || field.type === 'number') ? (
@@ -900,7 +902,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
             type={field.type}
             value={value}
             onChange={(e) => handleChange(e.target.value)}
-            placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+            placeholder={field.placeholder || t("enter_field", { name: fieldDisplayLabel.toLowerCase() })}
             className={error ? "border-red-500" : ""}
           />
         ) : field.type === 'textarea' || field.type === 'long-text' ? (
@@ -915,13 +917,13 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
         ) : field.type === 'select' ? (
           <Select value={value} onValueChange={handleChange}>
             <SelectTrigger className={error ? "border-red-500" : ""}>
-              <SelectValue placeholder={`Select ${field.label}`} />
+              <SelectValue placeholder={tCommon("select_item", { item: fieldDisplayLabel.toLowerCase() })} />
             </SelectTrigger>
             <SelectContent>
               {field.options && field.options.length > 0 ? (
                 field.options.map((opt: string) => (
                   <SelectItem key={opt} value={opt}>
-                    {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                    {t.has("fields." + opt) ? t("fields." + opt) : (opt.charAt(0).toUpperCase() + opt.slice(1))}
                   </SelectItem>
                 ))
               ) : (
@@ -935,12 +937,12 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
           <DatePicker
             value={value || undefined}
             onChange={(date) => handleChange(date || null)}
-            placeholder={`Select ${field.label.toLowerCase()}`}
+            placeholder={tCommon("select_item", { item: t("fields." + field.label).toLowerCase() })}
           />
         ) : field.type === 'checkbox' ? (
           <div className="flex items-center space-x-2 pt-2">
             <Checkbox checked={!!value} onCheckedChange={handleChange} id={field.id} />
-            <label htmlFor={field.id} className="text-sm cursor-pointer">{field.label}</label>
+            <label htmlFor={field.id} className="text-sm cursor-pointer rtl:mr-2">{t("fields." + field.label)}</label>
           </div>
         ) : field.type === 'file' ? (
           <div className="space-y-2">
@@ -966,7 +968,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
             options={field.options || []}
             value={Array.isArray(value) ? value : (value ? [value] : [])}
             onChange={handleChange}
-            placeholder={`Select ${field.label.toLowerCase()}`}
+            placeholder={tCommon("select_item", { item: t("fields." + field.label).toLowerCase() })}
           />
         ) : null}
 
@@ -1157,24 +1159,24 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
 
     if (activeTab === 'personal') {
       if (!formData.firstName || formData.firstName.length < 2) {
-        errors.firstName = 'First name must be at least 2 characters';
+        errors.firstName = t("validation.first_name_min");
       }
       if (!formData.fatherName || formData.fatherName.length < 2) {
-        errors.fatherName = "Father's name must be at least 2 characters";
+        errors.fatherName = t("validation.father_name_min");
       }
       if (!formData.lastName || formData.lastName.length < 2) {
-        errors.lastName = 'Surname must be at least 2 characters';
+        errors.lastName = t("validation.last_name_min");
       }
       if (!formData.dateOfBirth) {
-        errors.dateOfBirth = 'Date of birth is required';
+        errors.dateOfBirth = t("validation.dob_required");
       }
       if (!formData.gender) {
-        errors.gender = 'Gender is required';
+        errors.gender = t("validation.gender_required");
       }
       if (!formData.email || formData.email.trim() === '') {
-        errors.email = 'Email is required';
+        errors.email = t("validation.email_required");
       } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-        errors.email = 'Invalid email address';
+        errors.email = t("validation.email_invalid");
       }
       // Validate custom fields in personal category (API-based)
       customFields
@@ -1187,13 +1189,13 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
         });
     } else if (activeTab === 'academic') {
       if (!formData.grade_level_id) {
-        errors.grade_level_id = 'Grade level is required';
+        errors.grade_level_id = t("validation.grade_required");
       }
       if (!formData.section_id) {
-        errors.section_id = 'Section is required';
+        errors.section_id = t("validation.section_required");
       }
       if (!formData.admissionDate) {
-        errors.admissionDate = 'Admission date is required';
+        errors.admissionDate = t("validation.admission_date_required");
       }
       // Validate custom fields in academic category (API-based)
       customFields
@@ -1206,10 +1208,10 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
         });
     } else if (activeTab === 'medical') {
       if (!formData.bloodGroup) {
-        errors.bloodGroup = 'Blood group is required';
+        errors.bloodGroup = t("validation.blood_group_required");
       }
       if (formData.hasAllergies && formData.allergiesList.length === 0) {
-        errors.allergiesList = 'Please add at least one allergy';
+        errors.allergiesList = t("validation.allergies_required");
       }
       // Validate custom fields in medical category (API-based)
       customFields
@@ -1261,7 +1263,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
       // Show error labels instead of IDs
       const errorLabels = Object.values(errors).slice(0, 3).join('; ');
       console.log(`❌ Validation failed on ${activeTab} tab:`, errors);
-      toast.error(`${errorCount} error(s) found: ${errorLabels}${errorCount > 3 ? '...' : ''}`);
+      toast.error(tCommon("errors_in_tab", { count: errorCount, tab: getStepTitle() }));
       return false;
     }
 
@@ -1284,13 +1286,13 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
 
   const getStepTitle = () => {
     const titles: Record<string, string> = {
-      personal: 'Personal Information',
-      academic: 'Academic Information',
-      medical: 'Medical Information',
-      family: 'Family & Emergency Contacts',
-      services: 'School Services',
-      system: 'System & Login',
-      custom: 'Additional Information'
+      personal: tAdd("personal_tab"),
+      academic: tAdd("academic_tab"),
+      medical: tAdd("medical_tab"),
+      family: tAdd("family_tab"),
+      services: tAdd("services_tab"),
+      system: tAdd("system_tab"),
+      custom: tAdd("additional_tab")
     };
     return titles[activeTab] || '';
   };
@@ -1320,7 +1322,8 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
   if (loadingFields) {
     return (
       <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#022172]"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#022172] mr-2 rtl:ml-2 rtl:mr-0"></div>
+        <span className="text-[#022172] font-medium">{tCommon("loading")}...</span>
       </div>
     );
   }
@@ -1336,7 +1339,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium text-[#022172]">
-            Step {currentTabIndex + 1} of {tabs.length}
+            {tCommon("step_x_of_y", { x: currentTabIndex + 1, y: tabs.length })}
           </span>
           <span className="text-sm text-muted-foreground">
             {getStepTitle()}
@@ -1356,8 +1359,8 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
         <TabsContent value="personal" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#022172]">Personal Information</CardTitle>
-              <CardDescription>Student&apos;s personal details and contact information</CardDescription>
+              <CardTitle className="text-[#022172]">{tAdd("personal_tab")}</CardTitle>
+              <CardDescription>{tAdd("personal_desc")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Render merged standard + custom fields inline, sorted by sort_order */}
@@ -1372,8 +1375,8 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
         <TabsContent value="academic" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#022172]">Academic Information</CardTitle>
-              <CardDescription>Student&apos;s academic details and history</CardDescription>
+              <CardTitle className="text-[#022172]">{tAdd("academic_tab")}</CardTitle>
+              <CardDescription>{tAdd("academic_desc")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Render merged standard + custom fields inline, sorted by sort_order */}
@@ -1388,8 +1391,8 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
         <TabsContent value="medical" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#022172]">Medical Information</CardTitle>
-              <CardDescription>Student&apos;s health and medical details</CardDescription>
+              <CardTitle className="text-[#022172]">{tAdd("medical_tab")}</CardTitle>
+              <CardDescription>{tAdd("medical_desc")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Render merged standard + custom fields inline, sorted by sort_order */}
@@ -1404,13 +1407,13 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
         <TabsContent value="services" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#022172]">School Services</CardTitle>
-              <CardDescription>Select optional services for the student</CardDescription>
+              <CardTitle className="text-[#022172]">{tAdd("services_tab")}</CardTitle>
+              <CardDescription>{tAdd("services_desc")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {services.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  No active services available.
+                  {tAdd("no_services_available")}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1436,9 +1439,9 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
                           <div className="space-y-1">
                             <div className="font-medium flex items-center">
                               {service.name}
-                              {service.is_mandatory && <span className="ml-2 text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded">Mandatory</span>}
+                              {service.is_mandatory && <span className="ml-2 rtl:mr-2 rtl:ml-0 text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded">{tCommon("mandatory")}</span>}
                             </div>
-                            <div className="text-sm text-muted-foreground capitalize">{service.charge_frequency} Charge</div>
+                            <div className="text-sm text-muted-foreground capitalize">{tCommon("freq_" + service.charge_frequency)} {tCommon("charge")}</div>
                           </div>
                           <div className="text-right">
                             <div className="font-bold text-[#022172]">${amount.toFixed(2)}</div>
@@ -1473,17 +1476,16 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
                   />
                   <div className="space-y-1 flex-1">
                     <Label htmlFor="generate_challan" className="text-base font-medium flex items-center gap-2 cursor-pointer">
-                      Generate First Fee Challan
-                      <Badge variant="outline" className="text-xs font-normal">Optional</Badge>
+                      {tAdd("generate_challan_title")}
+                      <Badge variant="outline" className="text-xs font-normal">{tCommon("optional")}</Badge>
                     </Label>
                     <p className="text-sm text-muted-foreground">
-                      Automatically generate the first month's fee challan immediately after creating the student.
-                      Includes base tuition + selected services.
+                      {tAdd("generate_challan_desc")}
                     </p>
 
                     {generateFirstChallan && (
                       <div className="mt-4 animate-in fade-in slide-in-from-top-2">
-                        <Label htmlFor="challan_due_date">Due Date</Label>
+                        <Label htmlFor="challan_due_date">{tAdd("challan_due_date")}</Label>
                         <Input
                           id="challan_due_date"
                           type="date"
@@ -1492,9 +1494,9 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
                           className="max-w-xs mt-1"
                         />
                         <p className="text-xs text-muted-foreground mt-1">
-                          The generated fee will be for the upcoming month:
-                          <span className="font-medium ml-1">
-                            {new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                          {tAdd("upcoming_month_msg")}:
+                          <span className="font-medium ml-1 rtl:mr-1 rtl:ml-0">
+                            {new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-US', { month: 'long', year: 'numeric' })}
                           </span>
                         </p>
                       </div>
@@ -1511,13 +1513,13 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
         <TabsContent value="family" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#022172]">Family & Emergency Contacts</CardTitle>
-              <CardDescription>Link parent and add emergency contacts</CardDescription>
+              <CardTitle className="text-[#022172]">{tAdd("family_tab")}</CardTitle>
+              <CardDescription>{tAdd("family_desc")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label>Linked Parent</Label>
+                  <Label>{t("fields.link_parent")}</Label>
                   <Button
                     type="button"
                     variant="outline"
@@ -1529,11 +1531,11 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
                   >
                     {showNewParentForm ? (
                       <>
-                        <Trash2 className="mr-2 h-4 w-4" /> Cancel Creation
+                        <Trash2 className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" /> {tAdd("btn_cancel_creation")}
                       </>
                     ) : (
                       <>
-                        <Plus className="mr-2 h-4 w-4" /> Create New Parent
+                        <Plus className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" /> {tAdd("btn_create_parent")}
                       </>
                     )}
                   </Button>
@@ -1541,19 +1543,19 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
 
                 {showNewParentForm ? (
                   <div className="border rounded-lg p-4 space-y-4 bg-muted/20">
-                    <h4 className="font-medium text-sm text-[#022172]">New Parent Details</h4>
+                    <h4 className="font-medium text-sm text-[#022172]">{tAdd("new_parent_details")}</h4>
 
                     {/* Personal Information */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>First Name <span className="text-red-500">*</span></Label>
+                        <Label>{t("fields.first_name")} <span className="text-red-500">*</span></Label>
                         <Input
                           value={newParentData.first_name}
                           onChange={(e) => setNewParentData({ ...newParentData, first_name: e.target.value })}
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Last Name <span className="text-red-500">*</span></Label>
+                        <Label>{t("fields.last_name")} <span className="text-red-500">*</span></Label>
                         <Input
                           value={newParentData.last_name}
                           onChange={(e) => setNewParentData({ ...newParentData, last_name: e.target.value })}
@@ -1562,7 +1564,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Email</Label>
+                        <Label>{tCommon("email")}</Label>
                         <Input
                           type="email"
                           value={newParentData.email}
@@ -1570,7 +1572,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Phone</Label>
+                        <Label>{tCommon("phone")}</Label>
                         <Input
                           value={newParentData.phone}
                           onChange={(e) => setNewParentData({ ...newParentData, phone: e.target.value })}
@@ -1579,49 +1581,49 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Password</Label>
+                        <Label>{t("fields.password")}</Label>
                         <div className="relative">
                           <Input
                             type={showParentPassword ? "text" : "password"}
                             value={newParentData.password || ''}
                             onChange={(e) => setNewParentData({ ...newParentData, password: e.target.value })}
-                            placeholder="Auto-generated if empty"
+                            placeholder={tAdd("placeholder_auto_password")}
                           />
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent rtl:left-0 rtl:right-auto"
                             onClick={() => setShowParentPassword(!showParentPassword)}
                             tabIndex={-1}
                           >
                             {showParentPassword ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
                           </Button>
                         </div>
-                        <p className="text-[10px] text-muted-foreground">Leave empty to auto-generate a secure password.</p>
+                        <p className="text-[10px] text-muted-foreground">{tAdd("help_auto_password")}</p>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>CNIC <span className="text-red-500">*</span></Label>
+                        <Label>{tCommon("cnic")} <span className="text-red-500">*</span></Label>
                         <Input
                           value={newParentData.cnic || ''}
                           onChange={(e) => setNewParentData({ ...newParentData, cnic: e.target.value })}
-                          placeholder="e.g., 12345-1234567-1"
+                          placeholder={tAdd("placeholder_cnic")}
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Relationship <span className="text-red-500">*</span></Label>
+                        <Label>{t("fields.relationship_type")} <span className="text-red-500">*</span></Label>
                         <Select
                           value={newParentData.relationship}
                           onValueChange={(v) => setNewParentData({ ...newParentData, relationship: v })}
                         >
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Father">Father</SelectItem>
-                            <SelectItem value="Mother">Mother</SelectItem>
-                            <SelectItem value="Guardian">Guardian</SelectItem>
-                            <SelectItem value="Other">Other</SelectItem>
+                            <SelectItem value="Father">{t("fields.father")}</SelectItem>
+                            <SelectItem value="Mother">{t("fields.mother")}</SelectItem>
+                            <SelectItem value="Guardian">{t("fields.guardian")}</SelectItem>
+                            <SelectItem value="Other">{t("fields.other")}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -1629,24 +1631,24 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
 
                     {/* Professional Information */}
                     <Separator className="my-2" />
-                    <h5 className="font-medium text-xs text-muted-foreground">Professional Information</h5>
+                    <h5 className="font-medium text-xs text-muted-foreground">{tAdd("professional_info")}</h5>
                     <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
-                        <Label>Occupation</Label>
+                        <Label>{t("fields.occupation")}</Label>
                         <Input
                           value={newParentData.occupation || ''}
                           onChange={(e) => setNewParentData({ ...newParentData, occupation: e.target.value })}
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Workplace</Label>
+                        <Label>{t("fields.workplace")}</Label>
                         <Input
                           value={newParentData.workplace || ''}
                           onChange={(e) => setNewParentData({ ...newParentData, workplace: e.target.value })}
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Income</Label>
+                        <Label>{t("fields.income")}</Label>
                         <Input
                           value={newParentData.income || ''}
                           onChange={(e) => setNewParentData({ ...newParentData, income: e.target.value })}
@@ -1657,9 +1659,9 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
 
                     {/* Address Information - Mandatory */}
                     <Separator className="my-2" />
-                    <h5 className="font-medium text-xs text-muted-foreground">Address <span className="text-red-500">*</span></h5>
+                    <h5 className="font-medium text-xs text-muted-foreground">{tCommon("address")} <span className="text-red-500">*</span></h5>
                     <div className="space-y-2">
-                      <Label>Street Address <span className="text-red-500">*</span></Label>
+                      <Label>{tCommon("street_address")} <span className="text-red-500">*</span></Label>
                       <Input
                         value={newParentData.address || ''}
                         onChange={(e) => setNewParentData({ ...newParentData, address: e.target.value })}
@@ -1667,14 +1669,14 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>City <span className="text-red-500">*</span></Label>
+                        <Label>{tCommon("city")} <span className="text-red-500">*</span></Label>
                         <Input
                           value={newParentData.city || ''}
                           onChange={(e) => setNewParentData({ ...newParentData, city: e.target.value })}
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>State / Province</Label>
+                        <Label>{tCommon("state")}</Label>
                         <Input
                           value={newParentData.state || ''}
                           onChange={(e) => setNewParentData({ ...newParentData, state: e.target.value })}
@@ -1683,14 +1685,14 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Zip Code</Label>
+                        <Label>{tCommon("zip_code")}</Label>
                         <Input
                           value={newParentData.zip_code || ''}
                           onChange={(e) => setNewParentData({ ...newParentData, zip_code: e.target.value })}
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Country</Label>
+                        <Label>{tCommon("country")}</Label>
                         <Input
                           value={newParentData.country || ''}
                           onChange={(e) => setNewParentData({ ...newParentData, country: e.target.value })}
@@ -1700,19 +1702,19 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <Label>Search Parent</Label>
+                    <Label>{tAdd("parent_search_title")}</Label>
                     <Combobox
                       options={parentOptions}
                       value={formData.linkedParentId}
                       onValueChange={(value) => updateFormData("linkedParentId", value)}
                       onSearchChange={setParentSearchQuery}
-                      placeholder="Search by name, email, or phone..."
-                      emptyMessage={isLoadingParents ? "Loading..." : parentSearchQuery.length < 2 ? "Type at least 2 characters to search" : "No parents found"}
+                      placeholder={tAdd("parent_search_placeholder")}
+                      emptyMessage={isLoadingParents ? tCommon("loading") : parentSearchQuery.length < 2 ? tAdd("search_type_min") : tAdd("no_parents_found")}
                     />
                     {formData.linkedParentId && (
                       <div className="flex items-center gap-2 mt-2">
                         <div className="text-sm text-muted-foreground flex items-center">
-                          <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs mr-2">Selected</span>
+                          <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs mr-2 rtl:ml-2 rtl:mr-0">{tCommon("selected")}</span>
                           <Button
                             type="button"
                             variant="ghost"
@@ -1720,7 +1722,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
                             className="h-6 px-2 text-red-500 hover:text-red-700 hover:bg-red-50"
                             onClick={() => updateFormData("linkedParentId", "")}
                           >
-                            <Trash2 className="h-3 w-3 mr-1" /> Clear
+                            <Trash2 className="h-3 w-3 mr-1 rtl:ml-1 rtl:mr-0" /> {tCommon("clear")}
                           </Button>
                         </div>
                       </div>
@@ -1730,19 +1732,19 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
 
                 {!showNewParentForm && formData.linkedParentId && (
                   <div className="space-y-2">
-                    <Label>Relationship Type <span className="text-red-500">*</span></Label>
+                    <Label>{t("fields.relationship_type")} <span className="text-red-500">*</span></Label>
                     <Select
                       value={formData.parentRelationType}
                       onValueChange={(value) => updateFormData("parentRelationType", value as any)}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select relationship type" />
+                        <SelectValue placeholder={tCommon("select_item", { item: t("fields.relationship_type").toLowerCase() })} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="father">Father</SelectItem>
-                        <SelectItem value="mother">Mother</SelectItem>
-                        <SelectItem value="guardian">Guardian</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
+                        <SelectItem value="father">{t("fields.father")}</SelectItem>
+                        <SelectItem value="mother">{t("fields.mother")}</SelectItem>
+                        <SelectItem value="guardian">{t("fields.guardian")}</SelectItem>
+                        <SelectItem value="other">{t("fields.other")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1753,7 +1755,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
 
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <h3 className="font-semibold text-[#022172]">Emergency Contacts</h3>
+                  <h3 className="font-semibold text-[#022172]">{t("fields.emergency_contacts")}</h3>
                   <Button
                     type="button"
                     variant="outline"
@@ -1761,8 +1763,8 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
                     onClick={addEmergencyContact}
                     className="border-[#57A3CC] text-[#022172]"
                   >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Contact
+                    <Plus className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
+                    {tAdd("btn_add_contact")}
                   </Button>
                 </div>
 
@@ -1771,7 +1773,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
                     <CardContent className="pt-4 space-y-3">
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-sm font-medium text-[#022172]">
-                          Contact {index + 1}
+                          {tAdd("contact_n", { n: index + 1 })}
                         </span>
                         <Button
                           type="button"
@@ -1785,43 +1787,43 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="space-y-2">
-                          <Label>Name</Label>
+                          <Label>{tCommon("name")}</Label>
                           <Input
                             value={contact.name}
                             onChange={(e) =>
                               updateEmergencyContact(index, "name", e.target.value)
                             }
-                            placeholder="Full name"
+                            placeholder={tAdd("placeholder_full_name")}
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label>Relationship</Label>
+                          <Label>{t("fields.relationship_type")}</Label>
                           <Input
                             value={contact.relationship}
                             onChange={(e) =>
                               updateEmergencyContact(index, "relationship", e.target.value)
                             }
-                            placeholder="e.g., Uncle, Neighbor"
+                            placeholder={tAdd("placeholder_relationship_example")}
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label>Phone</Label>
+                          <Label>{tCommon("phone")}</Label>
                           <Input
                             value={contact.phone}
                             onChange={(e) =>
                               updateEmergencyContact(index, "phone", e.target.value)
                             }
-                            placeholder="Contact number"
+                            placeholder={tAdd("placeholder_phone")}
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label>Address</Label>
+                          <Label>{tCommon("address")}</Label>
                           <Input
                             value={contact.address}
                             onChange={(e) =>
                               updateEmergencyContact(index, "address", e.target.value)
                             }
-                            placeholder="Address"
+                            placeholder={tCommon("address")}
                           />
                         </div>
                       </div>
@@ -1840,13 +1842,13 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
         <TabsContent value="system" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#022172]">System & Identity</CardTitle>
-              <CardDescription>Auto-generated fields (can be overridden if needed)</CardDescription>
+              <CardTitle className="text-[#022172]">{tAdd("system_tab")}</CardTitle>
+              <CardDescription>{tAdd("system_desc")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="studentId">Student ID / Roll Number</Label>
+                  <Label htmlFor="studentId">{t("fields.student_id")}</Label>
                   <Input
                     id="studentId"
                     value={formData.studentId}
@@ -1854,19 +1856,19 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="username">Username</Label>
+                  <Label htmlFor="username">{t("fields.username")}</Label>
                   <Input
                     id="username"
                     value={formData.username}
                     onChange={(e) => updateFormData("username", e.target.value)}
-                    placeholder="st_ahmed_123"
+                    placeholder={tAdd("placeholder_username_example")}
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password (Default)</Label>
+                  <Label htmlFor="password">{t("fields.password")}</Label>
                   <Input
                     id="password"
                     type="text"
@@ -1875,7 +1877,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
+                  <Label htmlFor="status">{tCommon("status")}</Label>
                   <Select
                     value={formData.status}
                     onValueChange={(value) => updateFormData("status", value as StudentStatus)}
@@ -1884,9 +1886,9 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                      <SelectItem value="suspended">Suspended</SelectItem>
+                      <SelectItem value="active">{tCommon("active")}</SelectItem>
+                      <SelectItem value="inactive">{tCommon("inactive")}</SelectItem>
+                      <SelectItem value="suspended">{tCommon("suspended")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1909,7 +1911,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
                     <CardHeader>
                       <CardTitle className="text-[#022172]">{category.name}</CardTitle>
                       <CardDescription>
-                        Additional information for {category.name.toLowerCase()}
+                        {tAdd("additional_tab_desc", { name: category.name })}
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -1941,7 +1943,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
           onClick={handlePrevious}
           disabled={isFirstTab}
         >
-          Previous
+          {tCommon("previous")}
         </Button>
 
         <div className="flex gap-3">
@@ -1950,7 +1952,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
             variant="outline"
             onClick={() => onSuccess()}
           >
-            Cancel
+            {tCommon("cancel")}
           </Button>
 
           {isLastTab ? (
@@ -1962,13 +1964,13 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin rtl:ml-2 rtl:mr-0" />
+                  {tCommon("saving")}...
                 </>
               ) : (
                 <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Student
+                  <Save className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
+                  {tCommon("save_student")}
                 </>
               )}
             </Button>
@@ -1978,7 +1980,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
               onClick={handleNext}
               className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white hover:opacity-90"
             >
-              Next
+              {tCommon("next")}
             </Button>
           )}
         </div>
@@ -1992,7 +1994,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
           onClose={() => {
             setShowChallanModal(false);
             setGeneratedFeeId(null);
-            toast.success("Student added successfully!");
+            toast.success(tAdd("msg_enroll_success"));
             onSuccess();
           }}
           feeId={generatedFeeId}

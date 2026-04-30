@@ -50,7 +50,10 @@ import {
 import * as academicsApi from '@/lib/api/academics'
 import { useCampus } from '@/context/CampusContext'
 
+import { useTranslations } from 'next-intl'
+
 export default function SectionsPage() {
+  const t = useTranslations('school.sections')
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
   
@@ -99,7 +102,7 @@ export default function SectionsPage() {
     if (result.success && result.data) {
       setSections(result.data)
     } else {
-      toast.error(result.error || 'Failed to fetch sections')
+      toast.error(result.error || t('fetch_error'))
     }
     setLoading(false)
   }
@@ -137,17 +140,17 @@ export default function SectionsPage() {
     e.preventDefault()
 
     if (!formData.grade_level_id) {
-      toast.error('Please select a grade level')
+      toast.error(t('grade_required'))
       return
     }
 
     if (!formData.name.trim()) {
-      toast.error('Section name is required')
+      toast.error(t('name_required'))
       return
     }
 
     if (formData.capacity < 1) {
-      toast.error('Capacity must be at least 1')
+      toast.error(t('capacity_min'))
       return
     }
 
@@ -163,11 +166,11 @@ export default function SectionsPage() {
         : await academicsApi.createSection(submitData)
 
       if (result.success) {
-        toast.success(`Section ${editingSection ? 'updated' : 'created'} successfully`)
+        toast.success(t(editingSection ? 'update_success' : 'create_success'))
         handleCloseDialog()
         fetchSections()
       } else {
-        toast.error(result.error || `Failed to ${editingSection ? 'update' : 'create'} section`)
+        toast.error(result.error || t(editingSection ? 'fetch_error' : 'fetch_error'))
       }
     } finally {
       setSaving(false)
@@ -185,10 +188,10 @@ export default function SectionsPage() {
     const result = await academicsApi.deleteSection(sectionToDelete, selectedCampus?.id)
 
     if (result.success) {
-      toast.success('Section deleted successfully')
+      toast.success(t('delete_success'))
       fetchSections()
     } else {
-      toast.error(result.error || 'Failed to delete section')
+      toast.error(result.error || t('fetch_error'))
     }
 
     setDeleteDialogOpen(false)
@@ -206,14 +209,14 @@ export default function SectionsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Sections</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
           <p className="text-muted-foreground">
-            Manage classroom sections within each grade level
+            {t('subtitle')}
           </p>
         </div>
         <Button onClick={() => handleOpenDialog()}>
           <Plus className="mr-2 h-4 w-4" />
-          Add Section
+          {t('add_section')}
         </Button>
       </div>
 
@@ -221,16 +224,16 @@ export default function SectionsPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>All Sections</CardTitle>
-              <CardDescription>View and manage classroom sections</CardDescription>
+              <CardTitle>{t('all_sections')}</CardTitle>
+              <CardDescription>{t('all_sections_desc')}</CardDescription>
             </div>
             <div className="w-[200px]">
               <Select value={filterGrade} onValueChange={setFilterGrade}>
                 <SelectTrigger>
-                  <SelectValue placeholder="All Grades" />
+                  <SelectValue placeholder={t('all_grades')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Grades</SelectItem>
+                  <SelectItem value="all">{t('all_grades')}</SelectItem>
                   {grades.map((grade) => (
                     <SelectItem key={grade.id} value={grade.id}>
                       {grade.name}
@@ -243,22 +246,22 @@ export default function SectionsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="text-center py-8">Loading...</div>
+            <div className="text-center py-8">{t('loading')}</div>
           ) : sections.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No sections found. Add your first section to get started.
+              {t('no_sections')}
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Section Name</TableHead>
-                  <TableHead>Grade Level</TableHead>
-                  <TableHead>Capacity</TableHead>
-                  <TableHead>Current Strength</TableHead>
-                  <TableHead>Available Seats</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t('name')}</TableHead>
+                  <TableHead>{t('grade')}</TableHead>
+                  <TableHead>{t('capacity')}</TableHead>
+                  <TableHead>{t('strength')}</TableHead>
+                  <TableHead>{t('available')}</TableHead>
+                  <TableHead>{t('status')}</TableHead>
+                  <TableHead className="text-right">{t('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -282,12 +285,12 @@ export default function SectionsPage() {
                             : 'default'
                         }
                       >
-                        {section.available_seats} seats
+                        {t('seats', { count: section.available_seats })}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge variant={section.is_active ? 'default' : 'secondary'}>
-                        {section.is_active ? 'Active' : 'Inactive'}
+                        {section.is_active ? t('active') : t('inactive')}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -320,24 +323,22 @@ export default function SectionsPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingSection ? 'Edit Section' : 'Add Section'}</DialogTitle>
+            <DialogTitle>{editingSection ? t('edit_title') : t('add_title')}</DialogTitle>
             <DialogDescription>
-              {editingSection
-                ? 'Update the details of this section'
-                : 'Create a new section for a grade level'}
+              {editingSection ? t('edit_desc') : t('add_desc')}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="grade_level_id">Grade Level *</Label>
+                <Label htmlFor="grade_level_id">{t('grade_label')}</Label>
                 <Select
                   value={formData.grade_level_id}
                   onValueChange={(value) => setFormData({ ...formData, grade_level_id: value })}
                   disabled={!!editingSection}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select grade level" />
+                    <SelectValue placeholder={t('select_grade')} />
                   </SelectTrigger>
                   <SelectContent>
                     {grades.map((grade) => (
@@ -349,17 +350,17 @@ export default function SectionsPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="name">Section Name *</Label>
+                <Label htmlFor="name">{t('name_label')}</Label>
                 <Input
                   id="name"
-                  placeholder="e.g., Section A, Blue, Girls Wing"
+                  placeholder={t('name_placeholder')}
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="capacity">Capacity *</Label>
+                <Label htmlFor="capacity">{t('capacity_label')}</Label>
                 <Input
                   id="capacity"
                   type="number"
@@ -370,16 +371,16 @@ export default function SectionsPage() {
                   required
                 />
                 <p className="text-sm text-muted-foreground">
-                  Maximum number of students allowed in this section
+                  {t('capacity_desc')}
                 </p>
               </div>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={handleCloseDialog} disabled={saving}>
-                Cancel
+                {t('cancel')}
               </Button>
               <Button type="submit" disabled={saving}>
-                {saving ? (editingSection ? 'Updating...' : 'Creating...') : (editingSection ? 'Update' : 'Create')}
+                {saving ? t(editingSection ? 'updating' : 'creating') : t(editingSection ? 'update' : 'create')}
               </Button>
             </DialogFooter>
           </form>
@@ -390,16 +391,15 @@ export default function SectionsPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>{t('delete_confirm_title')}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this section. Make sure there are no students enrolled in
-              this section before deleting.
+              {t('delete_confirm_desc')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setSectionToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setSectionToDelete(null)}>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground">
-              Delete
+              {t('delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

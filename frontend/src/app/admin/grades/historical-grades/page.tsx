@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
 import * as gradesApi from "@/lib/api/grades";
+import { useTranslations } from "next-intl";
 import { getStudents } from "@/lib/api/students";
 import type {
   HistoricalGradeMP,
@@ -51,6 +52,8 @@ interface StudentListItem {
 export default function HistoricalGradesPage() {
   const { user } = useAuth();
   const campusContext = useCampus();
+  const t = useTranslations("school.grades_module.historical_grades");
+  const tCommon = useTranslations("school.grades_module.common");
   const selectedCampus = campusContext?.selectedCampus;
 
   // ── Student list (initial view) ───────────────────────────────
@@ -114,7 +117,7 @@ export default function HistoricalGradesPage() {
         );
       }
     } catch {
-      toast.error("Failed to load students");
+      toast.error(t("msg_load_failed"));
     } finally {
       setLoadingStudents(false);
     }
@@ -172,7 +175,7 @@ export default function HistoricalGradesPage() {
         }
       }
     } catch {
-      toast.error("Failed to load marking periods");
+      toast.error(t("msg_load_failed"));
     } finally {
       setLoadingMps(false);
     }
@@ -197,7 +200,7 @@ export default function HistoricalGradesPage() {
         setRows(res.data.map((g) => ({ ...g })));
       }
     } catch {
-      toast.error("Failed to load grades");
+      toast.error(t("msg_load_failed"));
     } finally {
       setLoadingGrades(false);
     }
@@ -247,7 +250,7 @@ export default function HistoricalGradesPage() {
         grade_level: addGradeLevel || undefined,
       });
       if (res.success) {
-        toast.success("Marking period added");
+        toast.success(t("msg_mp_added"));
         setShowAddPanel(false);
         setAddMpId("");
         setAddGradeLevel("");
@@ -275,7 +278,7 @@ export default function HistoricalGradesPage() {
     const mp = mps.find((m) => m.mp_id === activeMp);
     if (
       !confirm(
-        `Remove marking period "${mp?.mp_name || "Unknown"}" and all its grades from this student?`
+        t("remove_mp_confirm", { name: mp?.mp_name || "Unknown" })
       )
     )
       return;
@@ -286,7 +289,7 @@ export default function HistoricalGradesPage() {
         activeMp
       );
       if (res.success) {
-        toast.success("Marking period removed");
+        toast.success(t("msg_mp_removed"));
         setActiveMp("");
         setRows([]);
         const mpRes = await gradesApi.getHistoricalGradeMPs(selectedStudent.id);
@@ -332,7 +335,7 @@ export default function HistoricalGradesPage() {
 
   const addRow = () => {
     if (!newCourse.trim()) {
-      toast.error("Course title is required");
+      toast.error(t("msg_course_required"));
       return;
     }
     setRows((prev) => [
@@ -403,11 +406,11 @@ export default function HistoricalGradesPage() {
         });
         if (!res.success) errors++;
       }
-      if (errors === 0) toast.success("Grades saved");
-      else toast.error(`${errors} operation(s) failed`);
+      if (errors === 0) toast.success(t("msg_save_success"));
+      else toast.error(t("msg_save_partial", { count: errors }));
       await loadGrades();
     } catch {
-      toast.error("Save failed");
+      toast.error(tCommon("error_occurred", { defaultValue: "Save failed" }));
     } finally {
       setSaving(false);
     }
@@ -465,7 +468,7 @@ export default function HistoricalGradesPage() {
         <div>
           <h1 className="text-3xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent flex items-center gap-2">
             <BookOpen className="h-8 w-8 text-[#57A3CC]" />
-            Historical Grades
+            {t("title")}
           </h1>
           {selectedStudent ? (
             <p className="text-muted-foreground mt-1">
@@ -483,7 +486,7 @@ export default function HistoricalGradesPage() {
             </p>
           ) : (
             <p className="text-muted-foreground mt-1">
-              Select a student to view and edit historical grade records
+              {t("subtitle")}
               {selectedCampus && (
                 <span className="ml-1 font-medium">
                   — {selectedCampus.name}
@@ -501,14 +504,14 @@ export default function HistoricalGradesPage() {
             {/* Search + count */}
             <div className="flex items-center justify-between mb-4">
               <p className="text-sm text-muted-foreground">
-                {filteredStudents.length} student{filteredStudents.length !== 1 ? "s" : ""} found.
+                {tCommon("students_found", { count: filteredStudents.length })}
               </p>
               <div className="relative w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search"
+                  placeholder={t("search_placeholder")}
                   className="pl-10 h-9"
                 />
               </div>
@@ -522,21 +525,21 @@ export default function HistoricalGradesPage() {
               </div>
             ) : filteredStudents.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
-                No students found.
+                {tCommon("no_students_found", { defaultValue: "No students found." })}
               </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="bg-[#0369a1] text-white">
-                      <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-4">
-                        Student
+                      <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-4 rtl:text-right">
+                        {t("th_student")}
                       </th>
-                      <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-4">
-                        Student ID
+                      <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-4 rtl:text-right">
+                        {t("th_student_id")}
                       </th>
-                      <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-4">
-                        Grade Level
+                      <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-4 rtl:text-right">
+                        {t("th_grade_level")}
                       </th>
                     </tr>
                   </thead>
@@ -545,9 +548,8 @@ export default function HistoricalGradesPage() {
                       <tr
                         key={student.id}
                         onClick={() => handleSelectStudent(student)}
-                        className={`border-b cursor-pointer hover:bg-blue-50 transition-colors ${
-                          idx % 2 === 0 ? "bg-white" : "bg-gray-50"
-                        }`}
+                        className={`border-b cursor-pointer hover:bg-blue-50 transition-colors ${idx % 2 === 0 ? "bg-white" : "bg-gray-50"
+                          }`}
                       >
                         <td className="py-3 px-4">
                           <span className="text-[#0369a1] hover:underline font-medium">
@@ -581,12 +583,12 @@ export default function HistoricalGradesPage() {
               disabled={loadingAvailableMps}
             >
               <SelectTrigger className="w-[320px]">
-                <SelectValue placeholder="Add another marking period" />
+                <SelectValue placeholder={t("add_mp_placeholder")} />
               </SelectTrigger>
               <SelectContent>
                 {filteredAvailableMps.length === 0 ? (
                   <SelectItem value="__none" disabled>
-                    No marking periods available to add
+                    {t("no_mps_available")}
                   </SelectItem>
                 ) : (
                   filteredAvailableMps.map((mp) => (
@@ -608,9 +610,9 @@ export default function HistoricalGradesPage() {
                 {saving ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <Save className="h-4 w-4" />
+                  <Save className="h-4 w-4 rtl:ml-2 rtl:mr-0" />
                 )}
-                Save
+                {t("btn_save")}
               </Button>
             )}
           </div>
@@ -621,17 +623,17 @@ export default function HistoricalGradesPage() {
               <Card className="w-full max-w-lg">
                 <CardContent className="pt-6 space-y-4">
                   <h3 className="text-lg font-bold text-center uppercase tracking-wide text-[#0369a1]">
-                    Add Another Marking Period
+                    {t("add_mp_title")}
                   </h3>
 
                   <div className="space-y-3">
                     <div>
                       <label className="text-sm font-medium mb-1 block">
-                        New Marking Period
+                        {t("new_mp_label")}
                       </label>
                       <Select value={addMpId} onValueChange={setAddMpId}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select marking period" />
+                          <SelectValue placeholder={t("select_mp_placeholder")} />
                         </SelectTrigger>
                         <SelectContent>
                           {filteredAvailableMps.map((mp) => (
@@ -645,7 +647,7 @@ export default function HistoricalGradesPage() {
 
                     <div>
                       <label className="text-sm font-medium mb-1 block">
-                        Grade Level
+                        {t("grade_level_label")}
                       </label>
                       <Input
                         value={addGradeLevel}
@@ -664,7 +666,7 @@ export default function HistoricalGradesPage() {
                         setAddGradeLevel("");
                       }}
                     >
-                      Cancel
+                      {t("btn_cancel")}
                     </Button>
                     <Button
                       onClick={handleSaveAddMp}
@@ -674,9 +676,9 @@ export default function HistoricalGradesPage() {
                       {addingSaving ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
-                        <Save className="h-4 w-4" />
+                        <Save className="h-4 w-4 rtl:ml-2 rtl:mr-0" />
                       )}
-                      Save
+                      {t("btn_save")}
                     </Button>
                   </div>
                 </CardContent>
@@ -691,8 +693,7 @@ export default function HistoricalGradesPage() {
             <Card>
               <CardContent className="pt-6 text-center text-muted-foreground">
                 <p>
-                  No historical marking periods found for this student.
-                  Use the dropdown above to add one.
+                  {t("no_historical_mps")}
                 </p>
               </CardContent>
             </Card>
@@ -724,7 +725,7 @@ export default function HistoricalGradesPage() {
                         <div className="flex items-center gap-6">
                           <div>
                             <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                              Marking Period
+                              {t("mp_label")}
                             </p>
                             <p className="font-semibold text-[#0369a1]">
                               {mp.mp_name}
@@ -732,14 +733,14 @@ export default function HistoricalGradesPage() {
                           </div>
                           <div>
                             <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                              School Year
+                              {t("school_year_label")}
                             </p>
                             <p className="font-semibold">{mp.school_year}</p>
                           </div>
                           <div className="flex items-center gap-2">
                             <div>
                               <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                                Grade Level
+                                {t("grade_level_label")}
                               </p>
                               <Input
                                 value={editGradeLevel}
@@ -757,8 +758,8 @@ export default function HistoricalGradesPage() {
                           onClick={handleRemoveMp}
                           disabled={saving}
                         >
-                          <Trash2 className="h-4 w-4" />
-                          Remove Marking Period
+                          <Trash2 className="h-4 w-4 rtl:ml-2 rtl:mr-0" />
+                          {t("btn_remove_mp")}
                         </Button>
                       </div>
                     </CardContent>
@@ -771,7 +772,7 @@ export default function HistoricalGradesPage() {
                         <p className="text-2xl font-bold text-[#0369a1]">
                           {gradeStats.gpa}
                         </p>
-                        <p className="text-xs text-muted-foreground">GPA</p>
+                        <p className="text-xs text-muted-foreground">{t("stat_gpa")}</p>
                       </CardContent>
                     </Card>
                     <Card>
@@ -780,7 +781,7 @@ export default function HistoricalGradesPage() {
                           {gradeStats.courseCount}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Courses
+                          {t("stat_courses")}
                         </p>
                       </CardContent>
                     </Card>
@@ -790,7 +791,7 @@ export default function HistoricalGradesPage() {
                           {gradeStats.creditsAttempted}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Credits Attempted
+                          {t("stat_credits_attempted")}
                         </p>
                       </CardContent>
                     </Card>
@@ -800,7 +801,7 @@ export default function HistoricalGradesPage() {
                           {gradeStats.creditsEarned}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Credits Earned
+                          {t("stat_credits_earned")}
                         </p>
                       </CardContent>
                     </Card>
@@ -810,8 +811,7 @@ export default function HistoricalGradesPage() {
                     <CardContent className="pt-6">
                       <div className="flex items-center justify-between mb-4">
                         <p className="text-sm text-[#0369a1] font-medium">
-                          {visibleRows.length} grade entr
-                          {visibleRows.length !== 1 ? "ies" : "y"}
+                          {t("entries_count", { count: visibleRows.length })}
                         </p>
                         <Button
                           onClick={handleSave}
@@ -843,23 +843,23 @@ export default function HistoricalGradesPage() {
                                 <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2">
                                   Course Title
                                 </th>
-                                <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-24">
-                                  Grade
+                                <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-24 rtl:text-right">
+                                  {t("th_grade")}
                                 </th>
-                                <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-24">
-                                  %
+                                <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-24 rtl:text-right">
+                                  {t("th_percent")}
                                 </th>
-                                <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-20">
-                                  GP
+                                <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-20 rtl:text-right">
+                                  {t("th_gp")}
                                 </th>
-                                <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-24">
-                                  Cr. Att.
+                                <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-24 rtl:text-right">
+                                  {t("th_cr_att")}
                                 </th>
-                                <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-24">
-                                  Cr. Earn.
+                                <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-24 rtl:text-right">
+                                  {t("th_cr_earn")}
                                 </th>
-                                <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2">
-                                  Comment
+                                <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 rtl:text-right">
+                                  {t("th_comment")}
                                 </th>
                               </tr>
                             </thead>
@@ -869,11 +869,10 @@ export default function HistoricalGradesPage() {
                                 return (
                                   <tr
                                     key={row.id}
-                                    className={`border-b hover:bg-muted/30 ${
-                                      idx % 2 === 0
+                                    className={`border-b hover:bg-muted/30 ${idx % 2 === 0
                                         ? "bg-white"
                                         : "bg-gray-50"
-                                    }`}
+                                      }`}
                                   >
                                     <td className="py-2 px-1">
                                       <button
@@ -1010,7 +1009,7 @@ export default function HistoricalGradesPage() {
                                     onChange={(e) =>
                                       setNewCourse(e.target.value)
                                     }
-                                    placeholder="Course title"
+                                    placeholder={t("course_placeholder")}
                                     className="h-8 text-sm"
                                     onKeyDown={(e) =>
                                       e.key === "Enter" && addRow()

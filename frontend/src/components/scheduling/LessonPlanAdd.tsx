@@ -5,6 +5,7 @@ import useSWR, { mutate as globalMutate } from "swr"
 import { useAuth } from "@/context/AuthContext"
 import { useAcademic } from "@/context/AcademicContext"
 import { useCampus } from "@/context/CampusContext"
+import { useTranslations, useLocale } from "next-intl"
 import {
   getLessonPlans,
   getLessonPlanById,
@@ -127,6 +128,10 @@ function formatCoursePeriodLabel(cp: CoursePeriod | Record<string, unknown>): st
 // ==================
 
 export default function LessonPlanAdd() {
+  const t = useTranslations("school.scheduling.lesson_plan_add")
+  const tCommon = useTranslations("common")
+  const locale = useLocale()
+
   const { user, profile } = useAuth()
   const { selectedAcademicYear } = useAcademic()
   const campusContext = useCampus()
@@ -259,15 +264,15 @@ export default function LessonPlanAdd() {
   // Save lesson
   async function handleSave() {
     if (!selectedCpId || !selectedAcademicYear || !teacherId) {
-      toast.error("Please select a course period first")
+      toast.error(t("msg_cp_required"))
       return
     }
     if (!lessonForm.title.trim()) {
-      toast.error("Lesson title is required")
+      toast.error(t("msg_title_required"))
       return
     }
     if (!lessonForm.on_date) {
-      toast.error("Date is required")
+      toast.error(t("msg_date_required"))
       return
     }
 
@@ -310,7 +315,7 @@ export default function LessonPlanAdd() {
           if (!itemsRes.success) throw new Error(itemsRes.error)
         }
 
-        toast.success("Lesson plan updated")
+        toast.success(t("msg_updated"))
       } else {
         // Create new lesson
         const res = await createLessonPlan({
@@ -329,7 +334,7 @@ export default function LessonPlanAdd() {
         })
         if (!res.success) throw new Error(res.error)
 
-        toast.success("Lesson plan created")
+        toast.success(t("msg_created"))
       }
 
       setShowForm(false)
@@ -341,7 +346,7 @@ export default function LessonPlanAdd() {
         { revalidate: true }
       )
     } catch (err: any) {
-      toast.error(err.message || "Failed to save lesson plan")
+      toast.error(err.message || tCommon("error"))
     } finally {
       setSaving(false)
     }
@@ -353,7 +358,7 @@ export default function LessonPlanAdd() {
     try {
       const res = await deleteLessonPlan(lessonId)
       if (!res.success) throw new Error(res.error)
-      toast.success("Lesson plan deleted")
+      toast.success(t("msg_deleted"))
       mutateLessons()
       globalMutate(
         (key: unknown) => Array.isArray(key) && key[0] === "lesson-plan-summary",
@@ -361,7 +366,7 @@ export default function LessonPlanAdd() {
         { revalidate: true }
       )
     } catch (err: any) {
-      toast.error(err.message || "Failed to delete")
+      toast.error(err.message || tCommon("error"))
     } finally {
       setDeleting(null)
     }
@@ -394,10 +399,10 @@ export default function LessonPlanAdd() {
       })
 
       if (!res.success) throw new Error(res.error)
-      toast.success("File uploaded")
+      toast.success(t("msg_file_uploaded"))
       mutateLessons()
     } catch (err: any) {
-      toast.error(err.message || "Failed to upload file")
+      toast.error(err.message || tCommon("error"))
     } finally {
       setUploadingFile(false)
     }
@@ -408,10 +413,10 @@ export default function LessonPlanAdd() {
     try {
       const res = await removeLessonFile(fileId)
       if (!res.success) throw new Error(res.error)
-      toast.success("File removed")
+      toast.success(t("msg_file_removed"))
       mutateLessons()
     } catch (err: any) {
-      toast.error(err.message || "Failed to remove file")
+      toast.error(err.message || tCommon("error"))
     }
   }
 
@@ -434,24 +439,24 @@ export default function LessonPlanAdd() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BookOpen className="h-5 w-5" />
-            Lesson Plan — Add / Edit
+            {t("title")}
           </CardTitle>
           <CardDescription>
-            Select a course period, then create or edit lesson plans.
+            {t("desc")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
             <div className="flex-1">
-              <Label className="mb-1.5 block text-sm">Course Period</Label>
+              <Label className="mb-1.5 block text-sm">{tCommon("course_period")}</Label>
               <Select value={selectedCpId} onValueChange={setSelectedCpId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a course period..." />
+                  <SelectValue placeholder={tCommon("select_course_period")} />
                 </SelectTrigger>
                 <SelectContent>
                   {cpList.length === 0 ? (
                     <SelectItem value="__none" disabled>
-                      No course periods assigned to you
+                      {t("no_cp_assigned")}
                     </SelectItem>
                   ) : (
                     cpList.map((cp) => (
@@ -465,8 +470,8 @@ export default function LessonPlanAdd() {
             </div>
             {selectedCpId && (
               <Button onClick={handleNewLesson} disabled={showForm}>
-                <Plus className="h-4 w-4 mr-1" />
-                New Lesson
+                <Plus className="h-4 w-4 mr-1 rtl:ml-1 rtl:mr-0" />
+                {t("new_lesson")}
               </Button>
             )}
           </div>
@@ -478,28 +483,28 @@ export default function LessonPlanAdd() {
         <Card className="max-w-5xl">
           <CardHeader>
             <CardTitle>
-              {editingLessonId ? "Edit Lesson Plan" : "New Lesson Plan"}
+              {editingLessonId ? t("edit_lesson") : t("new_lesson_plan")}
             </CardTitle>
             <CardDescription>
-              Fill in the lesson details and add lesson parts below.
+              {t("form_desc")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Basic Info */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="sm:col-span-2">
-                <Label htmlFor="lp-title">Lesson Title *</Label>
+                <Label htmlFor="lp-title">{t("lesson_title")}</Label>
                 <Input
                   id="lp-title"
                   value={lessonForm.title}
                   onChange={(e) =>
                     setLessonForm({ ...lessonForm, title: e.target.value })
                   }
-                  placeholder="e.g. Introduction to Algebra"
+                  placeholder={t("placeholder_title")}
                 />
               </div>
               <div>
-                <Label htmlFor="lp-date">Date *</Label>
+                <Label htmlFor="lp-date">{tCommon("date")} *</Label>
                 <Input
                   id="lp-date"
                   type="date"
@@ -510,7 +515,7 @@ export default function LessonPlanAdd() {
                 />
               </div>
               <div>
-                <Label htmlFor="lp-num">Lesson #</Label>
+                <Label htmlFor="lp-num">{t("lesson_num")}</Label>
                 <Input
                   id="lp-num"
                   type="number"
@@ -525,7 +530,7 @@ export default function LessonPlanAdd() {
                 />
               </div>
               <div>
-                <Label htmlFor="lp-length">Length (minutes)</Label>
+                <Label htmlFor="lp-length">{t("length_min")}</Label>
                 <Input
                   id="lp-length"
                   type="number"
@@ -544,13 +549,13 @@ export default function LessonPlanAdd() {
 
             {/* Learning Objectives */}
             <div>
-              <Label className="mb-1.5 block">Learning Objectives</Label>
+              <Label className="mb-1.5 block">{t("learning_objectives")}</Label>
               <RichTextEditor
                 value={lessonForm.learning_objectives}
                 onChange={(html) =>
                   setLessonForm({ ...lessonForm, learning_objectives: html })
                 }
-                placeholder="Describe the learning objectives..."
+                placeholder={t("desc_objectives")}
                 campusId={campusId}
                 showEditorPlugins
               />
@@ -561,15 +566,15 @@ export default function LessonPlanAdd() {
             {/* Lesson Parts Table */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <Label className="text-base font-semibold">Lesson Parts</Label>
+                <Label className="text-base font-semibold">{t("lesson_parts")}</Label>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={addItemRow}
                 >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Part
+                  <Plus className="h-4 w-4 mr-1 rtl:ml-1 rtl:mr-0" />
+                  {t("add_part")}
                 </Button>
               </div>
               <div className="space-y-4">
@@ -577,9 +582,9 @@ export default function LessonPlanAdd() {
                   <Card key={idx} className="p-4">
                     <div className="flex items-center gap-2 mb-3">
                       <Badge variant="secondary" className="text-xs">
-                        Part {idx + 1}
+                        {t("part_label", { num: idx + 1 })}
                       </Badge>
-                      <div className="flex items-center gap-1 ml-auto">
+                      <div className="flex items-center gap-1 ml-auto rtl:mr-auto rtl:ml-0">
                         <Button
                           type="button"
                           variant="ghost"
@@ -614,7 +619,7 @@ export default function LessonPlanAdd() {
 
                     <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
                       <div>
-                        <Label className="text-xs">Time (min)</Label>
+                        <Label className="text-xs">{t("time_min")}</Label>
                         <Input
                           type="number"
                           min={1}
@@ -631,40 +636,40 @@ export default function LessonPlanAdd() {
                       </div>
                       <div>
                         <Label className="text-xs">
-                          Content &amp; Teacher Activity
+                          {t("teacher_activity")}
                         </Label>
                         <RichTextEditor
                           value={item.teacher_activity}
                           onChange={(html) =>
                             updateItem(idx, "teacher_activity", html)
                           }
-                          placeholder="Teacher activity..."
+                          placeholder={t("teacher_activity") + "..."}
                           minHeight="80px"
                           campusId={campusId}
                           showEditorPlugins
                         />
                       </div>
                       <div>
-                        <Label className="text-xs">Learner Activity</Label>
+                        <Label className="text-xs">{t("learner_activity")}</Label>
                         <RichTextEditor
                           value={item.learner_activity}
                           onChange={(html) =>
                             updateItem(idx, "learner_activity", html)
                           }
-                          placeholder="Learner activity..."
+                          placeholder={t("learner_activity") + "..."}
                           minHeight="80px"
                           campusId={campusId}
                           showEditorPlugins
                         />
                       </div>
                       <div>
-                        <Label className="text-xs">Formative Assessment</Label>
+                        <Label className="text-xs">{t("formative_assessment")}</Label>
                         <RichTextEditor
                           value={item.formative_assessment}
                           onChange={(html) =>
                             updateItem(idx, "formative_assessment", html)
                           }
-                          placeholder="Assessment..."
+                          placeholder={t("formative_assessment") + "..."}
                           minHeight="80px"
                           campusId={campusId}
                           showEditorPlugins
@@ -672,14 +677,14 @@ export default function LessonPlanAdd() {
                       </div>
                       <div>
                         <Label className="text-xs">
-                          Learning Materials &amp; Resources
+                          {t("learning_materials")}
                         </Label>
                         <RichTextEditor
                           value={item.learning_materials}
                           onChange={(html) =>
                             updateItem(idx, "learning_materials", html)
                           }
-                          placeholder="Materials..."
+                          placeholder={t("learning_materials") + "..."}
                           minHeight="80px"
                           campusId={campusId}
                           showEditorPlugins
@@ -697,47 +702,47 @@ export default function LessonPlanAdd() {
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <div>
                 <Label className="mb-1.5 block">
-                  Lesson Evaluation (Past Lesson)
+                  {t("lesson_evaluation")}
                 </Label>
                 <RichTextEditor
                   value={lessonForm.evaluation}
                   onChange={(html) =>
                     setLessonForm({ ...lessonForm, evaluation: html })
                   }
-                  placeholder="Evaluate the past lesson..."
+                  placeholder={t("lesson_evaluation") + "..."}
                   campusId={campusId}
                   showEditorPlugins
                 />
               </div>
               <div>
-                <Label className="mb-1.5 block">Inclusiveness</Label>
+                <Label className="mb-1.5 block">{t("inclusiveness")}</Label>
                 <RichTextEditor
                   value={lessonForm.inclusiveness}
                   onChange={(html) =>
                     setLessonForm({ ...lessonForm, inclusiveness: html })
                   }
-                  placeholder="Describe inclusiveness considerations..."
+                  placeholder={t("inclusiveness") + "..."}
                   campusId={campusId}
                   showEditorPlugins
                 />
               </div>
             </div>
 
-          <div className="p-6 pt-0 flex justify-end gap-2">
+          <div className="p-6 pt-0 flex justify-end gap-2 rtl:flex-row-reverse">
             <Button
               variant="outline"
               onClick={() => setShowForm(false)}
               disabled={saving}
             >
-              Cancel
+              {tCommon("cancel")}
             </Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving ? (
-                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                <Loader2 className="h-4 w-4 mr-1 rtl:ml-1 rtl:mr-0 animate-spin" />
               ) : (
-                <Save className="h-4 w-4 mr-1" />
+                <Save className="h-4 w-4 mr-1 rtl:ml-1 rtl:mr-0" />
               )}
-              {editingLessonId ? "Update" : "Create"} Lesson
+              {editingLessonId ? tCommon("update") : tCommon("create")}
             </Button>
           </div>
         </CardContent>
@@ -748,11 +753,11 @@ export default function LessonPlanAdd() {
       {selectedCpId && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Existing Lessons</CardTitle>
+            <CardTitle className="text-base">{t("existing_lessons")}</CardTitle>
             <CardDescription>
               {lessonsLoading
-                ? "Loading..."
-                : `${existingLessons?.length || 0} lesson(s) for this course period`}
+                ? tCommon("loading")
+                : t("found_lessons", { count: existingLessons?.length || 0 })}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -765,7 +770,7 @@ export default function LessonPlanAdd() {
             ) : !existingLessons?.length ? (
               <div className="text-center py-8 text-muted-foreground">
                 <BookOpen className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                <p>No lessons yet. Click &quot;New Lesson&quot; to get started.</p>
+                <p>{t("no_lessons_yet")}</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -782,26 +787,27 @@ export default function LessonPlanAdd() {
                         <span>
                           {new Date(
                             lesson.on_date + "T00:00:00"
-                          ).toLocaleDateString()}
+                          ).toLocaleDateString(locale === "ar" ? "ar-SA" : "en-US")}
                         </span>
                         {lesson.length_minutes && (
-                          <span>{lesson.length_minutes} min</span>
+                          <span>{lesson.length_minutes} {tCommon("min")}</span>
                         )}
                         <span>
-                          {lesson.items?.length || 0} part(s)
+                          {tCommon("count_parts", { count: lesson.items?.length || 0 })}
                         </span>
                         {(lesson.files?.length || 0) > 0 && (
                           <span>
-                            {lesson.files!.length} file(s)
+                            {tCommon("count_files", { count: lesson.files!.length })}
                           </span>
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 rtl:flex-row-reverse">
                       {/* File upload button */}
                       <Button
                         variant="outline"
                         size="sm"
+                        title={tCommon("upload")}
                         disabled={uploadingFile}
                         onClick={() => {
                           // Store lesson id, then trigger file input
@@ -826,6 +832,7 @@ export default function LessonPlanAdd() {
                       <Button
                         variant="outline"
                         size="sm"
+                        title={tCommon("edit")}
                         onClick={() => handleEditLesson(lesson)}
                       >
                         <Pencil className="h-4 w-4" />
@@ -833,6 +840,7 @@ export default function LessonPlanAdd() {
                       <Button
                         variant="outline"
                         size="sm"
+                        title={tCommon("delete")}
                         className="text-destructive hover:text-destructive"
                         onClick={() => handleDelete(lesson.id)}
                         disabled={deleting === lesson.id}

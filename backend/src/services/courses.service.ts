@@ -328,7 +328,7 @@ class CoursesService {
         .select(`
           *,
           course:courses(id, title, short_name, credit_hours, subject:subjects(id, name, code)),
-          teacher:staff(id, profile_id, profile:profiles!profile_id(first_name, last_name)),
+          teacher:staff!teacher_id(id, profile_id, profile:profiles!profile_id(first_name, last_name)),
           grading_scale:grading_scales(id, title, type)
         `)
         .eq('section_id', student.section_id)
@@ -345,7 +345,7 @@ class CoursesService {
       .select(`
         *,
         course:courses(id, title, short_name, credit_hours, subject:subjects(id, name, code)),
-        teacher:staff(id, profile_id, profile:profiles!profile_id(first_name, last_name)),
+        teacher:staff!teacher_id(id, profile_id, profile:profiles!profile_id(first_name, last_name)),
         grading_scale:grading_scales(id, title, type)
       `)
       .eq('section_id', enrollment.section_id)
@@ -358,19 +358,34 @@ class CoursesService {
   }
 
   /**
-   * Get all course periods for a section (used by timetable admin to select CP when assigning a slot).
+   * Get all course periods available to assign for a section's timetable slot.
+   * In RosarioSIS architecture, course_periods.section_id is NULL — they belong to a
+   * teacher + course, not directly to a section. We resolve by school + academic year.
    */
-  async getCoursePeriodsBySection(sectionId: string, academicYearId?: string): Promise<CoursePeriod[]> {
+  async getCoursePeriodsBySection(sectionId: string, academicYearId?: string, schoolId?: string): Promise<CoursePeriod[]> {
+    // Resolve school_id from section if not provided
+    let resolvedSchoolId = schoolId
+    if (!resolvedSchoolId) {
+      const { data: section } = await supabase
+        .from('sections')
+        .select('school_id')
+        .eq('id', sectionId)
+        .single()
+      resolvedSchoolId = section?.school_id
+    }
+
+    if (!resolvedSchoolId) throw new Error('Could not resolve school_id for section')
+
     let query = supabase
       .from('course_periods')
       .select(`
         *,
         course:courses(id, title, short_name, subject:subjects(id, name, code)),
-        teacher:staff(id, profile_id, profile:profiles!profile_id(first_name, last_name)),
+        teacher:staff!teacher_id(id, profile_id, profile:profiles!profile_id(first_name, last_name)),
         period:periods(id, period_name, period_number, start_time, end_time),
         marking_period:marking_periods(id, title, short_name, mp_type)
       `)
-      .eq('section_id', sectionId)
+      .eq('school_id', resolvedSchoolId)
       .eq('is_active', true)
 
     if (academicYearId) query = query.eq('academic_year_id', academicYearId)

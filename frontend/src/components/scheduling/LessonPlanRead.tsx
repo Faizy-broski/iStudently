@@ -48,8 +48,10 @@ import { Separator } from "@/components/ui/separator"
 
 type TimeframeMode = "day" | "week" | "month" | "all"
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr + "T00:00:00").toLocaleDateString(undefined, {
+import { useTranslations, useLocale } from "next-intl"
+
+function formatDate(dateStr: string, locale: string): string {
+  return new Date(dateStr + "T00:00:00").toLocaleDateString(locale, {
     weekday: "short",
     year: "numeric",
     month: "short",
@@ -81,13 +83,13 @@ function getMonthRange(date: Date): { date_from: string; date_to: string } {
   }
 }
 
-function formatCoursePeriodLabel(cp: LessonPlanLesson["course_period"]): string {
-  if (!cp) return "Unknown"
+function formatCoursePeriodLabel(cp: LessonPlanLesson["course_period"], tCommon: any): string {
+  if (!cp) return tCommon("unknown")
   const parts: string[] = []
   if (cp.course?.title) parts.push(cp.course.title)
   if (cp.section?.name) parts.push(cp.section.name)
   if (cp.period?.short_name) parts.push(`P${cp.period.short_name}`)
-  return parts.join(" — ") || cp.title || "Unknown"
+  return parts.join(" — ") || cp.title || tCommon("unknown")
 }
 
 function formatTeacherName(lesson: LessonPlanLesson): string {
@@ -96,7 +98,7 @@ function formatTeacherName(lesson: LessonPlanLesson): string {
   return [p.first_name, p.last_name].filter(Boolean).join(" ")
 }
 
-function RichTextDisplay({ html }: { html?: string }) {
+function RichTextDisplay({ html, tCommon }: { html?: string; tCommon: any }) {
   if (!html) return <span className="text-muted-foreground italic">—</span>
   return (
     <div
@@ -110,6 +112,10 @@ export default function LessonPlanRead() {
   const { user } = useAuth()
   const { selectedAcademicYear } = useAcademic()
   const campusContext = useCampus()
+  const locale = useLocale()
+
+  const t = useTranslations("school.scheduling.lesson_plan_read")
+  const tCommon = useTranslations("common")
 
   // Read course_period_id from URL
   const [coursePeriodId, setCoursePeriodId] = useState<string>("")
@@ -144,13 +150,13 @@ export default function LessonPlanRead() {
   }
 
   function getTimeframeLabel(): string {
-    if (timeframe === "all") return "All Entries"
-    if (timeframe === "day") return formatDate(currentDate.toISOString().split("T")[0])
+    if (timeframe === "all") return t("all_entries")
+    if (timeframe === "day") return formatDate(currentDate.toISOString().split("T")[0], locale)
     if (timeframe === "week") {
       const range = getWeekRange(currentDate)
-      return `${formatDate(range.date_from)} — ${formatDate(range.date_to)}`
+      return `${formatDate(range.date_from, locale)} — ${formatDate(range.date_to, locale)}`
     }
-    return currentDate.toLocaleDateString(undefined, { month: "long", year: "numeric" })
+    return currentDate.toLocaleDateString(locale, { month: "long", year: "numeric" })
   }
 
   const dateFilters = getDateFilters()
@@ -183,8 +189,8 @@ export default function LessonPlanRead() {
   )
 
   const courseLabel = lessons?.[0]
-    ? formatCoursePeriodLabel(lessons[0].course_period)
-    : "Lesson Plan"
+    ? formatCoursePeriodLabel(lessons[0].course_period, tCommon)
+    : t("lessons_found", { count: 0 })
 
   if (!coursePeriodId) {
     return (
@@ -192,7 +198,7 @@ export default function LessonPlanRead() {
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-30" />
-            <p>No course period selected. Please select from the Lesson Plans list.</p>
+            <p>{t("msg_no_course")}</p>
           </CardContent>
         </Card>
       </div>
@@ -226,7 +232,7 @@ export default function LessonPlanRead() {
                 {courseLabel}
               </CardTitle>
               <CardDescription>
-                {lessonList.length} lesson{lessonList.length !== 1 ? "s" : ""} found
+                {t("lessons_found", { count: lessonList.length })}
               </CardDescription>
             </div>
 
@@ -240,10 +246,10 @@ export default function LessonPlanRead() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="day">Day</SelectItem>
-                  <SelectItem value="week">Week</SelectItem>
-                  <SelectItem value="month">Month</SelectItem>
+                  <SelectItem value="all">{t("timeframe_all")}</SelectItem>
+                  <SelectItem value="day">{t("timeframe_day")}</SelectItem>
+                  <SelectItem value="week">{t("timeframe_week")}</SelectItem>
+                  <SelectItem value="month">{t("timeframe_month")}</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -255,7 +261,7 @@ export default function LessonPlanRead() {
                     className="h-8 w-8"
                     onClick={() => navigateDate(-1)}
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
                   </Button>
                   <span className="text-sm font-medium min-w-32 text-center">
                     {getTimeframeLabel()}
@@ -266,7 +272,7 @@ export default function LessonPlanRead() {
                     className="h-8 w-8"
                     onClick={() => navigateDate(1)}
                   >
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-4 w-4 rtl:rotate-180" />
                   </Button>
                 </div>
               )}
@@ -280,11 +286,11 @@ export default function LessonPlanRead() {
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
             <Calendar className="h-12 w-12 mx-auto mb-4 opacity-30" />
-            <p className="text-lg font-medium">No Lessons Found</p>
+            <p className="text-lg font-medium">{t("no_lessons_found")}</p>
             <p className="text-sm mt-1">
               {timeframe !== "all"
-                ? "Try changing the timeframe or navigating to a different date."
-                : "No lesson plans have been created for this course period yet."}
+                ? t("no_lessons_tip_timeframe")
+                : t("no_lessons_tip_none")}
             </p>
           </CardContent>
         </Card>
@@ -309,27 +315,27 @@ export default function LessonPlanRead() {
                     <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3.5 w-3.5" />
-                        {formatDate(lesson.on_date)}
+                        {formatDate(lesson.on_date, locale)}
                       </span>
                       {lesson.length_minutes && (
                         <span className="flex items-center gap-1">
                           <Clock className="h-3.5 w-3.5" />
-                          {lesson.length_minutes} min
+                          {t("label_min", { count: lesson.length_minutes })}
                         </span>
                       )}
-                      <span>Teacher: {formatTeacherName(lesson)}</span>
-                      <span>Lesson #{lesson.lesson_number}</span>
+                      <span>{t("label_teacher", { name: formatTeacherName(lesson) })}</span>
+                      <span>{t("label_lesson_num", { num: lesson.lesson_number })}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {files.length > 0 && (
                       <Badge variant="secondary" className="text-xs">
-                        <FileText className="h-3 w-3 mr-1" />
-                        {files.length} file{files.length !== 1 ? "s" : ""}
+                        <FileText className="h-3 w-3 mr-1 rtl:ml-1 rtl:mr-0" />
+                        {t("label_files", { count: files.length })}
                       </Badge>
                     )}
                     <Badge variant="outline" className="text-xs">
-                      {items.length} part{items.length !== 1 ? "s" : ""}
+                      {t("label_parts", { count: items.length })}
                     </Badge>
                   </div>
                 </div>
@@ -344,9 +350,9 @@ export default function LessonPlanRead() {
                   {lesson.learning_objectives && (
                     <div>
                       <h4 className="text-sm font-semibold mb-2">
-                        Learning Objectives
+                        {t("h_objectives")}
                       </h4>
-                      <RichTextDisplay html={lesson.learning_objectives} />
+                      <RichTextDisplay html={lesson.learning_objectives} tCommon={tCommon} />
                     </div>
                   )}
 
@@ -354,20 +360,20 @@ export default function LessonPlanRead() {
                   {items.length > 0 && (
                     <div>
                       <h4 className="text-sm font-semibold mb-3">
-                        Lesson Parts
+                        {t("h_parts")}
                       </h4>
                       <div className="rounded-md border overflow-x-auto">
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead className="w-20">Time</TableHead>
-                              <TableHead>
-                                Content &amp; Teacher Activity
+                              <TableHead className="w-20 text-left rtl:text-right">{t("th_time")}</TableHead>
+                              <TableHead className="text-left rtl:text-right">
+                                {t("th_content")}
                               </TableHead>
-                              <TableHead>Learner Activity</TableHead>
-                              <TableHead>Formative Assessment</TableHead>
-                              <TableHead>
-                                Learning Materials &amp; Resources
+                              <TableHead className="text-left rtl:text-right">{t("th_learner")}</TableHead>
+                              <TableHead className="text-left rtl:text-right">{t("th_assessment")}</TableHead>
+                              <TableHead className="text-left rtl:text-right">
+                                {t("th_materials")}
                               </TableHead>
                             </TableRow>
                           </TableHeader>
@@ -376,27 +382,31 @@ export default function LessonPlanRead() {
                               <TableRow key={item.id}>
                                 <TableCell className="align-top font-mono text-sm">
                                   {item.time_minutes
-                                    ? `${item.time_minutes} min`
+                                    ? t("label_min", { count: item.time_minutes })
                                     : "—"}
                                 </TableCell>
                                 <TableCell className="align-top">
                                   <RichTextDisplay
                                     html={item.teacher_activity}
+                                    tCommon={tCommon}
                                   />
                                 </TableCell>
                                 <TableCell className="align-top">
                                   <RichTextDisplay
                                     html={item.learner_activity}
+                                    tCommon={tCommon}
                                   />
                                 </TableCell>
                                 <TableCell className="align-top">
                                   <RichTextDisplay
                                     html={item.formative_assessment}
+                                    tCommon={tCommon}
                                   />
                                 </TableCell>
                                 <TableCell className="align-top">
                                   <RichTextDisplay
                                     html={item.learning_materials}
+                                    tCommon={tCommon}
                                   />
                                 </TableCell>
                               </TableRow>
@@ -411,10 +421,10 @@ export default function LessonPlanRead() {
                   {lesson.evaluation && (
                     <div>
                       <h4 className="text-sm font-semibold mb-2">
-                        Lesson Evaluation (Past Lesson)
+                        {t("h_evaluation")}
                       </h4>
                       <div className="rounded-md border p-4 bg-muted/30">
-                        <RichTextDisplay html={lesson.evaluation} />
+                        <RichTextDisplay html={lesson.evaluation} tCommon={tCommon} />
                       </div>
                     </div>
                   )}
@@ -423,10 +433,10 @@ export default function LessonPlanRead() {
                   {lesson.inclusiveness && (
                     <div>
                       <h4 className="text-sm font-semibold mb-2">
-                        Inclusiveness
+                        {t("h_inclusiveness")}
                       </h4>
                       <div className="rounded-md border p-4 bg-muted/30">
-                        <RichTextDisplay html={lesson.inclusiveness} />
+                        <RichTextDisplay html={lesson.inclusiveness} tCommon={tCommon} />
                       </div>
                     </div>
                   )}
@@ -435,7 +445,7 @@ export default function LessonPlanRead() {
                   {files.length > 0 && (
                     <div>
                       <h4 className="text-sm font-semibold mb-2">
-                        Attachments
+                        {t("h_attachments")}
                       </h4>
                       <div className="space-y-2">
                         {files.map((f) => (
@@ -451,7 +461,7 @@ export default function LessonPlanRead() {
                               {f.file_name}
                             </span>
                             {f.file_size && (
-                              <span className="text-xs text-muted-foreground ml-auto">
+                              <span className="text-xs text-muted-foreground ml-auto rtl:mr-auto rtl:ml-0">
                                 {(f.file_size / 1024).toFixed(1)} KB
                               </span>
                             )}

@@ -28,13 +28,15 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-function formatCoursePeriodLabel(cp: LessonPlanSummaryItem["course_period"]): string {
-  if (!cp) return "Unknown"
+import { useTranslations } from "next-intl"
+
+function formatCoursePeriodLabel(cp: LessonPlanSummaryItem["course_period"], tCommon: any): string {
+  if (!cp) return tCommon("unknown")
   const parts: string[] = []
   if (cp.course?.title) parts.push(cp.course.title)
   if (cp.section?.name) parts.push(cp.section.name)
   if (cp.period?.short_name) parts.push(`P${cp.period.short_name}`)
-  return parts.join(" — ") || cp.title || "Unknown"
+  return parts.join(" — ") || cp.title || tCommon("unknown")
 }
 
 function formatTeacherName(cp: LessonPlanSummaryItem["course_period"]): string {
@@ -52,6 +54,9 @@ export default function LessonPlansList({ readBasePath = "/admin/scheduling/less
   const { selectedAcademicYear } = useAcademic()
   const campusContext = useCampus()
   const [_, setNavTo] = useState("")
+
+  const t = useTranslations("school.scheduling.lesson_plans")
+  const tCommon = useTranslations("common")
 
   const { data: summaryItems, isLoading } = useSWR<LessonPlanSummaryItem[]>(
     user
@@ -100,63 +105,65 @@ export default function LessonPlansList({ readBasePath = "/admin/scheduling/less
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BookOpen className="h-5 w-5" />
-            Lesson Plans
+            {t("title")}
           </CardTitle>
           <CardDescription>
-            Overview of lesson plans by course period. Click &quot;Read&quot; to view lesson details.
+            {t("description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {items.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-30" />
-              <p className="text-lg font-medium">No Lesson Plans Yet</p>
+              <p className="text-lg font-medium">{t("no_plans_title")}</p>
               <p className="text-sm mt-1">
-                Lesson plans will appear here once teachers create them.
+                {t("no_plans_desc")}
               </p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Subject / Course Period</TableHead>
-                  <TableHead>Teacher</TableHead>
-                  <TableHead className="text-center">Entries</TableHead>
-                  <TableHead>Last Entry</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map((item) => (
-                  <TableRow key={item.course_period_id}>
-                    <TableCell className="font-medium">
-                      {formatCoursePeriodLabel(item.course_period)}
-                    </TableCell>
-                    <TableCell>{formatTeacherName(item.course_period)}</TableCell>
-                    <TableCell className="text-center">
-                      <span className="inline-flex items-center justify-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-                        {item.count}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {item.last_date
-                        ? new Date(item.last_date + "T00:00:00").toLocaleDateString()
-                        : "—"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleReadClick(item.course_period_id)}
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        Read
-                      </Button>
-                    </TableCell>
+            <div className="border rounded-md overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-left rtl:text-right">{t("th_subject")}</TableHead>
+                    <TableHead className="text-left rtl:text-right">{t("th_teacher")}</TableHead>
+                    <TableHead className="text-center">{t("th_entries")}</TableHead>
+                    <TableHead className="text-left rtl:text-right">{t("th_last_entry")}</TableHead>
+                    <TableHead className="text-right rtl:text-left">{tCommon("actions")}</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {items.map((item) => (
+                    <TableRow key={item.course_period_id}>
+                      <TableCell className="font-medium">
+                        {formatCoursePeriodLabel(item.course_period, tCommon)}
+                      </TableCell>
+                      <TableCell>{formatTeacherName(item.course_period)}</TableCell>
+                      <TableCell className="text-center">
+                        <span className="inline-flex items-center justify-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                          {item.count}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        {item.last_date
+                          ? new Date(item.last_date + "T00:00:00").toLocaleDateString()
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-right rtl:text-left">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleReadClick(item.course_period_id)}
+                        >
+                          <Eye className="h-4 w-4 mr-1 rtl:ml-1 rtl:mr-0" />
+                          {t("btn_read")}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

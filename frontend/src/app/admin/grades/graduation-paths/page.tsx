@@ -35,6 +35,7 @@ import type {
   GraduationPathStudent,
 } from "@/lib/api/grades";
 import { getGradeLevels, getSubjects } from "@/lib/api/academics";
+import { useTranslations } from "next-intl";
 import type { GradeLevel, Subject } from "@/lib/api/academics";
 import { getStudents } from "@/lib/api/students";
 import type { Student } from "@/lib/api/students";
@@ -118,7 +119,7 @@ function AssignGradeLevelsDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            Assign Grade Levels — {path.title}
+            {t("assign_gl_title", { title: path.title })}
           </DialogTitle>
         </DialogHeader>
 
@@ -128,7 +129,7 @@ function AssignGradeLevelsDialog({
           </div>
         ) : gradeLevels.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">
-            All grade levels are already assigned.
+            {t("all_gl_assigned")}
           </p>
         ) : (
           <div className="max-h-64 overflow-y-auto space-y-2">
@@ -149,15 +150,15 @@ function AssignGradeLevelsDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {tCommon("cancel", { defaultValue: "Cancel" })}
           </Button>
           <Button
             onClick={handleAssign}
             disabled={selected.size === 0 || saving}
             className="bg-[#0369a1] hover:bg-[#0369a1]/90"
           >
-            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Add Selected
+            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin rtl:ml-2 rtl:mr-0" />}
+            {t("btn_add_selected")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -249,7 +250,7 @@ function AssignSubjectsDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            Assign Subjects — {path.title}
+            {t("assign_subj_title", { title: path.title })}
           </DialogTitle>
         </DialogHeader>
 
@@ -259,7 +260,7 @@ function AssignSubjectsDialog({
           </div>
         ) : subjects.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">
-            All subjects are already assigned.
+            {t("all_subj_assigned")}
           </p>
         ) : (
           <div className="max-h-72 overflow-y-auto space-y-1">
@@ -268,9 +269,8 @@ function AssignSubjectsDialog({
               return (
                 <div
                   key={subj.id}
-                  className={`flex items-center gap-3 p-2 rounded hover:bg-muted ${
-                    entry ? "bg-blue-50" : ""
-                  }`}
+                  className={`flex items-center gap-3 p-2 rounded hover:bg-muted ${entry ? "bg-blue-50" : ""
+                    }`}
                 >
                   <Checkbox
                     checked={!!entry}
@@ -294,7 +294,7 @@ function AssignSubjectsDialog({
                       onChange={(e) =>
                         setCredits(subj.id, parseFloat(e.target.value) || 0)
                       }
-                      placeholder="Credits"
+                      placeholder={t("credits_placeholder")}
                     />
                   )}
                 </div>
@@ -305,15 +305,15 @@ function AssignSubjectsDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {tCommon("cancel", { defaultValue: "Cancel" })}
           </Button>
           <Button
             onClick={handleAssign}
             disabled={selected.size === 0 || saving}
             className="bg-[#0369a1] hover:bg-[#0369a1]/90"
           >
-            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Add Selected
+            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin rtl:ml-2 rtl:mr-0" />}
+            {t("btn_add_selected")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -413,14 +413,14 @@ function AssignStudentsDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            Assign Students — {path.title}
+            {t("assign_stud_title", { title: path.title })}
           </DialogTitle>
         </DialogHeader>
 
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground rtl:right-3 rtl:left-auto" />
           <Input
-            placeholder="Search students..."
+            placeholder={t("search_students")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -434,17 +434,16 @@ function AssignStudentsDialog({
         ) : filtered.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">
             {students.length === 0
-              ? "All students are already assigned."
-              : "No students match your search."}
+              ? t("all_stud_assigned")
+              : t("no_stud_match")}
           </p>
         ) : (
           <div className="max-h-72 overflow-y-auto space-y-1">
             {filtered.map((s) => (
               <label
                 key={s.id}
-                className={`flex items-center gap-3 p-2 rounded hover:bg-muted cursor-pointer ${
-                  selected.has(s.id) ? "bg-blue-50" : ""
-                }`}
+                className={`flex items-center gap-3 p-2 rounded hover:bg-muted cursor-pointer ${selected.has(s.id) ? "bg-blue-50" : ""
+                  }`}
               >
                 <Checkbox
                   checked={selected.has(s.id)}
@@ -463,15 +462,15 @@ function AssignStudentsDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {tCommon("cancel", { defaultValue: "Cancel" })}
           </Button>
           <Button
             onClick={handleAssign}
             disabled={selected.size === 0 || saving}
             className="bg-[#0369a1] hover:bg-[#0369a1]/90"
           >
-            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Add Selected ({selected.size})
+            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin rtl:ml-2 rtl:mr-0" />}
+            {t("btn_add_selected_count", { count: selected.size })}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -499,15 +498,15 @@ function ViewAssignedDialog({
     type === "grade_levels"
       ? path.grade_levels ?? []
       : type === "subjects"
-      ? path.subjects ?? []
-      : path.students ?? [];
+        ? path.subjects ?? []
+        : path.students ?? [];
 
   const title =
     type === "grade_levels"
       ? "Grade Levels"
       : type === "subjects"
-      ? "Subjects"
-      : "Students";
+        ? "Subjects"
+        : "Students";
 
   const handleRemove = async (itemId: string) => {
     setRemoving(itemId);
@@ -556,13 +555,18 @@ function ViewAssignedDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {title} — {path.title}
+            {t("view_assigned_title", { 
+              type: type === "grade_levels" ? t("th_grade_levels") : type === "subjects" ? t("th_subjects") : t("th_students"),
+              title: path.title 
+            })}
           </DialogTitle>
         </DialogHeader>
 
         {items.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">
-            No {title.toLowerCase()} assigned.
+            {t("no_assigned", { 
+              type: type === "grade_levels" ? t("th_grade_levels").toLowerCase() : type === "subjects" ? t("th_subjects").toLowerCase() : t("th_students").toLowerCase() 
+            })}
           </p>
         ) : (
           <div className="max-h-72 overflow-y-auto space-y-1">
@@ -595,7 +599,7 @@ function ViewAssignedDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
+            {tCommon("close", { defaultValue: "Close" })}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -607,6 +611,8 @@ function ViewAssignedDialog({
 // MAIN PAGE
 // ═════════════════════════════════════════════════════════════════
 export default function GraduationPathsPage() {
+  const t = useTranslations("school.grades_module.graduation_paths")
+  const tc = useTranslations("school.grades_module.common")
   const { user } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
@@ -739,10 +745,10 @@ export default function GraduationPathsPage() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-[#022172]">
-            Graduation Paths
+            {t("title")}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Define graduation requirements with grade levels, subjects, and student assignments
+            {t("subtitle")}
           </p>
         </div>
       </div>
@@ -751,9 +757,8 @@ export default function GraduationPathsPage() {
       {!loading && (
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="text-xs">
-            <Award className="h-3 w-3 mr-1" />
-            {activeRows.filter((r) => !r._isNew).length} graduation path
-            {activeRows.filter((r) => !r._isNew).length !== 1 ? "s" : ""} found
+            <Award className="h-3 w-3 mr-1 rtl:ml-1 rtl:mr-0" />
+            {t("paths_found", { count: activeRows.filter((r) => !r._isNew).length })}
           </Badge>
         </div>
       )}
@@ -773,20 +778,20 @@ export default function GraduationPathsPage() {
                 <thead>
                   <tr className="bg-[#0369a1] text-white">
                     <th className="w-10 px-3 py-2.5"></th>
-                    <th className="px-3 py-2.5 text-left font-semibold">
-                      TITLE
+                    <th className="px-3 py-2.5 text-left font-semibold rtl:text-right">
+                      {t("th_title")}
                     </th>
-                    <th className="px-3 py-2.5 text-left font-semibold">
-                      COMMENT
+                    <th className="px-3 py-2.5 text-left font-semibold rtl:text-right">
+                      {t("th_comment")}
                     </th>
-                    <th className="px-3 py-2.5 text-left font-semibold">
-                      GRADE LEVELS
+                    <th className="px-3 py-2.5 text-left font-semibold rtl:text-right">
+                      {t("th_grade_levels")}
                     </th>
-                    <th className="px-3 py-2.5 text-left font-semibold">
-                      SUBJECTS
+                    <th className="px-3 py-2.5 text-left font-semibold rtl:text-right">
+                      {t("th_subjects")}
                     </th>
-                    <th className="px-3 py-2.5 text-left font-semibold">
-                      STUDENTS
+                    <th className="px-3 py-2.5 text-left font-semibold rtl:text-right">
+                      {t("th_students")}
                     </th>
                   </tr>
                 </thead>
@@ -803,15 +808,14 @@ export default function GraduationPathsPage() {
                     return (
                       <tr
                         key={row.id}
-                        className={`border-b last:border-b-0 ${
-                          row._deleted
+                        className={`border-b last:border-b-0 ${row._deleted
                             ? "bg-red-50 line-through opacity-60"
                             : row._isNew
-                            ? "bg-green-50"
-                            : row._dirty
-                            ? "bg-yellow-50"
-                            : "hover:bg-muted/50"
-                        }`}
+                              ? "bg-green-50"
+                              : row._dirty
+                                ? "bg-yellow-50"
+                                : "hover:bg-muted/50"
+                          }`}
                       >
                         {/* Delete button */}
                         <td className="px-3 py-2 text-center">

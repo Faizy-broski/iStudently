@@ -28,7 +28,12 @@ const SchoolSettingsContext = createContext<SchoolSettingsContextType | undefine
 export function SchoolSettingsProvider({ children }: { children: React.ReactNode }) {
   const { profile, loading: authLoading } = useAuth()
   const campusContext = useCampus()
-  const campusId = campusContext?.selectedCampus?.id ?? null
+  // For non-admin roles, fall back when CampusProvider hasn't resolved selectedCampus yet.
+  // Priority: selectedCampus > profile.campus_id (from section) > profile.school_id (last resort).
+  const isAdminRole = profile?.role === 'admin' || profile?.role === 'super_admin'
+  const campusId =
+    campusContext?.selectedCampus?.id ??
+    (!isAdminRole ? ((profile as any)?.campus_id ?? profile?.school_id ?? null) : null)
   const [settings, setSettings] = useState<SchoolSettings | null>(null)
   const [loading, setLoading] = useState(true)
   // Track which campusId we last fetched for so we can re-fetch on switch

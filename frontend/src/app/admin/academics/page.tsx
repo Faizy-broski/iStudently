@@ -4,28 +4,31 @@ import Link from 'next/link'
 import { GraduationCap, Users, BookOpen, ArrowRight } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { useTranslations } from 'next-intl'
 
 export default function AcademicsPage() {
+  const t = useTranslations('school.overview')
+  
   const sections = [
     {
-      title: 'Grade Levels',
-      description: 'Manage grade levels for your school. Grades are the foundation for sections and subjects.',
+      title: t('grades_title'),
+      description: t('grades_desc'),
       icon: GraduationCap,
       href: '/admin/academics/grades',
       color: 'text-blue-600',
       bgColor: 'bg-blue-100',
     },
     {
-      title: 'Sections',
-      description: 'Create and manage classroom sections within each grade level.',
+      title: t('sections_title'),
+      description: t('sections_desc'),
       icon: Users,
       href: '/admin/academics/sections',
       color: 'text-green-600',
       bgColor: 'bg-green-100',
     },
     {
-      title: 'Subjects',
-      description: 'Define curriculum subjects specific to each grade level.',
+      title: t('subjects_title'),
+      description: t('subjects_desc'),
       icon: BookOpen,
       href: '/admin/academics/subjects',
       color: 'text-purple-600',
@@ -36,9 +39,9 @@ export default function AcademicsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Academics</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
         <p className="text-muted-foreground mt-2">
-          Manage your school's academic structure: grades, sections, and subjects
+          {t('subtitle')}
         </p>
       </div>
 
@@ -57,7 +60,7 @@ export default function AcademicsPage() {
               <CardContent>
                 <Link href={section.href}>
                   <Button variant="outline" className="w-full group">
-                    Manage {section.title}
+                    {t('manage', { title: section.title })}
                     <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </Link>
@@ -69,49 +72,45 @@ export default function AcademicsPage() {
 
       <Card className="border-l-4 border-l-blue-600">
         <CardHeader>
-          <CardTitle>School Setup Dependency Chain</CardTitle>
+          <CardTitle>{t('dependency_title')}</CardTitle>
           <CardDescription>
-            Understanding how academics are structured
+            {t('dependency_subtitle')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <h3 className="font-semibold flex items-center gap-2">
               <GraduationCap className="h-5 w-5 text-blue-600" />
-              Step 1: Grade Levels (The Container)
+              {t('step1_title')}
             </h3>
             <p className="text-sm text-muted-foreground">
-              Everything starts here. Create grade levels like "Grade 10", "Matric", or "O-Levels". 
-              Each grade has an order index (for sorting) and a base monthly fee.
+              {t('step1_desc')}
             </p>
           </div>
 
           <div className="space-y-2">
             <h3 className="font-semibold flex items-center gap-2">
               <Users className="h-5 w-5 text-green-600" />
-              Step 2: Sections (Physical Classrooms)
+              {t('step2_title')}
             </h3>
             <p className="text-sm text-muted-foreground">
-              Divide each grade into sections like "Section A", "Blue", or "Girls Wing". 
-              Set capacity limits to control enrollment.
+              {t('step2_desc')}
             </p>
           </div>
 
           <div className="space-y-2">
             <h3 className="font-semibold flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-purple-600" />
-              Step 3: Subjects (Curriculum)
+              {t('step3_title')}
             </h3>
             <p className="text-sm text-muted-foreground">
-              Define subjects specific to each grade. "Math for Grade 10" is different from "Math for Grade 1". 
-              This ensures teachers are only assigned relevant subjects.
+              {t('step3_desc')}
             </p>
           </div>
 
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mt-4">
             <p className="text-sm text-amber-900">
-              <strong>Important:</strong> You cannot create a Section without a Grade. 
-              You cannot assign a Subject without a Grade. Grade Level is the parent of everything.
+              <strong>{t('important')}</strong> {t('rule')}
             </p>
           </div>
         </CardContent>

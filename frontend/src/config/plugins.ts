@@ -39,9 +39,11 @@ import {
   LogIn,
   Sparkles,
   AlertTriangle,
+  FlaskConical,
   type LucideIcon,
 } from 'lucide-react'
 import type { SidebarMenuItem } from './sidebar'
+import type { UserRole } from '@/types'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -52,6 +54,11 @@ export interface PluginSidebarInjection {
   parentTitle: string
   /** Items appended to that parent's subItems when plugin is active */
   items: SidebarMenuItem[]
+  /**
+   * Roles that receive this injection.
+   * When omitted/empty the injection only applies to admin (legacy default).
+   */
+  roles?: UserRole[]
 }
 
 export interface PluginDefinition {
@@ -400,6 +407,72 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     icon: AlertTriangle,
     category: 'User Experience',
     sidebarInjections: [],
+  },
+
+  // ── Embedded Resources ───────────────────────────────────────────────────
+  {
+    id: 'embedded_resources',
+    name: 'Embedded Resources',
+    description:
+      'Embed external websites directly inside the portal. Admins add links (with optional grade-level restrictions) from the Resources menu. The links appear for Administrators, Teachers, Parents, and Students in their respective Resources menus.',
+    icon: Globe,
+    category: 'Resources',
+    settingsHref: '/admin/resources/embedded',
+    sidebarInjections: [
+      {
+        parentTitle: 'Resources',
+        items: [{ title: 'Embedded Resources', href: '/admin/resources/embedded', icon: Globe }],
+        roles: ['admin'],
+      },
+      {
+        parentTitle: 'Resources',
+        items: [{ title: 'Embedded Resources', href: '/teacher/resources/embedded', icon: Globe }],
+        roles: ['teacher'],
+      },
+      {
+        parentTitle: 'Resources',
+        items: [{ title: 'Embedded Resources', href: '/student/resources/embedded', icon: Globe }],
+        roles: ['student'],
+      },
+      {
+        parentTitle: 'Resources',
+        items: [{ title: 'Embedded Resources', href: '/parent/resources/embedded', icon: Globe }],
+        roles: ['parent'],
+      },
+    ],
+  },
+
+  // ── VLaby Virtual Labs ───────────────────────────────────────────────────
+  {
+    id: 'vlaby',
+    name: 'VLaby Virtual Labs',
+    description:
+      'Browse and run interactive virtual lab experiments (Biology, Chemistry, Physics) from VLaby.com directly inside the portal. Each role uses their own VLaby credentials. Available in English, Arabic, French, German & Indonesian.',
+    icon: FlaskConical,
+    category: 'Resources',
+    settingsHref: '/admin/resources/vlaby',
+    sidebarInjections: [
+      {
+        parentTitle: 'Resources',
+        items: [{ title: 'VLaby Virtual Labs', href: '/admin/resources/vlaby', icon: FlaskConical }],
+        roles: ['admin'],
+      },
+      {
+        parentTitle: 'Resources',
+        items: [{ title: 'VLaby Virtual Labs', href: '/teacher/resources/vlaby', icon: FlaskConical }],
+        roles: ['teacher'],
+      },
+      {
+        parentTitle: 'Resources',
+        items: [{ title: 'VLaby Virtual Labs', href: '/student/resources/vlaby', icon: FlaskConical }],
+        roles: ['student'],
+      },
+      {
+        parentTitle: 'Resources',
+        items: [{ title: 'VLaby Virtual Labs', href: '/parent/resources/vlaby', icon: FlaskConical }],
+        roles: ['parent'],
+      },
+    ],
   },
 
   // ── Future plugins go here ────────────────────────────────────────────────

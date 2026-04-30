@@ -30,21 +30,26 @@ import { getFieldDefinitions, CustomFieldDefinition } from "@/lib/api/custom-fie
 import { StudentInfoPrintReport } from "@/components/admin";
 import { getPdfHeaderFooter, type PdfHeaderFooterSettings } from "@/lib/api/school-settings";
 import { openPdfDownload } from "@/lib/utils/printLayout";
+import { useTranslations } from "next-intl";
 
 // Standard categories that are always available
-const STANDARD_CATEGORIES = [
-  { id: 'personal', name: 'Personal Information', description: 'Name, photo, contact details' },
-  { id: 'academic', name: 'Academic Information', description: 'Grade, section, admission date' },
-  { id: 'medical', name: 'Medical Information', description: 'Blood group, allergies, medical notes' },
-  { id: 'family', name: 'Family & Emergency', description: 'Parent info, emergency contacts' },
-  { id: 'system', name: 'System Information', description: 'Student ID, username, status' },
+const GET_STANDARD_CATEGORIES = (t: any) => [
+  { id: 'personal', name: t('categories.personal'), description: t('category_descriptions.personal') },
+  { id: 'academic', name: t('categories.academic'), description: t('category_descriptions.academic') },
+  { id: 'medical', name: t('categories.medical'), description: t('category_descriptions.medical') },
+  { id: 'family', name: t('categories.family'), description: t('category_descriptions.family') },
+  { id: 'system', name: t('categories.system'), description: t('category_descriptions.system') },
 ];
 
 export default function PrintStudentInfoPage() {
+  const t = useTranslations("school.students.print_info");
+  const tCommon = useTranslations("common");
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
   const { isPluginActive } = useSchoolSettings();
   const isPdfPluginActive = isPluginActive('pdf_header_footer');
+
+  const standardCategories = useMemo(() => GET_STANDARD_CATEGORIES(tCommon), [tCommon]);
 
   const [pdfSettings, setPdfSettings] = useState<PdfHeaderFooterSettings | null>(null);
   useEffect(() => {
@@ -90,7 +95,7 @@ export default function PrintStudentInfoPage() {
           const categoryMap = new Map<string, string>();
           response.data.forEach((field: CustomFieldDefinition) => {
             if (field.category_id && field.category_name &&
-                !STANDARD_CATEGORIES.find(sc => sc.id === field.category_id)) {
+                !standardCategories.find(sc => sc.id === field.category_id)) {
               categoryMap.set(field.category_id, field.category_name);
             }
           });
@@ -315,15 +320,13 @@ export default function PrintStudentInfoPage() {
         <div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
             <Link href="/admin/students" className="hover:text-foreground">
-              Students
+              {tCommon("students")}
             </Link>
             <span>/</span>
-            <span>Print Student Info</span>
+            <span>{t("title")}</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Print Student Information</h1>
-          <p className="text-muted-foreground">
-            Select categories and students to generate a downloadable PDF report
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-[#022172] dark:text-white">{t("title")}</h1>
+          <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
         {selectedCampus && (
           <Badge variant="outline" className="flex items-center gap-2">
@@ -337,22 +340,22 @@ export default function PrintStudentInfoPage() {
         {/* Left Panel - Category Selection */}
         <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
               <FileText className="h-5 w-5" />
-              Select Categories
+              {t("select_categories")}
             </CardTitle>
             <CardDescription>
-              Choose which information categories to include in the report
+              {t("select_categories_desc")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-96 overflow-y-auto pr-4 space-y-4">
               {/* Standard Categories */}
               <div>
-                <h4 className="font-medium mb-3 text-sm text-muted-foreground">Standard Categories</h4>
+                <h4 className="font-medium mb-3 text-sm text-muted-foreground">{t("standard_categories", { defaultValue: "Standard Categories" })}</h4>
                 <div className="space-y-3">
-                  {STANDARD_CATEGORIES.map((category) => (
-                    <div key={category.id} className="flex items-start space-x-3">
+                  {standardCategories.map((category) => (
+                    <div key={category.id} className="flex items-start space-x-3 rtl:space-x-reverse">
                       <Checkbox
                         id={`cat-${category.id}`}
                         checked={selectedCategories.includes(category.id)}
@@ -379,10 +382,10 @@ export default function PrintStudentInfoPage() {
                 <>
                   <Separator />
                   <div>
-                    <h4 className="font-medium mb-3 text-sm text-muted-foreground">Custom Categories</h4>
+                    <h4 className="font-medium mb-3 text-sm text-muted-foreground">{t("custom_categories", { defaultValue: "Custom Categories" })}</h4>
                     <div className="space-y-3">
                       {customCategories.map((category) => (
-                        <div key={category.id} className="flex items-start space-x-3">
+                        <div key={category.id} className="flex items-start space-x-3 rtl:space-x-reverse">
                           <Checkbox
                             id={`cat-${category.id}`}
                             checked={selectedCategories.includes(category.id)}
@@ -404,7 +407,7 @@ export default function PrintStudentInfoPage() {
 
             <div className="mt-4 pt-4 border-t">
               <Badge variant="secondary" className="w-full justify-center py-2">
-                {selectedCategories.length} categories selected
+                {t("categories_selected", { count: selectedCategories.length })}
               </Badge>
             </div>
           </CardContent>
@@ -413,32 +416,32 @@ export default function PrintStudentInfoPage() {
         {/* Right Panel - Student Selection */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
               <Users className="h-5 w-5" />
-              Select Students
+              {t("select_students")}
             </CardTitle>
             <CardDescription>
-              Filter and select students to include in the report
+              {t("select_students_desc")}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
-                <Label className="text-xs text-muted-foreground mb-1.5 block">Search</Label>
+                <Label className="text-xs text-muted-foreground mb-1.5 block">{tCommon("search")}</Label>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground rtl:right-3 rtl:left-auto" />
                   <Input
-                    placeholder="Search by name or ID..."
+                    placeholder={t("search_placeholder", { defaultValue: "Search by name or ID..." })}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9"
+                    className="pl-9 rtl:pr-9 rtl:pl-3"
                   />
                 </div>
               </div>
 
               <div className="w-full sm:w-48">
-                <Label className="text-xs text-muted-foreground mb-1.5 block">Grade Level</Label>
+                <Label className="text-xs text-muted-foreground mb-1.5 block">{tCommon("grade_level")}</Label>
                 <Select
                   value={selectedGradeLevel}
                   onValueChange={(value) => {
@@ -447,10 +450,10 @@ export default function PrintStudentInfoPage() {
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="All Grades" />
+                    <SelectValue placeholder={tCommon("all_grades")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Grades</SelectItem>
+                    <SelectItem value="all">{tCommon("all_grades")}</SelectItem>
                     {gradeLevels.map((grade) => (
                       <SelectItem key={grade.id} value={grade.id}>
                         {grade.name}
@@ -461,17 +464,17 @@ export default function PrintStudentInfoPage() {
               </div>
 
               <div className="w-full sm:w-48">
-                <Label className="text-xs text-muted-foreground mb-1.5 block">Section</Label>
+                <Label className="text-xs text-muted-foreground mb-1.5 block">{tCommon("section")}</Label>
                 <Select
                   value={selectedSection}
                   onValueChange={(value) => setSelectedSection(value === "all" ? "" : value)}
                   disabled={!selectedGradeLevel}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="All Sections" />
+                    <SelectValue placeholder={tCommon("all_sections")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Sections</SelectItem>
+                    <SelectItem value="all">{tCommon("all_sections")}</SelectItem>
                     {filteredSections.map((section) => (
                       <SelectItem key={section.id} value={section.id}>
                         {section.name}
@@ -492,18 +495,18 @@ export default function PrintStudentInfoPage() {
               >
                 {selectedStudentIds.length === filteredStudents.length && filteredStudents.length > 0 ? (
                   <>
-                    <CheckSquare className="mr-2 h-4 w-4" />
-                    Deselect All
+                    <CheckSquare className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
+                    {tCommon("deselect_all")}
                   </>
                 ) : (
                   <>
-                    <Square className="mr-2 h-4 w-4" />
-                    Select All ({filteredStudents.length})
+                    <Square className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
+                    {tCommon("select_all_with_count", { count: filteredStudents.length, defaultValue: `Select All (${filteredStudents.length})` })}
                   </>
                 )}
               </Button>
               <Badge variant="outline">
-                {selectedStudentIds.length} of {filteredStudents.length} selected
+                {t("students_selected_count", { count: selectedStudentIds.length, total: filteredStudents.length, defaultValue: `${selectedStudentIds.length} of ${filteredStudents.length} selected` })}
               </Badge>
             </div>
 
@@ -516,8 +519,8 @@ export default function PrintStudentInfoPage() {
               ) : filteredStudents.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
                   <Users className="h-8 w-8 mb-2" />
-                  <p>No students found</p>
-                  <p className="text-xs">Try adjusting your filters</p>
+                  <p>{tCommon("no_students_found")}</p>
+                  <p className="text-xs">{tCommon("try_adjusting_filters")}</p>
                 </div>
               ) : (
                 <div className="space-y-2 pr-4">
@@ -539,17 +542,17 @@ export default function PrintStudentInfoPage() {
                         <div>
                           <p className="font-medium">{getStudentName(student)}</p>
                           <p className="text-sm text-muted-foreground">
-                            {student.student_number} • {student.grade_level || 'No Grade'}
+                            {student.student_number} • {student.grade_level || tCommon("no_grade")}
                           </p>
                         </div>
                       </div>
                       {student.profile?.is_active ? (
                         <Badge variant="outline" className="text-green-600 border-green-200">
-                          Active
+                          {tCommon("active")}
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="text-red-600 border-red-200">
-                          Inactive
+                          {tCommon("inactive")}
                         </Badge>
                       )}
                     </div>
@@ -565,18 +568,22 @@ export default function PrintStudentInfoPage() {
       <Card className="bg-muted/30">
         <CardContent className="flex items-center justify-between py-4">
           <div className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{selectedStudentIds.length}</span> students and{' '}
-            <span className="font-medium text-foreground">{selectedCategories.length}</span> categories selected
+            {t.rich("selection_summary", {
+              studentCount: selectedStudentIds.length,
+              categoryCount: selectedCategories.length,
+              strong: (chunks: any) => <span className="font-medium text-foreground">{chunks}</span>
+            })}
           </div>
           <Button
             onClick={handlePrintPreview}
             disabled={loading || selectedStudentIds.length === 0 || selectedCategories.length === 0}
             size="lg"
+            className="bg-[#022172] hover:bg-[#022172]/90"
           >
             {loading ? (
-              <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating PDF...</>
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin rtl:ml-2 rtl:mr-0" />{t("generating_pdf")}</>
             ) : (
-              <><Download className="mr-2 h-4 w-4" />Download PDF</>
+              <><Download className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />{t("download_pdf")}</>
             )}
           </Button>
         </CardContent>

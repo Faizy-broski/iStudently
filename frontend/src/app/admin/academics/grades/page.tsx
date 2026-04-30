@@ -51,7 +51,10 @@ import {
 import * as academicsApi from '@/lib/api/academics'
 import { useCampus } from '@/context/CampusContext'
 
+import { useTranslations } from 'next-intl'
+
 export default function GradeLevelsPage() {
+  const t = useTranslations('school.grades')
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
   
@@ -77,10 +80,10 @@ export default function GradeLevelsPage() {
     if (result.success && result.data) {
       setGrades([...result.data].sort((a, b) => a.order_index - b.order_index))
     } else {
-      toast.error(result.error || 'Failed to fetch grade levels')
+      toast.error(result.error || t('fetch_error'))
     }
     setLoading(false)
-  }, [selectedCampus])
+  }, [selectedCampus, t])
 
   useEffect(() => {
     if (selectedCampus) {
@@ -92,18 +95,25 @@ export default function GradeLevelsPage() {
   const exportGrades = () => {
     if (grades.length === 0) return
 
-    const headers = ['Order','Name','Sections','Subjects','Next Grade','Status']
+    const headers = [
+      t('order'),
+      t('name'),
+      t('sections'),
+      t('subjects'),
+      t('next_grade'),
+      t('status')
+    ]
     const rows = grades.map(g => {
       const nextName = g.next_grade_id
         ? grades.find(x => x.id === g.next_grade_id)?.name || ''
-        : 'Graduate'
+        : t('graduate')
       return [
         g.order_index.toString(),
         g.name,
         (g.sections_count || 0).toString(),
         (g.subjects_count || 0).toString(),
         nextName,
-        g.is_active ? 'Active' : 'Inactive'
+        g.is_active ? t('active') : t('inactive')
       ]
     })
 
@@ -115,7 +125,7 @@ export default function GradeLevelsPage() {
     a.download = 'grade_levels.csv'
     a.click()
     URL.revokeObjectURL(url)
-    toast.success('Grade levels exported')
+    toast.success(t('export_success'))
   }
 
   const handleOpenDialog = (grade?: academicsApi.GradeLevel) => {
@@ -154,7 +164,7 @@ export default function GradeLevelsPage() {
     e.preventDefault()
 
     if (!formData.name.trim()) {
-      toast.error('Grade name is required')
+      toast.error(t('name_required'))
       return
     }
 
@@ -170,11 +180,11 @@ export default function GradeLevelsPage() {
         : await academicsApi.createGradeLevel(submitData)
 
       if (result.success) {
-        toast.success(`Grade level ${editingGrade ? 'updated' : 'created'} successfully`)
+        toast.success(t(editingGrade ? 'update_success' : 'create_success'))
         handleCloseDialog()
         fetchGrades()
       } else {
-        toast.error(result.error || `Failed to ${editingGrade ? 'update' : 'create'} grade level`)
+        toast.error(result.error || t(editingGrade ? 'fetch_error' : 'fetch_error'))
       }
     } finally {
       setSaving(false)
@@ -192,10 +202,10 @@ export default function GradeLevelsPage() {
     const result = await academicsApi.deleteGradeLevel(gradeToDelete, selectedCampus?.id)
 
     if (result.success) {
-      toast.success('Grade level deleted successfully')
+      toast.success(t('delete_success'))
       fetchGrades()
     } else {
-      toast.error(result.error || 'Failed to delete grade level')
+      toast.error(result.error || t('fetch_error'))
     }
 
     setDeleteDialogOpen(false)
@@ -219,19 +229,17 @@ export default function GradeLevelsPage() {
       })
 
       if (result.success) {
-        toast.success('Next grade updated successfully')
-        // Always re-fetch so sections_count / subjects_count stay correct
-        // and next_grade_id reflects the actual saved value
+        toast.success(t('next_grade_success'))
         fetchGrades()
       } else {
         // Rollback on error
         setGrades(previousGrades)
-        toast.error(result.error || 'Failed to update next grade')
+        toast.error(result.error || t('fetch_error'))
       }
     } catch {
       // Rollback on exception
       setGrades(previousGrades)
-      toast.error('Failed to update next grade')
+      toast.error(t('fetch_error'))
     }
   }
 
@@ -241,34 +249,34 @@ export default function GradeLevelsPage() {
         <div>
           <div className="flex items-center gap-2">
             <GraduationCap className="h-6 w-6 text-[#3d8fb5]" />
-            <h1 className="text-3xl font-bold tracking-tight">Grade Levels</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
           </div>
       
           <p className="text-muted-foreground">
-            Manage grade levels for your school. Grades are the foundation for sections and subjects.
+            {t('subtitle')}
           </p>
         </div>
         <Button onClick={() => handleOpenDialog()}>
           <Plus className="mr-2 h-4 w-4" />
-          Add Grade
+          {t('add_grade')}
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>All Grade Levels</CardTitle>
+          <CardTitle>{t('all_grades')}</CardTitle>
           <CardDescription>
-            View and manage all grade levels in your school
+            {t('all_grades_desc')}
           </CardDescription>
         </CardHeader>
         <div className="flex items-center gap-3 pl-6" >
         <p className="text-xl font-medium text-foreground">
-          {grades.length} grade level{grades.length === 1 ? ' was' : 's were'} found.
+          {grades.length === 1 ? t('found_singular') : t('found_plural', { count: grades.length })}
         </p>
         
         <div
           className="h-8 w-8 text-yellow-500 cursor-pointer hover:text-yellow-600"
-          title="Export to CSV"
+          title={t('export_csv')}
           onClick={exportGrades}
         >
           <FolderDown />
@@ -277,28 +285,28 @@ export default function GradeLevelsPage() {
       </div>
         <CardContent>
           {loading ? (
-            <div className="text-center py-8">Loading...</div>
+            <div className="text-center py-8">{t('loading')}</div>
           ) : grades.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No grade levels found. Add your first grade level to get started.
+              {t('no_grades')}
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Order</TableHead>
-                  <TableHead>Name</TableHead>
+                  <TableHead>{t('order')}</TableHead>
+                  <TableHead>{t('name')}</TableHead>
                   <TableHead>
                     <Users className="inline mr-1 h-4 w-4" />
-                    Sections
+                    {t('sections')}
                   </TableHead>
                   <TableHead>
                     <BookOpen className="inline mr-1 h-4 w-4" />
-                    Subjects
+                    {t('subjects')}
                   </TableHead>
-                  <TableHead>Next Grade</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t('next_grade')}</TableHead>
+                  <TableHead>{t('status')}</TableHead>
+                  <TableHead className="text-right">{t('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -319,10 +327,10 @@ export default function GradeLevelsPage() {
                         onValueChange={(value) => handleNextGradeChange(grade.id, value)}
                       >
                         <SelectTrigger className="w-45">
-                          <SelectValue placeholder="Select next grade" />
+                          <SelectValue placeholder={t('select_next')} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="graduate">Graduate (N/A)</SelectItem>
+                          <SelectItem value="graduate">{t('graduate')}</SelectItem>
                           {grades
                             .filter((g) => g.order_index > grade.order_index)
                             .map((nextGrade) => (
@@ -335,7 +343,7 @@ export default function GradeLevelsPage() {
                     </TableCell>
                     <TableCell>
                       <Badge variant={grade.is_active ? 'default' : 'secondary'}>
-                        {grade.is_active ? 'Active' : 'Inactive'}
+                        {grade.is_active ? t('active') : t('inactive')}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -368,32 +376,30 @@ export default function GradeLevelsPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingGrade ? 'Edit Grade Level' : 'Add Grade Level'}</DialogTitle>
+            <DialogTitle>{editingGrade ? t('edit_title') : t('add_title')}</DialogTitle>
             <DialogDescription>
-              {editingGrade
-                ? 'Update the details of this grade level'
-                : 'Create a new grade level for your school'}
+              {editingGrade ? t('edit_desc') : t('add_desc')}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Grade Name *</Label>
+                <Label htmlFor="name">{t('name_label')}</Label>
                 <Input
                   id="name"
-                  placeholder="e.g., Grade 10, Matric, O-Levels"
+                  placeholder={t('name_placeholder')}
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="order_index">Order Index *</Label>
+                <Label htmlFor="order_index">{t('order_label')}</Label>
                 <Input
                   id="order_index"
                   type="number"
                   min="1"
-                  placeholder="1, 2, 3..."
+                  placeholder={t('order_placeholder')}
                   value={formData.order_index || ''}
                   onChange={(e) =>
                     setFormData({ ...formData, order_index: parseInt(e.target.value) || 0 })
@@ -401,14 +407,14 @@ export default function GradeLevelsPage() {
                   required
                 />
                 <p className="text-sm text-muted-foreground">
-                  Used for sorting: Grade 1=1, Grade 2=2, etc.
+                  {t('order_desc')}
                 </p>
               </div>
               <div className="flex items-center justify-between space-x-2">
                 <div className="space-y-0.5">
-                  <Label htmlFor="is_active">Active Status</Label>
+                  <Label htmlFor="is_active">{t('status_label')}</Label>
                   <p className="text-sm text-muted-foreground">
-                    Inactive grades won&apos;t appear in dropdowns
+                    {t('status_desc')}
                   </p>
                 </div>
                 <Switch
@@ -422,10 +428,10 @@ export default function GradeLevelsPage() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={handleCloseDialog} disabled={saving}>
-                Cancel
+                {t('cancel')}
               </Button>
               <Button type="submit" disabled={saving}>
-                {saving ? (editingGrade ? 'Updating...' : 'Creating...') : (editingGrade ? 'Update' : 'Create')}
+                {saving ? t(editingGrade ? 'updating' : 'creating') : t(editingGrade ? 'update' : 'create')}
               </Button>
             </DialogFooter>
           </form>
@@ -436,16 +442,15 @@ export default function GradeLevelsPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>{t('delete_confirm_title')}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this grade level. This action cannot be undone. Make sure
-              there are no sections or subjects linked to this grade.
+              {t('delete_confirm_desc')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setGradeToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setGradeToDelete(null)}>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground">
-              Delete
+              {t('delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

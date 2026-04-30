@@ -196,23 +196,27 @@ class SetupStatusService {
         total_grade_levels: number
         total_sections: number
     }> {
-        // Get student count
+        // Campus membership for these tables is stored in school_id, not campus_id.
+        // The selected campus is represented by a school row in the schools table.
         const { count: studentCount } = await supabase
             .from('students')
             .select('*', { count: 'exact', head: true })
-            .eq('campus_id', campusId)
+            .eq('school_id', campusId)
 
-        // Get teacher count
+        // Get teacher count from the staff table, because teachers are stored as staff rows
+        // with role='teacher' in this schema.
         const { count: teacherCount } = await supabase
-            .from('teachers')
+            .from('staff')
             .select('*', { count: 'exact', head: true })
-            .eq('campus_id', campusId)
+            .eq('school_id', campusId)
+            .eq('role', 'teacher')
 
-        // Get staff count
+        // Get non-teacher staff count: admin, librarian, counselor, and general staff
         const { count: staffCount } = await supabase
             .from('staff')
             .select('*', { count: 'exact', head: true })
-            .eq('campus_id', campusId)
+            .eq('school_id', campusId)
+            .in('role', ['staff', 'librarian', 'admin', 'counselor'])
 
         // Get parent count (parents don't have campus_id, so count all for the school)
         const { data: campusData } = await supabase
@@ -231,13 +235,13 @@ class SetupStatusService {
         const { count: gradeLevelCount } = await supabase
             .from('grade_levels')
             .select('*', { count: 'exact', head: true })
-            .eq('campus_id', campusId)
+            .eq('school_id', campusId)
 
         // Get section count
         const { count: sectionCount } = await supabase
             .from('sections')
             .select('*', { count: 'exact', head: true })
-            .eq('campus_id', campusId)
+            .eq('school_id', campusId)
 
         return {
             total_students: studentCount || 0,

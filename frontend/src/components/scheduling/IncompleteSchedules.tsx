@@ -21,7 +21,12 @@ interface StudentWithPeriods {
   isIncomplete: boolean
 }
 
+import { useTranslations } from "next-intl"
+
 export function IncompleteSchedules() {
+  const t = useTranslations("school.scheduling.incomplete_schedules")
+  const tCommon = useTranslations("common")
+
   const { user } = useAuth()
   const { selectedAcademicYear } = useAcademic()
   const campusContext = useCampus()
@@ -173,7 +178,7 @@ export function IncompleteSchedules() {
       {/* Header */}
       <div className="flex items-center gap-2 border-b pb-4">
         <CalendarDays className="h-6 w-6 text-amber-500" />
-        <h1 className="text-2xl font-bold">Incomplete Schedules</h1>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
       </div>
 
       {/* Count + Search */}
@@ -181,21 +186,21 @@ export function IncompleteSchedules() {
         <div className="flex items-center gap-2 text-sm">
           <span className="font-semibold text-amber-600">
             {loading
-              ? "Loading..."
-              : `${filteredStudents.length} student${filteredStudents.length !== 1 ? "s" : ""} with incomplete schedules were found.`}
+              ? tCommon("loading")
+              : t("found_students", { count: filteredStudents.length })}
           </span>
-          <button className="text-muted-foreground hover:text-foreground" title="Download">
+          <button className="text-muted-foreground hover:text-foreground" title={tCommon("download")}>
             <Download className="h-4 w-4" />
           </button>
         </div>
         <div className="relative w-64">
           <Input
-            placeholder="Search"
+            placeholder={tCommon("search")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pr-8"
+            className="pr-8 rtl:pl-8 rtl:pr-3"
           />
-          <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute right-2 rtl:left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         </div>
       </div>
 
@@ -211,14 +216,14 @@ export function IncompleteSchedules() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-muted/50 border-b">
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider whitespace-nowrap">
-                  Student
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider whitespace-nowrap">
+                  {tCommon("student")}
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider whitespace-nowrap">
-                  Student ID
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider whitespace-nowrap">
+                  {t("th_student_id")}
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider whitespace-nowrap">
-                  Grade Level
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider whitespace-nowrap">
+                  {tCommon("grade_level")}
                 </th>
                 {periods.map((p) => (
                   <th
@@ -238,8 +243,8 @@ export function IncompleteSchedules() {
                     className="px-4 py-8 text-center text-muted-foreground"
                   >
                     {studentsWithPeriods.length === 0
-                      ? "All students have complete schedules."
-                      : "No matching students found."}
+                      ? t("all_complete")
+                      : t("no_matching")}
                   </td>
                 </tr>
               ) : (

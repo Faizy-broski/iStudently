@@ -69,6 +69,8 @@ import mediaUploadRoutes from "./routes/media-upload.routes";
 import authRoutes from "./routes/auth.routes";
 import parentAgreementRoutes from "./routes/parent-agreement.routes";
 import setupAssistantRoutes from "./routes/setup-assistant.routes";
+import embeddedResourcesRoutes from "./routes/embedded-resources.routes";
+import vlabyRoutes from "./routes/vlaby.routes";
 
 const app = express();
 
@@ -102,7 +104,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   );
   res.setHeader(
     "Access-Control-Allow-Headers",
-    "Accept, Accept-Language, Content-Language, Content-Type, Authorization, X-Requested-With, X-API-Key, Origin",
+    "Accept, Accept-Language, Content-Language, Content-Type, Authorization, X-Requested-With, X-API-Key, Origin, X-Locale, X-VLaby-Token",
   );
   res.setHeader("Access-Control-Max-Age", "86400");
   res.setHeader("Vary", "Origin");
@@ -267,6 +269,8 @@ registerRoutes("/setup-assistant", setupAssistantRoutes);
 registerRoutes("/auth", authRoutes);
 registerRoutes("/resource-dashboards", resourceDashboardsRoutes);
 registerRoutes("/resource-links", resourceLinksRoutes);
+registerRoutes("/embedded-resources", embeddedResourcesRoutes);
+registerRoutes("/vlaby", vlabyRoutes);
 registerRoutes("/attendance-calendars", attendanceCalendarsRoutes);
 // Rollover and enrollment routes (includes /api/rollover/* and /api/enrollment/*)
 registerRoutes("/", rolloverRoutes);

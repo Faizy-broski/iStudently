@@ -15,15 +15,15 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
   return (
     <AuthLoadingGuard>
       <RoleGuard allowedRoles={['student']}>
-        <SchoolSettingsProvider>
-          <CampusProvider>
+        <CampusProvider>
+          <SchoolSettingsProvider>
             <ParentAgreementGuard role="student">
               <DashboardLayout role="student">
                 {children}
               </DashboardLayout>
             </ParentAgreementGuard>
-          </CampusProvider>
-        </SchoolSettingsProvider>
+          </SchoolSettingsProvider>
+        </CampusProvider>
       </RoleGuard>
     </AuthLoadingGuard>
   )

@@ -189,7 +189,8 @@ export const getCoursePeriodsBySection = async (req: Request, res: Response) => 
   try {
     const { sectionId } = req.params
     const academicYearId = req.query.academic_year_id as string | undefined
-    const data = await coursesService.getCoursePeriodsBySection(sectionId, academicYearId)
+    const schoolId = (req as AuthRequest).profile?.school_id
+    const data = await coursesService.getCoursePeriodsBySection(sectionId, academicYearId, schoolId)
     res.json({ success: true, data })
   } catch (error: any) {
     console.error('Error in getCoursePeriodsBySection:', error)

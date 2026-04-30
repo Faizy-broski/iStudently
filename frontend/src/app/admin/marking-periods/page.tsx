@@ -37,7 +37,13 @@ const CHILD_TYPE: Record<MarkingPeriodType, MarkingPeriodType | null> = {
 
 const MP_TYPES: MarkingPeriodType[] = ["FY", "SEM", "QTR", "PRO"]
 
+import { useTranslations } from "next-intl"
+
 export default function MarkingPeriodsPage() {
+  const t = useTranslations('school.marking_periods')
+  const campusT = useTranslations('school.marking_periods.types')
+  const campusPluralT = useTranslations('school.marking_periods.types_plural')
+  
   const { profile } = useAuth()
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
@@ -92,11 +98,11 @@ export default function MarkingPeriodsPage() {
       setGrouped(data)
     } catch (error) {
       console.error("Error fetching marking periods:", error)
-      toast.error("Failed to load marking periods")
+      toast.error(t('fetch_error'))
     } finally {
       setLoading(false)
     }
-  }, [profile?.school_id, selectedCampus?.id])
+  }, [profile?.school_id, selectedCampus?.id, t])
 
   useEffect(() => {
     fetchData()
@@ -141,7 +147,7 @@ export default function MarkingPeriodsPage() {
     if (parentType) {
       const parentItems = grouped[parentType]
       if (parentItems.length === 0) {
-        toast.error(`Please create a ${MP_TYPE_LABELS[parentType]} first`)
+        toast.error(t('parent_required', { type: campusT(parentType) }))
         return
       }
       // If we have a selected item that's a parent type, use it
@@ -171,7 +177,7 @@ export default function MarkingPeriodsPage() {
       const newMP = await createMarkingPeriod({
         mp_type: mpType,
         parent_id: parentId,
-        title: `New ${MP_TYPE_LABELS[mpType]}`,
+        title: t('new_placeholder', { type: campusT(mpType) }),
         short_name: `${mpType}${newSortOrder}`,
         sort_order: newSortOrder,
         does_grades: true,
@@ -179,11 +185,11 @@ export default function MarkingPeriodsPage() {
         campus_id: selectedCampus?.id || null,
       })
 
-      toast.success(`${MP_TYPE_LABELS[mpType]} created`)
+      toast.success(t('create_success', { type: campusT(mpType) }))
       await fetchData()
       setSelectedId(newMP.id)
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Failed to create marking period")
+      toast.error(error instanceof Error ? error.message : t('create_error'))
     }
   }
 
@@ -204,10 +210,10 @@ export default function MarkingPeriodsPage() {
         post_end_date: editForm.post_end_date || null,
       })
 
-      toast.success("Marking period saved")
+      toast.success(t('save_success'))
       await fetchData()
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Failed to save")
+      toast.error(error instanceof Error ? error.message : t('save_error'))
     } finally {
       setSaving(false)
     }
@@ -222,18 +228,18 @@ export default function MarkingPeriodsPage() {
       : false
 
     const message = hasChildren
-      ? "This will also delete all child marking periods. Continue?"
-      : "Delete this marking period?"
+      ? t('delete_confirm_children')
+      : t('delete_confirm_single')
 
     if (!confirm(message)) return
 
     try {
       await deleteMarkingPeriod(selectedId)
-      toast.success("Marking period deleted")
+      toast.success(t('delete_success'))
       setSelectedId(null)
       await fetchData()
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Failed to delete")
+      toast.error(error instanceof Error ? error.message : t('delete_error'))
     }
   }
 
@@ -312,12 +318,10 @@ export default function MarkingPeriodsPage() {
       {/* Header */}
       <div className="space-y-1">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#022172] dark:text-white">
-          Marking Periods
+          {t('title')}
         </h1>
         <p className="text-muted-foreground">
-          Define the academic calendar hierarchy
-          {selectedCampus ? ` — ${selectedCampus.name}` : ""}. Full Year →
-          Semesters → Quarters → Progress Periods.
+          {t('subtitle', { campus: selectedCampus ? ` — ${selectedCampus.name}` : "" })}
         </p>
       </div>
 
@@ -328,7 +332,7 @@ export default function MarkingPeriodsPage() {
         <div className="bg-white dark:bg-gray-900 rounded-lg border p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-[#022172] dark:text-white uppercase tracking-wider">
-              {MP_TYPE_LABELS[selectedMP.mp_type as MarkingPeriodType]} —{" "}
+              {campusT(selectedMP.mp_type as MarkingPeriodType)} —{" "}
               {selectedMP.title}
             </h2>
             <div className="flex gap-2">
@@ -339,7 +343,7 @@ export default function MarkingPeriodsPage() {
                 className="gap-1"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                DELETE
+                {t('delete_btn')}
               </Button>
               <Button
                 size="sm"
@@ -352,7 +356,7 @@ export default function MarkingPeriodsPage() {
                 ) : (
                   <Save className="h-3.5 w-3.5" />
                 )}
-                SAVE
+                {t('save_btn')}
               </Button>
             </div>
           </div>
@@ -361,7 +365,7 @@ export default function MarkingPeriodsPage() {
           <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
             <div className="md:col-span-3">
               <label className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1 block">
-                Title
+                {t('field_title')}
               </label>
               <Input
                 value={editForm.title}
@@ -373,7 +377,7 @@ export default function MarkingPeriodsPage() {
             </div>
             <div className="md:col-span-2">
               <label className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1 block">
-                Short Name
+                {t('field_short')}
               </label>
               <Input
                 value={editForm.short_name}
@@ -385,7 +389,7 @@ export default function MarkingPeriodsPage() {
             </div>
             <div className="md:col-span-1">
               <label className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1 block">
-                Sort Order
+                {t('field_order')}
               </label>
               <Input
                 type="number"
@@ -410,7 +414,7 @@ export default function MarkingPeriodsPage() {
                   setEditForm({ ...editForm, does_grades: !!checked })
                 }
               />
-              <span className="text-sm">Graded</span>
+              <span className="text-sm">{t('field_graded')}</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <Checkbox
@@ -419,7 +423,7 @@ export default function MarkingPeriodsPage() {
                   setEditForm({ ...editForm, does_comments: !!checked })
                 }
               />
-              <span className="text-sm">Allow Comments</span>
+              <span className="text-sm">{t('field_comments')}</span>
             </label>
           </div>
 
@@ -427,7 +431,7 @@ export default function MarkingPeriodsPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1 block">
-                Start Date
+                {t('field_start_date')}
               </label>
               <Input
                 type="date"
@@ -439,7 +443,7 @@ export default function MarkingPeriodsPage() {
             </div>
             <div>
               <label className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1 block">
-                End Date
+                {t('field_end_date')}
               </label>
               <Input
                 type="date"
@@ -451,7 +455,7 @@ export default function MarkingPeriodsPage() {
             </div>
             <div>
               <label className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1 block">
-                Grade Posting Begins
+                {t('field_post_start')}
               </label>
               <Input
                 type="date"
@@ -463,7 +467,7 @@ export default function MarkingPeriodsPage() {
             </div>
             <div>
               <label className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1 block">
-                Grade Posting Ends
+                {t('field_post_end')}
               </label>
               <Input
                 type="date"
@@ -492,14 +496,14 @@ export default function MarkingPeriodsPage() {
               {/* Column Header */}
               <div className="flex items-center justify-between px-3 py-2 border-b bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10">
                 <h3 className="text-xs font-semibold text-[#022172] dark:text-white uppercase tracking-wider">
-                  {MP_TYPE_SHORT[mpType]}
+                  {campusPluralT(mpType)}
                 </h3>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
                   onClick={() => handleAdd(mpType)}
-                  title={`Add ${MP_TYPE_LABELS[mpType]}`}
+                  title={t('new_placeholder', { type: campusT(mpType) })}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
@@ -509,7 +513,7 @@ export default function MarkingPeriodsPage() {
               <div className="flex-1 divide-y max-h-75 overflow-y-auto">
                 {items.length === 0 ? (
                   <div className="px-3 py-6 text-center text-xs text-gray-400">
-                    No {MP_TYPE_SHORT[mpType].toLowerCase()} defined
+                    {t('no_items', { type: campusPluralT(mpType).toLowerCase() })}
                   </div>
                 ) : (
                   items.map((mp) => {
@@ -540,15 +544,15 @@ export default function MarkingPeriodsPage() {
                           </span>
                           <div className="flex items-center gap-1 shrink-0">
                             {isCurrent && (
-                              <span className="inline-block w-2 h-2 rounded-full bg-green-500" title="Currently active" />
+                              <span className="inline-block w-2 h-2 rounded-full bg-green-500" title={t('active_tooltip')} />
                             )}
                             {mp.does_grades && (
-                              <span className="text-[10px] text-blue-500 font-medium" title="Graded">
+                              <span className="text-[10px] text-blue-500 font-medium" title={t('graded_tooltip')}>
                                 G
                               </span>
                             )}
                             {mp.does_comments && (
-                              <span className="text-[10px] text-purple-500 font-medium" title="Comments">
+                              <span className="text-[10px] text-purple-500 font-medium" title={t('comments_tooltip')}>
                                 C
                               </span>
                             )}
@@ -572,13 +576,13 @@ export default function MarkingPeriodsPage() {
       {/* Help text */}
       <div className="text-xs text-gray-400 space-y-1">
         <p>
-          <strong>Hierarchy:</strong> Full Year → Semester → Quarter → Progress
-          Period. Click <Plus className="inline h-3 w-3" /> to add, click an
-          item to select & edit it above.
+          {t.rich('help_hierarchy', {
+            icon: () => <Plus className="inline h-3 w-3" />
+          })}
         </p>
         <p>
           <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1" />
-          Currently active (today falls within date range). <strong className="text-blue-500">G</strong> = Graded. <strong className="text-purple-500">C</strong> = Comments.
+          {t('help_legend')}
         </p>
       </div>
     </div>

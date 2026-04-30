@@ -1426,6 +1426,8 @@ export interface SchoolSettings {
   // Hostel
   auto_remove_inactive: boolean;
   default_payment_method: string;
+  default_currency?: string;
+  hijri_offset?: number;
   // Automatic Attendance (mirrors RosarioSIS AUTOMATIC_ATTENDANCE_CRON_HOUR)
   auto_attendance_enabled: boolean;
   auto_attendance_hour: string;         // HH:MM (24h) — run after this time
@@ -1746,4 +1748,37 @@ export interface DuplicateAttendanceRecord {
   period_name?: string;
   count: number;
   record_ids: string[];
+}
+
+// ============================================================================
+// EMBEDDED RESOURCES TYPES
+// ============================================================================
+
+export interface EmbeddedResource {
+  id: string;
+  school_id: string;
+  title: string;
+  url: string;
+  published_grade_ids: string[];
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  // Joined
+  published_grade_names?: string[];
+}
+
+export interface CreateEmbeddedResourceDTO {
+  school_id: string;
+  title: string;
+  url: string;
+  published_grade_ids?: string[];
+  created_by?: string;
+}
+
+export interface UpdateEmbeddedResourceDTO {
+  title?: string;
+  url?: string;
+  published_grade_ids?: string[];
+  is_active?: boolean;
 }

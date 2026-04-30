@@ -6,31 +6,34 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { FileDown, Search, ArrowLeft, ChevronUp, ChevronDown, ArrowUpDown } from "lucide-react"
+import { FileDown, Search, ArrowLeft, ChevronUp, ChevronDown, ArrowUpDown, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { getFieldDefinitions, CustomFieldDefinition } from "@/lib/api/custom-fields"
 import { getAuthToken } from "@/lib/api/schools"
 import { API_URL } from "@/config/api"
 import { useCampus } from "@/context/CampusContext"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 
-// Standard fields mapping
+// Standard fields mapping to translation keys
 const STANDARD_FIELDS_MAP: Record<string, string> = {
-  'student_number': 'Student Number',
-  'first_name': 'First Name',
-  'last_name': 'Last Name',
-  'father_name': 'Father Name',
-  'grandfather_name': 'Grandfather Name',
-  'email': 'Email',
-  'phone': 'Phone',
-  'grade_level_name': 'Grade Level',
-  'section_name': 'Section',
-  'created_at': 'Enrollment Date',
-  'is_active': 'Status',
+  'student_number': 'student_number',
+  'first_name': 'first_name',
+  'last_name': 'last_name',
+  'father_name': 'father_name',
+  'grandfather_name': 'grandfather_name',
+  'email': 'email',
+  'phone': 'phone',
+  'grade_level_name': 'grade_level',
+  'section_name': 'section',
+  'created_at': 'enrollment_date',
+  'is_active': 'status',
 }
 
 export default function ReportResultsPage() {
+  const t = useTranslations("school.students.advanced_report_results")
+  const tReport = useTranslations("school.students.advanced_report")
+  const tCommon = useTranslations("common")
   const router = useRouter()
   const searchParams = useSearchParams()
   const campusContext = useCampus()
@@ -46,17 +49,13 @@ export default function ReportResultsPage() {
   const [sortField, setSortField] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
-  // icons for header
-  
   const renderSortIcon = (fieldId: string) => {
     if (sortField !== fieldId) {
-      // Show a faded up/down arrow when not sorted, ALWAYS visible
-      return <ArrowUpDown className="ml-2 h-3 w-3 text-muted-foreground opacity-40 hover:opacity-100 transition-opacity" />
+      return <ArrowUpDown className="ml-2 h-3 w-3 text-muted-foreground opacity-40 hover:opacity-100 transition-opacity rtl:mr-2 rtl:ml-0" />
     }
-    // Show active sorted state with your brand color
     return sortDirection === 'asc' 
-      ? <ChevronUp className="ml-2 h-3 w-3 text-[#022172]" /> 
-      : <ChevronDown className="ml-2 h-3 w-3 text-[#022172]" />
+      ? <ChevronUp className="ml-2 h-3 w-3 text-[#022172] rtl:mr-2 rtl:ml-0" /> 
+      : <ChevronDown className="ml-2 h-3 w-3 text-[#022172] rtl:mr-2 rtl:ml-0" />
   }
 
   // Load selected fields from URL
@@ -68,14 +67,14 @@ export default function ReportResultsPage() {
         setSelectedFields(fields)
       } catch (err) {
         console.error("Error parsing fields", err)
-        toast.error("Invalid report parameters")
+        toast.error(tCommon("error_occurred"))
         router.push('/admin/students/advanced-report')
       }
     } else {
-      toast.error("No fields selected")
+      toast.error(tReport("no_fields_error"))
       router.push('/admin/students/advanced-report')
     }
-  }, [searchParams, router])
+  }, [searchParams, router, tCommon, tReport])
 
   // Load custom fields
   useEffect(() => {
@@ -102,29 +101,16 @@ export default function ReportResultsPage() {
         const token = await getAuthToken()
         const campusId = campusContext?.selectedCampus?.id
         
-        console.log('🔍 Report Fetch - Campus Context:', {
-          hasCampusContext: !!campusContext,
-          selectedCampus: campusContext?.selectedCampus,
-          campusId: campusId,
-          willSendCampusParam: !!campusId
-        })
-        
         const queryParams = new URLSearchParams({
           page: '1',
           limit: '1000',
         })
         
-        // ONLY add campus_id if we have a valid campus selected
         if (campusId) {
           queryParams.append('campus_id', campusId)
-          console.log('✅ Adding campus_id to query:', campusId)
-        } else {
-          console.log('⚠️ No campus_id - will query with admin school_id')
         }
 
         const finalUrl = `${API_URL}/students/report?${queryParams}`
-        console.log('📡 Fetching:', finalUrl)
-
         const response = await fetch(finalUrl, {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -133,29 +119,23 @@ export default function ReportResultsPage() {
         })
 
         const data = await response.json()
-        console.log('📥 Response:', {
-          success: data.success,
-          studentCount: data.data?.length,
-          sampleStudent: data.data?.[0]
-        })
 
         if (response.ok && data.success) {
           setStudents(data.data || [])
           setFilteredStudents(data.data || [])
-          toast.success(`Report generated with ${data.data?.length || 0} students`)
         } else {
-          toast.error(data.error || 'Failed to fetch report data')
+          toast.error(data.error || tCommon("error_occurred"))
         }
       } catch (err: any) {
         console.error("Error fetching report:", err)
-        toast.error(err.message || "Failed to generate report")
+        toast.error(tCommon("error_occurred"))
       } finally {
         setLoading(false)
       }
     }
 
     fetchReportData()
-  }, [selectedFields, campusContext?.selectedCampus?.id])
+  }, [selectedFields, campusContext?.selectedCampus?.id, tCommon])
 
   // derive filtered + sorted students
   useEffect(() => {
@@ -179,7 +159,6 @@ export default function ReportResultsPage() {
         const aStr = rawA != null ? String(rawA) : ''
         const bStr = rawB != null ? String(rawB) : ''
 
-        // put blanks first when ascending, last when descending
         const aBlank = aStr === ''
         const bBlank = bStr === ''
         if (aBlank && !bBlank) return sortDirection === 'asc' ? -1 : 1
@@ -202,7 +181,8 @@ export default function ReportResultsPage() {
       const field = customFields.find(f => f.field_key === key)
       return field?.label || key
     }
-    return STANDARD_FIELDS_MAP[fieldId] || fieldId
+    const labelKey = STANDARD_FIELDS_MAP[fieldId]
+    return labelKey ? tReport(labelKey as any) : fieldId
   }
 
   // return raw (unformatted) value used for sorting
@@ -213,7 +193,6 @@ export default function ReportResultsPage() {
     }
     return student[fieldId] ?? ''
   }
-
 
   // Get field value
   const getFieldValue = (student: any, fieldId: string) => {
@@ -227,7 +206,7 @@ export default function ReportResultsPage() {
     
     // Format specific fields
     if (fieldId === 'is_active') {
-      return value ? 'Active' : 'Inactive'
+      return value ? t("active") : t("inactive")
     }
     
     if (fieldId === 'created_at') {
@@ -256,7 +235,7 @@ export default function ReportResultsPage() {
     a.download = `students_report_${new Date().toISOString().split('T')[0]}.csv`
     a.click()
     window.URL.revokeObjectURL(url)
-    toast.success('Report exported successfully')
+    toast.success(tCommon("success"))
   }
 
   if (loading) {
@@ -264,8 +243,8 @@ export default function ReportResultsPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#022172] mx-auto"></div>
-            <p className="mt-4 text-muted-foreground">Generating report...</p>
+            <Loader2 className="h-12 w-12 animate-spin text-[#022172] mx-auto" />
+            <p className="mt-4 text-muted-foreground">{t("loading")}</p>
           </div>
         </div>
       </div>
@@ -280,41 +259,41 @@ export default function ReportResultsPage() {
           <div className="flex items-center gap-3">
             <Link href="/admin/students/advanced-report">
               <Button variant="ghost" size="icon">
-                <ArrowLeft className="h-5 w-5" />
+                <ArrowLeft className="h-5 w-5 rtl:rotate-180" />
               </Button>
             </Link>
             <h1 className="text-3xl font-bold tracking-tight text-[#022172] dark:text-white">
-              Report Results
+              {t("title")}
             </h1>
           </div>
           <p className="text-muted-foreground mt-1">
-            Showing {filteredStudents.length} of {students.length} students
+            {t("students_found", { count: filteredStudents.length })}
           </p>
         </div>
         <Button variant="outline" onClick={exportToCSV} disabled={filteredStudents.length === 0}>
-          <FileDown className="h-4 w-4 mr-2" />
-          Export CSV
+          <FileDown className="h-4 w-4 mr-2 rtl:ml-2 rtl:mr-0" />
+          {t("export_csv")}
         </Button>
       </div>
 
       {/* Results Card */}
       <Card>
         <CardHeader>
-          <CardTitle>Student Data</CardTitle>
+          <CardTitle>{t("student_data")}</CardTitle>
           <CardDescription>
-            {selectedFields.length} field{selectedFields.length !== 1 ? 's' : ''} selected
+            {t("fields_selected", { count: selectedFields.length })}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {/* Search */}
           <div className="mb-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground rtl:right-3 rtl:left-auto" />
               <Input
-                placeholder="Search in results..."
+                placeholder={t("search_placeholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="pl-10 rtl:pr-10 rtl:pl-3"
               />
             </div>
           </div>
@@ -352,7 +331,7 @@ export default function ReportResultsPage() {
                       colSpan={selectedFields.length}
                       className="text-center py-8 text-muted-foreground"
                     >
-                      No students found
+                      {t("no_data")}
                     </TableCell>
                   </TableRow>
                 ) : (

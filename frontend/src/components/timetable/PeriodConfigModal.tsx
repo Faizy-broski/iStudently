@@ -18,12 +18,16 @@ interface PeriodConfigModalProps {
     trigger?: React.ReactNode;
 }
 
+import { useTranslations } from "next-intl";
+
 export function PeriodConfigModal({
     periods,
     academicYearId,
     onPeriodsChange,
     trigger
 }: PeriodConfigModalProps) {
+    const t = useTranslations('school.timetable')
+
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [localPeriods, setLocalPeriods] = useState<Partial<teachersApi.Period>[]>([]);
@@ -49,7 +53,7 @@ export function PeriodConfigModal({
 
         setLocalPeriods([...localPeriods, {
             period_number: highestNumber + 1,
-            period_name: `Period ${highestNumber + 1}`,
+            period_name: `${t('csv_period')} ${highestNumber + 1}`,
             start_time: startTime,
             end_time: incrementTime(startTime, 45),
             is_break: false
@@ -116,11 +120,11 @@ export function PeriodConfigModal({
                 });
             }
 
-            toast.success('Period configuration saved');
+            toast.success(t('success_config_saved'));
             onPeriodsChange();
             setOpen(false);
         } catch (error: any) {
-            toast.error(error.message || 'Failed to save periods');
+            toast.error(error.message || t('err_config_save'));
         } finally {
             setLoading(false);
         }
@@ -132,7 +136,7 @@ export function PeriodConfigModal({
                 {trigger || (
                     <Button variant="outline" size="sm">
                         <Settings className="h-4 w-4 mr-2" />
-                        Configure Periods
+                        {t('btn_configure_periods')}
                     </Button>
                 )}
             </DialogTrigger>
@@ -140,7 +144,7 @@ export function PeriodConfigModal({
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Clock className="h-5 w-5" />
-                        Period Configuration
+                        {t('dialog_title_config')}
                     </DialogTitle>
                 </DialogHeader>
 
@@ -159,10 +163,10 @@ export function PeriodConfigModal({
 
                                     <div className="flex-1 grid grid-cols-5 gap-2 items-center">
                                         <Input
-                                            value={period.period_name || `Period ${period.period_number}`}
+                                            value={period.period_name || `${t('csv_period')} ${period.period_number}`}
                                             onChange={(e) => updatePeriod(index, 'period_name', e.target.value)}
                                             className="h-8 text-sm"
-                                            placeholder="Period name"
+                                            placeholder={t('placeholder_period_name')}
                                         />
 
                                         <Input
@@ -184,7 +188,7 @@ export function PeriodConfigModal({
                                                 checked={period.is_break || false}
                                                 onCheckedChange={(checked) => updatePeriod(index, 'is_break', checked)}
                                             />
-                                            <Label className="text-xs">Break</Label>
+                                            <Label className="text-xs">{t('label_break')}</Label>
                                         </div>
 
                                         <Button
@@ -203,20 +207,20 @@ export function PeriodConfigModal({
                     {/* Add Period Button */}
                     <Button variant="outline" className="w-full" onClick={addPeriod}>
                         <Plus className="h-4 w-4 mr-2" />
-                        Add Period
+                        {t('btn_add_period')}
                     </Button>
 
                     {/* Actions */}
                     <div className="flex justify-end gap-2 pt-4 border-t">
                         <Button variant="outline" onClick={() => setOpen(false)}>
-                            Cancel
+                            {t('btn_cancel')}
                         </Button>
                         <Button
                             onClick={handleSave}
                             disabled={loading}
                             className="bg-[#022172] hover:bg-[#022172]/90"
                         >
-                            Save Configuration
+                            {t('btn_save_config')}
                         </Button>
                     </div>
                 </div>

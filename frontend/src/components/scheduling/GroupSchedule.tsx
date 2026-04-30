@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { useState, useMemo, useCallback } from "react"
 import useSWR from "swr"
 import { useAuth } from "@/context/AuthContext"
@@ -26,14 +27,14 @@ import {
   type SelectedCoursePeriod,
 } from "@/components/scheduling/ChooseCourseDialog"
 
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-]
+
 
 export function GroupSchedule() {
-  const { user } = useAuth()
+  const t = useTranslations("school.scheduling.group_schedule")
+  const tCommon = useTranslations("common")
+
   const { selectedAcademicYear } = useAcademic()
+  const { user } = useAuth()
   const campusContext = useCampus()
 
   const academicYearId = selectedAcademicYear
@@ -110,15 +111,15 @@ export function GroupSchedule() {
 
   const handleAddCourses = useCallback(async () => {
     if (selectedStudentIds.size === 0) {
-      toast.error("Please select at least one student")
+      toast.error(t("msg_select_student"))
       return
     }
     if (!selectedCoursePeriod) {
-      toast.error("Please choose a course first")
+      toast.error(t("msg_choose_course"))
       return
     }
     if (!academicYearId) {
-      toast.error("No academic year selected")
+      toast.error(t("msg_no_year"))
       return
     }
 
@@ -133,30 +134,30 @@ export function GroupSchedule() {
         start_date: startDate,
         campus_id: campusContext?.selectedCampus?.id,
       })
-      toast.success(`${result.enrolled} student(s) enrolled successfully`)
+      toast.success(t("msg_enrolled_success", { count: result.enrolled }))
       if (result.errors.length > 0) {
-        toast.warning(`${result.errors.length} error(s): ${result.errors.slice(0, 3).join(", ")}`)
+        toast.warning(t("msg_errors", { count: result.errors.length, errors: result.errors.slice(0, 3).join(", ") }))
       }
       setSelectedStudentIds(new Set())
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to enroll students")
+      toast.error(err instanceof Error ? err.message : tCommon("error"))
     } finally {
       setEnrolling(false)
     }
-  }, [selectedStudentIds, selectedCoursePeriod, academicYearId, selectedMarkingPeriod, startDate, campusContext?.selectedCampus?.id])
+  }, [selectedStudentIds, selectedCoursePeriod, academicYearId, selectedMarkingPeriod, startDate, campusContext?.selectedCampus?.id, t, tCommon])
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center gap-2 border-b pb-4">
         <CalendarDays className="h-6 w-6 text-amber-500" />
-        <h1 className="text-2xl font-bold">Group Schedule</h1>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
       </div>
 
       {/* Top action button */}
       <div className="flex justify-end">
         <Button onClick={handleAddCourses} disabled={enrolling}>
-          ADD COURSES TO SELECTED STUDENTS
+          {t("btn_add_courses")}
         </Button>
       </div>
 
@@ -164,7 +165,7 @@ export function GroupSchedule() {
       <div className="flex justify-center">
         <div className="border rounded-md w-full max-w-md">
           <div className="bg-muted/50 border-b px-4 py-2 text-center font-semibold text-sm uppercase">
-            Courses to Add
+            {t("panel_title")}
           </div>
           <div className="p-4 space-y-4">
             {/* Choose a Course link */}
@@ -176,7 +177,7 @@ export function GroupSchedule() {
                   className="text-primary hover:underline text-sm"
                   onClick={() => setShowCoursePicker(!showCoursePicker)}
                 >
-                  Change Course
+                  {t("btn_change_course")}
                 </button>
               </div>
             ) : (
@@ -185,13 +186,13 @@ export function GroupSchedule() {
                   onClick={() => setShowCoursePicker(prev => !prev)}
                   className="px-4 py-2 bg-blue-950 text-white text-sm font-medium rounded-md shadow hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                 >
-                  Choose a Course
+                  {t("btn_choose_course")}
                 </button>
             )}
 
             {/* Start Date */}
             <div className="space-y-1">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Select
                   value={String(startMonth)}
                   onValueChange={(v) => {
@@ -204,8 +205,8 @@ export function GroupSchedule() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {MONTHS.map((m, i) => (
-                      <SelectItem key={i} value={String(i)}>{m}</SelectItem>
+                    {Array.from({ length: 12 }).map((_, i) => (
+                      <SelectItem key={i} value={String(i)}>{tCommon(`months.${i}`)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -233,7 +234,7 @@ export function GroupSchedule() {
                   <CalendarDays className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">Start Date</p>
+              <p className="text-xs text-muted-foreground">{t("label_start_date")}</p>
             </div>
 
             {/* Marking Period */}
@@ -243,13 +244,13 @@ export function GroupSchedule() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="full-year">Full Year</SelectItem>
+                  <SelectItem value="full-year">{t("term_full_year")}</SelectItem>
                   {markingPeriods.map((mp) => (
                     <SelectItem key={mp.id} value={mp.id}>{mp.title}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">Marking Period</p>
+              <p className="text-xs text-muted-foreground">{t("label_marking_period")}</p>
             </div>
           </div>
         </div>
@@ -270,29 +271,29 @@ export function GroupSchedule() {
 
       {/* Expanded View | Group by Family links */}
       <div className="flex items-center gap-1 text-sm">
-        <button className="text-primary hover:underline">Expanded View</button>
+        <button className="text-primary hover:underline">{t("view_expanded")}</button>
         <span className="text-muted-foreground">|</span>
-        <button className="text-primary hover:underline">Group by Family</button>
+        <button className="text-primary hover:underline">{t("view_family")}</button>
       </div>
 
       {/* Count + Search */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span className="font-semibold text-foreground">
-            {filteredStudents.length} student{filteredStudents.length !== 1 ? "s" : ""} were found.
+            {t("found_students", { count: filteredStudents.length })}
           </span>
-          <button className="text-muted-foreground hover:text-foreground" title="Download">
+          <button className="text-muted-foreground hover:text-foreground" title={tCommon("download")}>
             <Download className="h-4 w-4" />
           </button>
         </div>
         <div className="relative w-64">
           <Input
-            placeholder="Search"
+            placeholder={tCommon("search")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pr-8"
+            className="pr-8 rtl:pl-8 rtl:pr-3"
           />
-          <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute right-2 rtl:left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         </div>
       </div>
 
@@ -314,14 +315,14 @@ export function GroupSchedule() {
                     onCheckedChange={toggleAll}
                   />
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Student
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {t("th_student")}
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Student Number
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {t("th_student_number")}
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Grade Level
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {t("th_grade_level")}
                 </th>
               </tr>
             </thead>
@@ -329,7 +330,7 @@ export function GroupSchedule() {
               {filteredStudents.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
-                    No students found.
+                    {t("no_students_found")}
                   </td>
                 </tr>
               ) : (
@@ -364,7 +365,7 @@ export function GroupSchedule() {
       {/* Bottom action button */}
       <div className="flex justify-center pt-2">
         <Button onClick={handleAddCourses} disabled={enrolling}>
-          ADD COURSES TO SELECTED STUDENTS
+          {t("btn_add_courses")}
         </Button>
       </div>
     </div>

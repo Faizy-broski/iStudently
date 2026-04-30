@@ -85,6 +85,8 @@ export class DiaryReminderService {
       auto_remove_inactive?: boolean
     }
     default_payment_method?: string
+    default_currency?: string
+    hijri_offset?: number
     auto_attendance_enabled?: boolean
     auto_attendance_hour?: string
     auto_attendance_days?: number[]
@@ -107,6 +109,13 @@ export class DiaryReminderService {
     if (settings.default_payment_method !== undefined) {
       const method = settings.default_payment_method.toLowerCase()
       updates.default_payment_method = VALID_PAYMENT_METHODS.includes(method) ? method : 'cash'
+    }
+    if (settings.default_currency !== undefined) {
+      updates.default_currency = settings.default_currency.toUpperCase().slice(0, 10)
+    }
+    if (settings.hijri_offset !== undefined) {
+      const offset = Math.round(Number(settings.hijri_offset))
+      updates.hijri_offset = isNaN(offset) ? 0 : Math.max(-30, Math.min(30, offset))
     }
     if (settings.auto_attendance_enabled !== undefined) updates.auto_attendance_enabled = settings.auto_attendance_enabled
     if (settings.auto_attendance_hour !== undefined) updates.auto_attendance_hour = settings.auto_attendance_hour

@@ -131,13 +131,14 @@ export const authenticate = async (
     if (typeof profile.role === 'string' && profile.role.toLowerCase() === 'student') {
       const { data: studentRecord, error: studentError } = await supabase
         .from('students')
-        .select('id, school_id')
+        .select('id, school_id, section_id')
         .or(`profile_id.eq.${profile.id},id.eq.${profile.id}`)
         .single()
 
       if (!studentError && studentRecord) {
         profile.student_id = studentRecord.id
-        
+        if (studentRecord.section_id) profile.section_id = studentRecord.section_id
+
         if (studentRecord.school_id) {
           profile.campus_id = studentRecord.school_id
           

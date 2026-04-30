@@ -51,7 +51,12 @@ interface ChooseCourseDialogProps {
   selectedCoursePeriod?: SelectedCoursePeriod | null
 }
 
+import { useTranslations } from "next-intl"
+
 export function ChooseCourseDialog({ onSelect, selectedCoursePeriod }: ChooseCourseDialogProps) {
+  const t = useTranslations("school.scheduling.add_course_dialog")
+  const tCommon = useTranslations("common")
+
   const campusContext = useCampus()
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null)
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
@@ -127,8 +132,8 @@ export function ChooseCourseDialog({ onSelect, selectedCoursePeriod }: ChooseCou
     onSelect({
       coursePeriodId: cp.id,
       courseId: selectedCourseId || cp.course_id,
-      courseTitle: course?.title || "Unknown",
-      periodLabel: periodLabel || `Period ${cp.id.substring(0, 6)}`,
+      courseTitle: course?.title || tCommon("unknown"),
+      periodLabel: periodLabel || `${tCommon("period")} ${cp.id.substring(0, 6)}`,
       availableSeats,
     })
   }
@@ -143,7 +148,7 @@ export function ChooseCourseDialog({ onSelect, selectedCoursePeriod }: ChooseCou
           onCheckedChange={(v) => setOfferChildMarkingPeriods(!!v)}
         />
         <label htmlFor="childMarkingPeriods-group" className="text-sm cursor-pointer">
-          Offer Enrollment in Child Marking Periods
+          {t("offer_child_marking_periods")}
         </label>
       </div>
 
@@ -151,23 +156,23 @@ export function ChooseCourseDialog({ onSelect, selectedCoursePeriod }: ChooseCou
       <div className="flex justify-end">
         <button className="text-primary hover:underline text-sm flex items-center gap-1">
           <Search className="h-3 w-3" />
-          Search
+          {t("search")}
         </button>
       </div>
 
       {/* Three-column selection */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Subjects */}
         <div>
           <p className="text-sm text-muted-foreground mb-2">
-            {subjects.length} subject{subjects.length !== 1 ? "s" : ""} found.
+            {t("found_subjects", { count: subjects.length })}
           </p>
           <div className="border rounded-md overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-muted/50 border-b">
-                  <th className="text-left px-3 py-2 font-semibold text-primary uppercase text-xs">
-                    Subject
+                  <th className="text-left rtl:text-right px-3 py-2 font-semibold text-primary uppercase text-xs">
+                    {tCommon("subject")}
                   </th>
                 </tr>
               </thead>
@@ -175,7 +180,7 @@ export function ChooseCourseDialog({ onSelect, selectedCoursePeriod }: ChooseCou
                 {subjectsLoading ? (
                   <tr><td className="px-3 py-2"><Skeleton className="h-5 w-full" /></td></tr>
                 ) : subjects.length === 0 ? (
-                  <tr><td className="px-3 py-4 text-center text-muted-foreground text-xs">No subjects found</td></tr>
+                  <tr><td className="px-3 py-4 text-center text-muted-foreground text-xs">{t("no_subjects_found")}</td></tr>
                 ) : (
                   subjects.map((subject) => (
                     <tr
@@ -186,7 +191,7 @@ export function ChooseCourseDialog({ onSelect, selectedCoursePeriod }: ChooseCou
                       onClick={() => setSelectedSubjectId(subject.id)}
                     >
                       <td className="px-3 py-2">
-                        <button className={`text-left w-full ${
+                        <button className={`text-left rtl:text-right w-full ${
                           selectedSubjectId === subject.id ? "text-primary font-medium" : "text-primary hover:underline"
                         }`}>
                           {subject.name}
@@ -203,14 +208,14 @@ export function ChooseCourseDialog({ onSelect, selectedCoursePeriod }: ChooseCou
         {/* Courses */}
         <div>
           <p className="text-sm text-muted-foreground mb-2">
-            {filteredCourses.length} course{filteredCourses.length !== 1 ? "s" : ""} found.
+            {t("found_courses", { count: filteredCourses.length })}
           </p>
           <div className="border rounded-md overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-muted/50 border-b">
-                  <th className="text-left px-3 py-2 font-semibold text-primary uppercase text-xs">
-                    Course
+                  <th className="text-left rtl:text-right px-3 py-2 font-semibold text-primary uppercase text-xs">
+                    {tCommon("course")}
                   </th>
                 </tr>
               </thead>
@@ -219,7 +224,7 @@ export function ChooseCourseDialog({ onSelect, selectedCoursePeriod }: ChooseCou
                   <tr><td className="px-3 py-2"><Skeleton className="h-5 w-full" /></td></tr>
                 ) : filteredCourses.length === 0 ? (
                   <tr><td className="px-3 py-4 text-center text-muted-foreground text-xs">
-                    {selectedSubjectId ? "No courses for this subject" : "Select a subject"}
+                    {selectedSubjectId ? t("no_courses_found") : t("select_subject")}
                   </td></tr>
                 ) : (
                   filteredCourses.map((course) => (
@@ -231,7 +236,7 @@ export function ChooseCourseDialog({ onSelect, selectedCoursePeriod }: ChooseCou
                       onClick={() => setSelectedCourseId(course.id)}
                     >
                       <td className="px-3 py-2">
-                        <button className={`text-left w-full ${
+                        <button className={`text-left rtl:text-right w-full ${
                           selectedCourseId === course.id ? "text-primary font-medium" : ""
                         }`}>
                           {course.title}
@@ -248,17 +253,17 @@ export function ChooseCourseDialog({ onSelect, selectedCoursePeriod }: ChooseCou
         {/* Course Periods */}
         <div>
           <p className="text-sm text-muted-foreground mb-2">
-            {coursePeriods.length} course period{coursePeriods.length !== 1 ? "s" : ""} found.
+            {t("found_cps", { count: coursePeriods.length })}
           </p>
           <div className="border rounded-md overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-muted/50 border-b">
-                  <th className="text-left px-3 py-2 font-semibold text-primary uppercase text-xs">
-                    Course Period
+                  <th className="text-left rtl:text-right px-3 py-2 font-semibold text-primary uppercase text-xs">
+                    {tCommon("course_period")}
                   </th>
-                  <th className="text-left px-3 py-2 font-semibold text-primary uppercase text-xs">
-                    Available Seats
+                  <th className="text-center px-3 py-2 font-semibold text-primary uppercase text-xs">
+                    {t("th_available_seats")}
                   </th>
                 </tr>
               </thead>
@@ -266,9 +271,9 @@ export function ChooseCourseDialog({ onSelect, selectedCoursePeriod }: ChooseCou
                 {periodsLoading ? (
                   <tr><td colSpan={2} className="px-3 py-2"><Skeleton className="h-5 w-full" /></td></tr>
                 ) : !selectedCourseId ? (
-                  <tr><td colSpan={2} className="px-3 py-4 text-center text-muted-foreground text-xs">Select a course</td></tr>
+                  <tr><td colSpan={2} className="px-3 py-4 text-center text-muted-foreground text-xs">{t("select_course")}</td></tr>
                 ) : coursePeriods.length === 0 ? (
-                  <tr><td colSpan={2} className="px-3 py-4 text-center text-muted-foreground text-xs">No course periods found</td></tr>
+                  <tr><td colSpan={2} className="px-3 py-4 text-center text-muted-foreground text-xs">{t("no_cps_found")}</td></tr>
                 ) : (
                   coursePeriods.map((cp) => {
                     const teacher = cp.teacher
@@ -291,13 +296,13 @@ export function ChooseCourseDialog({ onSelect, selectedCoursePeriod }: ChooseCou
                         onClick={() => handleSelectPeriod(cp)}
                       >
                         <td className="px-3 py-2">
-                          <button className={`text-primary hover:underline text-left w-full ${
+                          <button className={`text-primary hover:underline text-left rtl:text-right w-full ${
                             isSelected ? "font-medium" : ""
                           }`}>
-                            {periodLabel || `Period ${cp.id.substring(0, 6)}`}
+                            {periodLabel || `${tCommon("period")} ${cp.id.substring(0, 6)}`}
                           </button>
                         </td>
-                        <td className="px-3 py-2">{availableSeats}</td>
+                        <td className="px-3 py-2 text-center">{availableSeats}</td>
                       </tr>
                     )
                   })

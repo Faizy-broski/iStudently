@@ -58,6 +58,7 @@ import {
 } from "@/components/ui/tooltip";
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
+import { useTranslations } from "next-intl";
 
 // Utility function for debouncing
 function debounce(
@@ -78,56 +79,57 @@ function debounce(
   return debounced;
 }
 
-// Available placeholder fields for ID cards
-const PLACEHOLDER_FIELDS = [
-  // Personal Information
-  { id: '__FULL_NAME__', label: 'Full Name', category: 'Personal' },
-  { id: '__FIRST_NAME__', label: 'First Name', category: 'Personal' },
-  { id: '__FATHER_NAME__', label: "Father's Name", category: 'Personal' },
-  { id: '__GRANDFATHER_NAME__', label: "Grandfather's Name", category: 'Personal' },
-  { id: '__LAST_NAME__', label: 'Last Name / Surname', category: 'Personal' },
-  { id: '__DATE_OF_BIRTH__', label: 'Date of Birth', category: 'Personal' },
-  { id: '__GENDER__', label: 'Gender', category: 'Personal' },
-  { id: '__BLOOD_GROUP__', label: 'Blood Group', category: 'Personal' },
-  
-  // Contact Information
-  { id: '__EMAIL__', label: 'Email', category: 'Contact' },
-  { id: '__PHONE__', label: 'Phone', category: 'Contact' },
-  { id: '__ADDRESS__', label: 'Address', category: 'Contact' },
-  
-  // Academic Information
-  { id: '__STUDENT_ID__', label: 'Student ID', category: 'Academic' },
-  { id: '__STUDENT_NUMBER__', label: 'Student Number', category: 'Academic' },
-  { id: '__ADMISSION_NUMBER__', label: 'Admission Number', category: 'Academic' },
-  { id: '__ROLL_NUMBER__', label: 'Roll Number', category: 'Academic' },
-  { id: '__GRADE_LEVEL__', label: 'Grade Level', category: 'Academic' },
-  { id: '__SECTION__', label: 'Section', category: 'Academic' },
-  { id: '__ADMISSION_DATE__', label: 'Admission Date', category: 'Academic' },
-  
-  // Parent/Guardian
-  { id: '__PARENT_NAME__', label: 'Parent Name', category: 'Family' },
-  { id: '__PARENT_PHONE__', label: 'Parent Phone', category: 'Family' },
-  { id: '__EMERGENCY_CONTACT__', label: 'Emergency Contact', category: 'Family' },
-  
-  // School Information
-  { id: '__CAMPUS__', label: 'Campus Name', category: 'School' },
-  { id: '__CAMPUS_ADDRESS__', label: 'Campus Address', category: 'School' },
-  { id: '__CAMPUS_PHONE__', label: 'Campus Phone', category: 'School' },
-  { id: '__SCHOOL_YEAR__', label: 'Academic Year', category: 'School' },
-  
-  // System
-  { id: '__PHOTO__', label: 'Student Photo', category: 'Media' },
-  { id: '__SCHOOL_LOGO__', label: 'School Logo', category: 'Media' },
-  { id: '__DATE__', label: 'Current Date', category: 'System' },
-  { id: '__VALID_UNTIL__', label: 'Valid Until Date', category: 'System' },
-];
-
 // Group fields by category
-const GROUPED_FIELDS = PLACEHOLDER_FIELDS.reduce((acc, field) => {
-  if (!acc[field.category]) acc[field.category] = [];
-  acc[field.category].push(field);
-  return acc;
-}, {} as Record<string, typeof PLACEHOLDER_FIELDS>);
+const GROUPED_FIELDS = (t: any) => {
+  const fields = [
+    // Personal Information
+    { id: '__FULL_NAME__', label: t('full_name'), category: 'personal' },
+    { id: '__FIRST_NAME__', label: t('first_name'), category: 'personal' },
+    { id: '__FATHER_NAME__', label: t('father_name'), category: 'personal' },
+    { id: '__GRANDFATHER_NAME__', label: t('grandfather_name'), category: 'personal' },
+    { id: '__LAST_NAME__', label: t('last_name'), category: 'personal' },
+    { id: '__DATE_OF_BIRTH__', label: t('date_of_birth'), category: 'personal' },
+    { id: '__GENDER__', label: t('gender'), category: 'personal' },
+    { id: '__BLOOD_GROUP__', label: t('blood_group'), category: 'personal' },
+    
+    // Contact Information
+    { id: '__EMAIL__', label: t('email'), category: 'contact' },
+    { id: '__PHONE__', label: t('phone'), category: 'contact' },
+    { id: '__ADDRESS__', label: t('address'), category: 'contact' },
+    
+    // Academic Information
+    { id: '__STUDENT_ID__', label: t('student_id'), category: 'academic' },
+    { id: '__STUDENT_NUMBER__', label: t('student_number'), category: 'academic' },
+    { id: '__ADMISSION_NUMBER__', label: t('admission_number'), category: 'academic' },
+    { id: '__ROLL_NUMBER__', label: t('roll_number'), category: 'academic' },
+    { id: '__GRADE_LEVEL__', label: t('grade_level'), category: 'academic' },
+    { id: '__SECTION__', label: t('section'), category: 'academic' },
+    { id: '__ADMISSION_DATE__', label: t('admission_date'), category: 'academic' },
+    
+    // Parent/Guardian
+    { id: '__PARENT_NAME__', label: t('parent_name'), category: 'family' },
+    { id: '__PARENT_PHONE__', label: t('parent_phone'), category: 'family' },
+    { id: '__EMERGENCY_CONTACT__', label: t('emergency_contact'), category: 'family' },
+    
+    // School Information
+    { id: '__CAMPUS__', label: t('campus'), category: 'school' },
+    { id: '__CAMPUS_ADDRESS__', label: t('campus_address'), category: 'school' },
+    { id: '__CAMPUS_PHONE__', label: t('campus_phone'), category: 'school' },
+    { id: '__SCHOOL_YEAR__', label: t('academic_year'), category: 'school' },
+    
+    // System
+    { id: '__PHOTO__', label: t('photo'), category: 'media' },
+    { id: '__SCHOOL_LOGO__', label: t('school_logo'), category: 'media' },
+    { id: '__DATE__', label: t('current_date'), category: 'system' },
+    { id: '__VALID_UNTIL__', label: t('valid_until'), category: 'system' },
+  ];
+
+  return fields.reduce((acc, field) => {
+    if (!acc[field.category]) acc[field.category] = [];
+    acc[field.category].push(field);
+    return acc;
+  }, {} as Record<string, typeof fields>);
+};
 
 // Default template
 const DEFAULT_TEMPLATE = `<p style="font-size: 20px; font-weight: bold; text-align: center; margin-bottom: 8px;">__FULL_NAME__</p>
@@ -136,8 +138,14 @@ const DEFAULT_TEMPLATE = `<p style="font-size: 20px; font-weight: bold; text-ali
 <p style="color: #666; margin: 4px 0;"><span style="color: #333;">School Year:</span> __SCHOOL_YEAR__</p>`;
 
 export default function StudentIdCardPage() {
+  const t = useTranslations("school.students.id_card");
+  const tCommon = useTranslations("common");
+  const tFields = useTranslations("school.students.custom_fields.standard_fields");
+  
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
+
+  const groupedFields = useMemo(() => GROUPED_FIELDS(tFields), [tFields]);
   
   // State for filters
   const [selectedGradeLevel, setSelectedGradeLevel] = useState<string>("all");
@@ -1213,15 +1221,15 @@ export default function StudentIdCardPage() {
               <IdCard className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">Student ID Card</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-[#022172] dark:text-white">{t("title")}</h1>
             </div>
           </div>
           <Button 
             onClick={handleGenerate}
             disabled={selectedStudentIds.length === 0}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-[#022172] hover:bg-[#022172]/90"
           >
-            Generate ID Card for Selected Students
+            {t("generate_cards")}
           </Button>
         </div>
         
@@ -1234,46 +1242,46 @@ export default function StudentIdCardPage() {
                 <CardContent className="pt-6 space-y-4">
                   {/* Toolbar */}
                   <div className="flex items-center gap-1 p-2 bg-muted/50 rounded-lg border flex-wrap">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('bold')} title="Bold">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('bold')} title={t("toolbar.bold", { defaultValue: "Bold" })}>
                       <Bold className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('italic')} title="Italic">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('italic')} title={t("toolbar.italic", { defaultValue: "Italic" })}>
                       <Italic className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('underline')} title="Underline">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('underline')} title={t("toolbar.underline", { defaultValue: "Underline" })}>
                       <Underline className="h-4 w-4" />
                     </Button>
                     
                     <Separator orientation="vertical" className="h-6 mx-2" />
                     
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('insertUnorderedList')} title="Bullet List">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('insertUnorderedList')} title={t("toolbar.bullet_list", { defaultValue: "Bullet List" })}>
                       <List className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('insertOrderedList')} title="Numbered List">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('insertOrderedList')} title={t("toolbar.numbered_list", { defaultValue: "Numbered List" })}>
                       <ListOrdered className="h-4 w-4" />
                     </Button>
                     
                     <Separator orientation="vertical" className="h-6 mx-2" />
                     
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('justifyLeft')} title="Align Left">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('justifyLeft')} title={t("toolbar.align_left", { defaultValue: "Align Left" })}>
                       <AlignLeft className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('justifyCenter')} title="Align Center">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('justifyCenter')} title={t("toolbar.align_center", { defaultValue: "Align Center" })}>
                       <AlignCenter className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('justifyRight')} title="Align Right">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('justifyRight')} title={t("toolbar.align_right", { defaultValue: "Align Right" })}>
                       <AlignRight className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('justifyFull')} title="Justify">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => execCommand('justifyFull')} title={t("toolbar.justify", { defaultValue: "Justify" })}>
                       <AlignJustify className="h-4 w-4" />
                     </Button>
                     
                     <Separator orientation="vertical" className="h-6 mx-2" />
                     
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={openLinkDialog} title="Insert Link">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={openLinkDialog} title={t("toolbar.insert_link", { defaultValue: "Insert Link" })}>
                       <LinkIcon className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={openImageDialog} title="Insert Image (drag to move, set size on upload)">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={openImageDialog} title={t("toolbar.insert_image_hint", { defaultValue: "Insert Image (drag to move, set size on upload)" })}>
                       <ImageIcon className="h-4 w-4" />
                     </Button>
                     
@@ -1287,12 +1295,12 @@ export default function StudentIdCardPage() {
                         </div>
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="black">Black</SelectItem>
-                        <SelectItem value="red">Red</SelectItem>
-                        <SelectItem value="blue">Blue</SelectItem>
-                        <SelectItem value="green">Green</SelectItem>
-                        <SelectItem value="orange">Orange</SelectItem>
-                        <SelectItem value="purple">Purple</SelectItem>
+                        <SelectItem value="black">{t("colors.black", { defaultValue: "Black" })}</SelectItem>
+                        <SelectItem value="red">{t("colors.red", { defaultValue: "Red" })}</SelectItem>
+                        <SelectItem value="blue">{t("colors.blue", { defaultValue: "Blue" })}</SelectItem>
+                        <SelectItem value="green">{t("colors.green", { defaultValue: "Green" })}</SelectItem>
+                        <SelectItem value="orange">{t("colors.orange", { defaultValue: "Orange" })}</SelectItem>
+                        <SelectItem value="purple">{t("colors.purple", { defaultValue: "Purple" })}</SelectItem>
                       </SelectContent>
                     </Select>
                     
@@ -1319,11 +1327,11 @@ export default function StudentIdCardPage() {
                   {/* Rich Text Editor */}
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">
-                      ID Card Template Content
-                      <span className="text-xs text-muted-foreground ml-2">(Edit text, insert links & images here)</span>
+                      {t("id_card_template_content", { defaultValue: "ID Card Template Content" })}
+                      <span className="text-xs text-muted-foreground ml-2 rtl:mr-2 rtl:ml-0">({t("id_card_template_hint", { defaultValue: "Edit text, insert links & images here" })})</span>
                     </Label>
                     {showHtmlSource ? (
-                      <textarea
+                    <textarea
                         className="min-h-[300px] p-4 border-2 border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm w-full"
                         value={templateContent}
                         onChange={(e) => {
@@ -1334,7 +1342,7 @@ export default function StudentIdCardPage() {
                             editorRef.current.innerHTML = content;
                           }
                         }}
-                        placeholder="Enter your ID card template HTML..."
+                        placeholder={t("html_placeholder", { defaultValue: "Enter your ID card template HTML..." })}
                       />
                     ) : (
                       <div
@@ -1358,12 +1366,12 @@ export default function StudentIdCardPage() {
                           const content = (e.target as HTMLDivElement).innerHTML;
                           setTemplateContent(content);
                         }}
-                        data-placeholder="Click here to start editing your ID card template..."
+                        data-placeholder={t("editor_placeholder", { defaultValue: "Click here to start editing your ID card template..." })}
                       />
                     )}
                     <p className="text-xs text-muted-foreground flex items-center gap-2">
                       <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-100 text-blue-600 text-xs font-bold">ℹ</span>
-                      Type or paste content, use toolbar buttons for formatting, click Link/Image icons to insert media
+                      {t("editor_tip", { defaultValue: "Type or paste content, use toolbar buttons for formatting, click Link/Image icons to insert media" })}
                     </p>
                   </div>
                   
@@ -1372,8 +1380,8 @@ export default function StudentIdCardPage() {
                   {/* Substitutions Field Selector */}
                   <div className="space-y-3">
                     <Label className="text-sm font-medium">
-                      Insert Student Data Fields
-                      <span className="text-xs text-muted-foreground ml-2">(Select a field to insert placeholder)</span>
+                      {t("insert_fields", { defaultValue: "Insert Student Data Fields" })}
+                      <span className="text-xs text-muted-foreground ml-2 rtl:mr-2 rtl:ml-0">({t("insert_fields_hint", { defaultValue: "Select a field to insert placeholder" })})</span>
                     </Label>
                     <div className="flex items-center gap-3 flex-wrap">
                       <Select 
@@ -1381,13 +1389,13 @@ export default function StudentIdCardPage() {
                         onValueChange={setSelectedField}
                       >
                         <SelectTrigger className="w-[200px]">
-                          <SelectValue placeholder="Select Field..." />
+                          <SelectValue placeholder={t("select_field")} />
                         </SelectTrigger>
                         <SelectContent side="bottom" align="start" sideOffset={5} className="max-h-[300px]">
-                          {Object.entries(GROUPED_FIELDS).map(([category, fields]) => (
+                          {Object.entries(groupedFields).map(([category, fields]) => (
                             <div key={category}>
                               <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted">
-                                {category}
+                                {tCommon(`categories.${category}`)}
                               </div>
                               {fields.map((field) => (
                                 <SelectItem key={field.id} value={field.id}>
@@ -1400,7 +1408,7 @@ export default function StudentIdCardPage() {
                       </Select>
                       
                       {selectedField && (
-                        <code className="px-3 py-2 bg-blue-600 text-white rounded text-sm font-mono">
+                        <code className="px-3 py-2 bg-[#022172] text-white rounded text-sm font-mono">
                           {selectedField}
                         </code>
                       )}
@@ -1408,16 +1416,16 @@ export default function StudentIdCardPage() {
                       <Button
                         onClick={() => selectedField && insertPlaceholder(selectedField)}
                         disabled={!selectedField}
-                        className="bg-blue-600 hover:bg-blue-700"
+                        className="bg-[#022172] hover:bg-[#022172]/90"
                       >
-                        Insert
+                        {t("insert_placeholder")}
                       </Button>
                       <Button
                         variant="outline"
                         onClick={() => selectedField && copyPlaceholder(selectedField)}
                         disabled={!selectedField}
                       >
-                        Copy
+                        {t("copy")}
                       </Button>
                     </div>
                   </div>
@@ -1436,13 +1444,13 @@ export default function StudentIdCardPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Settings className="h-5 w-5" />
-                    Design Settings
+                    {t("design_settings")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Background Image */}
                   <div>
-                    <Label className="text-sm font-medium">Background Image (.jpg, .png, .gif)</Label>
+                    <Label className="text-sm font-medium">{tCommon("background_image", { defaultValue: "Background Image" })} (.jpg, .png, .gif)</Label>
                     <Input 
                       type="file" 
                       accept=".jpg,.png,.gif"
@@ -1465,7 +1473,7 @@ export default function StudentIdCardPage() {
                   
                   {/* Card Padding */}
                   <div>
-                    <Label className="text-sm font-medium text-muted-foreground">CARD PADDING</Label>
+                    <Label className="text-sm font-medium text-muted-foreground uppercase">{t("card_padding", { defaultValue: "CARD PADDING" })}</Label>
                     <div className="grid grid-cols-2 gap-4 mt-2">
                       <div>
                         <Input 
@@ -1492,7 +1500,7 @@ export default function StudentIdCardPage() {
                   
                   {/* Text Padding */}
                   <div>
-                    <Label className="text-sm font-medium text-muted-foreground">TEXT PADDING</Label>
+                    <Label className="text-sm font-medium text-muted-foreground uppercase">{t("text_padding", { defaultValue: "TEXT PADDING" })}</Label>
                     <div className="grid grid-cols-2 gap-4 mt-2">
                       <div>
                         <Input 
@@ -1501,7 +1509,7 @@ export default function StudentIdCardPage() {
                           onChange={(e) => setDesignSettings(prev => ({ ...prev, textPaddingTop: parseInt(e.target.value) || 0 }))}
                           className="w-full"
                         />
-                        <span className="text-xs text-muted-foreground">Top and bottom (pixels)</span>
+                        <span className="text-xs text-muted-foreground">{tCommon("top_bottom_px", { defaultValue: "Top/Bottom (px)" })}</span>
                       </div>
                       <div>
                         <Input 
@@ -1510,7 +1518,7 @@ export default function StudentIdCardPage() {
                           onChange={(e) => setDesignSettings(prev => ({ ...prev, textPaddingLeft: parseInt(e.target.value) || 0 }))}
                           className="w-full"
                         />
-                        <span className="text-xs text-muted-foreground">Left and right (pixels)</span>
+                        <span className="text-xs text-muted-foreground">{tCommon("left_right_px", { defaultValue: "Left/Right (px)" })}</span>
                       </div>
                     </div>
                   </div>
@@ -1519,7 +1527,7 @@ export default function StudentIdCardPage() {
                   
                   {/* Photo Padding */}
                   <div>
-                    <Label className="text-sm font-medium text-muted-foreground">PHOTO PADDING</Label>
+                    <Label className="text-sm font-medium text-muted-foreground uppercase">{t("photo_padding", { defaultValue: "PHOTO PADDING" })}</Label>
                     <div className="grid grid-cols-2 gap-4 mt-2">
                       <div>
                         <Input 
@@ -1528,7 +1536,7 @@ export default function StudentIdCardPage() {
                           onChange={(e) => setDesignSettings(prev => ({ ...prev, photoPaddingTop: parseInt(e.target.value) || 0 }))}
                           className="w-full"
                         />
-                        <span className="text-xs text-muted-foreground">Top and bottom (pixels)</span>
+                        <span className="text-xs text-muted-foreground">{tCommon("top_bottom_px", { defaultValue: "Top/Bottom (px)" })}</span>
                       </div>
                       <div>
                         <Input 
@@ -1537,7 +1545,7 @@ export default function StudentIdCardPage() {
                           onChange={(e) => setDesignSettings(prev => ({ ...prev, photoPaddingLeft: parseInt(e.target.value) || 0 }))}
                           className="w-full"
                         />
-                        <span className="text-xs text-muted-foreground">Left and right (pixels)</span>
+                        <span className="text-xs text-muted-foreground">{tCommon("left_right_px", { defaultValue: "Left/Right (px)" })}</span>
                       </div>
                     </div>
                   </div>
@@ -1546,7 +1554,7 @@ export default function StudentIdCardPage() {
                   
                   {/* Photo Settings */}
                   <div>
-                    <Label className="text-sm font-medium text-muted-foreground">PHOTO</Label>
+                    <Label className="text-sm font-medium text-muted-foreground uppercase">{t("photo", { defaultValue: "PHOTO" })}</Label>
                     <div className="grid grid-cols-2 gap-4 mt-2">
                       <div>
                         <Input 
@@ -1555,7 +1563,7 @@ export default function StudentIdCardPage() {
                           onChange={(e) => setDesignSettings(prev => ({ ...prev, photoWidth: parseInt(e.target.value) || 100 }))}
                           className="w-full"
                         />
-                        <span className="text-xs text-muted-foreground">Max. width (pixels)</span>
+                        <span className="text-xs text-muted-foreground">{t("photo_width_hint", { defaultValue: "Max. width (pixels)" })}</span>
                       </div>
                       <div>
                         <Select 
@@ -1566,12 +1574,12 @@ export default function StudentIdCardPage() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="left">Left</SelectItem>
-                            <SelectItem value="center">Center</SelectItem>
-                            <SelectItem value="right">Right</SelectItem>
+                            <SelectItem value="left">{t("pos_left")}</SelectItem>
+                            <SelectItem value="center">{t("pos_center")}</SelectItem>
+                            <SelectItem value="right">{t("pos_right")}</SelectItem>
                           </SelectContent>
                         </Select>
-                        <span className="text-xs text-muted-foreground">Position</span>
+                        <span className="text-xs text-muted-foreground">{t("photo_position", { defaultValue: "Position" })}</span>
                       </div>
                     </div>
                   </div>
@@ -1585,31 +1593,31 @@ export default function StudentIdCardPage() {
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Users className="h-5 w-5" />
-                    Select Students
+                    {t("select_students")}
                   </CardTitle>
                   <CardDescription>
-                    {selectedStudentIds.length} of {filteredStudents.length} selected
+                    {t("selected_count", { count: selectedStudentIds.length })}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {/* Filters */}
                   <div className="space-y-3">
                     <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground rtl:right-3 rtl:left-auto" />
                       <Input
-                        placeholder="Search students..."
+                        placeholder={t("search_students")}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-9"
+                        className="pl-9 rtl:pr-9 rtl:pl-3"
                       />
                     </div>
                     
                     <Select value={selectedGradeLevel} onValueChange={setSelectedGradeLevel}>
                       <SelectTrigger>
-                        <SelectValue placeholder="All Grade Levels" />
+                        <SelectValue placeholder={t("all_grades")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All Grade Levels</SelectItem>
+                        <SelectItem value="all">{t("all_grades")}</SelectItem>
                         {gradeLevels.map(grade => (
                           <SelectItem key={grade.id} value={grade.id}>
                             {grade.name}
@@ -1620,10 +1628,10 @@ export default function StudentIdCardPage() {
                     
                     <Select value={selectedSection} onValueChange={setSelectedSection}>
                       <SelectTrigger>
-                        <SelectValue placeholder="All Sections" />
+                        <SelectValue placeholder={t("all_sections")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All Sections</SelectItem>
+                        <SelectItem value="all">{t("all_sections")}</SelectItem>
                         {filteredSections.map(section => (
                           <SelectItem key={section.id} value={section.id}>
                             {section.name}
@@ -1640,22 +1648,25 @@ export default function StudentIdCardPage() {
                       className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
                     >
                       {selectedStudentIds.length === filteredStudents.length && filteredStudents.length > 0 ? (
-                        <CheckSquare className="h-4 w-4 text-primary" />
+                        <>
+                          <CheckSquare className="h-4 w-4 text-primary" />
+                          {tCommon("deselect_all")}
+                        </>
                       ) : (
-                        <Square className="h-4 w-4" />
+                        <>
+                          <Square className="h-4 w-4" />
+                          {tCommon("select_all")}
+                        </>
                       )}
-                      {selectedStudentIds.length === filteredStudents.length && filteredStudents.length > 0
-                        ? 'Deselect All'
-                        : 'Select All'}
                     </button>
                     <div className="flex items-center gap-2">
                       {selectedGradeLevel === 'all' && selectedSection === 'all' && !searchQuery && (
-                        <span className="text-xs text-muted-foreground">For preview only</span>
+                        <span className="text-xs text-muted-foreground">{t("for_preview_only", { defaultValue: "For preview only" })}</span>
                       )}
                       <Badge variant="secondary">
                         {selectedGradeLevel === 'all' && selectedSection === 'all' && !searchQuery 
-                          ? `${filteredStudents.length} of ${totalStudents} students`
-                          : `${totalStudents} student${totalStudents !== 1 ? 's' : ''}`
+                          ? t("students_reference_count", { count: filteredStudents.length, total: totalStudents, defaultValue: `${filteredStudents.length} of ${totalStudents} students` })
+                          : t("students_count", { count: totalStudents, defaultValue: `${totalStudents} student${totalStudents !== 1 ? 's' : ''}` })
                         }
                       </Badge>
                     </div>
@@ -1664,8 +1675,8 @@ export default function StudentIdCardPage() {
                   {/* Info message when showing limited results */}
                   {selectedGradeLevel === 'all' && selectedSection === 'all' && !searchQuery && (
                     <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-sm text-blue-700 dark:text-blue-300">
-                      <Info className="h-4 w-4 inline mr-2" />
-                      Showing first 10 students as reference. Please select a specific grade level or section to view and generate ID cards for all students.
+                      <Info className="h-4 w-4 inline mr-2 rtl:ml-2 rtl:mr-0" />
+                      {t("reference_info_message", { defaultValue: "Showing first 10 students as reference. Please select a specific grade level or section to view and generate ID cards for all students." })}
                     </div>
                   )}
                   
@@ -1677,7 +1688,7 @@ export default function StudentIdCardPage() {
                       </div>
                     ) : filteredStudents.length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground">
-                        No students found
+                        {tCommon("no_students_found")}
                       </div>
                     ) : (
                       <div className="space-y-1">
@@ -1718,10 +1729,14 @@ export default function StudentIdCardPage() {
                       <div className="flex items-center justify-between text-sm">
                         <div className="text-muted-foreground">
                           {selectedGradeLevel === 'all' && selectedSection === 'all' && !searchQuery ? (
-                            <span>Showing first 10 students (select grade/section for more)</span>
+                            <span>{t("showing_preview_count", { defaultValue: "Showing first 10 students (select grade/section for more)" })}</span>
                           ) : (
                             <span>
-                              Showing {((currentPage - 1) * studentsPerPage) + 1} to {Math.min(currentPage * studentsPerPage, totalStudents)} of {totalStudents} students
+                              {tCommon("showing_range", { 
+                                start: ((currentPage - 1) * studentsPerPage) + 1, 
+                                end: Math.min(currentPage * studentsPerPage, totalStudents), 
+                                total: totalStudents 
+                              })}
                             </span>
                           )}
                         </div>
@@ -1783,7 +1798,7 @@ export default function StudentIdCardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">
-                  To print in high quality (144dpi) and at true size, save the cards as an image, and print to 50% scale.
+                  {t("print_quality_tip", { defaultValue: "To print in high quality (144dpi) and at true size, save the cards as an image, and print to 50% scale." })}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -1791,27 +1806,27 @@ export default function StudentIdCardPage() {
                   variant="outline"
                   onClick={() => setShowGeneratedCards(false)}
                 >
-                  Back to Editor
+                  {t("back_to_editor", { defaultValue: "Back to Editor" })}
                 </Button>
                 <Button
                   variant="outline"
                   onClick={handlePrint}
                   disabled={isGenerating}
                 >
-                  <Printer className="h-4 w-4 mr-2" />
-                  Print
+                  <Printer className="h-4 w-4 mr-2 rtl:ml-2 rtl:mr-0" />
+                  {t("print")}
                 </Button>
                 <Button
                   onClick={handleExportImages}
                   disabled={isExporting}
-                  className="bg-gray-700 hover:bg-gray-800"
+                  className="bg-[#022172] hover:bg-[#022172]/90"
                 >
                   {isExporting ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <Loader2 className="h-4 w-4 mr-2 rtl:ml-2 rtl:mr-0 animate-spin" />
                   ) : (
-                    <Download className="h-4 w-4 mr-2" />
+                    <Download className="h-4 w-4 mr-2 rtl:ml-2 rtl:mr-0" />
                   )}
-                  {isExporting ? 'Downloading ZIP...' : 'Convert Student ID Cards to Images'}
+                  {isExporting ? t("exporting_zip", { defaultValue: "Exporting ZIP..." }) : t("export_images", { defaultValue: "Export Images" })}
                 </Button>
               </div>
             </div>
@@ -2099,9 +2114,9 @@ export default function StudentIdCardPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setLinkDialogOpen(false)}>
-              Cancel
+              {tCommon("cancel")}
             </Button>
-            <Button onClick={handleInsertLink}>Insert Link</Button>
+            <Button onClick={handleInsertLink}>{t("insert_link_btn", { defaultValue: "Insert Link" })}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -2193,9 +2208,9 @@ export default function StudentIdCardPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setImageDialogOpen(false)}>
-              Cancel
+              {tCommon("cancel")}
             </Button>
-            <Button onClick={handleInsertImage}>Insert Image</Button>
+            <Button onClick={handleInsertImage}>{t("insert_image_btn", { defaultValue: "Insert Image" })}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -2244,7 +2259,7 @@ export default function StudentIdCardPage() {
             )}
           </div>
           <DialogFooter>
-            <Button onClick={toggleFullscreen}>Close Fullscreen</Button>
+            <Button onClick={toggleFullscreen}>{t("close_fullscreen", { defaultValue: "Close Fullscreen" })}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -27,23 +27,20 @@ interface SectionTimetableCardProps {
     onDeleteEntry?: (entryId: string) => void;
 }
 
-// Helper to get period display name
-const getPeriodDisplayName = (period: GlobalPeriod): string => {
-    return period.title || period.short_name || `Period ${period.sort_order}`;
-};
+import { useTranslations } from "next-intl";
 
-// Helper to get period short label
-const getPeriodShortLabel = (period: GlobalPeriod): string => {
-    return period.short_name || `P${period.sort_order}`;
-};
-
-// Helper to get period time info (show actual clock times if available, fallback to duration)
-const getPeriodTimeInfo = (period: GlobalPeriod): string => {
-    const timeRange = formatTimeRange(period.start_time, period.end_time);
-    if (timeRange) return timeRange;
-    if (period.length_minutes) return `${period.length_minutes}min`;
-    return '';
-};
+interface SectionTimetableCardProps {
+    sectionId: string;
+    sectionName: string;
+    gradeName?: string;
+    periods: GlobalPeriod[];
+    entries: TimetableEntry[];
+    isLoading?: boolean;
+    isCompact?: boolean;
+    orientation?: 'vertical' | 'horizontal';
+    onSlotClick?: (sectionId: string, day: string, period: GlobalPeriod) => void;
+    onDeleteEntry?: (entryId: string) => void;
+}
 
 export function SectionTimetableCard({
     sectionId,
@@ -57,6 +54,23 @@ export function SectionTimetableCard({
     onSlotClick,
     onDeleteEntry
 }: SectionTimetableCardProps) {
+    const t = useTranslations('school.timetable')
+    const daysT = useTranslations('school.timetable.days')
+
+    const getPeriodDisplayName = (period: GlobalPeriod): string => {
+        return period.title || period.short_name || `${t('csv_period')} ${period.sort_order}`;
+    };
+
+    const getPeriodShortLabel = (period: GlobalPeriod): string => {
+        return period.short_name || `P${period.sort_order}`;
+    };
+
+    const getPeriodTimeInfo = (period: GlobalPeriod): string => {
+        const timeRange = formatTimeRange(period.start_time, period.end_time);
+        if (timeRange) return timeRange;
+        if (period.length_minutes) return `${period.length_minutes}${t('unit_min')}`;
+        return '';
+    };
 
     const getEntryForSlot = (day: string, period: GlobalPeriod): TimetableEntry | undefined => {
         const dayNumber = DAY_MAP[day];
@@ -134,7 +148,7 @@ export function SectionTimetableCard({
                         {gradeName && <span className="text-xs text-muted-foreground">{gradeName}</span>}
                     </div>
                     <span className="text-xs text-muted-foreground font-normal">
-                        {entries.length} classes
+                        {t('classes_count', { count: entries.length })}
                     </span>
                 </CardTitle>
             </CardHeader>
@@ -147,14 +161,14 @@ export function SectionTimetableCard({
                                 <thead>
                                     <tr>
                                         <th className="border p-1.5 bg-muted/50 font-medium min-w-[60px]">
-                                            Time
+                                            {t('csv_time')}
                                         </th>
                                         {DAYS.map(day => (
                                             <th
                                                 key={day}
                                                 className="border p-1.5 bg-muted/50 font-medium min-w-[50px]"
                                             >
-                                                {day.slice(0, 3)}
+                                                {daysT(day).slice(0, 3)}
                                             </th>
                                         ))}
                                     </tr>
@@ -184,7 +198,7 @@ export function SectionTimetableCard({
                                 <thead>
                                     <tr>
                                         <th className="border p-1.5 bg-muted/50 font-medium min-w-[50px]">
-                                            Day
+                                            {t('table_day')}
                                         </th>
                                         {sortedPeriods.map(period => (
                                             <th
@@ -204,7 +218,7 @@ export function SectionTimetableCard({
                                     {DAYS.map(day => (
                                         <tr key={day}>
                                             <td className="border p-1.5 bg-muted/30 text-center font-medium">
-                                                {day.slice(0, 3)}
+                                                {daysT(day).slice(0, 3)}
                                             </td>
                                             {sortedPeriods.map(period => {
                                                 const entry = getEntryForSlot(day, period);

@@ -159,6 +159,12 @@ body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
+/* Arabic locale: use Cairo font with proper letter-spacing */
+:lang(ar) {
+  font-family: var(--font-cairo), system-ui, sans-serif;
+  letter-spacing: 0;
+}
+
 .dark body {
   background-color: #0f172a;
   color: var(--foreground);
@@ -393,50 +399,64 @@ body {
 
   /* Hover State (non-active) */
   .sidebar-link:not(.active):hover {
-    @apply bg-white/10 text-white rounded-l-full translate-x-1;
+    @apply bg-white/10 text-white rounded-s-full ltr:translate-x-1 rtl:-translate-x-1;
   }
 
   .sidebar-link.active {
     @apply bg-gray-50 text-[#022172] font-medium shadow-md;
-    
-    /* 1. Round the LEFT side completely */
-    border-top-left-radius: 9999px;
-    border-bottom-left-radius: 9999px;
 
-    /* 2. FORCE the RIGHT side to be flat (Critical for the effect) */
-    border-top-right-radius: 0 !important;
-    border-bottom-right-radius: 0 !important;
-    
-    /* 3. Ensure it touches the right edge */
-    margin-right: 0; 
+    /* Round the inline-start side, flat on inline-end (flips automatically in RTL) */
+    border-start-start-radius: 9999px;
+    border-end-start-radius: 9999px;
+    border-start-end-radius: 0 !important;
+    border-end-end-radius: 0 !important;
+
+    /* Ensure it touches the inline-end edge */
+    margin-inline-end: 0;
   }
 
-  /* Adjust the pseudo-elements to align perfectly */
+  /* Pseudo-elements anchored to the inner edge (logical end) */
   .sidebar-link.active::before {
     content: "";
     position: absolute;
-    right: 0; /* Anchored to right */
+    inset-inline-end: 0;
     top: -40px;
     width: 40px;
     height: 40px;
     background: transparent;
     border-radius: 50%;
-    box-shadow: 20px 20px 0 0 rgb(249, 250, 251); /* bg-gray-50 */
     pointer-events: none;
     z-index: 10;
+  }
+
+  /* LTR: cutout curves on the right */
+  html:not([dir="rtl"]) .sidebar-link.active::before {
+    box-shadow: 20px 20px 0 0 rgb(249, 250, 251);
+  }
+  /* RTL: cutout curves on the left */
+  html[dir="rtl"] .sidebar-link.active::before {
+    box-shadow: -20px 20px 0 0 rgb(249, 250, 251);
   }
 
   .sidebar-link.active::after {
     content: "";
     position: absolute;
-    right: 0; /* Anchored to right */
+    inset-inline-end: 0;
     bottom: -40px;
     width: 40px;
     height: 40px;
     background: transparent;
     border-radius: 50%;
-    box-shadow: 20px -20px 0 0 rgb(249, 250, 251); /* bg-gray-50 */
     pointer-events: none;
     z-index: 10;
+  }
+
+  /* LTR: cutout curves on the right */
+  html:not([dir="rtl"]) .sidebar-link.active::after {
+    box-shadow: 20px -20px 0 0 rgb(249, 250, 251);
+  }
+  /* RTL: cutout curves on the left */
+  html[dir="rtl"] .sidebar-link.active::after {
+    box-shadow: -20px -20px 0 0 rgb(249, 250, 251);
   }
 }

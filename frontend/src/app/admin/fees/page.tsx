@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import { useFeeDashboardStats } from '@/hooks/useFees'
+import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 import { getBalanceDisplay, StudentFee, getFeesByGrade } from '@/lib/api/fees'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -35,6 +36,7 @@ interface Section {
 export default function FeesPage() {
     const { profile } = useAuth()
     const { selectedCampus } = useCampus()
+    const { formatCurrency, isLoading: settingsLoading } = useSchoolSettings()
     const schoolId = selectedCampus?.id || profile?.school_id || null
 
     // Filter states
@@ -135,9 +137,7 @@ export default function FeesPage() {
         setPage(1)
     }, [gradeLevelId, sectionId, feeMonth, statusFilter, pageSize])
 
-    const formatCurrency = (amount: number) => {
-        return amount.toLocaleString()
-    }
+    // Local formatCurrency is removed in favor of the one from useSchoolSettings
 
     const getStatusBadge = (status: string) => {
         const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {

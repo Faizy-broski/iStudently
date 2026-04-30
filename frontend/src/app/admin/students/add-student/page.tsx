@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import { AddStudentForm } from "@/components/admin";
+import { useTranslations } from "next-intl";
 
 export default function AddStudentPage() {
   const router = useRouter();
+  const t = useTranslations("school.students.add_student");
 
   const handleSuccess = () => {
     router.push('/admin/students');
@@ -22,11 +24,11 @@ export default function AddStudentPage() {
           onClick={() => router.back()}
           className="mb-4 text-[#022172] hover:text-[#57A3CC]"
         >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Students
+          <ArrowLeft className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0 rtl:rotate-180" />
+          {t("back_to_students")}
         </Button>
-        <h1 className="text-3xl font-bold text-[#022172] dark:text-white">Add New Student</h1>
-        <p className="text-gray-600 mt-2">Complete the form below to onboard a new student</p>
+        <h1 className="text-3xl font-bold text-[#022172] dark:text-white">{t("title")}</h1>
+        <p className="text-gray-600 mt-2">{t("subtitle")}</p>
       </div>
 
       {/* Form Card */}

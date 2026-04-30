@@ -1,19 +1,22 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Cairo } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { AcademicProvider } from "@/context/AcademicContext";
 import { SWRProvider } from "@/lib/swr-config";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
+import { cookies } from "next/headers";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const cairo = Cairo({
+  variable: "--font-cairo",
+  subsets: ["arabic", "latin"],
 });
 
 export const metadata: Metadata = {
@@ -21,13 +24,22 @@ export const metadata: Metadata = {
   description: "Comprehensive school management SaaS platform",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+  const isRTL = locale === "ar";
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang={locale}
+      dir={isRTL ? "rtl" : "ltr"}
+      className={isRTL ? cairo.variable : inter.variable}
+      suppressHydrationWarning
+    >
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -38,10 +50,10 @@ export default function RootLayout({
                   const parts = value.split('; ' + name + '=');
                   if (parts.length === 2) return parts.pop().split(';').shift();
                 }
-                
-                const theme = getCookie('studently-theme') || 
+
+                const theme = getCookie('studently-theme') ||
                               (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-                
+
                 if (theme === 'dark') {
                   document.documentElement.classList.add('dark');
                 } else {
@@ -52,18 +64,18 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <ThemeProvider>
-          <AuthProvider>
-            <AcademicProvider>
-              <SWRProvider>
-                {children}
-              </SWRProvider>
-            </AcademicProvider>
-          </AuthProvider>
-        </ThemeProvider>
+      <body className="font-sans antialiased">
+        <NextIntlClientProvider messages={messages} locale={locale}>
+          <ThemeProvider>
+            <AuthProvider>
+              <AcademicProvider>
+                <SWRProvider>
+                  {children}
+                </SWRProvider>
+              </AcademicProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

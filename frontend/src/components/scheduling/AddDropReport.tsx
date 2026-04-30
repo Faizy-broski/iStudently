@@ -18,12 +18,13 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-]
+import { useTranslations, useLocale } from "next-intl"
 
 export function AddDropReport() {
+  const t = useTranslations("school.scheduling.add_drop_report")
+  const tCommon = useTranslations("common")
+  const locale = useLocale()
+
   const { user } = useAuth()
   const { selectedAcademicYear } = useAcademic()
   const campusContext = useCampus()
@@ -84,23 +85,30 @@ export function AddDropReport() {
     if (!dateStr) return ""
     const [y, m, d] = dateStr.substring(0, 10).split("-")
     const date = new Date(Number(y), Number(m) - 1, Number(d))
-    return date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "2-digit" })
+    return date.toLocaleDateString(locale === "ar" ? "ar-SA" : "en-US", { year: "numeric", month: "long", day: "2-digit" })
   }
 
   const days31 = Array.from({ length: 31 }, (_, i) => String(i + 1))
   const years = Array.from({ length: 5 }, (_, i) => String(today.getFullYear() - 2 + i))
+
+  const MONTH_NAMES = [
+    tCommon("months.0"), tCommon("months.1"), tCommon("months.2"),
+    tCommon("months.3"), tCommon("months.4"), tCommon("months.5"),
+    tCommon("months.6"), tCommon("months.7"), tCommon("months.8"),
+    tCommon("months.9"), tCommon("months.10"), tCommon("months.11"),
+  ]
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center gap-2 border-b pb-4">
         <CalendarDays className="h-6 w-6 text-amber-500" />
-        <h1 className="text-2xl font-bold">Add / Drop Report</h1>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
       </div>
 
       {/* Timeframe selector */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-medium">Timeframe:</span>
+        <span className="text-sm font-medium">{t("timeframe")}</span>
 
         {/* Start date */}
         <Select value={startMonth} onValueChange={setStartMonth}>
@@ -108,7 +116,7 @@ export function AddDropReport() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {MONTHS.map((m, i) => (
+            {MONTH_NAMES.map((m, i) => (
               <SelectItem key={i} value={String(i)}>
                 {m}
               </SelectItem>
@@ -140,7 +148,7 @@ export function AddDropReport() {
           </SelectContent>
         </Select>
 
-        <span className="text-sm text-muted-foreground">to</span>
+        <span className="text-sm text-muted-foreground">{t("to")}</span>
 
         {/* End date */}
         <Select value={endMonth} onValueChange={setEndMonth}>
@@ -148,7 +156,7 @@ export function AddDropReport() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {MONTHS.map((m, i) => (
+            {MONTH_NAMES.map((m, i) => (
               <SelectItem key={i} value={String(i)}>
                 {m}
               </SelectItem>
@@ -181,7 +189,7 @@ export function AddDropReport() {
         </Select>
 
         <Button size="sm" onClick={handleGo}>
-          GO
+          {tCommon("go")}
         </Button>
       </div>
 
@@ -189,20 +197,20 @@ export function AddDropReport() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm">
           <span className="font-semibold text-amber-600">
-            {filteredRecords.length} schedule record{filteredRecords.length !== 1 ? "s" : ""} were found.
+            {t("found_records", { count: filteredRecords.length })}
           </span>
-          <button className="text-muted-foreground hover:text-foreground" title="Download">
+          <button className="text-muted-foreground hover:text-foreground" title={tCommon("download")}>
             <Download className="h-4 w-4" />
           </button>
         </div>
         <div className="relative w-64">
           <Input
-            placeholder="Search"
+            placeholder={tCommon("search")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pr-8"
+            className="pr-8 rtl:pl-8 rtl:pr-3"
           />
-          <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute right-2 rtl:left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         </div>
       </div>
 
@@ -218,23 +226,23 @@ export function AddDropReport() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-muted/50 border-b">
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Student
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {tCommon("student")}
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Student ID
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {tCommon("student_id")}
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Course
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {tCommon("course")}
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Course Period
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {t("th_course_period")}
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Enrolled
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {t("th_enrolled")}
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Dropped
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {t("th_dropped")}
                 </th>
               </tr>
             </thead>
@@ -242,7 +250,7 @@ export function AddDropReport() {
               {filteredRecords.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                    No schedule records found for the selected timeframe.
+                    {t("no_records_found")}
                   </td>
                 </tr>
               ) : (

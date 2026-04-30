@@ -40,6 +40,7 @@ import { useCampus } from "@/context/CampusContext";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import * as gradesApi from "@/lib/api/grades";
 import * as academicsApi from "@/lib/api/academics";
+import { useTranslations } from "next-intl";
 import type { GradeLevel } from "@/lib/api/academics";
 import type { StudentFinalGradeEntry } from "@/lib/api/grades";
 
@@ -174,7 +175,7 @@ export default function StudentGradesPage() {
           Student Grades {currentMpTitle && `— ${currentMpTitle}`}
         </h1>
         <p className="text-muted-foreground mt-2">
-          View student grades by marking period
+          {t("subtitle")}
           {selectedCampus && (
             <span className="ml-1 font-medium">— {selectedCampus.name}</span>
           )}
@@ -205,7 +206,7 @@ export default function StudentGradesPage() {
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search students..."
+                placeholder={t("search_students")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -225,13 +226,12 @@ export default function StudentGradesPage() {
           ) : students.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Users className="h-12 w-12 mx-auto mb-3 opacity-40" />
-              <p>No students found</p>
+              <p>{tc("no_students_found")}</p>
             </div>
           ) : (
             <>
               <p className="text-sm text-[#0369a1] font-medium">
-                {students.length} student
-                {students.length !== 1 ? "s" : ""} were found.
+                {tc("students_found", { count: students.length })}
               </p>
 
               <div className="border rounded-md overflow-hidden">
@@ -284,7 +284,7 @@ export default function StudentGradesPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <GraduationCap className="h-5 w-5 text-[#0369a1]" />
-              {selectedStudent && getStudentName(selectedStudent)} — Grades
+              {selectedStudent && getStudentName(selectedStudent)} — {t("dialog_title")}
             </DialogTitle>
             <p className="text-sm text-muted-foreground">
               {currentMpTitle} • ID: {selectedStudent?.student_number} •{" "}
@@ -300,15 +300,15 @@ export default function StudentGradesPage() {
             </div>
           ) : studentGrades.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              <p>No grades recorded for this marking period.</p>
+              <p>{t("no_grades")}</p>
             </div>
           ) : (
             <div className="border rounded-md overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-gray-100">
-                    <TableHead className="font-semibold">Course</TableHead>
-                    <TableHead className="font-semibold">Teacher</TableHead>
+                    <TableHead className="font-semibold">{t("th_course")}</TableHead>
+                    <TableHead className="font-semibold">{t("th_teacher")}</TableHead>
                     <TableHead className="font-semibold text-center">
                       %
                     </TableHead>
@@ -318,7 +318,7 @@ export default function StudentGradesPage() {
                     <TableHead className="font-semibold text-center">
                       GPA
                     </TableHead>
-                    <TableHead className="font-semibold">Comment</TableHead>
+                    <TableHead className="font-semibold">{t("th_comment")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

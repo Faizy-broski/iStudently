@@ -27,6 +27,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
 import * as gradesApi from "@/lib/api/grades";
+import { useTranslations } from "next-intl";
 import type { GradingScale, GradingScaleGrade } from "@/lib/api/grades";
 
 // ── Row types ───────────────────────────────────────────────────
@@ -43,6 +44,7 @@ interface ScaleRow extends GradingScale {
 }
 
 export default function GradingScalesPage() {
+  const t = useTranslations("school.grades_module.grading_scales");
   const { user } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
@@ -68,12 +70,12 @@ export default function GradingScalesPage() {
   const [newIsPassing, setNewIsPassing] = useState(true);
 
   // ── Generation (Grading Scale Generation feature) ────────────
-  const [genScaleId, setGenScaleId]     = useState<string>("");
-  const [genMin, setGenMin]             = useState("0");
-  const [genMax, setGenMax]             = useState("10");
-  const [genStep, setGenStep]           = useState("0.1");
-  const [genDecimal, setGenDecimal]     = useState<"." | ",">(".");
-  const [generating, setGenerating]     = useState(false);
+  const [genScaleId, setGenScaleId] = useState<string>("");
+  const [genMin, setGenMin] = useState("0");
+  const [genMax, setGenMax] = useState("10");
+  const [genStep, setGenStep] = useState("0.1");
+  const [genDecimal, setGenDecimal] = useState<"." | ",">(".");
+  const [generating, setGenerating] = useState(false);
 
   // ── Scale management ──────────────────────────────────────────
   const [scaleRows, setScaleRows] = useState<ScaleRow[]>([]);
@@ -382,10 +384,10 @@ export default function GradingScalesPage() {
       <div>
         <h1 className="text-3xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent flex items-center gap-2">
           <Scale className="h-8 w-8 text-[#57A3CC]" />
-          Grading Scales
+          {t("title")}
         </h1>
         <p className="text-muted-foreground mt-2">
-          Manage grading scales and their grade definitions
+          {t("subtitle")}
           {selectedCampus && (
             <span className="ml-1 font-medium">
               — {selectedCampus.name}
@@ -399,7 +401,7 @@ export default function GradingScalesPage() {
       ) : scales.length === 0 && activeTab !== "manage" ? (
         <Card>
           <CardContent className="pt-6 text-center text-muted-foreground">
-            <p>No grading scales configured yet.</p>
+            <p>{t("no_scales")}</p>
             <Button
               onClick={() => setActiveTab("manage")}
               variant="outline"
@@ -502,9 +504,8 @@ export default function GradingScalesPage() {
                             return (
                               <tr
                                 key={row.id}
-                                className={`border-b hover:bg-muted/30 ${
-                                  idx % 2 === 0 ? "bg-white" : "bg-gray-50"
-                                }`}
+                                className={`border-b hover:bg-muted/30 ${idx % 2 === 0 ? "bg-white" : "bg-gray-50"
+                                  }`}
                               >
                                 <td className="py-2 px-1">
                                   <button

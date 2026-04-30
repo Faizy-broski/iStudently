@@ -15,13 +15,13 @@ export default function TeacherLayout({
   return (
     <AuthLoadingGuard>
       <RoleGuard allowedRoles={['teacher']}>
-        <SchoolSettingsProvider>
-          <CampusProvider>
+        <CampusProvider>
+          <SchoolSettingsProvider>
             <DashboardLayout role="teacher">
               <RefreshOnReturn>{children}</RefreshOnReturn>
             </DashboardLayout>
-          </CampusProvider>
-        </SchoolSettingsProvider>
+          </SchoolSettingsProvider>
+        </CampusProvider>
       </RoleGuard>
     </AuthLoadingGuard>
   );

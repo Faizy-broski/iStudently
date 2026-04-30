@@ -27,6 +27,7 @@ import type {
   MarkingPeriodOption,
 } from "@/lib/api/grades";
 import { getSchoolSettings } from "@/lib/api/school-settings";
+import { useTranslations } from "next-intl";
 
 export default function MassCreateAssignmentsPage() {
   useAuth(); // ensure authenticated
@@ -180,19 +181,19 @@ export default function MassCreateAssignmentsPage() {
   // ── Create Assignment ─────────────────────────────────────────
   const handleCreate = async () => {
     if (!title.trim()) {
-      toast.error("Title is required");
+      toast.error(t("title_required"));
       return;
     }
     if (!points || parseFloat(points) <= 0) {
-      toast.error("Points must be greater than 0");
+      toast.error(t("points_positive"));
       return;
     }
     if (!selectedTypeId) {
-      toast.error("Select an assignment type");
+      toast.error(t("select_type_error"));
       return;
     }
     if (selectedCpIds.size === 0) {
-      toast.error("Select at least one course period");
+      toast.error(t("select_period_error"));
       return;
     }
     setCreating(true);
@@ -262,7 +263,7 @@ export default function MassCreateAssignmentsPage() {
             New Assignment
           </h1>
           <p className="text-muted-foreground mt-2">
-            Create an assignment across multiple course periods
+            {t("subtitle")}
             {selectedCampus && (
               <span className="ml-1 font-medium">
                 — {selectedCampus.name}
@@ -287,7 +288,7 @@ export default function MassCreateAssignmentsPage() {
           ) : (
             <Check className="h-4 w-4" />
           )}
-          Create Assignment for Selected Course Periods
+          {t("btn_create")}
         </Button>
       </div>
 
@@ -296,7 +297,7 @@ export default function MassCreateAssignmentsPage() {
         <CardContent className="pt-6 space-y-5">
           {/* Title */}
           <div className="space-y-1.5">
-            <Label htmlFor="title">Title</Label>
+            <Label htmlFor="title">{t("field_title")}</Label>
             <Input
               id="title"
               value={title}
@@ -307,7 +308,7 @@ export default function MassCreateAssignmentsPage() {
 
           {/* Assignment Type (display) */}
           <div className="space-y-1.5">
-            <Label>Assignment Type</Label>
+            <Label>{t("assignment_type")}</Label>
             <div className="flex items-center gap-2">
               <Badge
                 variant="secondary"
@@ -336,15 +337,15 @@ export default function MassCreateAssignmentsPage() {
               />
               {pointsOverCap && (
                 <p className="text-xs text-destructive">
-                  Points exceed the campus maximum of {maxPointsCap}. Please correct.
+                  {t("points_exceed_max", { max: maxPointsCap })}
                 </p>
               )}
               {maxPointsCap != null && !pointsOverCap && points && (
-                <p className="text-xs text-muted-foreground">Max allowed: {maxPointsCap}</p>
+                <p className="text-xs text-muted-foreground">{t("max_allowed", { max: maxPointsCap })}</p>
               )}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="defaultPoints">Default Points</Label>
+              <Label htmlFor="defaultPoints">{t("default_points")}</Label>
               <Input
                 id="defaultPoints"
                 type="number"
@@ -356,7 +357,7 @@ export default function MassCreateAssignmentsPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="weight">Weight</Label>
+              <Label htmlFor="weight">{t("weight")}</Label>
               <Input
                 id="weight"
                 type="number"
@@ -371,7 +372,7 @@ export default function MassCreateAssignmentsPage() {
 
           {/* Description */}
           <div className="space-y-1.5">
-            <Label>Description</Label>
+            <Label>{t("description")}</Label>
             <RichTextEditor
               value={description}
               onChange={setDescription}
@@ -432,8 +433,7 @@ export default function MassCreateAssignmentsPage() {
           <CardContent className="pt-5 space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
-                {assignmentTypes.length} assignment type
-                {assignmentTypes.length !== 1 ? "s" : ""} found
+                {t("types_found", { count: assignmentTypes.length })}
               </p>
               <button
                 className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-[#0369a1] transition-colors"
@@ -449,7 +449,7 @@ export default function MassCreateAssignmentsPage() {
                 <Input
                   value={newTypeName}
                   onChange={(e) => setNewTypeName(e.target.value)}
-                  placeholder="Type name"
+                  placeholder={t("type_name_placeholder")}
                   className="h-8 text-sm"
                   onKeyDown={(e) => e.key === "Enter" && handleCreateType()}
                 />
@@ -504,8 +504,7 @@ export default function MassCreateAssignmentsPage() {
         <Card>
           <CardContent className="pt-5">
             <p className="text-sm text-muted-foreground mb-3">
-              {coursePeriods.length} course period
-              {coursePeriods.length !== 1 ? "s" : ""} found
+              {t("periods_found", { count: coursePeriods.length })}
             </p>
 
             {loadingCps ? (
@@ -579,8 +578,7 @@ export default function MassCreateAssignmentsPage() {
 
             {selectedCpIds.size > 0 && (
               <p className="text-sm text-[#0369a1] font-medium mt-3">
-                {selectedCpIds.size} course period
-                {selectedCpIds.size !== 1 ? "s" : ""} selected
+                {t("periods_selected", { count: selectedCpIds.size })}
               </p>
             )}
           </CardContent>

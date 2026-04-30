@@ -87,6 +87,12 @@ interface CalendarGridProps {
   /** ISO date string (YYYY-MM-DD) — last month of the calendar range */
   calendarEnd?: string | null;
   /**
+   * Weekday mask from the AttendanceCalendar (index 0=Sun … 6=Sat).
+   * Days where weekdays[i] === false are treated as off-days even without
+   * an explicit CalendarDay DB entry.
+   */
+  weekdays?: boolean[];
+  /**
    * When provided the grid switches to Schedule View mode:
    * timetable entries shown per day cell instead of events.
    * Keyed by "YYYY-MM-DD" (always Gregorian).
@@ -104,6 +110,7 @@ export function CalendarGrid({
   calendarType,
   calendarStart,
   calendarEnd,
+  weekdays,
   scheduleEntries,
 }: CalendarGridProps) {
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
@@ -227,7 +234,11 @@ export function CalendarGrid({
         dayNumber: day.date(),
         isCurrentMonth: day.month() === startOfMonth.month(),
         isToday: day.isSame(moment(), "day"),
-        hijriDate: toWesternNumerals(momentHijri(day.toDate()).format("iD iMMMM")),
+        hijriDate: (() => {
+          const hd = momentHijri(day.toDate());
+          if (globalHijriOffset !== 0) hd.add(globalHijriOffset, 'days');
+          return toWesternNumerals(hd.format("iD iMMMM"));
+        })(),
       });
       day.add(1, "day");
     }
@@ -316,6 +327,7 @@ export function CalendarGrid({
       : momentHijri(currentMonth).format("iMMMM iYYYY");
 
   const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const mobileWeekDays = ["S", "M", "T", "W", "T", "F", "S"];
 
   return (
     <div className="space-y-4 transition-opacity duration-200">
@@ -411,13 +423,14 @@ export function CalendarGrid({
       <Card className="transition-all duration-200">
         <CardContent className="p-4">
           {/* Week days header */}
-          <div className="grid grid-cols-7 gap-2 mb-2">
-            {weekDays.map((day) => (
+          <div className="grid grid-cols-7 gap-1 md:gap-2 mb-2">
+            {weekDays.map((day, idx) => (
               <div
                 key={day}
-                className="text-center text-sm font-semibold py-2"
+                className="text-center text-[10px] md:text-sm font-semibold py-2"
               >
-                {day}
+                <span className="hidden md:inline">{day}</span>
+                <span className="md:hidden">{mobileWeekDays[idx]}</span>
               </div>
             ))}
           </div>
@@ -428,127 +441,134 @@ export function CalendarGrid({
               const dayEvents = getEventsForDate(day.dateKey);
               const hasEvents = dayEvents.length > 0;
               const calDay = getCalendarDay(day.dateKey);
-              const isSchoolDay = calDay?.is_school_day;
-              const isHoliday = calDay && !calDay.is_school_day;
+              // Weekday index: 0=Sun … 6=Sat (JS Date.getDay())
+              const dowIndex = day.date.getDay();
+              // A day is an off-day if: explicit CalendarDay marks it so, OR
+              // the calendar's weekday mask excludes that weekday.
+              const isWeekdayOff = weekdays ? weekdays[dowIndex] === false : false;
+              const isSchoolDay = calDay ? calDay.is_school_day : (!isWeekdayOff);
+              const isHoliday = calDay ? !calDay.is_school_day : isWeekdayOff;
               const isPartialDay = calDay?.is_school_day && calDay.minutes > 0 && calDay.minutes < 360;
-              
+
               return (
                 <div
                   key={day.dateKey}
                   className={cn(
-                    "min-h-[100px] p-2 rounded-lg border transition-all duration-150 cursor-pointer",
+                    "min-h-[60px] md:min-h-[100px] p-1 md:p-2 rounded-lg border transition-all duration-150 cursor-pointer",
                     day.isCurrentMonth
                       ? isSchoolDay
                         ? isPartialDay
-                          ? "bg-purple-50 border-purple-200 dark:bg-purple-900/20"
-                          : "bg-green-50 border-green-200 dark:bg-green-900/20"
+                          ? "bg-[#D4D4FF] border-[#B8B8FF]"
+                          : "bg-[#D4FFD4] border-[#B8FFB8]"
                         : isHoliday
-                        ? "bg-pink-50 border-pink-200 dark:bg-pink-900/20"
+                        ? "bg-[#FFD4D4] border-[#FFB8B8]"
                         : "bg-background hover:bg-muted/50"
-                      : "bg-muted/20 opacity-50",
-                    day.isToday && "ring-2 ring-brand",
-                    hoveredDate === day.dateKey && "shadow-md"
+                      : "bg-muted/30 opacity-40",
+                    day.isToday && "ring-2 ring-[#022172] bg-[#022172]/15 dark:ring-[#57A3CC] dark:bg-[#57A3CC]/25",
+                    hoveredDate === day.dateKey && "shadow-md brightness-95"
                   )}
                   onClick={() => onDateClick?.(day.date)}
                   onMouseEnter={() => setHoveredDate(day.dateKey)}
                   onMouseLeave={() => setHoveredDate(null)}
                 >
                   {/* Day number */}
-                  <div className="flex items-start justify-between mb-1">
+                  <div className="flex items-start justify-between mb-0.5 md:mb-1">
                     <span
                       className={cn(
-                        "text-sm font-semibold",
-                        day.isToday && "text-brand"
+                        "text-xs md:text-sm font-semibold",
+                        day.isToday
+                          ? "h-5 w-5 md:h-6 md:w-6 flex items-center justify-center rounded-full bg-[#022172] text-white dark:bg-[#57A3CC]"
+                          : "text-foreground"
                       )}
                     >
                       {day.dayNumber}
                     </span>
                     {hasEvents && (
-                      <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                      <Badge variant="secondary" className="h-4 md:h-5 px-1 text-[8px] md:text-xs">
                         {dayEvents.length}
                       </Badge>
                     )}
                   </div>
 
                   {/* Alternate calendar date */}
-                  <div className="text-[10px] opacity-60 mb-1">
+                  <div className="text-[8px] md:text-[10px] opacity-60 mb-0.5 md:mb-1 truncate">
                     {calendarType === "gregorian" ? day.hijriDate : day.gregorianDate}
                   </div>
 
-                  {/* School day/holiday indicator */}
+                  {/* School day/holiday indicator (HIDDEN ON MOBILE to save space) */}
                   {calDay && (
-                    <div className="mb-1">
+                    <div className="mb-1 hidden md:block">
                       {isSchoolDay ? (
-                        <span className="text-xs text-green-600 font-semibold">School Day</span>
+                        <span className="text-[10px] text-green-700 font-bold uppercase">School</span>
                       ) : (
-                        <span className="text-xs text-red-500 font-semibold">Holiday</span>
+                        <span className="text-[10px] text-red-700 font-bold uppercase">Holiday</span>
                       )}
                     </div>
                   )}
 
-                  {/* Schedule entries (shown in Schedule View mode) */}
-                  {scheduleEntries && (
-                    <TooltipProvider delayDuration={150}>
-                      <div className="space-y-0.5 mb-1">
+                  {/* Events (Dots on mobile, list on desktop) */}
+                  <div className="mt-auto">
+                    {/* Schedule View (Desktop only) */}
+                    {scheduleEntries && (
+                      <div className="hidden md:block space-y-0.5 mb-1">
                         {(scheduleEntries[day.dateKey] || []).map((entry) => {
                           const color = getSectionColor(entry.section_id);
                           const label = entry.subject_code || entry.subject_name.slice(0, 7);
                           const period = entry.period_name || `P${entry.period_number}`;
                           return (
-                            <Tooltip key={entry.id}>
-                              <TooltipTrigger asChild>
-                                <div
-                                  className="text-[10px] leading-tight px-1 py-0.5 rounded-sm truncate cursor-default"
-                                  style={{
-                                    borderLeft: `3px solid ${color}`,
-                                    background: `${color}18`,
-                                  }}
-                                >
-                                  <span className="font-semibold" style={{ color }}>{label}</span>
-                                  <span className="text-muted-foreground ml-1">{period}</span>
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent side="right" className="max-w-[200px] space-y-1 text-xs">
-                                <p className="font-semibold">{entry.subject_name}</p>
-                                <p className="text-muted-foreground">{entry.section_name} · {entry.grade_name}</p>
-                                <p className="text-muted-foreground">{entry.teacher_name}</p>
-                                {entry.start_time && (
-                                  <p className="text-muted-foreground">{entry.start_time}–{entry.end_time}</p>
-                                )}
-                                {entry.room_number && (
-                                  <p className="text-muted-foreground">Room {entry.room_number}</p>
-                                )}
-                              </TooltipContent>
-                            </Tooltip>
+                            <TooltipProvider key={entry.id} delayDuration={150}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div
+                                    className="text-[10px] leading-tight px-1 py-0.5 rounded-sm truncate cursor-default"
+                                    style={{
+                                      borderLeft: `3px solid ${color}`,
+                                      background: `${color}18`,
+                                    }}
+                                  >
+                                    <span className="font-semibold" style={{ color }}>{label}</span>
+                                    <span className="text-muted-foreground ml-1">{period}</span>
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="right" className="max-w-[200px] space-y-1 text-xs">
+                                  <p className="font-semibold">{entry.subject_name}</p>
+                                  <p className="text-muted-foreground">{entry.section_name} · {entry.grade_name}</p>
+                                  <p className="text-muted-foreground">{entry.teacher_name}</p>
+                                  {entry.start_time && (
+                                    <p className="text-muted-foreground">{entry.start_time}–{entry.end_time}</p>
+                                  )}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           );
                         })}
                       </div>
-                    </TooltipProvider>
-                  )}
-
-                  {/* Events for this day (always shown) */}
-                  <div className="space-y-1">
-                    {dayEvents.slice(0, 2).map((event) => (
-                      <div
-                        key={event.id}
-                        className="text-xs p-1 rounded truncate cursor-pointer transition-all duration-150 hover:opacity-80 hover:scale-[1.02]"
-                        style={{
-                          backgroundColor: event.color_code + "20",
-                          borderLeft: `3px solid ${event.color_code}`,
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEventClick?.(event);
-                        }}
-                      >
-                        {event.title}
-                      </div>
-                    ))}
-                    {dayEvents.length > 2 && (
-                      <div className="text-xs opacity-60 pl-1">
-                        +{dayEvents.length - 2} more
-                      </div>
                     )}
+
+                    <div className="flex flex-wrap gap-0.5 md:hidden">
+                      {dayEvents.slice(0, 3).map(ev => (
+                        <div key={ev.id} className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: ev.color_code }} />
+                      ))}
+                    </div>
+                    
+                    <div className="hidden md:block space-y-1">
+                      {dayEvents.slice(0, 2).map((event) => (
+                        <div
+                          key={event.id}
+                          className="text-[10px] p-0.5 rounded truncate cursor-pointer hover:opacity-80"
+                          style={{
+                            backgroundColor: event.color_code + "20",
+                            borderLeft: `2px solid ${event.color_code}`,
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEventClick?.(event);
+                          }}
+                        >
+                          {event.title}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               );

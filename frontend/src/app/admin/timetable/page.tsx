@@ -19,8 +19,12 @@ import { TimetableEntry } from "@/lib/api/timetable"
 import { useCampus } from "@/context/CampusContext"
 import { useGradeLevels, useSections } from "@/hooks/useAcademics"
 import { formatTime, formatTimeRange } from "@/lib/utils/formatTime"
+import { useTranslations } from "next-intl"
 
 export default function TimetablePage() {
+  const t = useTranslations('school.timetable')
+  const daysT = useTranslations('school.timetable.days')
+  
   // Campus context
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
@@ -120,7 +124,7 @@ export default function TimetablePage() {
         setSelectedAcademicYear(currentYear.id)
       }
     } catch (error: any) {
-      toast.error(error.message || "Failed to load data")
+      toast.error(error.message || t('err_load_data'))
     } finally {
       setLoading(false)
     }
@@ -131,7 +135,7 @@ export default function TimetablePage() {
       const periodsRes = await teachersApi.getGlobalPeriods(selectedCampus?.id)
       setPeriods(periodsRes) // Already sorted by sort_order
     } catch (error: any) {
-      toast.error(error.message || "Failed to load periods")
+      toast.error(error.message || t('err_load_periods'))
     }
   }
 
@@ -156,7 +160,7 @@ export default function TimetablePage() {
 
       setSectionEntries(newEntries)
     } catch (error: any) {
-      toast.error("Failed to load timetables")
+      toast.error(t('err_load_timetables'))
     } finally {
       setLoadingEntries(false)
     }
@@ -164,7 +168,7 @@ export default function TimetablePage() {
 
   const handleSlotClick = useCallback((sectionId: string, day: string, period: teachersApi.Period) => {
     if (period.is_break) {
-      toast.info("Cannot assign classes during break")
+      toast.info(t('err_break_assignment'))
       return
     }
 
@@ -182,17 +186,17 @@ export default function TimetablePage() {
       existingEntry
     })
     setDialogOpen(true)
-  }, [sections, sectionEntries])
+  }, [sections, sectionEntries, t])
 
   const handleDeleteEntry = async (entryId: string) => {
-    if (!confirm("Remove this class?")) return
+    if (!confirm(t('confirm_remove'))) return
 
     try {
       await timetableApi.deleteTimetableEntry(entryId)
-      toast.success("Removed")
+      toast.success(t('success_removed'))
       loadAllSectionTimetables()
     } catch (error: any) {
-      toast.error(error.message || "Failed to delete")
+      toast.error(error.message || t('err_delete'))
     }
   }
 
@@ -201,35 +205,30 @@ export default function TimetablePage() {
     return map[day] || 0
   }
 
-  const getSectionAssignments = (sectionId: string) => {
-    return assignments.filter(
-      a => a.section_id === sectionId && a.academic_year_id === selectedAcademicYear
-    )
-  }
-
   const selectedGradeName = gradeLevels.find(g => g.id === selectedGrade)?.name
 
   const handleDownloadCSV = () => {
     if (!selectedGrade || filteredSections.length === 0) {
-      toast.error('Select a grade first')
+      toast.error(t('err_select_grade_first'))
       return
     }
 
     const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+    const localizedDays = DAYS.map(d => daysT(d))
     // Sort by sort_order (global periods)
     const sortedPeriods = [...periods].sort((a, b) => a.sort_order - b.sort_order)
 
     let csvContent = 'data:text/csv;charset=utf-8,'
 
     // Header: Section info
-    csvContent += `Timetable - ${selectedGradeName}\n`
-    csvContent += `Academic Year: ${academicYears.find(y => y.id === selectedAcademicYear)?.name}\n\n`
+    csvContent += `${t('csv_title', { grade: selectedGradeName })}\n`
+    csvContent += `${t('filter_year')}: ${academicYears.find(y => y.id === selectedAcademicYear)?.name}\n\n`
 
     filteredSections.forEach(section => {
       const entries = sectionEntries[section.id] || []
 
       csvContent += `\nSection: ${section.name}\n`
-      csvContent += 'Period,Time,' + DAYS.join(',') + '\n'
+      csvContent += `${t('csv_period')},${t('csv_time')},` + localizedDays.join(',') + '\n'
 
       sortedPeriods.forEach(period => {
         const periodName = period.title || period.short_name || `P${period.sort_order}`
@@ -255,16 +254,17 @@ export default function TimetablePage() {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    toast.success('Timetable downloaded as CSV')
+    toast.success(t('success_csv'))
   }
 
   const handleDownloadPDF = () => {
     if (!selectedGrade || filteredSections.length === 0) {
-      toast.error('Select a grade first')
+      toast.error(t('err_select_grade_first'))
       return
     }
 
     const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+    const localizedDays = DAYS.map(d => daysT(d))
     // Sort by sort_order (global periods)
     const sortedPeriods = [...periods].sort((a, b) => a.sort_order - b.sort_order)
 
@@ -274,7 +274,7 @@ export default function TimetablePage() {
       : [filteredSections.find(s => s.id === (expandedSection || filteredSections[0]?.id))].filter(Boolean) as typeof filteredSections
 
     if (sectionsToExport.length === 0) {
-      toast.error('No section selected')
+      toast.error(t('err_no_section'))
       return
     }
 
@@ -290,13 +290,15 @@ export default function TimetablePage() {
     // Title
     pdf.setFontSize(16)
     pdf.setTextColor(2, 33, 114)
-    const title = `Timetable: ${selectedGradeName}${viewMode === 'single' ? ` - ${sectionsToExport[0]?.name}` : ' - All Sections'}`
+    const title = viewMode === 'grid' 
+      ? t('pdf_title_all', { grade: selectedGradeName })
+      : t('pdf_title_single', { grade: selectedGradeName, section: sectionsToExport[0]?.name })
     pdf.text(title, pdfWidth / 2, yPos, { align: 'center' })
     yPos += 5
 
     pdf.setFontSize(10)
     pdf.setTextColor(100)
-    pdf.text(`Academic Year: ${academicYears.find(y => y.id === selectedAcademicYear)?.name}`, pdfWidth / 2, yPos, { align: 'center' })
+    pdf.text(`${t('filter_year')}: ${academicYears.find(y => y.id === selectedAcademicYear)?.name}`, pdfWidth / 2, yPos, { align: 'center' })
     yPos += 10
 
     sectionsToExport.forEach((section, sectionIndex) => {
@@ -317,7 +319,7 @@ export default function TimetablePage() {
       yPos += 5
 
       // Build table data
-      const tableHead = [['Time', ...DAYS]]
+      const tableHead = [[t('csv_time'), ...localizedDays]]
       const tableBody: string[][] = []
 
       sortedPeriods.forEach(period => {
@@ -358,7 +360,7 @@ export default function TimetablePage() {
       : `timetable_${selectedGradeName?.replace(/\s+/g, '_')}_${sectionsToExport[0]?.name}.pdf`
 
     pdf.save(filename)
-    toast.success('PDF downloaded')
+    toast.success(t('success_pdf'))
   }
 
   return (
@@ -366,8 +368,8 @@ export default function TimetablePage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-[#022172] dark:text-white">Timetable Builder</h1>
-          <p className="text-muted-foreground">Manage class schedules for all sections</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-[#022172] dark:text-white">{t('title')}</h1>
+          <p className="text-muted-foreground">{t('subtitle')}</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -376,10 +378,10 @@ export default function TimetablePage() {
             size="sm"
             onClick={handleDownloadPDF}
             disabled={!selectedGrade || filteredSections.length === 0}
-            title={viewMode === 'grid' ? 'Download all sections as PDF' : 'Download selected section as PDF'}
+            title={viewMode === 'grid' ? t('tip_download_pdf_all') : t('tip_download_pdf_single')}
           >
             <FileText className="h-4 w-4 mr-2" />
-            PDF
+            {t('btn_pdf')}
           </Button>
           <Button
             variant="outline"
@@ -388,12 +390,12 @@ export default function TimetablePage() {
             disabled={!selectedGrade || filteredSections.length === 0}
           >
             <Download className="h-4 w-4 mr-2" />
-            CSV
+            {t('btn_csv')}
           </Button>
           <Link href="/admin/periods">
             <Button variant="outline" size="sm">
               <Settings className="h-4 w-4 mr-2" />
-              Manage Periods
+              {t('btn_manage_periods')}
               <ExternalLink className="h-3 w-3 ml-1" />
             </Button>
           </Link>
@@ -404,7 +406,7 @@ export default function TimetablePage() {
             disabled={loadingEntries}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${loadingEntries ? 'animate-spin' : ''}`} />
-            Refresh
+            {t('btn_refresh')}
           </Button>
         </div>
       </div>
@@ -414,15 +416,15 @@ export default function TimetablePage() {
         <CardContent className="py-4">
           <div className="flex flex-wrap gap-4 items-end">
             <div className="space-y-1.5 min-w-[160px]">
-              <Label className="text-sm">Academic Year</Label>
+              <Label className="text-sm">{t('filter_year')}</Label>
               <Select value={selectedAcademicYear} onValueChange={setSelectedAcademicYear}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select year" />
+                  <SelectValue placeholder={t('placeholder_year')} />
                 </SelectTrigger>
                 <SelectContent>
                   {academicYears.map(year => (
                     <SelectItem key={year.id} value={year.id}>
-                      {year.name} {year.is_current && "(Current)"}
+                      {year.name} {year.is_current && t('current_label')}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -430,10 +432,10 @@ export default function TimetablePage() {
             </div>
 
             <div className="space-y-1.5 min-w-[160px]">
-              <Label className="text-sm">Grade Level</Label>
+              <Label className="text-sm">{t('filter_grade')}</Label>
               <Select value={selectedGrade} onValueChange={setSelectedGrade}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select grade" />
+                  <SelectValue placeholder={t('placeholder_grade')} />
                 </SelectTrigger>
                 <SelectContent>
                   {gradeLevels
@@ -451,7 +453,7 @@ export default function TimetablePage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-sm">View Mode</Label>
+              <Label className="text-sm">{t('filter_view_mode')}</Label>
               <div className="flex gap-1">
                 <Button
                   variant={viewMode === 'grid' ? 'default' : 'outline'}
@@ -460,7 +462,7 @@ export default function TimetablePage() {
                   onClick={() => setViewMode('grid')}
                 >
                   <LayoutGrid className="h-4 w-4 mr-1" />
-                  Overview
+                  {t('view_overview')}
                 </Button>
                 <Button
                   variant={viewMode === 'single' ? 'default' : 'outline'}
@@ -469,33 +471,33 @@ export default function TimetablePage() {
                   onClick={() => setViewMode('single')}
                 >
                   <Pencil className="h-4 w-4 mr-1" />
-                  Builder
+                  {t('view_builder')}
                 </Button>
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-sm">Layout</Label>
+              <Label className="text-sm">{t('filter_layout')}</Label>
               <div className="flex gap-1">
                 <Button
                   variant={orientation === 'vertical' ? 'default' : 'outline'}
                   size="sm"
                   className={orientation === 'vertical' ? 'bg-[#022172]' : ''}
                   onClick={() => setOrientation('vertical')}
-                  title="Periods as rows, Days as columns"
+                  title={t('layout_vertical_tip')}
                 >
                   <RotateCcw className="h-4 w-4 mr-1" />
-                  Vertical
+                  {t('layout_vertical')}
                 </Button>
                 <Button
                   variant={orientation === 'horizontal' ? 'default' : 'outline'}
                   size="sm"
                   className={orientation === 'horizontal' ? 'bg-[#022172]' : ''}
                   onClick={() => setOrientation('horizontal')}
-                  title="Days as rows, Periods as columns"
+                  title={t('layout_horizontal_tip')}
                 >
                   <RotateCcw className="h-4 w-4 mr-1 rotate-90" />
-                  Horizontal
+                  {t('layout_horizontal')}
                 </Button>
               </div>
             </div>
@@ -503,7 +505,7 @@ export default function TimetablePage() {
             {selectedGrade && (
               <div className="flex items-center gap-2">
                 <Badge variant="secondary" className="text-sm py-1.5">
-                  {filteredSections.length} section{filteredSections.length !== 1 ? 's' : ''}
+                  {t('sections_count', { count: filteredSections.length })}
                 </Badge>
               </div>
             )}
@@ -515,24 +517,26 @@ export default function TimetablePage() {
       {dataLoading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>      ) : !selectedCampus ? (
+        </div>
+      ) : !selectedCampus ? (
         /* No Campus Selected */
         <Card>
           <CardContent className="py-16 text-center">
             <Calendar className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
-            <h3 className="text-lg font-medium text-muted-foreground">Select a Campus</h3>
+            <h3 className="text-lg font-medium text-muted-foreground">{t('no_campus_title')}</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Choose a campus from the header to view its timetables
+              {t('no_campus_desc')}
             </p>
           </CardContent>
-        </Card>      ) : !selectedGrade ? (
+        </Card>
+      ) : !selectedGrade ? (
         /* No Grade Selected */
         <Card>
           <CardContent className="py-16 text-center">
             <Calendar className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
-            <h3 className="text-lg font-medium text-muted-foreground">Select a Grade Level</h3>
+            <h3 className="text-lg font-medium text-muted-foreground">{t('no_grade_title')}</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Choose a grade to view and manage timetables for all its sections
+              {t('no_grade_desc')}
             </p>
           </CardContent>
         </Card>
@@ -541,9 +545,9 @@ export default function TimetablePage() {
         <Card>
           <CardContent className="py-16 text-center">
             <Calendar className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
-            <h3 className="text-lg font-medium text-muted-foreground">No Sections Found</h3>
+            <h3 className="text-lg font-medium text-muted-foreground">{t('no_sections_title')}</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Create sections for {selectedGradeName} in Academics settings
+              {t('no_sections_desc', { grade: selectedGradeName })}
             </p>
           </CardContent>
         </Card>
@@ -552,14 +556,14 @@ export default function TimetablePage() {
         <Card>
           <CardContent className="py-16 text-center">
             <Settings className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
-            <h3 className="text-lg font-medium text-muted-foreground">No Periods Configured</h3>
+            <h3 className="text-lg font-medium text-muted-foreground">{t('no_periods_title')}</h3>
             <p className="text-sm text-muted-foreground mt-1 mb-4">
-              Configure periods in the Periods management page before creating timetables
+              {t('no_periods_desc')}
             </p>
             <Link href="/admin/periods">
               <Button variant="default" className="bg-[#022172]">
                 <Settings className="h-4 w-4 mr-2" />
-                Configure Periods
+                {t('btn_configure_periods')}
               </Button>
             </Link>
           </CardContent>
@@ -569,7 +573,7 @@ export default function TimetablePage() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">
-              {selectedGradeName} - All Sections
+              {t('grade_all_sections', { grade: selectedGradeName })}
             </h2>
           </div>
 
@@ -615,12 +619,12 @@ export default function TimetablePage() {
                   onValueChange={setExpandedSection}
                 >
                   <SelectTrigger className="w-[250px]">
-                    <SelectValue placeholder="Select section to build timetable" />
+                    <SelectValue placeholder={t('placeholder_select_section')} />
                   </SelectTrigger>
                   <SelectContent>
                     {filteredSections.map(s => (
                       <SelectItem key={s.id} value={s.id}>
-                        {s.name} ({(sectionEntries[s.id] || []).length} classes)
+                        {s.name} ({t('classes_count', { count: (sectionEntries[s.id] || []).length })})
                       </SelectItem>
                     ))}
                   </SelectContent>

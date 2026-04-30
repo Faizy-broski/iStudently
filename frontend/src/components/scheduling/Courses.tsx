@@ -63,20 +63,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
+import { useTranslations } from "next-intl"
 
 // ── Types ───────────────────────────────────────────────────────────────
 
 interface CoursePeriodWithSeats extends CoursePeriod {
-  title?: string
-  short_name?: string
   filled_seats?: number
-  total_seats?: number | null
-  available_seats?: number | null
-  period?: { period_name?: string; period_number?: number } | null
-  marking_period?: { id: string; title: string; short_name: string; mp_type: string } | null
+  total_seats: number | null
+  available_seats: number | null
 }
-
-// ── Component ───────────────────────────────────────────────────────────
 
 export function Courses() {
   const { user } = useAuth()
@@ -84,6 +79,7 @@ export function Courses() {
   const campusContext = useCampus()
   const campusId = campusContext?.selectedCampus?.id
   const academicYearId = selectedAcademicYear
+  const t = useTranslations("school.scheduling.courses")
 
   // ── Selection state ─────────────────────────────────────────────────
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null)
@@ -272,22 +268,9 @@ export function Courses() {
     setSelectedCourseId(id)
     setSeatMap({})
   }, [])
-
-  // ── Subject CRUD ────────────────────────────────────────────────────
-
-  const openAddSubject = () => {
-    setSubjectForm({ name: "", code: "", grade_level_id: "" })
-    setSubjectDialog({ open: true, mode: "add" })
-  }
-
-  const openEditSubject = (sub: Subject) => {
-    setSubjectForm({ name: sub.name, code: sub.code, grade_level_id: sub.grade_level_id })
-    setSubjectDialog({ open: true, mode: "edit", subject: sub })
-  }
-
   const handleSaveSubject = async () => {
     if (!subjectForm.name.trim() || !subjectForm.code.trim() || !subjectForm.grade_level_id) {
-      toast.error("Please fill in all required fields")
+      toast.error(t("msg_fill_required"))
       return
     }
     setFormLoading(true)
@@ -299,43 +282,31 @@ export function Courses() {
           grade_level_id: subjectForm.grade_level_id,
         })
         if (!res.success) throw new Error(res.error)
-        toast.success("Subject created")
+        toast.success(t("msg_subject_created"))
       } else {
         const res = await updateSubject(subjectDialog.subject!.id, {
           name: subjectForm.name.trim(),
           code: subjectForm.code.trim(),
         })
         if (!res.success) throw new Error(res.error)
-        toast.success("Subject updated")
+        toast.success(t("msg_subject_updated"))
       }
       setSubjectDialog({ open: false, mode: "add" })
       globalMutate(subjectsCacheKey)
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to save subject")
+      toast.error(err instanceof Error ? err.message : t("msg_save_error"))
     } finally {
       setFormLoading(false)
     }
   }
 
-  // ── Course CRUD ─────────────────────────────────────────────────────
-
-  const openAddCourse = () => {
-    setCourseForm({ title: "", short_name: "", credit_hours: "1" })
-    setCourseDialog({ open: true, mode: "add" })
-  }
-
-  const openEditCourse = (course: Course) => {
-    setCourseForm({ title: course.title, short_name: course.short_name || "", credit_hours: course.credit_hours?.toString() || "1" })
-    setCourseDialog({ open: true, mode: "edit", course })
-  }
-
   const handleSaveCourse = async () => {
     if (!courseForm.title.trim()) {
-      toast.error("Course title is required")
+      toast.error(t("msg_course_title_required"))
       return
     }
     if (!selectedSubjectId || !academicYearId) {
-      toast.error("Subject and academic year are required")
+      toast.error(t("msg_course_subject_required"))
       return
     }
     setFormLoading(true)
@@ -349,7 +320,7 @@ export function Courses() {
           credit_hours: courseForm.credit_hours ? parseFloat(courseForm.credit_hours) : 1,
         } as Partial<Course> & { campus_id?: string })
         if (!res.success) throw new Error(res.error)
-        toast.success("Course created")
+        toast.success(t("msg_course_created"))
       } else {
         const res = await updateCourse(courseDialog.course!.id, {
           title: courseForm.title.trim(),
@@ -357,15 +328,142 @@ export function Courses() {
           credit_hours: courseForm.credit_hours ? parseFloat(courseForm.credit_hours) : 1,
         })
         if (!res.success) throw new Error(res.error)
-        toast.success("Course updated")
+        toast.success(t("msg_course_updated"))
       }
       setCourseDialog({ open: false, mode: "add" })
       globalMutate(coursesCacheKey)
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to save course")
+      toast.error(err instanceof Error ? err.message : t("msg_save_error"))
     } finally {
       setFormLoading(false)
     }
+  }
+
+  const handleSaveCP = async () => {
+    if (!selectedCourseId || !academicYearId) {
+      toast.error(t("msg_cp_course_required"))
+      return
+    }
+    if (!cpForm.teacher_id) {
+      toast.error(t("msg_cp_teacher_required"))
+      return
+    }
+    setFormLoading(true)
+    try {
+      if (cpDialog.mode === "add") {
+        const dto: CreateCoursePeriodDTO = {
+          course_id: selectedCourseId,
+          teacher_id: cpForm.teacher_id,
+          secondary_teacher_id: cpForm.secondary_teacher_id || undefined,
+          academic_year_id: academicYearId,
+          short_name: cpForm.short_name.trim() || undefined,
+          marking_period_id: cpForm.marking_period_id || undefined,
+          period_id: cpForm.period_id || undefined,
+          room: cpForm.room.trim() || undefined,
+          days: cpForm.days || undefined,
+          grading_scale_id: cpForm.grading_scale_id || undefined,
+          gender_restriction: cpForm.gender_restriction !== "N" ? cpForm.gender_restriction : undefined,
+          total_seats: cpForm.total_seats ? parseInt(cpForm.total_seats) : undefined,
+          campus_id: campusId,
+          does_honor_roll: cpForm.does_honor_roll,
+          takes_attendance: cpForm.takes_attendance,
+          calendar_id: cpForm.calendar_id || undefined,
+          allow_teacher_grade_scale: cpForm.allow_teacher_grade_scale,
+          credits: cpForm.credits ? parseFloat(cpForm.credits) : undefined,
+          affects_class_rank: cpForm.affects_class_rank,
+          parent_course_period_id: cpForm.parent_course_period_id || undefined,
+        }
+        const res = await createCoursePeriod(selectedCourseId, dto)
+        if (!res.success) throw new Error(res.error)
+        toast.success(t("msg_cp_created"))
+      } else {
+        const res = await updateCoursePeriod(selectedCourseId, cpDialog.cp!.id, {
+          teacher_id: cpForm.teacher_id,
+          secondary_teacher_id: cpForm.secondary_teacher_id || null,
+          short_name: cpForm.short_name.trim() || undefined,
+          marking_period_id: cpForm.marking_period_id || undefined,
+          period_id: cpForm.period_id || undefined,
+          room: cpForm.room.trim() || null,
+          days: cpForm.days || null,
+          grading_scale_id: cpForm.grading_scale_id || undefined,
+          gender_restriction: cpForm.gender_restriction !== "N" ? cpForm.gender_restriction : null,
+          total_seats: cpForm.total_seats ? parseInt(cpForm.total_seats) : null,
+          does_honor_roll: cpForm.does_honor_roll,
+          takes_attendance: cpForm.takes_attendance,
+          calendar_id: cpForm.calendar_id || null,
+          allow_teacher_grade_scale: cpForm.allow_teacher_grade_scale,
+          credits: cpForm.credits ? parseFloat(cpForm.credits) : null,
+          affects_class_rank: cpForm.affects_class_rank,
+          parent_course_period_id: cpForm.parent_course_period_id || null,
+        })
+        if (!res.success) throw new Error(res.error)
+        toast.success(t("msg_cp_updated"))
+      }
+      setCpDialog({ open: false, mode: "add" })
+      globalMutate(cpsCacheKey)
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t("msg_save_error"))
+    } finally {
+      setFormLoading(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deleteConfirm) return
+    setFormLoading(true)
+    try {
+      if (deleteConfirm.type === "subject") {
+        const res = await deleteSubject(deleteConfirm.id)
+        if (!res.success) throw new Error(res.error)
+        toast.success(t("msg_deleted_subject"))
+        if (selectedSubjectId === deleteConfirm.id) handleSelectSubject(null)
+        globalMutate(subjectsCacheKey)
+      } else if (deleteConfirm.type === "course") {
+        const res = await deleteCourse(deleteConfirm.id)
+        if (!res.success) throw new Error(res.error)
+        toast.success(t("msg_deleted_course"))
+        if (selectedCourseId === deleteConfirm.id) handleSelectCourse(null)
+        globalMutate(coursesCacheKey)
+      } else if (deleteConfirm.type === "cp" && deleteConfirm.courseId) {
+        const res = await deleteCoursePeriod(deleteConfirm.courseId, deleteConfirm.id)
+        if (!res.success) throw new Error(res.error)
+        toast.success(t("msg_deleted_cp"))
+        globalMutate(cpsCacheKey)
+      }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t("msg_delete_failed"))
+    } finally {
+      setFormLoading(false)
+      setDeleteConfirm(null)
+    }
+  }
+
+  // ── Subject CRUD ────────────────────────────────────────────────────
+
+  const openAddSubject = () => {
+    setSubjectForm({ name: "", code: "", grade_level_id: "" })
+    setSubjectDialog({ open: true, mode: "add" })
+  }
+
+  const openEditSubject = (sub: Subject) => {
+    setSubjectForm({ name: sub.name, code: sub.code, grade_level_id: sub.grade_level_id })
+    setSubjectDialog({ open: true, mode: "edit", subject: sub })
+  }
+
+  // ── Course CRUD ─────────────────────────────────────────────────────
+
+  const openAddCourse = () => {
+    setCourseForm({ title: "", short_name: "", credit_hours: "1" })
+    setCourseDialog({ open: true, mode: "add" })
+  }
+
+  const openEditCourse = (course: Course) => {
+    setCourseForm({
+      title: course.title,
+      short_name: course.short_name || "",
+      credit_hours: course.credit_hours?.toString() || "1",
+    })
+    setCourseDialog({ open: true, mode: "edit", course })
   }
 
   // ── Course Period CRUD ──────────────────────────────────────────────
@@ -417,139 +515,27 @@ export function Courses() {
     setCpDialog({ open: true, mode: "edit", cp })
   }
 
-  const handleSaveCP = async () => {
-    if (!selectedCourseId || !academicYearId) {
-      toast.error("Course and academic year are required")
-      return
-    }
-    if (!cpForm.teacher_id) {
-      toast.error("Teacher is required")
-      return
-    }
-    setFormLoading(true)
-    try {
-      if (cpDialog.mode === "add") {
-        const dto: CreateCoursePeriodDTO = {
-          course_id: selectedCourseId,
-          teacher_id: cpForm.teacher_id,
-          secondary_teacher_id: cpForm.secondary_teacher_id || undefined,
-          academic_year_id: academicYearId,
-          short_name: cpForm.short_name.trim() || undefined,
-          marking_period_id: cpForm.marking_period_id || undefined,
-          period_id: cpForm.period_id || undefined,
-          room: cpForm.room.trim() || undefined,
-          days: cpForm.days || undefined,
-          grading_scale_id: cpForm.grading_scale_id || undefined,
-          gender_restriction: cpForm.gender_restriction !== "N" ? cpForm.gender_restriction : undefined,
-          total_seats: cpForm.total_seats ? parseInt(cpForm.total_seats) : undefined,
-          campus_id: campusId,
-          does_honor_roll: cpForm.does_honor_roll,
-          takes_attendance: cpForm.takes_attendance,
-          calendar_id: cpForm.calendar_id || undefined,
-          allow_teacher_grade_scale: cpForm.allow_teacher_grade_scale,
-          credits: cpForm.credits ? parseFloat(cpForm.credits) : undefined,
-          affects_class_rank: cpForm.affects_class_rank,
-          parent_course_period_id: cpForm.parent_course_period_id || undefined,
-        }
-        const res = await createCoursePeriod(selectedCourseId, dto)
-        if (!res.success) throw new Error(res.error)
-        toast.success("Course period created")
-      } else {
-        const res = await updateCoursePeriod(selectedCourseId, cpDialog.cp!.id, {
-          teacher_id: cpForm.teacher_id,
-          secondary_teacher_id: cpForm.secondary_teacher_id || null,
-          short_name: cpForm.short_name.trim() || undefined,
-          marking_period_id: cpForm.marking_period_id || undefined,
-          period_id: cpForm.period_id || undefined,
-          room: cpForm.room.trim() || null,
-          days: cpForm.days || null,
-          grading_scale_id: cpForm.grading_scale_id || undefined,
-          gender_restriction: cpForm.gender_restriction !== "N" ? cpForm.gender_restriction : null,
-          total_seats: cpForm.total_seats ? parseInt(cpForm.total_seats) : null,
-          does_honor_roll: cpForm.does_honor_roll,
-          takes_attendance: cpForm.takes_attendance,
-          calendar_id: cpForm.calendar_id || null,
-          allow_teacher_grade_scale: cpForm.allow_teacher_grade_scale,
-          credits: cpForm.credits ? parseFloat(cpForm.credits) : null,
-          affects_class_rank: cpForm.affects_class_rank,
-          parent_course_period_id: cpForm.parent_course_period_id || null,
-        })
-        if (!res.success) throw new Error(res.error)
-        toast.success("Course period updated")
-      }
-      setCpDialog({ open: false, mode: "add" })
-      globalMutate(cpsCacheKey)
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to save course period")
-    } finally {
-      setFormLoading(false)
-    }
-  }
-
-  // ── Delete handler ──────────────────────────────────────────────────
-
-  const handleDelete = async () => {
-    if (!deleteConfirm) return
-    setFormLoading(true)
-    try {
-      if (deleteConfirm.type === "subject") {
-        const res = await deleteSubject(deleteConfirm.id)
-        if (!res.success) throw new Error(res.error)
-        toast.success("Subject deleted")
-        if (selectedSubjectId === deleteConfirm.id) handleSelectSubject(null)
-        globalMutate(subjectsCacheKey)
-      } else if (deleteConfirm.type === "course") {
-        const res = await deleteCourse(deleteConfirm.id)
-        if (!res.success) throw new Error(res.error)
-        toast.success("Course deleted")
-        if (selectedCourseId === deleteConfirm.id) handleSelectCourse(null)
-        globalMutate(coursesCacheKey)
-      } else if (deleteConfirm.type === "cp" && deleteConfirm.courseId) {
-        const res = await deleteCoursePeriod(deleteConfirm.courseId, deleteConfirm.id)
-        if (!res.success) throw new Error(res.error)
-        toast.success("Course period deleted")
-        globalMutate(cpsCacheKey)
-      }
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Delete failed")
-    } finally {
-      setFormLoading(false)
-      setDeleteConfirm(null)
-    }
-  }
-
-  // ── Teacher display name helper ─────────────────────────────────────
-
   const getTeacherName = (cp: CoursePeriodWithSeats) => {
-    const t = cp.teacher
-    if (!t) return ""
-    // Backend may return nested profile or flat first_name/last_name
-    const record = t as Record<string, unknown>
-    const profile = record.profile as
-      | { first_name?: string; last_name?: string }
-      | undefined
-    if (profile) {
-      return [profile.first_name, profile.last_name].filter(Boolean).join(" ")
-    }
-    if (t.first_name || t.last_name) {
-      return [t.first_name, t.last_name].filter(Boolean).join(" ")
-    }
+    const tr = cp.teacher
+    if (!tr) return ""
+    const record = tr as Record<string, unknown>
+    const profile = record.profile as { first_name?: string; last_name?: string } | undefined
+    if (profile) return [profile.first_name, profile.last_name].filter(Boolean).join(" ")
+    if (tr.first_name || tr.last_name) return [tr.first_name, tr.last_name].filter(Boolean).join(" ")
     return ""
   }
-
-  // ── Render ──────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center gap-2 border-b pb-4">
         <CalendarDays className="h-6 w-6 text-amber-500" />
-        <h1 className="text-2xl font-bold">Courses</h1>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
       </div>
 
       {/* Breadcrumb */}
       <div className="flex items-center text-sm text-muted-foreground">
-        <span>Courses</span>
+        <span>{t("title")}</span>
       </div>
 
       {/* 3-panel layout */}
@@ -560,14 +546,14 @@ export function Courses() {
             {subjectsLoading ? (
               <Skeleton className="h-4 w-32" />
             ) : (
-              <>{subjects.length} subject{subjects.length !== 1 ? "s" : ""} found.</>
+              <>{t("found_subjects", { count: subjects.length })}</>
             )}
           </div>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
                 <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-teal-700">
-                  Subject
+                  {t("th_subject")}
                 </th>
                 <th className="w-16"></th>
               </tr>
@@ -600,7 +586,7 @@ export function Courses() {
                             e.stopPropagation()
                             openEditSubject(sub)
                           }}
-                          title="Edit"
+                          title={t("btn_edit")}
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
@@ -615,7 +601,7 @@ export function Courses() {
                               label: sub.name,
                             })
                           }}
-                          title="Delete"
+                          title={t("btn_delete")}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -644,16 +630,14 @@ export function Courses() {
               {coursesLoading ? (
                 <Skeleton className="h-4 w-32" />
               ) : (
-                <>
-                  {filteredCourses.length} course{filteredCourses.length !== 1 ? "s" : ""} found.
-                </>
+                <>{t("found_courses", { count: filteredCourses.length })}</>
               )}
             </div>
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b">
                   <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-teal-700">
-                    Course
+                    {t("th_course")}
                   </th>
                   <th className="w-16"></th>
                 </tr>
@@ -686,7 +670,7 @@ export function Courses() {
                               e.stopPropagation()
                               openEditCourse(course)
                             }}
-                            title="Edit"
+                            title={t("btn_edit")}
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
@@ -701,7 +685,7 @@ export function Courses() {
                                 label: course.title,
                               })
                             }}
-                            title="Delete"
+                            title={t("btn_delete")}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -731,19 +715,17 @@ export function Courses() {
               {cpsLoading ? (
                 <Skeleton className="h-4 w-32" />
               ) : (
-                <>
-                  {coursePeriods.length} course period{coursePeriods.length !== 1 ? "s" : ""} found.
-                </>
+                <>{t("found_course_periods", { count: coursePeriods.length })}</>
               )}
             </div>
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b">
                   <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-teal-700">
-                    Course Period
+                    {t("th_course_period")}
                   </th>
                   <th className="px-3 py-2 text-right text-xs font-semibold uppercase text-teal-700">
-                    Available Seats
+                    {t("th_available_seats")}
                   </th>
                   <th className="w-16"></th>
                 </tr>
@@ -787,7 +769,7 @@ export function Courses() {
                             <button
                               className="p-1 text-muted-foreground hover:text-primary"
                               onClick={() => openEditCP(cp)}
-                              title="Edit"
+                              title={t("btn_edit")}
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
@@ -799,10 +781,10 @@ export function Courses() {
                                   type: "cp",
                                   id: cp.id,
                                   courseId: selectedCourseId!,
-                                  label: displayTitle || "this course period",
+                                  label: displayTitle || t("type_cp").toLowerCase(),
                                 })
                               }
-                              title="Delete"
+                              title={t("btn_delete")}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
@@ -829,12 +811,12 @@ export function Courses() {
         {/* Empty state panels */}
         {!selectedSubjectId && (
           <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm p-8 bg-muted/10">
-            Select a subject to view its courses
+            {t("empty_select_subject")}
           </div>
         )}
         {selectedSubjectId && !selectedCourseId && (
           <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm p-8 bg-muted/10">
-            Select a course to view its periods
+            {t("empty_select_course")}
           </div>
         )}
       </div>
@@ -844,19 +826,19 @@ export function Courses() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {subjectDialog.mode === "add" ? "Add Subject" : "Edit Subject"}
+              {subjectDialog.mode === "add" ? t("dialog_subject_add") : t("dialog_subject_edit")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Grade Level *</Label>
+              <Label>{t("label_grade_level")}</Label>
               <Select
                 value={subjectForm.grade_level_id}
                 onValueChange={(v) => setSubjectForm((f) => ({ ...f, grade_level_id: v }))}
                 disabled={subjectDialog.mode === "edit"}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select grade level" />
+                  <SelectValue placeholder={t("placeholder_select_grade")} />
                 </SelectTrigger>
                 <SelectContent>
                   {gradeLevels.map((g) => (
@@ -868,29 +850,29 @@ export function Courses() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Name *</Label>
+              <Label>{t("label_name")}</Label>
               <Input
                 value={subjectForm.name}
                 onChange={(e) => setSubjectForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="e.g. Mathematics"
+                placeholder={t("placeholder_subject_name")}
               />
             </div>
             <div className="space-y-2">
-              <Label>Code *</Label>
+              <Label>{t("label_code")}</Label>
               <Input
                 value={subjectForm.code}
                 onChange={(e) => setSubjectForm((f) => ({ ...f, code: e.target.value }))}
-                placeholder="e.g. MATH"
+                placeholder={t("placeholder_subject_code")}
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSubjectDialog({ open: false, mode: "add" })}>
-              Cancel
+              {t("btn_cancel")}
             </Button>
             <Button onClick={handleSaveSubject} disabled={formLoading}>
               {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {subjectDialog.mode === "add" ? "Create" : "Save"}
+              {subjectDialog.mode === "add" ? t("btn_create") : t("btn_save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -901,7 +883,7 @@ export function Courses() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {courseDialog.mode === "add" ? "Add Course" : "Edit Course"}
+              {courseDialog.mode === "add" ? t("dialog_course_add") : t("dialog_course_edit")}
               {selectedSubject && (
                 <span className="text-sm font-normal text-muted-foreground ml-2">
                   ({selectedSubject.name})
@@ -911,28 +893,28 @@ export function Courses() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Title *</Label>
+              <Label>{t("label_title")}</Label>
               <Input
                 value={courseForm.title}
                 onChange={(e) => setCourseForm((f) => ({ ...f, title: e.target.value }))}
-                placeholder="e.g. Mathematics 6"
+                placeholder={t("placeholder_course_title")}
               />
             </div>
             <div className="space-y-2">
-              <Label>Short Name</Label>
+              <Label>{t("label_short_name")}</Label>
               <Input
                 value={courseForm.short_name}
                 onChange={(e) => setCourseForm((f) => ({ ...f, short_name: e.target.value }))}
-                placeholder="e.g. MATH6"
+                placeholder={t("placeholder_course_short")}
               />
             </div>
             <div className="space-y-2">
-              <Label>Credit Hours</Label>
+              <Label>{t("label_credit_hours")}</Label>
               <Input
                 type="number"
                 value={courseForm.credit_hours}
                 onChange={(e) => setCourseForm((f) => ({ ...f, credit_hours: e.target.value }))}
-                placeholder="e.g. 1"
+                placeholder={t("placeholder_credit_hours")}
                 min={0}
                 step={0.5}
               />
@@ -940,11 +922,11 @@ export function Courses() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCourseDialog({ open: false, mode: "add" })}>
-              Cancel
+              {t("btn_cancel")}
             </Button>
             <Button onClick={handleSaveCourse} disabled={formLoading}>
               {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {courseDialog.mode === "add" ? "Create" : "Save"}
+              {courseDialog.mode === "add" ? t("btn_create") : t("btn_save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -955,10 +937,10 @@ export function Courses() {
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {cpDialog.mode === "add" ? "Add Course Period" : "Edit Course Period"}
+              {cpDialog.mode === "add" ? t("dialog_cp_add") : t("dialog_cp_edit")}
               {selectedCourse && (
                 <span className="text-sm font-normal text-muted-foreground ml-2">
-                  for {selectedCourse.title}
+                  {t("dialog_cp_for", { title: selectedCourse.title })}
                 </span>
               )}
             </DialogTitle>
@@ -966,23 +948,23 @@ export function Courses() {
           <div className="grid grid-cols-2 gap-4">
             {/* Short Name */}
             <div className="space-y-2">
-              <Label>Short Name</Label>
+              <Label>{t("label_short_name")}</Label>
               <Input
                 value={cpForm.short_name}
                 onChange={(e) => setCpForm((f) => ({ ...f, short_name: e.target.value }))}
-                placeholder="e.g. MATH6A"
+                placeholder={t("placeholder_cp_short")}
               />
             </div>
 
             {/* Teacher */}
             <div className="space-y-2">
-              <Label>Teacher *</Label>
+              <Label>{t("label_teacher")}</Label>
               <Select
                 value={cpForm.teacher_id}
                 onValueChange={(v) => setCpForm((f) => ({ ...f, teacher_id: v }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="N/A" />
+                  <SelectValue placeholder={t("placeholder_na")} />
                 </SelectTrigger>
                 <SelectContent>
                   {teachers.map((t) => {
@@ -999,16 +981,16 @@ export function Courses() {
 
             {/* Secondary Teacher */}
             <div className="space-y-2">
-              <Label>Secondary Teacher</Label>
+              <Label>{t("label_secondary_teacher")}</Label>
               <Select
                 value={cpForm.secondary_teacher_id || "none"}
                 onValueChange={(v) => setCpForm((f) => ({ ...f, secondary_teacher_id: v === "none" ? "" : v }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="N/A" />
+                  <SelectValue placeholder={t("placeholder_na")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">N/A</SelectItem>
+                  <SelectItem value="none">{t("placeholder_na")}</SelectItem>
                   {teachers.map((t) => {
                     const name = [t.profile?.first_name, t.profile?.last_name].filter(Boolean).join(" ")
                     return (
@@ -1023,26 +1005,26 @@ export function Courses() {
 
             {/* Room (text input, not dropdown) */}
             <div className="space-y-2">
-              <Label>Room</Label>
+              <Label>{t("label_room")}</Label>
               <Input
                 value={cpForm.room}
                 onChange={(e) => setCpForm((f) => ({ ...f, room: e.target.value }))}
-                placeholder="e.g. 101"
+                placeholder={t("placeholder_room")}
               />
             </div>
 
             {/* Marking Period */}
             <div className="space-y-2">
-              <Label>Marking Period</Label>
+              <Label>{t("label_marking_period")}</Label>
               <Select
                 value={cpForm.marking_period_id || "none"}
                 onValueChange={(v) => setCpForm((f) => ({ ...f, marking_period_id: v === "none" ? "" : v }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="FY" />
+                  <SelectValue placeholder={t("placeholder_fy")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">N/A</SelectItem>
+                  <SelectItem value="none">{t("placeholder_na")}</SelectItem>
                   {markingPeriods.map((mp) => (
                     <SelectItem key={mp.id} value={mp.id}>
                       {mp.title} ({mp.mp_type})
@@ -1054,19 +1036,19 @@ export function Courses() {
 
             {/* Seats */}
             <div className="space-y-2">
-              <Label>Seats</Label>
+              <Label>{t("label_seats")}</Label>
               <Input
                 type="number"
                 value={cpForm.total_seats}
                 onChange={(e) => setCpForm((f) => ({ ...f, total_seats: e.target.value }))}
-                placeholder="e.g. 30"
+                placeholder={t("placeholder_seats")}
                 min={0}
               />
             </div>
 
             {/* Period + Meeting Days */}
             <div className="space-y-2 col-span-2">
-              <Label>Period</Label>
+              <Label>{t("label_period")}</Label>
               <div className="flex gap-3 items-center">
                 <div className="flex-1">
                   <Select
@@ -1074,10 +1056,10 @@ export function Courses() {
                     onValueChange={(v) => setCpForm((f) => ({ ...f, period_id: v === "none" ? "" : v }))}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Full Day" />
+                      <SelectValue placeholder={t("placeholder_full_day")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Full Day</SelectItem>
+                      <SelectItem value="none">{t("placeholder_full_day")}</SelectItem>
                       {schoolPeriods.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
                           {p.title}
@@ -1091,10 +1073,18 @@ export function Courses() {
 
             {/* Meeting Days */}
             <div className="space-y-2 col-span-2">
-              <Label>Meeting Days</Label>
+              <Label>{t("label_meeting_days")}</Label>
               <div className="flex gap-1.5 flex-shrink-0">
                 {(["M", "T", "W", "R", "F", "S", "U"] as const).map((day) => {
-                  const labels: Record<string, string> = { M: "Mon", T: "Tue", W: "Wed", R: "Thu", F: "Fri", S: "Sat", U: "Sun" }
+                  const dayLabels: Record<string, string> = { 
+                    M: t("days.M"), 
+                    T: t("days.T"), 
+                    W: t("days.W"), 
+                    R: t("days.R"), 
+                    F: t("days.F"), 
+                    S: t("days.S"), 
+                    U: t("days.U") 
+                  }
                   const isActive = cpForm.days.includes(day)
                   return (
                     <button
@@ -1113,7 +1103,7 @@ export function Courses() {
                         }))
                       }}
                     >
-                      {labels[day]}
+                      {dayLabels[day]}
                     </button>
                   )
                 })}
@@ -1128,38 +1118,38 @@ export function Courses() {
                 onCheckedChange={(c) => setCpForm((f) => ({ ...f, takes_attendance: c === true }))}
               />
               <Label htmlFor="takes-attendance" className="cursor-pointer">
-                Takes Attendance
+                {t("label_takes_attendance")}
               </Label>
             </div>
 
             {/* Calendar */}
             <div className="space-y-2">
-              <Label>Calendar</Label>
+              <Label>{t("label_calendar")}</Label>
               <Select
                 value={cpForm.calendar_id || "none"}
                 onValueChange={(v) => setCpForm((f) => ({ ...f, calendar_id: v === "none" ? "" : v }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Main" />
+                  <SelectValue placeholder={t("placeholder_main")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Main</SelectItem>
+                  <SelectItem value="none">{t("placeholder_main")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {/* Grading Scale */}
             <div className="space-y-2">
-              <Label>Grading Scale</Label>
+              <Label>{t("label_grading_scale")}</Label>
               <Select
                 value={cpForm.grading_scale_id || "none"}
                 onValueChange={(v) => setCpForm((f) => ({ ...f, grading_scale_id: v === "none" ? "" : v }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Not Graded" />
+                  <SelectValue placeholder={t("placeholder_not_graded")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Not Graded</SelectItem>
+                  <SelectItem value="none">{t("placeholder_not_graded")}</SelectItem>
                   {gradingScales.map((gs) => (
                     <SelectItem key={gs.id} value={gs.id}>
                       {gs.title}
@@ -1177,13 +1167,13 @@ export function Courses() {
                 onCheckedChange={(c) => setCpForm((f) => ({ ...f, allow_teacher_grade_scale: c === true }))}
               />
               <Label htmlFor="allow-teacher-grade-scale" className="cursor-pointer">
-                Allow Teacher Grade Scale
+                {t("label_allow_teacher_scale")}
               </Label>
             </div>
 
             {/* Credits */}
             <div className="space-y-2">
-              <Label>Credits</Label>
+              <Label>{t("label_credits")}</Label>
               <Input
                 type="number"
                 value={cpForm.credits}
@@ -1202,7 +1192,7 @@ export function Courses() {
                 onCheckedChange={(c) => setCpForm((f) => ({ ...f, affects_class_rank: c === true }))}
               />
               <Label htmlFor="affects-class-rank" className="cursor-pointer">
-                Affects Class Rank
+                {t("label_affects_rank")}
               </Label>
             </div>
 
@@ -1214,13 +1204,13 @@ export function Courses() {
                 onCheckedChange={(c) => setCpForm((f) => ({ ...f, does_honor_roll: c === true }))}
               />
               <Label htmlFor="does-honor-roll" className="cursor-pointer">
-                Affects Honor Roll
+                {t("label_affects_honor")}
               </Label>
             </div>
 
             {/* Gender Restriction */}
             <div className="space-y-2">
-              <Label>Gender Restriction</Label>
+              <Label>{t("label_gender_restriction")}</Label>
               <Select
                 value={cpForm.gender_restriction}
                 onValueChange={(v) => setCpForm((f) => ({ ...f, gender_restriction: v }))}
@@ -1229,25 +1219,25 @@ export function Courses() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="N">None</SelectItem>
-                  <SelectItem value="M">Male</SelectItem>
-                  <SelectItem value="F">Female</SelectItem>
+                  <SelectItem value="N">{t("gender_none")}</SelectItem>
+                  <SelectItem value="M">{t("gender_male")}</SelectItem>
+                  <SelectItem value="F">{t("gender_female")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {/* Parent Course Period */}
             <div className="space-y-2">
-              <Label>Parent Course Period</Label>
+              <Label>{t("label_parent_cp")}</Label>
               <Select
                 value={cpForm.parent_course_period_id || "none"}
                 onValueChange={(v) => setCpForm((f) => ({ ...f, parent_course_period_id: v === "none" ? "" : v }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Choose" />
+                  <SelectValue placeholder={t("placeholder_choose")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="none">{t("gender_none")}</SelectItem>
                   {coursePeriods
                     .filter((cp) => cpDialog.mode !== "edit" || cp.id !== cpDialog.cp?.id)
                     .map((cp) => (
@@ -1261,11 +1251,11 @@ export function Courses() {
           </div>
           <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => setCpDialog({ open: false, mode: "add" })}>
-              Cancel
+              {t("btn_cancel")}
             </Button>
             <Button onClick={handleSaveCP} disabled={formLoading}>
               {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {cpDialog.mode === "add" ? "Create" : "Save"}
+              {cpDialog.mode === "add" ? t("btn_create") : t("btn_save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1278,24 +1268,30 @@ export function Courses() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {deleteConfirm?.type === "cp" ? "Course Period" : deleteConfirm?.type === "course" ? "Course" : "Subject"}?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t("delete_title", { 
+                type: deleteConfirm?.type === "cp" 
+                  ? t("type_cp") 
+                  : deleteConfirm?.type === "course" 
+                    ? t("type_course") 
+                    : t("type_subject") 
+              })}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{deleteConfirm?.label}&quot;? This action cannot be undone.
-              {deleteConfirm?.type === "subject" &&
-                " All courses and course periods under this subject will also be deleted."}
-              {deleteConfirm?.type === "course" &&
-                " All course periods under this course will also be deleted."}
+              {t("delete_desc", { label: deleteConfirm?.label })}
+              {deleteConfirm?.type === "subject" && t("delete_subject_warning")}
+              {deleteConfirm?.type === "course" && t("delete_course_warning")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={formLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={formLoading}>{t("btn_cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={formLoading}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {formLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Delete
+              {t("btn_delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

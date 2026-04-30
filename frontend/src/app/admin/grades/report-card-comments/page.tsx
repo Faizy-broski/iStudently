@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
 import * as gradesApi from "@/lib/api/grades";
+import { useTranslations } from "next-intl";
 import type {
   ReportCardCommentCategory,
   ReportCardComment,
@@ -45,6 +46,7 @@ interface CategoryRow extends ReportCardCommentCategory {
 }
 
 export default function ReportCardCommentsPage() {
+  const t = useTranslations("school.grades_module.report_card_comments");
   const { user } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
@@ -297,10 +299,10 @@ export default function ReportCardCommentsPage() {
       <div>
         <h1 className="text-3xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent flex items-center gap-2">
           <MessageSquare className="h-8 w-8 text-[#57A3CC]" />
-          Report Card Comments
+          {t("title")}
         </h1>
         <p className="text-muted-foreground mt-2">
-          Manage comment categories and comments for report cards
+          {t("subtitle")}
           {selectedCampus && (
             <span className="ml-1 font-medium">
               — {selectedCampus.name}

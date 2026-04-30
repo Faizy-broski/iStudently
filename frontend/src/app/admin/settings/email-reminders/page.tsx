@@ -11,18 +11,20 @@ import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Bell, Save, Send, Loader2, Mail, Clock, CalendarDays, Info } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 
-const DAY_LABELS = [
-  { value: 0, label: 'Monday' },
-  { value: 1, label: 'Tuesday' },
-  { value: 2, label: 'Wednesday' },
-  { value: 3, label: 'Thursday' },
-  { value: 4, label: 'Friday' },
-  { value: 5, label: 'Saturday' },
-  { value: 6, label: 'Sunday' },
+const getDayLabels = (t: any) => [
+  { value: 0, label: t('days.monday') },
+  { value: 1, label: t('days.tuesday') },
+  { value: 2, label: t('days.wednesday') },
+  { value: 3, label: t('days.thursday') },
+  { value: 4, label: t('days.friday') },
+  { value: 5, label: t('days.saturday') },
+  { value: 6, label: t('days.sunday') },
 ]
 
 export default function EmailRemindersPage() {
+  const t = useTranslations('school.email_reminders')
   const { profile } = useAuth()
 
   const [loading, setLoading] = useState(true)
@@ -45,10 +47,10 @@ export default function EmailRemindersPage() {
         setReminderDays(result.data.diary_reminder_days)
       }
     } catch {
-      toast.error('Failed to load settings')
+      toast.error(t('msg_load_error'))
     }
     setLoading(false)
-  }, [])
+  }, [t])
 
   useEffect(() => {
     const load = async () => {
@@ -67,7 +69,7 @@ export default function EmailRemindersPage() {
 
   const handleSave = async () => {
     if (reminderDays.length === 0 && enabled) {
-      toast.error('Please select at least one day for reminders')
+      toast.error(t('msg_no_days'))
       return
     }
 
@@ -79,31 +81,31 @@ export default function EmailRemindersPage() {
         diary_reminder_days: reminderDays,
       })
       if (result.success) {
-        toast.success('Email reminder settings saved successfully')
+        toast.success(t('msg_save_success'))
       } else {
-        toast.error(result.error || 'Failed to save settings')
+        toast.error(result.error || t('msg_save_error'))
       }
     } catch {
-      toast.error('Failed to save settings')
+      toast.error(t('msg_save_error'))
     }
     setSaving(false)
   }
 
   const handleSendTest = async () => {
     if (!testEmail) {
-      toast.error('Please enter an email address')
+      toast.error(t('msg_test_no_email'))
       return
     }
     setSendingTest(true)
     try {
       const result = await sendTestDiaryReminder(testEmail)
       if (result.success) {
-        toast.success(`Test reminder sent to ${testEmail}`)
+        toast.success(t('msg_test_success', { email: testEmail }))
       } else {
-        toast.error(result.error || 'Failed to send test reminder')
+        toast.error(result.error || t('msg_test_error'))
       }
     } catch {
-      toast.error('Failed to send test reminder')
+      toast.error(t('msg_test_error'))
     }
     setSendingTest(false)
   }
@@ -137,10 +139,10 @@ export default function EmailRemindersPage() {
         </div>
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-[#022172] dark:text-white">
-            Email Reminders
+            {t('title')}
           </h1>
           <p className="text-muted-foreground">
-            Configure automated email reminders for Class Diary entries
+            {t('subtitle')}
           </p>
         </div>
       </div>
@@ -149,11 +151,9 @@ export default function EmailRemindersPage() {
       <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950/20">
         <Info className="mt-0.5 h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
         <div className="text-sm text-blue-800 dark:text-blue-300">
-          <p className="font-medium">How it works</p>
+          <p className="font-medium">{t('info_title')}</p>
           <p className="mt-1">
-            When enabled, teachers who did not add a Class Diary entry for their scheduled classes
-            on the previous day will receive an email reminder. The system checks the timetable to
-            identify which teachers had classes and which ones are missing diary entries.
+            {t('info_desc')}
           </p>
         </div>
       </div>
@@ -164,20 +164,20 @@ export default function EmailRemindersPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Mail className="h-5 w-5 text-[#022172]" />
-              Diary Reminder
+              {t('card_diary_title')}
             </CardTitle>
             <CardDescription>
-              Enable or disable automatic email reminders for teachers
+              {t('card_diary_subtitle')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
                 <Label className="text-base font-medium">
-                  Enable Email Reminders
+                  {t('label_enable')}
                 </Label>
                 <p className="text-sm text-muted-foreground">
-                  Send daily reminders to teachers with missing diary entries
+                  {t('desc_enable')}
                 </p>
               </div>
               <Switch
@@ -190,7 +190,7 @@ export default function EmailRemindersPage() {
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                  Reminder Time
+                  {t('label_time')}
                 </Label>
                 <Input
                   type="time"
@@ -199,7 +199,7 @@ export default function EmailRemindersPage() {
                   className="w-40"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Reminders will be sent at this time (server timezone: Asia/Karachi)
+                  {t('hint_time')}
                 </p>
               </div>
             </div>
@@ -211,10 +211,10 @@ export default function EmailRemindersPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CalendarDays className="h-5 w-5 text-[#022172]" />
-              Reminder Days
+              {t('card_days_title')}
             </CardTitle>
             <CardDescription>
-              Select which days of the week to send reminders
+              {t('card_days_subtitle')}
             </CardDescription>
           </CardHeader>
           <CardContent className={!enabled ? 'opacity-50 pointer-events-none' : ''}>
@@ -227,7 +227,7 @@ export default function EmailRemindersPage() {
                   onClick={selectWeekdays}
                   className="text-xs"
                 >
-                  Weekdays
+                  {t('btn_weekdays')}
                 </Button>
                 <Button
                   type="button"
@@ -236,7 +236,7 @@ export default function EmailRemindersPage() {
                   onClick={selectAllDays}
                   className="text-xs"
                 >
-                  All Days
+                  {t('btn_all_days')}
                 </Button>
                 <Button
                   type="button"
@@ -245,12 +245,12 @@ export default function EmailRemindersPage() {
                   onClick={clearDays}
                   className="text-xs"
                 >
-                  Clear
+                  {t('btn_clear')}
                 </Button>
               </div>
 
               <div className="space-y-3">
-                {DAY_LABELS.map((day) => (
+                {getDayLabels(t).map((day) => (
                   <div key={day.value} className="flex items-center gap-3">
                     <Checkbox
                       id={`day-${day.value}`}
@@ -268,7 +268,7 @@ export default function EmailRemindersPage() {
               </div>
 
               <p className="text-xs text-muted-foreground">
-                Reminders check for missing entries from the previous day&apos;s classes
+                {t('hint_days')}
               </p>
             </div>
           </CardContent>
@@ -279,19 +279,19 @@ export default function EmailRemindersPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Send className="h-5 w-5 text-[#022172]" />
-              Test Reminder
+              {t('card_test_title')}
             </CardTitle>
             <CardDescription>
-              Send a test reminder email to verify your email configuration is working
+              {t('card_test_subtitle')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
               <div className="flex-1 space-y-2">
-                <Label>Test Email Address</Label>
+                <Label>{t('label_test_email')}</Label>
                 <Input
                   type="email"
-                  placeholder="Enter email address..."
+                  placeholder={t('placeholder_test_email')}
                   value={testEmail}
                   onChange={(e) => setTestEmail(e.target.value)}
                 />
@@ -307,7 +307,7 @@ export default function EmailRemindersPage() {
                 ) : (
                   <Send className="mr-2 h-4 w-4" />
                 )}
-                Send Test Email
+                {sendingTest ? t('btn_sending') : t('btn_send_test')}
               </Button>
             </div>
           </CardContent>
@@ -326,7 +326,7 @@ export default function EmailRemindersPage() {
           ) : (
             <Save className="mr-2 h-4 w-4" />
           )}
-          Save Settings
+          {saving ? t('btn_saving') : t('btn_save')}
         </Button>
       </div>
     </div>

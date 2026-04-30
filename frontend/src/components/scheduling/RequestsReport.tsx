@@ -26,7 +26,12 @@ interface Subject {
 
 type ReportMode = "requests" | "unfilled"
 
+import { useTranslations } from "next-intl"
+
 export function RequestsReport() {
+  const t = useTranslations("school.scheduling.requests_report")
+  const tCommon = useTranslations("common")
+
   const { user } = useAuth()
   const { selectedAcademicYear } = useAcademic()
   const campusContext = useCampus()
@@ -145,7 +150,7 @@ export function RequestsReport() {
       {/* Header */}
       <div className="flex items-center gap-2 border-b pb-4">
         <CalendarDays className="h-6 w-6 text-amber-500" />
-        <h1 className="text-2xl font-bold">Requests Report</h1>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
       </div>
 
       {/* Report mode selector */}
@@ -154,8 +159,8 @@ export function RequestsReport() {
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="requests">Requests Report</SelectItem>
-          <SelectItem value="unfilled">Unfilled Requests</SelectItem>
+          <SelectItem value="requests">{t("mode_requests")}</SelectItem>
+          <SelectItem value="unfilled">{t("mode_unfilled")}</SelectItem>
         </SelectContent>
       </Select>
 
@@ -167,7 +172,7 @@ export function RequestsReport() {
           onCheckedChange={(c) => setIncludeInactive(c === true)}
         />
         <label htmlFor="include-inactive-rr" className="text-sm font-medium">
-          Include Inactive Students
+          {t("include_inactive")}
         </label>
       </div>
 
@@ -178,23 +183,23 @@ export function RequestsReport() {
           ))}
         </div>
       ) : !hasRequests && requests.length === 0 ? (
-        <p className="text-sm text-amber-600 font-semibold">No subjects were found.</p>
+        <p className="text-sm text-amber-600 font-semibold">{tCommon("no_items_found", { label: tCommon("subjects") })}</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Subjects panel */}
           <div>
             <p className="text-sm text-amber-600 font-semibold mb-2">
-              {subjects.length} subject{subjects.length !== 1 ? "s" : ""} were found.
+              {t("found_subjects", { count: subjects.length })}
             </p>
             <div className="border rounded-md overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-muted/50 border-b">
-                    <th className="text-left px-4 py-2 font-semibold text-primary uppercase">
-                      Subject
+                    <th className="text-left rtl:text-right px-4 py-2 font-semibold text-primary uppercase">
+                      {t("th_subject")}
                     </th>
                     <th className="text-center px-3 py-2 font-semibold text-primary uppercase">
-                      Requests
+                      {t("th_requests")}
                     </th>
                   </tr>
                 </thead>
@@ -230,17 +235,17 @@ export function RequestsReport() {
             {selectedSubjectId && (
               <>
                 <p className="text-sm text-amber-600 font-semibold mb-2">
-                  {filteredCourses.length} course{filteredCourses.length !== 1 ? "s" : ""} found.
+                  {t("found_courses", { count: filteredCourses.length })}
                 </p>
                 <div className="border rounded-md overflow-hidden">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-muted/50 border-b">
-                        <th className="text-left px-3 py-2 font-semibold text-primary uppercase">
-                          Course
+                        <th className="text-left rtl:text-right px-3 py-2 font-semibold text-primary uppercase">
+                          {t("th_course")}
                         </th>
                         <th className="text-center px-2 py-2 font-semibold text-primary uppercase">
-                          Requests
+                          {t("th_requests")}
                         </th>
                       </tr>
                     </thead>
@@ -248,7 +253,7 @@ export function RequestsReport() {
                       {filteredCourses.length === 0 ? (
                         <tr>
                           <td colSpan={2} className="px-3 py-4 text-muted-foreground text-center">
-                            No courses found.
+                            {t("no_courses_found")}
                           </td>
                         </tr>
                       ) : (
@@ -285,17 +290,17 @@ export function RequestsReport() {
             {selectedCourseId && (
               <>
                 <p className="text-sm text-amber-600 font-semibold mb-2">
-                  {studentRequests.length} request{studentRequests.length !== 1 ? "s" : ""} found.
+                  {t("found_requests", { count: studentRequests.length })}
                 </p>
                 <div className="border rounded-md overflow-hidden">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-muted/50 border-b">
-                        <th className="text-left px-3 py-2 font-semibold text-primary uppercase">
-                          Student
+                        <th className="text-left rtl:text-right px-3 py-2 font-semibold text-primary uppercase">
+                          {t("th_student")}
                         </th>
                         <th className="text-center px-2 py-2 font-semibold text-primary uppercase">
-                          Status
+                          {t("th_status")}
                         </th>
                       </tr>
                     </thead>
@@ -303,7 +308,7 @@ export function RequestsReport() {
                       {studentRequests.length === 0 ? (
                         <tr>
                           <td colSpan={2} className="px-3 py-4 text-muted-foreground text-center">
-                            No requests found.
+                            {t("no_requests_found")}
                           </td>
                         </tr>
                       ) : (
@@ -327,7 +332,7 @@ export function RequestsReport() {
                                     : "bg-yellow-100 text-yellow-700"
                                 }`}
                               >
-                                {req.status}
+                                {tCommon(`status.${req.status}`)}
                               </span>
                             </td>
                           </tr>

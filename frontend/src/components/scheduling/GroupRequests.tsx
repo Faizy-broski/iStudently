@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { useState, useMemo, useCallback } from "react"
 import useSWR from "swr"
 import { useAuth } from "@/context/AuthContext"
@@ -42,8 +43,11 @@ interface Period {
 }
 
 export function GroupRequests() {
-  const { user } = useAuth()
+  const t = useTranslations("school.scheduling.group_requests")
+  const tCommon = useTranslations("common")
+
   const { selectedAcademicYear } = useAcademic()
+  const { user } = useAuth()
   const campusContext = useCampus()
 
   const academicYearId = selectedAcademicYear
@@ -128,15 +132,15 @@ export function GroupRequests() {
 
   const handleAddRequests = useCallback(async () => {
     if (selectedStudentIds.size === 0) {
-      toast.error("Please select at least one student")
+      toast.error(t("msg_select_student"))
       return
     }
     if (!selectedCoursePeriod) {
-      toast.error("Please choose a course first")
+      toast.error(t("msg_choose_course"))
       return
     }
     if (!academicYearId) {
-      toast.error("No academic year selected")
+      toast.error(t("msg_no_year"))
       return
     }
 
@@ -148,30 +152,30 @@ export function GroupRequests() {
         academicYearId,
         { campus_id: campusContext?.selectedCampus?.id }
       )
-      toast.success(`${result.created} request(s) created successfully`)
+      toast.success(t("msg_request_success", { count: result.created }))
       if (result.errors.length > 0) {
-        toast.warning(`${result.errors.length} error(s): ${result.errors.slice(0, 3).join(", ")}`)
+        toast.warning(t("msg_errors", { count: result.errors.length, errors: result.errors.slice(0, 3).join(", ") }))
       }
       setSelectedStudentIds(new Set())
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to create requests")
+      toast.error(err instanceof Error ? err.message : tCommon("error"))
     } finally {
       setSubmitting(false)
     }
-  }, [selectedStudentIds, selectedCoursePeriod, academicYearId, campusContext?.selectedCampus?.id])
+  }, [selectedStudentIds, selectedCoursePeriod, academicYearId, campusContext?.selectedCampus?.id, t, tCommon])
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center gap-2 border-b pb-4">
         <CalendarDays className="h-6 w-6 text-amber-500" />
-        <h1 className="text-2xl font-bold">Group Requests</h1>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
       </div>
 
       {/* Top action button */}
       <div className="flex justify-end">
         <Button onClick={handleAddRequests} disabled={submitting}>
-          ADD REQUEST TO SELECTED STUDENTS
+          {t("btn_add_request")}
         </Button>
       </div>
 
@@ -179,7 +183,7 @@ export function GroupRequests() {
       <div className="flex justify-center">
         <div className="border rounded-md w-full max-w-md">
           <div className="bg-muted/50 border-b px-4 py-2 text-center font-semibold text-sm uppercase">
-            Request to Add
+            {t("panel_title")}
           </div>
           <div className="p-4 space-y-4">
             {/* Choose a Course link */}
@@ -191,7 +195,7 @@ export function GroupRequests() {
                   className="text-primary hover:underline text-sm"
                   onClick={() => setShowCoursePicker(!showCoursePicker)}
                 >
-                  Change Course
+                  {t("btn_change_course")}
                 </button>
               </div>
             ) : (
@@ -199,13 +203,13 @@ export function GroupRequests() {
                 className="text-primary hover:underline text-sm"
                 onClick={() => setShowCoursePicker(!showCoursePicker)}
               >
-                Choose a Course
+                {t("btn_choose_course")}
               </button>
             )}
 
             {/* WITH fieldset */}
             <fieldset className="border rounded px-3 py-2 space-y-3">
-              <legend className="text-xs font-semibold uppercase px-1">With</legend>
+              <legend className="text-xs font-semibold uppercase px-1">{t("label_with")}</legend>
 
               <div className="space-y-1">
                 <Select value={withTeacherId} onValueChange={setWithTeacherId}>
@@ -213,7 +217,7 @@ export function GroupRequests() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="na">N/A</SelectItem>
+                    <SelectItem value="na">{tCommon("na")}</SelectItem>
                     {teachers.map((t) => (
                       <SelectItem key={t.id} value={t.id}>
                         {[t.profile?.first_name, t.profile?.last_name].filter(Boolean).join(" ") || "Teacher"}
@@ -221,7 +225,7 @@ export function GroupRequests() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">Teacher</p>
+                <p className="text-xs text-muted-foreground">{t("label_teacher")}</p>
               </div>
 
               <div className="space-y-1">
@@ -230,7 +234,7 @@ export function GroupRequests() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="na">N/A</SelectItem>
+                    <SelectItem value="na">{tCommon("na")}</SelectItem>
                     {periods.map((p) => (
                       <SelectItem key={p.id} value={p.id}>
                         {p.title || p.short_name}
@@ -238,13 +242,13 @@ export function GroupRequests() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">Period</p>
+                <p className="text-xs text-muted-foreground">{t("label_period")}</p>
               </div>
             </fieldset>
 
             {/* WITHOUT fieldset */}
             <fieldset className="border rounded px-3 py-2 space-y-3">
-              <legend className="text-xs font-semibold uppercase px-1">Without</legend>
+              <legend className="text-xs font-semibold uppercase px-1">{t("label_without")}</legend>
 
               <div className="space-y-1">
                 <Select value={withoutTeacherId} onValueChange={setWithoutTeacherId}>
@@ -252,7 +256,7 @@ export function GroupRequests() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="na">N/A</SelectItem>
+                    <SelectItem value="na">{tCommon("na")}</SelectItem>
                     {teachers.map((t) => (
                       <SelectItem key={t.id} value={t.id}>
                         {[t.profile?.first_name, t.profile?.last_name].filter(Boolean).join(" ") || "Teacher"}
@@ -260,7 +264,7 @@ export function GroupRequests() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">Teacher</p>
+                <p className="text-xs text-muted-foreground">{t("label_teacher")}</p>
               </div>
 
               <div className="space-y-1">
@@ -269,7 +273,7 @@ export function GroupRequests() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="na">N/A</SelectItem>
+                    <SelectItem value="na">{tCommon("na")}</SelectItem>
                     {periods.map((p) => (
                       <SelectItem key={p.id} value={p.id}>
                         {p.title || p.short_name}
@@ -277,7 +281,7 @@ export function GroupRequests() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">Period</p>
+                <p className="text-xs text-muted-foreground">{t("label_period")}</p>
               </div>
             </fieldset>
           </div>
@@ -299,29 +303,29 @@ export function GroupRequests() {
 
       {/* Expanded View | Group by Family links */}
       <div className="flex items-center gap-1 text-sm">
-        <button className="text-primary hover:underline">Expanded View</button>
+        <button className="text-primary hover:underline">{t("view_expanded")}</button>
         <span className="text-muted-foreground">|</span>
-        <button className="text-primary hover:underline">Group by Family</button>
+        <button className="text-primary hover:underline">{t("view_family")}</button>
       </div>
 
       {/* Count + Search */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span className="font-semibold text-foreground">
-            {filteredStudents.length} student{filteredStudents.length !== 1 ? "s" : ""} were found.
+            {t("found_students", { count: filteredStudents.length })}
           </span>
-          <button className="text-muted-foreground hover:text-foreground" title="Download">
+          <button className="text-muted-foreground hover:text-foreground" title={tCommon("download")}>
             <Download className="h-4 w-4" />
           </button>
         </div>
         <div className="relative w-64">
           <Input
-            placeholder="Search"
+            placeholder={tCommon("search")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pr-8"
+            className="pr-8 rtl:pl-8 rtl:pr-3"
           />
-          <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute right-2 rtl:left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         </div>
       </div>
 
@@ -343,14 +347,14 @@ export function GroupRequests() {
                     onCheckedChange={toggleAll}
                   />
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Student
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {t("th_student")}
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Student Number
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {t("th_student_number")}
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Grade Level
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {t("th_grade_level")}
                 </th>
               </tr>
             </thead>
@@ -358,7 +362,7 @@ export function GroupRequests() {
               {filteredStudents.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
-                    No students found.
+                    {t("no_students_found")}
                   </td>
                 </tr>
               ) : (
@@ -393,7 +397,7 @@ export function GroupRequests() {
       {/* Bottom action button */}
       <div className="flex justify-center pt-2">
         <Button onClick={handleAddRequests} disabled={submitting}>
-          ADD REQUEST TO SELECTED STUDENTS
+          {t("btn_add_request")}
         </Button>
       </div>
     </div>

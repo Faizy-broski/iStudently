@@ -44,6 +44,7 @@ import * as teachersApi from "@/lib/api/teachers";
 import { toast } from "sonner";
 import { useCampus } from "@/context/CampusContext";
 import { formatTime, formatTimeRange } from "@/lib/utils/formatTime";
+import { useTranslations } from "next-intl";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const DAY_MAP: Record<string, number> = {
@@ -69,18 +70,6 @@ interface TimetableBuilderProps {
     onEntriesChange: () => void;
 }
 
-// Helper functions for period display
-const getPeriodShortLabel = (period: GlobalPeriod): string => {
-    return period.short_name || `P${period.sort_order}`;
-};
-
-const getPeriodTimeInfo = (period: GlobalPeriod): string => {
-    const timeRange = formatTimeRange(period.start_time, period.end_time);
-    if (timeRange) return timeRange;
-    if (period.length_minutes) return `${period.length_minutes}min`;
-    return '';
-};
-
 export function TimetableBuilder({
     sectionId,
     sectionName,
@@ -93,6 +82,9 @@ export function TimetableBuilder({
     orientation = 'vertical',
     onEntriesChange
 }: TimetableBuilderProps) {
+    const t = useTranslations('school.timetable')
+    const daysT = useTranslations('school.timetable.days')
+
     // Campus context
     const campusContext = useCampus();
     const selectedCampus = campusContext?.selectedCampus;
@@ -120,6 +112,18 @@ export function TimetableBuilder({
     // Operation state
     const [saving, setSaving] = useState(false);
 
+    // Helper functions for period display
+    const getPeriodShortLabel = (period: GlobalPeriod): string => {
+        return period.short_name || `P${period.sort_order}`;
+    };
+
+    const getPeriodTimeInfo = (period: GlobalPeriod): string => {
+        const timeRange = formatTimeRange(period.start_time, period.end_time);
+        if (timeRange) return timeRange;
+        if (period.length_minutes) return `${period.length_minutes}${t('unit_min')}`;
+        return '';
+    };
+
     // Load subjects and teachers
     const loadSectionData = useCallback(async () => {
         setLoadingData(true);
@@ -132,11 +136,11 @@ export function TimetableBuilder({
             setTeachers(teachersRes.data || []);
         } catch (error) {
             console.error('Failed to load section data:', error);
-            toast.error('Failed to load subjects and teachers');
+            toast.error(t('err_load_academics'));
         } finally {
             setLoadingData(false);
         }
-    }, [gradeId, selectedCampus?.id]);
+    }, [gradeId, selectedCampus?.id, t]);
 
     // Load subjects and teachers once when component mounts or section changes
     useEffect(() => {
@@ -218,11 +222,11 @@ export function TimetableBuilder({
         if (!selectedSlot) return;
 
         if (!selectedSubject) {
-            toast.error("Please select a subject");
+            toast.error(t('err_select_subject'));
             return;
         }
         if (!selectedTeacher) {
-            toast.error("Please select a teacher");
+            toast.error(t('err_select_teacher'));
             return;
         }
 
@@ -249,11 +253,11 @@ export function TimetableBuilder({
                 });
             }
 
-            toast.success(selectedSlot.existingEntry ? "Entry updated" : "Class assigned");
+            toast.success(selectedSlot.existingEntry ? t('success_updated') : t('success_assigned'));
             onEntriesChange();
             setDialogOpen(false);
         } catch (error: any) {
-            toast.error(error.message || "Failed to save");
+            toast.error(error.message || t('err_save'));
         } finally {
             setSaving(false);
         }
@@ -263,11 +267,10 @@ export function TimetableBuilder({
     const handleEraseEntry = async (entry: TimetableEntry) => {
         try {
             await timetableApi.deleteTimetableEntry(entry.id);
-            toast.success('Entry removed');
+            toast.success(t('success_removed_entry'));
             onEntriesChange();
         } catch (error) {
-            const message = error instanceof Error ? error.message : 'Failed to remove entry';
-            toast.error(message);
+            toast.error(t('err_remove_entry'));
         }
     };
 
@@ -279,7 +282,7 @@ export function TimetableBuilder({
         const dayEntries = entries.filter(e => e.day_of_week === fromDayNumber);
         
         if (dayEntries.length === 0) {
-            toast.error(`No entries found for ${fromDay}`);
+            toast.error(t('err_no_entries_day', { day: daysT(fromDay) }));
             return;
         }
 
@@ -325,11 +328,10 @@ export function TimetableBuilder({
                 successCount++;
             }
 
-            toast.success(`Copied ${successCount} entries. Skipped ${skipCount} (conflicts/existing).`);
+            toast.success(t('success_copy', { successCount, skipCount }));
             onEntriesChange();
         } catch (error) {
-            const message = error instanceof Error ? error.message : 'Failed to copy schedule';
-            toast.error(message);
+            toast.error(t('err_copy'));
         } finally {
             setSaving(false);
         }
@@ -341,11 +343,11 @@ export function TimetableBuilder({
         const dayEntries = entries.filter(e => e.day_of_week === dayNumber);
         
         if (dayEntries.length === 0) {
-            toast.info(`No entries to clear for ${day}`);
+            toast.info(t('info_nothing_to_clear', { day: daysT(day) }));
             return;
         }
 
-        if (!confirm(`Clear all ${dayEntries.length} entries for ${day}?`)) {
+        if (!confirm(t('confirm_clear_day', { count: dayEntries.length, day: daysT(day) }))) {
             return;
         }
 
@@ -354,11 +356,10 @@ export function TimetableBuilder({
             for (const entry of dayEntries) {
                 await timetableApi.deleteTimetableEntry(entry.id);
             }
-            toast.success(`Cleared ${dayEntries.length} entries`);
+            toast.success(t('success_cleared_day', { count: dayEntries.length }));
             onEntriesChange();
         } catch (error) {
-            const message = error instanceof Error ? error.message : 'Failed to clear day';
-            toast.error(message);
+            toast.error(t('err_clear_day'));
         } finally {
             setSaving(false);
         }
@@ -369,14 +370,14 @@ export function TimetableBuilder({
         if (teacher.profile) {
             return `${teacher.profile.first_name || ''} ${teacher.profile.last_name || ''}`.trim();
         }
-        return 'Unknown';
+        return t('label_unknown');
     };
 
     // Get display info for a slot
     const getSlotDisplayInfo = (entry: TimetableEntry): { subjectName: string; teacherName: string } => {
         return {
-            subjectName: entry.subject_name || subjects.find(s => s.id === entry.subject_id)?.name || 'Subject',
-            teacherName: entry.teacher_name || teachers.find(t => t.id === entry.teacher_id)?.profile?.first_name || 'Teacher'
+            subjectName: entry.subject_name || subjects.find(s => s.id === entry.subject_id)?.name || t('label_subject'),
+            teacherName: entry.teacher_name || teachers.find(t => t.id === entry.teacher_id)?.profile?.first_name || t('label_teacher')
         };
     };
 
@@ -416,9 +417,9 @@ export function TimetableBuilder({
                         <TooltipContent>
                             <div className="text-sm">
                                 <div><strong>{getSlotDisplayInfo(entry).subjectName}</strong></div>
-                                <div>Teacher: {getSlotDisplayInfo(entry).teacherName}</div>
-                                {entry.room_number && <div>Room: {entry.room_number}</div>}
-                                <div className="text-xs text-muted-foreground mt-1">Click to edit</div>
+                                <div>{t('tip_teacher', { name: getSlotDisplayInfo(entry).teacherName })}</div>
+                                {entry.room_number && <div>{t('tip_room', { room: entry.room_number })}</div>}
+                                <div className="text-xs text-muted-foreground mt-1">{t('tip_click_edit')}</div>
                             </div>
                         </TooltipContent>
                     </Tooltip>
@@ -436,7 +437,7 @@ export function TimetableBuilder({
             <Card>
                 <CardContent className="py-12 flex items-center justify-center">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                    <span className="ml-2 text-muted-foreground">Loading timetable builder...</span>
+                    <span className="ml-2 text-muted-foreground">{t('loading_builder')}</span>
                 </CardContent>
             </Card>
         );
@@ -450,7 +451,7 @@ export function TimetableBuilder({
                         <Badge className="bg-[#022172]">{sectionName}</Badge>
                         {gradeName && <span className="text-sm text-muted-foreground font-normal">{gradeName}</span>}
                         <span className="text-sm text-muted-foreground font-normal">
-                            • {entries.length} classes assigned
+                            • {t('classes_count', { count: entries.length })}
                         </span>
                     </CardTitle>
 
@@ -462,7 +463,7 @@ export function TimetableBuilder({
                             onClick={() => setEraseMode(!eraseMode)}
                         >
                             <Eraser className="h-4 w-4 mr-1" />
-                            {eraseMode ? 'Exit Erase Mode' : 'Erase Mode'}
+                            {eraseMode ? t('btn_exit_erase') : t('btn_enter_erase')}
                         </Button>
                     </div>
                 </div>
@@ -473,7 +474,7 @@ export function TimetableBuilder({
                     <Alert className="mb-4 bg-red-50 border-red-200">
                         <Trash2 className="h-4 w-4 text-red-600" />
                         <AlertDescription className="text-red-800">
-                            Erase mode active. Click on any assigned slot to remove it.
+                            {t('erase_active_desc')}
                         </AlertDescription>
                     </Alert>
                 )}
@@ -488,12 +489,12 @@ export function TimetableBuilder({
                                     <thead>
                                         <tr>
                                             <th className="border p-2 bg-muted/50 font-medium min-w-[80px]">
-                                                Period / Time
+                                                {t('header_period_time')}
                                             </th>
                                             {DAYS.map(day => (
                                                 <th key={day} className="border p-2 bg-muted/50 font-medium min-w-[120px]">
                                                     <div className="flex items-center justify-between">
-                                                        <span>{day}</span>
+                                                        <span>{daysT(day)}</span>
                                                         <div className="flex gap-1">
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
@@ -510,7 +511,7 @@ export function TimetableBuilder({
                                                                         <Copy className="h-3 w-3" />
                                                                     </Button>
                                                                 </TooltipTrigger>
-                                                                <TooltipContent>Copy to next day</TooltipContent>
+                                                                <TooltipContent>{t('tip_copy_next')}</TooltipContent>
                                                             </Tooltip>
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
@@ -524,7 +525,7 @@ export function TimetableBuilder({
                                                                         <Trash2 className="h-3 w-3" />
                                                                     </Button>
                                                                 </TooltipTrigger>
-                                                                <TooltipContent>Clear day</TooltipContent>
+                                                                <TooltipContent>{t('tip_clear_day')}</TooltipContent>
                                                             </Tooltip>
                                                         </div>
                                                     </div>
@@ -552,7 +553,7 @@ export function TimetableBuilder({
                                     <thead>
                                         <tr>
                                             <th className="border p-2 bg-muted/50 font-medium min-w-[100px]">
-                                                Day
+                                                {t('label_day')}
                                             </th>
                                             {sortedPeriods.map(period => (
                                                 <th key={period.id} className="border p-2 bg-muted/50 font-medium min-w-[100px]">
@@ -569,7 +570,7 @@ export function TimetableBuilder({
                                             <tr key={day}>
                                                 <td className="border p-2 bg-muted/30">
                                                     <div className="flex items-center justify-between">
-                                                        <span className="font-medium">{day}</span>
+                                                        <span className="font-medium">{daysT(day)}</span>
                                                         <div className="flex gap-1">
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
@@ -586,7 +587,7 @@ export function TimetableBuilder({
                                                                         <Copy className="h-3 w-3" />
                                                                     </Button>
                                                                 </TooltipTrigger>
-                                                                <TooltipContent>Copy to next day</TooltipContent>
+                                                                <TooltipContent>{t('tip_copy_next')}</TooltipContent>
                                                             </Tooltip>
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
@@ -600,7 +601,7 @@ export function TimetableBuilder({
                                                                         <Trash2 className="h-3 w-3" />
                                                                     </Button>
                                                                 </TooltipTrigger>
-                                                                <TooltipContent>Clear day</TooltipContent>
+                                                                <TooltipContent>{t('tip_clear_day')}</TooltipContent>
                                                             </Tooltip>
                                                         </div>
                                                     </div>
@@ -618,16 +619,16 @@ export function TimetableBuilder({
                 {/* Quick Stats */}
                 <div className="mt-4 flex flex-wrap gap-4 text-sm text-muted-foreground">
                     <div>
-                        <span className="font-medium text-foreground">{entries.length}</span> classes assigned
+                        <span className="font-medium text-foreground">{t('classes_count', { count: entries.length })}</span>
                     </div>
                     <div>
-                        <span className="font-medium text-foreground">{sortedPeriods.length * DAYS.length - entries.length}</span> empty slots
+                        <span className="font-medium text-foreground">{t('empty_slots_count', { count: sortedPeriods.length * DAYS.length - entries.length })}</span>
                     </div>
                     <div>
-                        <span className="font-medium text-foreground">{new Set(entries.map(e => e.subject_id)).size}</span> subjects
+                        <span className="font-medium text-foreground">{t('subjects_count', { count: new Set(entries.map(e => e.subject_id)).size })}</span>
                     </div>
                     <div>
-                        <span className="font-medium text-foreground">{new Set(entries.map(e => e.teacher_id)).size}</span> teachers
+                        <span className="font-medium text-foreground">{t('teachers_count', { count: new Set(entries.map(e => e.teacher_id)).size })}</span>
                     </div>
                 </div>
             </CardContent>
@@ -638,7 +639,7 @@ export function TimetableBuilder({
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <BookOpen className="h-5 w-5 text-[#57A3CC]" />
-                            {selectedSlot?.existingEntry ? 'Edit Class' : 'Assign Class'}
+                            {selectedSlot?.existingEntry ? t('dialog_title_edit_class') : t('dialog_title_assign')}
                         </DialogTitle>
                     </DialogHeader>
 
@@ -647,21 +648,21 @@ export function TimetableBuilder({
                         {selectedSlot && (
                             <div className="flex flex-wrap gap-4 text-sm bg-muted/50 p-3 rounded-lg">
                                 <div>
-                                    <span className="text-muted-foreground">Section:</span>
+                                    <span className="text-muted-foreground">{t('label_section')}:</span>
                                     <span className="font-medium ml-1">{sectionName}</span>
                                 </div>
                                 {gradeName && (
                                     <div>
-                                        <span className="text-muted-foreground">Grade:</span>
+                                        <span className="text-muted-foreground">{t('label_grade')}:</span>
                                         <span className="font-medium ml-1">{gradeName}</span>
                                     </div>
                                 )}
                                 <div>
-                                    <span className="text-muted-foreground">Day:</span>
-                                    <span className="font-medium ml-1">{selectedSlot.day}</span>
+                                    <span className="text-muted-foreground">{t('label_day')}:</span>
+                                    <span className="font-medium ml-1">{daysT(selectedSlot.day)}</span>
                                 </div>
                                 <div>
-                                    <span className="text-muted-foreground">Period:</span>
+                                    <span className="text-muted-foreground">{t('label_period')}:</span>
                                     <span className="font-medium ml-1">
                                         {selectedSlot.period.title || selectedSlot.period.short_name || `P${selectedSlot.period.sort_order}`}
                                         {(selectedSlot.period.start_time || selectedSlot.period.end_time) && (
@@ -683,15 +684,15 @@ export function TimetableBuilder({
 
                         {/* Subject Selection */}
                         <div className="space-y-2">
-                            <Label>Subject *</Label>
+                            <Label>{t('label_subject')} *</Label>
                             <Select value={selectedSubject} onValueChange={setSelectedSubject}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select subject" />
+                                    <SelectValue placeholder={t('placeholder_subject')} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {subjects.length === 0 ? (
                                         <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                                            No subjects available
+                                            {t('no_subjects')}
                                         </div>
                                     ) : (
                                         subjects.map(subject => (
@@ -710,15 +711,15 @@ export function TimetableBuilder({
 
                         {/* Teacher Selection */}
                         <div className="space-y-2">
-                            <Label>Teacher *</Label>
+                            <Label>{t('label_teacher')} *</Label>
                             <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select teacher" />
+                                    <SelectValue placeholder={t('placeholder_teacher')} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {teachers.length === 0 ? (
                                         <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                                            No teachers available
+                                            {t('no_teachers')}
                                         </div>
                                     ) : (
                                         teachers.map(teacher => (
@@ -736,25 +737,25 @@ export function TimetableBuilder({
 
                         {/* Room Number */}
                         <div className="space-y-2">
-                            <Label>Room Number (Optional)</Label>
+                            <Label>{t('label_room_number')} {t('label_optional_lower')}</Label>
                             <Input
                                 value={roomNumber}
                                 onChange={(e) => setRoomNumber(e.target.value)}
-                                placeholder="e.g., Lab-1, Room-201"
+                                placeholder={t('placeholder_room')}
                             />
                         </div>
 
                         {/* Actions */}
                         <div className="flex justify-end gap-2 pt-4">
                             <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                                Cancel
+                                {t('btn_cancel')}
                             </Button>
                             <Button
                                 onClick={handleDialogSave}
                                 disabled={!selectedSubject || !selectedTeacher || !!conflictWarning || saving}
                                 className="bg-[#022172] hover:bg-[#022172]/90"
                             >
-                                {saving ? "Saving..." : (selectedSlot?.existingEntry ? "Update" : "Assign")}
+                                {saving ? t('btn_saving') : (selectedSlot?.existingEntry ? t('btn_update') : t('btn_assign'))}
                             </Button>
                         </div>
                     </div>

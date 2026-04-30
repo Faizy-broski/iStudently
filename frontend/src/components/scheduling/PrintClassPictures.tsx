@@ -17,7 +17,13 @@ import { toast } from "sonner"
 
 import { type PdfHeaderFooterSettings, getPdfHeaderFooter } from "@/lib/api/school-settings"
 
+import { useTranslations, useLocale } from "next-intl"
+
 export function PrintClassPictures() {
+  const t = useTranslations("school.scheduling.print_class_pictures")
+  const tCommon = useTranslations("common")
+  const locale = useLocale()
+
   const { user } = useAuth()
   const campusContext = useCampus()
   const { isPluginActive } = useSchoolSettings()
@@ -49,6 +55,21 @@ export function PrintClassPictures() {
     { dedupingInterval: 10000, revalidateOnFocus: false }
   )
 
+  const buildCPLabel = useCallback((cp: CoursePeriod): string => {
+    const parts: string[] = []
+    if (cp.marking_period?.title) parts.push(cp.marking_period.title)
+    if (cp.period?.period_name) parts.push(cp.period.period_name)
+    if (cp.course?.short_name) parts.push(cp.course.short_name)
+    else if (cp.course?.title) parts.push(cp.course.title)
+    if (cp.teacher) {
+      const firstName = cp.teacher.profile?.first_name || cp.teacher.first_name || ""
+      const lastName = cp.teacher.profile?.last_name || cp.teacher.last_name || ""
+      const name = [firstName, lastName].filter(Boolean).join(" ").trim()
+      if (name) parts.push(name)
+    }
+    return parts.join(" - ") || tCommon("course_period")
+  }, [tCommon])
+
   const filteredCPs = useMemo(() => {
     const coursePeriods: CoursePeriod[] = cpData || []
     if (!search.trim()) return coursePeriods
@@ -57,7 +78,7 @@ export function PrintClassPictures() {
       const label = buildCPLabel(cp)
       return label.toLowerCase().includes(q)
     })
-  }, [cpData, search])
+  }, [cpData, search, buildCPLabel])
 
   const toggleCP = (id: string) => {
     setSelectedCPIds((prev) => {
@@ -78,7 +99,7 @@ export function PrintClassPictures() {
 
   const handleCreatePictures = useCallback(async () => {
     if (selectedCPIds.size === 0) {
-      toast.error("Please select at least one course period")
+      toast.error(tCommon("msg_select_item", { label: tCommon("course_period") }))
       return
     }
 
@@ -97,7 +118,7 @@ export function PrintClassPictures() {
         .map((r) => r.value)
 
       if (classLists.length === 0) {
-        toast.error("Could not fetch any class lists")
+        toast.error(t("msg_no_cl"))
         return
       }
 
@@ -106,20 +127,20 @@ export function PrintClassPictures() {
 
       for (const cl of classLists) {
         const activeStudents = cl.students.filter((s) => includeInactive || !s.end_date)
-        bodyHtml += `<div class="class-page">`
+        bodyHtml += `<div class="class-page" dir="${locale === 'ar' ? 'rtl' : 'ltr'}">`
         // RosarioSIS-style coloured record header
         bodyHtml += `<div class="record-header"><span>${cl.course_title}${cl.teacher_name ? ` — ${cl.teacher_name}` : ""}</span><span class="rh-right">${campusName}</span></div>`
 
         bodyHtml += `<div class="person-grid">`
         if (includeTeacher && cl.teacher_name) {
           bodyHtml += `<div class="person-card">`
-          bodyHtml += `<div class="role-label">Teacher</div>`
+          bodyHtml += `<div class="role-label">${t("label_teacher")}</div>`
           bodyHtml += `<div class="teacher-name">${cl.teacher_name}</div>`
           bodyHtml += `</div>`
         }
         for (const student of activeStudents) {
           bodyHtml += `<div class="person-card">`
-          bodyHtml += `<div class="role-label">Student</div>`
+          bodyHtml += `<div class="role-label">${t("label_student")}</div>`
           bodyHtml += `<div class="student-name">${student.student_name}</div>`
           bodyHtml += `</div>`
         }
@@ -129,7 +150,7 @@ export function PrintClassPictures() {
 
       // Download PDF with shared RosarioSIS-style header/footer
       await openPdfDownload({
-        title: "Class Pictures",
+        title: t("pdf_title"),
         bodyHtml,
         bodyStyles: CLASS_PICTURES_BODY_STYLES,
         school: campus ?? { name: campusName },
@@ -137,26 +158,26 @@ export function PrintClassPictures() {
         pluginActive: isPluginActive('pdf_header_footer'),
       })
 
-      toast.success(`Generated class pictures for ${classLists.length} course period(s)`)
+      toast.success(t("msg_gen_success", { count: classLists.length }))
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to generate class pictures")
+      toast.error(err instanceof Error ? err.message : tCommon("error"))
     } finally {
       setSubmitting(false)
     }
-  }, [selectedCPIds, includeTeacher, includeInactive, pdfSettings, campusName, campus, isPluginActive])
+  }, [selectedCPIds, includeTeacher, includeInactive, pdfSettings, campusName, campus, isPluginActive, t, tCommon, locale])
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center gap-2 border-b pb-4">
         <CalendarDays className="h-6 w-6 text-amber-500" />
-        <h1 className="text-2xl font-bold">Print Class Pictures</h1>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
       </div>
 
       {/* Top action button */}
       <div className="flex justify-end">
         <Button onClick={handleCreatePictures} disabled={submitting}>
-          CREATE CLASS PICTURES FOR SELECTED COURSE PERIODS
+          {t("btn_create")}
         </Button>
       </div>
 
@@ -169,7 +190,7 @@ export function PrintClassPictures() {
             onCheckedChange={(c) => setIncludeTeacher(c === true)}
           />
           <label htmlFor="include-teacher" className="text-sm font-medium">
-            Include Teacher
+            {t("include_teacher")}
           </label>
         </div>
         <div className="flex items-center gap-2">
@@ -179,7 +200,7 @@ export function PrintClassPictures() {
             onCheckedChange={(c) => setIncludeInactive(c === true)}
           />
           <label htmlFor="include-inactive" className="text-sm font-medium">
-            Include Inactive Students
+            {t("include_inactive")}
           </label>
         </div>
       </div>
@@ -188,20 +209,20 @@ export function PrintClassPictures() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span className="font-semibold text-foreground">
-            {filteredCPs.length} course period{filteredCPs.length !== 1 ? "s" : ""} were found.
+            {t("found_cps", { count: filteredCPs.length })}
           </span>
-          <button className="text-muted-foreground hover:text-foreground" title="Download">
+          <button className="text-muted-foreground hover:text-foreground" title={tCommon("download")}>
             <Download className="h-4 w-4" />
           </button>
         </div>
         <div className="relative w-64">
           <Input
-            placeholder="Search"
+            placeholder={tCommon("search")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pr-8"
+            className="pr-8 rtl:pl-8 rtl:pr-3"
           />
-          <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute right-2 rtl:left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         </div>
       </div>
 
@@ -223,8 +244,8 @@ export function PrintClassPictures() {
                     onCheckedChange={toggleAll}
                   />
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Course Period
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {t("th_course_period")}
                 </th>
               </tr>
             </thead>
@@ -232,7 +253,7 @@ export function PrintClassPictures() {
               {filteredCPs.length === 0 ? (
                 <tr>
                   <td colSpan={2} className="px-4 py-8 text-center text-muted-foreground">
-                    No course periods found.
+                    {t("no_cps_found")}
                   </td>
                 </tr>
               ) : (
@@ -264,28 +285,11 @@ export function PrintClassPictures() {
       {/* Bottom action button */}
       <div className="flex justify-center pt-2">
         <Button onClick={handleCreatePictures} disabled={submitting}>
-          CREATE CLASS PICTURES FOR SELECTED COURSE PERIODS
+          {t("btn_create")}
         </Button>
       </div>
     </div>
   )
-}
-
-// ── helpers ─────────────────────────────────────────────────────────────
-
-function buildCPLabel(cp: CoursePeriod): string {
-  const parts: string[] = []
-  if (cp.marking_period?.title) parts.push(cp.marking_period.title)
-  if (cp.period?.period_name) parts.push(cp.period.period_name)
-  if (cp.course?.short_name) parts.push(cp.course.short_name)
-  else if (cp.course?.title) parts.push(cp.course.title)
-  if (cp.teacher) {
-    const firstName = cp.teacher.profile?.first_name || cp.teacher.first_name || ""
-    const lastName = cp.teacher.profile?.last_name || cp.teacher.last_name || ""
-    const name = [firstName, lastName].filter(Boolean).join(" ").trim()
-    if (name) parts.push(name)
-  }
-  return parts.join(" - ") || "Course Period"
 }
 
 // ── Print Styles ────────────────────────────────────────────────────────

@@ -37,41 +37,49 @@ import { getStudents, Student } from "@/lib/api/students";
 import { getPdfHeaderFooter, PdfHeaderFooterSettings } from "@/lib/api/school-settings";
 import { buildAutoHeaderHtml, buildAutoFooterHtml, resolvePdfTokens as resolveLayoutTokens, applyHtml2CanvasColorFix } from "@/lib/utils/printLayout";
 import TemplateSelector from "@/components/templates/TemplateSelector";
-
-// Available placeholder fields for mail merge
-const PLACEHOLDER_FIELDS = [
-  { id: '__FIRST_NAME__', label: 'First Name', category: 'Personal' },
-  { id: '__FATHER_NAME__', label: "Father's Name", category: 'Personal' },
-  { id: '__GRANDFATHER_NAME__', label: "Grandfather's Name", category: 'Personal' },
-  { id: '__LAST_NAME__', label: 'Last Name / Surname', category: 'Personal' },
-  { id: '__FULL_NAME__', label: 'Full Name', category: 'Personal' },
-  { id: '__EMAIL__', label: 'Email', category: 'Personal' },
-  { id: '__PHONE__', label: 'Phone', category: 'Personal' },
-  { id: '__STUDENT_ID__', label: 'Student ID', category: 'Academic' },
-  { id: '__GRADE_LEVEL__', label: 'Grade Level', category: 'Academic' },
-  { id: '__SECTION__', label: 'Section', category: 'Academic' },
-  { id: '__CAMPUS__', label: 'Campus Name', category: 'School' },
-  { id: '__DATE__', label: 'Current Date', category: 'System' },
-];
+import { useTranslations } from "next-intl";
 
 // Group fields by category
-const GROUPED_FIELDS = PLACEHOLDER_FIELDS.reduce((acc, field) => {
-  if (!acc[field.category]) acc[field.category] = [];
-  acc[field.category].push(field);
-  return acc;
-}, {} as Record<string, typeof PLACEHOLDER_FIELDS>);
+const GET_GROUPED_FIELDS = (t: any) => {
+  const fields = [
+    { id: '__FIRST_NAME__', label: t('first_name'), category: 'personal' },
+    { id: '__FATHER_NAME__', label: t('father_name'), category: 'personal' },
+    { id: '__GRANDFATHER_NAME__', label: t('grandfather_name'), category: 'personal' },
+    { id: '__LAST_NAME__', label: t('last_name'), category: 'personal' },
+    { id: '__FULL_NAME__', label: t('full_name'), category: 'personal' },
+    { id: '__EMAIL__', label: t('email'), category: 'personal' },
+    { id: '__PHONE__', label: t('phone'), category: 'personal' },
+    { id: '__STUDENT_ID__', label: t('student_id'), category: 'academic' },
+    { id: '__GRADE_LEVEL__', label: t('grade_level'), category: 'academic' },
+    { id: '__SECTION__', label: t('section'), category: 'academic' },
+    { id: '__CAMPUS__', label: t('campus'), category: 'school' },
+    { id: '__DATE__', label: t('current_date'), category: 'system' },
+  ];
+
+  return fields.reduce((acc, field) => {
+    if (!acc[field.category]) acc[field.category] = [];
+    acc[field.category].push(field);
+    return acc;
+  }, {} as Record<string, typeof fields>);
+};
 
 export default function PrintLettersPage() {
+  const t = useTranslations("school.students.print_letters");
+  const tCommon = useTranslations("common");
+  const tFields = useTranslations("school.students.custom_fields.standard_fields");
+
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
   const { isPluginActive } = useSchoolSettings();
   const isPdfPluginActive = isPluginActive('pdf_header_footer');
 
+  const groupedFields = useMemo(() => GET_GROUPED_FIELDS(tFields), [tFields]);
+  
   // State for filters
   const [selectedGradeLevel, setSelectedGradeLevel] = useState<string>("");
   const [selectedSection, setSelectedSection] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
-
+  
   // State for selections
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [selectedField, setSelectedField] = useState<string>("");
@@ -398,15 +406,13 @@ export default function PrintLettersPage() {
           <div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
               <Link href="/admin/students" className="hover:text-foreground">
-                Students
+                {tCommon("students")}
               </Link>
               <span>/</span>
-              <span>Print Letters</span>
+              <span>{t("title")}</span>
             </div>
-            <h1 className="text-2xl font-bold tracking-tight">Print Letters</h1>
-            <p className="text-muted-foreground">
-              Write a letter template and download personalized letters for selected students
-            </p>
+            <h1 className="text-2xl font-bold tracking-tight text-[#022172] dark:text-white">{t("title")}</h1>
+            <p className="text-muted-foreground">{t("subtitle")}</p>
           </div>
           {selectedCampus && (
             <Badge variant="outline" className="flex items-center gap-2">
@@ -420,18 +426,18 @@ export default function PrintLettersPage() {
           {/* Left Panel - Letter Editor */}
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
                 <Mail className="h-5 w-5" />
-                Letter Editor
+                {t("letter_editor", { defaultValue: "Letter Editor" })}
               </CardTitle>
               <CardDescription>
-                Write your letter and use placeholders for personalized content
+                {t("letter_editor_desc", { defaultValue: "Write your letter and use placeholders for personalized content" })}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Placeholder Field Selector */}
               <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
-                <Label className="text-sm font-medium whitespace-nowrap">Insert Field:</Label>
+                <Label className="text-sm font-medium whitespace-nowrap">{t("insert_field", { defaultValue: "Insert Field:" })}</Label>
                 <Select
                   value={selectedField}
                   onValueChange={(value) => {
@@ -441,13 +447,13 @@ export default function PrintLettersPage() {
                   }}
                 >
                   <SelectTrigger className="w-64">
-                    <SelectValue placeholder="Select a field to insert" />
+                    <SelectValue placeholder={t("select_placeholder", { defaultValue: "Select a field to insert" })} />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(GROUPED_FIELDS).map(([category, fields]) => (
+                    {Object.entries(groupedFields).map(([category, fields]) => (
                       <div key={category}>
-                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                          {category}
+                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
+                          {tCommon(`categories.${category}`)}
                         </div>
                         {fields.map((field) => (
                           <SelectItem key={field.id} value={field.id}>
@@ -482,7 +488,7 @@ export default function PrintLettersPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => execCommand('bold')}
-                  title="Bold"
+                  title={tCommon("bold", { defaultValue: "Bold" })}
                 >
                   <Bold className="h-4 w-4" />
                 </Button>
@@ -490,7 +496,7 @@ export default function PrintLettersPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => execCommand('italic')}
-                  title="Italic"
+                  title={tCommon("italic", { defaultValue: "Italic" })}
                 >
                   <Italic className="h-4 w-4" />
                 </Button>
@@ -498,7 +504,7 @@ export default function PrintLettersPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => execCommand('underline')}
-                  title="Underline"
+                  title={tCommon("underline", { defaultValue: "Underline" })}
                 >
                   <Underline className="h-4 w-4" />
                 </Button>
@@ -509,7 +515,7 @@ export default function PrintLettersPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => execCommand('justifyLeft')}
-                  title="Align Left"
+                  title={tCommon("align_left", { defaultValue: "Align Left" })}
                 >
                   <AlignLeft className="h-4 w-4" />
                 </Button>
@@ -517,7 +523,7 @@ export default function PrintLettersPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => execCommand('justifyCenter')}
-                  title="Align Center"
+                  title={tCommon("align_center", { defaultValue: "Align Center" })}
                 >
                   <AlignCenter className="h-4 w-4" />
                 </Button>
@@ -525,7 +531,7 @@ export default function PrintLettersPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => execCommand('justifyRight')}
-                  title="Align Right"
+                  title={tCommon("align_right", { defaultValue: "Align Right" })}
                 >
                   <AlignRight className="h-4 w-4" />
                 </Button>
@@ -536,7 +542,7 @@ export default function PrintLettersPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => execCommand('insertUnorderedList')}
-                  title="Bullet List"
+                  title={tCommon("bullet_list", { defaultValue: "Bullet List" })}
                 >
                   <List className="h-4 w-4" />
                 </Button>
@@ -544,7 +550,7 @@ export default function PrintLettersPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => execCommand('insertOrderedList')}
-                  title="Numbered List"
+                  title={tCommon("numbered_list", { defaultValue: "Numbered List" })}
                 >
                   <ListOrdered className="h-4 w-4" />
                 </Button>
@@ -553,13 +559,13 @@ export default function PrintLettersPage() {
 
                 <Select onValueChange={(value) => execCommand('fontSize', value)}>
                   <SelectTrigger className="w-24 h-8">
-                    <SelectValue placeholder="Size" />
+                    <SelectValue placeholder={t("font_size_placeholder", { defaultValue: "Size" })} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">Small</SelectItem>
-                    <SelectItem value="3">Normal</SelectItem>
-                    <SelectItem value="5">Large</SelectItem>
-                    <SelectItem value="7">Huge</SelectItem>
+                    <SelectItem value="1">{t("size_small", { defaultValue: "Small" })}</SelectItem>
+                    <SelectItem value="3">{t("size_normal", { defaultValue: "Normal" })}</SelectItem>
+                    <SelectItem value="5">{t("size_large", { defaultValue: "Large" })}</SelectItem>
+                    <SelectItem value="7">{t("size_huge", { defaultValue: "Huge" })}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -595,7 +601,7 @@ export default function PrintLettersPage() {
               {/* Available Fields Reference */}
               <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
                 <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
-                  Available Placeholders (click to copy):
+                  {t("available_placeholders", { defaultValue: "Available Placeholders (click to copy):" })}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {PLACEHOLDER_FIELDS.map((field) => (
@@ -616,32 +622,32 @@ export default function PrintLettersPage() {
           {/* Right Panel - Student Selection */}
           <Card className="lg:col-span-1">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
                 <Users className="h-5 w-5" />
-                Select Students
+                {t("select_students")}
               </CardTitle>
               <CardDescription>
-                Choose students to receive the letter
+                {t("select_students_desc")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Filters */}
               <div className="space-y-3">
                 <div>
-                  <Label className="text-xs text-muted-foreground mb-1.5 block">Search</Label>
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">{tCommon("search")}</Label>
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground rtl:right-3 rtl:left-auto" />
                     <Input
-                      placeholder="Search..."
+                      placeholder={tCommon("search_placeholder")}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9"
+                      className="pl-9 rtl:pr-9 rtl:pl-3"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <Label className="text-xs text-muted-foreground mb-1.5 block">Grade Level</Label>
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">{tCommon("grade_level")}</Label>
                   <Select
                     value={selectedGradeLevel}
                     onValueChange={(value) => {
@@ -650,10 +656,10 @@ export default function PrintLettersPage() {
                     }}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="All Grades" />
+                      <SelectValue placeholder={tCommon("all_grades")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Grades</SelectItem>
+                      <SelectItem value="all">{tCommon("all_grades")}</SelectItem>
                       {gradeLevels.map((grade) => (
                         <SelectItem key={grade.id} value={grade.id}>
                           {grade.name}
@@ -664,17 +670,17 @@ export default function PrintLettersPage() {
                 </div>
 
                 <div>
-                  <Label className="text-xs text-muted-foreground mb-1.5 block">Section</Label>
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">{tCommon("section")}</Label>
                   <Select
                     value={selectedSection}
                     onValueChange={(value) => setSelectedSection(value === "all" ? "" : value)}
                     disabled={!selectedGradeLevel}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="All Sections" />
+                      <SelectValue placeholder={tCommon("all_sections")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Sections</SelectItem>
+                      <SelectItem value="all">{tCommon("all_sections")}</SelectItem>
                       {filteredSections.map((section) => (
                         <SelectItem key={section.id} value={section.id}>
                           {section.name}
@@ -697,18 +703,18 @@ export default function PrintLettersPage() {
                 >
                   {selectedStudentIds.length === filteredStudents.length && filteredStudents.length > 0 ? (
                     <>
-                      <CheckSquare className="mr-2 h-4 w-4" />
-                      Deselect All
+                      <CheckSquare className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
+                      {tCommon("deselect_all")}
                     </>
                   ) : (
                     <>
-                      <Square className="mr-2 h-4 w-4" />
-                      Select All
+                      <Square className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
+                      {tCommon("select_all")}
                     </>
                   )}
                 </Button>
                 <Badge variant="outline">
-                  {selectedStudentIds.length} selected
+                  {t("selected_count", { count: selectedStudentIds.length })}
                 </Badge>
               </div>
 
@@ -754,22 +760,23 @@ export default function PrintLettersPage() {
         <Card className="bg-muted/30">
           <CardContent className="flex items-center justify-between py-4">
             <div className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{selectedStudentIds.length}</span> students selected
+              {t("students_selected_summary", { count: selectedStudentIds.length })}
             </div>
             <Button
               onClick={handleDownloadPdf}
               disabled={isPrinting || selectedStudentIds.length === 0}
               size="lg"
+              className="bg-[#022172] hover:bg-[#022172]/90"
             >
               {isPrinting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating PDF...
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin rtl:ml-2 rtl:mr-0" />
+                  {t("generating_pdf")}
                 </>
               ) : (
                 <>
-                  <Download className="mr-2 h-4 w-4" />
-                  Download PDF ({selectedStudentIds.length})
+                  <Download className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
+                  {t("download_pdf_count", { count: selectedStudentIds.length })}
                 </>
               )}
             </Button>

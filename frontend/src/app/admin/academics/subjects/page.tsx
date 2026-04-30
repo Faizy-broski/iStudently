@@ -50,7 +50,10 @@ import {
 import * as academicsApi from '@/lib/api/academics'
 import { useCampus } from '@/context/CampusContext'
 
+import { useTranslations } from 'next-intl'
+
 export default function SubjectsPage() {
+  const t = useTranslations('school.subjects')
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
   
@@ -109,7 +112,7 @@ export default function SubjectsPage() {
     if (result.success && result.data) {
       setSubjects(result.data)
     } else {
-      toast.error(result.error || 'Failed to fetch subjects')
+      toast.error(result.error || t('fetch_error'))
     }
     setLoading(false)
   }
@@ -150,17 +153,17 @@ export default function SubjectsPage() {
     e.preventDefault()
 
     if (!formData.grade_level_id) {
-      toast.error('Please select a grade level')
+      toast.error(t('grade_required'))
       return
     }
 
     if (!formData.name.trim()) {
-      toast.error('Subject name is required')
+      toast.error(t('name_required'))
       return
     }
 
     if (!formData.code.trim()) {
-      toast.error('Subject code is required')
+      toast.error(t('code_required'))
       return
     }
 
@@ -176,11 +179,11 @@ export default function SubjectsPage() {
         : await academicsApi.createSubject(submitData)
 
       if (result.success) {
-        toast.success(`Subject ${editingSubject ? 'updated' : 'created'} successfully`)
+        toast.success(t(editingSubject ? 'update_success' : 'create_success'))
         handleCloseDialog()
         fetchSubjects()
       } else {
-        toast.error(result.error || `Failed to ${editingSubject ? 'update' : 'create'} subject`)
+        toast.error(result.error || t(editingSubject ? 'fetch_error' : 'fetch_error'))
       }
     } finally {
       setSaving(false)
@@ -198,10 +201,10 @@ export default function SubjectsPage() {
     const result = await academicsApi.deleteSubject(subjectToDelete, selectedCampus?.id)
 
     if (result.success) {
-      toast.success('Subject deleted successfully')
+      toast.success(t('delete_success'))
       fetchSubjects()
     } else {
-      toast.error(result.error || 'Failed to delete subject')
+      toast.error(result.error || t('fetch_error'))
     }
 
     setDeleteDialogOpen(false)
@@ -225,14 +228,14 @@ export default function SubjectsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Subjects</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
           <p className="text-muted-foreground">
-            Define curriculum subjects for each grade level
+            {t('subtitle')}
           </p>
         </div>
         <Button onClick={() => handleOpenDialog()}>
           <Plus className="mr-2 h-4 w-4" />
-          Add Subject
+          {t('add_subject')}
         </Button>
       </div>
 
@@ -240,16 +243,16 @@ export default function SubjectsPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>All Subjects</CardTitle>
-              <CardDescription>View and manage curriculum subjects</CardDescription>
+              <CardTitle>{t('all_subjects')}</CardTitle>
+              <CardDescription>{t('all_subjects_desc')}</CardDescription>
             </div>
             <div className="w-[200px]">
               <Select value={filterGrade} onValueChange={setFilterGrade}>
                 <SelectTrigger>
-                  <SelectValue placeholder="All Grades" />
+                  <SelectValue placeholder={t('all_grades')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Grades</SelectItem>
+                  <SelectItem value="all">{t('all_grades')}</SelectItem>
                   {grades.map((grade) => (
                     <SelectItem key={grade.id} value={grade.id}>
                       {grade.name}
@@ -262,21 +265,21 @@ export default function SubjectsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="text-center py-8">Loading...</div>
+            <div className="text-center py-8">{t('loading')}</div>
           ) : subjects.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No subjects found. Add your first subject to get started.
+              {t('no_subjects')}
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Subject Name</TableHead>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Grade Level</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t('name')}</TableHead>
+                  <TableHead>{t('code')}</TableHead>
+                  <TableHead>{t('grade')}</TableHead>
+                  <TableHead>{t('type')}</TableHead>
+                  <TableHead>{t('status')}</TableHead>
+                  <TableHead className="text-right">{t('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -296,12 +299,12 @@ export default function SubjectsPage() {
                     <TableCell>{subject.grade_name}</TableCell>
                     <TableCell>
                       <Badge variant={getSubjectTypeVariant(subject.subject_type)}>
-                        {subject.subject_type}
+                        {t(subject.subject_type as any)}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge variant={subject.is_active ? 'default' : 'secondary'}>
-                        {subject.is_active ? 'Active' : 'Inactive'}
+                        {subject.is_active ? t('active') : t('inactive')}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -334,24 +337,22 @@ export default function SubjectsPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingSubject ? 'Edit Subject' : 'Add Subject'}</DialogTitle>
+            <DialogTitle>{editingSubject ? t('edit_title') : t('add_title')}</DialogTitle>
             <DialogDescription>
-              {editingSubject
-                ? 'Update the details of this subject'
-                : 'Create a new subject for a grade level'}
+              {editingSubject ? t('edit_desc') : t('add_desc')}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="grade_level_id">Grade Level *</Label>
+                <Label htmlFor="grade_level_id">{t('grade_label')}</Label>
                 <Select
                   value={formData.grade_level_id}
                   onValueChange={(value) => setFormData({ ...formData, grade_level_id: value })}
                   disabled={!!editingSubject}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select grade level" />
+                    <SelectValue placeholder={t('select_grade')} />
                   </SelectTrigger>
                   <SelectContent>
                     {grades.map((grade) => (
@@ -362,34 +363,34 @@ export default function SubjectsPage() {
                   </SelectContent>
                 </Select>
                 <p className="text-sm text-muted-foreground">
-                  Subject will only be available for this grade
+                  {t('grade_desc')}
                 </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="name">Subject Name *</Label>
+                <Label htmlFor="name">{t('name_label')}</Label>
                 <Input
                   id="name"
-                  placeholder="e.g., Mathematics, Physics, Biology"
+                  placeholder={t('name_placeholder')}
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="code">Subject Code *</Label>
+                <Label htmlFor="code">{t('code_label')}</Label>
                 <Input
                   id="code"
-                  placeholder="e.g., MATH-10, PHY-10, BIO-10"
+                  placeholder={t('code_placeholder')}
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
                   required
                 />
                 <p className="text-sm text-muted-foreground">
-                  Unique identifier for this subject
+                  {t('code_desc')}
                 </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="subject_type">Type *</Label>
+                <Label htmlFor="subject_type">{t('type_label')}</Label>
                 <Select
                   value={formData.subject_type}
                   onValueChange={(value) =>
@@ -400,19 +401,19 @@ export default function SubjectsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="theory">Theory</SelectItem>
-                    <SelectItem value="lab">Lab</SelectItem>
-                    <SelectItem value="practical">Practical</SelectItem>
+                    <SelectItem value="theory">{t('theory')}</SelectItem>
+                    <SelectItem value="lab">{t('lab')}</SelectItem>
+                    <SelectItem value="practical">{t('practical')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={handleCloseDialog} disabled={saving}>
-                Cancel
+                {t('cancel')}
               </Button>
               <Button type="submit" disabled={saving}>
-                {saving ? (editingSubject ? 'Updating...' : 'Creating...') : (editingSubject ? 'Update' : 'Create')}
+                {saving ? t(editingSubject ? 'updating' : 'creating') : t(editingSubject ? 'update' : 'create')}
               </Button>
             </DialogFooter>
           </form>
@@ -420,19 +421,18 @@ export default function SubjectsPage() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>{t('delete_confirm_title')}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this subject. Make sure no teachers are assigned to this
-              subject before deleting.
+              {t('delete_confirm_desc')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setSubjectToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setSubjectToDelete(null)}>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground">
-              Delete
+              {t('delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

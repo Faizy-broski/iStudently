@@ -17,8 +17,8 @@ export default function ParentLayout({
   return (
     <AuthLoadingGuard>
       <RoleGuard allowedRoles={['parent']}>
-        <SchoolSettingsProvider>
-          <CampusProvider>
+        <CampusProvider>
+          <SchoolSettingsProvider>
             <ParentAgreementGuard role="parent">
               <ParentDashboardProvider>
                 <DashboardLayout role="parent">
@@ -26,8 +26,8 @@ export default function ParentLayout({
                 </DashboardLayout>
               </ParentDashboardProvider>
             </ParentAgreementGuard>
-          </CampusProvider>
-        </SchoolSettingsProvider>
+          </SchoolSettingsProvider>
+        </CampusProvider>
       </RoleGuard>
     </AuthLoadingGuard>
   )

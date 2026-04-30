@@ -933,55 +933,49 @@ export class LibraryService {
     const q = (query || '').trim();
     if (!q) return [];
 
-    // If query looks like a UUID, search by id directly (exact match)
-    const isUUID = /^[0-9a-fA-F-]{36}$/.test(q);
-
     try {
-      if (isUUID) {
+      // Use the same RPC as student service — handles cross-table name/number search in SQL
+      const { data: rpcData, error: rpcError } = await supabase.rpc(
+        'search_students_for_library',
+        { p_school_id: schoolId, p_search: q, p_limit: 20 }
+      );
+
+      if (rpcError) {
+        console.error('searchStudents rpc error, falling back to direct query', { schoolId, q, rpcError });
+        // Fallback: search only by student_number (safe, no foreign table OR needed)
         const { data, error } = await supabase
           .from('students')
-          .select('id, first_name, last_name, admission_number, class_name, email, phone, status')
+          .select('id, student_number, grade_level, profile_id, profile:profiles(id, first_name, last_name, email)')
           .eq('school_id', schoolId)
-          .eq('id', q)
-          .limit(10);
+          .ilike('student_number', `%${q}%`)
+          .limit(20);
 
-        if (error) {
-          console.error('searchStudents by id error', { schoolId, query: q, error });
-          throw error;
-        }
+        if (error) throw error;
 
-        return data;
+        return (data || []).map((s: any) => ({
+          id: s.id,
+          student_number: s.student_number || null,
+          grade_level: s.grade_level || null,
+          profile: {
+            id: s.profile?.id || s.profile_id || s.id,
+            first_name: s.profile?.first_name || null,
+            last_name: s.profile?.last_name || null,
+            email: s.profile?.email || null,
+          },
+        }));
       }
 
-      // Broad search across multiple fields (profile first/last name, admission number, profile email, student id)
-      const like = `%${q}%`;
-      const orExpr = `profile.first_name.ilike.${like},profile.last_name.ilike.${like},admission_number.ilike.${like},profile.email.ilike.${like},id.ilike.${like}`;
-
-      const { data, error } = await supabase
-        .from('students')
-        .select('id, admission_number, class_name, status, profile:profiles(first_name, last_name, email, phone)')
-        .eq('school_id', schoolId)
-        .or(orExpr)
-        .eq('status', 'active')
-        .limit(10);
-
-      if (error) {
-        console.error('searchStudents error', { schoolId, query: q, error });
-        throw error;
-      }
-
-      console.log('searchStudents result count', { schoolId, query: q, count: (data || []).length });
-
-      // Map to expected shape for frontend
-      return (data || []).map((s: any) => ({
-        id: s.id,
-        first_name: s.profile?.first_name || null,
-        last_name: s.profile?.last_name || null,
-        admission_number: s.admission_number || null,
-        class_name: s.class_name || null,
-        email: s.profile?.email || null,
-        phone: s.profile?.phone || null,
-        status: s.status
+      // RPC returns: student_id, student_number, grade_level, profile_id, first_name, last_name, email, ...
+      return (rpcData || []).map((s: any) => ({
+        id: s.student_id || s.id,
+        student_number: s.student_number || null,
+        grade_level: s.grade_level || null,
+        profile: {
+          id: s.profile_id || s.student_id,
+          first_name: s.first_name || null,
+          last_name: s.last_name || null,
+          email: s.email || null,
+        },
       }));
     } catch (err) {
       console.error('searchStudents failed', { schoolId, query: q, err });

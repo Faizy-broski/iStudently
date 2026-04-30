@@ -9,6 +9,7 @@ import { getUpcomingEvents } from '@/lib/api/events'
 import * as academicsApi from '@/lib/api/academics'
 import * as mpApi from '@/lib/api/marking-periods'
 import useSWR from 'swr'
+import { useTranslations } from 'next-intl'
 import { 
   Clock, 
   BookOpen, 
@@ -31,6 +32,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 
 export default function StudentDashboardPage() {
+  const t = useTranslations('dashboard')
   const { overview, isLoading: isDashboardLoading, error: dashboardError } = useStudentDashboard()
   const { studentInfo, isLoading: isInfoLoading } = useStudentInfo()
   const campusContext = useCampus()
@@ -70,7 +72,7 @@ export default function StudentDashboardPage() {
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
           <AlertCircle className="w-5 h-5 text-red-600" />
           <div>
-            <h3 className="font-medium text-red-900">Error Loading Dashboard</h3>
+            <h3 className="font-medium text-red-900">{t('error_loading')}</h3>
             <p className="text-sm text-red-700">{dashboardError.message}</p>
           </div>
         </div>
@@ -80,9 +82,9 @@ export default function StudentDashboardPage() {
 
   const getAssignmentUrgency = (dueDate: string) => {
     const due = new Date(dueDate)
-    if (isToday(due)) return { color: 'red', label: 'Due Today' }
-    if (isTomorrow(due)) return { color: 'orange', label: 'Due Tomorrow' }
-    return { color: 'blue', label: formatDistance(due, new Date(), { addSuffix: true }) }
+    if (isToday(due)) return { color: 'red', label: t('urgency.due_today') }
+    if (isTomorrow(due)) return { color: 'orange', label: t('urgency.due_tomorrow') }
+    return { color: 'blue', label: t('urgency.due_in', { time: formatDistance(due, new Date(), { addSuffix: true }) }) }
   }
 
   const getTimeStatus = (startTime: string) => {
@@ -93,10 +95,10 @@ export default function StudentDashboardPage() {
 
     const diffMinutes = Math.floor((classTime.getTime() - now.getTime()) / 60000)
     
-    if (diffMinutes < -30) return { status: 'past', text: 'Completed' }
-    if (diffMinutes <= 0) return { status: 'current', text: 'In Progress' }
-    if (diffMinutes <= 15) return { status: 'soon', text: 'Starting Soon' }
-    return { status: 'upcoming', text: `in ${diffMinutes} min` }
+    if (diffMinutes < -30) return { status: 'past', text: t('status.completed') }
+    if (diffMinutes <= 0) return { status: 'current', text: t('status.in_progress') }
+    if (diffMinutes <= 15) return { status: 'soon', text: t('status.starting_soon') }
+    return { status: 'upcoming', text: t('status.in_min', { min: diffMinutes }) }
   }
 
   return (
@@ -116,7 +118,7 @@ export default function StudentDashboardPage() {
           
           <div className="flex-1 text-center md:text-left">
             <h1 className="text-3xl font-bold tracking-tight">
-              Welcome back, {studentInfo?.first_name || 'Student'}!
+              {t('welcome_back', { name: studentInfo?.first_name || 'Student' })}
             </h1>
             <div className="flex flex-wrap justify-center md:justify-start gap-3 mt-3">
               <Badge variant="secondary" className="bg-white/10 text-white hover:bg-white/20 border-none px-3 py-1 gap-1.5 font-medium">
@@ -135,13 +137,13 @@ export default function StudentDashboardPage() {
             </div>
             <p className="mt-4 text-blue-100/80 text-sm flex items-center justify-center md:justify-start gap-2">
               <Clock className="h-4 w-4" />
-              Last login: {format(new Date(), 'MMM d, yyyy h:mm a')}
+              {t('last_login', { date: format(new Date(), 'MMM d, yyyy h:mm a') })}
             </p>
           </div>
 
           <div className="hidden lg:block bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/10">
-            <div className="text-sm text-blue-100/70 mb-1">Academic Progress</div>
-            <div className="text-2xl font-bold text-white mb-2">{overview?.attendanceSummary.percentage}% <span className="text-xs font-normal text-blue-100/50">Attendance</span></div>
+            <div className="text-sm text-blue-100/70 mb-1">{t('academic_progress')}</div>
+            <div className="text-2xl font-bold text-white mb-2">{overview?.attendanceSummary.percentage}% <span className="text-xs font-normal text-blue-100/50">{t('attendance')}</span></div>
             <div className="w-48 h-2 bg-white/10 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-[#EEA831] transition-all duration-1000" 
@@ -165,12 +167,12 @@ export default function StudentDashboardPage() {
                   <CalendarIcon className="w-5 h-5 text-[#022172]" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg">Today&apos;s Schedule</CardTitle>
+                  <CardTitle className="text-lg">{t('schedule.title')}</CardTitle>
                   <p className="text-xs text-gray-500 font-medium">{format(new Date(), 'EEEE, MMMM d')}</p>
                 </div>
               </div>
               <Badge variant="outline" className="text-[#022172] border-blue-100">
-                {overview?.todayTimetable.length || 0} Classes
+                {t('schedule.classes', { count: overview?.todayTimetable.length || 0 })}
               </Badge>
             </CardHeader>
             <CardContent className="p-6">
@@ -207,7 +209,7 @@ export default function StudentDashboardPage() {
                                 <span>•</span>
                                 <span className="flex items-center gap-1">
                                   <MapPin className="w-3.5 h-3.5" />
-                                  Room {classItem.room_number}
+                                  {t('schedule.room', { number: classItem.room_number })}
                                 </span>
                               </div>
                             </div>
@@ -235,8 +237,8 @@ export default function StudentDashboardPage() {
                   <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
                     <CalendarIcon className="w-8 h-8 text-gray-300" />
                   </div>
-                  <h3 className="font-semibold text-gray-900">No classes today</h3>
-                  <p className="text-sm text-gray-500 mt-1">Enjoy your free time or catch up on assignments!</p>
+                  <h3 className="font-semibold text-gray-900">{t('schedule.no_classes')}</h3>
+                  <p className="text-sm text-gray-500 mt-1">{t('schedule.free_time')}</p>
                 </div>
               )}
             </CardContent>
@@ -247,7 +249,7 @@ export default function StudentDashboardPage() {
             <CardHeader className="bg-white border-b border-gray-100 py-4 px-6">
               <CardTitle className="text-lg flex items-center gap-2 text-[#022172]">
                 <GraduationCap className="w-5 h-5" />
-                Marking Periods Hierarchy
+                {t('academic.hierarchy')}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
@@ -256,10 +258,10 @@ export default function StudentDashboardPage() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-widest">
                     <Building2 className="w-3.5 h-3.5" />
-                    Academic Year
+                    {t('academic.year')}
                   </div>
                   <div className="p-4 rounded-xl bg-blue-50 border border-blue-100">
-                    <h4 className="font-bold text-[#022172]">{currentYear?.name || 'Academic Session'}</h4>
+                    <h4 className="font-bold text-[#022172]">{currentYear?.name || t('academic.session')}</h4>
                     <p className="text-[10px] text-blue-600 mt-1 font-medium">
                       {currentYear?.start_date && format(parseISO(currentYear.start_date), 'MMM yyyy')} - {currentYear?.end_date && format(parseISO(currentYear.end_date), 'MMM yyyy')}
                     </p>
@@ -270,10 +272,10 @@ export default function StudentDashboardPage() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-widest">
                     <TrendingUp className="w-3.5 h-3.5" />
-                    Current Quarter
+                    {t('academic.quarter')}
                   </div>
                   <div className="p-4 rounded-xl bg-[#EEA831]/10 border border-[#EEA831]/20">
-                    <h4 className="font-bold text-[#022172]">{currentQuarter?.title || 'No Active Quarter'}</h4>
+                    <h4 className="font-bold text-[#022172]">{currentQuarter?.title || t('academic.no_quarter')}</h4>
                     <p className="text-[10px] text-[#022172]/60 mt-1 font-medium">
                       {currentQuarter?.start_date && format(parseISO(currentQuarter.start_date), 'MMM d')} - {currentQuarter?.end_date && format(parseISO(currentQuarter.end_date), 'MMM d')}
                     </p>
@@ -284,12 +286,12 @@ export default function StudentDashboardPage() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-widest">
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    Grading Status
+                    {t('academic.grading_status')}
                   </div>
                   <div className="p-4 rounded-xl bg-green-50 border border-green-100">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium text-green-800">Grade Posting</span>
-                      <Badge variant="secondary" className="bg-green-200 text-green-900 text-[9px] px-1.5 border-none">Active</Badge>
+                      <span className="text-xs font-medium text-green-800">{t('academic.grade_posting')}</span>
+                      <Badge variant="secondary" className="bg-green-200 text-green-900 text-[9px] px-1.5 border-none">{t('academic.active')}</Badge>
                     </div>
                     <div className="w-full bg-green-200 h-1 rounded-full overflow-hidden">
                       <div className="bg-green-600 h-full w-[75%]" />
@@ -308,7 +310,7 @@ export default function StudentDashboardPage() {
             <CardHeader className="bg-gradient-to-r from-[#022172] to-[#0535B2] text-white py-4 px-6">
               <CardTitle className="text-base flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-[#EEA831]" />
-                Campus Details
+                {t('campus.details')}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
@@ -324,7 +326,7 @@ export default function StudentDashboardPage() {
                   <div>
                     <h4 className="font-bold text-gray-900 leading-tight">{campus?.name || studentInfo?.school_name}</h4>
                     <Badge variant="outline" className="mt-1.5 text-[9px] font-bold py-0 h-4 border-blue-100 text-blue-700 bg-blue-50/50">
-                      {campus?.short_name || 'Active Campus'}
+                      {campus?.short_name || t('campus.active_campus')}
                     </Badge>
                   </div>
                 </div>
@@ -337,9 +339,9 @@ export default function StudentDashboardPage() {
                       <MapPin className="w-3.5 h-3.5 text-blue-600" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Address</p>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t('campus.address')}</p>
                       <p className="text-[11px] text-gray-600 leading-relaxed font-medium mt-0.5">
-                        {campus?.address || studentInfo?.school_address || 'Not provided'}
+                        {campus?.address || studentInfo?.school_address || t('campus.not_provided')}
                       </p>
                     </div>
                   </div>
@@ -349,8 +351,8 @@ export default function StudentDashboardPage() {
                       <Phone className="w-3.5 h-3.5 text-green-600" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Contact</p>
-                      <p className="text-[11px] text-gray-600 font-medium mt-0.5">{campus?.phone || studentInfo?.school_phone || 'Not provided'}</p>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t('campus.contact')}</p>
+                      <p className="text-[11px] text-gray-600 font-medium mt-0.5">{campus?.phone || studentInfo?.school_phone || t('campus.not_provided')}</p>
                     </div>
                   </div>
 
@@ -359,7 +361,7 @@ export default function StudentDashboardPage() {
                       <Mail className="w-3.5 h-3.5 text-purple-600" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Official Email</p>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t('campus.email')}</p>
                       <p className="text-[11px] text-gray-600 font-medium mt-0.5 truncate">{campus?.contact_email || 'contact@istudents.ly'}</p>
                     </div>
                   </div>
@@ -368,7 +370,7 @@ export default function StudentDashboardPage() {
               <div className="bg-gray-50 px-6 py-3 border-t border-gray-100 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-[10px] font-bold text-gray-500">Principal: {campus?.principal_name || 'N/A'}</span>
+                  <span className="text-[10px] font-bold text-gray-500">{t('campus.principal')}: {campus?.principal_name || 'N/A'}</span>
                 </div>
                 <Info className="w-3 h-3 text-gray-300" />
               </div>
@@ -382,7 +384,7 @@ export default function StudentDashboardPage() {
                 <div className="p-2 bg-orange-50 rounded-lg">
                   <AlertCircle className="w-5 h-5 text-orange-600" />
                 </div>
-                <CardTitle className="text-lg">Due Soon</CardTitle>
+                <CardTitle className="text-lg">{t('assignments.due_soon')}</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="p-6">
@@ -414,12 +416,12 @@ export default function StudentDashboardPage() {
                           {assignment.submission ? (
                             <span className="text-green-600 font-bold flex items-center gap-1">
                               <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-                              Submitted
+                              {t('assignments.submitted')}
                             </span>
                           ) : (
                             <span className="text-orange-600 font-bold flex items-center gap-1">
                               <div className="w-1.5 h-1.5 bg-orange-500 rounded-full" />
-                              Pending
+                              {t('assignments.pending')}
                             </span>
                           )}
                         </div>
@@ -432,8 +434,8 @@ export default function StudentDashboardPage() {
                   <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
                     <BookOpen className="w-6 h-6 text-gray-300" />
                   </div>
-                  <h3 className="font-semibold text-gray-900 text-sm">All caught up!</h3>
-                  <p className="text-xs text-gray-500 mt-1">No assignments due soon.</p>
+                  <h3 className="font-semibold text-gray-900 text-sm">{t('assignments.caught_up')}</h3>
+                  <p className="text-xs text-gray-500 mt-1">{t('assignments.no_assignments')}</p>
                 </div>
               )}
             </CardContent>

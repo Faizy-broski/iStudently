@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
 import * as gradesApi from "@/lib/api/grades";
+import { useTranslations } from "next-intl";
 import type { HistoryMarkingPeriod, HistoryMPType } from "@/lib/api/grades";
 
 // ── Row type for inline editing ─────────────────────────────────
@@ -106,7 +107,7 @@ export default function HistoryMarkingPeriodsPage() {
 
   const addRow = () => {
     if (!newName.trim()) {
-      toast.error("Name is required");
+      toast.error(t("name_required"));
       return;
     }
     setRows((prev) => [
@@ -186,7 +187,7 @@ export default function HistoryMarkingPeriodsPage() {
             History Marking Periods
           </h1>
           <p className="text-muted-foreground mt-2">
-            Define historical marking period records
+            {t("subtitle")}
             {selectedCampus && (
               <span className="ml-1 font-medium">
                 — {selectedCampus.name}
@@ -204,7 +205,7 @@ export default function HistoryMarkingPeriodsPage() {
           ) : (
             <Save className="h-4 w-4" />
           )}
-          Save Changes
+          {tc("save_changes")}
         </Button>
       </div>
 

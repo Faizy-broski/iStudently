@@ -98,6 +98,7 @@ async function fetchFees(schoolId: string, params: { gradeId?: string; sectionId
 export default function PrintInvoicesPage() {
     const { selectedCampus, loading: campusLoading } = useCampus() || {}
     const { isPluginActive } = useSchoolSettings()
+    const { formatCurrency: formatDynamicCurrency } = useSchoolSettings()
     const schoolId = selectedCampus?.id
 
     const [pdfSettings, setPdfSettings] = useState<PdfHeaderFooterSettings | null>(null)
@@ -174,12 +175,8 @@ export default function PrintInvoicesPage() {
     }
 
     // Format currency
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD'
-        }).format(amount)
-    }
+    // Use the dynamic formatter from the hook
+    const formatCurrency = (amount: number) => formatDynamicCurrency(amount)
 
     // Format date
     const formatDate = (dateStr: string) => {

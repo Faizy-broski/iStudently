@@ -86,7 +86,13 @@ export default function ParentEventsPage() {
       if (greg) setGregorianCalendar(greg)
       if (hij)  setHijriCalendar(hij)
       const active = activeTab === 'gregorian' ? greg : hij
-      if (active?.start_date) setCurrentMonth(new Date(active.start_date))
+      if (active?.start_date) {
+        const today = new Date();
+        const start = new Date(active.start_date);
+        const end = active.end_date ? new Date(active.end_date) : null;
+        const todayInRange = today >= start && (!end || today <= end);
+        setCurrentMonth(todayInRange ? today : start);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allCalendars])
@@ -259,6 +265,7 @@ export default function ParentEventsPage() {
                 calendarType="gregorian"
                 calendarStart={gregorianCalendar?.start_date}
                 calendarEnd={gregorianCalendar?.end_date}
+                weekdays={gregorianCalendar?.weekdays}
               />
             </div>
           )}
@@ -294,6 +301,7 @@ export default function ParentEventsPage() {
                 calendarType="hijri"
                 calendarStart={hijriCalendar?.start_date}
                 calendarEnd={hijriCalendar?.end_date}
+                weekdays={hijriCalendar?.weekdays}
               />
             </div>
           )}

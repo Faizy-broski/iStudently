@@ -59,6 +59,8 @@ function colLetter(idx: number): string {
 export default function ImportGradesPage() {
   const { user, profile } = useAuth();
   const campusContext = useCampus();
+  const t = useTranslations("school.grades_module.import_grades");
+  const tCommon = useTranslations("school.grades_module.common");
   const selectedCampus = campusContext?.selectedCampus;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -102,7 +104,7 @@ export default function ImportGradesPage() {
         if (cpRes.success && cpRes.data) setCoursePeriods(cpRes.data);
         if (mpRes.success && mpRes.data) setMarkingPeriods(mpRes.data as MarkingPeriodOption[]);
       })
-      .catch(() => toast.error("Failed to load data"))
+      .catch(() => toast.error(t("msg_load_failed")))
       .finally(() => setLoadingCPs(false));
   }, [user, selectedCampus?.id]);
 
@@ -126,7 +128,7 @@ export default function ImportGradesPage() {
           setAssignmentMappings(new Map(assgns.map((a) => [a.id, undefined])));
         }
       })
-      .catch(() => toast.error("Failed to load assignments"))
+      .catch(() => toast.error(t("msg_load_assignments_failed")))
       .finally(() => setLoadingAssignments(false));
   }, [selectedCoursePeriod, selectedMarkingPeriod]);
 
@@ -153,13 +155,13 @@ export default function ImportGradesPage() {
             raw: false,
           });
           if (jsonData.length === 0) {
-            toast.error("The file appears to be empty");
+            toast.error(t("msg_parse_empty"));
             return;
           }
           setParsedRows(jsonData);
           setHeaderRow(jsonData[0] || []);
         } catch {
-          toast.error("Failed to parse Excel file");
+          toast.error(t("msg_parse_excel_failed"));
         }
       };
       reader.readAsArrayBuffer(file);
@@ -169,13 +171,13 @@ export default function ImportGradesPage() {
         complete: (result) => {
           const rows = result.data as string[][];
           if (rows.length === 0) {
-            toast.error("The file appears to be empty");
+            toast.error(t("msg_parse_empty"));
             return;
           }
           setParsedRows(rows);
           setHeaderRow(rows[0] || []);
         },
-        error: () => toast.error("Failed to parse CSV file"),
+        error: () => toast.error(t("msg_parse_csv_failed")),
         skipEmptyLines: true,
       });
     }
@@ -187,7 +189,7 @@ export default function ImportGradesPage() {
   // ── Build column options ──────────────────────────────────────
   const columnOptions = headerRow.map((header, idx) => ({
     value: idx,
-    label: `${colLetter(idx)}: ${header || `Column ${idx + 1}`}`,
+    label: `${colLetter(idx)}: ${header || `${tCommon("column", { defaultValue: "Column" })} ${idx + 1}`}`,
   }));
 
   // ── Data row count ────────────────────────────────────────────
@@ -225,11 +227,11 @@ export default function ImportGradesPage() {
   // ── Import handler ────────────────────────────────────────────
   const handleImport = async () => {
     if (!selectedCoursePeriod) {
-      toast.error("Please select a course period");
+      toast.error(t("msg_select_cp"));
       return;
     }
     if (parsedRows.length === 0) {
-      toast.error("Please upload a file first");
+      toast.error(t("msg_upload_first"));
       return;
     }
 
@@ -242,19 +244,19 @@ export default function ImportGradesPage() {
     }
 
     if (mappings.length === 0) {
-      toast.error("Please map at least one assignment column");
+      toast.error(t("msg_map_one_assignment"));
       return;
     }
 
     // Validate student identifier columns
     if (studentIdentifier === "name") {
       if (firstNameCol === undefined && lastNameCol === undefined) {
-        toast.error("Please select at least one name column (First Name or Last Name)");
+        toast.error(t("msg_map_name"));
         return;
       }
     } else {
       if (studentNumberCol === undefined) {
-        toast.error("Please select the Student Number column");
+        toast.error(t("msg_map_number"));
         return;
       }
     }
@@ -280,17 +282,17 @@ export default function ImportGradesPage() {
       if (res.success && res.data) {
         setImportResult(res.data);
         if (res.data.imported > 0 && res.data.errors.length === 0) {
-          toast.success(`Successfully imported grades for ${res.data.imported} students`);
+          toast.success(t("msg_import_success", { count: res.data.imported }));
         } else if (res.data.imported > 0) {
-          toast.success(`Imported ${res.data.imported} students with ${res.data.errors.length} issue(s)`);
+          toast.success(t("msg_import_partial", { imported: res.data.imported, errors: res.data.errors.length }));
         } else {
-          toast.error("No grades were imported");
+          toast.error(t("msg_import_none"));
         }
       } else {
-        toast.error("Import failed");
+        toast.error(t("msg_import_failed"));
       }
     } catch {
-      toast.error("Import failed");
+      toast.error(t("msg_import_failed"));
     } finally {
       setImporting(false);
     }
@@ -312,13 +314,13 @@ export default function ImportGradesPage() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-[#022172]">
-            Import Grades
+            {t("title")}
             {selectedMarkingPeriod &&
               markingPeriods.find((mp) => mp.id === selectedMarkingPeriod) &&
               ` - ${markingPeriods.find((mp) => mp.id === selectedMarkingPeriod)!.title}`}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Import gradebook grades from CSV or Excel file
+            {t("subtitle")}
           </p>
         </div>
       </div>
@@ -330,7 +332,7 @@ export default function ImportGradesPage() {
             {/* Course Period */}
             <div>
               <label className="text-sm font-medium text-muted-foreground mb-1 block">
-                Course Period
+                {t("course_period_label")}
               </label>
               {loadingCPs ? (
                 <Skeleton className="h-10 w-full" />
@@ -340,7 +342,7 @@ export default function ImportGradesPage() {
                   onValueChange={setSelectedCoursePeriod}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select course period..." />
+                    <SelectValue placeholder={tCommon("select_course_period_placeholder", { defaultValue: "Select course period..." })} />
                   </SelectTrigger>
                   <SelectContent>
                     {coursePeriods.map((cp) => (
@@ -358,17 +360,17 @@ export default function ImportGradesPage() {
             {/* Marking Period / Quarter */}
             <div>
               <label className="text-sm font-medium text-muted-foreground mb-1 block">
-                Quarter / Marking Period
+                {t("marking_period_label")}
               </label>
               <Select
                 value={selectedMarkingPeriod}
                 onValueChange={setSelectedMarkingPeriod}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="All marking periods" />
+                  <SelectValue placeholder={t("marking_period_placeholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Marking Periods</SelectItem>
+                  <SelectItem value="all">{t("marking_period_placeholder")}</SelectItem>
                   {markingPeriods.map((mp) => (
                     <SelectItem key={mp.id} value={mp.id}>
                       {mp.title}
@@ -381,7 +383,7 @@ export default function ImportGradesPage() {
             {/* File upload */}
             <div>
               <label className="text-sm font-medium text-muted-foreground mb-1 block">
-                Upload File
+                {t("upload_file_label")}
               </label>
               <div className="flex gap-2">
                 <Button
@@ -389,8 +391,8 @@ export default function ImportGradesPage() {
                   className="flex-1"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <FileSpreadsheet className="h-4 w-4 mr-2" />
-                  {fileName || "Choose CSV / Excel..."}
+                  <FileSpreadsheet className="h-4 w-4 mr-2 rtl:ml-2 rtl:mr-0" />
+                  {fileName || t("choose_file_placeholder")}
                 </Button>
                 <input
                   ref={fileInputRef}
@@ -410,15 +412,15 @@ export default function ImportGradesPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Badge variant="secondary" className="text-xs">
-              <FileSpreadsheet className="h-3 w-3 mr-1" />
-              {fileName}: {parsedRows.length} rows
+              <FileSpreadsheet className="h-3 w-3 mr-1 rtl:ml-1 rtl:mr-0" />
+              {fileName}: {tCommon("rows_count", { count: parsedRows.length, defaultValue: `${parsedRows.length} rows` })}
             </Badge>
             <label className="flex items-center gap-2 text-sm">
               <Checkbox
                 checked={importFirstRow}
                 onCheckedChange={(v) => setImportFirstRow(!!v)}
               />
-              Import first row
+              {t("import_first_row")}
             </label>
           </div>
           <div className="flex items-center gap-2">
@@ -428,15 +430,15 @@ export default function ImportGradesPage() {
               disabled={importing || !selectedCoursePeriod}
             >
               {importing ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="h-4 w-4 mr-2 rtl:ml-2 rtl:mr-0 animate-spin" />
               ) : (
-                <Upload className="h-4 w-4 mr-2" />
+                <Upload className="h-4 w-4 mr-2 rtl:ml-2 rtl:mr-0" />
               )}
-              IMPORT GRADEBOOK GRADES
+              {t("btn_import")}
             </Button>
             <Button variant="link" className="text-[#0369a1]" onClick={resetForm}>
-              <RotateCcw className="h-3 w-3 mr-1" />
-              Reset form
+              <RotateCcw className="h-3 w-3 mr-1 rtl:ml-1 rtl:mr-0" />
+              {t("btn_reset")}
             </Button>
           </div>
         </div>
@@ -447,7 +449,7 @@ export default function ImportGradesPage() {
         <Card>
           <CardContent className="p-6">
             <div className="max-w-lg mx-auto space-y-6">
-              <h2 className="text-lg font-semibold">Gradebook Grades Fields</h2>
+              <h2 className="text-lg font-semibold">{t("fields_title")}</h2>
 
               {/* Student identifier selector */}
               <div className="space-y-3">
@@ -462,14 +464,14 @@ export default function ImportGradesPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="name">Name</SelectItem>
+                      <SelectItem value="name">{t("identify_name")}</SelectItem>
                       <SelectItem value="student_number">
-                        Student Number
+                        {t("identify_student_number")}
                       </SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Identify Student
+                    {t("identify_student_label")}
                   </p>
                 </div>
 
@@ -492,7 +494,7 @@ export default function ImportGradesPage() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <p className="text-xs text-red-500 mt-1">First Name</p>
+                      <p className="text-xs text-red-500 mt-1">{t("first_name_label")}</p>
                     </div>
 
                     <div>
@@ -511,7 +513,7 @@ export default function ImportGradesPage() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <p className="text-xs text-red-500 mt-1">Last Name</p>
+                      <p className="text-xs text-red-500 mt-1">{t("last_name_label")}</p>
                     </div>
                   </>
                 )}
@@ -540,14 +542,14 @@ export default function ImportGradesPage() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-red-500 mt-1">Student Number</p>
+                    <p className="text-xs text-red-500 mt-1">{t("student_number_label")}</p>
                   </div>
                 )}
               </div>
 
               {/* Separator */}
               <div className="border-t pt-4">
-                <h3 className="text-base font-semibold mb-3">Assignments</h3>
+                <h3 className="text-base font-semibold mb-3">{t("assignments_title")}</h3>
 
                 {loadingAssignments ? (
                   <div className="space-y-3">
@@ -557,7 +559,7 @@ export default function ImportGradesPage() {
                   </div>
                 ) : assignments.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    No assignments found for this course period.
+                    {t("no_assignments")}
                   </p>
                 ) : (
                   <div className="space-y-4">
@@ -576,10 +578,10 @@ export default function ImportGradesPage() {
                           }}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select column..." />
+                            <SelectValue placeholder={tCommon("select_column_placeholder", { defaultValue: "Select column..." })} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">— Skip —</SelectItem>
+                            <SelectItem value="none">{t("skip_column")}</SelectItem>
                             {columnOptions.map((opt) => (
                               <SelectItem
                                 key={opt.value}
@@ -592,7 +594,7 @@ export default function ImportGradesPage() {
                         </Select>
                         <p className="text-xs text-muted-foreground mt-1">
                           {a.title}
-                          {a.points ? ` (${a.points} pts)` : ""}
+                          {a.points ? ` (${a.points} ${tCommon("points", { defaultValue: "pts" })})` : ""}
                         </p>
                       </div>
                     ))}
@@ -613,11 +615,11 @@ export default function ImportGradesPage() {
             disabled={importing || !selectedCoursePeriod}
           >
             {importing ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="h-4 w-4 mr-2 rtl:ml-2 rtl:mr-0 animate-spin" />
             ) : (
-              <Upload className="h-4 w-4 mr-2" />
+              <Upload className="h-4 w-4 mr-2 rtl:ml-2 rtl:mr-0" />
             )}
-            IMPORT GRADEBOOK GRADES
+            {t("btn_import")}
           </Button>
         </div>
       )}
@@ -633,7 +635,7 @@ export default function ImportGradesPage() {
                 ) : (
                   <AlertCircle className="h-5 w-5 text-amber-500" />
                 )}
-                Import Results
+                {t("results_title")}
               </h3>
 
               <div className="grid grid-cols-3 gap-4 text-center">
@@ -641,30 +643,30 @@ export default function ImportGradesPage() {
                   <div className="text-2xl font-bold text-green-700">
                     {importResult.imported}
                   </div>
-                  <div className="text-xs text-green-600">Students Imported</div>
+                  <div className="text-xs text-green-600">{t("students_imported")}</div>
                 </div>
                 <div className="bg-yellow-50 rounded-lg p-3">
                   <div className="text-2xl font-bold text-yellow-700">
                     {importResult.skipped}
                   </div>
-                  <div className="text-xs text-yellow-600">Skipped</div>
+                  <div className="text-xs text-yellow-600">{t("skipped_count")}</div>
                 </div>
                 <div className="bg-red-50 rounded-lg p-3">
                   <div className="text-2xl font-bold text-red-700">
                     {importResult.errors.length}
                   </div>
-                  <div className="text-xs text-red-600">Errors</div>
+                  <div className="text-xs text-red-600">{t("errors_count")}</div>
                 </div>
               </div>
 
               {importResult.errors.length > 0 && (
                 <div className="mt-4">
-                  <h4 className="text-sm font-medium mb-2">Error Details:</h4>
+                  <h4 className="text-sm font-medium mb-2">{t("error_details_title")}</h4>
                   <div className="max-h-48 overflow-y-auto bg-muted/50 rounded-lg p-3 space-y-1">
                     {importResult.errors.map((err, i) => (
                       <div key={i} className="text-xs text-red-600 flex gap-2">
                         <span className="font-medium whitespace-nowrap">
-                          Row {err.row}:
+                          {tCommon("row", { defaultValue: "Row" })} {err.row}:
                         </span>
                         <span>{err.reason}</span>
                       </div>
@@ -683,11 +685,10 @@ export default function ImportGradesPage() {
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <FileSpreadsheet className="h-16 w-16 text-muted-foreground/40 mb-4" />
             <h3 className="text-lg font-semibold text-muted-foreground mb-2">
-              Upload a Grades File
+              {t("empty_state_title")}
             </h3>
             <p className="text-sm text-muted-foreground max-w-md">
-              Select a course period above, then upload a CSV or Excel file containing
-              student grades. You&apos;ll map the file columns to assignments before importing.
+              {t("empty_state_desc")}
             </p>
           </CardContent>
         </Card>

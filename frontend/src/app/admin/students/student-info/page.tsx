@@ -19,7 +19,9 @@ import { EditStudentForm } from "@/components/admin";
 import { type Student } from "@/lib/api/students";
 import { useStudents } from "@/hooks/useStudents";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useGradeLevels } from "@/hooks/useAcademics";
 import { getSchoolSettings, type StudentListAppendConfig } from "@/lib/api/school-settings";
+import { useTranslations, useLocale } from "next-intl";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -78,6 +80,9 @@ function buildGradeDisplay(student: Student, grade: string, cfg: StudentListAppe
 }
 
 export default function StudentInfoPage() {
+  const t = useTranslations("school.students.student_info");
+  const tCommon = useTranslations("common");
+  const locale = useLocale();
   const router = useRouter();
   const { user } = useAuth();
   const campusContext = useCampus();
@@ -114,6 +119,8 @@ export default function StudentInfoPage() {
     grade_level: gradeFilter,
   });
 
+  const { gradeLevels } = useGradeLevels();
+
   // Show error toast if there's an error, but only for persistent errors
   // Skip transient errors during component mount/remount
   const [hasInitialized, setHasInitialized] = useState(false);
@@ -132,9 +139,9 @@ export default function StudentInfoPage() {
           error.message === 'Failed to fetch') {
         return;
       }
-      toast.error(error.message || 'An error occurred');
+      toast.error(error.message || tCommon("error"));
     }
-  }, [error, hasInitialized]);
+  }, [error, hasInitialized, tCommon]);
 
   const handleViewDetails = (student: Student) => {
     // Navigate to the full details page using student number for readable URLs
@@ -162,11 +169,11 @@ export default function StudentInfoPage() {
     try {
       const newStatus = !student.profile?.is_active;
       await updateStudent(student.id, { is_active: newStatus });
-      toast.success(`Student ${newStatus ? 'activated' : 'deactivated'} successfully`);
+      toast.success(newStatus ? t("msg_activated") : t("msg_deactivated"));
       refresh(); // Refresh the students list
     } catch (error) {
       console.error('Error toggling student status:', error);
-      toast.error('Failed to update student status');
+      toast.error(t("msg_update_failed"));
     }
   };
 
@@ -178,9 +185,9 @@ export default function StudentInfoPage() {
 
   const getStatusBadge = (status: string) => {
     return status === "active" ? (
-      <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Active</Badge>
+      <Badge className="bg-green-100 text-green-800 hover:bg-green-100">{tCommon("active")}</Badge>
     ) : (
-      <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">Inactive</Badge>
+      <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">{tCommon("inactive")}</Badge>
     );
   };
 
@@ -198,9 +205,9 @@ export default function StudentInfoPage() {
         <>
           <div>
             <h1 className="text-3xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent dark:text-white dark:bg-linear-to-r dark:from-[#57A3CC] dark:to-white">
-              Student Information
+              {t("title")}
             </h1>
-            <p className="text-muted-foreground mt-2">Search and view detailed student information</p>
+            <p className="text-muted-foreground mt-2">{t("subtitle")}</p>
           </div>
 
           {/* Search and Filters */}
@@ -210,26 +217,27 @@ export default function StudentInfoPage() {
                 <div className="flex-1 relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search by name, student ID, or email..."
+                    placeholder={t("search_placeholder")}
                     value={searchQuery}
                     onChange={(e) => {
                       setSearchQuery(e.target.value);
                       setCurrentPage(1);
                     }}
-                    className="pl-10"
+                    className="pl-10 rtl:pr-10 rtl:pl-3"
                   />
                 </div>
 
                 <Select value={gradeFilter} onValueChange={handleFilterChange(setGradeFilter)}>
                   <SelectTrigger className="w-full md:w-45">
-                    <SelectValue placeholder="Filter by Grade" />
+                    <SelectValue placeholder={t("filter_grade")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Grades</SelectItem>
-                    <SelectItem value="Grade 9">Grade 9</SelectItem>
-                    <SelectItem value="Grade 10">Grade 10</SelectItem>
-                    <SelectItem value="Grade 11">Grade 11</SelectItem>
-                    <SelectItem value="Grade 12">Grade 12</SelectItem>
+                    <SelectItem value="all">{t("all_grades")}</SelectItem>
+                    {gradeLevels.map((grade) => (
+                      <SelectItem key={grade.id} value={grade.name}>
+                        {grade.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
 
@@ -241,18 +249,23 @@ export default function StudentInfoPage() {
                     setCurrentPage(1);
                   }}
                 >
-                  Clear Filters
+                  {tCommon("clearAll")}
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Results Summary */}
           <div className="text-sm text-muted-foreground">
             {loading ? (
-              <span>Loading...</span>
+              <span>{tCommon("loading")}</span>
             ) : (
-              <span>Showing {students.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, total)} of {total} students</span>
+              <span>
+                {t("showing_range", {
+                  start: students.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0,
+                  end: Math.min(currentPage * itemsPerPage, total),
+                  total: total
+                })}
+              </span>
             )}
           </div>
 
@@ -267,19 +280,19 @@ export default function StudentInfoPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10">
-                      <TableHead>Student ID</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Grade</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Contact</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead className="text-left rtl:text-right">{t("th_student_id")}</TableHead>
+                      <TableHead className="text-left rtl:text-right">{tCommon("name")}</TableHead>
+                      <TableHead className="text-left rtl:text-right">{tCommon("grade")}</TableHead>
+                      <TableHead className="text-left rtl:text-right">{tCommon("status")}</TableHead>
+                      <TableHead className="text-left rtl:text-right">{t("th_contact")}</TableHead>
+                      <TableHead className="text-right rtl:text-left">{tCommon("actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {students.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                          No students found matching your criteria
+                          {t("no_students_found")}
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -303,22 +316,22 @@ export default function StudentInfoPage() {
                                   />
                                 ) : (
                                   <div className="h-8 w-8 rounded-full bg-linear-to-r from-[#57A3CC] to-[#022172] flex items-center justify-center text-white font-semibold text-sm">
-                                    {initials || 'N/A'}
+                                    {initials || tCommon("noData")}
                                   </div>
                                 )}
                                 <div>
                                   <div className="font-medium">
-                                    {fullName || 'N/A'}
+                                    {fullName || tCommon("noData")}
                                   </div>
-                                  <div className="text-sm text-muted-foreground">{student.profile?.email || 'No email'}</div>
+                                  <div className="text-sm text-muted-foreground">{student.profile?.email || tCommon("noData")}</div>
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell>{buildGradeDisplay(student, student.grade_level || 'N/A', appendConfig)}</TableCell>
+                            <TableCell>{buildGradeDisplay(student, student.grade_level || tCommon("noData"), appendConfig)}</TableCell>
                             <TableCell>{getStatusBadge(student.profile?.is_active ? 'active' : 'inactive')}</TableCell>
                             <TableCell>
                               <div className="text-sm">
-                                <div>{student.profile?.phone || 'No phone'}</div>
+                                <div>{student.profile?.phone || tCommon("noData")}</div>
                               </div>
                             </TableCell>
                             <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
@@ -329,11 +342,11 @@ export default function StudentInfoPage() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                  <DropdownMenuLabel>{tCommon("actions")}</DropdownMenuLabel>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem onClick={() => handleViewDetails(student)}>
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    View Details
+                                    <Eye className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
+                                    {tCommon("view")} {tCommon("details")}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
                                     onClick={() => {
@@ -343,12 +356,12 @@ export default function StudentInfoPage() {
                                         setSelectedParentId(parentId);
                                         setShowParentDialog(true);
                                       } else {
-                                        toast.error('No parent linked to this student');
+                                        toast.error(t("msg_no_parent"));
                                       }
                                     }}
                                   >
-                                    <Users className="mr-2 h-4 w-4" />
-                                    View Parent Details
+                                    <Users className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
+                                    {t("view_parent_details")}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => {
                                     setCredentialsData({
@@ -357,23 +370,23 @@ export default function StudentInfoPage() {
                                     });
                                     setShowCredentialsModal(true);
                                   }}>
-                                    <Lock className="mr-2 h-4 w-4" />
-                                    Edit Credentials
+                                    <Lock className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
+                                    {t("edit_credentials")}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleEditStudent(student)}>
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    Edit Student
+                                    <Edit className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
+                                    {t("edit_student")}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => handleToggleStudentStatus(student)}>
                                     {student.profile?.is_active ? (
                                       <>
-                                        <UserX className="mr-2 h-4 w-4" />
-                                        Deactivate Student
+                                        <UserX className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
+                                        {t("deactivate_student")}
                                       </>
                                     ) : (
                                       <>
-                                        <UserCheck className="mr-2 h-4 w-4" />
-                                        Activate Student
+                                        <UserCheck className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
+                                        {t("activate_student")}
                                       </>
                                     )}
                                   </DropdownMenuItem>
@@ -390,10 +403,13 @@ export default function StudentInfoPage() {
             </CardContent>
           </Card>
 
-          {/* Pagination */}
           <div className="mt-6 flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              Showing {students.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, total)} of {total} students
+              {t("showing_range", {
+                start: students.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0,
+                end: Math.min(currentPage * itemsPerPage, total),
+                total: total
+              })}
             </p>
             {totalPages > 0 && (
               <Pagination>
@@ -406,8 +422,8 @@ export default function StudentInfoPage() {
                       disabled={currentPage === 1}
                       className="gap-1"
                     >
-                      <ChevronLeft className="h-4 w-4" />
-                      Previous
+                      <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
+                      {tCommon("previous")}
                     </Button>
                   </PaginationItem>
 
@@ -447,8 +463,8 @@ export default function StudentInfoPage() {
                       disabled={currentPage === totalPages || totalPages === 0}
                       className="gap-1"
                     >
-                      Next
-                      <ChevronRight className="h-4 w-4" />
+                      {tCommon("next")}
+                      <ChevronRight className="h-4 w-4 rtl:rotate-180" />
                     </Button>
                   </PaginationItem>
                 </PaginationContent>
@@ -460,29 +476,29 @@ export default function StudentInfoPage() {
           <Dialog open={showParentDialog} onOpenChange={setShowParentDialog}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Parent Details</DialogTitle>
+                <DialogTitle>{t("parent_details")}</DialogTitle>
               </DialogHeader>
               {selectedStudent && selectedParentId && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm text-muted-foreground">Linked Student</p>
+                      <p className="text-sm text-muted-foreground">{t("linked_student")}</p>
                       <p className="font-medium">{selectedStudent.profile?.first_name} {selectedStudent.profile?.last_name}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Relationship</p>
-                      <p className="font-medium capitalize">{selectedStudent.custom_fields?.family?.parent_relation_type || 'N/A'}</p>
+                      <p className="text-sm text-muted-foreground">{t("relationship")}</p>
+                      <p className="font-medium capitalize">{selectedStudent.custom_fields?.family?.parent_relation_type || tCommon("noData")}</p>
                     </div>
                   </div>
                   <div className="border-t pt-4">
                     <p className="text-sm text-muted-foreground mb-2">
-                      To view full parent details, go to the Parent Management section.
+                      {t("parent_management_note")}
                     </p>
                     <Button
                       variant="outline"
                       onClick={() => window.open(`/admin/parents/parent-info?id=${selectedParentId}`, '_blank')}
                     >
-                      Open Full Parent Profile
+                      {t("open_parent_profile")}
                     </Button>
                   </div>
                 </div>

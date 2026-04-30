@@ -46,11 +46,16 @@ interface Course {
   subject_id?: string | null
 }
 
+import { useTranslations } from "next-intl"
+
 export function StudentRequests({
   student,
   academicYearId,
   onRequestCreated,
 }: StudentRequestsProps) {
+  const t = useTranslations("school.scheduling.student_requests")
+  const tCommon = useTranslations("common")
+
   const campusContext = useCampus()
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>("all")
   const [courseTitleSearch, setCourseTitleSearch] = useState("")
@@ -116,11 +121,11 @@ export function StudentRequests({
         academic_year_id: academicYearId,
         campus_id: campusContext?.selectedCampus?.id,
       })
-      toast.success("Course request added")
+      toast.success(t("msg_req_added"))
       mutateRequests()
       onRequestCreated()
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to add request")
+      toast.error(err instanceof Error ? err.message : tCommon("error"))
     } finally {
       setSaving(false)
     }
@@ -129,11 +134,11 @@ export function StudentRequests({
   const handleDeleteRequest = async (requestId: string) => {
     try {
       await deleteScheduleRequest(requestId)
-      toast.success("Request removed")
+      toast.success(t("msg_req_removed"))
       mutateRequests()
       onRequestCreated()
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to remove request")
+      toast.error(err instanceof Error ? err.message : tCommon("error"))
     }
   }
 
@@ -141,30 +146,30 @@ export function StudentRequests({
     <div className="border-t pt-4 space-y-4">
       <div className="flex items-center gap-2">
         <CalendarDays className="h-5 w-5 text-amber-500" />
-        <h2 className="text-xl font-bold">Student Requests</h2>
+        <h2 className="text-xl font-bold">{t("title")}</h2>
       </div>
 
       {/* Existing requests */}
       {allRequests.length > 0 && (
         <div className="space-y-2">
           <p className="text-sm font-semibold">
-            {allRequests.length} request{allRequests.length !== 1 ? "s" : ""} found.
+            {t("found_requests", { count: allRequests.length })}
           </p>
           <div className="border rounded-md overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-muted/50 border-b">
-                  <th className="text-left px-4 py-2 font-semibold text-primary uppercase text-xs">
-                    Course
+                  <th className="text-left rtl:text-right px-4 py-2 font-semibold text-primary uppercase text-xs">
+                    {tCommon("course")}
                   </th>
-                  <th className="text-left px-4 py-2 font-semibold text-primary uppercase text-xs">
-                    Status
+                  <th className="text-left rtl:text-right px-4 py-2 font-semibold text-primary uppercase text-xs">
+                    {tCommon("status")}
                   </th>
-                  <th className="text-left px-4 py-2 font-semibold text-primary uppercase text-xs">
-                    Priority
+                  <th className="text-left rtl:text-right px-4 py-2 font-semibold text-primary uppercase text-xs">
+                    {t("th_priority")}
                   </th>
-                  <th className="text-right px-4 py-2 font-semibold text-primary uppercase text-xs">
-                    Actions
+                  <th className="text-right rtl:text-left px-4 py-2 font-semibold text-primary uppercase text-xs">
+                    {tCommon("actions")}
                   </th>
                 </tr>
               </thead>
@@ -172,16 +177,16 @@ export function StudentRequests({
                 {allRequests.map((req) => (
                   <tr key={req.id} className="border-b last:border-b-0">
                     <td className="px-4 py-2">{req.course?.title || "—"}</td>
-                    <td className="px-4 py-2 capitalize">{req.status}</td>
+                    <td className="px-4 py-2 capitalize">{tCommon(`status.${req.status}`)}</td>
                     <td className="px-4 py-2">{req.priority}</td>
-                    <td className="px-4 py-2 text-right">
+                    <td className="px-4 py-2 text-right rtl:text-left">
                       <Button
                         variant="ghost"
                         size="sm"
                         className="text-destructive hover:text-destructive h-7 text-xs"
                         onClick={() => handleDeleteRequest(req.id)}
                       >
-                        Remove
+                        {t("btn_remove")}
                       </Button>
                     </td>
                   </tr>
@@ -193,13 +198,13 @@ export function StudentRequests({
       )}
 
       {allRequests.length === 0 && !requestsLoading && (
-        <p className="text-sm font-semibold">No requests were found.</p>
+        <p className="text-sm font-semibold">{t("no_requests_found")}</p>
       )}
 
       {/* Add request form */}
       <div className="flex items-center justify-end">
         <Button variant="default" size="sm" disabled={saving}>
-          SAVE
+          {tCommon("save")}
         </Button>
       </div>
 
@@ -211,10 +216,10 @@ export function StudentRequests({
             onValueChange={setSelectedSubjectFilter}
           >
             <SelectTrigger className="w-[140px] h-8">
-              <SelectValue placeholder="All Subjects" />
+              <SelectValue placeholder={t("all_subjects")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Subjects</SelectItem>
+              <SelectItem value="all">{t("all_subjects")}</SelectItem>
               {subjects.map((s) => (
                 <SelectItem key={s.id} value={s.id}>
                   {s.name}
@@ -225,7 +230,7 @@ export function StudentRequests({
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-sm">Course Title</span>
+          <span className="text-sm">{t("course_title")}</span>
           <Input
             value={courseTitleSearch}
             onChange={(e) => setCourseTitleSearch(e.target.value)}
@@ -241,11 +246,11 @@ export function StudentRequests({
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-muted/50 border-b">
-                <th className="text-left px-4 py-2 font-semibold text-primary uppercase text-xs">
-                  Course
+                <th className="text-left rtl:text-right px-4 py-2 font-semibold text-primary uppercase text-xs">
+                  {tCommon("course")}
                 </th>
-                <th className="text-right px-4 py-2 font-semibold text-primary uppercase text-xs">
-                  Action
+                <th className="text-right rtl:text-left px-4 py-2 font-semibold text-primary uppercase text-xs">
+                  {tCommon("actions")}
                 </th>
               </tr>
             </thead>
@@ -253,7 +258,7 @@ export function StudentRequests({
               {filteredCourses.length === 0 ? (
                 <tr>
                   <td colSpan={2} className="px-4 py-4 text-center text-muted-foreground text-xs">
-                    No matching courses found
+                    {tCommon("no_items_found", { label: tCommon("courses") })}
                   </td>
                 </tr>
               ) : (
@@ -264,9 +269,9 @@ export function StudentRequests({
                   return (
                     <tr key={course.id} className="border-b last:border-b-0">
                       <td className="px-4 py-2">{course.title}</td>
-                      <td className="px-4 py-2 text-right">
+                      <td className="px-4 py-2 text-right rtl:text-left">
                         {alreadyRequested ? (
-                          <span className="text-xs text-muted-foreground">Already requested</span>
+                          <span className="text-xs text-muted-foreground">{t("already_requested")}</span>
                         ) : (
                           <Button
                             variant="outline"
@@ -276,7 +281,7 @@ export function StudentRequests({
                             onClick={() => handleAddRequest(course.id)}
                           >
                             <Plus className="h-3 w-3 mr-1" />
-                            Add Request
+                            {t("btn_add_request")}
                           </Button>
                         )}
                       </td>
@@ -291,8 +296,8 @@ export function StudentRequests({
 
       {/* Bottom save button */}
       <div className="flex justify-center">
-        <Button onClick={() => toast.info("Requests saved")} disabled={saving}>
-          SAVE
+        <Button onClick={() => toast.info(tCommon("msg_saved", { label: t("title") }))} disabled={saving}>
+          {tCommon("save")}
         </Button>
       </div>
     </div>

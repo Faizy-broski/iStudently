@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
 import * as gradesApi from "@/lib/api/grades";
+import { useTranslations } from "next-intl";
 import type { CommentCodeScale, CommentCode } from "@/lib/api/grades";
 
 // ── Row types ───────────────────────────────────────────────────
@@ -35,6 +36,7 @@ interface ScaleRow extends CommentCodeScale {
 }
 
 export default function CommentCodesPage() {
+  const t = useTranslations("school.grades_module.comment_codes");
   const { user } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
@@ -281,10 +283,10 @@ export default function CommentCodesPage() {
       <div>
         <h1 className="text-3xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent flex items-center gap-2">
           <Tag className="h-8 w-8 text-[#57A3CC]" />
-          Comment Codes
+          {t("title")}
         </h1>
         <p className="text-muted-foreground mt-2">
-          Manage comment code scales and their codes
+          {t("subtitle")}
           {selectedCampus && (
             <span className="ml-1 font-medium">
               — {selectedCampus.name}

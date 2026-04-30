@@ -13,6 +13,7 @@ import { useCampus } from "@/context/CampusContext"
 import * as portalApi from "@/lib/api/portal"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
 import { VisibilityPicker, type VisibilityState, type VisibilityMode } from "@/components/portal/visibility-picker"
+import { useTranslations } from "next-intl"
 
 interface NoteRow {
   id?: string
@@ -44,6 +45,8 @@ export default function PortalNotesPage() {
   const { profile } = useAuth()
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
+  const t = useTranslations("school.portal_notes")
+  const tCommon = useTranslations("common")
 
   const [notes, setNotes] = useState<NoteRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -86,7 +89,7 @@ export default function PortalNotesPage() {
       setNotes(mappedNotes)
     } catch (error) {
       console.error('Error fetching notes:', error)
-      toast.error('Failed to load notes')
+      toast.error(t("err_load_notes"))
       setNotes([createEmptyRow(0)])
     } finally {
       setLoading(false)
@@ -121,9 +124,9 @@ export default function PortalNotesPage() {
     if (note.id) {
       try {
         await portalApi.deleteNote(note.id)
-        toast.success('Note deleted')
+        toast.success(t("success_deleted"))
       } catch (error) {
-        const msg = error instanceof Error ? error.message : 'Failed to delete'
+        const msg = error instanceof Error ? error.message : tCommon("error")
         toast.error(msg)
         return
       }
@@ -137,7 +140,7 @@ export default function PortalNotesPage() {
 
   const handleSave = async () => {
     if (!selectedCampus?.id) {
-      toast.error('Please select a campus first')
+      toast.error(t("err_select_campus"))
       return
     }
 
@@ -171,10 +174,10 @@ export default function PortalNotesPage() {
           await portalApi.createNote(dto)
         }
       }
-      toast.success('Notes saved successfully')
+      toast.success(t("success_saved"))
       fetchNotes()
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Failed to save notes'
+      const msg = error instanceof Error ? error.message : tCommon("error")
       toast.error(msg)
     } finally {
       setSaving(false)
@@ -185,8 +188,8 @@ export default function PortalNotesPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
         <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold mb-2">Select a Campus</h3>
-        <p className="text-muted-foreground">Please select a campus from the top bar to manage notes.</p>
+        <h3 className="text-lg font-semibold mb-2">{t("prompt_select_campus")}</h3>
+        <p className="text-muted-foreground">{t("prompt_select_campus_desc")}</p>
       </div>
     )
   }
@@ -206,7 +209,7 @@ export default function PortalNotesPage() {
         <div className="h-8 w-8 rounded-full bg-[#022172] flex items-center justify-center">
           <FileText className="h-4 w-4 text-white" />
         </div>
-        <h1 className="text-2xl font-semibold text-gray-700">Portal Notes</h1>
+        <h1 className="text-2xl font-semibold text-gray-700">{t("title")}</h1>
       </div>
 
       {/* Top Save Button */}
@@ -216,7 +219,7 @@ export default function PortalNotesPage() {
           disabled={saving}
           className="bg-[#022172] hover:bg-[#022172]/90"
         >
-          {saving ? 'SAVING...' : 'SAVE'}
+          {saving ? t("btn_saving") : t("btn_save")}
         </Button>
       </div>
 
@@ -225,19 +228,19 @@ export default function PortalNotesPage() {
         <CardContent className="p-0">
           <p className="px-4 py-2 text-sm text-gray-500 italic">
             {notes.filter((n) => n.id).length === 0
-              ? 'No notes were found.'
-              : `${notes.filter((n) => n.id).length} note(s) found.`}
+              ? t("no_notes")
+              : t("notes_found", { count: notes.filter((n) => n.id).length })}
           </p>
 
           {/* Table Header */}
           <div className="grid grid-cols-[40px_120px_1fr_80px_180px_180px_140px] gap-2 px-4 py-2 bg-gray-50 border-y text-xs font-medium text-gray-600 uppercase tracking-wide">
             <div></div>
-            <div>Title</div>
-            <div>Note</div>
-            <div>Sort Order</div>
-            <div>File Attached</div>
-            <div>Visible Between</div>
-            <div>Visible To</div>
+            <div>{t("table_title")}</div>
+            <div>{t("table_note")}</div>
+            <div>{t("table_sort")}</div>
+            <div>{t("table_file")}</div>
+            <div>{t("table_visible_between")}</div>
+            <div>{t("table_visible_to")}</div>
           </div>
 
           {/* Table Rows */}
@@ -273,11 +276,11 @@ export default function PortalNotesPage() {
 
               {/* Note Content with Tabs */}
               <div className="p-3 border border-gray-200 rounded-lg bg-gray-50/50">
-                <label className="text-xs font-medium text-gray-600 mb-2 block">Note Content</label>
+                <label className="text-xs font-medium text-gray-600 mb-2 block">{t("label_note_content")}</label>
                 <Tabs defaultValue="write" className="w-full">
                   <TabsList className="h-7 p-0.5">
-                    <TabsTrigger value="write" className="text-xs px-2 h-5 data-[state=active]:bg-white">WRITE</TabsTrigger>
-                    <TabsTrigger value="preview" className="text-xs px-2 h-5 data-[state=active]:bg-white">PREVIEW</TabsTrigger>
+                    <TabsTrigger value="write" className="text-xs px-2 h-5 data-[state=active]:bg-white">{t("tab_write")}</TabsTrigger>
+                    <TabsTrigger value="preview" className="text-xs px-2 h-5 data-[state=active]:bg-white">{t("tab_preview")}</TabsTrigger>
                     <span className="ml-2 px-1 bg-gray-200 rounded text-xs text-gray-500">M↓</span>
                   </TabsList>
                   <TabsContent value="write" className="mt-1">
@@ -289,7 +292,7 @@ export default function PortalNotesPage() {
                   </TabsContent>
                   <TabsContent value="preview" className="mt-1">
                     <div className="min-h-20 p-2 border rounded-md bg-white text-sm whitespace-pre-wrap">
-                      {note.content || <span className="text-gray-400 italic">No content</span>}
+                      {note.content || <span className="text-gray-400 italic">{t("placeholder_no_content")}</span>}
                     </div>
                   </TabsContent>
                 </Tabs>
@@ -308,15 +311,15 @@ export default function PortalNotesPage() {
               {/* File Attached */}
               <div className="space-y-2 p-3 border border-gray-200 rounded-lg bg-gray-50/50">
                 <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1 block">File Attached</label>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">{t("table_file")}</label>
                   <Input type="file" className="h-7 text-xs border-gray-300" disabled />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1 block">Embed Link</label>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">{t("label_embed_link")}</label>
                   <Input
                     value={note.embed_link}
                     onChange={(e) => updateRow(index, { embed_link: e.target.value })}
-                    placeholder="https://"
+                    placeholder={t("placeholder_url")}
                     className="h-7 text-xs border-gray-300"
                   />
                 </div>
@@ -355,7 +358,7 @@ export default function PortalNotesPage() {
           disabled={saving}
           className="bg-[#022172] hover:bg-[#022172]/90 px-8"
         >
-          {saving ? 'SAVING...' : 'SAVE'}
+          {saving ? t("btn_saving") : t("btn_save")}
         </Button>
       </div>
     </div>

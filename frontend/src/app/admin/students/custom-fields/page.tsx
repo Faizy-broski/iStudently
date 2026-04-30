@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Trash2, Save, Settings2, ChevronDown, ChevronRight, Building2, GripVertical, FolderPlus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Trash2, Save, Settings2, ChevronDown, ChevronRight, Building2, GripVertical, FolderPlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { CustomFieldCategory, CustomField, CustomFieldType, CampusScope } from "@/types";
 import { customFieldsApi, CustomFieldDefinition, BranchSchool } from "@/lib/api/custom-fields";
@@ -16,6 +17,7 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { getFieldOrders, saveFieldOrders, getEffectiveFieldOrder, DefaultFieldOrder } from '@/lib/utils/field-ordering';
+import { useTranslations } from "next-intl";
 
 // Default/Standard Fields for Students
 const DEFAULT_FIELDS_BY_CATEGORY: Record<string, Array<{label: string, sort_order: number}>> = {
@@ -54,9 +56,37 @@ const DEFAULT_FIELDS_BY_CATEGORY: Record<string, Array<{label: string, sort_orde
   ],
 };
 
+const STANDARD_FIELD_KEYS: Record<string, string> = {
+  'First Name': 'first_name',
+  "Father's Name": 'father_name',
+  "Grandfather's Name": 'grandfather_name',
+  'Surname': 'surname',
+  'Date of Birth': 'dob',
+  'Gender': 'gender',
+  'Student Photo': 'photo',
+  'Address': 'address',
+  'Email': 'email',
+  'Phone Number': 'phone',
+  'Grade Level': 'grade',
+  'Section': 'section',
+  'Admission Date': 'admission_date',
+  'Previous School History': 'prev_school',
+  'Blood Group': 'blood_group',
+  'Has Allergies?': 'has_allergies',
+  'Allergies List': 'allergies_list',
+  'Medical Notes': 'medical_notes',
+  'Link to Parent': 'link_parent',
+  'Relationship Type': 'relation_type',
+  'Emergency Contacts': 'emergency_contacts',
+  'Username': 'username',
+  'Password': 'password'
+};
+
 type ExtendedCategory = CustomFieldCategory & { order: number };
 
 export default function CustomFieldsPage() {
+  const t = useTranslations("school.students.custom_fields");
+  const tCommon = useTranslations("common");
   const { selectedCampus } = useCampus();
   const [categories, setCategories] = useState<ExtendedCategory[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -81,7 +111,6 @@ export default function CustomFieldsPage() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        // Pass campus_id to get campus-specific custom fields
         const campusId = selectedCampus?.id;
         const [fieldsResponse, branchesResponse, defaultOrdersResponse] = await Promise.all([
           customFieldsApi.getFieldDefinitions('student', campusId),
@@ -89,11 +118,9 @@ export default function CustomFieldsPage() {
           getFieldOrders('student')
         ]);
 
-        // Load saved default field orders if any
         if (defaultOrdersResponse.success && defaultOrdersResponse.data) {
           setSavedDefaultOrders(defaultOrdersResponse.data);
           
-          // Apply saved orders to default fields
           const updatedDefaults: Record<string, Array<{label: string, sort_order: number}>> = {};
           Object.keys(DEFAULT_FIELDS_BY_CATEGORY).forEach(categoryId => {
             const effective = getEffectiveFieldOrder(
@@ -107,22 +134,18 @@ export default function CustomFieldsPage() {
         }
 
         const standardCategories: ExtendedCategory[] = [
-          { id: 'personal', name: 'Personal Information', fields: [], order: 1 },
-          { id: 'academic', name: 'Academic Information', fields: [], order: 2 },
-          { id: 'medical', name: 'Medical Information', fields: [], order: 3 },
-          { id: 'family', name: 'Family & Emergency', fields: [], order: 4 },
-          { id: 'system', name: 'System & Login', fields: [], order: 5 },
+          { id: 'personal', name: t("cat_personal"), fields: [], order: 1 },
+          { id: 'academic', name: t("cat_academic"), fields: [], order: 2 },
+          { id: 'medical', name: t("cat_medical"), fields: [], order: 3 },
+          { id: 'family', name: t("cat_family"), fields: [], order: 4 },
+          { id: 'system', name: t("cat_system"), fields: [], order: 5 },
         ];
 
         if (fieldsResponse.success && fieldsResponse.data) {
           const fieldsByCategory: Record<string, CustomField[]> = {};
           const categoryOrderMap: Record<string, number> = {};
-
-          console.log('📊 Loading custom fields data:', fieldsResponse.data.length, 'fields');
           
           fieldsResponse.data.forEach((field: CustomFieldDefinition) => {
-            console.log(`  Field: ${field.label}, Category: ${field.category_id}, Category Order: ${field.category_order}`);
-            
             const customField: CustomField = {
               id: field.id,
               label: field.label,
@@ -140,22 +163,16 @@ export default function CustomFieldsPage() {
             }
             fieldsByCategory[field.category_id].push(customField);
             
-            // Track category order from the first field in each category
             if (!categoryOrderMap[field.category_id] && field.category_order !== undefined) {
               categoryOrderMap[field.category_id] = field.category_order;
-              console.log(`  ✓ Set ${field.category_id} order = ${field.category_order}`);
             }
           });
-
-          console.log('📋 Category Order Map:', categoryOrderMap);
 
           const mergedCategories = standardCategories.map(stdCat => ({
             ...stdCat,
             order: categoryOrderMap[stdCat.id] || stdCat.order,
             fields: (fieldsByCategory[stdCat.id] || []).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
           }));
-
-          console.log('🔄 Categories before sort:', mergedCategories.map(c => `${c.name}(${c.order})`).join(', '));
 
           const customCategoryIds = Object.keys(fieldsByCategory).filter(id => !STANDARD_CATEGORIES.includes(id));
           customCategoryIds.forEach((catId, idx) => {
@@ -170,11 +187,7 @@ export default function CustomFieldsPage() {
             }
           });
 
-          // Sort categories by order
           mergedCategories.sort((a, b) => a.order - b.order);
-          
-          console.log('✅ Categories after sort:', mergedCategories.map(c => `${c.name}(order=${c.order})`).join(', '));
-
           setCategories(mergedCategories);
           const withFields = new Set(mergedCategories.filter(c => c.fields.length > 0).map(c => c.id));
           setExpandedCategories(withFields);
@@ -187,13 +200,13 @@ export default function CustomFieldsPage() {
         }
       } catch (error) {
         console.error('Error loading custom fields:', error);
-        toast.error('Failed to load custom fields');
+        toast.error(tCommon("error_occurred"));
       } finally {
         setIsLoading(false);
       }
     };
     loadData();
-  }, [selectedCampus?.id]); // Reload when campus changes
+  }, [selectedCampus?.id]);
 
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories(prev => {
@@ -213,7 +226,6 @@ export default function CustomFieldsPage() {
         const newIndex = items.findIndex((item) => item.id === over.id);
         
         const reordered = arrayMove(items, oldIndex, newIndex);
-        // Update order values
         return reordered.map((cat, idx) => ({ ...cat, order: idx + 1 }));
       });
     }
@@ -221,7 +233,7 @@ export default function CustomFieldsPage() {
 
   const addNewCategory = () => {
     if (!newCategoryName.trim()) {
-      toast.error('Category name cannot be empty');
+      toast.error(tCommon("fill_required_fields"));
       return;
     }
     
@@ -237,17 +249,17 @@ export default function CustomFieldsPage() {
     setExpandedCategories(prev => new Set(prev).add(categoryId));
     setNewCategoryName('');
     setShowAddCategory(false);
-    toast.success('New category added');
+    toast.success(tCommon("success"));
   };
 
   const deleteCategory = (categoryId: string) => {
     if (STANDARD_CATEGORIES.includes(categoryId)) {
-      toast.error('Cannot delete standard categories');
+      toast.error(tCommon("error"));
       return;
     }
     
     setCategories(categories.filter(c => c.id !== categoryId));
-    toast.success('Category deleted');
+    toast.success(tCommon("success"));
   };
 
   const addFieldToCategory = (categoryId: string) => {
@@ -287,10 +299,6 @@ export default function CustomFieldsPage() {
   const handleSaveTemplate = async () => {
     setIsSaving(true);
     try {
-      console.log('💾 Starting save operation...');
-      console.log('Current categories state:', categories.map(c => `${c.name}(order=${c.order})`).join(', '));
-      
-      // Pass campus_id to get/create campus-specific fields
       const campusId = selectedCampus?.id;
       const existingResponse = await customFieldsApi.getFieldDefinitions('student', campusId);
       const existingIds = new Set((existingResponse.data || []).map(f => f.id));
@@ -306,8 +314,6 @@ export default function CustomFieldsPage() {
               categoryOrder: cat.order,
               field 
             });
-            console.log(`  📝 Will save: ${field.label} in ${cat.name} with category_order=${cat.order}`);
-            // Track IDs of fields currently in the UI (excluding new temporary IDs)
             if (!field.id.startsWith('field-')) {
               currentIds.add(field.id);
             }
@@ -324,7 +330,6 @@ export default function CustomFieldsPage() {
             campus_scope: field.campus_scope, applicable_school_ids: field.applicable_school_ids
           });
         } else {
-          // Create new field with campus_id
           await customFieldsApi.createFieldDefinition({
             entity_type: 'student', category_id: categoryId, category_name: categoryName,
             label: field.label, type: field.type, options: field.options,
@@ -335,16 +340,15 @@ export default function CustomFieldsPage() {
         }
       }
 
-      // Delete fields that are in DB but no longer in the UI
       for (const id of existingIds) {
         if (!currentIds.has(id)) {
           await customFieldsApi.deleteFieldDefinition(id);
         }
       }
-      toast.success("Custom fields saved!");
+      toast.success(tCommon("success"));
     } catch (error) {
       console.error("Error saving:", error);
-      toast.error("Failed to save");
+      toast.error(tCommon("error_occurred"));
     } finally {
       setIsSaving(false);
     }
@@ -359,7 +363,6 @@ export default function CustomFieldsPage() {
       const newIndex = fields.findIndex((field) => field.label === over.id);
       
       const reordered = arrayMove(fields, oldIndex, newIndex);
-      // Update sort_order values based on new position
       const updatedFields = reordered.map((field, idx) => ({ ...field, sort_order: idx + 1 }));
       
       setDefaultFieldsByCategory({
@@ -380,13 +383,11 @@ export default function CustomFieldsPage() {
       const result = await saveFieldOrders('student', categoryId, fieldOrders);
       
       if (result.success) {
-        toast.success(`Default field order saved for ${categoryId}`);
-        // Reload saved orders and re-apply them
+        toast.success(tCommon("success"));
         const response = await getFieldOrders('student');
         if (response.success && response.data) {
           setSavedDefaultOrders(response.data);
           
-          // Re-apply saved orders to all categories
           const updatedDefaults: Record<string, Array<{label: string, sort_order: number}>> = {};
           Object.keys(DEFAULT_FIELDS_BY_CATEGORY).forEach(catId => {
             const effective = getEffectiveFieldOrder(
@@ -399,11 +400,11 @@ export default function CustomFieldsPage() {
           setDefaultFieldsByCategory(updatedDefaults);
         }
       } else {
-        toast.error(result.message || 'Failed to save field order');
+        toast.error(result.message || tCommon("error_occurred"));
       }
     } catch (error) {
       console.error('Error saving default field order:', error);
-      toast.error('Failed to save field order');
+      toast.error(tCommon("error_occurred"));
     }
   };
 
@@ -421,19 +422,18 @@ export default function CustomFieldsPage() {
   if (isLoading) {
     return (
       <div className="p-6 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#022172]"></div>
-        <span className="ml-2 text-gray-600 text-sm">Loading...</span>
+        <Loader2 className="h-6 w-6 animate-spin text-[#022172]" />
+        <span className="ml-2 text-gray-600 text-sm">{tCommon("loading")}</span>
       </div>
     );
   }
 
   return (
     <div className="p-4 space-y-3">
-      {/* Compact Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-xl font-bold text-[#022172] dark:text-white">Student Custom Fields</h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400">Define custom fields for student forms</p>
+          <h1 className="text-xl font-bold text-[#022172] dark:text-white">{t("title")}</h1>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{t("subtitle")}</p>
         </div>
         <div className="flex gap-2">
           <Button 
@@ -441,17 +441,16 @@ export default function CustomFieldsPage() {
             variant="outline" 
             size="sm"
           >
-            <FolderPlus className="mr-1 h-3 w-3" />
-            Add Category
+            <FolderPlus className="mr-1 h-3 w-3 rtl:ml-1 rtl:mr-0" />
+            {t("add_category")}
           </Button>
           <Button onClick={handleSaveTemplate} disabled={isSaving} size="sm" className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white">
-            <Save className="mr-1 h-3 w-3" />
-            {isSaving ? "Saving..." : "Save"}
+            <Save className="mr-1 h-3 w-3 rtl:ml-1 rtl:mr-0" />
+            {isSaving ? t("saving") : t("save")}
           </Button>
         </div>
       </div>
 
-      {/* Add Category Dialog */}
       {showAddCategory && (
         <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30">
           <CardContent className="p-3">
@@ -459,24 +458,22 @@ export default function CustomFieldsPage() {
               <Input
                 value={newCategoryName}
                 onChange={(e) => setNewCategoryName(e.target.value)}
-                placeholder="Enter category name..."
+                placeholder={t("category_name_placeholder")}
                 className="flex-1"
                 onKeyPress={(e) => e.key === 'Enter' && addNewCategory()}
               />
-              <Button onClick={addNewCategory} size="sm">Add</Button>
-              <Button onClick={() => { setShowAddCategory(false); setNewCategoryName(''); }} variant="outline" size="sm">Cancel</Button>
+              <Button onClick={addNewCategory} size="sm">{tCommon("add")}</Button>
+              <Button onClick={() => { setShowAddCategory(false); setNewCategoryName(''); }} variant="outline" size="sm">{tCommon("cancel")}</Button>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Compact Info */}
       <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md p-2 flex items-center gap-2">
         <Settings2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-        <span className="text-xs text-blue-800 dark:text-blue-300">Drag categories to reorder. Default fields shown in gray. Set custom field <strong>Sort Order</strong> to position between default fields.</span>
+        <span className="text-xs text-blue-800 dark:text-blue-300">{t("info_reorder")}</span>
       </div>
 
-      {/* Categories - Draggable */}
       <DndContext 
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -512,7 +509,6 @@ export default function CustomFieldsPage() {
   );
 }
 
-// Sortable Category Component
 function SortableCategoryItem({ 
   category, 
   expanded, 
@@ -542,6 +538,8 @@ function SortableCategoryItem({
   onDefaultFieldDragEnd: (event: DragEndEvent) => void;
   onSaveDefaultFieldOrder: () => void;
 }) {
+  const t = useTranslations("school.students.custom_fields");
+  
   const {
     attributes,
     listeners,
@@ -551,7 +549,6 @@ function SortableCategoryItem({
     isDragging,
   } = useSortable({ id: category.id });
 
-  // Sensors for default field drag-and-drop
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -567,7 +564,6 @@ function SortableCategoryItem({
 
   return (
     <Card ref={setNodeRef} style={style} className="border-gray-200 dark:border-gray-700">
-      {/* Category Header */}
       <div className="flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-gray-700">
         <div className="flex items-center gap-2 flex-1 cursor-pointer" onClick={() => onToggle(category.id)}>
           <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
@@ -576,10 +572,10 @@ function SortableCategoryItem({
           {expanded ? (
             <ChevronDown className="h-4 w-4 text-gray-500" />
           ) : (
-            <ChevronRight className="h-4 w-4 text-gray-500" />
+            <ChevronRight className="h-4 w-4 text-gray-500 rtl:rotate-180" />
           )}
           <span className="font-medium text-sm text-[#022172] dark:text-gray-100">{category.name}</span>
-          <span className="text-xs text-gray-400 dark:text-gray-500">({category.fields.length} custom)</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500">{t("custom_count", { count: category.fields.length })}</span>
         </div>
         <div className="flex gap-1">
           <Button
@@ -588,8 +584,8 @@ function SortableCategoryItem({
             className="h-6 px-2 text-xs"
             onClick={(e) => { e.stopPropagation(); onAddField(category.id); }}
           >
-            <Plus className="h-3 w-3 mr-1" />
-            Add Field
+            <Plus className="h-3 w-3 mr-1 rtl:ml-1 rtl:mr-0" />
+            {t("add_field")}
           </Button>
           {!isStandard && (
             <Button
@@ -604,21 +600,19 @@ function SortableCategoryItem({
         </div>
       </div>
 
-      {/* Expanded Content */}
       {expanded && (
         <CardContent className="pt-0 pb-2 px-2">
-          {/* Default Fields - Now Draggable */}
           {defaultFields.length > 0 && (
             <div className="mb-2 p-2 bg-blue-50 dark:bg-blue-900/30 rounded border border-blue-200 dark:border-blue-800">
               <div className="flex items-center justify-between mb-2">
-                <div className="text-xs font-semibold text-blue-700 dark:text-blue-300">Default Fields - Drag to Reorder:</div>
+                <div className="text-xs font-semibold text-blue-700 dark:text-blue-300">{t("default_fields")}:</div>
                 <Button
                   size="sm"
                   onClick={onSaveDefaultFieldOrder}
                   className="h-6 px-2 text-xs bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white hover:opacity-90"
                 >
-                  <Save className="h-3 w-3 mr-1" />
-                  Save Order
+                  <Save className="h-3 w-3 mr-1 rtl:ml-1 rtl:mr-0" />
+                  {t("btn_save_order")}
                 </Button>
               </div>
               <DndContext
@@ -640,28 +634,25 @@ function SortableCategoryItem({
             </div>
           )}
 
-          {/* Custom Fields */}
           {category.fields.length > 0 ? (
             <div className="border dark:border-gray-700 rounded-md overflow-hidden">
-              {/* Header Row */}
               <div className="grid grid-cols-12 gap-1 bg-gray-100 dark:bg-gray-700 px-2 py-1 text-xs font-semibold text-gray-600 dark:text-gray-200">
-                <div className="col-span-3">Label</div>
-                <div className="col-span-2">Type</div>
-                <div className="col-span-1">Order</div>
-                <div className="col-span-2">Scope</div>
-                <div className="col-span-2">Options</div>
-                <div className="col-span-1">Req</div>
+                <div className="col-span-3">{t("th_label")}</div>
+                <div className="col-span-2">{t("th_type")}</div>
+                <div className="col-span-1">{t("th_order")}</div>
+                <div className="col-span-2">{t("th_scope")}</div>
+                <div className="col-span-2">{t("th_options")}</div>
+                <div className="col-span-1">{t("th_req")}</div>
                 <div className="col-span-1"></div>
               </div>
 
-              {/* Field Rows */}
               {category.fields.map((field) => (
                 <div key={field.id} className="grid grid-cols-12 gap-1 px-2 py-1 border-t dark:border-gray-700 items-center text-xs">
                   <div className="col-span-3">
                     <Input
                       value={field.label}
                       onChange={(e) => onUpdateField(category.id, field.id, { label: e.target.value })}
-                      placeholder="Field label..."
+                      placeholder={t("field_label_placeholder")}
                       className="h-7 text-xs"
                     />
                   </div>
@@ -669,14 +660,14 @@ function SortableCategoryItem({
                     <Select value={field.type} onValueChange={(v) => onUpdateField(category.id, field.id, { type: v as CustomFieldType })}>
                       <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="text">Text</SelectItem>
-                        <SelectItem value="long-text">Long Text</SelectItem>
-                        <SelectItem value="number">Number</SelectItem>
-                        <SelectItem value="date">Date</SelectItem>
-                        <SelectItem value="checkbox">Checkbox</SelectItem>
-                        <SelectItem value="select">Select</SelectItem>
-                        <SelectItem value="multi-select">Multi-Select</SelectItem>
-                        <SelectItem value="file">File</SelectItem>
+                        <SelectItem value="text">{t("type_text", { defaultValue: "Text" })}</SelectItem>
+                        <SelectItem value="long-text">{t("type_long_text", { defaultValue: "Long Text" })}</SelectItem>
+                        <SelectItem value="number">{t("type_number", { defaultValue: "Number" })}</SelectItem>
+                        <SelectItem value="date">{t("type_date", { defaultValue: "Date" })}</SelectItem>
+                        <SelectItem value="checkbox">{t("type_checkbox", { defaultValue: "Checkbox" })}</SelectItem>
+                        <SelectItem value="select">{t("type_select", { defaultValue: "Select" })}</SelectItem>
+                        <SelectItem value="multi-select">{t("type_multi_select", { defaultValue: "Multi-Select" })}</SelectItem>
+                        <SelectItem value="file">{t("type_file", { defaultValue: "File" })}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -701,11 +692,11 @@ function SortableCategoryItem({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="this_campus">This Only</SelectItem>
+                        <SelectItem value="this_campus">{t("scope_this")}</SelectItem>
                         {branchSchools.length > 0 && (
-                          <SelectItem value="selected_campuses">Selected</SelectItem>
+                          <SelectItem value="selected_campuses">{t("scope_selected")}</SelectItem>
                         )}
-                        <SelectItem value="all_campuses">All</SelectItem>
+                        <SelectItem value="all_campuses">{t("scope_all")}</SelectItem>
                       </SelectContent>
                     </Select>
                     {field.campus_scope === 'selected_campuses' && branchSchools.length > 0 && (
@@ -713,12 +704,12 @@ function SortableCategoryItem({
                         <PopoverTrigger asChild>
                           <Button variant="outline" size="sm" className="h-7 px-1">
                             <Building2 className="h-3 w-3" />
-                            <span className="text-[10px] ml-1">{field.applicable_school_ids?.length || 0}</span>
+                            <span className="text-[10px] ml-1 rtl:mr-1 rtl:ml-0">{field.applicable_school_ids?.length || 0}</span>
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-56 p-2" align="start">
                           <div className="space-y-2">
-                            <span className="text-xs font-semibold dark:text-gray-200">Select Campuses</span>
+                            <span className="text-xs font-semibold dark:text-gray-200">{t("select_campuses")}</span>
                             <div className="max-h-40 overflow-y-auto space-y-1">
                               {branchSchools.map(school => (
                                 <label key={school.id} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded dark:text-gray-200">
@@ -740,7 +731,7 @@ function SortableCategoryItem({
                       <Input
                         defaultValue={field.options?.join(", ") || ""}
                         onBlur={(e) => onUpdateField(category.id, field.id, { options: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })}
-                        placeholder="Male, Female, Other"
+                        placeholder={t("field_options_placeholder")}
                         className="h-7 text-xs"
                       />
                     ) : (
@@ -768,7 +759,7 @@ function SortableCategoryItem({
             </div>
           ) : (
             <div className="text-center py-3 text-xs text-gray-400 dark:text-gray-500 border dark:border-gray-700 border-dashed rounded">
-              No custom fields yet. Click "Add Field" to create one.
+              {t("no_custom_fields")}
             </div>
           )}
         </CardContent>
@@ -777,8 +768,9 @@ function SortableCategoryItem({
   );
 }
 
-// Sortable Default Field Component
 function SortableDefaultField({ field, index }: { field: { label: string; sort_order: number }; index: number }) {
+  const t = useTranslations("school.students.custom_fields.standard_fields");
+  
   const {
     attributes,
     listeners,
@@ -794,20 +786,21 @@ function SortableDefaultField({ field, index }: { field: { label: string; sort_o
     opacity: isDragging ? 0.8 : 1,
   };
 
+  const translatedLabel = t.has(STANDARD_FIELD_KEYS[field.label]) 
+    ? t(STANDARD_FIELD_KEYS[field.label]) 
+    : field.label;
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 px-2 py-1.5 bg-white dark:bg-gray-800 rounded border border-blue-200 dark:border-blue-800 hover:border-blue-300 dark:hover:border-blue-600 text-xs"
+      className="flex items-center gap-2 p-1 bg-white dark:bg-gray-800 rounded border border-gray-100 dark:border-gray-700 shadow-sm text-xs"
     >
-      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing flex-shrink-0">
-        <GripVertical className="h-4 w-4 text-gray-400" />
+      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
+        <GripVertical className="h-3 w-3 text-gray-400" />
       </div>
-      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold flex items-center justify-center">
-        {index + 1}
-      </span>
-      <span className="flex-1 font-medium text-gray-700 dark:text-gray-200">{field.label}</span>
-      <span className="text-gray-500 dark:text-gray-400 flex-shrink-0">Order: {field.sort_order}</span>
+      <span className="flex-1 dark:text-gray-300">{translatedLabel}</span>
+      <Badge variant="secondary" className="text-[10px] h-4">#{field.sort_order}</Badge>
     </div>
   );
 }

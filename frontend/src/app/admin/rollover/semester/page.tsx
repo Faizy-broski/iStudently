@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { useTranslations } from 'next-intl';
 import { useCampus } from '@/context/CampusContext';
 import { getAcademicYears, type AcademicYear } from '@/lib/api/academics';
 import {
@@ -56,9 +57,10 @@ const STATUS_ACTION: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------
-
 export default function SemesterRolloverPage() {
   const { user } = useAuth();
+  const t = useTranslations("school.semester_rollover");
+  const tCommon = useTranslations("common");
   const campusCtx = useCampus();
   const campusId = campusCtx?.selectedCampus?.id;
 
@@ -83,10 +85,11 @@ export default function SemesterRolloverPage() {
     if (selectedSemester) {
       setSemesterEndDate(selectedSemester.end_date);
     }
-  }, [selectedSemesterId]);
+  }, [selectedSemesterId, selectedSemester]);
 
   useEffect(() => {
     if (user) fetchYears();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   async function fetchYears() {
@@ -103,7 +106,7 @@ export default function SemesterRolloverPage() {
         await loadPreview(current.id);
       }
     } catch {
-      toast.error('Failed to load academic years');
+      toast.error(tCommon("err_load_years") || 'Failed to load academic years');
     } finally {
       setLoading(false);
     }
@@ -123,7 +126,7 @@ export default function SemesterRolloverPage() {
         setSelectedSemesterId(data.semesters[0].id);
       }
     } catch {
-      toast.error('Failed to load semester rollover preview');
+      toast.error(t("rollover_failed"));
     } finally {
       setPreviewing(false);
     }
@@ -142,13 +145,13 @@ export default function SemesterRolloverPage() {
       });
       setResult(res);
       if (res.success) {
-        toast.success('Semester rollover completed successfully!');
+        toast.success(t("rollover_complete"));
         await loadPreview(selectedYearId);
       } else {
-        toast.error('Semester rollover failed');
+        toast.error(t("rollover_failed"));
       }
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to execute semester rollover');
+      toast.error(e?.message || t("rollover_failed"));
     } finally {
       setExecuting(false);
     }
@@ -179,15 +182,15 @@ export default function SemesterRolloverPage() {
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Semester Rollover</h1>
+            <h1 className="text-3xl font-bold">{t("title")}</h1>
             <p className="text-muted-foreground mt-1">
-              Promote, retain, or drop students at the end of Semester 1 — within the same academic year.
+              {t("subtitle")}
             </p>
           </div>
           <Link href="/admin/rollover">
             <Button variant="outline" size="sm">
               <ArrowRight className="h-4 w-4 mr-2 rotate-180" />
-              Year-End Rollover
+              {t("btn_year_end_rollover")}
             </Button>
           </Link>
         </div>
@@ -195,19 +198,18 @@ export default function SemesterRolloverPage() {
         {/* How it works */}
         <Alert>
           <Info className="h-4 w-4" />
-          <AlertTitle>How semester rollover works</AlertTitle>
+          <AlertTitle>{t("how_it_works_title")}</AlertTitle>
           <AlertDescription className="text-sm space-y-1 mt-1">
             <p>
-              Student outcomes are determined by their <strong>Rolling / Retention Option</strong>{' '}
-              (rollover status set on each student&apos;s enrollment):
+              {t("how_it_works_desc")}
             </p>
             <ul className="list-disc list-inside space-y-0.5 text-muted-foreground mt-1">
-              <li><strong>Pending / Promoted</strong> — moved to next grade (or graduated if no next grade)</li>
-              <li><strong>Retained</strong> — stays in same grade, no change</li>
-              <li><strong>Dropped / Graduated / Transferred</strong> — enrollment closed at the semester end date</li>
+              <li>{t("item_pending_promoted")}</li>
+              <li>{t("item_retained")}</li>
+              <li>{t("item_dropped")}</li>
             </ul>
             <p className="mt-1 text-xs text-muted-foreground">
-              Set each student&apos;s status in <strong>Students → Enrollment</strong> before running this rollover.
+              {t("how_it_works_footer")}
             </p>
           </AlertDescription>
         </Alert>
@@ -217,14 +219,14 @@ export default function SemesterRolloverPage() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Calendar className="h-4 w-4 text-primary" />
-              Rollover Configuration
+              {t("config_title")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* Academic year */}
               <div className="space-y-1.5">
-                <Label>Academic Year</Label>
+                <Label>{t("label_academic_year")}</Label>
                 <Select
                   value={selectedYearId}
                   onValueChange={(id) => {
@@ -234,12 +236,12 @@ export default function SemesterRolloverPage() {
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select year" />
+                    <SelectValue placeholder={tCommon("placeholder_select_year") || "Select year"} />
                   </SelectTrigger>
                   <SelectContent>
                     {allYears.map((y) => (
                       <SelectItem key={y.id} value={y.id}>
-                        {y.name}{y.is_current ? ' (current)' : ''}
+                        {y.name}{y.is_current ? ` (${tCommon("current") || 'current'})` : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -248,7 +250,7 @@ export default function SemesterRolloverPage() {
 
               {/* Semester selector */}
               <div className="space-y-1.5">
-                <Label>Semester</Label>
+                <Label>{t("label_semester")}</Label>
                 <Select
                   value={selectedSemesterId}
                   disabled={!preview || preview.semesters.length === 0}
@@ -258,10 +260,10 @@ export default function SemesterRolloverPage() {
                     <SelectValue
                       placeholder={
                         previewing
-                          ? 'Loading...'
+                          ? t("placeholder_loading")
                           : preview?.semesters.length === 0
-                          ? 'No semesters found'
-                          : 'Select semester'
+                          ? t("placeholder_no_semesters")
+                          : t("placeholder_select_semester")
                       }
                     />
                   </SelectTrigger>
@@ -275,21 +277,21 @@ export default function SemesterRolloverPage() {
                 </Select>
                 {preview?.semesters.length === 0 && (
                   <p className="text-xs text-muted-foreground">
-                    No SEM-type marking periods found. You can still set a date manually.
+                    {t("no_marking_periods_desc")}
                   </p>
                 )}
               </div>
 
               {/* End date */}
               <div className="space-y-1.5">
-                <Label>Semester End Date</Label>
+                <Label>{t("label_end_date")}</Label>
                 <Input
                   type="date"
                   value={semesterEndDate}
                   onChange={(e) => setSemesterEndDate(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Dropped / graduated students will have their enrollment closed on this date.
+                  {t("end_date_desc")}
                 </p>
               </div>
             </div>
@@ -300,7 +302,7 @@ export default function SemesterRolloverPage() {
         {previewing && (
           <div className="flex items-center gap-2 text-muted-foreground text-sm py-4">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading preview…
+            {t("loading_preview")}
           </div>
         )}
 
@@ -309,19 +311,19 @@ export default function SemesterRolloverPage() {
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Users className="h-4 w-4 text-primary" />
-                Student Preview
+                {t("preview_title")}
                 <span className="ml-auto text-sm font-normal text-muted-foreground">
-                  {totalActive} active student{totalActive !== 1 ? 's' : ''}
+                  {t("active_students", { count: totalActive })}
                 </span>
               </CardTitle>
               <CardDescription>
-                What will happen to each group when rollover executes.
+                {t("preview_desc")}
               </CardDescription>
             </CardHeader>
             <CardContent>
               {totalActive === 0 ? (
                 <p className="text-muted-foreground text-sm">
-                  No active enrollments found for this year{campusId ? ' / campus' : ''}.
+                  {t("no_enrollments", { campusId: !!campusId })}
                 </p>
               ) : (
                 <div className="divide-y">
@@ -341,9 +343,9 @@ export default function SemesterRolloverPage() {
                       <div key={status} className="flex items-center justify-between py-3 text-sm">
                         <div className="flex items-center gap-3">
                           <Badge className={STATUS_COLORS[status]} variant="outline">
-                            {status}
+                            {tCommon(status) || status}
                           </Badge>
-                          <span className="text-muted-foreground">{STATUS_ACTION[status]}</span>
+                          <span className="text-muted-foreground">{t(`action_${status}`)}</span>
                         </div>
                         <span className="font-semibold tabular-nums">{count}</span>
                       </div>
@@ -361,7 +363,7 @@ export default function SemesterRolloverPage() {
             <CardHeader>
               <CardTitle className="text-green-900 flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5" />
-                Semester Rollover Complete
+                {t("rollover_complete")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -370,13 +372,13 @@ export default function SemesterRolloverPage() {
                   (key) => (
                     <div key={key} className="text-center">
                       <p className="text-2xl font-bold text-green-900">{result[key]}</p>
-                      <p className="text-green-700 capitalize">{key}</p>
+                      <p className="text-green-700 capitalize">{tCommon(key) || key}</p>
                     </div>
                   )
                 )}
               </div>
               <p className="text-xs text-green-700 mt-4 text-center">
-                Total processed: <strong>{result.total}</strong>
+                {t("total_processed", { count: result.total })}
               </p>
             </CardContent>
           </Card>
@@ -390,7 +392,7 @@ export default function SemesterRolloverPage() {
             disabled={!selectedYearId || previewing || executing}
           >
             <RotateCcw className="h-4 w-4 mr-2" />
-            Refresh Preview
+            {t("btn_refresh_preview")}
           </Button>
           <Button
             onClick={() => setShowConfirm(true)}
@@ -399,12 +401,12 @@ export default function SemesterRolloverPage() {
             {executing ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Running…
+                {t("btn_running")}
               </>
             ) : (
               <>
                 <TrendingUp className="h-4 w-4 mr-2" />
-                Execute Semester Rollover
+                {t("btn_execute")}
               </>
             )}
           </Button>
@@ -415,7 +417,7 @@ export default function SemesterRolloverPage() {
           <DialogContent className="max-w-md p-0 gap-0 overflow-hidden">
             <div className="border-b bg-muted/50 px-6 py-3">
               <DialogTitle className="text-center uppercase tracking-widest text-sm font-semibold">
-                Confirm Semester Rollover
+                {t("confirm_title")}
               </DialogTitle>
             </div>
 
@@ -425,10 +427,10 @@ export default function SemesterRolloverPage() {
                   ?
                 </div>
                 <p className="text-center font-semibold text-sm">
-                  Are you sure you want to roll students to Semester 2?
+                  {t("confirm_question")}
                 </p>
                 <p className="text-center text-xs text-muted-foreground">
-                  Semester end date: <strong>{semesterEndDate}</strong>
+                  {t("semester_end_date_confirm", { date: semesterEndDate })}
                   {selectedSemester && (
                     <> ({selectedSemester.title})</>
                   )}
@@ -437,13 +439,13 @@ export default function SemesterRolloverPage() {
 
               <div className="border-l-4 border-yellow-500 bg-yellow-50 px-4 py-3 text-sm">
                 <p className="font-semibold flex items-center gap-1">
-                  <AlertTriangle className="h-4 w-4" /> Warning
+                  <AlertTriangle className="h-4 w-4" /> {t("warning_title")}
                 </p>
                 <ul className="list-disc list-inside text-xs text-muted-foreground mt-1 space-y-0.5">
-                  <li>Promoted students will have their grade level updated immediately.</li>
-                  <li>Dropped/Graduated/Transferred students will have enrollment closed.</li>
-                  <li>Make sure to save report cards for Semester 1 before proceeding.</li>
-                  <li>This action cannot be automatically undone.</li>
+                  <li>{t("warning_item_1")}</li>
+                  <li>{t("warning_item_2")}</li>
+                  <li>{t("warning_item_3")}</li>
+                  <li>{t("warning_item_4")}</li>
                 </ul>
               </div>
             </div>
@@ -454,13 +456,13 @@ export default function SemesterRolloverPage() {
                 variant="outline"
                 className="min-w-20 font-semibold"
               >
-                OK
+                {tCommon("btn_ok") || "OK"}
               </Button>
               <Button
                 onClick={() => setShowConfirm(false)}
                 className="min-w-20 font-semibold bg-teal-700 hover:bg-teal-800 text-white"
               >
-                CANCEL
+                {tCommon("btn_cancel") || "CANCEL"}
               </Button>
             </div>
           </DialogContent>

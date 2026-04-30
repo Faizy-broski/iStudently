@@ -56,6 +56,7 @@ export class SchoolSettingsController {
           absent_on_first_absence: false,
           student_list_append_config: null,
           assignment_max_points: null,
+          hijri_offset: 0,
         },
       })
     } catch (error: any) {
@@ -81,6 +82,8 @@ export class SchoolSettingsController {
         diary_reminder_days,
         auto_remove_inactive,
         default_payment_method,
+        default_currency,
+        hijri_offset,
         auto_attendance_enabled,
         auto_attendance_hour,
         auto_attendance_days,
@@ -138,6 +141,8 @@ export class SchoolSettingsController {
           auto_remove_inactive,
         },
         default_payment_method,
+        default_currency,
+        hijri_offset: hijri_offset != null ? Number(hijri_offset) : undefined,
         auto_attendance_enabled,
         auto_attendance_hour,
         auto_attendance_days,

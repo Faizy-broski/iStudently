@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations, useLocale } from "next-intl"
 import { useState, useCallback } from "react"
 import useSWR from "swr"
 import { useAcademic } from "@/context/AcademicContext"
@@ -42,10 +43,7 @@ interface StudentScheduleDetailProps {
   onBack: () => void
 }
 
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-]
+
 
 function getDaysInMonth(month: number, year: number) {
   return new Date(year, month + 1, 0).getDate()
@@ -54,6 +52,7 @@ function getDaysInMonth(month: number, year: number) {
 export function StudentScheduleDetail({ student, onBack }: StudentScheduleDetailProps) {
   const { selectedAcademicYear } = useAcademic()
   const campusContext = useCampus()
+  const locale = useLocale()
 
   const today = new Date()
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth())
@@ -65,6 +64,9 @@ export function StudentScheduleDetail({ student, onBack }: StudentScheduleDetail
   const [horizontalFormat, setHorizontalFormat] = useState(false)
   const [showAddCourse, setShowAddCourse] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+
+  const t = useTranslations("school.scheduling.student_schedule")
+  const tCommon = useTranslations("common")
 
   const academicYearId = selectedAcademicYear
 
@@ -136,18 +138,18 @@ export function StudentScheduleDetail({ student, onBack }: StudentScheduleDetail
   const handleDrop = async (schedule: StudentSchedule) => {
     try {
       await dropStudent(student.id, schedule.course_period_id, selectedDate)
-      toast.success("Student dropped from course")
+      toast.success(t("msg_student_dropped"))
       mutateSchedule()
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to drop student")
+      toast.error(err instanceof Error ? err.message : tCommon("error"))
     }
   }
 
   const handleEnrollSuccess = useCallback(() => {
     mutateSchedule()
     setShowAddCourse(false)
-    toast.success("Student enrolled successfully")
-  }, [mutateSchedule])
+    toast.success(t("msg_enrolled_success"))
+  }, [mutateSchedule, t])
 
   if (showAddCourse && academicYearId) {
     return (
@@ -166,15 +168,15 @@ export function StudentScheduleDetail({ student, onBack }: StudentScheduleDetail
       {/* Header */}
       <div className="flex items-center gap-2 border-b pb-4">
         <button onClick={onBack} className="text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-5 w-5 rtl:rotate-180" />
         </button>
         <CalendarDays className="h-6 w-6 text-amber-500" />
-        <h1 className="text-2xl font-bold">Student Schedule</h1>
-        <span className="text-lg text-muted-foreground">— {student.name}</span>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
+        <span className="text-lg text-muted-foreground">{t("viewing_for", { name: student.name })}</span>
       </div>
 
       {/* Date picker row */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2">
           <Select
             value={String(selectedMonth)}
@@ -188,9 +190,9 @@ export function StudentScheduleDetail({ student, onBack }: StudentScheduleDetail
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {MONTHS.map((m, i) => (
+              {Array.from({ length: 12 }).map((_, i) => (
                 <SelectItem key={i} value={String(i)}>
-                  {m}
+                  {tCommon(`months.${i}`)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -228,22 +230,22 @@ export function StudentScheduleDetail({ student, onBack }: StudentScheduleDetail
             </SelectContent>
           </Select>
 
-          <Button variant="outline" size="icon" title="Pick date">
+          <Button variant="outline" size="icon" title={t("tip_pick_date")}>
             <CalendarDays className="h-4 w-4" />
           </Button>
         </div>
 
         <Button
           onClick={() => {
-            toast.info("Schedule saved")
+            toast.info(t("msg_schedule_saved"))
           }}
         >
-          SAVE
+          {t("btn_save")}
         </Button>
       </div>
 
       {/* Options row */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2">
           <Checkbox
             id="includeInactive"
@@ -251,7 +253,7 @@ export function StudentScheduleDetail({ student, onBack }: StudentScheduleDetail
             onCheckedChange={(v) => setIncludeInactive(!!v)}
           />
           <label htmlFor="includeInactive" className="text-sm cursor-pointer">
-            Include Inactive Courses
+            {t("include_inactive")}
           </label>
         </div>
         <div className="flex items-center gap-2">
@@ -261,7 +263,7 @@ export function StudentScheduleDetail({ student, onBack }: StudentScheduleDetail
             onCheckedChange={(v) => setShowAvailableSeats(!!v)}
           />
           <label htmlFor="showSeats" className="text-sm cursor-pointer">
-            Show Available Seats
+            {t("show_seats")}
           </label>
         </div>
       </div>
@@ -270,7 +272,7 @@ export function StudentScheduleDetail({ student, onBack }: StudentScheduleDetail
       <div className="space-y-1">
         <button className="text-primary hover:underline text-sm flex items-center gap-1">
           <Printer className="h-3 w-3" />
-          Print Schedule
+          {t("btn_print")}
         </button>
         <div className="flex items-center gap-4 text-sm">
           <label className="flex items-center gap-1.5 cursor-pointer">
@@ -281,7 +283,7 @@ export function StudentScheduleDetail({ student, onBack }: StudentScheduleDetail
               onChange={() => setViewFormat("table")}
               className="accent-primary"
             />
-            Table
+            {t("format_table")}
           </label>
           <label className="flex items-center gap-1.5 cursor-pointer">
             <input
@@ -291,14 +293,14 @@ export function StudentScheduleDetail({ student, onBack }: StudentScheduleDetail
               onChange={() => setViewFormat("list")}
               className="accent-primary"
             />
-            List
+            {t("format_list")}
           </label>
           <label className="flex items-center gap-1.5 cursor-pointer">
             <Checkbox
               checked={horizontalFormat}
               onCheckedChange={(v) => setHorizontalFormat(!!v)}
             />
-            Horizontal Format
+            {t("format_horizontal")}
           </label>
         </div>
       </div>
@@ -307,20 +309,20 @@ export function StudentScheduleDetail({ student, onBack }: StudentScheduleDetail
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span className="font-semibold text-foreground">
-            {filteredSchedules.length} course{filteredSchedules.length !== 1 ? "s" : ""} found.
+            {t("found_courses", { count: filteredSchedules.length })}
           </span>
-          <button className="text-muted-foreground hover:text-foreground" title="Download">
+          <button className="text-muted-foreground hover:text-foreground" title={tCommon("download")}>
             <Download className="h-4 w-4" />
           </button>
         </div>
         <div className="relative w-64">
           <Input
-            placeholder="Search"
+            placeholder={tCommon("search")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pr-8"
+            className="pr-8 rtl:pl-8 rtl:pr-3"
           />
-          <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute right-2 rtl:left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         </div>
       </div>
 
@@ -336,26 +338,26 @@ export function StudentScheduleDetail({ student, onBack }: StudentScheduleDetail
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-muted/50 border-b">
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Course
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {t("th_course")}
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Period Days - Short Name - Teacher
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {t("th_period_info")}
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Room
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {t("th_room")}
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Term
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {t("th_term")}
                 </th>
                 <th className="text-center px-4 py-3 font-semibold text-primary uppercase tracking-wider w-10">
                   <Lock className="h-4 w-4 inline" />
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Enrolled
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {t("th_enrolled")}
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Dropped
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {t("th_dropped")}
                 </th>
               </tr>
             </thead>
@@ -363,7 +365,7 @@ export function StudentScheduleDetail({ student, onBack }: StudentScheduleDetail
               {filteredSchedules.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                    No courses found for this student.
+                    {t("no_courses_found")}
                   </td>
                 </tr>
               ) : (
@@ -379,7 +381,7 @@ export function StudentScheduleDetail({ student, onBack }: StudentScheduleDetail
                   const periodInfo = `${periodDays} - ${shortName} - ${teacherName}`
                   const room = cp?.room || "—"
                   const enrolledDate = schedule.start_date
-                    ? new Date(schedule.start_date).toLocaleDateString("en-US", {
+                    ? new Date(schedule.start_date).toLocaleDateString(locale, {
                         month: "long",
                         day: "numeric",
                         year: "numeric",
@@ -397,14 +399,14 @@ export function StudentScheduleDetail({ student, onBack }: StudentScheduleDetail
                         {course?.title || "Unknown Course"}
                       </td>
                       <td className="px-4 py-3">
-                        <button className="text-primary hover:underline">
+                        <button className="text-primary hover:underline text-left rtl:text-right">
                           {periodInfo}
                         </button>
                       </td>
                       <td className="px-4 py-3">{room}</td>
                       <td className="px-4 py-3">
                         <span className="text-primary">
-                          {schedule.marking_period_id ? "Marking Period" : "Full Year"}
+                          {schedule.marking_period_id ? t("term_marking_period") : t("term_full_year")}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
@@ -412,10 +414,10 @@ export function StudentScheduleDetail({ student, onBack }: StudentScheduleDetail
                       </td>
                       <td className="px-4 py-3">{enrolledDate}</td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 flex-wrap">
                           {schedule.end_date ? (
                             <span className="text-destructive">
-                              {new Date(schedule.end_date).toLocaleDateString("en-US", {
+                              {new Date(schedule.end_date).toLocaleDateString(locale, {
                                 month: "long",
                                 day: "numeric",
                                 year: "numeric",
@@ -425,19 +427,19 @@ export function StudentScheduleDetail({ student, onBack }: StudentScheduleDetail
                             <>
                               <Select>
                                 <SelectTrigger className="h-7 w-[80px] text-xs">
-                                  <SelectValue placeholder="N/A" />
+                                  <SelectValue placeholder={t("placeholder_na")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {MONTHS.map((m, i) => (
+                                  {Array.from({ length: 12 }).map((_, i) => (
                                     <SelectItem key={i} value={String(i)}>
-                                      {m}
+                                      {tCommon(`months.${i}`)}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
                               <Select>
                                 <SelectTrigger className="h-7 w-[60px] text-xs">
-                                  <SelectValue placeholder="N/A" />
+                                  <SelectValue placeholder={t("placeholder_na")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {Array.from({ length: 31 }, (_, i) => (
@@ -449,7 +451,7 @@ export function StudentScheduleDetail({ student, onBack }: StudentScheduleDetail
                               </Select>
                               <Select>
                                 <SelectTrigger className="h-7 w-[70px] text-xs">
-                                  <SelectValue placeholder="N/A" />
+                                  <SelectValue placeholder={t("placeholder_na")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {years.map((y) => (
@@ -463,7 +465,7 @@ export function StudentScheduleDetail({ student, onBack }: StudentScheduleDetail
                                 variant="outline"
                                 size="icon"
                                 className="h-7 w-7"
-                                title="Set drop date"
+                                title={t("tip_set_drop_date")}
                                 onClick={() => handleDrop(schedule)}
                               >
                                 <CalendarDays className="h-3 w-3" />
@@ -487,13 +489,13 @@ export function StudentScheduleDetail({ student, onBack }: StudentScheduleDetail
         onClick={() => setShowAddCourse(true)}
       >
         <Plus className="h-4 w-4" />
-        ADD A COURSE
+        {t("btn_add_course")}
       </button>
 
       {/* Save button */}
       <div className="flex justify-center">
-        <Button onClick={() => toast.info("Schedule saved")}>
-          SAVE
+        <Button onClick={() => toast.info(t("msg_schedule_saved"))}>
+          {t("btn_save")}
         </Button>
       </div>
 
@@ -502,24 +504,24 @@ export function StudentScheduleDetail({ student, onBack }: StudentScheduleDetail
         {requestsLoading ? (
           <Skeleton className="h-6 w-64" />
         ) : unfilledRequests.length === 0 ? (
-          <p className="text-sm font-semibold">No unfilled requests were found.</p>
+          <p className="text-sm font-semibold">{t("requests_none")}</p>
         ) : (
           <div className="space-y-2">
             <p className="text-sm font-semibold">
-              {unfilledRequests.length} unfilled request{unfilledRequests.length !== 1 ? "s" : ""} found.
+              {t("requests_found", { count: unfilledRequests.length })}
             </p>
             <div className="border rounded-md overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-muted/50 border-b">
-                    <th className="text-left px-4 py-2 font-semibold text-primary uppercase text-xs">
-                      Course
+                    <th className="text-left rtl:text-right px-4 py-2 font-semibold text-primary uppercase text-xs">
+                      {t("th_course")}
                     </th>
-                    <th className="text-left px-4 py-2 font-semibold text-primary uppercase text-xs">
-                      Status
+                    <th className="text-left rtl:text-right px-4 py-2 font-semibold text-primary uppercase text-xs">
+                      {t("th_status")}
                     </th>
-                    <th className="text-left px-4 py-2 font-semibold text-primary uppercase text-xs">
-                      Priority
+                    <th className="text-left rtl:text-right px-4 py-2 font-semibold text-primary uppercase text-xs">
+                      {t("th_priority")}
                     </th>
                   </tr>
                 </thead>
@@ -527,7 +529,7 @@ export function StudentScheduleDetail({ student, onBack }: StudentScheduleDetail
                   {unfilledRequests.map((req) => (
                     <tr key={req.id} className="border-b last:border-b-0">
                       <td className="px-4 py-2">{req.course?.title || "—"}</td>
-                      <td className="px-4 py-2 capitalize">{req.status}</td>
+                      <td className="px-4 py-2 capitalize">{tCommon(`status.${req.status}`)}</td>
                       <td className="px-4 py-2">{req.priority}</td>
                     </tr>
                   ))}

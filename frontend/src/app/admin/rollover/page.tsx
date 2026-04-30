@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/context/AuthContext';
+import { useTranslations } from 'next-intl';
 import {
   previewRollover,
   executeRollover,
@@ -47,24 +48,7 @@ type RolloverItemDef = {
   existingCount: (preview: RolloverPreview | null) => number;
 };
 
-const ROLLOVER_ITEMS: RolloverItemDef[] = [
-  { key: 'schools',                 label: 'Schools',                    defaultOn: false, existingCount: () => 0 },
-  { key: 'users',                   label: 'Users',                      defaultOn: false, existingCount: () => 0 },
-  { key: 'school_periods',          label: 'School Periods',             defaultOn: true,  existingCount: () => 0 },
-  { key: 'marking_periods',         label: 'Marking Periods',            defaultOn: true,  existingCount: (p) => p?.marking_periods?.next_year_existing ?? 0 },
-  { key: 'calendars',               label: 'Calendars',                  defaultOn: true,  existingCount: () => 0 },
-  { key: 'grading_scales',          label: 'Grading Scales',             defaultOn: true,  existingCount: () => 0 },
-  { key: 'attendance_codes',        label: 'Attendance Codes',           defaultOn: true,  existingCount: () => 0 },
-  { key: 'courses',                 label: 'Courses',        info: 'Teacher assignments will be copied along with courses', defaultOn: true,  existingCount: () => 0 },
-  { key: 'course_periods',          label: 'Course Periods', indent: true, defaultOn: true,  existingCount: () => 0 },
-  { key: 'enrollment_codes',        label: 'Student Enrollment Codes',   defaultOn: true,  existingCount: () => 0 },
-  { key: 'students',                label: 'Students',      info: 'Promotes, retains, or graduates students based on their status', defaultOn: true,  existingCount: () => 0 },
-  { key: 'report_card_comments',    label: 'Report Card Comments', info: 'Comment codes for report cards', defaultOn: true,  existingCount: () => 0 },
-  { key: 'school_configuration',    label: 'School Configuration',       defaultOn: true,  existingCount: () => 0 },
-  { key: 'eligibility_activities',  label: 'Eligibility Activities',     defaultOn: true,  existingCount: () => 0 },
-  { key: 'food_service',            label: 'Food Service Staff Accounts', defaultOn: true, existingCount: () => 0 },
-  { key: 'referral_form',           label: 'Referral Form',              defaultOn: true,  existingCount: () => 0 },
-];
+// Rollover item definitions are now localized inside the component
 
 // Keys that the backend actually processes today
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -79,14 +63,16 @@ function RolloverItemList({
   preview,
   options,
   setOptions,
+  items,
 }: {
   preview: RolloverPreview | null;
   options: LocalRolloverOptions;
   setOptions: React.Dispatch<React.SetStateAction<LocalRolloverOptions>>;
+  items: RolloverItemDef[];
 }) {
   return (
     <div className="border rounded text-sm">
-      {ROLLOVER_ITEMS.map((item, idx) => {
+      {items.map((item, idx) => {
         const hasExisting = item.existingCount(preview) > 0;
         const enabled = !!options[item.key];
         return (
@@ -131,6 +117,28 @@ function RolloverItemList({
 
 export default function RolloverPage() {
   const { user } = useAuth();
+  const t = useTranslations("school.rollover");
+  const tCommon = useTranslations("common");
+
+  const ROLLOVER_ITEMS: RolloverItemDef[] = [
+    { key: 'schools',                 label: t("rollover_items.schools"),                    defaultOn: false, existingCount: () => 0 },
+    { key: 'users',                   label: t("rollover_items.users"),                      defaultOn: false, existingCount: () => 0 },
+    { key: 'school_periods',          label: t("rollover_items.school_periods"),             defaultOn: true,  existingCount: () => 0 },
+    { key: 'marking_periods',         label: t("rollover_items.marking_periods"),            defaultOn: true,  existingCount: (p) => p?.marking_periods?.next_year_existing ?? 0 },
+    { key: 'calendars',               label: t("rollover_items.calendars"),                  defaultOn: true,  existingCount: () => 0 },
+    { key: 'grading_scales',          label: t("rollover_items.grading_scales"),             defaultOn: true,  existingCount: () => 0 },
+    { key: 'attendance_codes',        label: t("rollover_items.attendance_codes"),           defaultOn: true,  existingCount: () => 0 },
+    { key: 'courses',                 label: t("rollover_items.courses"),        info: t("rollover_items.courses_info"), defaultOn: true,  existingCount: () => 0 },
+    { key: 'course_periods',          label: t("rollover_items.course_periods"), indent: true, defaultOn: true,  existingCount: () => 0 },
+    { key: 'enrollment_codes',        label: t("rollover_items.enrollment_codes"),   defaultOn: true,  existingCount: () => 0 },
+    { key: 'students',                label: t("rollover_items.students"),      info: t("rollover_items.students_info"), defaultOn: true,  existingCount: () => 0 },
+    { key: 'report_card_comments',    label: t("rollover_items.report_card_comments"), info: t("rollover_items.report_card_comments_info"), defaultOn: true,  existingCount: () => 0 },
+    { key: 'school_configuration',    label: t("rollover_items.school_configuration"),       defaultOn: true,  existingCount: () => 0 },
+    { key: 'eligibility_activities',  label: t("rollover_items.eligibility_activities"),     defaultOn: true,  existingCount: () => 0 },
+    { key: 'food_service',            label: t("rollover_items.food_service"), defaultOn: true, existingCount: () => 0 },
+    { key: 'referral_form',           label: t("rollover_items.referral_form"),              defaultOn: true,  existingCount: () => 0 },
+  ];
+
   const [currentYear, setCurrentYear] = useState<AcademicYear | null>(null);
   const [nextYear, setNextYear] = useState<AcademicYear | null>(null);
   const [allYears, setAllYears] = useState<AcademicYear[]>([]);
@@ -180,7 +188,7 @@ export default function RolloverPage() {
         await loadPreviewAndCheck(current.id, next.id);
       }
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to load academic years';
+      const message = error instanceof Error ? error.message : tCommon("error");
       toast.error(message);
     } finally {
       setLoading(false);
@@ -200,7 +208,7 @@ export default function RolloverPage() {
       const previewData = await previewRollover(currentYearId, nextYearId, user.school_id);
       setPreview(previewData);
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to load preview';
+      const message = error instanceof Error ? error.message : tCommon("error");
       toast.error(message);
     } finally {
       setPreviewing(false);
@@ -231,14 +239,14 @@ export default function RolloverPage() {
       setResult(result);
 
       if (result.success) {
-        toast.success('Rollover completed successfully!');
+        toast.success(t("rollover_complete"));
         // Reload preview to show updated data
         await loadPreviewAndCheck(currentYear.id, nextYear.id);
       } else {
-        toast.error(result.error || 'Rollover failed');
+        toast.error(result.error || tCommon("error"));
       }
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Failed to execute rollover';
+      const message = error instanceof Error ? error.message : tCommon("error");
       toast.error(message);
     } finally {
       setExecuting(false);
@@ -260,8 +268,8 @@ export default function RolloverPage() {
       <div className="container mx-auto py-8">
         <div className="max-w-2xl mx-auto space-y-4">
           <div>
-            <h1 className="text-3xl font-bold">Year-End Rollover</h1>
-            <p className="text-muted-foreground mt-1">Promote students and roll data to the next academic year</p>
+            <h1 className="text-3xl font-bold">{t("title")}</h1>
+            <p className="text-muted-foreground mt-1">{t("subtitle")}</p>
           </div>
 
           {allYears.length >= 2 ? (
@@ -270,16 +278,16 @@ export default function RolloverPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Info className="h-5 w-5 text-blue-500" />
-                  Select Academic Years
+                  {t("select_academic_years")}
                 </CardTitle>
                 <CardDescription>
-                  No year is marked as current. Select the years to roll over between, or go to Academic Years settings to set a current year.
+                  {t("no_current_year_desc")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Current Year (roll from)</Label>
+                    <Label>{t("label_roll_from")}</Label>
                     <Select
                       value={currentYear?.id ?? ''}
                       onValueChange={(id) => {
@@ -290,7 +298,7 @@ export default function RolloverPage() {
                         setPrerequisiteCheck(null);
                       }}
                     >
-                      <SelectTrigger><SelectValue placeholder="Select year" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={tCommon("placeholder_select_year") || "Select year"} /></SelectTrigger>
                       <SelectContent>
                         {allYears.map(y => (
                           <SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>
@@ -299,7 +307,7 @@ export default function RolloverPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Next Year (roll to)</Label>
+                    <Label>{t("label_roll_to_select")}</Label>
                     <Select
                       value={nextYear?.id ?? ''}
                       disabled={!currentYear}
@@ -311,7 +319,7 @@ export default function RolloverPage() {
                         if (currentYear && yr) loadPreviewAndCheck(currentYear.id, yr.id);
                       }}
                     >
-                      <SelectTrigger><SelectValue placeholder="Select year" /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={tCommon("placeholder_select_year") || "Select year"} /></SelectTrigger>
                       <SelectContent>
                         {allYears
                           .filter(y => currentYear ? new Date(y.start_date) > new Date(currentYear.start_date) : true)
@@ -362,14 +370,14 @@ export default function RolloverPage() {
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Year-End Rollover</h1>
+            <h1 className="text-3xl font-bold">{t("title")}</h1>
             <p className="text-muted-foreground mt-1">
-              Promote students and roll data from {currentYear.name} to {nextYear.name}
+              {t("subtitle_transition", { current: currentYear.name, next: nextYear.name })}
             </p>
           </div>
           <Link href="/admin/rollover/semester">
             <Button variant="outline" size="sm">
-              Semester Rollover →
+              {t("btn_semester_rollover")}
             </Button>
           </Link>
         </div>
@@ -383,9 +391,9 @@ export default function RolloverPage() {
               <AlertTriangle className="h-4 w-4" />
             )}
             <AlertTitle>
-              {prerequisiteCheck.is_valid ? 'Ready to Rollover' : 'Prerequisites Not Met'}
+              {prerequisiteCheck.is_valid ? t("status_ready") : t("status_not_met")}
             </AlertTitle>
-            <AlertDescription>{prerequisiteCheck.error_message || 'All checks passed'}</AlertDescription>
+            <AlertDescription>{prerequisiteCheck.error_message || t("all_checks_passed")}</AlertDescription>
           </Alert>
         )}
 
@@ -394,7 +402,7 @@ export default function RolloverPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-center gap-8">
               <div className="text-center">
-                <div className="text-sm font-medium text-muted-foreground mb-2">Current Year</div>
+                <div className="text-sm font-medium text-muted-foreground mb-2">{t("label_current_year")}</div>
                 <div className="px-6 py-3 bg-blue-100 text-blue-700 rounded-lg font-semibold text-lg">
                   {currentYear.name}
                 </div>
@@ -407,7 +415,7 @@ export default function RolloverPage() {
               <ArrowRight className="h-8 w-8 text-muted-foreground" />
 
               <div className="text-center">
-                <div className="text-sm font-medium text-muted-foreground mb-2">Roll To</div>
+                <div className="text-sm font-medium text-muted-foreground mb-2">{t("label_roll_to")}</div>
                 <div className="px-6 py-3 bg-green-100 text-green-700 rounded-lg font-semibold text-lg">
                   {nextYear.name}
                 </div>
@@ -426,15 +434,15 @@ export default function RolloverPage() {
             {/* Students Card */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Students</CardTitle>
+                <CardTitle className="text-sm font-medium">{t("card_students")}</CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{preview.students.total_active}</div>
-                <p className="text-xs text-muted-foreground">Active students to process</p>
+                <p className="text-xs text-muted-foreground">{t("active_students_desc")}</p>
                 <div className="mt-4 space-y-1 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Graduating:</span>
+                    <span className="text-muted-foreground">{t("graduating")}:</span>
                     <span className="font-medium">{preview.students.graduating}</span>
                   </div>
                   {Object.entries(preview.students.by_status || {}).map(([status, count]) => (
@@ -450,18 +458,17 @@ export default function RolloverPage() {
             {/* Marking Periods Card */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Marking Periods</CardTitle>
+                <CardTitle className="text-sm font-medium">{t("card_marking_periods")}</CardTitle>
                 <Calendar className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{preview.marking_periods.current_year_total}</div>
-                <p className="text-xs text-muted-foreground">To be rolled over</p>
+                <p className="text-xs text-muted-foreground">{t("to_be_rolled_over")}</p>
                 {preview.marking_periods.next_year_existing > 0 && (
                   <Alert variant="destructive" className="mt-4">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription className="text-xs">
-                      {preview.marking_periods.next_year_existing} marking periods already exist in {nextYear.name}.
-                      They will be deleted and recreated.
+                      {t("marking_periods_exist_warning", { count: preview.marking_periods.next_year_existing, nextYear: nextYear.name })}
                     </AlertDescription>
                   </Alert>
                 )}
@@ -471,15 +478,15 @@ export default function RolloverPage() {
             {/* Teachers Card */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Teacher Assignments</CardTitle>
+                <CardTitle className="text-sm font-medium">{t("card_teacher_assignments")}</CardTitle>
                 <UserCheck className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{preview.teachers.current_assignments}</div>
-                <p className="text-xs text-muted-foreground">Teacher-subject assignments</p>
+                <p className="text-xs text-muted-foreground">{t("teacher_subject_assignments")}</p>
                 <p className="text-xs text-muted-foreground mt-2">
-                  <Info className="h-3 w-3 inline mr-1" />
-                  Section assignments will be cleared
+                  <span className="inline mr-1"><Info className="h-3 w-3" /></span>
+                  {t("section_assignments_cleared")}
                 </p>
               </CardContent>
             </Card>
@@ -489,14 +496,13 @@ export default function RolloverPage() {
         {/* Rollover Items Summary */}
         <Card>
           <CardHeader>
-            <CardTitle>Data to Roll Over</CardTitle>
+            <CardTitle>{t("card_data_to_roll")}</CardTitle>
             <CardDescription>
-              The following data will be copied from <strong>{currentYear.name}</strong> to <strong>{nextYear.name}</strong>.
-              Greyed items already have data in the next year and will be overwritten.
+              {t("data_to_roll_desc", { current: currentYear.name, next: nextYear.name })}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <RolloverItemList preview={preview} options={options} setOptions={setOptions} />
+            <RolloverItemList preview={preview} options={options} setOptions={setOptions} items={ROLLOVER_ITEMS} />
           </CardContent>
         </Card>
 
@@ -504,26 +510,26 @@ export default function RolloverPage() {
         {result && result.success && (
           <Card className="border-green-200 bg-green-50">
             <CardHeader>
-              <CardTitle className="text-green-900">Rollover Complete!</CardTitle>
+              <CardTitle className="text-green-900">{t("rollover_complete")}</CardTitle>
               <CardDescription className="text-green-700">
-                Completed in {result.duration_ms}ms
+                {t("completed_in", { ms: result.duration_ms })}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {result.students && (
                 <div>
-                  <h4 className="font-semibold text-green-900 mb-2">Students</h4>
+                  <h4 className="font-semibold text-green-900 mb-2">{t("card_students")}</h4>
                   <div className="grid grid-cols-3 gap-4 text-sm">
                     <div>
-                      <span className="text-green-700">Promoted:</span>
+                      <span className="text-green-700">{t("promoted")}:</span>
                       <span className="font-bold ml-2">{result.students.promoted}</span>
                     </div>
                     <div>
-                      <span className="text-green-700">Retained:</span>
+                      <span className="text-green-700">{t("retained")}:</span>
                       <span className="font-bold ml-2">{result.students.retained}</span>
                     </div>
                     <div>
-                      <span className="text-green-700">Graduated:</span>
+                      <span className="text-green-700">{t("graduated")}:</span>
                       <span className="font-bold ml-2">{result.students.graduated}</span>
                     </div>
                   </div>
@@ -532,18 +538,18 @@ export default function RolloverPage() {
 
               {result.marking_periods && (
                 <div>
-                  <h4 className="font-semibold text-green-900 mb-2">Marking Periods</h4>
+                  <h4 className="font-semibold text-green-900 mb-2">{t("card_marking_periods")}</h4>
                   <div className="text-sm text-green-700">
-                    {result.marking_periods.total} periods created
+                    {t("periods_created", { count: result.marking_periods.total })}
                   </div>
                 </div>
               )}
 
               {result.teachers && (
                 <div>
-                  <h4 className="font-semibold text-green-900 mb-2">Teachers</h4>
+                  <h4 className="font-semibold text-green-900 mb-2">{t("card_teacher_assignments")}</h4>
                   <div className="text-sm text-green-700">
-                    {result.teachers.assignments} assignments rolled
+                    {t("assignments_rolled", { count: result.teachers.assignments })}
                   </div>
                 </div>
               )}
@@ -554,7 +560,7 @@ export default function RolloverPage() {
         {/* Actions */}
         <div className="flex justify-end gap-4">
           <Button variant="outline" onClick={() => window.location.reload()} disabled={executing}>
-            Refresh Preview
+            {t("btn_refresh_preview")}
           </Button>
           <Button
             onClick={() => setShowConfirmDialog(true)}
@@ -563,12 +569,12 @@ export default function RolloverPage() {
             {executing ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Executing Rollover...
+                {t("btn_executing")}
               </>
             ) : (
               <>
                 <TrendingUp className="mr-2 h-4 w-4" />
-                Execute Rollover
+                {t("btn_execute_rollover")}
               </>
             )}
           </Button>
@@ -580,7 +586,7 @@ export default function RolloverPage() {
             {/* Header bar */}
             <div className="border-b bg-muted/50 px-6 py-3">
               <DialogTitle className="text-center uppercase tracking-widest text-sm font-semibold">
-                Confirm Rollover
+                {t("confirm_title")}
               </DialogTitle>
             </div>
 
@@ -591,7 +597,7 @@ export default function RolloverPage() {
                   ?
                 </div>
                 <p className="text-center font-semibold text-sm">
-                  Are you sure you want to roll the data for <em>{currentYear.name}</em> to the next school year?
+                  {t("confirm_question", { current: currentYear.name })}
                 </p>
               </div>
 
@@ -636,10 +642,10 @@ export default function RolloverPage() {
 
               {/* Note – green left-border like RosarioSIS */}
               <div className="border-l-4 border-green-600 bg-green-50 dark:bg-green-950/30 px-4 py-3 text-sm space-y-1">
-                <p className="font-bold">Note</p>
+                <p className="font-bold">{t("note_title")}</p>
                 <ul className="list-disc list-inside space-y-0.5 text-muted-foreground text-xs">
-                  <li>Greyed items already have data in the next school year (They might have been rolled).</li>
-                  <li>Rolling greyed items will delete already existing data in the next school year.</li>
+                  <li>{t("note_greyed_desc")}</li>
+                  <li>{t("note_overwrite_desc")}</li>
                 </ul>
               </div>
             </div>
@@ -651,13 +657,13 @@ export default function RolloverPage() {
                 variant="outline"
                 className="min-w-20 font-semibold"
               >
-                OK
+                {tCommon("btn_ok") || "OK"}
               </Button>
               <Button
                 onClick={() => setShowConfirmDialog(false)}
                 className="min-w-20 font-semibold bg-teal-700 hover:bg-teal-800 text-white"
               >
-                CANCEL
+                {tCommon("btn_cancel") || "CANCEL"}
               </Button>
             </div>
           </DialogContent>

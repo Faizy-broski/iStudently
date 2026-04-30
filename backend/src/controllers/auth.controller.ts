@@ -55,6 +55,29 @@ export const updateProfile = async (req: Request, res: Response) => {
 }
 
 /**
+ * PATCH /api/auth/language
+ * Body: { language: 'en' | 'ar' }
+ * Any authenticated user can set their own language preference.
+ */
+export const updateLanguage = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as AuthRequest).user?.id
+    if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' })
+
+    const { language } = req.body
+    if (language !== 'en' && language !== 'ar') {
+      return res.status(400).json({ success: false, error: 'language must be "en" or "ar"' })
+    }
+
+    await authService.updateLanguagePreference(userId, language)
+    res.json({ success: true })
+  } catch (error: any) {
+    console.error('Error in updateLanguage:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+}
+
+/**
  * POST /api/auth/force-password-change
  * Body: { campus_id?: string }
  * Admin only — forces all users in the school/campus to change password on next login.

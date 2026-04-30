@@ -24,9 +24,11 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString()
 
-// Dynamically import HTMLFlipBook — it uses browser APIs not available in SSR
-const HTMLFlipBook = dynamic(
-  () => import('react-pageflip').then((mod) => mod.HTMLFlipBook as any),
+// react-pageflip ships a default export; named export resolves to undefined in some bundlers
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type FlipBookType = React.ComponentType<Record<string, unknown> & { ref?: React.Ref<any> }>
+const HTMLFlipBook = dynamic<Record<string, unknown>>(
+  () => import('react-pageflip').then((mod) => (mod.HTMLFlipBook ?? mod.default) as FlipBookType),
   { ssr: false, loading: () => null }
 )
 
@@ -76,6 +78,14 @@ export function FlipbookReader({ fileUrl, title }: FlipbookReaderProps) {
     return () => ro.disconnect()
   }, [isFullscreen])
 
+  const flipNext = useCallback(() => {
+    flipBookRef.current?.pageFlip()?.flipNext()
+  }, [])
+
+  const flipPrev = useCallback(() => {
+    flipBookRef.current?.pageFlip()?.flipPrev()
+  }, [])
+
   // Keyboard navigation
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -84,15 +94,7 @@ export function FlipbookReader({ fileUrl, title }: FlipbookReaderProps) {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  })
-
-  const flipNext = useCallback(() => {
-    flipBookRef.current?.pageFlip()?.flipNext()
-  }, [])
-
-  const flipPrev = useCallback(() => {
-    flipBookRef.current?.pageFlip()?.flipPrev()
-  }, [])
+  }, [flipNext, flipPrev])
 
   const onFlip = useCallback((e: { data: number }) => {
     setCurrentPage(e.data)

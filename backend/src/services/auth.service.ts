@@ -48,6 +48,15 @@ class AuthService {
     if (error) throw new Error(`Failed to update profile: ${error.message}`)
   }
 
+  async updateLanguagePreference(userId: string, language: 'en' | 'ar'): Promise<void> {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ language_preference: language })
+      .eq('id', userId)
+
+    if (error) throw new Error(`Failed to update language preference: ${error.message}`)
+  }
+
   /**
    * Force all users in a school (or specific campus) to change their password.
    * campus_id is the child-school id; when provided only that campus is targeted.

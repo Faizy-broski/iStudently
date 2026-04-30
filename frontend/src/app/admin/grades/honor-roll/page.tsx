@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useTranslations } from "next-intl";
 import { useCampus } from "@/context/CampusContext";
 import * as gradesApi from "@/lib/api/grades";
 import * as academicsApi from "@/lib/api/academics";
@@ -212,6 +213,8 @@ const DEFAULT_CERTIFICATE_HTML = `<div style="text-align: center; font-family: '
 // ============================================================================
 
 export default function HonorRollPage() {
+  const t = useTranslations("school.grades_module.honor_roll")
+  const tc = useTranslations("school.grades_module.common")
   const { user } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
@@ -462,7 +465,7 @@ export default function HonorRollPage() {
         <div>
           <h1 className="text-3xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent flex items-center gap-2">
             <Award className="h-8 w-8 text-[#57A3CC]" />
-            Honor Roll
+            {t("title")}
           </h1>
           <p className="text-muted-foreground mt-2">
             View honor roll students and generate certificates

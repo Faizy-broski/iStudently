@@ -37,7 +37,10 @@ function calcLength(start: string, end: string): number {
   return (eh * 60 + em) - (sh * 60 + sm)
 }
 
+import { useTranslations } from "next-intl"
+
 export default function PeriodsPage() {
+  const t = useTranslations('school.periods')
   const { profile } = useAuth()
   const campusContext = useCampus()
   const [periods, setPeriods] = useState<Period[]>([])
@@ -87,11 +90,11 @@ export default function PeriodsPage() {
       }
     } catch (error) {
       console.error("Error fetching periods:", error)
-      toast.error("Failed to load periods")
+      toast.error(t('fetch_error'))
     } finally {
       setLoading(false)
     }
-  }, [profile?.school_id, selectedCampus?.id])
+  }, [profile?.school_id, selectedCampus?.id, t])
 
   useEffect(() => {
     fetchPeriods()
@@ -120,7 +123,7 @@ export default function PeriodsPage() {
   const removePeriod = (index: number) => {
     const period = periods[index]
     if (period.course_periods_count && period.course_periods_count > 0) {
-      toast.error(`Cannot delete. This period has ${period.course_periods_count} timetable entries.`)
+      toast.error(t('delete_error', { count: period.course_periods_count }))
       return
     }
     setPeriods(periods.filter((_, i) => i !== index))
@@ -135,14 +138,22 @@ export default function PeriodsPage() {
   const savePeriods = async () => {
     const token = await getAuthToken()
     if (!token) {
-      toast.error("Authentication required")
+      toast.error(t('auth_error'))
       return
     }
 
     // Validate periods
     const invalidPeriods = periods.filter(p => !p.title || !p.short_name)
     if (invalidPeriods.length > 0) {
-      toast.error("Please fill in title and short name for all periods")
+      toast.error(t('validation_required'))
+      return
+    }
+
+    // Validate unique sort order values before saving.
+    const sortOrders = periods.map((p) => p.sort_order)
+    const duplicateSortOrders = sortOrders.filter((value, index) => sortOrders.indexOf(value) !== index)
+    if (duplicateSortOrders.length > 0) {
+      toast.error(t('validation_unique'))
       return
     }
 
@@ -173,14 +184,14 @@ export default function PeriodsPage() {
       const data = await res.json()
       
       if (data.success) {
-        toast.success("Periods saved successfully")
+        toast.success(t('save_success'))
         fetchPeriods() // Refresh to get IDs
       } else {
-        toast.error(data.error || "Failed to save periods")
+        toast.error(data.error || t('save_error'))
       }
     } catch (error) {
       console.error("Error saving periods:", error)
-      toast.error("Failed to save periods")
+      toast.error(t('save_error'))
     } finally {
       setSaving(false)
     }
@@ -200,15 +211,15 @@ export default function PeriodsPage() {
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#022172] dark:text-white">
-            Periods
+            {t('title')}
           </h1>
           <p className="text-muted-foreground">
-            Define periods for your timetable{selectedCampus ? ` - ${selectedCampus.name}` : ''}. These will be used when creating schedules.
+            {t('subtitle', { campus: selectedCampus ? ` - ${selectedCampus.name}` : '' })}
           </p>
         </div>
         <Link href="/admin/marking-periods">
           <Button variant="outline" size="sm" className="gap-1 text-[#022172]">
-            Marking Periods →
+            {t('marking_periods_link')}
           </Button>
         </Link>
       </div>
@@ -219,29 +230,29 @@ export default function PeriodsPage() {
           <thead>
             <tr className="border-b bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10">
               <th className="w-10 px-2 py-3"></th>
-              <th className="min-w-[200px] px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
-                Title
+              <th className="min-w-50 px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
+                {t('table_title')}
               </th>
               <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
-                Short Name
+                {t('table_short')}
               </th>
               <th className="w-20 px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
-                Sort Order
+                {t('table_order')}
               </th>
               <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
-                Start Time
+                {t('table_start')}
               </th>
               <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
-                End Time
+                {t('table_end')}
               </th>
               <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
-                Length (Min)
+                {t('table_length')}
               </th>
               <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
-                Block
+                {t('table_block')}
               </th>
               <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
-                Course Periods
+                {t('table_courses')}
               </th>
             </tr>
           </thead>
@@ -249,21 +260,28 @@ export default function PeriodsPage() {
             {periods.map((period, index) => (
               <tr key={index} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
                 <td className="px-2 py-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0 text-gray-500 hover:text-red-500"
+                  <button
+                    className={`h-8 w-8 p-0 flex items-center justify-center rounded ${
+                      period.course_periods_count && period.course_periods_count > 0
+                        ? 'text-gray-300 cursor-not-allowed'
+                        : 'text-gray-500 hover:text-red-500 cursor-pointer'
+                    }`}
                     onClick={() => removePeriod(index)}
                     disabled={period.course_periods_count !== undefined && period.course_periods_count > 0}
+                    title={
+                      period.course_periods_count && period.course_periods_count > 0
+                        ? t('delete_disabled_tooltip', { count: period.course_periods_count })
+                        : t('remove_tooltip')
+                    }
                   >
                     <Minus className="h-4 w-4" />
-                  </Button>
+                  </button>
                 </td>
                 <td className="px-4 py-2 text-center">
                   <Input
                     value={period.title}
                     onChange={(e) => updatePeriod(index, 'title', e.target.value)}
-                    placeholder="Period name"
+                    placeholder={t('placeholder_name')}
                     className="h-8 w-full border-0 bg-transparent p-0 focus-visible:ring-0 text-[#008B8B] underline text-center"
                   />
                 </td>
@@ -271,7 +289,7 @@ export default function PeriodsPage() {
                   <Input
                     value={period.short_name}
                     onChange={(e) => updatePeriod(index, 'short_name', e.target.value)}
-                    placeholder="Short"
+                    placeholder={t('placeholder_short')}
                     className="h-8 w-20 mx-auto border-0 bg-transparent p-0 focus-visible:ring-0 text-[#008B8B] underline text-center"
                   />
                 </td>
@@ -342,7 +360,7 @@ export default function PeriodsPage() {
               </td>
               <td className="px-4 py-2 text-center">
                 <Input
-                  placeholder="New period..."
+                  placeholder={t('placeholder_new')}
                   className="h-8 w-full opacity-50 text-center"
                   onFocus={addPeriod}
                   readOnly
@@ -382,12 +400,12 @@ export default function PeriodsPage() {
           {saving ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Saving...
+              {t('saving')}
             </>
           ) : (
             <>
               <Save className="h-4 w-4 mr-2" />
-              SAVE
+              {t('save')}
             </>
           )}
         </Button>

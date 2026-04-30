@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -47,6 +48,7 @@ interface CampusFormData {
 }
 
 export default function SchoolDetailsPage() {
+  const t = useTranslations("school.details")
   const campusContext = useCampus()
   const [loading, setLoading] = useState(false)
   const [stats, setStats] = useState<CampusStats | null>(null)
@@ -146,16 +148,16 @@ export default function SchoolDetailsPage() {
       const data = await res.json()
       
       if (res.ok) {
-        toast.success("Campus updated successfully")
+        toast.success(t("update_success"))
         setIsEditing(false)
         // Refresh campuses to get updated data
         campusContext?.refreshCampuses()
       } else {
-        toast.error(data.error || "Failed to update campus")
+        toast.error(data.error || t("update_error"))
       }
     } catch (error) {
       console.error("Error updating campus:", error)
-      toast.error("Failed to update campus")
+      toast.error(t("update_error"))
     } finally {
       setIsSaving(false)
     }
@@ -187,23 +189,23 @@ export default function SchoolDetailsPage() {
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#022172] dark:text-white">
-            Campus Details
+            {t("title")}
           </h1>
           <p className="text-muted-foreground">
-            {selectedCampus ? `Manage details for ${selectedCampusName}` : "Select a campus to view details"}
+            {selectedCampus ? t("manage_details", { name: selectedCampusName }) : t("select_campus")}
           </p>
         </div>
         {selectedCampus && !isEditing && (
           <Button onClick={() => setIsEditing(true)}>
             <Edit className="h-4 w-4 mr-2" />
-            Edit Campus
+            {t("edit_campus")}
           </Button>
         )}
         {isEditing && (
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
               <X className="h-4 w-4 mr-2" />
-              Cancel
+              {t("cancel")}
             </Button>
             <Button onClick={handleSave} disabled={isSaving}>
               {isSaving ? (
@@ -211,7 +213,7 @@ export default function SchoolDetailsPage() {
               ) : (
                 <Save className="h-4 w-4 mr-2" />
               )}
-              Save Changes
+              {t("save_changes")}
             </Button>
           </div>
         )}
@@ -222,9 +224,9 @@ export default function SchoolDetailsPage() {
           <CardContent className="py-12">
             <div className="text-center">
               <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Campus Selected</h3>
+              <h3 className="text-lg font-semibold mb-2">{t("no_campus_selected")}</h3>
               <p className="text-muted-foreground">
-                Please select a specific campus from the dropdown above to view and manage its details
+                {t("no_campus_desc")}
               </p>
             </div>
           </CardContent>
@@ -236,26 +238,26 @@ export default function SchoolDetailsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Building2 className="h-5 w-5 text-[#022172]" />
-                Campus Information
+                {t("information")}
               </CardTitle>
               <CardDescription>
-                {isEditing ? "Edit campus details below" : `Details for ${selectedCampus.name}`}
+                {isEditing ? t("edit_desc") : t("details_for", { name: selectedCampus.name })}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {isEditing ? (
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Campus Name</Label>
+                    <Label htmlFor="name">{t("campus_name")}</Label>
                     <Input
                       id="name"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Enter campus name"
+                      placeholder={t("campus_name")}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="short_name">Short Name</Label>
+                    <Label htmlFor="short_name">{t("short_name")}</Label>
                     <Input
                       id="short_name"
                       value={formData.short_name}
@@ -264,7 +266,7 @@ export default function SchoolDetailsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="school_number">Campus Number</Label>
+                    <Label htmlFor="school_number">{t("campus_number")}</Label>
                     <Input
                       id="school_number"
                       value={formData.school_number}
@@ -273,16 +275,16 @@ export default function SchoolDetailsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Phone</Label>
+                    <Label htmlFor="phone">{t("phone")}</Label>
                     <Input
                       id="phone"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      placeholder="Enter phone number"
+                      placeholder={t("phone")}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">{t("email")}</Label>
                     <Input
                       id="email"
                       type="email"
@@ -292,49 +294,49 @@ export default function SchoolDetailsPage() {
                     />
                   </div>
                   <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="address">Address</Label>
+                    <Label htmlFor="address">{t("address")}</Label>
                     <Textarea
                       id="address"
                       value={formData.address}
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      placeholder="Enter street address"
+                      placeholder={t("address")}
                       rows={2}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="city">City</Label>
+                    <Label htmlFor="city">{t("city")}</Label>
                     <Input
                       id="city"
                       value={formData.city}
                       onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                      placeholder="City"
+                      placeholder={t("city")}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="state">State</Label>
+                    <Label htmlFor="state">{t("state")}</Label>
                     <Input
                       id="state"
                       value={formData.state}
                       onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                      placeholder="State"
+                      placeholder={t("state")}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="zip_code">Zip Code</Label>
+                    <Label htmlFor="zip_code">{t("zip_code")}</Label>
                     <Input
                       id="zip_code"
                       value={formData.zip_code}
                       onChange={(e) => setFormData({ ...formData, zip_code: e.target.value })}
-                      placeholder="ZIP code"
+                      placeholder={t("zip_code")}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="principal">Principal</Label>
+                    <Label htmlFor="principal">{t("principal")}</Label>
                     <Input
                       id="principal"
                       value={formData.principal_name}
                       onChange={(e) => setFormData({ ...formData, principal_name: e.target.value })}
-                      placeholder="Principal's name"
+                      placeholder={t("principal")}
                     />
                   </div>
                 </div>
@@ -344,11 +346,11 @@ export default function SchoolDetailsPage() {
                     <div>
                       <h3 className="text-lg font-medium">{selectedCampus.name}</h3>
                       {selectedCampus.short_name && (
-                        <p className="text-sm text-muted-foreground">Short Name: {selectedCampus.short_name}</p>
+                        <p className="text-sm text-muted-foreground">{t("short_name")}: {selectedCampus.short_name}</p>
                       )}
                     </div>
                     <Badge variant={selectedCampus.status === 'active' ? "default" : "secondary"}>
-                      {selectedCampus.status === 'active' ? "Active" : "Inactive"}
+                      {selectedCampus.status === 'active' ? t("active") : t("inactive")}
                     </Badge>
                   </div>
                   
@@ -359,7 +361,7 @@ export default function SchoolDetailsPage() {
                       <div className="flex items-center gap-3">
                         <Building2 className="h-4 w-4 text-muted-foreground" />
                         <div>
-                          <p className="text-sm font-medium">Campus Number/Code</p>
+                          <p className="text-sm font-medium">{t("campus_number")}</p>
                           <p className="text-sm text-muted-foreground">
                             {selectedCampus.school_number}
                           </p>
@@ -371,7 +373,7 @@ export default function SchoolDetailsPage() {
                       <div className="flex items-center gap-3">
                         <Users className="h-4 w-4 text-muted-foreground" />
                         <div>
-                          <p className="text-sm font-medium">Principal</p>
+                          <p className="text-sm font-medium">{t("principal")}</p>
                           <p className="text-sm text-muted-foreground">
                             {selectedCampus.principal_name}
                           </p>
@@ -382,7 +384,7 @@ export default function SchoolDetailsPage() {
                     <div className="flex items-start gap-3">
                       <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
                       <div className="flex-1">
-                        <p className="text-sm font-medium">Address</p>
+                        <p className="text-sm font-medium">{t("address")}</p>
                         {selectedCampus.address ? (
                           <>
                             <p className="text-sm text-muted-foreground">
@@ -397,7 +399,7 @@ export default function SchoolDetailsPage() {
                             )}
                           </>
                         ) : (
-                          <p className="text-sm text-muted-foreground">Not provided</p>
+                          <p className="text-sm text-muted-foreground">{t("not_provided")}</p>
                         )}
                       </div>
                     </div>
@@ -405,9 +407,9 @@ export default function SchoolDetailsPage() {
                     <div className="flex items-center gap-3">
                       <Phone className="h-4 w-4 text-muted-foreground" />
                       <div>
-                        <p className="text-sm font-medium">Phone</p>
+                        <p className="text-sm font-medium">{t("phone")}</p>
                         <p className="text-sm text-muted-foreground">
-                          {selectedCampus.phone || "Not provided"}
+                          {selectedCampus.phone || t("not_provided")}
                         </p>
                       </div>
                     </div>
@@ -415,9 +417,9 @@ export default function SchoolDetailsPage() {
                     <div className="flex items-center gap-3">
                       <Mail className="h-4 w-4 text-muted-foreground" />
                       <div>
-                        <p className="text-sm font-medium">Email</p>
+                        <p className="text-sm font-medium">{t("email")}</p>
                         <p className="text-sm text-muted-foreground">
-                          {selectedCampus.contact_email || "Not provided"}
+                          {selectedCampus.contact_email || t("not_provided")}
                         </p>
                       </div>
                     </div>
@@ -432,9 +434,9 @@ export default function SchoolDetailsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-[#022172]" />
-                Campus Statistics
+                {t("stats_title")}
               </CardTitle>
-              <CardDescription>Overview of {selectedCampus.name}</CardDescription>
+              <CardDescription>{t("stats_overview", { name: selectedCampus.name })}</CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -448,42 +450,42 @@ export default function SchoolDetailsPage() {
                     <p className="text-2xl font-bold text-blue-600">
                       {stats?.total_students ?? 0}
                     </p>
-                    <p className="text-xs text-muted-foreground">Students</p>
+                    <p className="text-xs text-muted-foreground">{t("students")}</p>
                   </div>
                   <div className="text-center p-4 bg-green-50 dark:bg-green-950 rounded-lg">
                     <Users className="h-6 w-6 mx-auto text-green-600 mb-2" />
                     <p className="text-2xl font-bold text-green-600">
                       {stats?.total_teachers ?? 0}
                     </p>
-                    <p className="text-xs text-muted-foreground">Teachers</p>
+                    <p className="text-xs text-muted-foreground">{t("teachers")}</p>
                   </div>
                   <div className="text-center p-4 bg-purple-50 dark:bg-purple-950 rounded-lg">
                     <Users className="h-6 w-6 mx-auto text-purple-600 mb-2" />
                     <p className="text-2xl font-bold text-purple-600">
                       {stats?.total_staff ?? 0}
                     </p>
-                    <p className="text-xs text-muted-foreground">Staff</p>
+                    <p className="text-xs text-muted-foreground">{t("staff")}</p>
                   </div>
                   <div className="text-center p-4 bg-orange-50 dark:bg-orange-950 rounded-lg">
                     <Users className="h-6 w-6 mx-auto text-orange-600 mb-2" />
                     <p className="text-2xl font-bold text-orange-600">
                       {stats?.total_parents ?? 0}
                     </p>
-                    <p className="text-xs text-muted-foreground">Parents</p>
+                    <p className="text-xs text-muted-foreground">{t("parents")}</p>
                   </div>
                   <div className="text-center p-4 bg-cyan-50 dark:bg-cyan-950 rounded-lg">
                     <GraduationCap className="h-6 w-6 mx-auto text-cyan-600 mb-2" />
                     <p className="text-2xl font-bold text-cyan-600">
                       {stats?.total_grade_levels ?? 0}
                     </p>
-                    <p className="text-xs text-muted-foreground">Grade Levels</p>
+                    <p className="text-xs text-muted-foreground">{t("grade_levels")}</p>
                   </div>
                   <div className="text-center p-4 bg-pink-50 dark:bg-pink-950 rounded-lg">
                     <Users className="h-6 w-6 mx-auto text-pink-600 mb-2" />
                     <p className="text-2xl font-bold text-pink-600">
                       {stats?.total_sections ?? 0}
                     </p>
-                    <p className="text-xs text-muted-foreground">Sections</p>
+                    <p className="text-xs text-muted-foreground">{t("sections")}</p>
                   </div>
                 </div>
               )}

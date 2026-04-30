@@ -100,7 +100,12 @@ const DAY_LABELS: Record<string, string> = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+import { useTranslations } from "next-intl"
+
 export function TimetableImport() {
+  const t = useTranslations('school.timetable_import')
+  const tCommon = useTranslations('common')
+  
   const [step, setStep] = useState<Step>(1)
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([])
   const [importErrors, setImportErrors] = useState<BulkTimetableError[]>([])
@@ -136,7 +141,7 @@ export function TimetableImport() {
           setParsedRows(rows)
           setStep(2)
         },
-        error: () => toast.error("Failed to parse CSV file")
+        error: () => toast.error(t("err_parse_csv"))
       })
     } else if (ext === "xlsx" || ext === "xls") {
       const reader = new FileReader()
@@ -149,14 +154,14 @@ export function TimetableImport() {
           setParsedRows(rows)
           setStep(2)
         } catch {
-          toast.error("Failed to parse Excel file")
+          toast.error(t("err_parse_excel"))
         }
       }
       reader.readAsBinaryString(file)
     } else {
-      toast.error("Please upload a .csv, .xlsx, or .xls file")
+      toast.error(t("err_invalid_file"))
     }
-  }, [])
+  }, [t])
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -175,13 +180,13 @@ export function TimetableImport() {
 
   const handleImport = async () => {
     if (!academicYearId) {
-      toast.error("Please select an academic year")
+      toast.error(t("err_select_year"))
       return
     }
 
     const validRows = parsedRows.filter(r => r._clientErrors.length === 0)
     if (validRows.length === 0) {
-      toast.error("No valid rows to import")
+      toast.error(t("err_no_valid_rows"))
       return
     }
 
@@ -193,7 +198,7 @@ export function TimetableImport() {
       const result = await bulkImportTimetable(payload, academicYearId)
 
       if (!result.success || !result.data) {
-        toast.error(result.error || "Import failed")
+        toast.error(result.error || tCommon("error"))
         setStep(2)
         return
       }
@@ -203,13 +208,13 @@ export function TimetableImport() {
       setStep(4)
 
       if (result.data.success_count > 0) {
-        toast.success(`Imported ${result.data.success_count} timetable entry/entries successfully`)
+        toast.success(t("success_import", { count: result.data.success_count }))
       }
       if (result.data.error_count > 0) {
-        toast.warning(`${result.data.error_count} row(s) failed`)
+        toast.warning(t("results_failed", { count: result.data.error_count }))
       }
     } catch {
-      toast.error("Import failed due to a network error")
+      toast.error(tCommon("error"))
       setStep(2)
     } finally {
       setIsImporting(false)
@@ -230,22 +235,28 @@ export function TimetableImport() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
+  const steps = [
+    { label: t("step_upload"), value: 1 },
+    { label: t("step_preview"), value: 2 },
+    { label: t("step_importing"), value: 3 },
+    { label: t("step_results"), value: 4 },
+  ]
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Stepper */}
       <div className="flex items-center gap-2 text-sm">
-        {(["Upload", "Preview", "Importing", "Results"] as const).map((label, idx) => {
-          const s = (idx + 1) as Step
-          const active = step === s
-          const done = step > s
+        {steps.map((s, idx) => {
+          const active = step === s.value
+          const done = step > s.value
           return (
-            <div key={label} className="flex items-center gap-2">
+            <div key={s.label} className="flex items-center gap-2">
               <span className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold
                 ${done ? "bg-green-600 text-white" : active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                {done ? <CheckCircle2 className="h-4 w-4" /> : s}
+                {done ? <CheckCircle2 className="h-4 w-4" /> : s.value}
               </span>
-              <span className={active ? "font-medium" : "text-muted-foreground"}>{label}</span>
-              {idx < 3 && <ArrowRight className="h-4 w-4 text-muted-foreground" />}
+              <span className={active ? "font-medium" : "text-muted-foreground"}>{s.label}</span>
+              {idx < steps.length - 1 && <ArrowRight className="h-4 w-4 text-muted-foreground rtl:rotate-180" />}
             </div>
           )
         })}
@@ -255,21 +266,21 @@ export function TimetableImport() {
       {step === 1 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Calendar className="h-5 w-5" /> Timetable Bulk Import</CardTitle>
-            <CardDescription>Upload a CSV or Excel file to import timetable entries.</CardDescription>
+            <CardTitle className="flex items-center gap-2"><Calendar className="h-5 w-5" /> {t("card_title")}</CardTitle>
+            <CardDescription>{t("card_desc")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             {/* Academic year selector */}
             <div className="space-y-1.5">
-              <Label>Academic Year <span className="text-destructive">*</span></Label>
+              <Label>{t("label_academic_year")} <span className="text-destructive">*</span></Label>
               <Select value={academicYearId} onValueChange={setAcademicYearId}>
                 <SelectTrigger className="w-64">
-                  <SelectValue placeholder="Select academic year" />
+                  <SelectValue placeholder={t("placeholder_academic_year")} />
                 </SelectTrigger>
                 <SelectContent>
                   {academicYears.map(y => (
                     <SelectItem key={y.id} value={y.id}>
-                      {y.name} {y.is_current ? "(Current)" : ""}
+                      {y.name} {y.is_current ? `(${tCommon("active")})` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -285,20 +296,20 @@ export function TimetableImport() {
               onClick={() => fileRef.current?.click()}
             >
               <Upload className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
-              <p className="font-medium">Drop your file here or click to browse</p>
-              <p className="text-sm text-muted-foreground mt-1">Supports .csv, .xlsx, .xls — max 500 rows</p>
+              <p className="font-medium">{t("drop_file")}</p>
+              <p className="text-sm text-muted-foreground mt-1">{t("file_types")}</p>
               <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={onFileChange} />
             </div>
 
             <div className="rounded-md bg-muted/50 p-3 text-xs space-y-1">
-              <p className="font-medium text-sm">Required columns:</p>
+              <p className="font-medium text-sm">{t("required_columns")}</p>
               <code className="block">section_name, subject_name (or subject_code), teacher_email (or teacher_name), day_of_week, period_number</code>
-              <p className="font-medium text-sm mt-2">Day format:</p>
-              <code>Monday, Tuesday, ... Sunday — or — 0 (Mon) to 6 (Sun)</code>
+              <p className="font-medium text-sm mt-2">{t("day_format")}</p>
+              <code>{t("day_format_desc")}</code>
             </div>
 
             <Button variant="outline" size="sm" onClick={downloadTimetableImportTemplate} className="gap-2">
-              <Download className="h-4 w-4" /> Download CSV Template
+              <Download className="h-4 w-4" /> {t("btn_download_template")}
             </Button>
           </CardContent>
         </Card>
@@ -309,22 +320,22 @@ export function TimetableImport() {
         <div className="space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex gap-3">
-              <Badge variant="default" className="gap-1"><CheckCircle2 className="h-3 w-3" /> {validCount} valid</Badge>
-              {invalidCount > 0 && <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> {invalidCount} invalid</Badge>}
+              <Badge variant="default" className="gap-1"><CheckCircle2 className="h-3 w-3" /> {t("badge_valid", { count: validCount })}</Badge>
+              {invalidCount > 0 && <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> {t("badge_invalid", { count: invalidCount })}</Badge>}
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={reset} className="gap-2">
-                <ArrowLeft className="h-4 w-4" /> Back
+                <ArrowLeft className="h-4 w-4 rtl:rotate-180" /> {t("btn_back")}
               </Button>
               <Button size="sm" onClick={handleImport} disabled={validCount === 0 || !academicYearId} className="gap-2">
-                Import {validCount} {validCount === 1 ? "Entry" : "Entries"} <ArrowRight className="h-4 w-4" />
+                {t("btn_import", { count: validCount })} <ArrowRight className="h-4 w-4 rtl:rotate-180" />
               </Button>
             </div>
           </div>
 
           {!academicYearId && (
             <p className="text-sm text-destructive flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4" /> Please select an academic year before importing.
+              <AlertTriangle className="h-4 w-4" /> {t("err_select_year")}
             </p>
           )}
 
@@ -332,14 +343,14 @@ export function TimetableImport() {
             <Card className="border-destructive/50">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2 text-destructive">
-                  <AlertTriangle className="h-4 w-4" /> {invalidCount} row(s) will be skipped
+                  <AlertTriangle className="h-4 w-4" /> {t("skipped_rows", { count: invalidCount })}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="max-h-40 overflow-y-auto space-y-1">
                   {parsedRows.filter(r => r._clientErrors.length > 0).map(r => (
                     <div key={r._rowIndex} className="text-xs text-destructive">
-                      Row {r._rowIndex}: {r._clientErrors.join("; ")}
+                      {t("table_row")} {r._rowIndex}: {r._clientErrors.join("; ")}
                     </div>
                   ))}
                 </div>
@@ -349,15 +360,25 @@ export function TimetableImport() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Preview — first 20 rows</CardTitle>
+              <CardTitle className="text-sm">{t("preview_title")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b">
-                      {["Row", "Grade", "Section", "Subject", "Teacher", "Day", "Period", "Room", "Status"].map(h => (
-                        <th key={h} className="text-left py-1 px-2 font-medium text-muted-foreground">{h}</th>
+                      {[
+                        t("table_row"),
+                        t("table_grade"),
+                        t("table_section"),
+                        t("table_subject"),
+                        t("table_teacher"),
+                        t("table_day"),
+                        t("table_period"),
+                        t("table_room"),
+                        t("table_status")
+                      ].map(h => (
+                        <th key={h} className="text-left py-1 px-2 font-medium text-muted-foreground rtl:text-right">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -374,15 +395,15 @@ export function TimetableImport() {
                         <td className="py-1 px-2">{row.room_number || "—"}</td>
                         <td className="py-1 px-2">
                           {row._clientErrors.length > 0
-                            ? <span className="text-destructive flex items-center gap-1"><XCircle className="h-3 w-3" /> Error</span>
-                            : <span className="text-green-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> OK</span>}
+                            ? <span className="text-destructive flex items-center gap-1"><XCircle className="h-3 w-3" /> {t("status_error")}</span>
+                            : <span className="text-green-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> {t("status_ok")}</span>}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
                 {parsedRows.length > 20 && (
-                  <p className="text-xs text-muted-foreground mt-2">...and {parsedRows.length - 20} more row(s)</p>
+                  <p className="text-xs text-muted-foreground mt-2">{t("more_rows", { count: parsedRows.length - 20 })}</p>
                 )}
               </div>
             </CardContent>
@@ -395,8 +416,8 @@ export function TimetableImport() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="font-medium">Importing timetable entries...</p>
-            <p className="text-sm text-muted-foreground">Processing {validCount} entry/entries with conflict validation.</p>
+            <p className="font-medium">{t("importing_title")}</p>
+            <p className="text-sm text-muted-foreground">{t("importing_desc", { count: validCount })}</p>
           </CardContent>
         </Card>
       )}
@@ -406,11 +427,11 @@ export function TimetableImport() {
         <div className="space-y-4">
           <div className="flex gap-3">
             <Badge variant="default" className="gap-1 text-sm py-1 px-3">
-              <CheckCircle2 className="h-4 w-4" /> {successCount} imported
+              <CheckCircle2 className="h-4 w-4" /> {t("results_imported", { count: successCount })}
             </Badge>
             {importErrors.length > 0 && (
               <Badge variant="destructive" className="gap-1 text-sm py-1 px-3">
-                <XCircle className="h-4 w-4" /> {importErrors.length} failed
+                <XCircle className="h-4 w-4" /> {t("results_failed", { count: importErrors.length })}
               </Badge>
             )}
           </div>
@@ -420,10 +441,10 @@ export function TimetableImport() {
               <CardHeader>
                 <CardTitle className="text-sm flex items-center justify-between">
                   <span className="flex items-center gap-2 text-destructive">
-                    <AlertTriangle className="h-4 w-4" /> Failed Rows
+                    <AlertTriangle className="h-4 w-4" /> {t("failed_rows_title")}
                   </span>
                   <Button variant="outline" size="sm" onClick={() => downloadErrorReport(importErrors)} className="gap-2">
-                    <Download className="h-4 w-4" /> Download Error Report
+                    <Download className="h-4 w-4" /> {t("btn_download_errors")}
                   </Button>
                 </CardTitle>
               </CardHeader>
@@ -432,8 +453,8 @@ export function TimetableImport() {
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left py-1 px-2 font-medium">Row</th>
-                        <th className="text-left py-1 px-2 font-medium">Error</th>
+                        <th className="text-left py-1 px-2 font-medium rtl:text-right">{t("table_row")}</th>
+                        <th className="text-left py-1 px-2 font-medium rtl:text-right">{t("table_status")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -452,10 +473,10 @@ export function TimetableImport() {
 
           <div className="flex gap-2">
             <Button onClick={reset} variant="outline" className="gap-2">
-              <Upload className="h-4 w-4" /> Import More
+              <Upload className="h-4 w-4" /> {t("btn_import_more")}
             </Button>
             <Button asChild>
-              <a href="/admin/timetable">View Timetable</a>
+              <a href="/admin/timetable">{t("btn_view_timetable")}</a>
             </Button>
           </div>
         </div>

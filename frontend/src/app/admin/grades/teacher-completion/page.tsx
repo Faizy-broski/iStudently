@@ -36,6 +36,7 @@ import type {
   TeacherCompletionEntry,
   SchoolPeriod,
 } from "@/lib/api/grades";
+import { useTranslations } from "next-intl";
 
 interface MarkingPeriodItem {
   id: string;
@@ -45,6 +46,8 @@ interface MarkingPeriodItem {
 }
 
 export default function TeacherCompletionPage() {
+  const t = useTranslations("school.grades_module.teacher_completion")
+  const tc = useTranslations("school.grades_module.common")
   const { user } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
@@ -136,10 +139,10 @@ export default function TeacherCompletionPage() {
       <div>
         <h1 className="text-3xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent flex items-center gap-2">
           <CheckSquare className="h-8 w-8 text-[#57A3CC]" />
-          Teacher Completion
+          {t("title")}
         </h1>
         <p className="text-muted-foreground mt-2">
-          Track which teachers have completed grade entry
+          {t("subtitle")}
           {selectedCampus && (
             <span className="ml-1 font-medium">— {selectedCampus.name}</span>
           )}
@@ -152,7 +155,7 @@ export default function TeacherCompletionPage() {
           <div className="flex flex-col md:flex-row gap-4 items-end">
             <div>
               <Label className="text-sm font-medium mb-1.5 block">
-                Marking Period
+                {tc("marking_period")}
               </Label>
               <Select value={selectedMp} onValueChange={setSelectedMp}>
                 <SelectTrigger className="w-[200px]">
@@ -170,14 +173,14 @@ export default function TeacherCompletionPage() {
             <span className="text-muted-foreground pb-2">—</span>
             <div>
               <Label className="text-sm font-medium mb-1.5 block">
-                Period
+                {t("period")}
               </Label>
               <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="all">{tc("all")}</SelectItem>
                   {schoolPeriods.map((sp) => (
                     <SelectItem key={sp.id} value={sp.id}>
                       {sp.title}
@@ -195,9 +198,7 @@ export default function TeacherCompletionPage() {
         <CardContent className="pt-6 space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-[#0369a1] font-medium">
-              {filteredTeachers.length} teacher
-              {filteredTeachers.length !== 1 ? "s" : ""} who enter grades were
-              found.
+              {t("teachers_found", { count: filteredTeachers.length })}
             </p>
             <div className="relative w-[220px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -217,7 +218,7 @@ export default function TeacherCompletionPage() {
           ) : filteredTeachers.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Users className="h-12 w-12 mx-auto mb-3 opacity-40" />
-              <p>No teachers found</p>
+              <p>{t("no_teachers_found")}</p>
             </div>
           ) : (
             <div className="border rounded-md overflow-hidden">
@@ -225,7 +226,7 @@ export default function TeacherCompletionPage() {
                 <TableHeader>
                   <TableRow className="bg-[#0369a1] hover:bg-[#0369a1]">
                     <TableHead className="text-white font-semibold">
-                      TEACHER
+                      {t("th_teacher")}
                     </TableHead>
                     {selectedPeriod === "all" ? (
                       // Show all period columns
@@ -241,10 +242,10 @@ export default function TeacherCompletionPage() {
                       // Single period: show Course Period + Completed
                       <>
                         <TableHead className="text-white font-semibold">
-                          COURSE PERIOD
+                          {t("th_course_period")}
                         </TableHead>
                         <TableHead className="text-white font-semibold text-center">
-                          COMPLETED
+                          {t("th_completed")}
                         </TableHead>
                       </>
                     )}

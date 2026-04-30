@@ -14,8 +14,11 @@ import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
 import * as gradesApi from "@/lib/api/grades";
 import type { GradebookConfig } from "@/lib/api/grades";
+import { useTranslations } from "next-intl";
 
 export default function GradebookConfigurationPage() {
+  const t = useTranslations("school.grades_module.configuration")
+  const tc = useTranslations("school.grades_module.common")
   const { user } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
@@ -112,10 +115,10 @@ export default function GradebookConfigurationPage() {
         <div>
           <h1 className="text-3xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent flex items-center gap-2">
             <Settings className="h-8 w-8 text-[#57A3CC]" />
-            Gradebook — Configuration
+            {t("title")}
           </h1>
           <p className="text-muted-foreground mt-2">
-            Configure gradebook behavior and defaults
+            {t("subtitle")}
             {selectedCampus && (
               <span className="ml-1 font-medium">
                 — {selectedCampus.name}
@@ -133,7 +136,7 @@ export default function GradebookConfigurationPage() {
           ) : (
             <Save className="h-4 w-4" />
           )}
-          Save
+          {tc("save")}
         </Button>
       </div>
 
@@ -142,12 +145,12 @@ export default function GradebookConfigurationPage() {
         <CardContent className="pt-6 space-y-6">
           {/* ── Assignments section ─────────────────────── */}
           <fieldset className="border rounded-md p-4 space-y-4">
-            <legend className="text-sm font-semibold px-2">Assignments</legend>
+            <legend className="text-sm font-semibold px-2">{t("assignments_section")}</legend>
 
             {/* Sorting */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">
-                Sort Assignments By
+                {t("sort_by")}
               </Label>
               <RadioGroup
                 value={assignmentSorting}
@@ -162,7 +165,7 @@ export default function GradebookConfigurationPage() {
                 <div className="flex items-center gap-2">
                   <RadioGroupItem value="due_date" id="sort-due" />
                   <Label htmlFor="sort-due" className="text-sm cursor-pointer">
-                    Due Date
+                    {t("sort_due_date")}
                   </Label>
                 </div>
                 <div className="flex items-center gap-2">
@@ -171,7 +174,7 @@ export default function GradebookConfigurationPage() {
                     htmlFor="sort-assigned"
                     className="text-sm cursor-pointer"
                   >
-                    Assigned Date
+                    {t("sort_assigned_date")}
                   </Label>
                 </div>
                 <div className="flex items-center gap-2">
@@ -180,7 +183,7 @@ export default function GradebookConfigurationPage() {
                     htmlFor="sort-title"
                     className="text-sm cursor-pointer"
                   >
-                    Title
+                    {t("sort_title")}
                   </Label>
                 </div>
                 <div className="flex items-center gap-2">
@@ -189,7 +192,7 @@ export default function GradebookConfigurationPage() {
                     htmlFor="sort-points"
                     className="text-sm cursor-pointer"
                   >
-                    Points
+                    {t("sort_points")}
                   </Label>
                 </div>
               </RadioGroup>
@@ -209,8 +212,7 @@ export default function GradebookConfigurationPage() {
                   }}
                 />
                 <Label htmlFor="auto-save" className="text-sm cursor-pointer">
-                  Automatically calculate & save Final Grades using Gradebook
-                  Grades
+                  {t("auto_save_final")}
                 </Label>
               </div>
 
@@ -227,7 +229,7 @@ export default function GradebookConfigurationPage() {
                   htmlFor="weight-types"
                   className="text-sm cursor-pointer"
                 >
-                  Weight Assignment Types
+                  {t("weight_types")}
                 </Label>
               </div>
 
@@ -244,7 +246,7 @@ export default function GradebookConfigurationPage() {
                   htmlFor="weight-assignments"
                   className="text-sm cursor-pointer"
                 >
-                  Weight Assignments
+                  {t("weight_assignments")}
                 </Label>
               </div>
 
@@ -261,7 +263,7 @@ export default function GradebookConfigurationPage() {
                   htmlFor="default-assigned"
                   className="text-sm cursor-pointer"
                 >
-                  Default Assigned Date to today
+                  {t("default_assigned_today")}
                 </Label>
               </div>
 
@@ -278,7 +280,7 @@ export default function GradebookConfigurationPage() {
                   htmlFor="default-due"
                   className="text-sm cursor-pointer"
                 >
-                  Default Due Date to today
+                  {t("default_due_today")}
                 </Label>
               </div>
             </div>
@@ -289,7 +291,7 @@ export default function GradebookConfigurationPage() {
             <div className="flex flex-wrap gap-6">
               <div className="space-y-1.5">
                 <Label htmlFor="anomalous-max" className="text-sm font-medium">
-                  Anomalous Max Points
+                  {t("anomalous_max")}
                 </Label>
                 <Input
                   id="anomalous-max"
@@ -304,13 +306,13 @@ export default function GradebookConfigurationPage() {
                   className="h-9 w-[120px]"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Show warning when assignment points exceed this value
+                  {t("anomalous_max_help")}
                 </p>
               </div>
 
               <div className="space-y-1.5">
                 <Label htmlFor="latency" className="text-sm font-medium">
-                  Latency (minutes)
+                  {t("latency")}
                 </Label>
                 <Input
                   id="latency"
@@ -322,11 +324,11 @@ export default function GradebookConfigurationPage() {
                     setLatency(e.target.value);
                     mark();
                   }}
-                  placeholder="None"
+                  placeholder={t("latency_none")}
                   className="h-9 w-[120px]"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Grade change delay before students/parents can see
+                  {t("latency_help")}
                 </p>
               </div>
             </div>

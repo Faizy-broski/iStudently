@@ -14,7 +14,10 @@ import { getCampuses, createCampus, updateCampus, deleteCampus, Campus, CreateCa
 import { createClient } from "@/lib/supabase/client"
 import { useCampus } from "@/context/CampusContext"
 
+import { useTranslations } from "next-intl"
+
 export default function CampusesPage() {
+    const t = useTranslations('school.campuses')
     const campusContext = useCampus()
     const [campuses, setCampuses] = useState<Campus[]>([])
     const [loading, setLoading] = useState(true)
@@ -46,7 +49,7 @@ export default function CampusesPage() {
             setCampuses(data)
         } catch (error) {
             console.error("Error loading campuses:", error)
-            toast.error("Failed to load campuses")
+            toast.error(t('fetch_error'))
         } finally {
             setLoading(false)
         }
@@ -120,7 +123,7 @@ export default function CampusesPage() {
 
     const handleSubmit = async () => {
         if (!formData.name.trim()) {
-            toast.error("Campus name is required")
+            toast.error(t('name_required'))
             return
         }
 
@@ -137,7 +140,7 @@ export default function CampusesPage() {
                 const { data: uploadData, error: uploadError } = await supabase.storage
                     .from('school-logos')
                     .upload(fileName, logoFile, { cacheControl: '3600', upsert: false })
-                if (uploadError) throw new Error('Logo upload failed: ' + uploadError.message)
+                if (uploadError) throw new Error(t('logo_upload_failed', { error: uploadError.message }))
                 const { data: urlData } = supabase.storage.from('school-logos').getPublicUrl(uploadData.path)
                 finalLogoUrl = urlData.publicUrl
             }
@@ -146,10 +149,10 @@ export default function CampusesPage() {
 
             if (editingCampus) {
                 await updateCampus(editingCampus.id, payload)
-                toast.success("Campus updated successfully")
+                toast.success(t('update_success'))
             } else {
                 await createCampus(payload)
-                toast.success("Campus created successfully")
+                toast.success(t('create_success'))
             }
             handleCloseDialog()
             loadCampuses()
@@ -157,7 +160,7 @@ export default function CampusesPage() {
             campusContext?.refreshCampuses()
         } catch (error) {
             console.error("Error saving campus:", error)
-            toast.error(editingCampus ? "Failed to update campus" : "Failed to create campus")
+            toast.error(t(editingCampus ? 'update_error' : 'create_error'))
         } finally {
             setIsSubmitting(false)
         }
@@ -165,35 +168,35 @@ export default function CampusesPage() {
 
     const handleDelete = async (campus: Campus) => {
         // show toast with confirm/cancel buttons instead of browser dialog
-        toast.custom((t) => (
+        toast.custom((toastId) => (
             <div className="bg-white rounded-md shadow-lg p-4 max-w-sm">
                 <p className="text-sm">
-                    Are you sure you want to delete "{campus.name}"?
+                    {t('delete_confirm', { name: campus.name })}
                 </p>
                 <div className="mt-3 flex justify-end space-x-2">
                     <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => toast.dismiss(t.id)}
+                        onClick={() => toast.dismiss(toastId)}
                     >
-                        Cancel
+                        {t('btn_cancel')}
                     </Button>
                     <Button
                         size="sm"
                         variant="destructive"
                         onClick={async () => {
-                            toast.dismiss(t.id)
+                            toast.dismiss(toastId)
                             try {
                                 await deleteCampus(campus.id)
-                                toast.success("Campus deleted successfully")
+                                toast.success(t('delete_success'))
                                 loadCampuses()
                             } catch (error) {
                                 console.error("Error deleting campus:", error)
-                                toast.error("Failed to delete campus")
+                                toast.error(t('delete_error'))
                             }
                         }}
                     >
-                        Delete
+                        {t('btn_delete')}
                     </Button>
                 </div>
             </div>
@@ -206,10 +209,10 @@ export default function CampusesPage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent">
-                        Campus Management
+                        {t('title')}
                     </h1>
                     <p className="text-sm md:text-base text-muted-foreground mt-2">
-                        Manage your school campuses and branches
+                        {t('subtitle')}
                     </p>
                 </div>
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -219,24 +222,24 @@ export default function CampusesPage() {
                             className="bg-[#022172] hover:bg-[#022172]/90"
                         >
                             <Plus className="h-4 w-4 mr-2" />
-                            Add Campus
+                            {t('btn_add')}
                         </Button>
                     </DialogTrigger>
                     <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>
-                                {editingCampus ? "Edit Campus" : "Add New Campus"}
+                                {editingCampus ? t('btn_edit') : t('btn_new')}
                             </DialogTitle>
                             <DialogDescription>
                                 {editingCampus
-                                    ? "Update the campus details below."
-                                    : "Enter the details for the new campus."}
+                                    ? t('edit_desc')
+                                    : t('add_desc')}
                             </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
                             {/* Logo Upload */}
                             <div className="space-y-2">
-                                <Label>Campus Logo</Label>
+                                <Label>{t('label_logo')}</Label>
                                 <div className="flex items-center gap-4">
                                     <div className="w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50 overflow-hidden shrink-0">
                                         {logoPreview ? (
@@ -248,15 +251,15 @@ export default function CampusesPage() {
                                     <div className="flex flex-col gap-2">
                                         <Button type="button" variant="outline" size="sm" onClick={() => logoInputRef.current?.click()}>
                                             <Upload className="h-4 w-4 mr-2" />
-                                            {logoPreview ? "Change Logo" : "Upload Logo"}
+                                            {logoPreview ? t('label_logo_change') : t('label_logo_upload')}
                                         </Button>
                                         {logoPreview && (
                                             <Button type="button" variant="ghost" size="sm" className="text-red-500 hover:text-red-600" onClick={handleRemoveLogo}>
                                                 <X className="h-4 w-4 mr-2" />
-                                                Remove
+                                                {t('label_logo_remove')}
                                             </Button>
                                         )}
-                                        <p className="text-xs text-muted-foreground">PNG, JPG up to 2MB</p>
+                                        <p className="text-xs text-muted-foreground">{t('label_logo_hint')}</p>
                                     </div>
                                     <input ref={logoInputRef} type="file" className="hidden" accept="image/*" onChange={handleLogoChange} />
                                 </div>
@@ -264,38 +267,38 @@ export default function CampusesPage() {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="name">Campus Name *</Label>
+                                    <Label htmlFor="name">{t('label_name')}</Label>
                                     <Input
                                         id="name"
-                                        placeholder="e.g., Main Campus"
+                                        placeholder={t('placeholder_name')}
                                         value={formData.name}
                                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="short_name">Short Name</Label>
+                                    <Label htmlFor="short_name">{t('label_short_name')}</Label>
                                     <Input
                                         id="short_name"
-                                        placeholder="e.g., MC"
+                                        placeholder={t('placeholder_short_name')}
                                         value={formData.short_name}
                                         onChange={(e) => setFormData({ ...formData, short_name: e.target.value })}
                                     />
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="school_number">Campus Number/Code</Label>
+                                <Label htmlFor="school_number">{t('label_code')}</Label>
                                 <Input
                                     id="school_number"
-                                    placeholder="Official campus code"
+                                    placeholder={t('placeholder_code')}
                                     value={formData.school_number}
                                     onChange={(e) => setFormData({ ...formData, school_number: e.target.value })}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="address">Street Address</Label>
+                                <Label htmlFor="address">{t('label_address')}</Label>
                                 <Textarea
                                     id="address"
-                                    placeholder="Enter the street address"
+                                    placeholder={t('placeholder_address')}
                                     value={formData.address}
                                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                                     rows={2}
@@ -303,28 +306,28 @@ export default function CampusesPage() {
                             </div>
                             <div className="grid grid-cols-3 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="city">City</Label>
+                                    <Label htmlFor="city">{t('label_city')}</Label>
                                     <Input
                                         id="city"
-                                        placeholder="City"
+                                        placeholder={t('placeholder_city')}
                                         value={formData.city}
                                         onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="state">State</Label>
+                                    <Label htmlFor="state">{t('label_state')}</Label>
                                     <Input
                                         id="state"
-                                        placeholder="State"
+                                        placeholder={t('placeholder_state')}
                                         value={formData.state}
                                         onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="zip">Zip Code</Label>
+                                    <Label htmlFor="zip">{t('label_zip')}</Label>
                                     <Input
                                         id="zip"
-                                        placeholder="ZIP"
+                                        placeholder={t('placeholder_zip')}
                                         value={formData.zip_code}
                                         onChange={(e) => setFormData({ ...formData, zip_code: e.target.value })}
                                     />
@@ -332,31 +335,31 @@ export default function CampusesPage() {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="email">Contact Email</Label>
+                                    <Label htmlFor="email">{t('label_email')}</Label>
                                     <Input
                                         id="email"
                                         type="email"
-                                        placeholder="campus@school.com"
+                                        placeholder={t('placeholder_email')}
                                         value={formData.contact_email}
                                         onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="phone">Phone</Label>
+                                    <Label htmlFor="phone">{t('label_phone')}</Label>
                                     <Input
                                         id="phone"
                                         type="tel"
-                                        placeholder="+1 234 567 8900"
+                                        placeholder={t('placeholder_phone')}
                                         value={formData.phone}
                                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                     />
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="principal">Principal of Campus</Label>
+                                <Label htmlFor="principal">{t('label_principal')}</Label>
                                 <Input
                                     id="principal"
-                                    placeholder="Principal's name"
+                                    placeholder={t('placeholder_principal')}
                                     value={formData.principal_name}
                                     onChange={(e) => setFormData({ ...formData, principal_name: e.target.value })}
                                 />
@@ -364,7 +367,7 @@ export default function CampusesPage() {
                         </div>
                         <DialogFooter>
                             <Button variant="outline" onClick={handleCloseDialog}>
-                                Cancel
+                                {t('btn_cancel')}
                             </Button>
                             <Button
                                 onClick={handleSubmit}
@@ -374,9 +377,9 @@ export default function CampusesPage() {
                                 {isSubmitting ? (
                                     <>
                                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                        Saving...
+                                        {t('btn_saving')}
                                     </>
-                                ) : editingCampus ? "Update Campus" : "Create Campus"}
+                                ) : editingCampus ? t('btn_update') : t('btn_create')}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -399,16 +402,16 @@ export default function CampusesPage() {
                 <Card className="text-center py-12">
                     <CardContent>
                         <Building2 className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No Campuses Yet</h3>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">{t('no_campuses')}</h3>
                         <p className="text-gray-500 mb-4">
-                            Get started by creating your first campus.
+                            {t('no_campuses_desc')}
                         </p>
                         <Button
                             onClick={() => handleOpenDialog()}
                             className="bg-[#022172] hover:bg-[#022172]/90"
                         >
                             <Plus className="h-4 w-4 mr-2" />
-                            Add Campus
+                            {t('btn_add')}
                         </Button>
                     </CardContent>
                 </Card>
@@ -457,10 +460,10 @@ export default function CampusesPage() {
                             </CardHeader>
                             <CardContent className="text-sm text-gray-600">
                                 {campus.short_name && (
-                                    <p className="mb-1 font-medium text-gray-700">Short: {campus.short_name}</p>
+                                    <p className="mb-1 font-medium text-gray-700">{t('label_short')}: {campus.short_name}</p>
                                 )}
                                 {campus.school_number && (
-                                    <p className="mb-1 text-xs text-gray-500">Code: {campus.school_number}</p>
+                                    <p className="mb-1 text-xs text-gray-500">{t('label_code_short')}: {campus.school_number}</p>
                                 )}
                                 {campus.address && <p className="mb-1">{campus.address}</p>}
                                 {(campus.city || campus.state || campus.zip_code) && (
@@ -469,12 +472,12 @@ export default function CampusesPage() {
                                     </p>
                                 )}
                                 {campus.principal_name && (
-                                    <p className="mb-1"><span className="font-medium">Principal:</span> {campus.principal_name}</p>
+                                    <p className="mb-1"><span className="font-medium">{t('label_principal_short')}:</span> {campus.principal_name}</p>
                                 )}
                                 {campus.contact_email && <p className="mb-1">{campus.contact_email}</p>}
                                 {campus.phone && <p>{campus.phone}</p>}
                                 {!campus.address && !campus.contact_email && !campus.phone && !campus.principal_name && (
-                                    <p className="text-gray-400 italic">No contact info provided</p>
+                                    <p className="text-gray-400 italic">{t('no_info')}</p>
                                 )}
                             </CardContent>
                         </Card>

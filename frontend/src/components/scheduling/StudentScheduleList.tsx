@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from "next-intl"
 import { useState, useMemo } from "react"
 import useSWR from "swr"
 import { useAuth } from "@/context/AuthContext"
@@ -24,6 +25,8 @@ export function StudentScheduleList({ onSelectStudent }: StudentScheduleListProp
   const { user } = useAuth()
   const campusContext = useCampus()
   const [search, setSearch] = useState("")
+
+  const t = useTranslations("school.scheduling.student_schedule")
 
   const cacheKey = user
     ? ["students-schedule-list", user.id, campusContext?.selectedCampus?.id]
@@ -85,13 +88,13 @@ export function StudentScheduleList({ onSelectStudent }: StudentScheduleListProp
       {/* Header */}
       <div className="flex items-center gap-2 border-b pb-4">
         <CalendarDays className="h-6 w-6 text-amber-500" />
-        <h1 className="text-2xl font-bold">Student Schedule</h1>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
       </div>
 
       {/* Actions bar */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>{filteredStudents.length} student{filteredStudents.length !== 1 ? "s" : ""} were found.</span>
+          <span>{t("found_students", { count: filteredStudents.length })}</span>
           <button
             className="text-muted-foreground hover:text-foreground"
             title="Download"
@@ -101,7 +104,7 @@ export function StudentScheduleList({ onSelectStudent }: StudentScheduleListProp
         </div>
         <div className="relative w-64">
           <Input
-            placeholder="Search"
+            placeholder={t("search_placeholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pr-8"
@@ -122,14 +125,14 @@ export function StudentScheduleList({ onSelectStudent }: StudentScheduleListProp
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-muted/50 border-b">
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Student
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {t("th_student")}
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Student Number
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {t("th_student_number")}
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Grade Level
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {t("th_grade_level")}
                 </th>
               </tr>
             </thead>
@@ -137,7 +140,7 @@ export function StudentScheduleList({ onSelectStudent }: StudentScheduleListProp
               {filteredStudents.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
-                    No students found.
+                    {t("no_students_found")}
                   </td>
                 </tr>
               ) : (
@@ -160,7 +163,7 @@ export function StudentScheduleList({ onSelectStudent }: StudentScheduleListProp
                     >
                       <td className="px-4 py-3">
                         <button
-                          className="text-primary hover:underline font-medium text-left"
+                          className="text-primary hover:underline font-medium text-left rtl:text-right"
                           onClick={(e) => {
                             e.stopPropagation()
                             handleSelectStudent(student)

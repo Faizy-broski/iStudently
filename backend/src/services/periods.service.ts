@@ -370,101 +370,68 @@ class PeriodsService {
     campusId: string | null,
     periods: CreatePeriodDTO[]
   ): Promise<Period[]> {
-    // Get all existing period IDs for this school/campus
-    let existingQuery = supabase
+    // Validate duplicate sort orders before touching the database.
+    const sortOrders = periods.map((p) => p.sort_order)
+    const duplicateSortOrders = sortOrders.filter((value, index) => sortOrders.indexOf(value) !== index)
+    if (duplicateSortOrders.length > 0) {
+      throw new Error('Duplicate sort order values are not allowed. Please ensure each period has a unique sort order.')
+    }
+
+    const rows = periods.map((period) => ({
+      school_id: schoolId,
+      campus_id: campusId,
+      title: period.title,
+      short_name: period.short_name,
+      sort_order: period.sort_order,
+      period_number: period.sort_order,
+      start_time: period.start_time || null,
+      end_time: period.end_time || null,
+      length_minutes: period.length_minutes,
+      block: period.block || null,
+      period_name: period.title,
+      is_active: true
+    }))
+
+    const { data: upsertedPeriods, error: upsertError } = await supabase
       .from('periods')
-      .select('id, sort_order')
+      .upsert(rows, { onConflict: 'campus_id,period_number' })
+      .select()
+
+    if (upsertError) {
+      console.error('Error upserting periods:', upsertError)
+      throw new Error('Failed to save periods: ' + upsertError.message)
+    }
+
+    const savedPeriods = upsertedPeriods || []
+    const savedIds = savedPeriods.map((p: any) => p.id)
+
+    // Soft-delete periods that were not included in the new list.
+    // When a campus is selected, delete both campus-specific AND school-wide (null campus_id)
+    // periods that are no longer in the list — this matches what fetchPeriods shows the user.
+    let deleteQuery = supabase
+      .from('periods')
+      .update({ is_active: false })
       .eq('school_id', schoolId)
       .eq('is_active', true)
-    
+
     if (campusId) {
-      existingQuery = existingQuery.eq('campus_id', campusId)
+      deleteQuery = deleteQuery.or(`campus_id.eq.${campusId},campus_id.is.null`)
     } else {
-      existingQuery = existingQuery.is('campus_id', null)
-    }
-    
-    const { data: existingPeriods } = await existingQuery
-    const existingIds = new Set((existingPeriods || []).map(p => p.id))
-    
-    // Build a map of sort_order to existing period for updates
-    const sortOrderToExisting = new Map<number, string>()
-    for (const ep of existingPeriods || []) {
-      sortOrderToExisting.set(ep.sort_order, ep.id)
+      deleteQuery = deleteQuery.is('campus_id', null)
     }
 
-    const results: Period[] = []
-    const processedIds = new Set<string>()
-
-    // Update or insert each period
-    for (const period of periods) {
-      const sortOrder = period.sort_order
-      const existingId = sortOrderToExisting.get(sortOrder)
-      
-      if (existingId) {
-        // Update existing period
-        const { data, error } = await supabase
-          .from('periods')
-          .update({
-            title: period.title,
-            short_name: period.short_name,
-            start_time: period.start_time || null,
-            end_time: period.end_time || null,
-            length_minutes: period.length_minutes,
-            block: period.block || null,
-            period_name: period.title,
-            is_active: true
-          })
-          .eq('id', existingId)
-          .select()
-          .single()
-
-        if (error) {
-          console.error('Error updating period:', error)
-        } else if (data) {
-          results.push(data)
-          processedIds.add(existingId)
-        }
-      } else {
-        // Insert new period
-        const { data, error } = await supabase
-          .from('periods')
-          .insert({
-            school_id: schoolId,
-            campus_id: campusId,
-            title: period.title,
-            short_name: period.short_name,
-            sort_order: sortOrder,
-            start_time: period.start_time || null,
-            end_time: period.end_time || null,
-            length_minutes: period.length_minutes,
-            block: period.block || null,
-            period_name: period.title,
-            period_number: sortOrder,
-            is_active: true
-          })
-          .select()
-          .single()
-
-        if (error) {
-          console.error('Error inserting period:', error)
-          throw new Error('Failed to save periods: ' + error.message)
-        } else if (data) {
-          results.push(data)
-          processedIds.add(data.id)
-        }
-      }
+    if (savedIds.length > 0) {
+      const idList = `(${savedIds.join(',')})`
+      deleteQuery = deleteQuery.not('id', 'in', idList)
     }
 
-    // Soft-delete periods that were not in the new list
-    const idsToDelete = [...existingIds].filter(id => !processedIds.has(id))
-    if (idsToDelete.length > 0) {
-      await supabase
-        .from('periods')
-        .update({ is_active: false })
-        .in('id', idsToDelete)
+    const { error: deleteError } = await deleteQuery
+    if (deleteError) {
+      console.error('Error soft-deleting stale periods:', deleteError)
+      throw new Error('Failed to clean up old periods: ' + deleteError.message)
     }
 
-    return results
+    return savedPeriods as Period[]
   }
 }
 

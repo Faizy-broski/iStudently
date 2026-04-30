@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Users, BookOpen, Calendar, TrendingUp, GraduationCap, Bookmark, RefreshCw } from "lucide-react";
 import { useSchoolDashboard } from "@/hooks/useSchoolDashboard";
 import { Spinner } from "@/components/ui/spinner";
+import { useTranslations } from "next-intl";
 import { 
   Area, 
   AreaChart, 
@@ -19,6 +20,8 @@ import {
 } from "recharts";
 
 export default function AdminDashboard() {
+  const t = useTranslations('dashboard.admin');
+  const tCommon = useTranslations('common');
   // Use SWR hook for efficient data fetching with automatic revalidation
   const {
     stats,
@@ -46,39 +49,39 @@ export default function AdminDashboard() {
     
     return [
       {
-        label: 'Total Students',
+        label: t('stats.total_students'),
         value: stats.totalStudents,
         icon: Users,
         gradientClass: 'gradient-blue',
         showTrend: true
       },
       {
-        label: 'Total Teachers',
+        label: t('stats.total_teachers'),
         value: stats.totalTeachers,
         icon: GraduationCap,
         gradientClass: 'gradient-teal'
       },
       {
-        label: 'Active Courses',
+        label: t('stats.active_courses'),
         value: stats.activeCourses,
         icon: BookOpen,
         gradientClass: 'gradient-orange'
       },
       {
-        label: 'Attendance Rate',
+        label: t('stats.attendance_rate'),
         value: `${stats.attendanceRate}%`,
         icon: Calendar,
         gradientClass: 'gradient-blue',
         showTrendIcon: stats.attendanceRate >= 90
       }
     ];
-  }, [stats]);
+  }, [stats, t]);
 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
         <Spinner size="lg" className="text-brand-blue" />
-        <p className="text-sm text-gray-500">Loading dashboard...</p>
+        <p className="text-sm text-gray-500">{tCommon('loading')}</p>
       </div>
     );
   }
@@ -87,13 +90,13 @@ export default function AdminDashboard() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
         <div className="text-center">
-          <p className="text-red-600 font-semibold mb-2">Failed to load dashboard</p>
+          <p className="text-red-600 font-semibold mb-2">{t('charts.no_data')}</p>
           <p className="text-sm text-gray-500 mb-4">{error}</p>
           <button
             onClick={refreshDashboard}
             className="px-4 py-2 bg-brand-blue text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Retry
+            {t('refresh')}
           </button>
         </div>
       </div>
@@ -104,17 +107,17 @@ export default function AdminDashboard() {
     <>
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-blue-900 dark:text-white">School Admin Dashboard</h1>
-          <p className="text-gray-600 mt-2 dark:text-gray-300">Manage your school operations and track performance</p>
+          <h1 className="text-3xl font-bold text-blue-900 dark:text-white">{t('title')}</h1>
+          <p className="text-gray-600 mt-2 dark:text-gray-300">{t('subtitle')}</p>
         </div>
         <button
           onClick={refreshDashboard}
           disabled={isValidating}
           className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-          title="Refresh dashboard"
+          title={t('refresh_tooltip')}
         >
           <RefreshCw className={`h-4 w-4 ${isValidating ? 'animate-spin' : ''}`} />
-          <span className="text-sm font-medium">Refresh</span>
+          <span className="text-sm font-medium">{t('refresh')}</span>
         </button>
       </div>
 
@@ -140,8 +143,8 @@ export default function AdminDashboard() {
         {/* Student Growth Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Student Enrollment (2026)</CardTitle>
-            <CardDescription>Cumulative student enrollment over time</CardDescription>
+            <CardTitle>{t('charts.enrollment_title', { year: new Date().getFullYear() })}</CardTitle>
+            <CardDescription>{t('charts.enrollment_desc')}</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -177,8 +180,8 @@ export default function AdminDashboard() {
         {/* Attendance Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Weekly Attendance</CardTitle>
-            <CardDescription>Last 7 days attendance tracking</CardDescription>
+            <CardTitle>{t('charts.attendance_title')}</CardTitle>
+            <CardDescription>{t('charts.attendance_desc')}</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -219,8 +222,8 @@ export default function AdminDashboard() {
         {/* Grade Distribution */}
         <Card>
           <CardHeader>
-            <CardTitle>Grade Distribution</CardTitle>
-            <CardDescription>Students by grade level</CardDescription>
+            <CardTitle>{t('charts.grade_title')}</CardTitle>
+            <CardDescription>{t('charts.grade_desc')}</CardDescription>
           </CardHeader>
           <CardContent>
             {gradeDistribution.length > 0 ? (
@@ -232,17 +235,17 @@ export default function AdminDashboard() {
                         className="w-3 h-3 rounded-full" 
                         style={{ backgroundColor: COLORS[index % COLORS.length] }}
                       ></div>
-                      <span className="text-sm font-medium">Grade {item.grade}</span>
+                      <span className="text-sm font-medium">{t('charts.grade_label', { number: item.grade })}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-2xl font-bold">{item.count}</span>
-                      <span className="text-sm text-gray-500">students</span>
+                      <span className="text-sm text-gray-500">{t('charts.students_count')}</span>
                     </div>
                   </div>
                 ))}
                 <div className="pt-4 border-t">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold">Total Students</span>
+                    <span className="text-sm font-semibold">{t('stats.total_students')}</span>
                     <span className="text-2xl font-bold text-brand-blue">
                       {gradeDistribution.reduce((sum, item) => sum + item.count, 0)}
                     </span>
@@ -250,7 +253,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
             ) : (
-              <p className="text-gray-500 text-center py-8">No grade data available</p>
+              <p className="text-gray-500 text-center py-8">{t('charts.no_data')}</p>
             )}
           </CardContent>
         </Card>
@@ -258,8 +261,8 @@ export default function AdminDashboard() {
         {/* Library & Events Stats */}
         <Card>
           <CardHeader>
-            <CardTitle>Library & Activities</CardTitle>
-            <CardDescription>Books and upcoming events</CardDescription>
+            <CardTitle>{t('library.title')}</CardTitle>
+            <CardDescription>{t('library.subtitle')}</CardDescription>
           </CardHeader>
           <CardContent>
             {stats && (
@@ -270,8 +273,8 @@ export default function AdminDashboard() {
                       <Bookmark className="h-6 w-6 text-blue-600" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">Total Books</p>
-                      <p className="text-xs text-gray-500">In library</p>
+                      <p className="text-sm font-medium">{t('library.total_books')}</p>
+                      <p className="text-xs text-gray-500">{t('library.in_library')}</p>
                     </div>
                   </div>
                   <span className="text-2xl font-bold">{stats.libraryBooks}</span>
@@ -283,8 +286,8 @@ export default function AdminDashboard() {
                       <BookOpen className="h-6 w-6 text-orange-600" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">Borrowed Books</p>
-                      <p className="text-xs text-gray-500">Currently issued</p>
+                      <p className="text-sm font-medium">{t('library.borrowed_books')}</p>
+                      <p className="text-xs text-gray-500">{t('library.currently_issued')}</p>
                     </div>
                   </div>
                   <span className="text-2xl font-bold">{stats.borrowedBooks}</span>
@@ -296,8 +299,8 @@ export default function AdminDashboard() {
                       <Calendar className="h-6 w-6 text-green-600" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">Upcoming Events</p>
-                      <p className="text-xs text-gray-500">Active events</p>
+                      <p className="text-sm font-medium">{t('library.upcoming_events')}</p>
+                      <p className="text-xs text-gray-500">{t('library.active_events')}</p>
                     </div>
                   </div>
                   <span className="text-2xl font-bold">{stats.activeEvents}</span>
@@ -307,9 +310,9 @@ export default function AdminDashboard() {
                   <div className="flex items-start gap-3">
                     <Users className="h-5 w-5 text-purple-600 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-purple-900">Staff Overview</p>
+                      <p className="text-sm font-medium text-purple-900">{t('staff.overview')}</p>
                       <p className="text-xs text-purple-700 mt-1">
-                        {stats.totalStaff} total staff members ({stats.totalTeachers} teachers)
+                        {t('staff.summary', { total: stats.totalStaff, teachers: stats.totalTeachers })}
                       </p>
                     </div>
                   </div>

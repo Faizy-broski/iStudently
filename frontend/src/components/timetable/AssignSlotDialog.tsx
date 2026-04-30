@@ -39,6 +39,8 @@ interface AssignSlotDialogProps {
     onSave: () => void;
 }
 
+import { useTranslations } from "next-intl";
+
 export function AssignSlotDialog({
     open,
     onOpenChange,
@@ -50,6 +52,9 @@ export function AssignSlotDialog({
     existingEntry,
     onSave
 }: AssignSlotDialogProps) {
+    const t = useTranslations('school.timetable')
+    const daysT = useTranslations('school.timetable.days')
+
     const [selectedCpId, setSelectedCpId] = useState("");
     const [roomNumber, setRoomNumber] = useState("");
     const [conflictWarning, setConflictWarning] = useState("");
@@ -129,16 +134,16 @@ export function AssignSlotDialog({
     }, [selectedCpId, day, period.id, academicYearId, existingEntry]);
 
     const getCpLabel = (cp: coursesApi.CoursePeriod) => {
-        const course = cp.course?.title || cp.title || "Untitled";
+        const course = cp.course?.title || cp.title || t('label_untitled');
         const teacher = cp.teacher?.profile
             ? `${cp.teacher.profile.first_name || ''} ${cp.teacher.profile.last_name || ''}`.trim()
-            : "No teacher";
+            : t('label_no_teacher');
         return `${course} — ${teacher}`;
     };
 
     const handleSave = async () => {
         if (!selectedCp) {
-            toast.error("Please select a course period");
+            toast.error(t('err_select_cp'));
             return;
         }
 
@@ -150,7 +155,7 @@ export function AssignSlotDialog({
             const room = roomNumber || selectedCp.room || undefined;
 
             if (!subjectId || !teacherId) {
-                toast.error("Selected course period is missing subject or teacher");
+                toast.error(t('err_missing_data'));
                 return;
             }
 
@@ -173,11 +178,11 @@ export function AssignSlotDialog({
                 });
             }
 
-            toast.success(existingEntry ? "Entry updated" : "Class assigned");
+            toast.success(existingEntry ? t('success_updated') : t('success_assigned'));
             onSave();
             onOpenChange(false);
         } catch (error: any) {
-            toast.error(error.message || "Failed to save");
+            toast.error(error.message || t('err_save'));
         } finally {
             setLoading(false);
         }
@@ -189,7 +194,7 @@ export function AssignSlotDialog({
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <BookOpen className="h-5 w-5 text-[#57A3CC]" />
-                        Assign Class {section && `(${section.grade_name || 'Grade'})`}
+                        {existingEntry ? t('dialog_title_edit') : t('dialog_title_assign')} {section && `(${section.grade_name || t('label_grade')})`}
                     </DialogTitle>
                 </DialogHeader>
 
@@ -197,28 +202,28 @@ export function AssignSlotDialog({
                     {/* Slot Info */}
                     <div className="flex flex-wrap gap-4 text-sm bg-muted/50 p-3 rounded-lg">
                         <div>
-                            <span className="text-muted-foreground">Section:</span>
+                            <span className="text-muted-foreground">{t('label_section')}:</span>
                             <span className="font-medium ml-1">{sectionName}</span>
                         </div>
                         {section && (
                             <div>
-                                <span className="text-muted-foreground">Grade:</span>
+                                <span className="text-muted-foreground">{t('label_grade')}:</span>
                                 <span className="font-medium ml-1">{section.grade_name}</span>
                             </div>
                         )}
                         <div>
-                            <span className="text-muted-foreground">Day:</span>
-                            <span className="font-medium ml-1">{day}</span>
+                            <span className="text-muted-foreground">{t('label_day')}:</span>
+                            <span className="font-medium ml-1">{daysT(day)}</span>
                         </div>
                         <div>
-                            <span className="text-muted-foreground">Period:</span>
+                            <span className="text-muted-foreground">{t('label_period')}:</span>
                             <span className="font-medium ml-1">
                                 {period.title || period.short_name || `P${period.sort_order}`}
                             </span>
                         </div>
                         {(period.start_time || period.end_time) && (
                             <div>
-                                <span className="text-muted-foreground">Time:</span>
+                                <span className="text-muted-foreground">{t('label_time')}:</span>
                                 <span className="font-medium ml-1">{formatTimeRange(period.start_time, period.end_time)}</span>
                             </div>
                         )}
@@ -240,19 +245,19 @@ export function AssignSlotDialog({
                             {/* Course Period Selection */}
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                    <Label>Course Period *</Label>
+                                    <Label>{t('label_course_period')} *</Label>
                                     <span className="text-xs text-muted-foreground">
-                                        {coursePeriods.length} available
+                                        {t('label_available', { count: coursePeriods.length })}
                                     </span>
                                 </div>
                                 <Select value={selectedCpId} onValueChange={setSelectedCpId}>
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Select a course period" />
+                                        <SelectValue placeholder={t('placeholder_course_period')} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {coursePeriods.length === 0 ? (
                                             <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                                                No course periods found for this section
+                                                {t('no_course_periods')}
                                             </div>
                                         ) : (
                                             coursePeriods.map(cp => (
@@ -261,7 +266,7 @@ export function AssignSlotDialog({
                                                         <span>{getCpLabel(cp)}</span>
                                                         {cp.course?.subject && (
                                                             <span className="text-xs text-muted-foreground">
-                                                                Subject: {cp.course.subject.name}
+                                                                {t('label_subject')}: {cp.course.subject.name}
                                                             </span>
                                                         )}
                                                     </div>
@@ -278,7 +283,7 @@ export function AssignSlotDialog({
                                     {selectedCp.course?.subject && (
                                         <div className="flex items-center gap-2">
                                             <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
-                                            <span className="text-muted-foreground">Subject:</span>
+                                            <span className="text-muted-foreground">{t('label_subject')}:</span>
                                             <span className="font-medium">{selectedCp.course.subject.name}</span>
                                             {selectedCp.course.subject.code && (
                                                 <Badge variant="outline" className="text-xs">{selectedCp.course.subject.code}</Badge>
@@ -288,7 +293,7 @@ export function AssignSlotDialog({
                                     {selectedCp.teacher?.profile && (
                                         <div className="flex items-center gap-2">
                                             <User className="h-3.5 w-3.5 text-muted-foreground" />
-                                            <span className="text-muted-foreground">Teacher:</span>
+                                            <span className="text-muted-foreground">{t('label_teacher')}:</span>
                                             <span className="font-medium">
                                                 {`${selectedCp.teacher.profile.first_name || ''} ${selectedCp.teacher.profile.last_name || ''}`.trim()}
                                             </span>
@@ -296,7 +301,7 @@ export function AssignSlotDialog({
                                     )}
                                     {selectedCp.room && (
                                         <div className="text-muted-foreground text-xs">
-                                            Default room: {selectedCp.room}
+                                            {t('label_default_room')}: {selectedCp.room}
                                         </div>
                                     )}
                                 </div>
@@ -304,11 +309,11 @@ export function AssignSlotDialog({
 
                             {/* Room override */}
                             <div className="space-y-2">
-                                <Label>Room Number {selectedCp?.room ? "(override)" : "(optional)"}</Label>
+                                <Label>{t('label_room_number')} {selectedCp?.room ? t('label_override') : t('label_optional')}</Label>
                                 <Input
                                     value={roomNumber}
                                     onChange={(e) => setRoomNumber(e.target.value)}
-                                    placeholder={selectedCp?.room || "e.g., Lab-1, Room-201"}
+                                    placeholder={selectedCp?.room || t('placeholder_room')}
                                 />
                             </div>
                         </>
@@ -317,14 +322,14 @@ export function AssignSlotDialog({
                     {/* Actions */}
                     <div className="flex justify-end gap-2 pt-4">
                         <Button variant="outline" onClick={() => onOpenChange(false)}>
-                            Cancel
+                            {t('btn_cancel')}
                         </Button>
                         <Button
                             onClick={handleSave}
                             disabled={!selectedCp || !!conflictWarning || loading || loadingData}
                             className="bg-[#022172] hover:bg-[#022172]/90"
                         >
-                            {loading ? "Saving..." : (existingEntry ? "Update" : "Assign")}
+                            {loading ? t('btn_saving') : (existingEntry ? t('btn_update') : t('btn_assign'))}
                         </Button>
                     </div>
                 </div>

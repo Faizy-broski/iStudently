@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { sendEmailToStudents } from "@/lib/api/email"
 import { getStudents } from "@/lib/api/students"
 import { getAllStaff } from "@/lib/api/staff"
@@ -24,27 +24,33 @@ import {
   AlertTriangle,
   FlaskConical,
   RotateCcw,
-  CheckCheck,
 } from "lucide-react"
 import { useCampus } from "@/context/CampusContext"
+import { useTranslations } from "next-intl"
 
 // ─── Substitution definitions ────────────────────────────────────────────────
 
-const STUDENT_SUBS = [
-  { key: "full_name", label: "Full Name" },
-  { key: "first_name", label: "First Name" },
-  { key: "last_name", label: "Last Name" },
-  { key: "email", label: "Email" },
-  { key: "student_id", label: "Student ID" },
-  { key: "grade", label: "Grade Level" },
+const GET_STUDENT_SUBS_KEYS = (tFields: any) => [
+  { key: "full_name", labelKey: tFields("full_name") },
+  { key: "first_name", labelKey: tFields("first_name") },
+  { key: "last_name", labelKey: tFields("surname") },
+  { key: "email", labelKey: tFields("email") },
+  { key: "student_id", labelKey: tFields("student_id") },
+  { key: "grade", labelKey: tFields("grade") },
 ]
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function SendEmailStudents() {
+  const t = useTranslations("school.students.send_email")
+  const tCommon = useTranslations("common")
+  const tFields = useTranslations("school.students.custom_fields.standard_fields")
+  
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const campusContext = useCampus()
   const selectedCampusId = campusContext?.selectedCampus?.id
+
+  const studentSubsKeys = useMemo(() => GET_STUDENT_SUBS_KEYS(tFields), [tFields])
 
   // Compose state
   const [subject, setSubject] = useState("")
@@ -82,8 +88,8 @@ export function SendEmailStudents() {
   }, [search, selectedCampusId])
 
   useEffect(() => {
-    const t = setTimeout(fetchStudents, 350)
-    return () => clearTimeout(t)
+    const timer = setTimeout(fetchStudents, 350)
+    return () => clearTimeout(timer)
   }, [fetchStudents])
 
   // ── Fetch staff for CC ─────────────────────────────────────────────────────
@@ -142,9 +148,9 @@ export function SendEmailStudents() {
   // ── Submit ─────────────────────────────────────────────────────────────────
 
   const handleSubmit = async () => {
-    if (!subject.trim()) { toast.error("Subject is required"); return }
-    if (!body.trim()) { toast.error("Email body is required"); return }
-    if (selectedIds.size === 0) { toast.error("Select at least one student"); return }
+    if (!subject.trim()) { toast.error(t("subject_required")); return }
+    if (!body.trim()) { toast.error(t("body_required")); return }
+    if (selectedIds.size === 0) { toast.error(t("select_student_error")); return }
 
     setSending(true)
     setResult(null)
@@ -161,12 +167,12 @@ export function SendEmailStudents() {
       if (res.success && res.data) {
         setResult(res.data)
         if (res.data.fail_count === 0) {
-          toast.success(`${res.data.success_count} email(s) sent successfully`)
+          toast.success(t("success_msg", { count: res.data.success_count }))
         } else {
-          toast.warning(`${res.data.success_count} sent, ${res.data.fail_count} failed`)
+          toast.warning(t("partial_success_msg", { success: res.data.success_count, fail: res.data.fail_count }))
         }
       } else {
-        toast.error(res.error || "Failed to send emails")
+        toast.error(res.error || tCommon("error_occurred"))
       }
     } finally {
       setSending(false)
@@ -180,37 +186,37 @@ export function SendEmailStudents() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5" /> Send Results
+            <Mail className="h-5 w-5" /> {t("results_title")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="rounded-lg border p-4 text-center">
               <div className="text-3xl font-bold">{result.total}</div>
-              <div className="text-sm text-muted-foreground mt-1">Total Recipients</div>
+              <div className="text-sm text-muted-foreground mt-1">{t("total_recipients")}</div>
             </div>
             <div className="rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/30 p-4 text-center">
               <div className="text-3xl font-bold text-green-600">{result.success_count}</div>
-              <div className="text-sm text-muted-foreground mt-1">Sent Successfully</div>
+              <div className="text-sm text-muted-foreground mt-1">{t("sent_successfully")}</div>
             </div>
             <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/30 p-4 text-center">
               <div className="text-3xl font-bold text-red-600">{result.fail_count}</div>
-              <div className="text-sm text-muted-foreground mt-1">Failed</div>
+              <div className="text-sm text-muted-foreground mt-1">{t("failed")}</div>
             </div>
           </div>
 
           {result.errors.length > 0 && (
             <div>
               <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
-                <AlertTriangle className="h-4 w-4 text-amber-500" /> Failed Recipients
+                <AlertTriangle className="h-4 w-4 text-amber-500" /> {t("failed_recipients")}
               </h4>
               <div className="rounded-md border overflow-auto max-h-64">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="text-left px-3 py-2">Name</th>
-                      <th className="text-left px-3 py-2">Email</th>
-                      <th className="text-left px-3 py-2">Error</th>
+                      <th className="text-left rtl:text-right px-3 py-2">{tCommon("name")}</th>
+                      <th className="text-left rtl:text-right px-3 py-2">{tCommon("email")}</th>
+                      <th className="text-left rtl:text-right px-3 py-2">{t("failed")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -234,7 +240,7 @@ export function SendEmailStudents() {
               setSelectedIds(new Set())
             }}
           >
-            <RotateCcw className="h-4 w-4 mr-2" /> Send Another Email
+            <RotateCcw className="h-4 w-4 mr-2 rtl:ml-2 rtl:mr-0" /> {t("send_another")}
           </Button>
         </CardContent>
       </Card>
@@ -249,20 +255,20 @@ export function SendEmailStudents() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5" /> Compose Email
+            <Mail className="h-5 w-5" /> {t("compose")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
           {/* Subject */}
           <div className="space-y-1.5">
             <Label htmlFor="subject">
-              Subject <span className="text-destructive">*</span>
+              {t("subject_label")} <span className="text-destructive">*</span>
             </Label>
             <Input
               id="subject"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              placeholder="Email subject..."
+              placeholder={`${t("subject_label")}...`}
               maxLength={200}
             />
           </div>
@@ -270,15 +276,15 @@ export function SendEmailStudents() {
           {/* Body */}
           <div className="space-y-1.5">
             <Label htmlFor="body">
-              Body <span className="text-destructive">*</span>
-              <span className="ml-2 text-xs text-muted-foreground font-normal">HTML is supported</span>
+              {t("body_label")} <span className="text-destructive">*</span>
+              <span className="ml-2 rtl:mr-2 rtl:ml-0 text-xs text-muted-foreground font-normal">({t("html_supported")})</span>
             </Label>
             <Textarea
               id="body"
               ref={textareaRef}
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              placeholder="Write your email here... Use substitution chips below to personalise each email."
+              placeholder={t("body_placeholder")}
               rows={8}
               className="font-mono text-sm resize-y"
             />
@@ -287,17 +293,17 @@ export function SendEmailStudents() {
           {/* Substitution chips */}
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">
-              Click to insert substitution (personalises each email):
+              {t("substitution_chips_label")}
             </Label>
             <div className="flex flex-wrap gap-2">
-              {STUDENT_SUBS.map((sub) => (
+              {studentSubsKeys.map((sub) => (
                 <button
                   key={sub.key}
                   type="button"
                   onClick={() => insertSub(sub.key)}
-                  className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border bg-muted hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors"
+                  className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border bg-muted hover:bg-[#022172] hover:text-white hover:border-[#022172] transition-colors"
                 >
-                  {sub.label}
+                  {sub.labelKey}
                   <span className="opacity-60 font-mono">{`{{${sub.key}}}`}</span>
                 </button>
               ))}
@@ -310,18 +316,18 @@ export function SendEmailStudents() {
             {/* Test Mode */}
             <div className="space-y-1.5">
               <Label htmlFor="test_email" className="flex items-center gap-1.5">
-                <FlaskConical className="h-3.5 w-3.5" /> Test Mode
+                <FlaskConical className="h-3.5 w-3.5" /> {t("test_mode")}
               </Label>
               <Input
                 id="test_email"
                 type="email"
                 value={testEmail}
                 onChange={(e) => setTestEmail(e.target.value)}
-                placeholder="Optional – all emails go here instead"
+                placeholder={t("test_mode_placeholder")}
               />
               {testEmail.trim() && (
                 <p className="text-xs text-amber-600">
-                  All emails will be sent to {testEmail.trim()} instead of real recipients.
+                  {t("test_mode_desc", { email: testEmail.trim() })}
                 </p>
               )}
             </div>
@@ -329,7 +335,7 @@ export function SendEmailStudents() {
             {/* CC Section */}
             {staffForCC.length > 0 && (
               <div className="space-y-1.5">
-                <Label>Send copy to (CC)</Label>
+                <Label>{t("cc_staff")}</Label>
                 <div className="max-h-36 overflow-y-auto rounded-md border divide-y">
                   {staffForCC.map((staff) => {
                     const email = staff.profile?.email!
@@ -345,7 +351,7 @@ export function SendEmailStudents() {
                         />
                         <span className="flex-1 min-w-0">
                           <span className="font-medium">{name}</span>
-                          <span className="text-muted-foreground ml-1.5 text-xs truncate">{email}</span>
+                          <span className="text-muted-foreground ml-1.5 rtl:mr-1.5 rtl:ml-0 text-xs truncate">{email}</span>
                         </span>
                       </label>
                     )
@@ -374,29 +380,33 @@ export function SendEmailStudents() {
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" /> Select Recipients
+              <Users className="h-5 w-5" /> {t("recipients_title")}
               {selectedIds.size > 0 && (
-                <Badge>{selectedIds.size} selected</Badge>
+                <Badge variant="secondary">{t("recipients_count", { count: selectedIds.size })}</Badge>
               )}
             </CardTitle>
 
             <div className="flex items-center gap-2">
               {selectedIds.size > 0 && (
                 <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>
-                  <X className="h-3.5 w-3.5 mr-1" /> Clear
+                  <X className="h-3.5 w-3.5 mr-1 rtl:ml-1 rtl:mr-0" /> {tCommon("clear")}
                 </Button>
               )}
               <Button
                 onClick={handleSubmit}
                 disabled={sending || selectedIds.size === 0}
                 size="sm"
+                className="bg-[#022172] hover:bg-[#022172]/90"
               >
                 {sending ? (
-                  "Sending..."
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                    {t("sending")}
+                  </>
                 ) : (
                   <>
-                    <Send className="h-3.5 w-3.5 mr-1.5" />
-                    Send to {selectedIds.size || 0} Student{selectedIds.size !== 1 ? "s" : ""}
+                    <Send className="h-3.5 w-3.5 mr-1.5 rtl:ml-1.5 rtl:mr-0" />
+                    {t("send_btn", { count: selectedIds.size })}
                   </>
                 )}
               </Button>
@@ -407,18 +417,18 @@ export function SendEmailStudents() {
         <CardContent className="space-y-3">
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none rtl:right-3 rtl:left-auto" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search students by name or ID..."
-              className="pl-9"
+              placeholder={t("search_placeholder")}
+              className="pl-9 rtl:pr-9 rtl:pl-3"
             />
           </div>
 
           {/* Table */}
           {loadingStudents ? (
-            <div className="text-center py-10 text-muted-foreground">Loading students...</div>
+            <div className="text-center py-10 text-muted-foreground">{t("loading_students")}</div>
           ) : (
             <div className="rounded-md border overflow-auto">
               <table className="w-full text-sm">
@@ -428,20 +438,20 @@ export function SendEmailStudents() {
                       <Checkbox
                         checked={allSelected}
                         onCheckedChange={toggleAll}
-                        aria-label="Select all"
+                        aria-label={tCommon("selectAll")}
                       />
                     </th>
-                    <th className="text-left px-3 py-2.5 font-medium">Student</th>
-                    <th className="text-left px-3 py-2.5 font-medium">ID</th>
-                    <th className="text-left px-3 py-2.5 font-medium">Grade</th>
-                    <th className="text-left px-3 py-2.5 font-medium">Email</th>
+                    <th className="text-left rtl:text-right px-3 py-2.5 font-medium">{t("table_student")}</th>
+                    <th className="text-left rtl:text-right px-3 py-2.5 font-medium">{t("table_id")}</th>
+                    <th className="text-left rtl:text-right px-3 py-2.5 font-medium">{t("table_grade")}</th>
+                    <th className="text-left rtl:text-right px-3 py-2.5 font-medium">{t("table_email")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {students.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="text-center py-10 text-muted-foreground">
-                        No students found
+                        {t("no_students_found")}
                       </td>
                     </tr>
                   ) : (
@@ -483,7 +493,7 @@ export function SendEmailStudents() {
                           </td>
                           <td className="px-3 py-2.5 text-muted-foreground">
                             {profile?.email || (
-                              <span className="text-xs italic text-muted-foreground/60">No email</span>
+                              <span className="text-xs italic text-muted-foreground/60">{t("no_email")}</span>
                             )}
                           </td>
                         </tr>
@@ -498,8 +508,8 @@ export function SendEmailStudents() {
           {/* Footer */}
           <div className="flex items-center justify-between text-sm text-muted-foreground pt-1">
             <span>
-              {students.length} student{students.length !== 1 ? "s" : ""} found &middot;{" "}
-              {studentsWithEmail.length} with email
+              {t("footer_found", { count: students.length })} &middot;{" "}
+              {t("footer_with_email", { count: studentsWithEmail.length })}
               {selectedIds.size > 0 && (
                 <>
                   {" "}
@@ -508,7 +518,7 @@ export function SendEmailStudents() {
                     className="text-primary underline underline-offset-2"
                     onClick={toggleAll}
                   >
-                    {allSelected ? "Deselect all" : "Select all with email"}
+                    {allSelected ? tCommon("none") : t("select_all_with_email")}
                   </button>
                 </>
               )}
@@ -517,13 +527,17 @@ export function SendEmailStudents() {
             <Button
               onClick={handleSubmit}
               disabled={sending || selectedIds.size === 0}
+              className="bg-[#022172] hover:bg-[#022172]/90"
             >
               {sending ? (
-                "Sending..."
+                <>
+                  <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                  {t("sending")}
+                </>
               ) : (
                 <>
-                  <Send className="h-4 w-4 mr-1.5" />
-                  Send Email to {selectedIds.size} Student{selectedIds.size !== 1 ? "s" : ""}
+                  <Send className="h-4 w-4 mr-1.5 rtl:ml-1.5 rtl:mr-0" />
+                  {t("send_btn", { count: selectedIds.size })}
                 </>
               )}
             </Button>
@@ -531,5 +545,25 @@ export function SendEmailStudents() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+// Simple loader helper
+function Loader2({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
   )
 }

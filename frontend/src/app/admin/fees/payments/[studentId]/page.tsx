@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, use, useEffect } from 'react'
 import { useCampus } from '@/context/CampusContext'
 import { useAuth } from '@/context/AuthContext'
+import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -93,6 +94,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
     
     const { selectedCampus, loading: campusLoading } = useCampus() || {}
     useAuth()
+    const { formatCurrency: formatDynamicCurrency } = useSchoolSettings()
     const schoolId = selectedCampus?.id
 
     const [viewMode, setViewMode] = useState<'original' | 'expanded'>('original')
@@ -190,12 +192,8 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
     const student = paymentData?.studentInfo
 
     // Format currency
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD'
-        }).format(amount)
-    }
+    // Use the dynamic formatter from the hook
+    const formatCurrency = (amount: number) => formatDynamicCurrency(amount)
 
     // Format date
     const formatDate = (dateStr: string) => {

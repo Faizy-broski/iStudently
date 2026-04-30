@@ -7,8 +7,8 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Calendar, CreditCard, Save } from "lucide-react";
-import { getSchoolSettings, updateSchoolSettings, PAYMENT_METHOD_OPTIONS, PaymentMethodOption } from "@/lib/api/school-settings";
+import { Calendar, CreditCard, DollarSign, Save } from "lucide-react";
+import { getSchoolSettings, updateSchoolSettings, PAYMENT_METHOD_OPTIONS, CURRENCY_OPTIONS, PaymentMethodOption } from "@/lib/api/school-settings";
 import { useCampus } from "@/context/CampusContext";
 
 const HIJRI_OFFSET_KEY = "studently_global_hijri_offset";
@@ -25,36 +25,58 @@ export default function SettingsPage() {
   const [paymentMethodSaving, setPaymentMethodSaving] = useState(false);
   const [paymentMethodLoading, setPaymentMethodLoading] = useState(true);
 
-  useEffect(() => {
-    // Load saved Hijri offset from localStorage
-    const saved = localStorage.getItem(HIJRI_OFFSET_KEY);
-    if (saved !== null) {
-      setHijriOffset(parseInt(saved));
-    }
+  // Default currency
+  const [defaultCurrency, setDefaultCurrency] = useState<string>("USD");
+  const [currencySaving, setCurrencySaving] = useState(false);
 
-    // Load campus-specific default payment method from server
+  useEffect(() => {
+    // Load campus-specific settings from server (DB is authoritative for hijri_offset)
     setPaymentMethodLoading(true);
     getSchoolSettings(campusId).then((res) => {
-      if (res.success && res.data?.default_payment_method) {
-        setDefaultPaymentMethod(res.data.default_payment_method);
-      } else {
-        setDefaultPaymentMethod("cash");
+      if (res.success && res.data) {
+        if (res.data.default_payment_method) setDefaultPaymentMethod(res.data.default_payment_method);
+        if (res.data.default_currency) setDefaultCurrency(res.data.default_currency);
+        if (res.data.hijri_offset !== undefined && res.data.hijri_offset !== null) {
+          setHijriOffset(res.data.hijri_offset);
+          // Keep localStorage in sync so CalendarGrid picks it up immediately
+          localStorage.setItem(HIJRI_OFFSET_KEY, res.data.hijri_offset.toString());
+          window.dispatchEvent(new CustomEvent('hijri-offset-changed', { detail: res.data.hijri_offset }));
+        } else {
+          // Fall back to localStorage if DB has no value yet
+          const saved = localStorage.getItem(HIJRI_OFFSET_KEY);
+          if (saved !== null) setHijriOffset(parseInt(saved));
+        }
       }
     }).finally(() => setPaymentMethodLoading(false));
   }, [campusId]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsSaving(true);
     try {
+      const res = await updateSchoolSettings({ hijri_offset: hijriOffset }, campusId);
+      if (!res.success) throw new Error(res.error || "Failed to save");
+      // Sync localStorage + dispatch event so all open CalendarGrids update instantly
       localStorage.setItem(HIJRI_OFFSET_KEY, hijriOffset.toString());
-      // Dispatch custom event to notify calendar components
       window.dispatchEvent(new CustomEvent('hijri-offset-changed', { detail: hijriOffset }));
-      toast.success("Settings saved successfully");
+      toast.success("Hijri offset saved successfully");
     } catch (error) {
       console.error("Error saving settings:", error);
       toast.error("Failed to save settings");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSaveCurrency = async () => {
+    setCurrencySaving(true);
+    try {
+      const res = await updateSchoolSettings({ default_currency: defaultCurrency }, campusId);
+      if (!res.success) throw new Error(res.error || "Failed to save");
+      toast.success(campusId ? "Campus default currency saved" : "Default currency saved");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to save currency");
+    } finally {
+      setCurrencySaving(false);
     }
   };
 
@@ -154,6 +176,70 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Default Currency Settings */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5 text-[#022172]" />
+            <CardTitle>Default Currency</CardTitle>
+          </div>
+          <CardDescription>
+            Set the default currency for{" "}
+            {selectedCampus ? <strong>{selectedCampus.name}</strong> : "your school"}
+            {". "}This will be used across fees, invoices, billing elements, and financial reports.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-3">
+            <Label className="text-base font-semibold">Currency</Label>
+            {paymentMethodLoading ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : (
+              <Select value={defaultCurrency} onValueChange={setDefaultCurrency}>
+                <SelectTrigger className="w-72">
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent className="max-h-80">
+                  {CURRENCY_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      <span className="font-mono text-muted-foreground w-8 inline-block">{opt.symbol}</span>
+                      {opt.value} — {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {!paymentMethodLoading && (
+              <p className="text-sm text-muted-foreground">
+                Selected:{" "}
+                <strong>
+                  {(() => {
+                    const c = CURRENCY_OPTIONS.find(o => o.value === defaultCurrency);
+                    return c ? `${c.symbol} ${c.value} — ${c.label}` : defaultCurrency;
+                  })()}
+                </strong>
+              </p>
+            )}
+            <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+              <p className="text-sm text-blue-900 dark:text-blue-100">
+                <strong>Note:</strong> This setting is campus-specific. Changing the currency does not
+                convert existing monetary values — it only affects the symbol displayed on new records.
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button
+              onClick={handleSaveCurrency}
+              disabled={currencySaving || paymentMethodLoading}
+              className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {currencySaving ? "Saving..." : "Save Currency"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Default Payment Method Settings */}
       <Card>
         <CardHeader>
@@ -186,7 +272,7 @@ export default function SettingsPage() {
                 <SelectTrigger className="w-60">
                   <SelectValue placeholder="Select payment method" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-80">
                   {PAYMENT_METHOD_OPTIONS.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
                       {opt.label}

@@ -16,9 +16,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { IconArrowLeft, IconPlus, IconPencil, IconTrash, IconDeviceFloppy } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
-import { API_URL } from '@/config/api'
 import * as servicesApi from '@/lib/api/services'
 import { getAuthToken } from '@/lib/api/schools'
+import { useTranslations, useLocale } from 'next-intl'
 
 const fetcher = async (url: string) => {
     const token = await getAuthToken()
@@ -58,6 +58,8 @@ interface GradeLevel {
 }
 
 export default function ServicesSettingsPage() {
+    const t = useTranslations('school.services')
+    const locale = useLocale()
     const campusContext = useCampus()
     const selectedCampus = campusContext?.selectedCampus
     const campusId = selectedCampus?.id || ''
@@ -115,7 +117,7 @@ export default function ServicesSettingsPage() {
 
     const handleSave = async () => {
         if (!name || !code) {
-            toast.error('Name and code are required')
+            toast.error(t('msg_required'))
             return
         }
 
@@ -146,7 +148,7 @@ export default function ServicesSettingsPage() {
             }
 
             if (!result.success) {
-                throw new Error(result.error || 'Failed to save service')
+                throw new Error(result.error || t('btn_save_error')) // Fallback if needed, though t('btn_saving') is defined
             }
 
             // Save grade charges
@@ -164,7 +166,7 @@ export default function ServicesSettingsPage() {
             mutateServices()
             setIsDialogOpen(false)
             resetForm()
-            toast.success(editingService ? 'Service updated' : 'Service created')
+            toast.success(editingService ? t('update_success') : t('create_success'))
         } catch (error: any) {
             toast.error(error.message)
         }
@@ -172,7 +174,7 @@ export default function ServicesSettingsPage() {
     }
 
     const handleDelete = async (serviceId: string) => {
-        if (!confirm('Are you sure you want to delete this service?')) return
+        if (!confirm(t('msg_delete_confirm'))) return
 
         try {
             const result = await servicesApi.deleteService(serviceId)
@@ -180,14 +182,17 @@ export default function ServicesSettingsPage() {
                 throw new Error(result.error || 'Failed to delete service')
             }
             mutateServices()
-            toast.success('Service deleted')
+            toast.success(t('delete_success'))
         } catch (error: any) {
             toast.error(error.message)
         }
     }
 
     const formatCurrency = (amount: number) =>
-        new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
+        new Intl.NumberFormat(locale === 'ar' ? 'ar-SA' : 'en-US', { 
+            style: 'currency', 
+            currency: locale === 'ar' ? 'SAR' : 'USD' 
+        }).format(amount)
 
     return (
         <div className="container mx-auto py-6 space-y-6">
@@ -197,12 +202,12 @@ export default function ServicesSettingsPage() {
                         <Link href="/admin/settings"><IconArrowLeft className="h-4 w-4" /></Link>
                     </Button>
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight dark:text-white">School Services</h1>
-                        <p className="text-muted-foreground">Configure services like Bus, Meals, Lab, etc. with grade-level pricing</p>
+                        <h1 className="text-3xl font-bold tracking-tight dark:text-white">{t('title')}</h1>
+                        <p className="text-muted-foreground">{t('subtitle')}</p>
                     </div>
                 </div>
                 <Button onClick={() => { resetForm(); setIsDialogOpen(true) }}>
-                    <IconPlus className="mr-2 h-4 w-4" />Add Service
+                    <IconPlus className="mr-2 h-4 w-4" />{t('btn_add')}
                 </Button>
             </div>
 
@@ -211,13 +216,13 @@ export default function ServicesSettingsPage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Service</TableHead>
-                                <TableHead>Code</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead>Default Charge</TableHead>
-                                <TableHead>Mandatory</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
+                                <TableHead>{t('table_col_service')}</TableHead>
+                                <TableHead>{t('table_col_code')}</TableHead>
+                                <TableHead>{t('table_col_type')}</TableHead>
+                                <TableHead>{t('table_col_charge')}</TableHead>
+                                <TableHead>{t('table_col_mandatory')}</TableHead>
+                                <TableHead>{t('table_col_status')}</TableHead>
+                                <TableHead className="text-right">{t('table_col_actions')}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -232,12 +237,12 @@ export default function ServicesSettingsPage() {
                                         </div>
                                     </TableCell>
                                     <TableCell><Badge variant="outline">{service.code}</Badge></TableCell>
-                                    <TableCell className="capitalize">{service.charge_frequency}</TableCell>
+                                    <TableCell className="capitalize">{t(`freq_${service.charge_frequency}`)}</TableCell>
                                     <TableCell>{formatCurrency(service.default_charge)}</TableCell>
-                                    <TableCell>{service.is_mandatory ? 'Yes' : 'No'}</TableCell>
+                                    <TableCell>{service.is_mandatory ? t('mandatory_yes') : t('mandatory_no')}</TableCell>
                                     <TableCell>
                                         <Badge variant={service.is_active ? 'default' : 'secondary'}>
-                                            {service.is_active ? 'Active' : 'Inactive'}
+                                            {service.is_active ? t('status_active') : t('status_inactive')}
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-right">
@@ -253,7 +258,7 @@ export default function ServicesSettingsPage() {
                             {(!services || services.length === 0) && (
                                 <TableRow>
                                     <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                                        No services configured. Add your first service to get started.
+                                        {t('no_services')}
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -266,53 +271,53 @@ export default function ServicesSettingsPage() {
             <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) resetForm(); setIsDialogOpen(open) }}>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>{editingService ? 'Edit Service' : 'Add New Service'}</DialogTitle>
-                        <DialogDescription>Configure service details and grade-specific pricing</DialogDescription>
+                        <DialogTitle>{editingService ? t('dialog_edit') : t('dialog_add')}</DialogTitle>
+                        <DialogDescription>{t('dialog_subtitle')}</DialogDescription>
                     </DialogHeader>
 
                     <Tabs defaultValue="details">
                         <TabsList>
-                            <TabsTrigger value="details">Details</TabsTrigger>
-                            <TabsTrigger value="pricing">Grade Pricing</TabsTrigger>
+                            <TabsTrigger value="details">{t('tab_details')}</TabsTrigger>
+                            <TabsTrigger value="pricing">{t('tab_pricing')}</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="details" className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <Label>Service Name *</Label>
-                                    <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Bus Transport" />
+                                    <Label>{t('label_name')}</Label>
+                                    <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('placeholder_name')} />
                                 </div>
                                 <div>
-                                    <Label>Code *</Label>
-                                    <Input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="e.g., BUS" />
+                                    <Label>{t('label_code')}</Label>
+                                    <Input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder={t('placeholder_code')} />
                                 </div>
                             </div>
 
                             <div>
-                                <Label>Description</Label>
-                                <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional description" />
+                                <Label>{t('label_desc')}</Label>
+                                <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t('placeholder_desc')} />
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <Label>Service Type</Label>
+                                    <Label>{t('label_type')}</Label>
                                     <Select value={serviceType} onValueChange={(v) => setServiceType(v as any)}>
                                         <SelectTrigger><SelectValue /></SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="recurring">Recurring</SelectItem>
-                                            <SelectItem value="one_time">One-Time</SelectItem>
+                                            <SelectItem value="recurring">{t('type_recurring')}</SelectItem>
+                                            <SelectItem value="one_time">{t('type_one_time')}</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
                                 <div>
-                                    <Label>Charge Frequency</Label>
+                                    <Label>{t('label_frequency')}</Label>
                                     <Select value={chargeFrequency} onValueChange={(v) => setChargeFrequency(v as any)}>
                                         <SelectTrigger><SelectValue /></SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="monthly">Monthly</SelectItem>
-                                            <SelectItem value="quarterly">Quarterly</SelectItem>
-                                            <SelectItem value="yearly">Yearly</SelectItem>
-                                            <SelectItem value="one_time">One-Time</SelectItem>
+                                            <SelectItem value="monthly">{t('freq_monthly')}</SelectItem>
+                                            <SelectItem value="quarterly">{t('freq_quarterly')}</SelectItem>
+                                            <SelectItem value="yearly">{t('freq_yearly')}</SelectItem>
+                                            <SelectItem value="one_time">{t('freq_one_time')}</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -320,25 +325,25 @@ export default function ServicesSettingsPage() {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <Label>Default Charge ($)</Label>
+                                    <Label>{t('label_default_charge')}</Label>
                                     <Input type="number" step="0.01" value={defaultCharge} onChange={(e) => setDefaultCharge(parseFloat(e.target.value) || 0)} />
                                 </div>
                                 <div className="flex items-center gap-2 pt-6">
                                     <Switch checked={isMandatory} onCheckedChange={setIsMandatory} />
-                                    <Label>Mandatory for all students</Label>
+                                    <Label>{t('label_mandatory_switch')}</Label>
                                 </div>
                             </div>
                         </TabsContent>
 
                         <TabsContent value="pricing" className="space-y-4">
                             <p className="text-sm text-muted-foreground">
-                                Set different prices per grade level. Leave blank to use the default charge.
+                                {t('pricing_hint')}
                             </p>
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Grade Level</TableHead>
-                                        <TableHead>Charge ($)</TableHead>
+                                        <TableHead>{t('table_col_grade')}</TableHead>
+                                        <TableHead>{t('table_col_charge')}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -349,7 +354,7 @@ export default function ServicesSettingsPage() {
                                                 <Input
                                                     type="number"
                                                     step="0.01"
-                                                    placeholder={`Default: ${formatCurrency(defaultCharge)}`}
+                                                    placeholder={t('placeholder_grade_charge', { amount: formatCurrency(defaultCharge) })}
                                                     value={gradeCharges[grade.id] || ''}
                                                     onChange={(e) => setGradeCharges({
                                                         ...gradeCharges,
@@ -366,10 +371,10 @@ export default function ServicesSettingsPage() {
                     </Tabs>
 
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => { resetForm(); setIsDialogOpen(false) }}>Cancel</Button>
+                        <Button variant="outline" onClick={() => { resetForm(); setIsDialogOpen(false) }}>{t('btn_cancel')}</Button>
                         <Button onClick={handleSave} disabled={saving}>
                             <IconDeviceFloppy className="mr-2 h-4 w-4" />
-                            {saving ? 'Saving...' : 'Save Service'}
+                            {saving ? t('btn_saving') : t('btn_save')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

@@ -64,6 +64,7 @@ export default function StudentEventsPage() {
             calendarType="gregorian"
             calendarStart={defaultGregorian?.start_date}
             calendarEnd={defaultGregorian?.end_date}
+            weekdays={defaultGregorian?.weekdays}
             // By omitting onDateClick and onEventClick, we keep the calendar purely read-only
           />
         </div>

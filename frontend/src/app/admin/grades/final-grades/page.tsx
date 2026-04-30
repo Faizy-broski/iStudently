@@ -31,6 +31,7 @@ import * as academicsApi from "@/lib/api/academics";
 import type { GradeLevel } from "@/lib/api/academics";
 import { printReportCards, type ReportCardData } from "@/components/grades/ReportPrintPreview";
 import { getPdfHeaderFooter, type PdfHeaderFooterSettings } from "@/lib/api/school-settings";
+import { useTranslations } from "next-intl";
 
 interface StudentItem {
   id: string;
@@ -56,6 +57,8 @@ export default function FinalGradesPage() {
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
   const { isPluginActive } = useSchoolSettings();
+  const t = useTranslations("school.grades_module.final_grades");
+  const tc = useTranslations("common");
 
   const [pdfSettings, setPdfSettings] = useState<PdfHeaderFooterSettings | null>(null);
   useEffect(() => {
@@ -96,7 +99,6 @@ export default function FinalGradesPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
 
-
   // ── Expanded / Group toggles ──────────────────────────────────
   const [expandedView, setExpandedView] = useState(false);
 
@@ -126,11 +128,11 @@ export default function FinalGradesPage() {
         setGradeLevels(glRes.data);
       }
     } catch {
-      toast.error("Failed to load data");
+      toast.error(tc("error_load_data") || "Failed to load data");
     } finally {
       setLoading(false);
     }
-  }, [user, selectedCampus?.id, gradeFilter]);
+  }, [user, selectedCampus?.id, gradeFilter, tc]);
 
   useEffect(() => {
     loadData();
@@ -163,16 +165,16 @@ export default function FinalGradesPage() {
       s.profile?.father_name,
       s.profile?.last_name,
     ].filter(Boolean);
-    return parts.join(" ") || "Unknown";
+    return parts.join(" ") || tc("unknown") || "Unknown";
   };
 
   const handleGenerate = async () => {
     if (selectedStudentIds.length === 0) {
-      toast.error("Please select at least one student");
+      toast.error(t("select_student_error"));
       return;
     }
     if (selectedMpIds.length === 0) {
-      toast.error("Please select at least one marking period");
+      toast.error(t("select_mp_error"));
       return;
     }
 
@@ -216,7 +218,7 @@ export default function FinalGradesPage() {
     }
   };
 
-  // Quarters only (as shown in screenshot)
+  // Quarters only
   const quarterPeriods = markingPeriods.filter((mp) => mp.mp_type === "QTR");
 
   // ── Render ────────────────────────────────────────────────────
@@ -227,10 +229,10 @@ export default function FinalGradesPage() {
         <div>
           <h1 className="text-3xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent flex items-center gap-2">
             <CheckSquare className="h-8 w-8 text-[#57A3CC]" />
-            Final Grades
+            {t("title")}
           </h1>
           <p className="text-muted-foreground mt-2">
-            Create grade lists for selected students
+            {t("subtitle")}
             {selectedCampus && (
               <span className="ml-1 font-medium">
                 — {selectedCampus.name}
@@ -252,7 +254,7 @@ export default function FinalGradesPage() {
           ) : (
             <ClipboardList className="h-4 w-4 mr-2" />
           )}
-          Create Grade Lists for Selected Students
+          {t("btn_create")}
         </Button>
       </div>
 
@@ -262,11 +264,11 @@ export default function FinalGradesPage() {
           onClick={() => setExpandedView(!expandedView)}
           className="text-[#0369a1] hover:underline font-medium"
         >
-          {expandedView ? "Compact View" : "Expanded View"}
+          {expandedView ? t("compact_view") : t("expanded_view")}
         </button>
         <span className="text-muted-foreground">|</span>
         <button className="text-[#0369a1] hover:underline font-medium">
-          Group by Family
+          {t("group_by_family")}
         </button>
       </div>
 
@@ -275,7 +277,7 @@ export default function FinalGradesPage() {
         <CardContent className="pt-6 space-y-5">
           {/* Include on Grade List */}
           <div>
-            <h3 className="font-bold text-sm mb-3">Include on Grade List</h3>
+            <h3 className="font-bold text-sm mb-3">{t("include_section")}</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-2.5">
               <div className="flex items-center gap-2">
                 <Checkbox
@@ -284,7 +286,7 @@ export default function FinalGradesPage() {
                   onCheckedChange={(c) => setIncludeTeacher(c === true)}
                 />
                 <Label htmlFor="teacher" className="text-sm cursor-pointer">
-                  Teacher
+                  {t("teacher")}
                 </Label>
               </div>
               <div className="flex items-center gap-2">
@@ -294,7 +296,7 @@ export default function FinalGradesPage() {
                   onCheckedChange={(c) => setIncludeComments(c === true)}
                 />
                 <Label htmlFor="comments" className="text-sm cursor-pointer">
-                  Comments
+                  {t("comments")}
                 </Label>
               </div>
               <div className="flex items-center gap-2">
@@ -304,7 +306,7 @@ export default function FinalGradesPage() {
                   onCheckedChange={(c) => setIncludePercents(c === true)}
                 />
                 <Label htmlFor="percents" className="text-sm cursor-pointer">
-                  Percents
+                  {t("percents")}
                 </Label>
               </div>
               <div className="flex items-center gap-2">
@@ -314,7 +316,7 @@ export default function FinalGradesPage() {
                   onCheckedChange={(c) => setIncludeMinMaxGrades(c === true)}
                 />
                 <Label htmlFor="minmax" className="text-sm cursor-pointer">
-                  Min. and Max. Grades
+                  {t("min_max_grades")}
                 </Label>
               </div>
             </div>
@@ -335,8 +337,8 @@ export default function FinalGradesPage() {
                   htmlFor="ytd-absences"
                   className="text-sm cursor-pointer"
                 >
-                  Year-to-date Daily Absences
-                </Label>
+                {t("ytd_absences")}
+              </Label>
               </div>
               <div className="flex items-center gap-2">
                 <Checkbox
@@ -347,8 +349,8 @@ export default function FinalGradesPage() {
                   }
                 />
                 <Label htmlFor="other-ytd" className="text-sm cursor-pointer">
-                  Other Attendance Year-to-date:
-                </Label>
+                {t("other_attendance_ytd")}
+              </Label>
                 <Select
                   value={otherAttendanceYtdType}
                   onValueChange={setOtherAttendanceYtdType}
@@ -357,9 +359,9 @@ export default function FinalGradesPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Absent">Absent</SelectItem>
-                    <SelectItem value="Tardy">Tardy</SelectItem>
-                    <SelectItem value="Half Day">Half Day</SelectItem>
+                    <SelectItem value="Absent">{t("absent")}</SelectItem>
+                    <SelectItem value="Tardy">{t("tardy")}</SelectItem>
+                    <SelectItem value="Half Day">{t("half_day")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -377,8 +379,8 @@ export default function FinalGradesPage() {
                   htmlFor="mp-absences"
                   className="text-sm cursor-pointer"
                 >
-                  Daily Absences this marking period
-                </Label>
+                {t("mp_absences")}
+              </Label>
               </div>
               <div className="flex items-center gap-2">
                 <Checkbox
@@ -389,8 +391,8 @@ export default function FinalGradesPage() {
                   }
                 />
                 <Label htmlFor="other-mp" className="text-sm cursor-pointer">
-                  Other Attendance this marking period:
-                </Label>
+                {t("other_attendance_mp")}
+              </Label>
                 <Select
                   value={otherAttendanceMpType}
                   onValueChange={setOtherAttendanceMpType}
@@ -399,9 +401,9 @@ export default function FinalGradesPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Absent">Absent</SelectItem>
-                    <SelectItem value="Tardy">Tardy</SelectItem>
-                    <SelectItem value="Half Day">Half Day</SelectItem>
+                    <SelectItem value="Absent">{t("absent")}</SelectItem>
+                    <SelectItem value="Tardy">{t("tardy")}</SelectItem>
+                    <SelectItem value="Half Day">{t("half_day")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -418,8 +420,8 @@ export default function FinalGradesPage() {
                 htmlFor="period-absences"
                 className="text-sm cursor-pointer"
               >
-                Period-by-period absences
-              </Label>
+              {t("period_absences")}
+            </Label>
             </div>
           </div>
 
@@ -460,7 +462,7 @@ export default function FinalGradesPage() {
                     </div>
                   ))}
             </div>
-            <p className="text-sm text-muted-foreground">Marking Periods</p>
+            <p className="text-sm text-muted-foreground">{t("marking_periods")}</p>
           </div>
         </CardContent>
       </Card>
@@ -471,24 +473,23 @@ export default function FinalGradesPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <p className="text-sm text-[#0369a1] font-medium">
-                {students.length} student{students.length !== 1 ? "s" : ""} were
-                found.
+                {t("students_found", { count: students.length })}
               </p>
               <Button
                 variant="outline"
                 size="icon"
                 className="h-8 w-8"
-                title="Download"
+                title={tc("download")}
               >
                 <Download className="h-4 w-4" />
               </Button>
             </div>
             <Select value={gradeFilter} onValueChange={setGradeFilter}>
               <SelectTrigger className="w-[160px] h-9">
-                <SelectValue placeholder="All Grades" />
+                <SelectValue placeholder={t("all_grade_levels")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Grade Levels</SelectItem>
+                <SelectItem value="all">{t("all_grade_levels")}</SelectItem>
                 {gradeLevels.map((gl) => (
                   <SelectItem key={gl.id} value={gl.id}>
                     {gl.name}
@@ -505,7 +506,7 @@ export default function FinalGradesPage() {
           ) : students.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Users className="h-12 w-12 mx-auto mb-3 opacity-40" />
-              <p>No students found</p>
+              <p>{t("no_students_found")}</p>
             </div>
           ) : (
             <div className="border rounded-md overflow-hidden">
@@ -523,13 +524,13 @@ export default function FinalGradesPage() {
                       />
                     </TableHead>
                     <TableHead className="text-white font-semibold">
-                      STUDENT
+                      {t("student")}
                     </TableHead>
                     <TableHead className="text-white font-semibold">
-                      STUDENT ID
+                      {t("student_id")}
                     </TableHead>
                     <TableHead className="text-white font-semibold">
-                      GRADE LEVEL
+                      {t("grade_level_header")}
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -575,10 +576,9 @@ export default function FinalGradesPage() {
           ) : (
             <ClipboardList className="h-4 w-4 mr-2" />
           )}
-          Create Grade Lists for Selected Students
+          {t("btn_create")}
         </Button>
       </div>
-
 
     </div>
   );

@@ -27,9 +27,13 @@ import {
 } from "@/components/ui/select"
 import { toast } from "sonner"
 
-const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+import { useTranslations, useLocale } from "next-intl"
 
 export function PrintSchedules() {
+  const t = useTranslations("school.scheduling.print_schedules")
+  const tCommon = useTranslations("common")
+  const locale = useLocale()
+
   const { user } = useAuth()
   const { selectedAcademicYear } = useAcademic()
   const campusContext = useCampus()
@@ -39,6 +43,14 @@ export function PrintSchedules() {
   const campusId = campusContext?.selectedCampus?.id
   const campus = campusContext?.selectedCampus
   const schoolName = campus?.name || "School"
+
+  const DAY_NAMES = useMemo(() => [
+    tCommon("days_full.0"),
+    tCommon("days_full.1"),
+    tCommon("days_full.2"),
+    tCommon("days_full.3"),
+    tCommon("days_full.4"),
+  ], [tCommon])
 
   const [pdfSettings, setPdfSettings] = useState<PdfHeaderFooterSettings | null>(null)
   useEffect(() => {
@@ -116,11 +128,11 @@ export function PrintSchedules() {
 
   const handleCreateSchedules = useCallback(async () => {
     if (selectedStudentIds.size === 0) {
-      toast.error("Please select at least one student")
+      toast.error(tCommon("msg_select_student"))
       return
     }
     if (!academicYearId) {
-      toast.error("No academic year selected")
+      toast.error(tCommon("error"))
       return
     }
 
@@ -142,12 +154,12 @@ export function PrintSchedules() {
         .map((r) => r.value)
 
       if (studentSchedules.length === 0) {
-        toast.error("Could not fetch any schedules")
+        toast.error(t("msg_no_schedules"))
         return
       }
 
       // Build the print page
-      const todayStr = new Date().toLocaleDateString("en-US", {
+      const todayStr = new Date().toLocaleDateString(locale, {
         year: "numeric",
         month: "long",
         day: "numeric",
@@ -166,7 +178,7 @@ export function PrintSchedules() {
           const cp = sched.course_period
           if (!cp) continue
           // Each course_period may have days info, or we show across all 5 days
-          const periodTitle = cp.period?.title || cp.period?.short_name || cp.short_name || "Period"
+          const periodTitle = cp.period?.title || cp.period?.short_name || cp.short_name || tCommon("period")
           if (!periodMap.has(periodTitle)) {
             periodMap.set(periodTitle, new Map())
           }
@@ -186,19 +198,19 @@ export function PrintSchedules() {
 
         const periodCount = periodMap.size
 
-        bodyHtml += `<div class="schedule-page">`
-        bodyHtml += `<h1 class="page-title">Student Schedule</h1>`
+        bodyHtml += `<div class="schedule-page" dir="${locale === 'ar' ? 'rtl' : 'ltr'}">`
+        bodyHtml += `<h1 class="page-title">${t("pdf_title")}</h1>`
 
         // Student info — RosarioSIS-style coloured record header
         bodyHtml += `<div class="record-header"><span>${studentName}</span><span class="rh-right">${student.student_number}</span></div>`
         bodyHtml += `<div class="record-subheader"><span>${student.grade_level || "—"}</span><span>${todayStr}</span></div>`
 
-        bodyHtml += `<p class="period-count">${periodCount} period${periodCount !== 1 ? "s" : ""} were found.</p>`
+        bodyHtml += `<p class="period-count">${tCommon("found_items", { count: periodCount, label: tCommon("period") })}</p>`
 
         if (viewMode === "table") {
           // Table view (Period x Days grid like screenshot 3)
           bodyHtml += `<table class="schedule-table"><thead><tr>`
-          bodyHtml += `<th class="period-col">Period</th>`
+          bodyHtml += `<th class="period-col">${t("th_period")}</th>`
           for (const day of DAY_NAMES) {
             bodyHtml += `<th>${day}</th>`
           }
@@ -218,7 +230,7 @@ export function PrintSchedules() {
                 bodyHtml += `<td class="day-cell">`
                 bodyHtml += `<div class="course-name">${courseTitle}</div>`
                 if (teacherName) bodyHtml += `<div class="teacher-name">${teacherName}</div>`
-                if (room) bodyHtml += `<div class="room-name">Room: ${room}</div>`
+                if (room) bodyHtml += `<div class="room-name">${t("label_room", { room })}</div>`
                 bodyHtml += `</td>`
               } else {
                 bodyHtml += `<td class="day-cell empty"></td>`
@@ -230,7 +242,7 @@ export function PrintSchedules() {
         } else {
           // List view
           bodyHtml += `<table class="list-table"><thead><tr>`
-          bodyHtml += `<th>Period</th><th>Course</th><th>Teacher</th><th>Room</th>`
+          bodyHtml += `<th>${t("th_period")}</th><th>${t("opt_course")}</th><th>${tCommon("teacher")}</th><th>${tCommon("room")}</th>`
           bodyHtml += `</tr></thead><tbody>`
           for (const [periodTitle, dayMap] of periodMap) {
             const sched = dayMap.values().next().value
@@ -251,7 +263,7 @@ export function PrintSchedules() {
 
       // Download PDF with shared RosarioSIS-style header/footer
       await openPdfDownload({
-        title: "Student Schedule",
+        title: t("pdf_title"),
         bodyHtml,
         bodyStyles: SCHEDULE_BODY_STYLES,
         school: campus ?? { name: schoolName },
@@ -259,15 +271,15 @@ export function PrintSchedules() {
         pluginActive: isPluginActive('pdf_header_footer'),
       })
 
-      toast.success(`Generated schedules for ${studentSchedules.length} student(s)`)
+      toast.success(t("msg_gen_success", { count: studentSchedules.length }))
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to generate schedules")
+      toast.error(err instanceof Error ? err.message : tCommon("error"))
     } finally {
       setSubmitting(false)
     }
-  }, [selectedStudentIds, data, academicYearId, campus, schoolName, viewMode, displayTitleOf, pdfSettings, isPluginActive])
+  }, [selectedStudentIds, data, academicYearId, campus, schoolName, viewMode, displayTitleOf, pdfSettings, isPluginActive, t, tCommon, locale, DAY_NAMES])
 
-  const months = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
+  const months = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"))
   const days = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0"))
   const years = Array.from({ length: 5 }, (_, i) => String(today.getFullYear() - 2 + i))
 
@@ -276,18 +288,18 @@ export function PrintSchedules() {
       {/* Header */}
       <div className="flex items-center gap-2 border-b pb-4">
         <CalendarDays className="h-6 w-6 text-amber-500" />
-        <h1 className="text-2xl font-bold">Print Schedules</h1>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
       </div>
 
       {/* Expanded View | Group by Family + action button */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1 text-sm">
-          <button className="text-primary hover:underline">Expanded View</button>
+          <button className="text-primary hover:underline">{tCommon("view_expanded")}</button>
           <span className="text-muted-foreground">|</span>
-          <button className="text-primary hover:underline">Group by Family</button>
+          <button className="text-primary hover:underline">{tCommon("view_family")}</button>
         </div>
         <Button onClick={handleCreateSchedules} disabled={submitting}>
-          CREATE SCHEDULES FOR SELECTED STUDENTS
+          {t("btn_create_schedules")}
         </Button>
       </div>
 
@@ -308,19 +320,19 @@ export function PrintSchedules() {
               ))}
             </SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">Marking Period</p>
+          <p className="text-xs text-muted-foreground">{t("label_marking_period")}</p>
         </div>
 
         {/* Include only courses active as of */}
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Select value={activeMonth} onValueChange={setActiveMonth}>
-              <SelectTrigger className="w-20 h-8">
+              <SelectTrigger className="w-28 h-8">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {months.map((m) => (
-                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                {months.map((m, i) => (
+                  <SelectItem key={m} value={m}>{tCommon(`months.${i}`)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -345,7 +357,7 @@ export function PrintSchedules() {
               </SelectContent>
             </Select>
           </div>
-          <p className="text-xs text-muted-foreground">Include only courses active as of</p>
+          <p className="text-xs text-muted-foreground">{t("label_active_as_of")}</p>
         </div>
 
         {/* Table / List radio */}
@@ -356,11 +368,11 @@ export function PrintSchedules() {
         >
           <div className="flex items-center gap-1.5">
             <RadioGroupItem value="table" id="view-table" />
-            <Label htmlFor="view-table" className="text-sm font-medium">Table</Label>
+            <Label htmlFor="view-table" className="text-sm font-medium">{t("view_table")}</Label>
           </div>
           <div className="flex items-center gap-1.5">
             <RadioGroupItem value="list" id="view-list" />
-            <Label htmlFor="view-list" className="text-sm font-medium">List</Label>
+            <Label htmlFor="view-list" className="text-sm font-medium">{t("view_list")}</Label>
           </div>
         </RadioGroup>
 
@@ -371,7 +383,7 @@ export function PrintSchedules() {
             checked={horizontalFormat}
             onCheckedChange={(c) => setHorizontalFormat(c === true)}
           />
-          <Label htmlFor="horizontal" className="text-sm">Horizontal Format</Label>
+          <Label htmlFor="horizontal" className="text-sm">{t("label_horizontal")}</Label>
         </div>
 
         {/* Display Title of */}
@@ -379,27 +391,27 @@ export function PrintSchedules() {
           <RadioGroup
             value={displayTitleOf}
             onValueChange={(v) => setDisplayTitleOf(v as "subject" | "course" | "course_period")}
-            className="flex items-center gap-4"
+            className="flex items-center gap-4 flex-wrap"
           >
             <div className="flex items-center gap-1.5">
               <RadioGroupItem value="subject" id="dt-subject" />
-              <Label htmlFor="dt-subject" className="text-sm font-medium">Subject</Label>
+              <Label htmlFor="dt-subject" className="text-sm font-medium">{t("opt_subject")}</Label>
             </div>
             <div className="flex items-center gap-1.5">
               <RadioGroupItem value="course" id="dt-course" />
-              <Label htmlFor="dt-course" className="text-sm font-medium">Course</Label>
+              <Label htmlFor="dt-course" className="text-sm font-medium">{t("opt_course")}</Label>
             </div>
             <div className="flex items-center gap-1.5">
               <RadioGroupItem value="course_period" id="dt-cp" />
-              <Label htmlFor="dt-cp" className="text-sm font-medium">Course Period</Label>
+              <Label htmlFor="dt-cp" className="text-sm font-medium">{t("opt_course_period")}</Label>
             </div>
           </RadioGroup>
-          <p className="text-xs text-muted-foreground">Display Title of</p>
+          <p className="text-xs text-muted-foreground">{t("label_display_title")}</p>
         </div>
 
         {/* Mailing Labels */}
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">Mailing Labels</span>
+          <span className="text-sm font-medium">{t("label_mailing")}</span>
           <Checkbox
             id="mailing"
             checked={mailingLabels}
@@ -412,20 +424,20 @@ export function PrintSchedules() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span className="font-semibold text-foreground">
-            {filteredStudents.length} student{filteredStudents.length !== 1 ? "s" : ""} were found.
+            {tCommon("found_students", { count: filteredStudents.length })}
           </span>
-          <button className="text-muted-foreground hover:text-foreground" title="Download">
+          <button className="text-muted-foreground hover:text-foreground" title={tCommon("download")}>
             <Download className="h-4 w-4" />
           </button>
         </div>
         <div className="relative w-64">
           <Input
-            placeholder="Search"
+            placeholder={tCommon("search")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pr-8"
+            className="pr-8 rtl:pl-8 rtl:pr-3"
           />
-          <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute right-2 rtl:left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         </div>
       </div>
 
@@ -447,14 +459,14 @@ export function PrintSchedules() {
                     onCheckedChange={toggleAll}
                   />
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Student
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {tCommon("student")}
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Student Number
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {tCommon("student_number")}
                 </th>
-                <th className="text-left px-4 py-3 font-semibold text-primary uppercase tracking-wider">
-                  Grade Level
+                <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary uppercase tracking-wider">
+                  {tCommon("grade_level")}
                 </th>
               </tr>
             </thead>
@@ -462,7 +474,7 @@ export function PrintSchedules() {
               {filteredStudents.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
-                    No students found.
+                    {tCommon("no_students_found")}
                   </td>
                 </tr>
               ) : (
@@ -497,7 +509,7 @@ export function PrintSchedules() {
       {/* Bottom action button */}
       <div className="flex justify-center pt-2">
         <Button onClick={handleCreateSchedules} disabled={submitting}>
-          CREATE SCHEDULES FOR SELECTED STUDENTS
+          {t("btn_create_schedules")}
         </Button>
       </div>
     </div>

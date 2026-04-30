@@ -30,6 +30,7 @@ import * as academicsApi from "@/lib/api/academics";
 import type { GradeLevel } from "@/lib/api/academics";
 import { printReportCards, type ReportCardData } from "@/components/grades/ReportPrintPreview";
 import { getPdfHeaderFooter, type PdfHeaderFooterSettings } from "@/lib/api/school-settings";
+import { useTranslations } from "next-intl";
 
 interface StudentItem {
   id: string;
@@ -44,6 +45,7 @@ interface StudentItem {
 }
 
 export default function ProgressReportsPage() {
+  const t = useTranslations("school.grades_module.progress_reports");
   const { user } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
@@ -133,7 +135,7 @@ export default function ProgressReportsPage() {
 
   const handleGenerate = async () => {
     if (selectedStudentIds.length === 0) {
-      toast.error("Please select at least one student");
+      toast.error(tc("select_student_error"));
       return;
     }
 
@@ -182,7 +184,7 @@ export default function ProgressReportsPage() {
             Gradebook — Progress Reports
           </h1>
           <p className="text-muted-foreground mt-2">
-            Generate progress reports for selected students
+            {t("subtitle")}
             {selectedCampus && (
               <span className="ml-1 font-medium">
                 — {selectedCampus.name}
@@ -200,7 +202,7 @@ export default function ProgressReportsPage() {
           ) : (
             <Printer className="h-4 w-4 mr-2" />
           )}
-          CREATE PROGRESS REPORTS FOR SELECTED STUDENTS
+          {t("btn_create")}
         </Button>
       </div>
 
@@ -282,7 +284,7 @@ export default function ProgressReportsPage() {
               htmlFor="mailing-labels"
               className="text-sm cursor-pointer"
             >
-              Mailing Labels
+              {tc("mailing_labels")}
             </Label>
             <Checkbox
               id="mailing-labels"
@@ -298,13 +300,13 @@ export default function ProgressReportsPage() {
         <CardContent className="pt-6 space-y-4">
           {/* Grade filter */}
           <div className="flex items-center gap-4">
-            <Label className="text-sm font-medium">Filter by Grade:</Label>
+            <Label className="text-sm font-medium">{tc("filter_by_grade")}</Label>
             <Select value={gradeFilter} onValueChange={setGradeFilter}>
               <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="All Grades" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Grades</SelectItem>
+                <SelectItem value="all">{tc("all_grades")}</SelectItem>
                 {gradeLevels.map((gl) => (
                   <SelectItem key={gl.id} value={gl.name}>
                     {gl.name}
@@ -321,7 +323,7 @@ export default function ProgressReportsPage() {
           ) : students.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Users className="h-12 w-12 mx-auto mb-3 opacity-40" />
-              <p>No students found</p>
+              <p>{tc("no_students_found")}</p>
             </div>
           ) : (
             <>
@@ -345,14 +347,14 @@ export default function ProgressReportsPage() {
                         />
                       </TableHead>
                       <TableHead className="text-white font-semibold">
-                        STUDENT
-                      </TableHead>
+                      {tc("student")}
+                    </TableHead>
                       <TableHead className="text-white font-semibold">
-                        STUDENT ID
-                      </TableHead>
+                      {tc("student_id")}
+                    </TableHead>
                       <TableHead className="text-white font-semibold">
-                        GRADE LEVEL
-                      </TableHead>
+                      {tc("grade_level_header")}
+                    </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -398,7 +400,7 @@ export default function ProgressReportsPage() {
             ) : (
               <Printer className="h-4 w-4 mr-2" />
             )}
-            CREATE PROGRESS REPORTS FOR SELECTED STUDENTS
+            {t("btn_create")}
           </Button>
         </div>
       )}

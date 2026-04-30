@@ -25,27 +25,28 @@ import {
   type BulkImportError
 } from "@/lib/api/students"
 import { useCampus } from "@/context/CampusContext"
+import { useTranslations } from "next-intl"
 
 // ─── Field definitions ────────────────────────────────────────────────────────
 
 interface FieldDef {
   key: keyof BulkImportRow
-  label: string
+  labelKey: string
   required: boolean
-  hint?: string
+  hintKey?: string
 }
 
 const FIELD_DEFS: FieldDef[] = [
-  { key: "student_number",    label: "Student Number",    required: true,  hint: "Unique ID for the student" },
-  { key: "first_name",        label: "First Name",        required: true },
-  { key: "last_name",         label: "Last Name",         required: true },
-  { key: "email",             label: "Email",             required: true },
-  { key: "father_name",       label: "Father Name",       required: false },
-  { key: "grandfather_name",  label: "Grandfather Name",  required: false },
-  { key: "phone",             label: "Phone",             required: false },
-  { key: "password",          label: "Password",          required: false, hint: "Leave blank to auto-generate" },
-  { key: "grade_level_name",  label: "Grade Level",       required: false, hint: "Must match an existing grade level name" },
-  { key: "section_name",      label: "Section",           required: false, hint: "Must match an existing section name" },
+  { key: "student_number",    labelKey: "student_number",    required: true,  hintKey: "student_number_hint" },
+  { key: "first_name",        labelKey: "first_name",        required: true },
+  { key: "last_name",         labelKey: "last_name",         required: true },
+  { key: "email",             labelKey: "email",             required: true },
+  { key: "father_name",       labelKey: "father_name",       required: false },
+  { key: "grandfather_name",  labelKey: "grandfather_name",  required: false },
+  { key: "phone",             labelKey: "phone",             required: false },
+  { key: "password",          labelKey: "password",          required: false, hintKey: "password_hint" },
+  { key: "grade_level_name",  labelKey: "grade_level",       required: false, hintKey: "grade_level_hint" },
+  { key: "section_name",      labelKey: "section",           required: false, hintKey: "section_hint" },
 ]
 
 // ─── Auto-detect column mapping ───────────────────────────────────────────────
@@ -106,7 +107,8 @@ interface ParsedRow extends BulkImportRow {
 
 function applyMappingAndValidate(
   rawRows: Record<string, any>[],
-  mapping: Record<string, string>   // fieldKey → csvColumn | SKIP
+  mapping: Record<string, string>,   // fieldKey → csvColumn | SKIP
+  t: (key: string) => string
 ): ParsedRow[] {
   const seenNumbers = new Set<string>()
   const seenEmails = new Set<string>()
@@ -131,13 +133,13 @@ function applyMappingAndValidate(
     const gradeLevelName = get("grade_level_name")
     const sectionName    = get("section_name")
 
-    if (!studentNumber)  errors.push("student_number is required")
-    if (!firstName)      errors.push("first_name is required")
-    if (!lastName)       errors.push("last_name is required")
-    if (!email)          errors.push("email is required")
-    else if (!EMAIL_RE.test(email)) errors.push(`Invalid email: ${email}`)
-    else if (seenEmails.has(email)) errors.push("Duplicate email in this file")
-    if (studentNumber && seenNumbers.has(studentNumber)) errors.push("Duplicate student_number in this file")
+    if (!studentNumber)  errors.push(t("error_student_number_req"))
+    if (!firstName)      errors.push(t("error_first_name_req"))
+    if (!lastName)       errors.push(t("error_last_name_req"))
+    if (!email)          errors.push(t("error_email_req"))
+    else if (!EMAIL_RE.test(email)) errors.push(`${t("error_invalid_email")}: ${email}`)
+    else if (seenEmails.has(email)) errors.push(t("error_duplicate_email"))
+    if (studentNumber && seenNumbers.has(studentNumber)) errors.push(t("error_duplicate_student_number"))
 
     if (studentNumber) seenNumbers.add(studentNumber)
     if (email && EMAIL_RE.test(email)) seenEmails.add(email)
@@ -161,8 +163,8 @@ function applyMappingAndValidate(
 
 // ─── Error report download ────────────────────────────────────────────────────
 
-function downloadErrorReport(errors: BulkImportError[], filename = "student_import_errors.csv") {
-  const header = "row,student_number,error"
+function downloadErrorReport(errors: BulkImportError[], t: (key: string) => string, filename = "student_import_errors.csv") {
+  const header = `${t("row_label")},${t("student_number_label")},${t("error_label")}`
   const lines = errors.map(e => `${e.row},${e.student_number || ""},${JSON.stringify(e.error)}`)
   const csv = [header, ...lines].join("\n")
   const blob = new Blob([csv], { type: "text/csv" })
@@ -174,18 +176,15 @@ function downloadErrorReport(errors: BulkImportError[], filename = "student_impo
   URL.revokeObjectURL(url)
 }
 
-// ─── Stepper ──────────────────────────────────────────────────────────────────
-
-const STEPS = ["Upload", "Map Columns", "Preview", "Importing", "Results"] as const
-type Step = 1 | 2 | 3 | 4 | 5
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function StudentBulkImport() {
+  const t = useTranslations("school.students.bulk_import")
+  const tCommon = useTranslations("common")
   const campusCtx = useCampus()
   const campusId = campusCtx?.selectedCampus?.id
 
-  const [step, setStep] = useState<Step>(1)
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1)
   const [csvColumns, setCsvColumns] = useState<string[]>([])
   const [rawRows, setRawRows] = useState<Record<string, any>[]>([])
   const [fileName, setFileName] = useState("")
@@ -197,6 +196,14 @@ export function StudentBulkImport() {
   const [isImporting, setIsImporting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
+  const STEPS = [
+    t("step_upload"), 
+    t("step_map"), 
+    t("step_preview"), 
+    t("step_importing"), 
+    t("step_results")
+  ]
+
   // ── File parsing → Step 2 ───────────────────────────────────────────────────
 
   const processFile = useCallback((file: File) => {
@@ -204,7 +211,7 @@ export function StudentBulkImport() {
     setFileName(file.name)
 
     const handleRows = (data: Record<string, any>[]) => {
-      if (!data.length) { toast.error("File appears to be empty"); return }
+      if (!data.length) { toast.error(t("msg_empty_file")); return }
       const cols = Object.keys(data[0])
       setCsvColumns(cols)
       setRawRows(data)
@@ -216,7 +223,7 @@ export function StudentBulkImport() {
       Papa.parse(file, {
         header: true, skipEmptyLines: true,
         complete: ({ data }) => handleRows(data as Record<string, any>[]),
-        error: () => toast.error("Failed to parse CSV file"),
+        error: () => toast.error(t("msg_parse_failed_csv")),
       })
     } else if (ext === "xlsx" || ext === "xls") {
       const reader = new FileReader()
@@ -226,13 +233,13 @@ export function StudentBulkImport() {
           const ws = wb.Sheets[wb.SheetNames[0]]
           const data = XLSX.utils.sheet_to_json(ws, { defval: "" })
           handleRows(data as Record<string, any>[])
-        } catch { toast.error("Failed to parse Excel file") }
+        } catch { toast.error(t("msg_parse_failed_excel")) }
       }
       reader.readAsBinaryString(file)
     } else {
-      toast.error("Please upload a .csv, .xlsx, or .xls file")
+      toast.error(t("msg_unsupported_format"))
     }
-  }, [])
+  }, [t])
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -253,10 +260,10 @@ export function StudentBulkImport() {
       f => f.required && (!mapping[f.key] || mapping[f.key] === SKIP)
     )
     if (requiredMissing.length > 0) {
-      toast.error(`Map required fields first: ${requiredMissing.map(f => f.label).join(", ")}`)
+      toast.error(`${t("msg_map_required")}: ${requiredMissing.map(f => t(`fields.${f.labelKey}`)).join(", ")}`)
       return
     }
-    const rows = applyMappingAndValidate(rawRows, mapping)
+    const rows = applyMappingAndValidate(rawRows, mapping, t)
     setParsedRows(rows)
     setStep(3)
   }
@@ -265,7 +272,7 @@ export function StudentBulkImport() {
 
   const handleImport = async () => {
     const validRows = parsedRows.filter(r => r._clientErrors.length === 0)
-    if (validRows.length === 0) { toast.error("No valid rows to import"); return }
+    if (validRows.length === 0) { toast.error(t("msg_no_valid_rows")); return }
 
     setIsImporting(true)
     setStep(4)
@@ -275,7 +282,7 @@ export function StudentBulkImport() {
       const result = await bulkImportStudents(payload, campusId)
 
       if (!result.success || !result.data) {
-        toast.error(result.error || "Import failed")
+        toast.error(result.error || t("msg_import_failed"))
         setStep(3)
         return
       }
@@ -284,11 +291,11 @@ export function StudentBulkImport() {
       setImportErrors(result.data.errors)
       setStep(5)
       if (result.data.success_count > 0)
-        toast.success(`Imported ${result.data.success_count} student(s) successfully`)
+        toast.success(t("msg_import_success", { count: result.data.success_count }))
       if (result.data.error_count > 0)
-        toast.warning(`${result.data.error_count} row(s) failed — download the error report`)
+        toast.warning(t("msg_import_partial", { count: result.data.error_count }))
     } catch {
-      toast.error("Import failed due to a network error")
+      toast.error(t("msg_network_error"))
       setStep(3)
     } finally {
       setIsImporting(false)
@@ -312,7 +319,7 @@ export function StudentBulkImport() {
       {/* Stepper */}
       <div className="flex items-center gap-2 text-sm flex-wrap">
         {STEPS.map((label, idx) => {
-          const s = (idx + 1) as Step
+          const s = (idx + 1) as 1 | 2 | 3 | 4 | 5
           const active = step === s
           const done = step > s
           return (
@@ -322,7 +329,7 @@ export function StudentBulkImport() {
                 {done ? <CheckCircle2 className="h-4 w-4" /> : s}
               </span>
               <span className={active ? "font-medium" : "text-muted-foreground"}>{label}</span>
-              {idx < STEPS.length - 1 && <ArrowRight className="h-4 w-4 text-muted-foreground" />}
+              {idx < STEPS.length - 1 && <ArrowRight className="h-4 w-4 text-muted-foreground rtl:rotate-180" />}
             </div>
           )
         })}
@@ -332,8 +339,8 @@ export function StudentBulkImport() {
       {step === 1 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" /> Student Bulk Import</CardTitle>
-            <CardDescription>Upload a CSV or Excel file. You'll map columns to fields on the next screen.</CardDescription>
+            <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" /> {t("title")}</CardTitle>
+            <CardDescription>{t("subtitle")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div
@@ -345,18 +352,18 @@ export function StudentBulkImport() {
               onClick={() => fileRef.current?.click()}
             >
               <Upload className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
-              <p className="font-medium">Drop your file here or click to browse</p>
-              <p className="text-sm text-muted-foreground mt-1">Supports .csv, .xlsx, .xls</p>
+              <p className="font-medium">{t("drop_prompt")}</p>
+              <p className="text-sm text-muted-foreground mt-1">{t("formats_hint")}</p>
               <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={onFileChange} />
             </div>
 
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <FileText className="h-4 w-4" />
-              <span>Required fields: <code className="bg-muted px-1 rounded text-xs">Student Number, First Name, Last Name, Email</code></span>
+              <span>{t("required_fields_hint")}: <code className="bg-muted px-1 rounded text-xs">{t("required_fields_list")}</code></span>
             </div>
 
             <Button variant="outline" size="sm" onClick={downloadStudentImportTemplate} className="gap-2">
-              <Download className="h-4 w-4" /> Download CSV Template
+              <Download className="h-4 w-4" /> {t("download_template")}
             </Button>
           </CardContent>
         </Card>
@@ -367,18 +374,17 @@ export function StudentBulkImport() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-base font-semibold">Map Columns</h2>
+              <h2 className="text-base font-semibold">{t("map_title")}</h2>
               <p className="text-sm text-muted-foreground">
-                File: <span className="font-medium">{fileName}</span> — {rawRows.length} rows detected.
-                Match each field to a column in your file.
+                {t("file_info", { name: fileName, count: rawRows.length })}
               </p>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={reset} className="gap-2">
-                <ArrowLeft className="h-4 w-4" /> Back
+                <ArrowLeft className="h-4 w-4 rtl:rotate-180" /> {tCommon("back")}
               </Button>
               <Button size="sm" onClick={applyMapping} className="gap-2">
-                Continue <ArrowRight className="h-4 w-4" />
+                {tCommon("continue")} <ArrowRight className="h-4 w-4 rtl:rotate-180" />
               </Button>
             </div>
           </div>
@@ -391,12 +397,12 @@ export function StudentBulkImport() {
                   return (
                     <div key={field.key} className="space-y-1">
                       <label className="text-sm font-medium flex items-center gap-1.5">
-                        {field.label}
+                        {t(`fields.${field.labelKey}`)}
                         {field.required
                           ? <span className="text-red-500 text-xs">*</span>
-                          : <span className="text-muted-foreground text-xs">(optional)</span>}
+                          : <span className="text-muted-foreground text-xs">({tCommon("optional")})</span>}
                       </label>
-                      {field.hint && <p className="text-xs text-muted-foreground">{field.hint}</p>}
+                      {field.hintKey && <p className="text-xs text-muted-foreground">{t(`fields.${field.hintKey}`)}</p>}
                       <Select
                         value={currentVal}
                         onValueChange={val =>
@@ -404,10 +410,10 @@ export function StudentBulkImport() {
                         }
                       >
                         <SelectTrigger className={`${field.required && (!currentVal || currentVal === SKIP) ? "border-red-400" : ""}`}>
-                          <SelectValue placeholder="— Skip —" />
+                          <SelectValue placeholder={t("skip_option")} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value={SKIP}>— Skip —</SelectItem>
+                          <SelectItem value={SKIP}>{t("skip_option")}</SelectItem>
                           {csvColumns.map(col => (
                             <SelectItem key={col} value={col}>{col}</SelectItem>
                           ))}
@@ -423,7 +429,7 @@ export function StudentBulkImport() {
           {/* Column preview table */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-muted-foreground">Your file's first 3 rows</CardTitle>
+              <CardTitle className="text-sm text-muted-foreground">{t("first_rows_preview")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -431,7 +437,7 @@ export function StudentBulkImport() {
                   <thead>
                     <tr className="border-b">
                       {csvColumns.map(col => (
-                        <th key={col} className="text-left py-1 px-2 font-medium text-muted-foreground whitespace-nowrap">{col}</th>
+                        <th key={col} className="text-left py-1 px-2 font-medium text-muted-foreground whitespace-nowrap rtl:text-right">{col}</th>
                       ))}
                     </tr>
                   </thead>
@@ -458,15 +464,15 @@ export function StudentBulkImport() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex gap-3">
-              <Badge variant="default" className="gap-1"><CheckCircle2 className="h-3 w-3" /> {validCount} valid</Badge>
-              {invalidCount > 0 && <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> {invalidCount} invalid</Badge>}
+              <Badge variant="default" className="gap-1"><CheckCircle2 className="h-3 w-3" /> {t("valid_count", { count: validCount })}</Badge>
+              {invalidCount > 0 && <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> {t("invalid_count", { count: invalidCount })}</Badge>}
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => setStep(2)} className="gap-2">
-                <ArrowLeft className="h-4 w-4" /> Remap
+                <ArrowLeft className="h-4 w-4 rtl:rotate-180" /> {t("btn_remap")}
               </Button>
               <Button size="sm" onClick={handleImport} disabled={validCount === 0} className="gap-2">
-                Import {validCount} Student{validCount !== 1 ? "s" : ""} <ArrowRight className="h-4 w-4" />
+                {t("btn_import_count", { count: validCount })} <ArrowRight className="h-4 w-4 rtl:rotate-180" />
               </Button>
             </div>
           </div>
@@ -475,14 +481,14 @@ export function StudentBulkImport() {
             <Card className="border-destructive/50">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2 text-destructive">
-                  <AlertTriangle className="h-4 w-4" /> {invalidCount} row(s) will be skipped
+                  <AlertTriangle className="h-4 w-4" /> {t("skipped_rows_warning", { count: invalidCount })}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="max-h-40 overflow-y-auto space-y-1">
                   {parsedRows.filter(r => r._clientErrors.length > 0).map(r => (
                     <div key={r._rowIndex} className="text-xs text-destructive">
-                      Row {r._rowIndex}{r.student_number ? ` (${r.student_number})` : ""}: {r._clientErrors.join("; ")}
+                      {tCommon("row")} {r._rowIndex}{r.student_number ? ` (${r.student_number})` : ""}: {r._clientErrors.join("; ")}
                     </div>
                   ))}
                 </div>
@@ -492,15 +498,15 @@ export function StudentBulkImport() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Preview — first 20 rows</CardTitle>
+              <CardTitle className="text-sm">{t("preview_title")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b">
-                      {["Row", "Student #", "First Name", "Last Name", "Email", "Grade", "Section", "Status"].map(h => (
-                        <th key={h} className="text-left py-1 px-2 font-medium text-muted-foreground">{h}</th>
+                      {[t("th_row"), t("th_student_num"), t("th_first_name"), t("th_last_name"), t("th_email"), t("th_grade"), t("th_section"), tCommon("status")].map(h => (
+                        <th key={h} className="text-left py-1 px-2 font-medium text-muted-foreground rtl:text-right">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -517,14 +523,14 @@ export function StudentBulkImport() {
                         <td className="py-1 px-2">
                           {row._clientErrors.length > 0
                             ? <span className="text-destructive flex items-center gap-1"><XCircle className="h-3 w-3" /> {row._clientErrors[0]}</span>
-                            : <span className="text-green-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> OK</span>}
+                            : <span className="text-green-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> {tCommon("ok")}</span>}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
                 {parsedRows.length > 20 && (
-                  <p className="text-xs text-muted-foreground mt-2">...and {parsedRows.length - 20} more row(s)</p>
+                  <p className="text-xs text-muted-foreground mt-2">{t("more_rows_hint", { count: parsedRows.length - 20 })}</p>
                 )}
               </div>
             </CardContent>
@@ -537,8 +543,8 @@ export function StudentBulkImport() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="font-medium">Importing students...</p>
-            <p className="text-sm text-muted-foreground">Creating accounts for {validCount} student(s). This may take a moment.</p>
+            <p className="font-medium">{t("msg_importing")}</p>
+            <p className="text-sm text-muted-foreground">{t("msg_importing_desc", { count: validCount })}</p>
           </CardContent>
         </Card>
       )}
@@ -548,11 +554,11 @@ export function StudentBulkImport() {
         <div className="space-y-4">
           <div className="flex gap-3">
             <Badge variant="default" className="gap-1 text-sm py-1 px-3">
-              <CheckCircle2 className="h-4 w-4" /> {successCount} imported
+              <CheckCircle2 className="h-4 w-4" /> {t("msg_success_count", { count: successCount })}
             </Badge>
             {importErrors.length > 0 && (
               <Badge variant="destructive" className="gap-1 text-sm py-1 px-3">
-                <XCircle className="h-4 w-4" /> {importErrors.length} failed
+                <XCircle className="h-4 w-4" /> {t("msg_failed_count", { count: importErrors.length })}
               </Badge>
             )}
           </div>
@@ -562,10 +568,10 @@ export function StudentBulkImport() {
               <CardHeader>
                 <CardTitle className="text-sm flex items-center justify-between">
                   <span className="flex items-center gap-2 text-destructive">
-                    <AlertTriangle className="h-4 w-4" /> Failed Rows
+                    <AlertTriangle className="h-4 w-4" /> {t("failed_rows_title")}
                   </span>
-                  <Button variant="outline" size="sm" onClick={() => downloadErrorReport(importErrors)} className="gap-2">
-                    <Download className="h-4 w-4" /> Download Error Report
+                  <Button variant="outline" size="sm" onClick={() => downloadErrorReport(importErrors, t)} className="gap-2">
+                    <Download className="h-4 w-4" /> {t("btn_download_errors")}
                   </Button>
                 </CardTitle>
               </CardHeader>
@@ -574,9 +580,9 @@ export function StudentBulkImport() {
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left py-1 px-2 font-medium">Row</th>
-                        <th className="text-left py-1 px-2 font-medium">Student #</th>
-                        <th className="text-left py-1 px-2 font-medium">Error</th>
+                        <th className="text-left py-1 px-2 font-medium rtl:text-right">{t("th_row")}</th>
+                        <th className="text-left py-1 px-2 font-medium rtl:text-right">{t("th_student_num")}</th>
+                        <th className="text-left py-1 px-2 font-medium rtl:text-right">{tCommon("error")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -596,10 +602,10 @@ export function StudentBulkImport() {
 
           <div className="flex gap-2">
             <Button onClick={reset} variant="outline" className="gap-2">
-              <Upload className="h-4 w-4" /> Import More
+              <Upload className="h-4 w-4" /> {t("btn_import_more")}
             </Button>
             <Button asChild>
-              <a href="/admin/students/student-info">View Students</a>
+              <a href="/admin/students/student-info">{t("btn_view_students")}</a>
             </Button>
           </div>
         </div>
@@ -607,5 +613,6 @@ export function StudentBulkImport() {
     </div>
   )
 }
+
 
 

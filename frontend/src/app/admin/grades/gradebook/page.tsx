@@ -31,6 +31,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
 import * as gradesApi from "@/lib/api/grades";
+import { useTranslations } from "next-intl";
 import type {
   GradebookBreakdownEntry,
   AssignmentOption,
@@ -77,6 +78,8 @@ interface MarkingPeriodItem {
 }
 
 export default function GradebookBreakdownPage() {
+  const t = useTranslations("school.grades_module.gradebook");
+  const tCommon = useTranslations("school.grades_module.common");
   const { user } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
@@ -150,7 +153,7 @@ export default function GradebookBreakdownPage() {
         setBreakdown(res.data);
       }
     } catch {
-      toast.error("Failed to load gradebook breakdown");
+      toast.error(tCommon("error_occurred", { defaultValue: "Failed to load gradebook breakdown" }));
     } finally {
       setBreakdownLoading(false);
     }
@@ -162,7 +165,7 @@ export default function GradebookBreakdownPage() {
 
   // ── Helpers ───────────────────────────────────────────────────
   const getCoursePeriodLabel = (cp: CoursePeriod) => {
-    const course = cp.course?.title || "Course";
+    const course = cp.course?.title || tCommon("course", { defaultValue: "Course" });
     const teacher = cp.teacher
       ? `${cp.teacher.first_name} ${cp.teacher.last_name}`
       : "";
@@ -190,8 +193,8 @@ export default function GradebookBreakdownPage() {
 
   const assignmentTitle =
     selectedAssignment === "totals"
-      ? "Grade"
-      : assignments.find((a) => a.id === selectedAssignment)?.title || "Grade";
+      ? t("totals")
+      : assignments.find((a) => a.id === selectedAssignment)?.title || t("totals");
 
   // ── Render ────────────────────────────────────────────────────
   if (loading) {
@@ -207,11 +210,11 @@ export default function GradebookBreakdownPage() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent flex items-center gap-2">
-          <BarChart3 className="h-8 w-8 text-[#57A3CC]" />
-          Gradebook Breakdown
+          <BarChart3 className="h-8 w-8 text-[#57A3CC] rtl:ml-2 rtl:mr-0" />
+          {t("title")}
         </h1>
         <p className="text-muted-foreground mt-2">
-          Grade distribution analysis by assignment or totals
+          {t("subtitle")}
           {selectedCampus && (
             <span className="ml-1 font-medium">
               — {selectedCampus.name}
@@ -227,11 +230,11 @@ export default function GradebookBreakdownPage() {
             {/* Course Period */}
             <div className="flex-1 min-w-[200px]">
               <label className="text-sm font-medium mb-1.5 block">
-                Course Period
+                {t("course_period")}
               </label>
               <Select value={selectedCp} onValueChange={setSelectedCp}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select course period" />
+                  <SelectValue placeholder={tCommon("select_course_period_placeholder", { defaultValue: "Select course period" })} />
                 </SelectTrigger>
                 <SelectContent>
                   {coursePeriods.map((cp) => (
@@ -246,11 +249,11 @@ export default function GradebookBreakdownPage() {
             {/* Marking Period */}
             <div>
               <label className="text-sm font-medium mb-1.5 block">
-                Marking Period
+                {t("marking_period")}
               </label>
               <Select value={selectedMp} onValueChange={setSelectedMp}>
                 <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Select period" />
+                  <SelectValue placeholder={tCommon("select_period_placeholder", { defaultValue: "Select period" })} />
                 </SelectTrigger>
                 <SelectContent>
                   {markingPeriods.map((mp) => (
@@ -265,17 +268,17 @@ export default function GradebookBreakdownPage() {
             {/* Assignment */}
             <div className="flex-1 min-w-[200px]">
               <label className="text-sm font-medium mb-1.5 block">
-                Assignment
+                {t("assignment")}
               </label>
               <Select
                 value={selectedAssignment}
                 onValueChange={setSelectedAssignment}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Totals" />
+                  <SelectValue placeholder={t("totals")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="totals">Totals</SelectItem>
+                  <SelectItem value="totals">{t("totals")}</SelectItem>
                   {assignments
                     .filter((a) => a.type === "assignment_type")
                     .map((a) => (
@@ -286,7 +289,7 @@ export default function GradebookBreakdownPage() {
                   {assignments.filter((a) => a.type === "assignment_type")
                     .length > 0 &&
                     assignments.filter((a) => a.type === "assignment").length >
-                      0 && (
+                    0 && (
                       <SelectItem value="__divider" disabled>
                         ───────────────
                       </SelectItem>
@@ -307,7 +310,7 @@ export default function GradebookBreakdownPage() {
               disabled={breakdownLoading || !selectedCp}
               className="bg-[#0369a1] hover:bg-[#025d8c] text-white"
             >
-              Go
+              {t("go")}
             </Button>
           </div>
         </CardContent>
@@ -321,7 +324,7 @@ export default function GradebookBreakdownPage() {
       ) : breakdown.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <Users className="h-12 w-12 mx-auto mb-3 opacity-40" />
-          <p>No students were found.</p>
+          <p>{t("no_students")}</p>
         </div>
       ) : (
         <Card>
@@ -332,21 +335,21 @@ export default function GradebookBreakdownPage() {
             >
               <TabsList className="mb-4">
                 <TabsTrigger value="line" className="gap-1.5">
-                  <LineChartIcon className="h-4 w-4" />
-                  Line
+                  <LineChartIcon className="h-4 w-4 rtl:ml-1.5 rtl:mr-0" />
+                  {t("tab_line")}
                 </TabsTrigger>
                 <TabsTrigger value="pie" className="gap-1.5">
-                  <PieChartIcon className="h-4 w-4" />
-                  Pie
+                  <PieChartIcon className="h-4 w-4 rtl:ml-1.5 rtl:mr-0" />
+                  {t("tab_pie")}
                 </TabsTrigger>
                 <TabsTrigger value="list" className="gap-1.5">
-                  <List className="h-4 w-4" />
-                  List
+                  <List className="h-4 w-4 rtl:ml-1.5 rtl:mr-0" />
+                  {t("tab_list")}
                 </TabsTrigger>
               </TabsList>
 
               <h3 className="text-lg font-semibold text-center mb-4">
-                {assignmentTitle} Breakdown
+                {assignmentTitle} {t("breakdown_label")}
               </h3>
 
               {/* ── Line Chart ─────────────────────────────── */}
@@ -358,7 +361,7 @@ export default function GradebookBreakdownPage() {
                       <XAxis
                         dataKey="name"
                         label={{
-                          value: "GPA Value",
+                          value: t("chart_gpa_value"),
                           position: "insideBottom",
                           offset: -5,
                         }}
@@ -366,7 +369,7 @@ export default function GradebookBreakdownPage() {
                       <YAxis
                         allowDecimals={false}
                         label={{
-                          value: "Students",
+                          value: t("chart_students"),
                           angle: -90,
                           position: "insideLeft",
                         }}
@@ -374,11 +377,11 @@ export default function GradebookBreakdownPage() {
                       <Tooltip
                         formatter={(value: number, _name: string) => [
                           value,
-                          "Students",
+                          t("chart_students"),
                         ]}
                         labelFormatter={(label: string) => {
                           const d = lineData.find((x) => x.name === label);
-                          return d ? `${d.grade} (GPA ${label})` : label;
+                          return d ? `${d.grade} (${t("chart_gpa_value")} ${label})` : label;
                         }}
                       />
                       <Line
@@ -421,7 +424,7 @@ export default function GradebookBreakdownPage() {
                         ))}
                       </Pie>
                       <Tooltip
-                        formatter={(value: number) => [value, "Students"]}
+                        formatter={(value: number) => [value, t("chart_students")]}
                       />
                       <Legend />
                     </PieChart>
@@ -436,13 +439,13 @@ export default function GradebookBreakdownPage() {
                     <TableHeader>
                       <TableRow className="bg-[#0369a1] hover:bg-[#0369a1]">
                         <TableHead className="text-white font-semibold">
-                          TITLE
+                          {t("th_title")}
                         </TableHead>
                         <TableHead className="text-white font-semibold text-center">
-                          GPA VALUE
+                          {t("th_gpa_value")}
                         </TableHead>
                         <TableHead className="text-white font-semibold text-center">
-                          NUMBER OF STUDENTS
+                          {t("th_num_students")}
                         </TableHead>
                       </TableRow>
                     </TableHeader>
@@ -467,7 +470,7 @@ export default function GradebookBreakdownPage() {
                       ))}
                       {/* Total row */}
                       <TableRow className="bg-gray-100 font-semibold">
-                        <TableCell>Total</TableCell>
+                        <TableCell>{tCommon("total")}</TableCell>
                         <TableCell className="text-center">—</TableCell>
                         <TableCell className="text-center">
                           {totalStudents}

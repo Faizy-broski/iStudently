@@ -390,9 +390,15 @@ export class LibraryController {
       const { q: query } = req.query;
 
       if (!schoolId) {
+        console.error('searchStudents: no schoolId resolved', {
+          role: req.profile?.role,
+          school_id: req.profile?.school_id,
+          campus_id: req.profile?.campus_id,
+        });
         return res.status(400).json({ error: 'School ID is required' });
       }
 
+      console.log('searchStudents:', { schoolId, query, role: req.profile?.role, campus_id: req.profile?.campus_id });
       const students = await libraryService.searchStudents(schoolId, query as string);
       res.json({ success: true, data: students });
     } catch (error: any) {

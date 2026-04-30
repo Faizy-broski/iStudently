@@ -23,9 +23,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Search, LogOut, Settings, Menu, Moon, Sun } from 'lucide-react'
+import { Search, LogOut, Settings, Menu, Moon, Sun, Languages } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { NotificationBell } from '@/components/portal'
+import { useTransition } from 'react'
+import { setUserLocale } from '@/actions/locale'
+import { useLocale } from 'next-intl'
 
 interface TopbarProps {
   className?: string
@@ -36,6 +39,16 @@ export function Topbar({ className }: TopbarProps) {
   const { theme, toggleTheme } = useTheme()
   const router = useRouter()
   const { setIsMobileOpen } = useSidebarContext()
+  const locale = useLocale()
+  const [localePending, startLocaleTransition] = useTransition()
+
+  const handleLocaleToggle = () => {
+    const next = locale === 'en' ? 'ar' : 'en'
+    startLocaleTransition(async () => {
+      await setUserLocale(next as 'en' | 'ar')
+      window.location.reload()
+    })
+  }
 
   const handleSignOut = async () => {
     await signOut()
@@ -81,11 +94,11 @@ export function Topbar({ className }: TopbarProps) {
           {/* Search Bar */}
           <div className="hidden md:flex items-center">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
               <input
                 type="text"
                 placeholder="Search..."
-                className="h-10 w-64 lg:w-80 pl-10 pr-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#57A3CC] focus:border-transparent transition-all"
+                className="h-10 w-64 lg:w-80 ps-10 pe-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#57A3CC] focus:border-transparent transition-all"
               />
             </div>
           </div>
@@ -107,6 +120,22 @@ export function Topbar({ className }: TopbarProps) {
               <Sun className="h-5 w-5" />
             )}
             <span className="sr-only">Toggle Theme</span>
+          </Button>
+
+          {/* Language Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleLocaleToggle}
+            disabled={localePending}
+            className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 relative"
+            title={locale === 'en' ? 'Switch to Arabic' : 'Switch to English'}
+          >
+            <Languages className="h-5 w-5" />
+            <span className="absolute -bottom-0.5 -end-0.5 text-[9px] font-bold leading-none bg-[#022172] text-white rounded px-0.5">
+              {locale === 'en' ? 'ع' : 'EN'}
+            </span>
+            <span className="sr-only">Toggle Language</span>
           </Button>
 
           {/* Notifications */}
@@ -149,7 +178,7 @@ export function Topbar({ className }: TopbarProps) {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="cursor-pointer">
-                <Settings className="h-4 w-4 mr-2" />
+                <Settings className="h-4 w-4 me-2" />
                 Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -157,7 +186,7 @@ export function Topbar({ className }: TopbarProps) {
                 onClick={handleSignOut}
                 className="cursor-pointer text-red-600 focus:text-red-600"
               >
-                <LogOut className="h-4 w-4 mr-2" />
+                <LogOut className="h-4 w-4 me-2" />
                 Sign Out
               </DropdownMenuItem>
             </DropdownMenuContent>

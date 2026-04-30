@@ -33,6 +33,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import * as gradesApi from "@/lib/api/grades";
+import { useTranslations } from "next-intl";
 import * as academicsApi from "@/lib/api/academics";
 import type { GradeLevel } from "@/lib/api/academics";
 import type { GPARankEntry } from "@/lib/api/grades";
@@ -48,6 +49,7 @@ type SortField = "class_rank" | "weighted_gpa" | "unweighted_gpa" | "student_nam
 type SortDir = "asc" | "desc";
 
 export default function GPAClassRanksPage() {
+  const t = useTranslations("school.grades_module.class_ranks");
   const { user } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
@@ -161,7 +163,7 @@ export default function GPAClassRanksPage() {
           GPA / Class Rank List
         </h1>
         <p className="text-muted-foreground mt-2">
-          View student GPA and class rank for each marking period
+          {t("subtitle")}
           {selectedCampus && (
             <span className="ml-1 font-medium">
               — {selectedCampus.name}
@@ -209,7 +211,7 @@ export default function GPAClassRanksPage() {
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="all">{tc("all")}</SelectItem>
                   {gradeLevels.map((gl) => (
                     <SelectItem key={gl.id} value={gl.id}>
                       {gl.name}
@@ -224,7 +226,7 @@ export default function GPAClassRanksPage() {
             <div className="relative w-[220px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search students…"
+                placeholder={tc("search")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 h-9"
@@ -238,8 +240,7 @@ export default function GPAClassRanksPage() {
       <Card>
         <CardContent className="pt-6 space-y-4">
           <p className="text-sm text-[#0369a1] font-medium">
-            {sortedStudents.length} student
-            {sortedStudents.length !== 1 ? "s" : ""} found.
+            {t("students_found", { count: sortedStudents.length })}
           </p>
 
           {loading ? (
@@ -249,7 +250,7 @@ export default function GPAClassRanksPage() {
           ) : sortedStudents.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Users className="h-12 w-12 mx-auto mb-3 opacity-40" />
-              <p>No students found</p>
+              <p>{tc("no_students_found")}</p>
             </div>
           ) : (
             <div className="border rounded-md overflow-hidden">
@@ -260,7 +261,7 @@ export default function GPAClassRanksPage() {
                       className="text-white font-semibold cursor-pointer select-none"
                       onClick={() => handleSort("student_name")}
                     >
-                      STUDENT <SortIcon field="student_name" />
+                      {t("th_student")} <SortIcon field="student_name" />
                     </TableHead>
                     <TableHead className="text-white font-semibold">
                       GRADE LEVEL
@@ -269,13 +270,13 @@ export default function GPAClassRanksPage() {
                       className="text-white font-semibold text-center cursor-pointer select-none"
                       onClick={() => handleSort("unweighted_gpa")}
                     >
-                      UNWEIGHTED GPA <SortIcon field="unweighted_gpa" />
+                      {t("th_unweighted_gpa")} <SortIcon field="unweighted_gpa" />
                     </TableHead>
                     <TableHead
                       className="text-white font-semibold text-center cursor-pointer select-none"
                       onClick={() => handleSort("weighted_gpa")}
                     >
-                      WEIGHTED GPA <SortIcon field="weighted_gpa" />
+                      {t("th_weighted_gpa")} <SortIcon field="weighted_gpa" />
                     </TableHead>
                     <TableHead
                       className="text-white font-semibold text-center cursor-pointer select-none"
