@@ -58,19 +58,22 @@ import {
 } from "@/lib/api/library";
 import { LibraryDocumentField, LibraryCategory, DocumentFieldType } from "@/types";
 import { toast } from "sonner";
+import { useTranslations } from 'next-intl'
 
-const FIELD_TYPES: { value: DocumentFieldType; label: string; icon: React.ElementType; description: string }[] = [
-    { value: "select_multiple", label: "Select Multiple", icon: ListChecks, description: "Choose multiple options from a list" },
-    { value: "select_single", label: "Select Single", icon: List, description: "Choose one option from a list" },
-    { value: "text", label: "Text", icon: Type, description: "Short single-line text" },
-    { value: "long_text", label: "Long Text", icon: AlignLeft, description: "Multi-line text area" },
-    { value: "checkbox", label: "Checkbox", icon: CheckSquare, description: "Yes / No toggle" },
-    { value: "number", label: "Number", icon: Hash, description: "Numeric value" },
-    { value: "date", label: "Date", icon: CalendarDays, description: "Date picker" },
-    { value: "files", label: "Files", icon: Paperclip, description: "File upload(s)" },
+const FIELD_TYPES: { value: DocumentFieldType; icon: React.ElementType }[] = [
+    { value: "select_multiple", icon: ListChecks },
+    { value: "select_single", icon: List },
+    { value: "text", icon: Type },
+    { value: "long_text", icon: AlignLeft },
+    { value: "checkbox", icon: CheckSquare },
+    { value: "number", icon: Hash },
+    { value: "date", icon: CalendarDays },
+    { value: "files", icon: Paperclip },
 ];
 
 export default function DocumentFieldsPage() {
+    const t = useTranslations('admin.library.document_fields')
+    const tCommon = useTranslations('common')
     const { user } = useAuth();
     const [fields, setFields] = useState<LibraryDocumentField[]>([]);
     const [categories, setCategories] = useState<LibraryCategory[]>([]);
@@ -104,7 +107,7 @@ export default function DocumentFieldsPage() {
             if (catRes.success && catRes.data) setCategories(catRes.data);
         } catch (error) {
             console.error("Error loading data:", error);
-            toast.error("Failed to load data");
+            toast.error(t('toast.load_failed'));
         } finally {
             setIsLoading(false);
         }
@@ -138,7 +141,7 @@ export default function DocumentFieldsPage() {
         if (!user?.access_token || !formName.trim()) return;
 
         if ((formType === "select_multiple" || formType === "select_single") && formOptions.length === 0) {
-            toast.error("Please add at least one option for select fields.");
+            toast.error(t('toast.add_option_required'));
             return;
         }
 
@@ -156,24 +159,24 @@ export default function DocumentFieldsPage() {
             if (editingField) {
                 const res = await updateDocumentField(editingField.id, payload, user.access_token);
                 if (res.success) {
-                    toast.success("Field updated");
+                    toast.success(t('toast.updated'));
                 } else {
-                    toast.error(res.error || "Failed to update");
+                    toast.error(res.error || t('toast.update_failed'));
                     return;
                 }
             } else {
                 const res = await createDocumentField(payload, user.access_token);
                 if (res.success) {
-                    toast.success("Field created");
+                    toast.success(t('toast.created'));
                 } else {
-                    toast.error(res.error || "Failed to create");
+                    toast.error(res.error || t('toast.create_failed'));
                     return;
                 }
             }
             setShowDialog(false);
             loadData();
         } catch {
-            toast.error("Something went wrong");
+            toast.error(t('toast.generic_error'));
         } finally {
             setIsSubmitting(false);
         }
@@ -181,17 +184,17 @@ export default function DocumentFieldsPage() {
 
     const handleDelete = async (field: LibraryDocumentField) => {
         if (!user?.access_token) return;
-        if (!confirm(`Delete field "${field.field_name}"? Existing data using this field won't be removed.`)) return;
+        if (!confirm(t('delete_confirm', { name: field.field_name }))) return;
         try {
             const res = await deleteDocumentField(field.id, user.access_token);
             if (res.success) {
-                toast.success("Field deleted");
+                toast.success(t('toast.deleted'));
                 loadData();
             } else {
-                toast.error(res.error || "Failed to delete");
+                toast.error(res.error || t('toast.delete_failed'));
             }
         } catch {
-            toast.error("Something went wrong");
+            toast.error(t('toast.generic_error'));
         }
     };
 
@@ -199,7 +202,7 @@ export default function DocumentFieldsPage() {
         const v = newOption.trim();
         if (!v) return;
         if (formOptions.includes(v)) {
-            toast.error("Option already exists");
+            toast.error(t('toast.option_exists'));
             return;
         }
         setFormOptions([...formOptions, v]);
@@ -228,24 +231,24 @@ export default function DocumentFieldsPage() {
                         <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#57A3CC] to-[#022172] flex items-center justify-center">
                             <Sliders className="h-5 w-5 text-white" />
                         </div>
-                        Document Fields
+                        {t('title')}
                     </h1>
-                    <p className="text-muted-foreground mt-2">Define custom fields for library documents. Fields can be scoped to a specific category.</p>
+                    <p className="text-muted-foreground mt-2">{t('subtitle')}</p>
                 </div>
                 <Button
                     onClick={openCreate}
                     className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white hover:opacity-90"
                 >
                     <Plus className="mr-2 h-4 w-4" />
-                    New Field
+                    {t('new_field')}
                 </Button>
             </div>
 
             {/* Fields Table */}
             <Card className="shadow-sm">
                 <CardHeader className="pb-3">
-                    <CardTitle className="text-base">All Fields ({fields.length})</CardTitle>
-                    <CardDescription>Click a field row to edit, or use the actions menu.</CardDescription>
+                    <CardTitle className="text-base">{t('all_fields', { count: fields.length })}</CardTitle>
+                    <CardDescription>{t('all_fields_desc')}</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
                     {isLoading ? (
@@ -255,8 +258,8 @@ export default function DocumentFieldsPage() {
                     ) : fields.length === 0 ? (
                         <div className="text-center py-16 text-muted-foreground">
                             <Sliders className="h-12 w-12 mx-auto mb-3 opacity-40" />
-                            <p className="text-sm font-medium">No custom fields yet</p>
-                            <p className="text-xs mt-1">Click &quot;New Field&quot; to create one.</p>
+                            <p className="text-sm font-medium">{t('no_fields')}</p>
+                            <p className="text-xs mt-1">{t('no_fields_desc')}</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
@@ -264,12 +267,12 @@ export default function DocumentFieldsPage() {
                                 <TableHeader>
                                     <TableRow className="bg-muted/50">
                                         <TableHead className="w-12 text-center">#</TableHead>
-                                        <TableHead>Field Name</TableHead>
-                                        <TableHead>Data Type</TableHead>
-                                        <TableHead>Category</TableHead>
-                                        <TableHead>Required</TableHead>
-                                        <TableHead>Options</TableHead>
-                                        <TableHead className="w-16 text-center">Actions</TableHead>
+                                        <TableHead>{t('table.field_name')}</TableHead>
+                                        <TableHead>{t('table.data_type')}</TableHead>
+                                        <TableHead>{t('table.category')}</TableHead>
+                                        <TableHead>{t('table.required')}</TableHead>
+                                        <TableHead>{t('table.options')}</TableHead>
+                                        <TableHead className="w-16 text-center">{tCommon('actions')}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -293,7 +296,7 @@ export default function DocumentFieldsPage() {
                                                             <div className="h-6 w-6 rounded bg-primary/10 flex items-center justify-center">
                                                                 <TypeIcon className="h-3.5 w-3.5 text-primary" />
                                                             </div>
-                                                            <span className="text-sm">{typeInfo?.label || field.field_type}</span>
+                                                            <span className="text-sm">{typeInfo ? t(`field_types.${field.field_type}.label`) : field.field_type}</span>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
@@ -302,14 +305,14 @@ export default function DocumentFieldsPage() {
                                                                 {getCategoryName(field.category_id)}
                                                             </Badge>
                                                         ) : (
-                                                            <span className="text-xs text-muted-foreground italic">All categories</span>
+                                                            <span className="text-xs text-muted-foreground italic">{t('all_categories')}</span>
                                                         )}
                                                     </TableCell>
                                                     <TableCell>
                                                         {field.is_required ? (
-                                                            <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[10px]">Required</Badge>
+                                                            <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[10px]">{t('required')}</Badge>
                                                         ) : (
-                                                            <span className="text-xs text-muted-foreground">Optional</span>
+                                                            <span className="text-xs text-muted-foreground">{tCommon('optional')}</span>
                                                         )}
                                                     </TableCell>
                                                     <TableCell>
@@ -336,14 +339,14 @@ export default function DocumentFieldsPage() {
                                                             <DropdownMenuContent align="end">
                                                                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEdit(field); }}>
                                                                     <Pencil className="mr-2 h-3.5 w-3.5" />
-                                                                    Edit
+                                                                    {tCommon('edit')}
                                                                 </DropdownMenuItem>
                                                                 <DropdownMenuItem
                                                                     onClick={(e) => { e.stopPropagation(); handleDelete(field); }}
                                                                     className="text-destructive focus:text-destructive"
                                                                 >
                                                                     <Trash2 className="mr-2 h-3.5 w-3.5" />
-                                                                    Delete
+                                                                    {tCommon('delete')}
                                                                 </DropdownMenuItem>
                                                             </DropdownMenuContent>
                                                         </DropdownMenu>
@@ -366,12 +369,12 @@ export default function DocumentFieldsPage() {
                             <div className="h-6 w-6 rounded-lg bg-gradient-to-br from-[#57A3CC] to-[#022172] flex items-center justify-center">
                                 <Sliders className="h-3.5 w-3.5 text-white" />
                             </div>
-                            {editingField ? "Edit Document Field" : "New Document Field"}
+                            {editingField ? t('dialog.edit_title') : t('dialog.new_title')}
                         </DialogTitle>
                         <DialogDescription>
                             {editingField
-                                ? "Update field definition below."
-                                : "Create a custom field that will appear on document forms."}
+                                ? t('dialog.edit_desc')
+                                : t('dialog.new_desc')}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -379,11 +382,11 @@ export default function DocumentFieldsPage() {
                         {/* Field Name */}
                         <div className="space-y-2">
                             <Label htmlFor="field-name" className="text-sm font-medium">
-                                Field Name <span className="text-destructive">*</span>
+                                {t('table.field_name')} <span className="text-destructive">*</span>
                             </Label>
                             <Input
                                 id="field-name"
-                                placeholder="e.g. Publisher, Edition, Language..."
+                                placeholder={t('dialog.field_name_placeholder')}
                                 value={formName}
                                 onChange={(e) => setFormName(e.target.value)}
                             />
@@ -392,7 +395,7 @@ export default function DocumentFieldsPage() {
                         {/* Data Type */}
                         <div className="space-y-2">
                             <Label className="text-sm font-medium">
-                                Data Type <span className="text-destructive">*</span>
+                                {t('table.data_type')} <span className="text-destructive">*</span>
                             </Label>
                             <div className="grid grid-cols-2 gap-2">
                                 {FIELD_TYPES.map((ft) => {
@@ -420,8 +423,8 @@ export default function DocumentFieldsPage() {
                                                 <Icon className="h-4 w-4" />
                                             </div>
                                             <div>
-                                                <p className="text-sm font-medium leading-tight">{ft.label}</p>
-                                                <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{ft.description}</p>
+                                                <p className="text-sm font-medium leading-tight">{t(`field_types.${ft.value}.label`)}</p>
+                                                <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{t(`field_types.${ft.value}.description`)}</p>
                                             </div>
                                         </button>
                                     );
@@ -433,11 +436,11 @@ export default function DocumentFieldsPage() {
                         {showOptionsField && (
                             <div className="space-y-2">
                                 <Label className="text-sm font-medium">
-                                    Options <span className="text-destructive">*</span>
+                                    {t('table.options')} <span className="text-destructive">*</span>
                                 </Label>
                                 <div className="flex gap-2">
                                     <Input
-                                        placeholder="Type an option and press Enter or Add..."
+                                        placeholder={t('dialog.option_placeholder')}
                                         value={newOption}
                                         onChange={(e) => setNewOption(e.target.value)}
                                         onKeyDown={(e) => {
@@ -448,7 +451,7 @@ export default function DocumentFieldsPage() {
                                         }}
                                     />
                                     <Button type="button" size="sm" variant="outline" onClick={addOption}>
-                                        Add
+                                        {tCommon('add')}
                                     </Button>
                                 </div>
                                 {formOptions.length > 0 && (
@@ -473,21 +476,21 @@ export default function DocumentFieldsPage() {
                         {/* Category Scope */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="field-category" className="text-sm font-medium">Category (optional)</Label>
+                                <Label htmlFor="field-category" className="text-sm font-medium">{t('dialog.category_optional')}</Label>
                                 <select
                                     id="field-category"
                                     value={formCategoryId}
                                     onChange={(e) => setFormCategoryId(e.target.value)}
                                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 >
-                                    <option value="">All categories</option>
+                                    <option value="">{t('all_categories')}</option>
                                     {categories.map((cat) => (
                                         <option key={cat.id} value={cat.id}>{cat.name}</option>
                                     ))}
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="field-sort" className="text-sm font-medium">Sort Order</Label>
+                                <Label htmlFor="field-sort" className="text-sm font-medium">{t('table.sort_order')}</Label>
                                 <Input
                                     id="field-sort"
                                     type="number"
@@ -505,15 +508,15 @@ export default function DocumentFieldsPage() {
                                 onCheckedChange={(checked) => setFormIsRequired(checked === true)}
                             />
                             <div>
-                                <p className="text-sm font-medium">Required Field</p>
-                                <p className="text-xs text-muted-foreground">Users must fill this field when adding/editing a document.</p>
+                                <p className="text-sm font-medium">{t('required_field')}</p>
+                                <p className="text-xs text-muted-foreground">{t('required_field_desc')}</p>
                             </div>
                         </label>
                     </div>
 
                     <DialogFooter className="gap-2 mt-4">
                         <Button variant="outline" onClick={() => setShowDialog(false)} disabled={isSubmitting}>
-                            Cancel
+                            {tCommon('cancel')}
                         </Button>
                         <Button
                             onClick={handleSubmit}
@@ -523,12 +526,12 @@ export default function DocumentFieldsPage() {
                             {isSubmitting ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Saving...
+                                    {tCommon('saving')}...
                                 </>
                             ) : (
                                 <>
                                     <Save className="mr-2 h-4 w-4" />
-                                    {editingField ? "Save Changes" : "Save"}
+                                    {editingField ? t('dialog.save_changes') : tCommon('save')}
                                 </>
                             )}
                         </Button>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,8 @@ const DAY_NAMES = [
 ];
 
 export default function CheckpointsPage() {
+  const t = useTranslations("school.entry_exit.checkpoints");
+  const commonT = useTranslations("common");
   const { profile } = useAuth();
   const schoolId = profile?.school_id || "";
 
@@ -121,7 +124,7 @@ export default function CheckpointsPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Are you sure you want to delete this checkpoint?")) return;
+    if (!confirm(t("msg_delete_confirm"))) return;
     try {
       await deleteCheckpoint(id);
       loadCheckpoints();
@@ -217,9 +220,9 @@ export default function CheckpointsPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Checkpoints</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("page_title")}</h1>
           <p className="text-muted-foreground">
-            Manage entry/exit checkpoints and authorized times
+            {t("page_subtitle")}
           </p>
         </div>
         <Dialog
@@ -232,43 +235,43 @@ export default function CheckpointsPage() {
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
-              Add Checkpoint
+              {t("btn_add_checkpoint")}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>
-                {editingId ? "Edit Checkpoint" : "Add Checkpoint"}
+                {editingId ? t("dialog_edit_checkpoint_title") : t("dialog_add_checkpoint_title")}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label>Name</Label>
+                <Label>{t("label_checkpoint_name")}</Label>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Main Gate, Side Entrance..."
+                  placeholder={t("placeholder_checkpoint_name")}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Mode</Label>
+                <Label>{t("label_checkpoint_mode")}</Label>
                 <Select value={mode} onValueChange={setMode}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="both">Entry & Exit</SelectItem>
-                    <SelectItem value="entry">Entry Only</SelectItem>
-                    <SelectItem value="exit">Exit Only</SelectItem>
+                    <SelectItem value="both">{t("mode_entry_exit")}</SelectItem>
+                    <SelectItem value="entry">{t("mode_entry_only")}</SelectItem>
+                    <SelectItem value="exit">{t("mode_exit_only")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Description (Optional)</Label>
+                <Label>{t("label_description")}</Label>
                 <Input
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Location or notes..."
+                  placeholder={t("placeholder_checkpoint_description")}
                 />
               </div>
               <Button
@@ -276,7 +279,7 @@ export default function CheckpointsPage() {
                 disabled={submitting || !name.trim()}
                 className="w-full"
               >
-                {submitting ? "Saving..." : editingId ? "Update" : "Create"}
+                {submitting ? t("msg_loading") : editingId ? commonT("update") : commonT("create")}
               </Button>
             </div>
           </DialogContent>
@@ -286,16 +289,13 @@ export default function CheckpointsPage() {
       {/* Checkpoints Grid */}
       {loading ? (
         <div className="text-center py-12 text-muted-foreground">
-          Loading checkpoints...
+          {t("msg_loading")}
         </div>
       ) : checkpoints.length === 0 ? (
         <Card className="border-0 shadow-sm">
           <CardContent className="text-center py-12">
             <MapPin className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
-            <p className="text-muted-foreground">No checkpoints configured</p>
-            <p className="text-sm text-muted-foreground/60">
-              Add your first checkpoint to start tracking entries and exits
-            </p>
+            <p className="text-muted-foreground">{t("msg_no_data")}</p>
           </CardContent>
         </Card>
       ) : (
@@ -324,10 +324,10 @@ export default function CheckpointsPage() {
                     className={`${getModeColor(cp.mode)} hover:${getModeColor(cp.mode)}`}
                   >
                     {cp.mode === "both"
-                      ? "Entry & Exit"
+                      ? t("mode_entry_exit")
                       : cp.mode === "entry"
-                        ? "Entry Only"
-                        : "Exit Only"}
+                        ? t("mode_entry_only")
+                        : t("mode_exit_only")}
                   </Badge>
                 </div>
 
@@ -340,7 +340,7 @@ export default function CheckpointsPage() {
                       }
                     />
                     <span className="text-xs text-muted-foreground">
-                      {cp.is_active ? "Active" : "Inactive"}
+                      {cp.is_active ? t("status_active") : t("status_inactive")}
                     </span>
                   </div>
                   <div className="flex gap-1">
@@ -348,7 +348,7 @@ export default function CheckpointsPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => openTimesDialog(cp)}
-                      title="Authorized Times"
+                      title={t("tooltip_authorized_times")}
                     >
                       <Clock className="h-4 w-4" />
                     </Button>
@@ -379,13 +379,12 @@ export default function CheckpointsPage() {
       <Dialog open={timesDialogOpen} onOpenChange={setTimesDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Authorized Times – {timesCheckpointName}</DialogTitle>
+            <DialogTitle>{t("dialog_times_title")} – {timesCheckpointName}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 max-h-80 overflow-y-auto">
             {authorizedTimes.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
-                No authorized times configured. All entries/exits will be marked
-                as unauthorized.
+                {t("msg_no_times")}
               </p>
             ) : (
               authorizedTimes.map((slot, i) => (
@@ -403,7 +402,7 @@ export default function CheckpointsPage() {
                     <SelectContent>
                       {DAY_NAMES.map((day, idx) => (
                         <SelectItem key={idx} value={String(idx)}>
-                          {day}
+                          {t(`day_${day.toLowerCase()}`)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -416,7 +415,7 @@ export default function CheckpointsPage() {
                     }
                     className="w-28"
                   />
-                  <span className="text-muted-foreground text-sm">to</span>
+                  <span className="text-muted-foreground text-sm">{commonT("to")}</span>
                   <Input
                     type="time"
                     value={slot.end_time}
@@ -440,10 +439,10 @@ export default function CheckpointsPage() {
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={addTimeSlot} className="gap-1">
               <Plus className="h-3 w-3" />
-              Add Time Slot
+              {t("btn_add_time_slot")}
             </Button>
             <Button onClick={handleSaveTimes} disabled={savingTimes}>
-              {savingTimes ? "Saving..." : "Save Times"}
+              {savingTimes ? t("msg_loading") : t("btn_save_times")}
             </Button>
           </DialogFooter>
         </DialogContent>

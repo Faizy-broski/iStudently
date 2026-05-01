@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ import {
 } from "lucide-react";
 
 export default function EntryExitDashboard() {
+  const t = useTranslations("school.entry_exit.dashboard");
   const { profile } = useAuth();
   const schoolId = profile?.school_id || "";
 
@@ -146,28 +148,28 @@ export default function EntryExitDashboard() {
 
   const statCards = [
     {
-      title: "Entries Today",
+      title: t("stat_entries_today"),
       value: stats.entries,
       icon: DoorOpen,
       color: "text-emerald-500",
       bg: "bg-emerald-50 dark:bg-emerald-950/30",
     },
     {
-      title: "Exits Today",
+      title: t("stat_exits_today"),
       value: stats.exits,
       icon: DoorClosed,
       color: "text-orange-500",
       bg: "bg-orange-50 dark:bg-orange-950/30",
     },
     {
-      title: "Currently Inside",
+      title: t("stat_inside"),
       value: stats.inside,
       icon: Users,
       color: "text-blue-500",
       bg: "bg-blue-50 dark:bg-blue-950/30",
     },
     {
-      title: "Pending Packages",
+      title: t("stat_packages"),
       value: stats.packages,
       icon: Package,
       color: "text-purple-500",
@@ -180,31 +182,31 @@ export default function EntryExitDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Entry & Exit</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("page_title")}</h1>
           <p className="text-muted-foreground">
-            Track entries, exits, and manage access checkpoints
+            {t("page_subtitle")}
           </p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
-              Quick Record
+              {t("btn_quick_record")}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md overflow-visible">
             <DialogHeader>
-              <DialogTitle>Record Entry / Exit</DialogTitle>
+              <DialogTitle>{t("dialog_record_title")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label>Checkpoint</Label>
+                <Label>{t("label_checkpoint")}</Label>
                 <Select
                   value={selectedCheckpoint}
                   onValueChange={setSelectedCheckpoint}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select checkpoint" />
+                    <SelectValue placeholder={t("label_checkpoint")} />
                   </SelectTrigger>
                   <SelectContent>
                     {checkpoints.map((cp) => (
@@ -218,26 +220,26 @@ export default function EntryExitDashboard() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Person Type</Label>
+                  <Label>{t("label_person_type")}</Label>
                   <Select value={personType} onValueChange={setPersonType}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="STUDENT">Student</SelectItem>
-                      <SelectItem value="STAFF">Staff</SelectItem>
+                      <SelectItem value="STUDENT">{t("person_type_student")}</SelectItem>
+                      <SelectItem value="STAFF">{t("person_type_staff")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Direction</Label>
+                  <Label>{t("label_record_type")}</Label>
                   <Select value={recordType} onValueChange={setRecordType}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ENTRY">Entry</SelectItem>
-                      <SelectItem value="EXIT">Exit</SelectItem>
+                      <SelectItem value="ENTRY">{t("record_type_entry")}</SelectItem>
+                      <SelectItem value="EXIT">{t("record_type_exit")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -246,7 +248,7 @@ export default function EntryExitDashboard() {
               {/* Searchable student/staff selector */}
               <div className="space-y-2">
                 <Label>
-                  {personType === "STUDENT" ? "Student" : "Staff Member"}
+                  {personType === "STUDENT" ? t("person_type_student") : t("person_type_staff")}
                 </Label>
                 {selectedPersonId ? (
                   <div className="flex items-center gap-2 p-2 rounded-md border bg-muted/50">
@@ -262,14 +264,14 @@ export default function EntryExitDashboard() {
                         setSelectedPersonName("");
                       }}
                     >
-                      Change
+                      {t("btn_change")}
                     </Button>
                   </div>
                 ) : (
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Search by name, ID, or admission number..."
+                      placeholder={t("placeholder_search")}
                       className="pl-9"
                       value={studentSearch}
                       onChange={(e) => handleStudentSearch(e.target.value)}
@@ -297,7 +299,7 @@ export default function EntryExitDashboard() {
                     )}
                     {searchingStudents && (
                       <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg p-3 text-sm text-muted-foreground text-center">
-                        Searching...
+                        {t("msg_loading")}
                       </div>
                     )}
                   </div>
@@ -305,11 +307,11 @@ export default function EntryExitDashboard() {
               </div>
 
               <div className="space-y-2">
-                <Label>Notes (Optional)</Label>
+                <Label>{t("label_description")}</Label>
                 <Input
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Optional description..."
+                  placeholder={t("placeholder_search")}
                 />
               </div>
 
@@ -320,7 +322,7 @@ export default function EntryExitDashboard() {
                 }
                 className="w-full"
               >
-                {submitting ? "Recording..." : "Record"}
+                {submitting ? t("msg_loading") : t("btn_record")}
               </Button>
             </div>
           </DialogContent>
@@ -354,26 +356,26 @@ export default function EntryExitDashboard() {
       <Card className="border-0 shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-lg font-semibold">
-            Recent Activity
+            {t("recent_records")}
           </CardTitle>
           <a
             href="/admin/entry-exit/report"
             className="text-sm text-primary hover:underline"
           >
-            View all →
+            {t("btn_view_all")}
           </a>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="text-center py-8 text-muted-foreground">
-              Loading...
+              {t("msg_loading")}
             </div>
           ) : recentRecords.length === 0 ? (
             <div className="text-center py-8">
               <ArrowRightLeft className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
-              <p className="text-muted-foreground">No records yet today</p>
+              <p className="text-muted-foreground">{t("msg_no_records")}</p>
               <p className="text-sm text-muted-foreground/60">
-                Records will appear here as entries and exits are logged
+                {t("msg_records_appear_here")}
               </p>
             </div>
           ) : (

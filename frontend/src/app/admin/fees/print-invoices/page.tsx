@@ -272,7 +272,7 @@ export default function PrintInvoicesPage() {
             <div className="container mx-auto py-6">
                 <Card>
                     <CardContent className="pt-6">
-                        <p className="text-muted-foreground text-center">Please select a campus.</p>
+                        <p className="text-muted-foreground text-center">يرجى اختيار فرع.</p>
                     </CardContent>
                 </Card>
             </div>
@@ -285,8 +285,8 @@ export default function PrintInvoicesPage() {
             <div className="flex items-center gap-3">
                 <IconFileText className="h-8 w-8 text-[#3d8fb5]" />
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Print Invoices</h1>
-                    <p className="text-muted-foreground">Print fee vouchers for students</p>
+                    <h1 className="text-3xl font-bold tracking-tight">طباعة الفواتير</h1>
+                    <p className="text-muted-foreground">طباعة قسائم الرسوم للطلاب</p>
                 </div>
             </div>
 
@@ -295,24 +295,24 @@ export default function PrintInvoicesPage() {
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="text-lg flex items-center gap-2">
                         <IconFilter className="h-5 w-5" />
-                        Filter Invoices
+                        تصفية الفواتير
                     </CardTitle>
                     <Button variant="ghost" size="sm" onClick={handleResetFilters}>
                         <IconRefresh className="h-4 w-4 mr-1" />
-                        Reset
+                        إعادة تعيين
                     </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {/* Row 1: Grade, Section, Search */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="space-y-2">
-                            <Label>Grade Level</Label>
+                            <Label>المرحلة الدراسية</Label>
                             <Select value={gradeId} onValueChange={(v) => { setGradeId(v); setSectionId('all') }}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="All Grades" />
+                                    <SelectValue placeholder="كل المراحل" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Grades</SelectItem>
+                                    <SelectItem value="all">كل المراحل</SelectItem>
                                     {grades?.map(g => (
                                         <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
                                     ))}
@@ -320,13 +320,13 @@ export default function PrintInvoicesPage() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label>Section</Label>
+                            <Label>الفصل</Label>
                             <Select value={sectionId} onValueChange={setSectionId} disabled={gradeId === 'all'}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder={gradeId === 'all' ? 'Select grade first' : 'All Sections'} />
+                                    <SelectValue placeholder={gradeId === 'all' ? 'اختر المرحلة أولاً' : 'كل الفصول'} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Sections</SelectItem>
+                                    <SelectItem value="all">كل الفصول</SelectItem>
                                     {sections?.map(s => (
                                         <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                                     ))}
@@ -334,10 +334,10 @@ export default function PrintInvoicesPage() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label>Search Student</Label>
+                            <Label>بحث عن طالب</Label>
                             <div className="relative">
                                 <Input
-                                    placeholder="Name or ID..."
+                                    placeholder="الاسم أو الرقم..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="pr-8"
@@ -352,14 +352,14 @@ export default function PrintInvoicesPage() {
                                 className="bg-[#3d8fb5] hover:bg-[#357a9e] w-full"
                             >
                                 <IconDownload className="h-4 w-4 mr-2" />
-                                Download PDF ({selectedFees.size})
+                                تنزيل PDF ({selectedFees.size})
                             </Button>
                         </div>
                     </div>
                     {/* Row 2: Date Range, Balance Range */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="space-y-2">
-                            <Label>Due Date From</Label>
+                            <Label>تاريخ الاستحقاق من</Label>
                             <Input
                                 type="date"
                                 value={dateFrom}
@@ -367,7 +367,7 @@ export default function PrintInvoicesPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>Due Date To</Label>
+                            <Label>تاريخ الاستحقاق إلى</Label>
                             <Input
                                 type="date"
                                 value={dateTo}
@@ -375,7 +375,7 @@ export default function PrintInvoicesPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>Min Balance</Label>
+                            <Label>أقل رصيد</Label>
                             <Input
                                 type="number"
                                 placeholder="0"
@@ -384,7 +384,7 @@ export default function PrintInvoicesPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>Max Balance</Label>
+                            <Label>أعلى رصيد</Label>
                             <Input
                                 type="number"
                                 placeholder="Any"
@@ -404,7 +404,7 @@ export default function PrintInvoicesPage() {
                             <IconLoader className="h-6 w-6 animate-spin text-muted-foreground" />
                         </div>
                     ) : filteredFees.length === 0 ? (
-                        <p className="text-muted-foreground text-center py-8">No fees found.</p>
+                        <p className="text-muted-foreground text-center py-8">لم يتم العثور على رسوم.</p>
                     ) : (
                         <Table>
                             <TableHeader>

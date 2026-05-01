@@ -59,12 +59,13 @@ import {
   deleteCalculationReport,
   runCalculationReport,
 } from '@/lib/api/calculations'
+import { useTranslations } from 'next-intl'
 
 const BREAKDOWN_OPTIONS = [
-  { label: 'None', value: 'none' },
-  { label: 'Grade Level', value: 'grade_level' },
-  { label: 'Section', value: 'section' },
-  { label: 'Student', value: 'student' },
+  { value: 'none' },
+  { value: 'grade_level' },
+  { value: 'section' },
+  { value: 'student' },
 ]
 
 // ---- Helper: empty grid cell ----
@@ -72,6 +73,7 @@ const emptyCell = (): ReportCell => ({})
 
 // ---- Result cell renderer ----
 function ResultCellView({ result, showGraph }: { result: RunResult | null; showGraph?: boolean }) {
+  const t = useTranslations('admin.reports.calculation_reports')
   if (!result) return <span className="text-muted-foreground text-xs">—</span>
 
   if (result.type === 'single') {
@@ -115,6 +117,8 @@ function ResultCellView({ result, showGraph }: { result: RunResult | null; showG
 // ---- Main component ----
 
 export default function CalculationReportsPage() {
+  const t = useTranslations('admin.reports.calculation_reports')
+  const tCommon = useTranslations('common')
   useAuth()
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
@@ -200,24 +204,24 @@ export default function CalculationReportsPage() {
   // ---- Save report ----
 
   const handleSave = async () => {
-    if (!reportTitle.trim()) { toast.error('Please enter a report title'); return }
+    if (!reportTitle.trim()) { toast.error(t('toast.enter_title')); return }
     setSaving(true)
     try {
       if (editingReport) {
         await updateCalculationReport(editingReport.id, { title: reportTitle, cells: grid })
-        toast.success('Report updated')
+        toast.success(t('toast.updated'))
       } else {
         await createCalculationReport({
           title: reportTitle,
           cells: grid,
           campus_id: selectedCampus?.id,
         })
-        toast.success('Report saved')
+        toast.success(t('toast.saved'))
       }
       await mutate(reportsCacheKey)
       setMode('list')
     } catch {
-      toast.error('Failed to save report')
+      toast.error(t('toast.save_failed'))
     } finally {
       setSaving(false)
     }
@@ -227,7 +231,7 @@ export default function CalculationReportsPage() {
 
   const handleRun = async (reportId?: string) => {
     const id = reportId || editingReport?.id
-    if (!id) { toast.error('Save the report first to run it'); return }
+    if (!id) { toast.error(t('toast.save_first')); return }
 
     setRunning(true)
     try {
@@ -237,12 +241,12 @@ export default function CalculationReportsPage() {
         end_date: endDate || undefined,
       }
       const response = await runCalculationReport(id, filters)
-      if (!response) throw new Error('No response')
+      if (!response) throw new Error(t('toast.no_response'))
       setRunResponse(response)
       setGrid(response.cells)
       setMode('results')
     } catch {
-      toast.error('Failed to run report')
+      toast.error(t('toast.run_failed'))
     } finally {
       setRunning(false)
     }
@@ -256,10 +260,10 @@ export default function CalculationReportsPage() {
     try {
       await deleteCalculationReport(deleteDialog.report.id)
       await mutate(reportsCacheKey)
-      toast.success('Report deleted')
+      toast.success(t('toast.deleted'))
       setDeleteDialog({ open: false, report: null })
     } catch {
-      toast.error('Failed to delete report')
+      toast.error(t('toast.delete_failed'))
     } finally {
       setDeleting(false)
     }
@@ -272,9 +276,9 @@ export default function CalculationReportsPage() {
       <div className="p-6 space-y-6">
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" onClick={() => setMode('edit')}>
-            <ChevronLeft className="h-4 w-4 mr-1" /> Back to Builder
+            <ChevronLeft className="h-4 w-4 mr-1" /> {t('back_to_builder')}
           </Button>
-          <h1 className="text-2xl font-bold">{reportTitle} — Results</h1>
+          <h1 className="text-2xl font-bold">{reportTitle} — {t('results')}</h1>
           {selectedCampus && (
             <Badge variant="secondary">{selectedCampus.name}</Badge>
           )}
@@ -282,12 +286,12 @@ export default function CalculationReportsPage() {
 
         {/* Filters for re-run */}
         <div className="flex items-center gap-4 flex-wrap">
-          <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-36 h-8 text-sm" placeholder="Start date" />
-          <span className="text-muted-foreground text-sm">to</span>
-          <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-36 h-8 text-sm" placeholder="End date" />
+          <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-36 h-8 text-sm" placeholder={t('start_date')} />
+          <span className="text-muted-foreground text-sm">{tCommon('to')}</span>
+          <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-36 h-8 text-sm" placeholder={t('end_date')} />
           <Button size="sm" onClick={() => handleRun(editingReport?.id)} disabled={running}>
             {running ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-            Re-run
+            {t('rerun')}
           </Button>
         </div>
 
@@ -332,10 +336,10 @@ export default function CalculationReportsPage() {
       <div className="p-6 space-y-6">
         <div className="flex items-center gap-3 flex-wrap">
           <Button variant="outline" size="sm" onClick={() => setMode('list')}>
-            <ChevronLeft className="h-4 w-4 mr-1" /> Back
+            <ChevronLeft className="h-4 w-4 mr-1" /> {tCommon('back')}
           </Button>
           <h1 className="text-xl font-bold">
-            {editingReport ? 'Edit Report' : 'New Calculation Report'}
+            {editingReport ? t('edit_report') : t('new_report')}
           </h1>
           {selectedCampus && (
             <Badge variant="secondary">{selectedCampus.name}</Badge>
@@ -345,14 +349,14 @@ export default function CalculationReportsPage() {
               variant="outline"
               onClick={() => handleRun(editingReport?.id)}
               disabled={running || !editingReport}
-              title={!editingReport ? 'Save report first' : 'Run report'}
+              title={!editingReport ? t('save_first_title') : t('run_report')}
             >
               {running ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-              GO
+              {t('go')}
             </Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-              Save
+              {tCommon('save')}
             </Button>
           </div>
         </div>
@@ -362,16 +366,16 @@ export default function CalculationReportsPage() {
           <Input
             value={reportTitle}
             onChange={(e) => setReportTitle(e.target.value)}
-            placeholder="Report title..."
+            placeholder={t('title_placeholder')}
             className="max-w-sm"
           />
         </div>
 
         {/* Filters */}
         <div className="flex items-center gap-4 flex-wrap text-sm">
-          <span className="text-muted-foreground">Date range:</span>
+          <span className="text-muted-foreground">{t('date_range')}</span>
           <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-36 h-8 text-sm" />
-          <span className="text-muted-foreground">to</span>
+          <span className="text-muted-foreground">{tCommon('to')}</span>
           <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-36 h-8 text-sm" />
         </div>
 
@@ -418,7 +422,7 @@ export default function CalculationReportsPage() {
                           <Input
                             value={cell.text || ''}
                             onChange={(e) => updateCell(ri, ci, { text: e.target.value })}
-                            placeholder="Label (optional)"
+                            placeholder={t('label_optional')}
                             className="h-7 text-xs"
                           />
                           {/* Calculation select */}
@@ -429,10 +433,10 @@ export default function CalculationReportsPage() {
                             }
                           >
                             <SelectTrigger className="h-7 text-xs">
-                              <SelectValue placeholder="Calculation" />
+                              <SelectValue placeholder={t('calculation')} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="none">— None —</SelectItem>
+                              <SelectItem value="none">— {t('none')} —</SelectItem>
                               {(calculations || []).map((c) => (
                                 <SelectItem key={c.id} value={c.id}>
                                   {c.title}
@@ -448,12 +452,12 @@ export default function CalculationReportsPage() {
                             }
                           >
                             <SelectTrigger className="h-7 text-xs">
-                              <SelectValue placeholder="Breakdown" />
+                              <SelectValue placeholder={t('breakdown')} />
                             </SelectTrigger>
                             <SelectContent>
                               {BREAKDOWN_OPTIONS.map((o) => (
                                 <SelectItem key={o.value} value={o.value}>
-                                  {o.label}
+                                  {o.value === 'none' ? t('none') : t(`breakdown_options.${o.value}`)}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -467,7 +471,7 @@ export default function CalculationReportsPage() {
                               className="rounded"
                             />
                             <BarChart2 className="h-3 w-3" />
-                            Graph Results
+                            {t('graph_results')}
                           </label>
                         </div>
                       </td>
@@ -479,10 +483,10 @@ export default function CalculationReportsPage() {
 
             <div className="flex gap-3 mt-4">
               <Button variant="outline" size="sm" onClick={addColumn}>
-                <Plus className="h-4 w-4 mr-1" /> ADD COLUMN
+                <Plus className="h-4 w-4 mr-1" /> {t('add_column')}
               </Button>
               <Button variant="outline" size="sm" onClick={addRow}>
-                <Plus className="h-4 w-4 mr-1" /> ADD ROW
+                <Plus className="h-4 w-4 mr-1" /> {t('add_row')}
               </Button>
             </div>
           </CardContent>
@@ -499,9 +503,9 @@ export default function CalculationReportsPage() {
         <div className="flex items-center gap-3">
           <FileText className="h-6 w-6 text-primary" />
           <div>
-            <h1 className="text-2xl font-bold">Calculation Reports</h1>
+            <h1 className="text-2xl font-bold">{t('title')}</h1>
             <p className="text-sm text-muted-foreground">
-              Compose reports from saved calculations.
+              {t('subtitle')}
               {selectedCampus && (
                 <span className="ml-2 text-primary font-medium">— {selectedCampus.name}</span>
               )}
@@ -510,7 +514,7 @@ export default function CalculationReportsPage() {
         </div>
         <Button onClick={openNew}>
           <Plus className="mr-2 h-4 w-4" />
-          New Report
+          {t('new_report')}
         </Button>
       </div>
 
@@ -523,20 +527,20 @@ export default function CalculationReportsPage() {
           ) : !reports || reports.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground">
               <FileText className="h-12 w-12 mx-auto mb-3 opacity-30" />
-              <p>No reports yet.</p>
-              <p className="text-sm mt-1">Create your first Calculation Report.</p>
+              <p>{t('no_reports')}</p>
+              <p className="text-sm mt-1">{t('no_reports_desc')}</p>
               <Button variant="outline" className="mt-4" onClick={openNew}>
-                <Plus className="mr-2 h-4 w-4" /> New Report
+                <Plus className="mr-2 h-4 w-4" /> {t('new_report')}
               </Button>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Cells</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="w-32 text-right">Actions</TableHead>
+                  <TableHead>{tCommon('title')}</TableHead>
+                  <TableHead>{t('cells')}</TableHead>
+                  <TableHead>{t('created')}</TableHead>
+                  <TableHead className="w-32 text-right">{tCommon('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -547,9 +551,11 @@ export default function CalculationReportsPage() {
                       <TableCell className="font-medium">{report.title}</TableCell>
                       <TableCell>
                         <span className="text-muted-foreground text-sm">
-                          {report.cells.length} row{report.cells.length !== 1 ? 's' : ''},{' '}
-                          {report.cells[0]?.length || 0} col{(report.cells[0]?.length || 0) !== 1 ? 's' : ''},{' '}
-                          {cellCount} calc{cellCount !== 1 ? 's' : ''}
+                          {t('cells_summary', {
+                            rows: report.cells.length,
+                            cols: report.cells[0]?.length || 0,
+                            calcs: cellCount,
+                          })}
                         </span>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
@@ -577,7 +583,7 @@ export default function CalculationReportsPage() {
                                 const filters: RunFilters = { campus_id: selectedCampus?.id }
                                 const response = await runCalculationReport(report.id, filters)
                                 if (response) { setRunResponse(response); setGrid(response.cells); setMode('results') }
-                              } catch { toast.error('Failed to run report') }
+                              } catch { toast.error(t('toast.run_failed')) }
                               finally { setRunning(false) }
                             }}
                             className="h-8 px-2 text-primary"
@@ -610,16 +616,16 @@ export default function CalculationReportsPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Report</DialogTitle>
+            <DialogTitle>{t('delete_title')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete &quot;{deleteDialog.report?.title}&quot;? This cannot be undone.
+              {t('delete_desc', { title: deleteDialog.report?.title || '' })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialog({ open: false, report: null })}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDeleteDialog({ open: false, report: null })}>{tCommon('cancel')}</Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
               {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Delete
+              {tCommon('delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

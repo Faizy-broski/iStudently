@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/context/AuthContext"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -71,14 +72,15 @@ function studentGrade(s: StudentRecord) {
 }
 
 const RECORD_TYPE_OPTIONS = [
-  { value: "ENTRY_AND_EXIT", label: "Entry and Exit" },
-  { value: "ENTRY", label: "Entry" },
-  { value: "EXIT", label: "Exit" },
+  { value: "ENTRY_AND_EXIT", key: "type_entry_exit" },
+  { value: "ENTRY", key: "type_entry" },
+  { value: "EXIT", key: "type_exit" },
 ]
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function AddExceptionsPage() {
+  const t = useTranslations("school.entry_exit.exceptions")
   const { user, profile } = useAuth()
   const schoolId = profile?.school_id || ""
   const userName = (user as { name?: string })?.name || ""
@@ -128,7 +130,7 @@ export default function AddExceptionsPage() {
       setStudents(data)
       setSelected(new Set())
     } catch {
-      toast.error("Failed to load students")
+      toast.error(t("msg_error_load_students"))
     } finally {
       setLoadingStudents(false)
     }
@@ -173,9 +175,9 @@ export default function AddExceptionsPage() {
 
   // Submit
   async function handleSubmit() {
-    if (!fromDate) { toast.error("From date is required"); return }
-    if (!toDate) { toast.error("To date is required"); return }
-    if (selected.size === 0) { toast.error("Select at least one student"); return }
+    if (!fromDate) { toast.error(t("msg_error_from_date")); return }
+    if (!toDate) { toast.error(t("msg_error_to_date")); return }
+    if (selected.size === 0) { toast.error(t("msg_error_no_selection")); return }
 
     setSubmitting(true)
     try {
@@ -192,12 +194,12 @@ export default function AddExceptionsPage() {
       })
       toast.success(
         result.created === 0
-          ? "No matching rules found — no exceptions created"
-          : `${result.created} exception${result.created !== 1 ? "s" : ""} created`
+          ? t("msg_no_rules_found")
+          : t("msg_success_bulk_created", { count: result.created })
       )
       setSelected(new Set())
     } catch (err: unknown) {
-      toast.error((err as Error).message || "Failed to create exceptions")
+      toast.error((err as Error).message || t("msg_error_create"))
     } finally {
       setSubmitting(false)
     }
@@ -211,7 +213,7 @@ export default function AddExceptionsPage() {
           <div className="h-9 w-9 rounded-full bg-red-500 flex items-center justify-center shrink-0">
             <ShieldX className="h-5 w-5 text-white" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Add Exceptions</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("page_title")}</h1>
         </div>
         <Button
           onClick={handleSubmit}
@@ -219,8 +221,7 @@ export default function AddExceptionsPage() {
           className="gap-2 bg-blue-600 hover:bg-blue-700 text-white"
         >
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          ADD EXCEPTIONS TO SELECTED {activeTab === "STUDENT" ? "STUDENTS" : "USERS"}
-          {selected.size > 0 ? ` (${selected.size})` : ""}
+          {t("btn_add_bulk", { type: activeTab === "STUDENT" ? t("tab_students") : t("tab_users"), count: selected.size })}
         </Button>
       </div>
 
@@ -234,7 +235,7 @@ export default function AddExceptionsPage() {
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
-          Students
+          {t("tab_students")}
         </button>
         <button
           onClick={() => setActiveTab("STAFF")}
@@ -244,7 +245,7 @@ export default function AddExceptionsPage() {
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
-          Users
+          {t("tab_users")}
         </button>
       </div>
 
@@ -252,7 +253,7 @@ export default function AddExceptionsPage() {
       <Card className="border shadow-sm max-w-sm mx-auto">
         <CardContent className="p-5 space-y-4">
           <h2 className="text-sm font-semibold text-center tracking-widest uppercase text-muted-foreground">
-            Add Exceptions
+            {t("card_add_title")}
           </h2>
 
           {/* Checkpoint */}
@@ -262,13 +263,13 @@ export default function AddExceptionsPage() {
                 <SelectValue placeholder="N/A" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">N/A (All checkpoints)</SelectItem>
+                <SelectItem value="all">{t("option_na_all")}</SelectItem>
                 {checkpoints.map(cp => (
                   <SelectItem key={cp.id} value={cp.id}>{cp.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-blue-500 font-medium pl-1">Checkpoint</p>
+            <p className="text-xs text-blue-500 font-medium pl-1">{t("label_checkpoint")}</p>
           </div>
 
           {/* Type */}
@@ -279,43 +280,43 @@ export default function AddExceptionsPage() {
               </SelectTrigger>
               <SelectContent>
                 {RECORD_TYPE_OPTIONS.map(opt => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  <SelectItem key={opt.value} value={opt.value}>{t(opt.key)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-blue-500 font-medium pl-1">Type</p>
+            <p className="text-xs text-blue-500 font-medium pl-1">{t("label_type")}</p>
           </div>
 
           {/* From */}
           <div className="space-y-1">
-            <p className="text-sm font-semibold">From</p>
+            <p className="text-sm font-semibold">{t("label_from")}</p>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Input type="date" className="h-9 text-sm" value={fromDate}
                   onChange={e => setFromDate(e.target.value)} />
-                <p className="text-xs text-muted-foreground pl-1 mt-0.5">Date</p>
+                <p className="text-xs text-muted-foreground pl-1 mt-0.5">{t("label_date")}</p>
               </div>
               <div>
                 <Input type="time" className="h-9 text-sm" value={fromTime}
                   onChange={e => setFromTime(e.target.value)} />
-                <p className="text-xs text-red-500 pl-1 mt-0.5">Time</p>
+                <p className="text-xs text-red-500 pl-1 mt-0.5">{t("label_time")}</p>
               </div>
             </div>
           </div>
 
           {/* To */}
           <div className="space-y-1">
-            <p className="text-sm font-semibold">To</p>
+            <p className="text-sm font-semibold">{t("label_to")}</p>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Input type="date" className="h-9 text-sm" value={toDate}
                   min={fromDate} onChange={e => setToDate(e.target.value)} />
-                <p className="text-xs text-muted-foreground pl-1 mt-0.5">Date</p>
+                <p className="text-xs text-muted-foreground pl-1 mt-0.5">{t("label_date")}</p>
               </div>
               <div>
                 <Input type="time" className="h-9 text-sm" value={toTime}
                   onChange={e => setToTime(e.target.value)} />
-                <p className="text-xs text-red-500 pl-1 mt-0.5">Time</p>
+                <p className="text-xs text-red-500 pl-1 mt-0.5">{t("label_time")}</p>
               </div>
             </div>
           </div>
@@ -324,7 +325,7 @@ export default function AddExceptionsPage() {
           <div className="space-y-1">
             <Input className="h-9 text-sm" placeholder="" value={reason}
               onChange={e => setReason(e.target.value)} />
-            <p className="text-xs text-muted-foreground pl-1">Reason</p>
+            <p className="text-xs text-muted-foreground pl-1">{t("label_reason")}</p>
           </div>
         </CardContent>
       </Card>
@@ -335,10 +336,10 @@ export default function AddExceptionsPage() {
         <div className="flex flex-wrap items-center gap-3">
           <Select value={filterGrade} onValueChange={v => { setFilterGrade(v); setFilterSection("all") }}>
             <SelectTrigger className="w-36 h-8 text-xs">
-              <SelectValue placeholder="Grade" />
+              <SelectValue placeholder={t("placeholder_grade")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Grades</SelectItem>
+              <SelectItem value="all">{t("option_all_grades")}</SelectItem>
               {gradeLevels.map(g => (
                 <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
               ))}
@@ -347,10 +348,10 @@ export default function AddExceptionsPage() {
 
           <Select value={filterSection} onValueChange={setFilterSection}>
             <SelectTrigger className="w-36 h-8 text-xs">
-              <SelectValue placeholder="Section" />
+              <SelectValue placeholder={t("placeholder_section")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Sections</SelectItem>
+              <SelectItem value="all">{t("option_all_sections")}</SelectItem>
               {filteredSections.map(s => (
                 <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
               ))}
@@ -359,7 +360,7 @@ export default function AddExceptionsPage() {
 
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground ml-1">
             <Users className="h-3.5 w-3.5" />
-            <span>{filteredStudents.length} {activeTab === "STUDENT" ? "students" : "users"} found.</span>
+            <span>{t("stat_found", { count: filteredStudents.length })}</span>
             <Download className="h-3.5 w-3.5 ml-1 cursor-pointer hover:text-foreground" />
           </div>
 
@@ -367,7 +368,7 @@ export default function AddExceptionsPage() {
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               className="pl-8 h-8 text-xs"
-              placeholder="Search…"
+              placeholder={t("toolbar_search")}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
             />
@@ -382,7 +383,7 @@ export default function AddExceptionsPage() {
             </div>
           ) : filteredStudents.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">
-              No {activeTab === "STUDENT" ? "students" : "users"} found.
+              {t("msg_no_data")}
             </div>
           ) : (
             <Table>
@@ -396,13 +397,13 @@ export default function AddExceptionsPage() {
                     />
                   </TableHead>
                   <TableHead className="text-xs uppercase font-semibold text-blue-600">
-                    {activeTab === "STUDENT" ? "Student" : "User"}
+                    {activeTab === "STUDENT" ? t("table_col_person") : t("table_col_person")}
                   </TableHead>
                   <TableHead className="text-xs uppercase font-semibold text-blue-600">
-                    {activeTab === "STUDENT" ? "Istudently ID" : "User ID"}
+                    {t("table_col_id", { type: activeTab === "STUDENT" ? t("tab_students") : t("tab_users") })}
                   </TableHead>
                   <TableHead className="text-xs uppercase font-semibold text-blue-600">
-                    Grade Level
+                    {t("table_col_grade")}
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -445,7 +446,7 @@ export default function AddExceptionsPage() {
               className="px-8 gap-2 bg-blue-600 hover:bg-blue-700 text-white"
             >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              ADD EXCEPTIONS TO SELECTED {activeTab === "STUDENT" ? "STUDENTS" : "USERS"}
+              {t("btn_add_bulk", { type: activeTab === "STUDENT" ? t("tab_students") : t("tab_users"), count: selected.size })}
             </Button>
           </div>
         )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import {
 import Link from "next/link";
 
 export default function HostelDashboard() {
+  const t = useTranslations("admin.hostel.dashboard");
   const { profile } = useAuth();
   const schoolId = profile?.school_id || "";
   const campusId = profile?.campus_id;
@@ -56,35 +58,35 @@ export default function HostelDashboard() {
 
   const statCards = [
     {
-      title: "Buildings",
+      title: t('stat_buildings'),
       value: stats.total_buildings,
       icon: Building2,
       color: "text-blue-600",
       bg: "bg-blue-100 dark:bg-blue-900/30",
     },
     {
-      title: "Rooms",
+      title: t('stat_rooms'),
       value: stats.total_rooms,
       icon: DoorOpen,
       color: "text-emerald-600",
       bg: "bg-emerald-100 dark:bg-emerald-900/30",
     },
     {
-      title: "Occupied Beds",
+      title: t('stat_occupied_beds'),
       value: `${stats.occupied_beds}/${stats.total_capacity}`,
       icon: BedDouble,
       color: "text-purple-600",
       bg: "bg-purple-100 dark:bg-purple-900/30",
     },
     {
-      title: "Occupancy Rate",
+      title: t('stat_occupancy_rate'),
       value: `${stats.occupancy_rate}%`,
       icon: TrendingUp,
       color: "text-orange-600",
       bg: "bg-orange-100 dark:bg-orange-900/30",
     },
     {
-      title: "Active Visitors",
+      title: t('stat_active_visitors'),
       value: stats.active_visitors,
       icon: Eye,
       color: "text-rose-600",
@@ -93,20 +95,20 @@ export default function HostelDashboard() {
   ];
 
   const quickLinks = [
-    { title: "Buildings", href: "/admin/hostel/buildings", icon: Building2 },
-    { title: "Rooms", href: "/admin/hostel/rooms", icon: DoorOpen },
-    { title: "Assignments", href: "/admin/hostel/assignments", icon: Users },
-    { title: "Visits", href: "/admin/hostel/visits", icon: Eye },
-    { title: "Fees", href: "/admin/hostel/fees", icon: TrendingUp },
+    { title: t('stat_buildings'), href: "/admin/hostel/buildings", icon: Building2 },
+    { title: t('stat_rooms'), href: "/admin/hostel/rooms", icon: DoorOpen },
+    { title: t('card_assignments'), href: "/admin/hostel/assignments", icon: Users },
+    { title: t('card_visits'), href: "/admin/hostel/visits", icon: Eye },
+    { title: t('card_fees'), href: "/admin/hostel/fees", icon: TrendingUp },
   ];
 
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Hostel Management</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t('header_title')}</h1>
         <p className="text-muted-foreground">
-          Manage buildings, rooms, assignments, visits, and rental fees
+          {t('header_subtitle')}
         </p>
       </div>
 
@@ -152,23 +154,23 @@ export default function HostelDashboard() {
       <Card className="border-0 shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-lg font-semibold">
-            Active Visitors
+            {t('stat_active_visitors')}
           </CardTitle>
           <Link
             href="/admin/hostel/visits"
             className="text-sm text-primary hover:underline"
           >
-            View all →
+            {t('btn_view_all')}
           </Link>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="text-center py-8 text-muted-foreground">
-              Loading...
+              {t('msg_loading')}
             </div>
           ) : recentVisits.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No active visitors
+              {t('msg_no_active_visitors')}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -176,19 +178,19 @@ export default function HostelDashboard() {
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-2 px-3 font-medium text-muted-foreground">
-                      Visitor
+                      {t('th_visitor')}
                     </th>
                     <th className="text-left py-2 px-3 font-medium text-muted-foreground">
-                      Student
+                      {t('th_student')}
                     </th>
                     <th className="text-left py-2 px-3 font-medium text-muted-foreground">
-                      Room
+                      {t('th_room')}
                     </th>
                     <th className="text-left py-2 px-3 font-medium text-muted-foreground">
-                      Check In
+                      {t('th_check_in')}
                     </th>
                     <th className="text-left py-2 px-3 font-medium text-muted-foreground">
-                      Relation
+                      {t('th_relation')}
                     </th>
                   </tr>
                 </thead>

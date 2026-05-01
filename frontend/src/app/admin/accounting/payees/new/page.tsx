@@ -38,7 +38,7 @@ export default function NewPayeePage() {
     const handleSave = async () => {
         if (!campusId) return
         if (!formData.name.trim()) {
-            toast.error('Name is required')
+            toast.error('الاسم مطلوب')
             return
         }
 
@@ -48,10 +48,10 @@ export default function NewPayeePage() {
                 campus_id: campusId,
                 ...formData
             })
-            toast.success('Payee created successfully')
+            toast.success('تم إنشاء المستفيد بنجاح')
             router.push('/admin/accounting/payees')
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : 'Failed to create payee'
+            const errorMessage = error instanceof Error ? error.message : 'فشل إنشاء المستفيد'
             toast.error(errorMessage)
         } finally {
             setSaving(false)
@@ -71,7 +71,7 @@ export default function NewPayeePage() {
             <div className="container mx-auto py-6">
                 <Card>
                     <CardContent className="pt-6">
-                        <p className="text-muted-foreground text-center">Please select a campus.</p>
+                        <p className="text-muted-foreground text-center">يرجى اختيار فرع.</p>
                     </CardContent>
                 </Card>
             </div>
@@ -84,23 +84,23 @@ export default function NewPayeePage() {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <IconUsers className="h-8 w-8 text-[#3d8fb5]" />
-                    <h1 className="text-3xl font-bold tracking-tight">Payees</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">المستفيدون</h1>
                 </div>
                 <Button 
                     onClick={handleSave}
                     disabled={saving}
                     className="bg-[#3d8fb5] hover:bg-[#357ea0]"
                 >
-                    {saving ? 'SAVING...' : 'SAVE'}
+                    {saving ? 'جارٍ الحفظ...' : 'حفظ'}
                 </Button>
             </div>
 
             {/* Back Link */}
             <div className="flex items-center gap-2">
                 <Link href="/admin/accounting/payees" className="text-[#3d8fb5] hover:underline">
-                    « Back
+                    « رجوع
                 </Link>
-                <span className="text-muted-foreground">Add a Payee</span>
+                <span className="text-muted-foreground">إضافة مستفيد</span>
             </div>
 
             {/* Form */}
@@ -116,7 +116,7 @@ export default function NewPayeePage() {
                                     placeholder=""
                                     className="border-0 border-b rounded-none focus-visible:ring-0 px-0"
                                 />
-                                <Label className="text-[#3d8fb5] text-xs">Name</Label>
+                                <Label className="text-[#3d8fb5] text-xs">الاسم</Label>
                             </div>
                             <div>
                                 <Input
@@ -125,7 +125,7 @@ export default function NewPayeePage() {
                                     placeholder=""
                                     className="border-0 border-b rounded-none focus-visible:ring-0 px-0"
                                 />
-                                <Label className="text-[#3d8fb5] text-xs">Phone Number</Label>
+                                <Label className="text-[#3d8fb5] text-xs">رقم الهاتف</Label>
                             </div>
                             <div>
                                 <Input
@@ -134,7 +134,7 @@ export default function NewPayeePage() {
                                     placeholder=""
                                     className="border-0 border-b rounded-none focus-visible:ring-0 px-0"
                                 />
-                                <Label className="text-[#3d8fb5] text-xs">Bank</Label>
+                                <Label className="text-[#3d8fb5] text-xs">البنك</Label>
                             </div>
                             <div>
                                 <Input
@@ -143,7 +143,7 @@ export default function NewPayeePage() {
                                     placeholder=""
                                     className="border-0 border-b rounded-none focus-visible:ring-0 px-0"
                                 />
-                                <Label className="text-[#3d8fb5] text-xs">SWIFT or IBAN</Label>
+                                <Label className="text-[#3d8fb5] text-xs">SWIFT أو IBAN</Label>
                             </div>
                             <div className="flex items-center gap-2 pt-2">
                                 <Checkbox
@@ -152,7 +152,7 @@ export default function NewPayeePage() {
                                     onCheckedChange={(checked) => handleChange('rollover', checked === true)}
                                 />
                                 <label htmlFor="rollover" className="text-sm cursor-pointer">
-                                    Rollover
+                                    ترحيل
                                 </label>
                             </div>
                         </div>
@@ -164,10 +164,10 @@ export default function NewPayeePage() {
                                     type="email"
                                     value={formData.email}
                                     onChange={(e) => handleChange('email', e.target.value)}
-                                    placeholder="Email"
+                                    placeholder="البريد الإلكتروني"
                                     className="border-0 border-b rounded-none focus-visible:ring-0 px-0"
                                 />
-                                <Label className="text-[#3d8fb5] text-xs">Email Address</Label>
+                                <Label className="text-[#3d8fb5] text-xs">البريد الإلكتروني</Label>
                             </div>
                             <div>
                                 <Input
@@ -176,7 +176,7 @@ export default function NewPayeePage() {
                                     placeholder=""
                                     className="border-0 border-b rounded-none focus-visible:ring-0 px-0"
                                 />
-                                <Label className="text-[#3d8fb5] text-xs">Address</Label>
+                                <Label className="text-[#3d8fb5] text-xs">العنوان</Label>
                             </div>
                             <div>
                                 <Input
@@ -185,7 +185,7 @@ export default function NewPayeePage() {
                                     placeholder=""
                                     className="border-0 border-b rounded-none focus-visible:ring-0 px-0"
                                 />
-                                <Label className="text-[#3d8fb5] text-xs">Account Number</Label>
+                                <Label className="text-[#3d8fb5] text-xs">رقم الحساب</Label>
                             </div>
                             <div>
                                 <Input
@@ -194,7 +194,7 @@ export default function NewPayeePage() {
                                     placeholder=""
                                     className="border-0 border-b rounded-none focus-visible:ring-0 px-0"
                                 />
-                                <Label className="text-[#3d8fb5] text-xs">BSB or BIC</Label>
+                                <Label className="text-[#3d8fb5] text-xs">BSB أو BIC</Label>
                             </div>
                         </div>
                     </div>
@@ -208,7 +208,7 @@ export default function NewPayeePage() {
                     disabled={saving}
                     className="bg-[#3d8fb5] hover:bg-[#357ea0] px-8"
                 >
-                    {saving ? 'SAVING...' : 'SAVE'}
+                    {saving ? 'جارٍ الحفظ...' : 'حفظ'}
                 </Button>
             </div>
         </div>

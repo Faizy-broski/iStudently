@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ import { HostelVisit } from "@/types";
 import { Plus, Eye, LogOut, Search, Users } from "lucide-react";
 
 export default function VisitsPage() {
+  const t = useTranslations("admin.hostel.visits");
   const { profile } = useAuth();
   const schoolId = profile?.school_id || "";
   const campusId = profile?.campus_id;
@@ -151,14 +153,14 @@ export default function VisitsPage() {
       resetForm();
       loadData();
     } catch (err: any) {
-      alert(err.message || "Failed to create visit");
+      alert(err.message || t('msg_create_error'));
     } finally {
       setSubmitting(false);
     }
   }
 
   async function handleCheckOut(visitId: string) {
-    if (!confirm("Check out this visitor?")) return;
+    if (!confirm(t('confirm_checkout'))) return;
     try {
       await checkOutVisit(visitId);
       loadData();
@@ -171,9 +173,9 @@ export default function VisitsPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Hostel Visits</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t('header_title')}</h1>
           <p className="text-muted-foreground">
-            Track visitors to hostel students
+            {t('header_subtitle')}
           </p>
         </div>
         <Dialog
@@ -186,61 +188,17 @@ export default function VisitsPage() {
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
-              Record Visit
+              {t('btn_add')}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md overflow-visible">
             <DialogHeader>
-              <DialogTitle>Record New Visit</DialogTitle>
+              <DialogTitle>{t('dialog_add_title')}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
               {/* Student search */}
               <div className="space-y-2">
-                <Label>Student *</Label>
-                {/* {selectedStudent ? (
-                  <div className="flex items-center justify-between p-2 bg-muted rounded-md">
-                    <span className="text-sm font-medium">
-                      {selectedStudent.first_name} {selectedStudent.last_name}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedStudent(null);
-                        setSearchQuery("");
-                      }}
-                    >
-                      Change
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search students..."
-                      className="pl-9"
-                    />
-                    {searchResults.length > 0 && (
-                      <div className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-lg max-h-40 overflow-y-auto">
-                        {searchResults.map((s: any) => (
-                          <button
-                            key={s.id}
-                            className="w-full text-left px-3 py-2 hover:bg-muted text-sm"
-                            onClick={() => {
-                              setSelectedStudent(s);
-                              setSearchQuery("");
-                              setSearchResults([]);
-                            }}
-                          >
-                            {s.first_name} {s.last_name}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )} */}
+                <Label>{t('label_student')}</Label>
                 {selectedStudentId ? (
                   <div className="flex items-center gap-2 p-2 rounded-md border bg-muted/50">
                     <Users className="h-4 w-4 text-muted-foreground" />
@@ -255,14 +213,14 @@ export default function VisitsPage() {
                         setSelectedStudentName("");
                       }}
                     >
-                      Change
+                      {t('btn_change')}
                     </Button>
                   </div>
                 ) : (
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Search student..."
+                      placeholder={t('placeholder_student')}
                       className="pl-9"
                       value={studentSearch}
                       onChange={(e) => handleStudentSearch(e.target.value)}
@@ -300,7 +258,7 @@ export default function VisitsPage() {
                     )}
                     {searchingStudents && (
                       <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg p-3 text-sm text-muted-foreground text-center">
-                        Searching...
+                        {t('msg_loading')}
                       </div>
                     )}
                   </div>
@@ -308,54 +266,53 @@ export default function VisitsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Visitor Name *</Label>
+                <Label>{t('label_visitor_name')}</Label>
                 <Input
                   value={visitorName}
                   onChange={(e) => setVisitorName(e.target.value)}
-                  placeholder="Full name"
+                  placeholder={t('placeholder_visitor_name')}
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Phone</Label>
+                  <Label>{t('label_phone')}</Label>
                   <Input
                     value={visitorPhone}
                     onChange={(e) => setVisitorPhone(e.target.value)}
-                    placeholder="Phone number"
+                    placeholder={t('placeholder_phone')}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Relation</Label>
+                  <Label>{t('label_relation')}</Label>
                   <Input
                     value={visitorRelation}
                     onChange={(e) => setVisitorRelation(e.target.value)}
-                    placeholder="e.g. Parent"
+                    placeholder={t('placeholder_relation')}
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Purpose</Label>
+                <Label>{t('label_purpose')}</Label>
                 <Input
                   value={purpose}
                   onChange={(e) => setPurpose(e.target.value)}
-                  placeholder="Reason for visit"
+                  placeholder={t('placeholder_purpose')}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Notes</Label>
+                <Label>{t('label_notes')}</Label>
                 <Input
                   value={visitNotes}
                   onChange={(e) => setVisitNotes(e.target.value)}
-                  placeholder="Optional..."
+                  placeholder={t('placeholder_notes')}
                 />
               </div>
               <Button
                 onClick={handleCreate}
-                // disabled={submitting || !selectedStudent || !visitorName}
                 disabled={submitting || !selectedStudentId || !visitorName}
                 className="w-full"
               >
-                {submitting ? "Saving..." : "Record Visit"}
+                {submitting ? t('btn_saving') : t('btn_save')}
               </Button>
             </div>
           </DialogContent>
@@ -370,18 +327,18 @@ export default function VisitsPage() {
             size="sm"
             onClick={() => setActiveOnly(true)}
           >
-            Active
+            {t('tab_active')}
           </Button>
           <Button
             variant={!activeOnly ? "default" : "outline"}
             size="sm"
             onClick={() => setActiveOnly(false)}
           >
-            All
+            {t('tab_all')}
           </Button>
         </div>
         <div className="flex gap-2 items-center">
-          <Label className="text-sm">From:</Label>
+          <Label className="text-sm">{t('label_from')}</Label>
           <Input
             type="date"
             className="w-40"
@@ -390,7 +347,7 @@ export default function VisitsPage() {
           />
         </div>
         <div className="flex gap-2 items-center">
-          <Label className="text-sm">To:</Label>
+          <Label className="text-sm">{t('label_to')}</Label>
           <Input
             type="date"
             className="w-40"
@@ -405,14 +362,14 @@ export default function VisitsPage() {
         <CardContent className="p-0">
           {loading ? (
             <div className="text-center py-12 text-muted-foreground">
-              Loading...
+              {t('msg_loading')}
             </div>
           ) : visits.length === 0 ? (
             <div className="text-center py-12">
               <Eye className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="font-semibold mb-2">No visits found</h3>
+              <h3 className="font-semibold mb-2">{t('msg_no_data')}</h3>
               <p className="text-muted-foreground">
-                Record a new visitor check-in
+                {t('msg_no_data_desc')}
               </p>
             </div>
           ) : (
@@ -420,21 +377,21 @@ export default function VisitsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="text-left py-3 px-4 font-medium">Visitor</th>
-                    <th className="text-left py-3 px-4 font-medium">Student</th>
-                    <th className="text-left py-3 px-4 font-medium">Room</th>
+                    <th className="text-left py-3 px-4 font-medium">{t('th_visitor')}</th>
+                    <th className="text-left py-3 px-4 font-medium">{t('th_student')}</th>
+                    <th className="text-left py-3 px-4 font-medium">{t('th_room')}</th>
                     <th className="text-left py-3 px-4 font-medium">
-                      Relation
+                      {t('th_relation')}
                     </th>
                     <th className="text-left py-3 px-4 font-medium">
-                      Check In
+                      {t('th_check_in')}
                     </th>
                     <th className="text-left py-3 px-4 font-medium">
-                      Check Out
+                      {t('th_check_out')}
                     </th>
-                    <th className="text-left py-3 px-4 font-medium">Status</th>
+                    <th className="text-left py-3 px-4 font-medium">{t('th_status')}</th>
                     <th className="text-right py-3 px-4 font-medium">
-                      Actions
+                      {t('th_actions')}
                     </th>
                   </tr>
                 </thead>
@@ -459,10 +416,10 @@ export default function VisitsPage() {
                       </td>
                       <td className="py-3 px-4">
                         {v.check_out ? (
-                          <Badge variant="secondary">Checked Out</Badge>
+                          <Badge variant="secondary">{t('status_checked_out')}</Badge>
                         ) : (
                           <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                            Active
+                            {t('status_active')}
                           </Badge>
                         )}
                       </td>
@@ -474,7 +431,7 @@ export default function VisitsPage() {
                             onClick={() => handleCheckOut(v.id)}
                           >
                             <LogOut className="h-4 w-4 mr-1" />
-                            Check Out
+                            {t('btn_checkout')}
                           </Button>
                         )}
                       </td>

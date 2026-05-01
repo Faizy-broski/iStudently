@@ -27,6 +27,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
+import { useTranslations } from "next-intl";
 import {
   getCoursePeriods,
   getAssignmentOptions,
@@ -189,7 +190,7 @@ export default function ImportGradesPage() {
   // ── Build column options ──────────────────────────────────────
   const columnOptions = headerRow.map((header, idx) => ({
     value: idx,
-    label: `${colLetter(idx)}: ${header || `${tCommon("column", { defaultValue: "Column" })} ${idx + 1}`}`,
+    label: `${colLetter(idx)}: ${header || `${tCommon("column")} ${idx + 1}`}`,
   }));
 
   // ── Data row count ────────────────────────────────────────────
@@ -342,7 +343,7 @@ export default function ImportGradesPage() {
                   onValueChange={setSelectedCoursePeriod}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={tCommon("select_course_period_placeholder", { defaultValue: "Select course period..." })} />
+                    <SelectValue placeholder={tCommon("select_course_period_placeholder")} />
                   </SelectTrigger>
                   <SelectContent>
                     {coursePeriods.map((cp) => (
@@ -413,7 +414,7 @@ export default function ImportGradesPage() {
           <div className="flex items-center gap-4">
             <Badge variant="secondary" className="text-xs">
               <FileSpreadsheet className="h-3 w-3 mr-1 rtl:ml-1 rtl:mr-0" />
-              {fileName}: {tCommon("rows_count", { count: parsedRows.length, defaultValue: `${parsedRows.length} rows` })}
+              {fileName}: {tCommon("rows_count", { count: parsedRows.length })}
             </Badge>
             <label className="flex items-center gap-2 text-sm">
               <Checkbox
@@ -578,7 +579,7 @@ export default function ImportGradesPage() {
                           }}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder={tCommon("select_column_placeholder", { defaultValue: "Select column..." })} />
+                            <SelectValue placeholder={tCommon("select_column_placeholder")} />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="none">{t("skip_column")}</SelectItem>
@@ -594,7 +595,7 @@ export default function ImportGradesPage() {
                         </Select>
                         <p className="text-xs text-muted-foreground mt-1">
                           {a.title}
-                          {a.points ? ` (${a.points} ${tCommon("points", { defaultValue: "pts" })})` : ""}
+                          {a.points ? ` (${a.points} ${tCommon("points")})` : ""}
                         </p>
                       </div>
                     ))}
@@ -666,7 +667,7 @@ export default function ImportGradesPage() {
                     {importResult.errors.map((err, i) => (
                       <div key={i} className="text-xs text-red-600 flex gap-2">
                         <span className="font-medium whitespace-nowrap">
-                          {tCommon("row", { defaultValue: "Row" })} {err.row}:
+                          {tCommon("row")} {err.row}:
                         </span>
                         <span>{err.reason}</span>
                       </div>

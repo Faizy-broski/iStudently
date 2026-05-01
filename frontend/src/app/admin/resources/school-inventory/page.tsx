@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 import useSWR, { mutate } from 'swr'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -57,6 +58,7 @@ interface EditableCategory extends Partial<InventoryCategory> {
 
 export default function SchoolInventoryPage() {
   useAuth()
+  const t = useTranslations('school.resources.inventory')
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
   const router = useRouter()
@@ -169,9 +171,9 @@ export default function SchoolInventoryPage() {
 
       await mutate(catCacheKey)
       setCategoriesInitialized(false)
-      toast.success('Inventory saved successfully')
+      toast.success(t('msg_save_success'))
     } catch {
-      toast.error('Failed to save inventory')
+      toast.error(t('msg_save_error'))
     } finally {
       setSaving(false)
     }
@@ -190,11 +192,11 @@ export default function SchoolInventoryPage() {
         <div className="flex items-center gap-3">
           <Package className="h-6 w-6 text-primary" />
           <div>
-            <h1 className="text-2xl font-bold">School Inventory</h1>
+            <h1 className="text-2xl font-bold">{t('title')}</h1>
             <p className="text-sm text-muted-foreground">
-              Categories
+              {t('subtitle')}
               {selectedCampus && (
-                <span className="ml-2 text-primary font-medium">— {selectedCampus.name}</span>
+                <span className="ml-2 text-primary font-medium">{t('campus_label', { name: selectedCampus.name })}</span>
               )}
             </p>
           </div>
@@ -205,7 +207,7 @@ export default function SchoolInventoryPage() {
           ) : (
             <Save className="mr-2 h-4 w-4" />
           )}
-          Save
+          {saving ? t('saving_button') : t('save_button')}
         </Button>
       </div>
 
@@ -224,18 +226,18 @@ export default function SchoolInventoryPage() {
               <Card key={type}>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-semibold text-primary uppercase tracking-wide">
-                    {label}
+                    {t(`category_type_${type.toLowerCase()}`)}
                   </CardTitle>
                   <p className="text-xs text-muted-foreground">
-                    {cats.length} {cats.length === 1 ? 'entry' : 'entries'} found.
+                    {cats.length === 1 ? t('entry_singular') : t('entries_found', { count: cats.length })}
                   </p>
                 </CardHeader>
                 <CardContent className="space-y-1">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-xs px-1">Name</TableHead>
-                        <TableHead className="text-xs px-1 text-right">Total</TableHead>
+                        <TableHead className="text-xs px-1">{t('th_name')}</TableHead>
+                        <TableHead className="text-xs px-1 text-right">{t('th_total')}</TableHead>
                         <TableHead className="w-8" />
                       </TableRow>
                     </TableHeader>
@@ -289,7 +291,7 @@ export default function SchoolInventoryPage() {
                         setNewCategoryTitles((prev) => ({ ...prev, [type]: e.target.value }))
                       }
                       onKeyDown={(e) => e.key === 'Enter' && addCategory(type)}
-                      placeholder={`Add ${label.toLowerCase()}...`}
+                      placeholder={t('input_placeholder')}
                       className="h-7 text-sm"
                     />
                   </div>
@@ -309,7 +311,7 @@ export default function SchoolInventoryPage() {
           ) : (
             <Save className="mr-2 h-4 w-4" />
           )}
-          Save
+          {saving ? t('saving_button') : t('save_button')}
         </Button>
       </div>
 
@@ -319,15 +321,15 @@ export default function SchoolInventoryPage() {
           <DialogHeader>
             <DialogTitle>Confirm Delete</DialogTitle>
             <DialogDescription>
-              Remove this category? Items assigned to it will lose this assignment.
+              {t('delete_confirm_category')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialog(null)}>
-              Cancel
+              {t('btn_cancel')}
             </Button>
             <Button variant="destructive" onClick={confirmDeleteCategory}>
-              Delete
+              {t('btn_remove')}
             </Button>
           </DialogFooter>
         </DialogContent>

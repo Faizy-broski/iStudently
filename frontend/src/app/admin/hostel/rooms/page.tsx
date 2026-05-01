@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ import { Plus, DoorOpen, Edit, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function RoomsPage() {
+  const t = useTranslations("admin.hostel.rooms");
   const { profile } = useAuth();
   const schoolId = profile?.school_id || "";
   const campusId = profile?.campus_id;
@@ -172,7 +174,7 @@ export default function RoomsPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this room?")) return;
+    if (!confirm(t('msg_delete_confirm'))) return;
     try {
       await deleteRoom(id, schoolId);
       loadData();
@@ -185,9 +187,9 @@ export default function RoomsPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Rooms</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t('header_title')}</h1>
           <p className="text-muted-foreground">
-            Manage hostel rooms within buildings
+            {t('header_subtitle')}
           </p>
         </div>
         <Dialog
@@ -200,22 +202,22 @@ export default function RoomsPage() {
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
-              Add Room
+              {t('btn_add')}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md overflow-visible">
             <DialogHeader>
               <DialogTitle>
-                {editingRoom ? "Edit Room" : "Add Room"}
+                {editingRoom ? t('dialog_edit_title') : t('dialog_add_title')}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
               {!editingRoom && (
                 <div className="space-y-2">
-                  <Label>Building *</Label>
+                  <Label>{t('label_building')}</Label>
                   <Select value={buildingId} onValueChange={setBuildingId}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select building" />
+                      <SelectValue placeholder={t('placeholder_building')} />
                     </SelectTrigger>
                     <SelectContent>
                       {buildings.map((b) => (
@@ -229,15 +231,15 @@ export default function RoomsPage() {
               )}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Room Number *</Label>
+                  <Label>{t('label_room_number')}</Label>
                   <Input
                     value={roomNumber}
                     onChange={(e) => setRoomNumber(e.target.value)}
-                    placeholder="e.g. 101"
+                    placeholder={t('placeholder_room_number')}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Floor</Label>
+                  <Label>{t('label_floor')}</Label>
                   <Input
                     type="number"
                     min={0}
@@ -248,7 +250,7 @@ export default function RoomsPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Capacity *</Label>
+                  <Label>{t('label_capacity')}</Label>
                   <Input
                     type="number"
                     min={1}
@@ -257,22 +259,22 @@ export default function RoomsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Type</Label>
+                  <Label>{t('label_type')}</Label>
                   <Select value={roomType} onValueChange={setRoomType}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="standard">Standard</SelectItem>
-                      <SelectItem value="premium">Premium</SelectItem>
-                      <SelectItem value="suite">Suite</SelectItem>
-                      <SelectItem value="shared">Shared</SelectItem>
+                      <SelectItem value="standard">{t('type_standard')}</SelectItem>
+                      <SelectItem value="premium">{t('type_premium')}</SelectItem>
+                      <SelectItem value="suite">{t('type_suite')}</SelectItem>
+                      <SelectItem value="shared">{t('type_shared')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Price per Month</Label>
+                <Label>{t('label_price')}</Label>
                 <Input
                   type="number"
                   min={0}
@@ -282,18 +284,18 @@ export default function RoomsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Description</Label>
+                <Label>{t('label_description')}</Label>
                 <Input
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Optional..."
+                  placeholder={t('placeholder_description')}
                 />
               </div>
 
               {/* Custom Fields */}
               {customFieldDefs.length > 0 && (
                 <div className="space-y-3 border-t pt-3">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Additional Fields</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('section_additional_fields')}</p>
                   {customFieldDefs.map((def) => (
                     <div key={def.id} className="space-y-1">
                       <Label className="text-sm">
@@ -357,7 +359,7 @@ export default function RoomsPage() {
                 }
                 className="w-full"
               >
-                {submitting ? "Saving..." : editingRoom ? "Update" : "Add Room"}
+                {submitting ? t('btn_saving') : editingRoom ? t('btn_update') : t('btn_create')}
               </Button>
             </div>
           </DialogContent>
@@ -366,7 +368,7 @@ export default function RoomsPage() {
 
       {/* Filter */}
       <div className="flex gap-3 items-center">
-        <Label className="text-sm">Filter by Building:</Label>
+        <Label className="text-sm">{t('filter_label')}</Label>
         <Select
           value={filterBuilding || "ALL"}
           onValueChange={(v) => setFilterBuilding(v === "ALL" ? "" : v)}
@@ -375,7 +377,7 @@ export default function RoomsPage() {
             <SelectValue placeholder="All Buildings" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="ALL">All Buildings</SelectItem>
+            <SelectItem value="ALL">{t('filter_all')}</SelectItem>
             {buildings.map((b) => (
               <SelectItem key={b.id} value={b.id}>
                 {b.name}
@@ -390,14 +392,14 @@ export default function RoomsPage() {
         <CardContent className="p-0">
           {loading ? (
             <div className="text-center py-12 text-muted-foreground">
-              Loading...
+              {t('msg_loading')}
             </div>
           ) : rooms.length === 0 ? (
             <div className="text-center py-12">
               <DoorOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="font-semibold mb-2">No rooms found</h3>
+              <h3 className="font-semibold mb-2">{t('msg_no_data')}</h3>
               <p className="text-muted-foreground">
-                Add rooms to your buildings
+                {t('msg_no_data_desc')}
               </p>
             </div>
           ) : (
@@ -405,19 +407,19 @@ export default function RoomsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="text-left py-3 px-4 font-medium">Room</th>
+                    <th className="text-left py-3 px-4 font-medium">{t('th_room')}</th>
                     <th className="text-left py-3 px-4 font-medium">
-                      Building
+                      {t('th_building')}
                     </th>
-                    <th className="text-left py-3 px-4 font-medium">Floor</th>
-                    <th className="text-left py-3 px-4 font-medium">Type</th>
+                    <th className="text-left py-3 px-4 font-medium">{t('th_floor')}</th>
+                    <th className="text-left py-3 px-4 font-medium">{t('th_type')}</th>
                     <th className="text-left py-3 px-4 font-medium">
-                      Occupancy
+                      {t('th_occupancy')}
                     </th>
-                    <th className="text-left py-3 px-4 font-medium">Price</th>
-                    <th className="text-left py-3 px-4 font-medium">Status</th>
+                    <th className="text-left py-3 px-4 font-medium">{t('th_price')}</th>
+                    <th className="text-left py-3 px-4 font-medium">{t('th_status')}</th>
                     <th className="text-right py-3 px-4 font-medium">
-                      Actions
+                      {t('th_actions')}
                     </th>
                   </tr>
                 </thead>
@@ -427,7 +429,7 @@ export default function RoomsPage() {
                       <td className="py-3 px-4 font-medium">{r.room_number}</td>
                       <td className="py-3 px-4">{r.building_name || "—"}</td>
                       <td className="py-3 px-4">{r.floor}</td>
-                      <td className="py-3 px-4 capitalize">{r.room_type}</td>
+                      <td className="py-3 px-4 capitalize">{t(`type_${r.room_type}`)}</td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
                           <div className="w-16 h-2 rounded-full bg-muted overflow-hidden">
@@ -451,10 +453,10 @@ export default function RoomsPage() {
                       <td className="py-3 px-4">
                         {r.is_active ? (
                           <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                            Active
+                            {t('status_active')}
                           </Badge>
                         ) : (
-                          <Badge variant="destructive">Inactive</Badge>
+                          <Badge variant="destructive">{t('status_inactive')}</Badge>
                         )}
                       </td>
                       <td className="py-3 px-4 text-right">

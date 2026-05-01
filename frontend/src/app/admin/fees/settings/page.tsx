@@ -82,7 +82,7 @@ export default function FeeSettingsPage() {
                 min_partial_payment_percent: minPartialPaymentPercent
             })
             mutateSettings()
-            toast.success('Settings saved successfully')
+            toast.success('تم حفظ الإعدادات بنجاح')
         } catch (error: any) {
             toast.error(error.message)
         }
@@ -98,7 +98,7 @@ export default function FeeSettingsPage() {
                 applies_to_categories: []
             })))
             mutateTiers()
-            toast.success('Sibling discounts saved')
+            toast.success('تم حفظ خصومات الإخوة')
         } catch (error: any) {
             toast.error(error.message)
         }
@@ -120,44 +120,44 @@ export default function FeeSettingsPage() {
                     <Link href="/admin/fees"><IconArrowLeft className="h-4 w-4" /></Link>
                 </Button>
                 <div className="flex-1">
-                    <h1 className="text-3xl font-bold tracking-tight">Fee Settings</h1>
-                    <p className="text-muted-foreground">Configure fee rules and discounts</p>
+                    <h1 className="text-3xl font-bold tracking-tight">إعدادات الرسوم</h1>
+                    <p className="text-muted-foreground">ضبط قواعد الرسوم والخصومات</p>
                 </div>
                 <Button variant="outline" asChild>
                     <Link href="/admin/fees/structures">
-                        Fee Structures →
+                        هياكل الرسوم ←
                     </Link>
                 </Button>
             </div>
 
             <Tabs defaultValue="general" className="space-y-4">
                 <TabsList>
-                    <TabsTrigger value="general">General</TabsTrigger>
-                    <TabsTrigger value="services">Services</TabsTrigger>
-                    <TabsTrigger value="sibling">Sibling Discounts</TabsTrigger>
+                    <TabsTrigger value="general">عام</TabsTrigger>
+                    <TabsTrigger value="services">الخدمات</TabsTrigger>
+                    <TabsTrigger value="sibling">خصومات الإخوة</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="general" className="space-y-4">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Late Fee Settings</CardTitle>
-                            <CardDescription>Configure late payment penalties</CardDescription>
+                            <CardTitle>إعدادات رسوم التأخير</CardTitle>
+                            <CardDescription>ضبط غرامات الدفع المتأخر</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <Label>Enable Late Fees</Label>
+                                <Label>تفعيل رسوم التأخير</Label>
                                 <Switch checked={enableLateFees} onCheckedChange={setEnableLateFees} />
                             </div>
                             {enableLateFees && (
                                 <>
                                     <div className="grid grid-cols-3 gap-4">
                                         <div>
-                                            <Label>Late Fee Type</Label>
+                                            <Label>نوع رسوم التأخير</Label>
                                             <Select value={lateFeeType} onValueChange={(v) => setLateFeeType(v as any)}>
                                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="percentage">Percentage</SelectItem>
-                                                    <SelectItem value="fixed">Fixed Amount</SelectItem>
+                                                    <SelectItem value="percentage">نسبة مئوية</SelectItem>
+                                                    <SelectItem value="fixed">مبلغ ثابت</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
@@ -166,7 +166,7 @@ export default function FeeSettingsPage() {
                                             <Input type="number" value={lateFeeValue} onChange={(e) => setLateFeeValue(parseFloat(e.target.value))} />
                                         </div>
                                         <div>
-                                            <Label>Grace Days</Label>
+                                            <Label>أيام السماح</Label>
                                             <Input type="number" value={graceDays} onChange={(e) => setGraceDays(parseInt(e.target.value))} />
                                         </div>
                                     </div>
@@ -177,19 +177,19 @@ export default function FeeSettingsPage() {
 
                     <Card>
                         <CardHeader>
-                            <CardTitle>Discount Settings</CardTitle>
+                            <CardTitle>إعدادات الخصومات</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <Label>Enable Sibling Discounts</Label>
+                                <Label>تفعيل خصومات الإخوة</Label>
                                 <Switch checked={enableSiblingDiscounts} onCheckedChange={setEnableSiblingDiscounts} />
                             </div>
                             <div className="flex items-center justify-between">
-                                <Label>Forfeit Discount on Late Payment</Label>
+                                <Label>إلغاء الخصم عند الدفع المتأخر</Label>
                                 <Switch checked={discountForfeitureEnabled} onCheckedChange={setDiscountForfeitureEnabled} />
                             </div>
                             <div className="flex items-center justify-between">
-                                <Label>Admin Can Restore Forfeited Discounts</Label>
+                                <Label>يمكن للمسؤول استعادة الخصومات الملغاة</Label>
                                 <Switch checked={adminCanRestoreDiscounts} onCheckedChange={setAdminCanRestoreDiscounts} />
                             </div>
                         </CardContent>
@@ -197,16 +197,16 @@ export default function FeeSettingsPage() {
 
                     <Card>
                         <CardHeader>
-                            <CardTitle>Payment Settings</CardTitle>
+                            <CardTitle>إعدادات الدفع</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <Label>Allow Partial Payments</Label>
+                                <Label>السماح بالمدفوعات الجزئية</Label>
                                 <Switch checked={allowPartialPayments} onCheckedChange={setAllowPartialPayments} />
                             </div>
                             {allowPartialPayments && (
                                 <div>
-                                    <Label>Minimum Partial Payment (%)</Label>
+                                    <Label>الحد الأدنى للدفع الجزئي (%)</Label>
                                     <Input type="number" value={minPartialPaymentPercent} onChange={(e) => setMinPartialPaymentPercent(parseFloat(e.target.value))} className="w-32" />
                                 </div>
                             )}
@@ -215,24 +215,24 @@ export default function FeeSettingsPage() {
 
                     <Button onClick={handleSaveSettings} disabled={saving}>
                         <IconDeviceFloppy className="mr-2 h-4 w-4" />
-                        {saving ? 'Saving...' : 'Save Settings'}
+                        {saving ? 'جارٍ الحفظ...' : 'حفظ الإعدادات'}
                     </Button>
                 </TabsContent>
 
                 <TabsContent value="services">
                     <Card>
                         <CardHeader>
-                            <CardTitle>School Services</CardTitle>
+                            <CardTitle>خدمات المدرسة</CardTitle>
                             <CardDescription>
-                                Configure optional services (Bus, Meals, etc.) that students can subscribe to
+                                ضبط الخدمات الاختيارية (حافلة، وجبات، إلخ) التي يمكن للطلاب الاشتراك بها
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="rounded-md border p-4 text-center text-muted-foreground">
-                                <p className="mb-2">Services management is available in the dedicated Services page</p>
+                                <p className="mb-2">إدارة الخدمات متاحة في صفحة الخدمات المخصصة</p>
                                 <Button variant="outline" asChild>
                                     <Link href="/admin/fees/services">
-                                        Manage Services →
+                                        إدارة الخدمات ←
                                     </Link>
                                 </Button>
                             </div>
@@ -243,16 +243,16 @@ export default function FeeSettingsPage() {
                 <TabsContent value="sibling">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Sibling Discount Tiers</CardTitle>
-                            <CardDescription>Configure discounts based on number of siblings enrolled</CardDescription>
+                            <CardTitle>شرائح خصم الإخوة</CardTitle>
+                            <CardDescription>ضبط الخصومات حسب عدد الإخوة المسجلين</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Siblings</TableHead>
-                                        <TableHead>Discount Type</TableHead>
-                                        <TableHead>Value</TableHead>
+                                        <TableHead>الإخوة</TableHead>
+                                        <TableHead>نوع الخصم</TableHead>
+                                        <TableHead>القيمة</TableHead>
                                         <TableHead></TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -274,8 +274,8 @@ export default function FeeSettingsPage() {
                                                 }}>
                                                     <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="percentage">Percentage</SelectItem>
-                                                        <SelectItem value="fixed">Fixed</SelectItem>
+                                                        <SelectItem value="percentage">نسبة مئوية</SelectItem>
+                                                        <SelectItem value="fixed">ثابت</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </TableCell>
@@ -296,8 +296,8 @@ export default function FeeSettingsPage() {
                                 </TableBody>
                             </Table>
                             <div className="flex gap-2">
-                                <Button variant="outline" onClick={addTier}><IconPlus className="mr-2 h-4 w-4" />Add Tier</Button>
-                                <Button onClick={handleSaveTiers}><IconDeviceFloppy className="mr-2 h-4 w-4" />Save Tiers</Button>
+                                <Button variant="outline" onClick={addTier}><IconPlus className="mr-2 h-4 w-4" />إضافة شريحة</Button>
+                                <Button onClick={handleSaveTiers}><IconDeviceFloppy className="mr-2 h-4 w-4" />حفظ الشرائح</Button>
                             </div>
                         </CardContent>
                     </Card>

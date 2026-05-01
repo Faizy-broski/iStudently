@@ -50,6 +50,7 @@ import {
 import { getGradeLevels } from "@/lib/api/academics";
 import { LibraryCategory } from "@/types";
 import { toast } from "sonner";
+import { useTranslations } from 'next-intl'
 
 const PRESET_COLORS = [
     "#EF4444", "#F97316", "#F59E0B", "#EAB308",
@@ -58,11 +59,7 @@ const PRESET_COLORS = [
     "#D946EF", "#EC4899", "#F43F5E", "#78716C",
 ];
 
-const STAFF_ROLES = [
-    { value: "student", label: "Student" },
-    { value: "teacher", label: "Teacher" },
-    { value: "parent", label: "Parent" },
-];
+const STAFF_ROLES = ["student", "teacher", "parent"] as const;
 
 interface GradeLevel {
     id: string;
@@ -70,6 +67,8 @@ interface GradeLevel {
 }
 
 export default function DocumentCategoriesPage() {
+    const t = useTranslations('admin.library.categories')
+    const tCommon = useTranslations('common')
     const { user } = useAuth();
     const [categories, setCategories] = useState<LibraryCategory[]>([]);
     const [gradeLevels, setGradeLevels] = useState<GradeLevel[]>([]);
@@ -101,7 +100,7 @@ export default function DocumentCategoriesPage() {
             if (gradeRes.success && gradeRes.data) setGradeLevels(gradeRes.data);
         } catch (error) {
             console.error("Error loading data:", error);
-            toast.error("Failed to load data");
+            toast.error(t('toast.load_failed'));
         } finally {
             setIsLoading(false);
         }
@@ -142,24 +141,24 @@ export default function DocumentCategoriesPage() {
             if (editingCategory) {
                 const res = await updateCategory(editingCategory.id, payload, user.access_token);
                 if (res.success) {
-                    toast.success("Category updated");
+                    toast.success(t('toast.updated'));
                 } else {
-                    toast.error(res.error || "Failed to update");
+                    toast.error(res.error || t('toast.update_failed'));
                     return;
                 }
             } else {
                 const res = await createCategory(payload, user.access_token);
                 if (res.success) {
-                    toast.success("Category created");
+                    toast.success(t('toast.created'));
                 } else {
-                    toast.error(res.error || "Failed to create");
+                    toast.error(res.error || t('toast.create_failed'));
                     return;
                 }
             }
             setShowDialog(false);
             loadData();
         } catch (error) {
-            toast.error("Something went wrong");
+            toast.error(t('toast.generic_error'));
         } finally {
             setIsSubmitting(false);
         }
@@ -167,17 +166,17 @@ export default function DocumentCategoriesPage() {
 
     const handleDelete = async (cat: LibraryCategory) => {
         if (!user?.access_token) return;
-        if (!confirm(`Delete category "${cat.name}"? Documents in this category won't be deleted.`)) return;
+        if (!confirm(t('delete_confirm', { name: cat.name }))) return;
         try {
             const res = await deleteCategory(cat.id, user.access_token);
             if (res.success) {
-                toast.success("Category deleted");
+                toast.success(t('toast.deleted'));
                 loadData();
             } else {
-                toast.error(res.error || "Failed to delete");
+                toast.error(res.error || t('toast.delete_failed'));
             }
         } catch {
-            toast.error("Something went wrong");
+            toast.error(t('toast.generic_error'));
         }
     };
 
@@ -202,24 +201,24 @@ export default function DocumentCategoriesPage() {
                         <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#57A3CC] to-[#022172] flex items-center justify-center">
                             <FolderOpen className="h-5 w-5 text-white" />
                         </div>
-                        Document Categories
+                        {t('title')}
                     </h1>
-                    <p className="text-muted-foreground mt-2">Manage document categories, set visibility by role and grade level.</p>
+                    <p className="text-muted-foreground mt-2">{t('subtitle')}</p>
                 </div>
                 <Button
                     onClick={openCreate}
                     className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white hover:opacity-90"
                 >
                     <Plus className="mr-2 h-4 w-4" />
-                    New Category
+                    {t('new_category')}
                 </Button>
             </div>
 
             {/* Categories Table */}
             <Card className="shadow-sm">
                 <CardHeader className="pb-3">
-                    <CardTitle className="text-base">All Categories ({categories.length})</CardTitle>
-                    <CardDescription>Click a category row to edit, or use the actions menu.</CardDescription>
+                    <CardTitle className="text-base">{t('all_categories', { count: categories.length })}</CardTitle>
+                    <CardDescription>{t('all_categories_desc')}</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
                     {isLoading ? (
@@ -229,8 +228,8 @@ export default function DocumentCategoriesPage() {
                     ) : categories.length === 0 ? (
                         <div className="text-center py-16 text-muted-foreground">
                             <FolderOpen className="h-12 w-12 mx-auto mb-3 opacity-40" />
-                            <p className="text-sm font-medium">No categories yet</p>
-                            <p className="text-xs mt-1">Click &quot;New Category&quot; to create one.</p>
+                            <p className="text-sm font-medium">{t('no_categories')}</p>
+                            <p className="text-xs mt-1">{t('no_categories_desc')}</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
@@ -238,12 +237,12 @@ export default function DocumentCategoriesPage() {
                                 <TableHeader>
                                     <TableRow className="bg-muted/50">
                                         <TableHead className="w-12 text-center">#</TableHead>
-                                        <TableHead>Color</TableHead>
-                                        <TableHead>Title</TableHead>
-                                        <TableHead>Sort Order</TableHead>
-                                        <TableHead>Visible to Roles</TableHead>
-                                        <TableHead>Grade Levels</TableHead>
-                                        <TableHead className="w-16 text-center">Actions</TableHead>
+                                        <TableHead>{t('table.color')}</TableHead>
+                                        <TableHead>{t('table.title')}</TableHead>
+                                        <TableHead>{t('table.sort_order')}</TableHead>
+                                        <TableHead>{t('table.visible_roles')}</TableHead>
+                                        <TableHead>{t('table.grade_levels')}</TableHead>
+                                        <TableHead className="w-16 text-center">{tCommon('actions')}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -271,7 +270,7 @@ export default function DocumentCategoriesPage() {
                                                 <TableCell>
                                                     <div className="flex flex-wrap gap-1">
                                                         {(cat.visible_to_roles || []).length === 0 ? (
-                                                            <span className="text-xs text-muted-foreground italic">All</span>
+                                                            <span className="text-xs text-muted-foreground italic">{tCommon('all')}</span>
                                                         ) : (
                                                             cat.visible_to_roles.map((role) => (
                                                                 <Badge key={role} variant="secondary" className="text-[10px] capitalize">
@@ -284,7 +283,7 @@ export default function DocumentCategoriesPage() {
                                                 <TableCell>
                                                     <div className="flex flex-wrap gap-1">
                                                         {(cat.visible_to_grade_levels || []).length === 0 ? (
-                                                            <span className="text-xs text-muted-foreground italic">All</span>
+                                                            <span className="text-xs text-muted-foreground italic">{tCommon('all')}</span>
                                                         ) : (
                                                             cat.visible_to_grade_levels.slice(0, 3).map((gl) => {
                                                                 const grade = gradeLevels.find((g) => g.id === gl);
@@ -312,14 +311,14 @@ export default function DocumentCategoriesPage() {
                                                         <DropdownMenuContent align="end">
                                                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEdit(cat); }}>
                                                                 <Pencil className="mr-2 h-3.5 w-3.5" />
-                                                                Edit
+                                                                    {tCommon('edit')}
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem
                                                                 onClick={(e) => { e.stopPropagation(); handleDelete(cat); }}
                                                                 className="text-destructive focus:text-destructive"
                                                             >
                                                                 <Trash2 className="mr-2 h-3.5 w-3.5" />
-                                                                Delete
+                                                                    {tCommon('delete')}
                                                             </DropdownMenuItem>
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
@@ -341,12 +340,12 @@ export default function DocumentCategoriesPage() {
                             <div className="h-6 w-6 rounded-lg bg-gradient-to-br from-[#57A3CC] to-[#022172] flex items-center justify-center">
                                 <FolderOpen className="h-3.5 w-3.5 text-white" />
                             </div>
-                            {editingCategory ? "Edit Document Category" : "New Document Category"}
+                            {editingCategory ? t('dialog.edit_title') : t('dialog.new_title')}
                         </DialogTitle>
                         <DialogDescription>
                             {editingCategory
-                                ? "Update category details below."
-                                : "Define a new category for organizing library documents."}
+                                ? t('dialog.edit_desc')
+                                : t('dialog.new_desc')}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -355,17 +354,17 @@ export default function DocumentCategoriesPage() {
                         <div className="grid grid-cols-3 gap-4">
                             <div className="col-span-2 space-y-2">
                                 <Label htmlFor="cat-title" className="text-sm font-medium">
-                                    Title <span className="text-destructive">*</span>
+                                    {t('table.title')} <span className="text-destructive">*</span>
                                 </Label>
                                 <Input
                                     id="cat-title"
-                                    placeholder="e.g. Youth Comics, Periodicals..."
+                                    placeholder={t('dialog.title_placeholder')}
                                     value={formTitle}
                                     onChange={(e) => setFormTitle(e.target.value)}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="cat-sort" className="text-sm font-medium">Sort Order</Label>
+                                <Label htmlFor="cat-sort" className="text-sm font-medium">{t('table.sort_order')}</Label>
                                 <Input
                                     id="cat-sort"
                                     type="number"
@@ -378,7 +377,7 @@ export default function DocumentCategoriesPage() {
 
                         {/* Color */}
                         <div className="space-y-2">
-                            <Label className="text-sm font-medium">Color</Label>
+                            <Label className="text-sm font-medium">{t('table.color')}</Label>
                             <div className="grid grid-cols-8 gap-2">
                                 {PRESET_COLORS.map((color) => (
                                     <button
@@ -413,24 +412,24 @@ export default function DocumentCategoriesPage() {
 
                         {/* Visible to Roles */}
                         <div className="space-y-2">
-                            <Label className="text-sm font-medium">Visible To (Staff Roles)</Label>
-                            <p className="text-xs text-muted-foreground">Leave empty to make visible to all roles.</p>
+                            <Label className="text-sm font-medium">{t('dialog.visible_roles')}</Label>
+                            <p className="text-xs text-muted-foreground">{t('dialog.visible_roles_hint')}</p>
                             <div className="grid grid-cols-3 gap-3 mt-2">
                                 {STAFF_ROLES.map((role) => (
                                     <label
-                                        key={role.value}
+                                        key={role}
                                         className={cn(
                                             "flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors",
-                                            formVisibleToRoles.includes(role.value)
+                                            formVisibleToRoles.includes(role)
                                                 ? "border-primary bg-primary/5"
                                                 : "border-muted hover:bg-muted/50"
                                         )}
                                     >
                                         <Checkbox
-                                            checked={formVisibleToRoles.includes(role.value)}
-                                            onCheckedChange={() => toggleRole(role.value)}
+                                            checked={formVisibleToRoles.includes(role)}
+                                            onCheckedChange={() => toggleRole(role)}
                                         />
-                                        <span className="text-sm font-medium">{role.label}</span>
+                                        <span className="text-sm font-medium">{t(`roles.${role}`)}</span>
                                     </label>
                                 ))}
                             </div>
@@ -438,10 +437,10 @@ export default function DocumentCategoriesPage() {
 
                         {/* Limit to Grade Levels */}
                         <div className="space-y-2">
-                            <Label className="text-sm font-medium">Limit to Grade Levels</Label>
-                            <p className="text-xs text-muted-foreground">Leave empty to show for all grades.</p>
+                            <Label className="text-sm font-medium">{t('dialog.limit_grade_levels')}</Label>
+                            <p className="text-xs text-muted-foreground">{t('dialog.limit_grade_levels_hint')}</p>
                             {gradeLevels.length === 0 ? (
-                                <p className="text-xs text-muted-foreground italic py-2">No grade levels configured.</p>
+                                <p className="text-xs text-muted-foreground italic py-2">{t('dialog.no_grade_levels')}</p>
                             ) : (
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2 max-h-40 overflow-y-auto">
                                     {gradeLevels.map((gl) => (
@@ -468,7 +467,7 @@ export default function DocumentCategoriesPage() {
 
                     <DialogFooter className="gap-2 mt-4">
                         <Button variant="outline" onClick={() => setShowDialog(false)} disabled={isSubmitting}>
-                            Cancel
+                            {tCommon('cancel')}
                         </Button>
                         <Button
                             onClick={handleSubmit}
@@ -478,12 +477,12 @@ export default function DocumentCategoriesPage() {
                             {isSubmitting ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Saving...
+                                    {tCommon('saving')}...
                                 </>
                             ) : (
                                 <>
                                     <Save className="mr-2 h-4 w-4" />
-                                    {editingCategory ? "Save Changes" : "Save"}
+                                    {editingCategory ? t('dialog.save_changes') : tCommon('save')}
                                 </>
                             )}
                         </Button>

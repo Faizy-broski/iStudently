@@ -193,12 +193,12 @@ export default function GenerateFeesPage() {
     // Bulk generation
     const handleBulkGenerate = async () => {
         if (!schoolId) {
-            toast.error('Missing school information')
+            toast.error('معلومات المدرسة مفقودة')
             return
         }
 
         if (selectedCategories.length === 0) {
-            toast.error('Please select at least one fee category')
+            toast.error('يرجى اختيار فئة رسوم واحدة على الأقل')
             return
         }
 
@@ -236,10 +236,10 @@ export default function GenerateFeesPage() {
                     : `Successfully generated ${result.data?.feesCreated || 0} fee records for ${result.data?.studentsProcessed || 0} students`
                 toast.success(message)
             } else {
-                toast.error(result.error || 'Failed to generate fees')
+                toast.error(result.error || 'فشل إنشاء الرسوم')
             }
         } catch (error: any) {
-            toast.error(error.message || 'Failed to generate fees')
+            toast.error(error.message || 'فشل إنشاء الرسوم')
         } finally {
             setGenerating(false)
         }
@@ -251,7 +251,7 @@ export default function GenerateFeesPage() {
             const actualSchoolId = profile?.school_id
             
             if (!actualSchoolId) {
-                toast.error('Missing school information')
+                toast.error('معلومات المدرسة مفقودة')
                 return
             }
 
@@ -296,7 +296,7 @@ export default function GenerateFeesPage() {
 
             const printWindow = window.open('', '_blank')
             if (!printWindow) {
-                toast.error('Please allow popups to print the fee challan')
+                toast.error('يرجى السماح بالنوافذ المنبثقة لطباعة إيصال الرسوم')
                 return
             }
 
@@ -422,27 +422,27 @@ export default function GenerateFeesPage() {
                 printWindow.print()
             }, 500)
         } catch (error) {
-            toast.error('Failed to print fee challan')
+            toast.error('فشل طباعة إيصال الرسوم')
         }
     }
     // Individual student generation
     const handleIndividualGenerate = async () => {
         if (!schoolId) {
-            toast.error('Missing school information')
+            toast.error('معلومات المدرسة مفقودة')
             return
         }
 
         if (!selectedStudent) {
-            toast.error('Please select a student')
+            toast.error('يرجى اختيار طالب')
             return
         }
 
         if (!selectedStudent.grade_level_id) {
-            toast.error('Selected student does not have a grade level assigned')
+            toast.error('الطالب المحدد لا يملك مرحلة دراسية')
             return
         }
         if (selectedCategories.length === 0) {
-            toast.error('Please select at least one fee category')
+            toast.error('يرجى اختيار فئة رسوم واحدة على الأقل')
             return
         }
 
@@ -485,10 +485,10 @@ export default function GenerateFeesPage() {
                 // Auto-print the fee challan
                 await printFeeChallan(result.data.id)
             } else {
-                toast.error(result.error || 'Failed to generate fee')
+                toast.error(result.error || 'فشل إنشاء الرسوم')
             }
         } catch (error: any) {
-            toast.error(error.message || 'Failed to generate fee')
+            toast.error(error.message || 'فشل إنشاء الرسوم')
         } finally {
             setGenerating(false)
         }
@@ -498,7 +498,7 @@ export default function GenerateFeesPage() {
     const FeeCategoriesSelector = () => (
         <div>
             <div className="flex items-center justify-between mb-3">
-                <Label>Fee Categories *</Label>
+                <Label>فئات الرسوم *</Label>
                 <Button
                     variant="outline"
                     size="sm"
@@ -507,8 +507,8 @@ export default function GenerateFeesPage() {
                     className="text-xs"
                 >
                     {categories && selectedCategories.length === categories.length 
-                        ? 'Deselect All' 
-                        : 'Select All'
+                        ? 'إلغاء تحديد الكل'
+                        : 'تحديد الكل'
                     }
                 </Button>
             </div>
@@ -531,7 +531,7 @@ export default function GenerateFeesPage() {
                     ))
                 ) : (
                     <p className="text-sm text-muted-foreground">
-                        No fee categories found. Please create fee categories first.
+                        لم يتم العثور على فئات رسوم. يرجى إنشاء فئات رسوم أولاً.
                     </p>
                 )}
             </div>
@@ -542,27 +542,27 @@ export default function GenerateFeesPage() {
     const MonthYearSelector = () => (
         <div className="grid grid-cols-2 gap-4">
             <div>
-                <Label>Month *</Label>
+                <Label>الشهر *</Label>
                 <Select value={month.toString()} onValueChange={(v) => setMonth(parseInt(v))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="1">January</SelectItem>
-                        <SelectItem value="2">February</SelectItem>
-                        <SelectItem value="3">March</SelectItem>
-                        <SelectItem value="4">April</SelectItem>
-                        <SelectItem value="5">May</SelectItem>
-                        <SelectItem value="6">June</SelectItem>
-                        <SelectItem value="7">July</SelectItem>
-                        <SelectItem value="8">August</SelectItem>
-                        <SelectItem value="9">September</SelectItem>
-                        <SelectItem value="10">October</SelectItem>
-                        <SelectItem value="11">November</SelectItem>
-                        <SelectItem value="12">December</SelectItem>
+                        <SelectItem value="1">يناير</SelectItem>
+                        <SelectItem value="2">فبراير</SelectItem>
+                        <SelectItem value="3">مارس</SelectItem>
+                        <SelectItem value="4">أبريل</SelectItem>
+                        <SelectItem value="5">مايو</SelectItem>
+                        <SelectItem value="6">يونيو</SelectItem>
+                        <SelectItem value="7">يوليو</SelectItem>
+                        <SelectItem value="8">أغسطس</SelectItem>
+                        <SelectItem value="9">سبتمبر</SelectItem>
+                        <SelectItem value="10">أكتوبر</SelectItem>
+                        <SelectItem value="11">نوفمبر</SelectItem>
+                        <SelectItem value="12">ديسمبر</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
             <div>
-                <Label>Year *</Label>
+                <Label>السنة *</Label>
                 <Select value={year.toString()} onValueChange={(v) => setYear(parseInt(v))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -583,8 +583,8 @@ export default function GenerateFeesPage() {
                     <Link href="/admin/fees"><IconArrowLeft className="h-4 w-4" /></Link>
                 </Button>
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Generate Fees</h1>
-                    <p className="text-muted-foreground">Generate fee records for students</p>
+                    <h1 className="text-3xl font-bold tracking-tight">إنشاء الرسوم</h1>
+                    <p className="text-muted-foreground">إنشاء سجلات رسوم للطلاب</p>
                 </div>
             </div>
 
@@ -592,11 +592,11 @@ export default function GenerateFeesPage() {
                 <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="bulk" className="flex items-center gap-2">
                         <IconUsers className="h-4 w-4" />
-                        Bulk Generation
+                        إنشاء جماعي
                     </TabsTrigger>
                     <TabsTrigger value="individual" className="flex items-center gap-2">
                         <IconUser className="h-4 w-4" />
-                        Individual Student
+                        طالب فردي
                     </TabsTrigger>
                 </TabsList>
 
@@ -604,35 +604,35 @@ export default function GenerateFeesPage() {
                 <TabsContent value="bulk">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Bulk Fee Generation</CardTitle>
-                            <CardDescription>Generate fees for multiple students at once based on grade level or section</CardDescription>
+                            <CardTitle>إنشاء الرسوم بالجملة</CardTitle>
+                            <CardDescription>إنشاء رسوم لعدة طلاب دفعة واحدة حسب المرحلة أو الفصل</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <MonthYearSelector />
 
                             <div>
-                                <Label>Grade Level</Label>
+                                <Label>المرحلة الدراسية</Label>
                                 <Select value={gradeLevel} onValueChange={(v) => { setGradeLevel(v); setSection('all') }}>
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">All Grades</SelectItem>
+                                        <SelectItem value="all">كل المراحل</SelectItem>
                                         {gradeLevels?.map((grade) => (
                                             <SelectItem key={grade.id} value={grade.id}>{grade.name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    Select a specific grade or generate for all grades
+                                    اختر مرحلة محددة أو أنشئ لكل المراحل
                                 </p>
                             </div>
 
                             {gradeLevel !== 'all' && sections && sections.length > 0 && (
                                 <div>
-                                    <Label>Section</Label>
+                                    <Label>الفصل</Label>
                                     <Select value={section} onValueChange={setSection}>
                                         <SelectTrigger><SelectValue /></SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="all">All Sections</SelectItem>
+                                            <SelectItem value="all">كل الفصول</SelectItem>
                                             {sections.map((sec) => (
                                                 <SelectItem key={sec.id} value={sec.id}>{sec.name}</SelectItem>
                                             ))}
@@ -653,17 +653,17 @@ export default function GenerateFeesPage() {
                                     {generating ? (
                                         <>
                                             <IconLoader2 className="mr-2 h-5 w-5 animate-spin" />
-                                            Generating fees...
+                                            جارٍ إنشاء الرسوم...
                                         </>
                                     ) : (
                                         <>
                                             <IconFileInvoice className="mr-2 h-5 w-5" />
-                                            Generate Fees for All Students
+                                            إنشاء الرسوم لكل الطلاب
                                         </>
                                     )}
                                 </Button>
                                 <p className="text-xs text-center text-muted-foreground mt-2">
-                                    This will create fee records for all students matching your criteria
+                                    سيتم إنشاء سجلات رسوم لكل الطلاب المطابقين للمعايير
                                 </p>
                             </div>
                         </CardContent>
@@ -674,13 +674,13 @@ export default function GenerateFeesPage() {
                 <TabsContent value="individual">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Individual Student Fee</CardTitle>
-                            <CardDescription>Generate a fee record for a specific student</CardDescription>
+                            <CardTitle>رسوم طالب فردي</CardTitle>
+                            <CardDescription>إنشاء سجل رسوم لطالب محدد</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
                             {/* Student Search */}
                             <div>
-                                <Label>Select Student *</Label>
+                                <Label>اختر الطالب *</Label>
                                 {selectedStudent ? (
                                     <div className="flex items-center justify-between p-3 border rounded-lg bg-green-50 border-green-200">
                                         <div>
@@ -688,7 +688,7 @@ export default function GenerateFeesPage() {
                                                 {selectedStudent.profile?.first_name} {selectedStudent.profile?.last_name}
                                             </p>
                                             <p className="text-sm text-muted-foreground">
-                                                ID: {selectedStudent.student_number} • {selectedStudent.grade_levels?.name || selectedStudent.grade_level || 'No Grade'}
+                                                المعرّف: {selectedStudent.student_number} • {selectedStudent.grade_levels?.name || selectedStudent.grade_level || 'بدون مرحلة'}
                                             </p>
                                         </div>
                                         <Button
@@ -696,7 +696,7 @@ export default function GenerateFeesPage() {
                                             size="sm"
                                             onClick={() => setSelectedStudent(null)}
                                         >
-                                            Change
+                                            تغيير
                                         </Button>
                                     </div>
                                 ) : (
@@ -705,9 +705,9 @@ export default function GenerateFeesPage() {
                                         value={selectedStudent?.id || ''}
                                         onValueChange={handleStudentSelect}
                                         onSearchChange={setStudentSearch}
-                                        placeholder="Search by name or student number..."
-                                        searchPlaceholder="Type to search students..."
-                                        emptyMessage={searchLoading ? "Searching..." : studentSearch.length < 2 ? "Type at least 2 characters" : "No students found"}
+                                        placeholder="ابحث بالاسم أو رقم الطالب..."
+                                        searchPlaceholder="اكتب للبحث عن الطلاب..."
+                                        emptyMessage={searchLoading ? "جارٍ البحث..." : studentSearch.length < 2 ? "اكتب حرفين على الأقل" : "لم يتم العثور على طلاب"}
                                     />
                                 )}
                             </div>
@@ -715,14 +715,14 @@ export default function GenerateFeesPage() {
                             <MonthYearSelector />
 
                             <div>
-                                <Label>Due Date</Label>
+                                <Label>تاريخ الاستحقاق</Label>
                                 <Input
                                     type="date"
                                     value={dueDate || defaultDueDate}
                                     onChange={(e) => setDueDate(e.target.value)}
                                 />
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    Default is the 10th of the selected month
+                                    الافتراضي هو اليوم العاشر من الشهر المحدد
                                 </p>
                             </div>
 
@@ -738,12 +738,12 @@ export default function GenerateFeesPage() {
                                     {generating ? (
                                         <>
                                             <IconLoader2 className="mr-2 h-5 w-5 animate-spin" />
-                                            Generating fee...
+                                            جارٍ إنشاء الرسوم...
                                         </>
                                     ) : (
                                         <>
                                             <IconFileInvoice className="mr-2 h-5 w-5" />
-                                            Generate Fee for Student
+                                            إنشاء الرسوم للطالب
                                         </>
                                     )}
                                 </Button>
@@ -755,21 +755,21 @@ export default function GenerateFeesPage() {
 
             <Card className="max-w-2xl bg-blue-50 border-blue-200">
                 <CardHeader>
-                    <CardTitle className="text-blue-900">💡 How It Works</CardTitle>
+                    <CardTitle className="text-blue-900">💡 كيف تعمل</CardTitle>
                 </CardHeader>
                 <CardContent className="text-sm text-blue-900 space-y-2">
-                    <p>• Fees are generated based on fee structures configured in Settings</p>
-                    <p>• Sibling discounts are automatically applied if enabled</p>
-                    <p>• If a fee already exists for a student for that month, it will be skipped</p>
-                    <p>• Use <strong>Bulk Generation</strong> for monthly fee processing</p>
-                    <p>• Use <strong>Individual Student</strong> for late admissions or special cases</p>
+                    <p>• يتم إنشاء الرسوم بناءً على هياكل الرسوم المضبوطة في الإعدادات</p>
+                    <p>• يتم تطبيق خصومات الإخوة تلقائيًا إذا كانت مفعلة</p>
+                    <p>• إذا كان هناك رسم موجود لنفس الطالب في نفس الشهر فسيتم تخطيه</p>
+                    <p>• استخدم <strong>الإنشاء الجماعي</strong> لمعالجة الرسوم الشهرية</p>
+                    <p>• استخدم <strong>طالب فردي</strong> لحالات القبول المتأخر أو الحالات الخاصة</p>
                 </CardContent>
             </Card>
 
             <div className="max-w-2xl">
                 <Button variant="outline" asChild>
                     <Link href="/admin/fees/structures">
-                        Manage Fee Structures →
+                        إدارة هياكل الرسوم ←
                     </Link>
                 </Button>
             </div>

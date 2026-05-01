@@ -367,7 +367,8 @@ export class LibraryController {
   async getBookLoans(req: AuthRequest, res: Response) {
     try {
       const schoolId = libSchoolId(req);
-      const { search, status, student_id } = req.query;
+      const userRole = req.profile?.role;
+      const { search, status, student_id, campus_id } = req.query;
 
       if (!schoolId) {
         return res.status(400).json({ error: 'School ID is required' });
@@ -377,7 +378,7 @@ export class LibraryController {
         search: search as string,
         status: status as string,
         student_id: student_id as string,
-      });
+      }, userRole, campus_id as string | undefined);
       res.json({ success: true, data: loans });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message });
@@ -441,12 +442,14 @@ export class LibraryController {
   async getLibraryStats(req: AuthRequest, res: Response) {
     try {
       const schoolId = libSchoolId(req);
+      const userRole = req.profile?.role;
+      const campusId = req.query.campus_id as string | undefined;
 
       if (!schoolId) {
         return res.status(400).json({ error: 'School ID is required' });
       }
 
-      const stats = await libraryService.getLibraryStats(schoolId);
+      const stats = await libraryService.getLibraryStats(schoolId, userRole, campusId);
       res.json({ success: true, data: stats });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message });
@@ -605,6 +608,7 @@ export class LibraryController {
   async getLoansBreakdown(req: AuthRequest, res: Response) {
     try {
       const schoolId = libSchoolId(req);
+      const userRole = req.profile?.role;
       if (!schoolId) return res.status(400).json({ error: 'School ID is required' });
       const startDate = req.query.start_date as string;
       const endDate = req.query.end_date as string;
@@ -612,7 +616,7 @@ export class LibraryController {
       if (!startDate || !endDate) {
         return res.status(400).json({ error: 'start_date and end_date are required' });
       }
-      const data = await libraryService.getLoansBreakdown(schoolId, startDate, endDate, byCategory);
+      const data = await libraryService.getLoansBreakdown(schoolId, startDate, endDate, byCategory, userRole);
       res.json({ success: true, data });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message });

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { useTranslations } from 'next-intl'
 import useSWR, { mutate } from 'swr'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -31,11 +32,12 @@ import {
   bulkSaveResourceLinks,
 } from '@/lib/api/resource-links'
 
+// Note: Role labels are retrieved from translations on component render
 const ROLE_OPTIONS = [
-  { value: 'student', label: 'Student' },
-  { value: 'admin', label: 'Administrator' },
-  { value: 'teacher', label: 'Teacher' },
-  { value: 'parent', label: 'Parent' },
+  { value: 'student' },
+  { value: 'admin' },
+  { value: 'teacher' },
+  { value: 'parent' },
 ]
 
 interface EditableLink {
@@ -48,6 +50,7 @@ interface EditableLink {
 
 export default function ResourceLinksPage() {
   useAuth()
+  const t = useTranslations('school.resources.links')
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
 
@@ -169,11 +172,11 @@ export default function ResourceLinksPage() {
     // Validate
     for (const link of editableLinks) {
       if (!link.title.trim()) {
-        toast.error('All resources must have a title')
+        toast.error(t('msg_all_required'))
         return
       }
       if (!link.url.trim()) {
-        toast.error('All resources must have a URL/link')
+        toast.error(t('msg_url_required'))
         return
       }
     }
@@ -195,9 +198,9 @@ export default function ResourceLinksPage() {
       // Refresh from server
       setInitialized(false)
       mutate(cacheKey)
-      toast.success('Resources saved successfully!')
+      toast.success(t('msg_save_success'))
     } catch {
-      toast.error('Failed to save resources')
+      toast.error(t('msg_save_error'))
     } finally {
       setSaving(false)
     }
@@ -210,10 +213,10 @@ export default function ResourceLinksPage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-[#022172] dark:text-white flex items-center gap-2">
             <Link2 className="h-7 w-7" />
-            Resources
+            {t('header_title')}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Add external links visible to specific user roles.
+            {t('subtitle')}
           </p>
         </div>
         <Button
@@ -224,12 +227,12 @@ export default function ResourceLinksPage() {
           {saving ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Saving...
+              {t('saving_button')}
             </>
           ) : (
             <>
               <Save className="h-4 w-4 mr-2" />
-              Save
+              {t('save_button')}
             </>
           )}
         </Button>
@@ -240,15 +243,15 @@ export default function ResourceLinksPage() {
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="text-sm text-muted-foreground">
             {isLoading
-              ? 'Loading...'
-              : `${editableLinks.length} resource${editableLinks.length !== 1 ? 's' : ''} found.`}
+              ? t('loading')
+              : editableLinks.length === 1 ? t('resources_found_singular') : t('resources_found', { count: editableLinks.length })}
           </CardTitle>
           {/* Search */}
           <div className="flex items-center gap-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search"
+                placeholder={t('search_placeholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 w-48"
@@ -270,9 +273,9 @@ export default function ResourceLinksPage() {
                 <TableHeader>
                   <TableRow className="bg-gray-900 hover:bg-gray-900">
                     <TableHead className="w-12 text-white" />
-                    <TableHead className="text-white font-semibold">Title</TableHead>
-                    <TableHead className="text-white font-semibold">Link</TableHead>
-                    <TableHead className="text-white font-semibold w-64">Visible To</TableHead>
+                    <TableHead className="text-white font-semibold">{t('th_title')}</TableHead>
+                    <TableHead className="text-white font-semibold">{t('th_link')}</TableHead>
+                    <TableHead className="text-white font-semibold w-64">{t('th_visible_to')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -294,7 +297,7 @@ export default function ResourceLinksPage() {
                         <Input
                           value={link.title}
                           onChange={(e) => updateLink(idx, 'title', e.target.value)}
-                          placeholder="Resource title..."
+                          placeholder={t('resource')}
                           className="max-w-xs"
                         />
                       </TableCell>
@@ -321,12 +324,12 @@ export default function ResourceLinksPage() {
                           >
                             {(link.visible_to || []).length === 0 ? (
                               <span className="text-muted-foreground text-sm px-1">
-                                Select some Options
+                                Select options
                               </span>
                             ) : (
                               (link.visible_to || []).map((role) => {
-                                const label =
-                                  ROLE_OPTIONS.find((r) => r.value === role)?.label || role
+                                const roleKey = `role_${role}`
+                                const label = t(roleKey)
                                 return (
                                   <Badge
                                     key={role}
@@ -354,6 +357,7 @@ export default function ResourceLinksPage() {
                             <div className="absolute z-50 top-full left-0 mt-1 w-full bg-white dark:bg-gray-800 border rounded-md shadow-lg overflow-visible">
                               {ROLE_OPTIONS.map((opt) => {
                                 const isSelected = (link.visible_to || []).includes(opt.value)
+                                const roleLabel = t(`role_${opt.value}`)
                                 return (
                                   <button
                                     key={opt.value}
@@ -365,7 +369,7 @@ export default function ResourceLinksPage() {
                                       toggleRole(idx, opt.value)
                                     }}
                                   >
-                                    {opt.label}
+                                    {roleLabel}
                                   </button>
                                 )
                               })}
@@ -391,7 +395,7 @@ export default function ResourceLinksPage() {
                       colSpan={3}
                       className="text-muted-foreground text-sm italic"
                     >
-                      Click + to add a new resource link
+                      {t('add_row_prompt')}
                     </TableCell>
                   </TableRow>
                 </TableBody>
@@ -406,11 +410,9 @@ export default function ResourceLinksPage() {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Resource</DialogTitle>
+            <DialogTitle>{t('btn_delete')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete &quot;
-              {linkToDelete !== null ? filteredLinks[linkToDelete]?.title || 'Untitled' : ''}
-              &quot;? Click Save to confirm changes.
+              {t('delete_confirm')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

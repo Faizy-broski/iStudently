@@ -46,6 +46,7 @@ interface StudentItem {
 
 export default function ProgressReportsPage() {
   const t = useTranslations("school.grades_module.progress_reports");
+  const tc = useTranslations("school.grades_module.common");
   const { user } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;

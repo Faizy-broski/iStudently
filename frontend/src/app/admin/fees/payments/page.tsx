@@ -231,7 +231,7 @@ export default function PaymentsPage() {
             <div className="container mx-auto py-6">
                 <Card>
                     <CardContent className="pt-6">
-                        <p className="text-muted-foreground text-center">Please select a campus to view payments.</p>
+                        <p className="text-muted-foreground text-center">يرجى اختيار فرع لعرض المدفوعات.</p>
                     </CardContent>
                 </Card>
             </div>
@@ -243,7 +243,7 @@ export default function PaymentsPage() {
             {/* Header */}
             <div className="flex items-center gap-3">
                 <span className="text-3xl">🔔</span>
-                <h1 className="text-3xl font-bold tracking-tight">Payments</h1>
+                <h1 className="text-3xl font-bold tracking-tight">المدفوعات</h1>
             </div>
 
             {/* View Toggle */}
@@ -252,21 +252,21 @@ export default function PaymentsPage() {
                     onClick={() => setViewMode('original')}
                     className={`hover:underline ${viewMode === 'original' ? 'text-[#3d8fb5] font-semibold' : 'text-gray-600'}`}
                 >
-                    Original View
+                    العرض الأصلي
                 </button>
                 <span>|</span>
                 <button
                     onClick={() => setViewMode('expanded')}
                     className={`hover:underline ${viewMode === 'expanded' ? 'text-[#3d8fb5] font-semibold' : 'text-gray-600'}`}
                 >
-                    Expanded View
+                    العرض الموسع
                 </button>
                 <span>|</span>
                 <button
                     onClick={() => setViewMode('family')}
                     className={`hover:underline ${viewMode === 'family' ? 'text-[#3d8fb5] font-semibold' : 'text-gray-600'}`}
                 >
-                    Group by Family
+                    تجميع حسب العائلة
                 </button>
             </div>
 
@@ -278,8 +278,8 @@ export default function PaymentsPage() {
                 <div className="flex items-center gap-2">
                     <p className="text-sm text-gray-700">
                         {viewMode === 'family' 
-                            ? `${familyGroups.length} families (${filteredStudents.length} students) were found.`
-                            : `${filteredStudents.length} ${viewMode === 'expanded' ? 'student addresses' : 'students'} were found.`
+                            ? `تم العثور على ${familyGroups.length} عائلة (${filteredStudents.length} طالب).`
+                            : `تم العثور على ${filteredStudents.length} ${viewMode === 'expanded' ? 'عنوان طالب' : 'طالب'}.`
                         }
                     </p>
                     <Button 
@@ -287,14 +287,14 @@ export default function PaymentsPage() {
                         size="sm" 
                         className="p-1 h-auto"
                         onClick={handleExport}
-                        title="Export to CSV"
+                        title="تصدير إلى CSV"
                     >
                         <IconDownload className="h-5 w-5 text-gray-700" />
                     </Button>
                 </div>
                 <div className="relative">
                     <Input
-                        placeholder="Search"
+                        placeholder="بحث"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-64 pr-8"
@@ -311,7 +311,7 @@ export default function PaymentsPage() {
                             <IconLoader className="h-6 w-6 animate-spin text-muted-foreground" />
                         </div>
                     ) : filteredStudents.length === 0 ? (
-                        <p className="text-muted-foreground text-center py-8">No students found.</p>
+                        <p className="text-muted-foreground text-center py-8">لم يتم العثور على طلاب.</p>
                     ) : viewMode === 'family' ? (
                         // Family View
                         <div className="space-y-4">
@@ -319,16 +319,16 @@ export default function PaymentsPage() {
                                 <div key={family.familyId} className="border rounded-lg overflow-hidden">
                                     <div className="bg-[#3d8fb5] text-white px-4 py-2 flex items-center gap-2">
                                         <IconUsers className="h-4 w-4" />
-                                        <span className="font-semibold">{family.familyName} Family</span>
-                                        <span className="text-sm opacity-80">({family.students.length} student{family.students.length > 1 ? 's' : ''})</span>
+                                        <span className="font-semibold">عائلة {family.familyName}</span>
+                                        <span className="text-sm opacity-80">({family.students.length} طالب)</span>
                                     </div>
                                     <Table>
                                         <TableHeader>
                                             <TableRow className="bg-gray-100">
-                                                <TableHead className="text-[#3d8fb5] font-semibold">STUDENT</TableHead>
-                                                <TableHead className="text-[#3d8fb5] font-semibold">ISTUDENTLY ID</TableHead>
-                                                <TableHead className="text-[#3d8fb5] font-semibold">GRADE LEVEL</TableHead>
-                                                <TableHead className="text-[#3d8fb5] font-semibold">RELATIONSHIP</TableHead>
+                                                <TableHead className="text-[#3d8fb5] font-semibold">الطالب</TableHead>
+                                                <TableHead className="text-[#3d8fb5] font-semibold">معرّف iStudently</TableHead>
+                                                <TableHead className="text-[#3d8fb5] font-semibold">المرحلة الدراسية</TableHead>
+                                                <TableHead className="text-[#3d8fb5] font-semibold">صلة القرابة</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -362,17 +362,17 @@ export default function PaymentsPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow className="bg-gray-100">
-                                    <TableHead className="text-[#3d8fb5] font-semibold">STUDENT</TableHead>
-                                    <TableHead className="text-[#3d8fb5] font-semibold">ISTUDENTLY ID</TableHead>
-                                    <TableHead className="text-[#3d8fb5] font-semibold">GRADE LEVEL</TableHead>
+                                    <TableHead className="text-[#3d8fb5] font-semibold">الطالب</TableHead>
+                                    <TableHead className="text-[#3d8fb5] font-semibold">معرّف iStudently</TableHead>
+                                    <TableHead className="text-[#3d8fb5] font-semibold">المرحلة الدراسية</TableHead>
                                     {viewMode === 'expanded' && (
                                         <>
-                                            <TableHead className="text-[#3d8fb5] font-semibold">ETHNICITY</TableHead>
-                                            <TableHead className="text-[#3d8fb5] font-semibold">GENDER</TableHead>
-                                            <TableHead className="text-[#3d8fb5] font-semibold">MAILING ADDRESS</TableHead>
-                                            <TableHead className="text-[#3d8fb5] font-semibold">CITY</TableHead>
-                                            <TableHead className="text-[#3d8fb5] font-semibold">STATE</TableHead>
-                                            <TableHead className="text-[#3d8fb5] font-semibold">ZIP CODE</TableHead>
+                                            <TableHead className="text-[#3d8fb5] font-semibold">العرق</TableHead>
+                                            <TableHead className="text-[#3d8fb5] font-semibold">الجنس</TableHead>
+                                            <TableHead className="text-[#3d8fb5] font-semibold">عنوان المراسلة</TableHead>
+                                            <TableHead className="text-[#3d8fb5] font-semibold">المدينة</TableHead>
+                                            <TableHead className="text-[#3d8fb5] font-semibold">الولاية</TableHead>
+                                            <TableHead className="text-[#3d8fb5] font-semibold">الرمز البريدي</TableHead>
                                         </>
                                     )}
                                 </TableRow>

@@ -15,8 +15,11 @@ import { Label } from '@/components/ui/label'
 import { IconArrowLeft, IconCheck, IconX } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 
 export default function AdvancesPage() {
+    const t = useTranslations('admin.salary.advances')
+    const tCommon = useTranslations('common')
     const { profile } = useAuth()
     const campusContext = useCampus()
     const schoolId = profile?.school_id || null
@@ -31,14 +34,10 @@ export default function AdvancesPage() {
     const [recoveryYear, setRecoveryYear] = useState(new Date().getFullYear())
     const [processing, setProcessing] = useState(false)
 
-    const months = [
-        { value: 1, label: 'January' }, { value: 2, label: 'February' },
-        { value: 3, label: 'March' }, { value: 4, label: 'April' },
-        { value: 5, label: 'May' }, { value: 6, label: 'June' },
-        { value: 7, label: 'July' }, { value: 8, label: 'August' },
-        { value: 9, label: 'September' }, { value: 10, label: 'October' },
-        { value: 11, label: 'November' }, { value: 12, label: 'December' }
-    ]
+    const months = Array.from({ length: 12 }, (_, i) => ({
+        value: i + 1,
+        label: tCommon(`months.${i}`)
+    }))
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
@@ -57,7 +56,7 @@ export default function AdvancesPage() {
             })
             mutate()
             setSelectedAdvance(null)
-            toast.success(`Advance ${action === 'approve' ? 'approved' : 'rejected'}`)
+            toast.success(action === 'approve' ? t('toast.approved') : t('toast.rejected'))
         } catch (error: any) {
             toast.error(error.message)
         }
@@ -71,30 +70,30 @@ export default function AdvancesPage() {
                     <Link href="/admin/salary"><IconArrowLeft className="h-4 w-4" /></Link>
                 </Button>
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Salary Advances</h1>
-                    <p className="text-muted-foreground">Review and process staff advance requests</p>
+                    <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+                    <p className="text-muted-foreground">{t('subtitle')}</p>
                 </div>
             </div>
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Pending Advance Requests</CardTitle>
-                    <CardDescription>Approve or reject salary advance requests</CardDescription>
+                    <CardTitle>{t('table.title')}</CardTitle>
+                    <CardDescription>{t('table.description')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {advances?.length === 0 ? (
-                        <p className="text-center text-muted-foreground py-8">No pending advance requests</p>
+                        <p className="text-center text-muted-foreground py-8">{t('table.empty')}</p>
                     ) : (
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Staff</TableHead>
-                                    <TableHead>Employee ID</TableHead>
-                                    <TableHead>Designation</TableHead>
-                                    <TableHead>Amount</TableHead>
-                                    <TableHead>Reason</TableHead>
-                                    <TableHead>Request Date</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
+                                    <TableHead>{t('table.employee')}</TableHead>
+                                    <TableHead>{t('table.employee_number')}</TableHead>
+                                    <TableHead>{t('table.job_title')}</TableHead>
+                                    <TableHead>{tCommon('amount')}</TableHead>
+                                    <TableHead>{t('table.reason')}</TableHead>
+                                    <TableHead>{t('table.request_date')}</TableHead>
+                                    <TableHead className="text-right">{tCommon('actions')}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -103,18 +102,18 @@ export default function AdvancesPage() {
                                         <TableCell className="font-medium">
                                             {adv.staff?.profile?.first_name} {adv.staff?.profile?.last_name}
                                         </TableCell>
-                                        <TableCell>{adv.staff?.employee_number || 'N/A'}</TableCell>
-                                        <TableCell>{adv.staff?.title || 'N/A'}</TableCell>
+                                        <TableCell>{adv.staff?.employee_number || tCommon('na')}</TableCell>
+                                        <TableCell>{adv.staff?.title || tCommon('na')}</TableCell>
                                         <TableCell className="font-bold">{formatCurrency(adv.amount)}</TableCell>
                                         <TableCell className="max-w-[200px] truncate">{adv.reason || '-'}</TableCell>
                                         <TableCell>{new Date(adv.request_date).toLocaleDateString()}</TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex gap-2 justify-end">
                                                 <Button size="sm" onClick={() => { setSelectedAdvance(adv); setAction('approve') }}>
-                                                    <IconCheck className="mr-1 h-4 w-4" />Approve
+                                                    <IconCheck className="mr-1 h-4 w-4" />{tCommon('approved')}
                                                 </Button>
                                                 <Button size="sm" variant="destructive" onClick={() => { setSelectedAdvance(adv); setAction('reject') }}>
-                                                    <IconX className="mr-1 h-4 w-4" />Reject
+                                                    <IconX className="mr-1 h-4 w-4" />{tCommon('rejected')}
                                                 </Button>
                                             </div>
                                         </TableCell>
@@ -129,7 +128,7 @@ export default function AdvancesPage() {
             <Dialog open={!!selectedAdvance} onOpenChange={(open) => !open && setSelectedAdvance(null)}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>{action === 'approve' ? 'Approve' : 'Reject'} Advance Request</DialogTitle>
+                        <DialogTitle>{action === 'approve' ? t('dialog.approve_title') : t('dialog.reject_title')}</DialogTitle>
                         <DialogDescription>
                             {selectedAdvance && (
                                 <>
@@ -140,7 +139,7 @@ export default function AdvancesPage() {
                     </DialogHeader>
                     {action === 'approve' && (
                         <div className="space-y-4">
-                            <Label>Recovery Month (deduct from payroll)</Label>
+                            <Label>{t('dialog.recovery_month')}</Label>
                             <div className="grid grid-cols-2 gap-4">
                                 <Select value={recoveryMonth.toString()} onValueChange={(v) => setRecoveryMonth(parseInt(v))}>
                                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -160,14 +159,14 @@ export default function AdvancesPage() {
                                 </Select>
                             </div>
                             <p className="text-sm text-muted-foreground">
-                                This advance will be deducted from {formatMonthYear(recoveryMonth, recoveryYear)} salary.
+                                {t('dialog.recovery_note', { monthYear: formatMonthYear(recoveryMonth, recoveryYear) })}
                             </p>
                         </div>
                     )}
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setSelectedAdvance(null)}>Cancel</Button>
+                        <Button variant="outline" onClick={() => setSelectedAdvance(null)}>{tCommon('cancel')}</Button>
                         <Button onClick={handleProcess} disabled={processing} variant={action === 'reject' ? 'destructive' : 'default'}>
-                            {processing ? 'Processing...' : action === 'approve' ? 'Approve' : 'Reject'}
+                            {processing ? t('dialog.processing') : action === 'approve' ? tCommon('approved') : tCommon('rejected')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

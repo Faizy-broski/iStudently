@@ -374,7 +374,7 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "overview", href: "/admin/library", icon: BookOpen },
       { title: "document_categories", href: "/admin/library/categories", icon: FolderOpen },
       { title: "document_fields", href: "/admin/library/document-fields", icon: Sliders },
-      { title: "settings", href: "/admin/library/settings", icon: Settings },
+      
     ],
   },
   {

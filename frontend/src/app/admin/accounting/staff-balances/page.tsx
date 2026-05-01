@@ -16,18 +16,18 @@ import { format } from 'date-fns'
 import { getAllStaff, Staff } from '@/lib/api/staff'
 
 const MONTHS = [
-    { value: '01', label: 'January' },
-    { value: '02', label: 'February' },
-    { value: '03', label: 'March' },
-    { value: '04', label: 'April' },
-    { value: '05', label: 'May' },
-    { value: '06', label: 'June' },
-    { value: '07', label: 'July' },
-    { value: '08', label: 'August' },
-    { value: '09', label: 'September' },
-    { value: '10', label: 'October' },
-    { value: '11', label: 'November' },
-    { value: '12', label: 'December' },
+    { value: '01', label: 'يناير' },
+    { value: '02', label: 'فبراير' },
+    { value: '03', label: 'مارس' },
+    { value: '04', label: 'أبريل' },
+    { value: '05', label: 'مايو' },
+    { value: '06', label: 'يونيو' },
+    { value: '07', label: 'يوليو' },
+    { value: '08', label: 'أغسطس' },
+    { value: '09', label: 'سبتمبر' },
+    { value: '10', label: 'أكتوبر' },
+    { value: '11', label: 'نوفمبر' },
+    { value: '12', label: 'ديسمبر' },
 ]
 
 const getDaysInMonth = (month: string, year: string) => {
@@ -236,7 +236,7 @@ export default function StaffBalancesPage() {
             <div className="container mx-auto py-6">
                 <Card>
                     <CardContent className="pt-6">
-                        <p className="text-muted-foreground text-center">Please select a campus to view staff balances.</p>
+                        <p className="text-muted-foreground text-center">يرجى اختيار فرع لعرض أرصدة الموظفين.</p>
                     </CardContent>
                 </Card>
             </div>
@@ -248,14 +248,14 @@ export default function StaffBalancesPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Staff Balances</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">أرصدة الموظفين</h1>
                     <p className="text-muted-foreground">
-                        View payment summary per staff member • {selectedCampus.name}
+                        عرض ملخص المدفوعات لكل موظف • {selectedCampus.name}
                     </p>
                 </div>
                 <Button onClick={handlePrint} variant="outline">
                     <IconPrinter className="h-4 w-4 mr-2" />
-                    Print
+                    طباعة
                 </Button>
             </div>
 
@@ -263,11 +263,11 @@ export default function StaffBalancesPage() {
             <Card>
                 <CardContent className="pt-6">
                     <div className="flex items-center gap-4 flex-wrap">
-                        <span className="font-medium">Timeframe:</span>
+                        <span className="font-medium">الفترة الزمنية:</span>
                         <div className="flex items-center gap-2">
                             <Select value={startMonth} onValueChange={setStartMonth}>
                                 <SelectTrigger className="w-28">
-                                    <SelectValue placeholder="Month" />
+                                    <SelectValue placeholder="الشهر" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="N/A">N/A</SelectItem>
@@ -278,7 +278,7 @@ export default function StaffBalancesPage() {
                             </Select>
                             <Select value={startDay} onValueChange={setStartDay}>
                                 <SelectTrigger className="w-20">
-                                    <SelectValue placeholder="Day" />
+                                    <SelectValue placeholder="اليوم" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="N/A">N/A</SelectItem>
@@ -289,7 +289,7 @@ export default function StaffBalancesPage() {
                             </Select>
                             <Select value={startYear} onValueChange={setStartYear}>
                                 <SelectTrigger className="w-24">
-                                    <SelectValue placeholder="Year" />
+                                    <SelectValue placeholder="السنة" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="N/A">N/A</SelectItem>
@@ -299,11 +299,11 @@ export default function StaffBalancesPage() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <span>to</span>
+                        <span>إلى</span>
                         <div className="flex items-center gap-2">
                             <Select value={endMonth} onValueChange={setEndMonth}>
                                 <SelectTrigger className="w-28">
-                                    <SelectValue placeholder="Month" />
+                                    <SelectValue placeholder="الشهر" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {MONTHS.map(m => (
@@ -313,7 +313,7 @@ export default function StaffBalancesPage() {
                             </Select>
                             <Select value={endDay} onValueChange={setEndDay}>
                                 <SelectTrigger className="w-20">
-                                    <SelectValue placeholder="Day" />
+                                    <SelectValue placeholder="اليوم" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {getDaysInMonth(endMonth, endYear).map(d => (
@@ -323,7 +323,7 @@ export default function StaffBalancesPage() {
                             </Select>
                             <Select value={endYear} onValueChange={setEndYear}>
                                 <SelectTrigger className="w-24">
-                                    <SelectValue placeholder="Year" />
+                                    <SelectValue placeholder="السنة" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {getYears().map(y => (
@@ -333,7 +333,7 @@ export default function StaffBalancesPage() {
                             </Select>
                         </div>
                         <Button onClick={handleApplyFilters} variant="default" className="bg-[#3d8fb5] hover:bg-[#357ea0]">
-                            GO
+                            عرض
                         </Button>
                     </div>
                 </CardContent>
@@ -343,25 +343,25 @@ export default function StaffBalancesPage() {
             <div className="grid gap-4 md:grid-cols-4">
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardDescription>Total Staff</CardDescription>
+                        <CardDescription>إجمالي الموظفين</CardDescription>
                         <CardTitle className="text-2xl">{staffBalances.length}</CardTitle>
                     </CardHeader>
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardDescription>Staff With Salaries</CardDescription>
+                        <CardDescription>الموظفون ذوو الرواتب</CardDescription>
                         <CardTitle className="text-2xl">{staffWithSalaries}</CardTitle>
                     </CardHeader>
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardDescription>Total Salary Paid</CardDescription>
+                        <CardDescription>إجمالي الرواتب المدفوعة</CardDescription>
                         <CardTitle className="text-2xl text-green-600">{formatCurrency(totalSalaryPaid)}</CardTitle>
                     </CardHeader>
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardDescription>Total Balance Owed</CardDescription>
+                        <CardDescription>إجمالي الرصيد المستحق</CardDescription>
                         <CardTitle className={`text-2xl ${totalBalance > 0 ? 'text-red-600' : 'text-green-600'}`}>
                             {formatCurrency(totalBalance)}
                         </CardTitle>
@@ -372,9 +372,9 @@ export default function StaffBalancesPage() {
             {/* Staff Balances Table */}
             <Card>
                 <CardHeader>
-                    <CardTitle>Staff Salary Balances</CardTitle>
+                    <CardTitle>أرصدة رواتب الموظفين</CardTitle>
                     <CardDescription>
-                        Auto-generated salary records from the Salary module + manual payments
+                        سجلات رواتب مُنشأة تلقائيًا من وحدة الرواتب + المدفوعات اليدوية
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -383,18 +383,18 @@ export default function StaffBalancesPage() {
                             <IconLoader className="h-6 w-6 animate-spin text-muted-foreground" />
                         </div>
                     ) : staffBalances.length === 0 ? (
-                        <p className="text-muted-foreground text-center py-8">No staff members found.</p>
+                        <p className="text-muted-foreground text-center py-8">لم يتم العثور على موظفين.</p>
                     ) : (
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>STAFF NAME</TableHead>
-                                    <TableHead>DESIGNATION</TableHead>
-                                    <TableHead className="text-right">SALARY DUE</TableHead>
-                                    <TableHead className="text-right">SALARY PAID</TableHead>
-                                    <TableHead className="text-right">MANUAL PMT</TableHead>
-                                    <TableHead className="text-right">BALANCE</TableHead>
-                                    <TableHead>STATUS</TableHead>
+                                    <TableHead>اسم الموظف</TableHead>
+                                    <TableHead>المسمى الوظيفي</TableHead>
+                                    <TableHead className="text-right">الراتب المستحق</TableHead>
+                                    <TableHead className="text-right">الراتب المدفوع</TableHead>
+                                    <TableHead className="text-right">مدفوعات يدوية</TableHead>
+                                    <TableHead className="text-right">الرصيد</TableHead>
+                                    <TableHead>الحالة</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -435,19 +435,19 @@ export default function StaffBalancesPage() {
                                         <TableCell>
                                             {sb.balance <= 0 ? (
                                                 <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                                                    Paid
+                                                    مدفوع
                                                 </Badge>
                                             ) : sb.total_salary_paid > 0 || sb.manual_payments > 0 ? (
                                                 <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-                                                    Partial
+                                                    جزئي
                                                 </Badge>
                                             ) : sb.salary_count > 0 ? (
                                                 <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                                                    Pending
+                                                    قيد الانتظار
                                                 </Badge>
                                             ) : (
                                                 <Badge variant="outline" className="bg-gray-50 text-gray-500 border-gray-200">
-                                                    No Salary
+                                                    لا يوجد راتب
                                                 </Badge>
                                             )}
                                         </TableCell>
@@ -464,19 +464,19 @@ export default function StaffBalancesPage() {
                 <CardContent className="pt-6">
                     <div className="space-y-2">
                         <div className="flex justify-between items-center">
-                            <span>Total Salary Generated:</span>
+                            <span>إجمالي الرواتب المنشأة:</span>
                             <span className="font-medium">{formatCurrency(totalSalaryDue)}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                            <span>Total Salary Paid:</span>
+                            <span>إجمالي الرواتب المدفوعة:</span>
                             <span className="font-medium text-green-600">{formatCurrency(totalSalaryPaid)}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                            <span>Total Manual Payments:</span>
+                            <span>إجمالي المدفوعات اليدوية:</span>
                             <span className="font-medium text-blue-600">{formatCurrency(totalManualPayments)}</span>
                         </div>
                         <div className="flex justify-between items-center text-lg font-semibold border-t pt-2">
-                            <span>Total Balance Owed:</span>
+                            <span>إجمالي الرصيد المستحق:</span>
                             <span className={totalBalance > 0 ? 'text-red-600' : 'text-green-600'}>
                                 {formatCurrency(totalBalance)}
                             </span>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +46,7 @@ function hasOptions(type: CustomFieldType) {
 }
 
 export default function HostelFieldsPage() {
+  const t = useTranslations("admin.hostel.fields");
   const { profile } = useAuth();
   const campusId = profile?.campus_id;
   const [entityType, setEntityType] = useState<HostelEntityType>("hostel_room");
@@ -104,7 +106,7 @@ export default function HostelFieldsPage() {
 
   function addFieldRow() {
     if (!newLabel.trim()) {
-      toast.error("Field name is required");
+      toast.error(t('msg_field_name_required'));
       return;
     }
     const maxOrder = fields.reduce((m, f) => Math.max(m, f.sort_order), 0);
@@ -128,7 +130,7 @@ export default function HostelFieldsPage() {
     setNewDefault("");
     setNewRequired(false);
     setNewSortOrder("");
-    toast.success("Field added — click Save to persist");
+    toast.success(t('msg_field_added'));
   }
 
   function updateRow(id: string, patch: Partial<FieldRow>) {
@@ -187,28 +189,29 @@ export default function HostelFieldsPage() {
         }
       }
 
-      toast.success("Fields saved successfully");
+      toast.success(t('msg_fields_saved'));
       await loadFields();
     } catch {
-      toast.error("Failed to save fields");
+      toast.error(t('msg_fields_save_error'));
     } finally {
       setSaving(false);
     }
   }
 
-  const entityLabel = entityType === "hostel_room" ? "Room" : "Building";
+  const entityKey = entityType === "hostel_room" ? "room" : "building";
+  const entityLabel = t(`entity_${entityKey}`);
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Hostel {entityLabel} Fields</h1>
+        <h1 className="text-2xl font-bold">{t('header_title')}</h1>
         <Button
           onClick={handleSave}
           disabled={saving}
           className="bg-blue-700 hover:bg-blue-800 text-white"
         >
           <Save className="mr-2 h-4 w-4" />
-          {saving ? "Saving..." : "Save"}
+          {saving ? t('btn_saving') : t('btn_save')}
         </Button>
       </div>
 
@@ -221,8 +224,8 @@ export default function HostelFieldsPage() {
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="hostel_room">Room Fields</SelectItem>
-          <SelectItem value="hostel_building">Building Fields</SelectItem>
+          <SelectItem value="hostel_room">{t('option_room')}</SelectItem>
+          <SelectItem value="hostel_building">{t('option_building')}</SelectItem>
         </SelectContent>
       </Select>
 
@@ -230,15 +233,15 @@ export default function HostelFieldsPage() {
       <Card>
         <CardContent className="pt-4 space-y-4">
           <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            New {entityLabel} Field
+            {t('card_new_field', { entity: entityLabel })}
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Field Name */}
             <div className="space-y-1">
-              <Label className="text-xs text-red-600 font-semibold">Field Name *</Label>
+              <Label className="text-xs text-red-600 font-semibold">{t('label_field_name')}</Label>
               <Input
-                placeholder={`e.g. ${entityType === "hostel_room" ? "Room Type" : "Wing / Block"}`}
+                placeholder={t('placeholder_field_name', { example: entityType === "hostel_room" ? "Room Type" : "Wing / Block" })}
                 value={newLabel}
                 onChange={(e) => setNewLabel(e.target.value)}
               />
@@ -246,7 +249,7 @@ export default function HostelFieldsPage() {
 
             {/* Type */}
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">Type</Label>
+              <Label className="text-xs font-semibold">{t('label_type')}</Label>
               <Select
                 value={newType}
                 onValueChange={(v) => setNewType(v as CustomFieldType)}
@@ -255,9 +258,9 @@ export default function HostelFieldsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {FIELD_TYPES.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.label}
+                  {FIELD_TYPES.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {t(`type_${type.value.replace('-', '_')}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -269,11 +272,11 @@ export default function HostelFieldsPage() {
           {hasOptions(newType) && (
             <div className="space-y-1">
               <Label className="text-xs font-semibold">
-                Options <span className="text-muted-foreground font-normal">(one per line)</span>
+                {t('label_options')} <span className="text-muted-foreground font-normal">{t('desc_options')}</span>
               </Label>
               <Textarea
                 rows={4}
-                placeholder={"Option 1\nOption 2\nOption 3"}
+                placeholder={t('placeholder_options')}
                 value={newOptions}
                 onChange={(e) => setNewOptions(e.target.value)}
               />
@@ -283,9 +286,9 @@ export default function HostelFieldsPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
             {/* Default */}
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">Default</Label>
+              <Label className="text-xs font-semibold">{t('label_default')}</Label>
               <Input
-                placeholder="Default value"
+                placeholder={t('placeholder_default')}
                 value={newDefault}
                 onChange={(e) => setNewDefault(e.target.value)}
               />
@@ -293,10 +296,10 @@ export default function HostelFieldsPage() {
 
             {/* Sort Order */}
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">Sort Order</Label>
+              <Label className="text-xs font-semibold">{t('label_sort_order')}</Label>
               <Input
                 type="number"
-                placeholder="Auto"
+                placeholder={t('placeholder_sort_order')}
                 value={newSortOrder}
                 onChange={(e) => setNewSortOrder(e.target.value)}
               />
@@ -309,10 +312,10 @@ export default function HostelFieldsPage() {
                   checked={newRequired}
                   onCheckedChange={(c) => setNewRequired(!!c)}
                 />
-                <span className="text-sm">Required</span>
+                <span className="text-sm">{t('label_required')}</span>
               </label>
               <Button onClick={addFieldRow} size="sm" variant="outline" className="ml-auto">
-                <Plus className="h-4 w-4 mr-1" /> Add
+                <Plus className="h-4 w-4 mr-1" /> {t('btn_add')}
               </Button>
             </div>
           </div>
@@ -321,11 +324,11 @@ export default function HostelFieldsPage() {
 
       {/* Existing fields list */}
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading fields…</p>
+        <p className="text-sm text-muted-foreground">{t('msg_loading')}</p>
       ) : fields.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
-          <p className="text-sm">No {entityLabel.toLowerCase()} fields found.</p>
-          <p className="text-xs mt-1">Use the form above to add the first field.</p>
+          <p className="text-sm">{t('msg_no_fields', { entity: entityLabel.toLowerCase() })}</p>
+          <p className="text-xs mt-1">{t('msg_no_fields_desc')}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -339,7 +342,7 @@ export default function HostelFieldsPage() {
                   <Input
                     value={row.label}
                     onChange={(e) => updateRow(row.id, { label: e.target.value })}
-                    placeholder="Field name"
+                    placeholder={t('label_field_name')}
                     className="text-sm"
                   />
 
@@ -352,9 +355,9 @@ export default function HostelFieldsPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {FIELD_TYPES.map((t) => (
-                        <SelectItem key={t.value} value={t.value} className="text-sm">
-                          {t.label}
+                      {FIELD_TYPES.map((type) => (
+                        <SelectItem key={type.value} value={type.value} className="text-sm">
+                          {t(`type_${type.value.replace('-', '_')}`)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -376,7 +379,7 @@ export default function HostelFieldsPage() {
                       checked={row.required}
                       onCheckedChange={(c) => updateRow(row.id, { required: !!c })}
                     />
-                    Required
+                    {t('label_required')}
                   </label>
 
                   {/* Delete */}
@@ -394,13 +397,13 @@ export default function HostelFieldsPage() {
                 {hasOptions(row.type) && (
                   <div className="mt-3 ml-8 space-y-1">
                     <Label className="text-xs font-semibold text-muted-foreground">
-                      Options <span className="font-normal">(one per line)</span>
+                      {t('label_options')} <span className="font-normal">{t('desc_options')}</span>
                     </Label>
                     <Textarea
                       rows={3}
                       value={row.options}
                       onChange={(e) => updateRow(row.id, { options: e.target.value })}
-                      placeholder={"Option 1\nOption 2\nOption 3"}
+                      placeholder={t('placeholder_options')}
                       className="text-sm"
                     />
                   </div>
@@ -413,7 +416,7 @@ export default function HostelFieldsPage() {
             onClick={addFieldRow}
             className="flex items-center gap-2 text-sm text-primary hover:underline pt-2"
           >
-            <Plus className="h-4 w-4" /> Add another field
+            <Plus className="h-4 w-4" /> {t('btn_add_another')}
           </button>
         </div>
       )}

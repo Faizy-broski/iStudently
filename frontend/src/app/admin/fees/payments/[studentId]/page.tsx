@@ -78,8 +78,8 @@ async function fetchStudentPayments(studentId: string, schoolId: string): Promis
 
 
 const MONTHS = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
+    'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+    'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
 ]
 
 const getDaysInMonth = (month: string, year: string) => {
@@ -121,7 +121,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
             <!DOCTYPE html>
             <html>
             <head>
-                <title>Payment Receipts</title>
+                <title>إيصالات المدفوعات</title>
                 <style>
                     * { margin: 0; padding: 0; box-sizing: border-box; }
                     body { font-family: Arial, sans-serif; padding: 20px; }
@@ -253,7 +253,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
         const validPayments = newPayments.filter(p => p.amount && parseFloat(p.amount) > 0)
         
         if (validPayments.length === 0) {
-            toast.error('Please enter at least one payment amount')
+            toast.error('يرجى إدخال مبلغ دفعة واحد على الأقل')
             return
         }
 
@@ -310,7 +310,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                 if (!json.success) throw new Error(json.error)
             }
 
-            toast.success('Payments saved successfully')
+            toast.success('تم حفظ المدفوعات بنجاح')
             
             // Reset form and refresh data
             setNewPayments([{
@@ -327,7 +327,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
             mutate(['student-payments', studentId, schoolId])
         } catch (error: unknown) {
             const err = error as Error
-            toast.error(err.message || 'Failed to save payments')
+            toast.error(err.message || 'فشل حفظ المدفوعات')
         } finally {
             setSaving(false)
         }
@@ -335,7 +335,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
 
     // Delete existing payment
     const handleDeletePayment = async (paymentId: string) => {
-        if (!confirm('Are you sure you want to delete this payment?')) return
+        if (!confirm('هل أنت متأكد من حذف هذه الدفعة؟')) return
 
         const supabase = createClient()
         const { data: { session } } = await supabase.auth.getSession()
@@ -349,11 +349,11 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
             const json = await res.json()
             if (!json.success) throw new Error(json.error)
 
-            toast.success('Payment deleted')
+            toast.success('تم حذف الدفعة')
             mutate(['student-payments', studentId, schoolId])
         } catch (error: unknown) {
             const err = error as Error
-            toast.error(err.message || 'Failed to delete payment')
+            toast.error(err.message || 'فشل حذف الدفعة')
         }
     }
 
@@ -374,7 +374,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
             <div className="container mx-auto py-6">
                 <Card>
                     <CardContent className="pt-6">
-                        <p className="text-muted-foreground text-center">Please select a campus.</p>
+                        <p className="text-muted-foreground text-center">يرجى اختيار فرع.</p>
                     </CardContent>
                 </Card>
             </div>
@@ -386,7 +386,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
             {/* Header */}
             <div className="flex items-center gap-3">
                 <span className="text-3xl">🔔</span>
-                <h1 className="text-3xl font-bold tracking-tight">Payments</h1>
+                <h1 className="text-3xl font-bold tracking-tight">المدفوعات</h1>
             </div>
 
             {/* Print Receipt Link */}
@@ -399,7 +399,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                         if (payments.length > 0) handlePrint()
                     }}
                 >
-                    Print Receipt{payments.length > 1 ? 's' : ''}
+                    طباعة الإيصال{payments.length > 1 ? 'ات' : ''}
                 </Link>
             </div>
 
@@ -413,7 +413,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                         setViewMode(viewMode === 'original' ? 'expanded' : 'original')
                     }}
                 >
-                    {viewMode === 'original' ? 'Expanded View' : 'Original View'}
+                    {viewMode === 'original' ? 'العرض الموسع' : 'العرض الأصلي'}
                 </Link>
                 <Button 
                     className="bg-[#3d8fb5] hover:bg-[#357a9e]"
@@ -421,7 +421,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                     disabled={saving}
                 >
                     {saving ? <IconLoader className="h-4 w-4 animate-spin mr-2" /> : null}
-                    SAVE
+                    حفظ
                 </Button>
             </div>
 
@@ -437,7 +437,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
 
             {/* No Payments Message */}
             {payments.length === 0 && (
-                <p className="text-sm font-medium text-gray-700">No payments were found.</p>
+                <p className="text-sm font-medium text-gray-700">لم يتم العثور على مدفوعات.</p>
             )}
 
             {/* Payments Table */}
@@ -452,17 +452,17 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                             <TableHeader>
                                 <TableRow className="bg-gray-100">
                                     <TableHead className="w-10"></TableHead>
-                                    <TableHead className="text-[#3d8fb5] font-semibold">RECEIPT #</TableHead>
-                                    <TableHead className="text-[#3d8fb5] font-semibold">AMOUNT</TableHead>
-                                    <TableHead className="text-[#3d8fb5] font-semibold">DATE</TableHead>
-                                    <TableHead className="text-[#3d8fb5] font-semibold">COMMENT</TableHead>
-                                    <TableHead className="text-[#3d8fb5] font-semibold">METHOD</TableHead>
-                                    <TableHead className="text-[#3d8fb5] font-semibold text-center">LUNCH PAYMENT</TableHead>
-                                    <TableHead className="text-[#3d8fb5] font-semibold text-center">FILE ATTACHED</TableHead>
+                                    <TableHead className="text-[#3d8fb5] font-semibold">رقم الإيصال</TableHead>
+                                    <TableHead className="text-[#3d8fb5] font-semibold">المبلغ</TableHead>
+                                    <TableHead className="text-[#3d8fb5] font-semibold">التاريخ</TableHead>
+                                    <TableHead className="text-[#3d8fb5] font-semibold">ملاحظة</TableHead>
+                                    <TableHead className="text-[#3d8fb5] font-semibold">الطريقة</TableHead>
+                                    <TableHead className="text-[#3d8fb5] font-semibold text-center">دفعة وجبة</TableHead>
+                                    <TableHead className="text-[#3d8fb5] font-semibold text-center">ملف مرفق</TableHead>
                                     {viewMode === 'expanded' && (
                                         <>
-                                            <TableHead className="text-[#3d8fb5] font-semibold">CREATED BY</TableHead>
-                                            <TableHead className="text-[#3d8fb5] font-semibold">CREATED AT</TableHead>
+                                            <TableHead className="text-[#3d8fb5] font-semibold">أُنشئ بواسطة</TableHead>
+                                            <TableHead className="text-[#3d8fb5] font-semibold">تاريخ الإنشاء</TableHead>
                                         </>
                                     )}
                                     <TableHead className="w-10"></TableHead>
@@ -480,7 +480,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                         <TableCell>{formatCurrency(payment.amount)}</TableCell>
                                         <TableCell>{formatDate(payment.payment_date)}</TableCell>
                                         <TableCell>{payment.comment || '-'}</TableCell>
-                                        <TableCell className="capitalize">{(payment as any).payment_method?.replace('_', ' ') || 'Cash'}</TableCell>
+                                        <TableCell className="capitalize">{(payment as any).payment_method?.replace('_', ' ') || 'نقداً'}</TableCell>
                                         <TableCell className="text-center">
                                             <Checkbox checked={payment.is_lunch_payment} disabled />
                                         </TableCell>
@@ -492,7 +492,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                                     rel="noopener noreferrer"
                                                     className="text-[#3d8fb5] hover:underline"
                                                 >
-                                                    View
+                                                    عرض
                                                 </a>
                                             ) : '-'}
                                         </TableCell>
@@ -537,9 +537,9 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                             <Input
                                                 value={payment.receipt_number}
                                                 readOnly
-                                                placeholder="Auto"
+                                                placeholder="تلقائي"
                                                 className="w-24 h-8 bg-muted cursor-not-allowed select-none"
-                                                title="Receipt number is auto-generated"
+                                                title="رقم الإيصال يُنشأ تلقائيًا"
                                             />
                                         </TableCell>
                                         <TableCell>
@@ -700,7 +700,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                     disabled={saving}
                 >
                     {saving ? <IconLoader className="h-4 w-4 animate-spin mr-2" /> : null}
-                    SAVE
+                    حفظ
                 </Button>
             </div>
 
@@ -709,15 +709,15 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                 <CardContent className="p-4">
                     <div className="space-y-1 text-right">
                         <div className="flex justify-end gap-4">
-                            <span className="text-sm font-medium">Total from Fees:</span>
+                            <span className="text-sm font-medium">إجمالي الرسوم:</span>
                             <span className="text-sm w-24">{formatCurrency(summary.totalFees)}</span>
                         </div>
                         <div className="flex justify-end gap-4">
-                            <span className="text-sm font-medium">Less: Total from Payments:</span>
+                            <span className="text-sm font-medium">ناقص: إجمالي المدفوعات:</span>
                             <span className="text-sm w-24">{formatCurrency(summary.totalPayments)}</span>
                         </div>
                         <div className="flex justify-end gap-4">
-                            <span className="text-sm font-bold">Balance:</span>
+                            <span className="text-sm font-bold">الرصيد:</span>
                             <span className="text-sm font-bold w-24">{formatCurrency(summary.balance)}</span>
                         </div>
                     </div>
@@ -727,7 +727,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
             {/* Back Link */}
             <div>
                 <Link href="/admin/fees/payments" className="text-[#3d8fb5] hover:underline text-sm">
-                    ← Back to Students
+                    ← العودة إلى الطلاب
                 </Link>
             </div>
 
@@ -738,37 +738,37 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                         <div key={payment.id} className="receipt">
                             <div className="header">
                                 <h1>{selectedCampus?.name || 'School Name'}</h1>
-                                <p>PAYMENT RECEIPT</p>
+                                                        <p>إيصال دفع</p>
                             </div>
                             <div className="info-grid">
                                 <div>
-                                    <p><strong>Student Name:</strong> {student ? `${student.first_name} ${student.last_name}` : '-'}</p>
-                                    <p><strong>Student ID:</strong> {student?.student_number || '-'}</p>
+                                    <p><strong>اسم الطالب:</strong> {student ? `${student.first_name} ${student.last_name}` : '-'}</p>
+                                    <p><strong>رقم الطالب:</strong> {student?.student_number || '-'}</p>
                                 </div>
                                 <div className="right">
-                                    <p><strong>Receipt #:</strong> {payment.receipt_number || `RCP-${payment.id.substring(0,8).toUpperCase()}`}</p>
-                                    <p><strong>Payment Date:</strong> {formatDate(payment.payment_date)}</p>
+                                    <p><strong>رقم الإيصال:</strong> {payment.receipt_number || `RCP-${payment.id.substring(0,8).toUpperCase()}`}</p>
+                                    <p><strong>تاريخ الدفع:</strong> {formatDate(payment.payment_date)}</p>
                                 </div>
                             </div>
                             <div className="amount-box">
-                                <p className="label">Amount Paid</p>
+                                <p className="label">المبلغ المدفوع</p>
                                 <p className="amount">{formatCurrency(payment.amount)}</p>
                             </div>
                             <table>
                                 <tbody>
                                     <tr>
-                                        <th>Comment</th>
+                                        <th>ملاحظة</th>
                                         <td>{payment.comment || '-'}</td>
                                     </tr>
                                 </tbody>
                             </table>
                             <div className="footer">
                                 <div className="date">
-                                    <p>Generated on: {new Date().toLocaleDateString()}</p>
+                                    <p>تم الإنشاء بتاريخ: {new Date().toLocaleDateString()}</p>
                                 </div>
                                 <div className="signature">
                                     <div className="signature-line">
-                                        <p>Authorized Signature</p>
+                                        <p>توقيع معتمد</p>
                                     </div>
                                 </div>
                             </div>

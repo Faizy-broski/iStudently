@@ -65,10 +65,10 @@ export default function ServicesSettingsPage() {
     const campusId = selectedCampus?.id || ''
     
     const { data: services, mutate: mutateServices } = useSWR<Service[]>(
-        `${API_URL}/school-services?active=false${campusId ? `&campus_id=${campusId}` : ''}`, 
+        `${process.env.NEXT_PUBLIC_API_URL}/school-services?active=false${campusId ? `&campus_id=${campusId}` : ''}`, 
         fetcher
     )
-    const { data: gradeLevels } = useSWR<GradeLevel[]>(`${API_URL}/academics/grade-levels`, fetcher)
+    const { data: gradeLevels } = useSWR<GradeLevel[]>(`${process.env.NEXT_PUBLIC_API_URL}/academics/grade-levels`, fetcher)
 
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [editingService, setEditingService] = useState<Service | null>(null)

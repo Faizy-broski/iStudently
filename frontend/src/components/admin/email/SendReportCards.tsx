@@ -33,18 +33,11 @@ import {
   RotateCcw,
   GraduationCap,
 } from "lucide-react"
+import { useLocale, useTranslations } from "next-intl"
 
 // ─── Substitutions ────────────────────────────────────────────────────────────
 
-const SUBS = [
-  { key: "full_name", label: "Full Name" },
-  { key: "first_name", label: "First Name" },
-  { key: "last_name", label: "Last Name" },
-  { key: "email", label: "Email" },
-  { key: "grade", label: "Grade Level" },
-  { key: "student_id", label: "Student ID" },
-  { key: "report_card", label: "Report Card Table" },
-]
+const SUBS = ["full_name", "first_name", "last_name", "email", "grade", "student_id", "report_card"] as const
 
 const DEFAULT_INCLUDE = {
   teacher: false,
@@ -56,12 +49,19 @@ const DEFAULT_INCLUDE = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function SendReportCards({ toParents = false }: { toParents?: boolean }) {
+  const t = useTranslations("school.grades_module.send_report_cards")
+  const tc = useTranslations("school.grades_module.common")
+  const locale = useLocale()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Compose
-  const [subject, setSubject] = useState("Report Card – {{full_name}}")
+  const [subject, setSubject] = useState(
+    locale === "ar" ? "كشف الدرجات - {{full_name}}" : "Report Card - {{full_name}}"
+  )
   const [body, setBody] = useState(
-    "<p>Dear {{full_name}},</p>\n<p>Please find your report card below:</p>\n{{report_card}}"
+    locale === "ar"
+      ? "<p>عزيزي/عزيزتي {{full_name}}،</p>\n<p>يرجى الاطلاع على كشف الدرجات أدناه:</p>\n{{report_card}}"
+      : "<p>Dear {{full_name}},</p>\n<p>Please find your report card below:</p>\n{{report_card}}"
   )
   const [testEmail, setTestEmail] = useState("")
   const [markingPeriodId, setMarkingPeriodId] = useState("")
@@ -126,9 +126,9 @@ export function SendReportCards({ toParents = false }: { toParents?: boolean }) 
   // ── Submit ─────────────────────────────────────────────────────────────────
 
   const handleSubmit = async () => {
-    if (!subject.trim()) { toast.error("Subject is required"); return }
-    if (!body.trim()) { toast.error("Email body is required"); return }
-    if (selectedIds.size === 0) { toast.error("Select at least one student"); return }
+    if (!subject.trim()) { toast.error(t("toast.subject_required")); return }
+    if (!body.trim()) { toast.error(t("toast.body_required")); return }
+    if (selectedIds.size === 0) { toast.error(t("toast.select_student")); return }
 
     setSending(true)
     setResult(null)
@@ -147,10 +147,10 @@ export function SendReportCards({ toParents = false }: { toParents?: boolean }) 
       if (res.success && res.data) {
         setResult(res.data)
         res.data.fail_count === 0
-          ? toast.success(`${res.data.success_count} report card(s) sent`)
-          : toast.warning(`${res.data.success_count} sent, ${res.data.fail_count} failed`)
+          ? toast.success(t("toast.sent_count", { count: res.data.success_count }))
+          : toast.warning(t("toast.partial_sent", { success: res.data.success_count, failed: res.data.fail_count }))
       } else {
-        toast.error(res.error || "Failed to send emails")
+        toast.error(res.error || t("toast.send_failed"))
       }
     } finally {
       setSending(false)
@@ -164,37 +164,37 @@ export function SendReportCards({ toParents = false }: { toParents?: boolean }) 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5" /> Send Results
+            <Mail className="h-5 w-5" /> {t("send_results")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="grid grid-cols-3 gap-4">
             <div className="rounded-lg border p-4 text-center">
               <div className="text-3xl font-bold">{result.total}</div>
-              <div className="text-sm text-muted-foreground mt-1">Total</div>
+              <div className="text-sm text-muted-foreground mt-1">{tc("total")}</div>
             </div>
             <div className="rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/30 p-4 text-center">
               <div className="text-3xl font-bold text-green-600">{result.success_count}</div>
-              <div className="text-sm text-muted-foreground mt-1">Sent</div>
+              <div className="text-sm text-muted-foreground mt-1">{t("sent")}</div>
             </div>
             <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/30 p-4 text-center">
               <div className="text-3xl font-bold text-red-600">{result.fail_count}</div>
-              <div className="text-sm text-muted-foreground mt-1">Failed</div>
+              <div className="text-sm text-muted-foreground mt-1">{t("failed")}</div>
             </div>
           </div>
 
           {result.errors.length > 0 && (
             <div>
               <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
-                <AlertTriangle className="h-4 w-4 text-amber-500" /> Failed Recipients
+                <AlertTriangle className="h-4 w-4 text-amber-500" /> {t("failed_recipients")}
               </h4>
               <div className="rounded-md border overflow-auto max-h-64">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="text-left px-3 py-2">Name</th>
-                      <th className="text-left px-3 py-2">Email</th>
-                      <th className="text-left px-3 py-2">Error</th>
+                      <th className="text-left px-3 py-2">{tc("name")}</th>
+                      <th className="text-left px-3 py-2">{tc("email")}</th>
+                      <th className="text-left px-3 py-2">{tc("error")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -212,7 +212,7 @@ export function SendReportCards({ toParents = false }: { toParents?: boolean }) 
           )}
 
           <Button variant="outline" onClick={() => { setResult(null); setSelectedIds(new Set()) }}>
-            <RotateCcw className="h-4 w-4 mr-2" /> Send Another
+            <RotateCcw className="h-4 w-4 mr-2" /> {t("send_another")}
           </Button>
         </CardContent>
       </Card>
@@ -227,38 +227,38 @@ export function SendReportCards({ toParents = false }: { toParents?: boolean }) 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <GraduationCap className="h-5 w-5" /> Compose Email
+            <GraduationCap className="h-5 w-5" /> {t("compose_email")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
           {/* Subject */}
           <div className="space-y-1.5">
-            <Label htmlFor="subject">Subject <span className="text-destructive">*</span></Label>
+            <Label htmlFor="subject">{t("subject")} <span className="text-destructive">*</span></Label>
             <Input id="subject" value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={200} />
           </div>
 
           {/* Body */}
           <div className="space-y-1.5">
             <Label htmlFor="body">
-              Body <span className="text-destructive">*</span>
-              <span className="ml-2 text-xs text-muted-foreground font-normal">HTML is supported</span>
+              {t("body")} <span className="text-destructive">*</span>
+              <span className="ml-2 text-xs text-muted-foreground font-normal">{t("html_supported")}</span>
             </Label>
             <Textarea id="body" ref={textareaRef} value={body} onChange={(e) => setBody(e.target.value)} rows={8} className="font-mono text-sm resize-y" />
           </div>
 
           {/* Substitution chips */}
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Click to insert substitution:</Label>
+            <Label className="text-xs text-muted-foreground">{t("click_insert_substitution")}</Label>
             <div className="flex flex-wrap gap-2">
               {SUBS.map((sub) => (
                 <button
-                  key={sub.key}
+                  key={sub}
                   type="button"
-                  onClick={() => insertSub(sub.key)}
+                  onClick={() => insertSub(sub)}
                   className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border bg-muted hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors"
                 >
-                  {sub.label}
-                  <span className="opacity-60 font-mono">{`{{${sub.key}}}`}</span>
+                  {t(`subs.${sub}`)}
+                  <span className="opacity-60 font-mono">{`{{${sub}}}`}</span>
                 </button>
               ))}
             </div>
@@ -270,12 +270,12 @@ export function SendReportCards({ toParents = false }: { toParents?: boolean }) 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {/* Include fields */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Include in report card:</Label>
+              <Label className="text-sm font-medium">{t("include_in_report_card")}</Label>
               <div className="space-y-1.5">
                 {(Object.keys(DEFAULT_INCLUDE) as Array<keyof typeof DEFAULT_INCLUDE>).map((field) => (
                   <label key={field} className="flex items-center gap-2 cursor-pointer text-sm">
                     <Checkbox checked={includeFields[field]} onCheckedChange={() => toggleField(field)} />
-                    <span className="capitalize">{field}</span>
+                    <span className="capitalize">{t(`include_fields.${field}`)}</span>
                   </label>
                 ))}
               </div>
@@ -284,13 +284,13 @@ export function SendReportCards({ toParents = false }: { toParents?: boolean }) 
             {/* Options */}
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label>Marking Period</Label>
+                <Label>{tc("marking_period")}</Label>
                 <Select value={markingPeriodId || '__all__'} onValueChange={(v) => setMarkingPeriodId(v === '__all__' ? '' : v)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="All marking periods" />
+                    <SelectValue placeholder={tc("marking_period_placeholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__all__">All marking periods</SelectItem>
+                    <SelectItem value="__all__">{tc("marking_period_placeholder")}</SelectItem>
                     {markingPeriods.map((mp) => (
                       <SelectItem key={mp.id} value={mp.id}>{mp.title}</SelectItem>
                     ))}
@@ -299,13 +299,13 @@ export function SendReportCards({ toParents = false }: { toParents?: boolean }) 
               </div>
 
               <div className="space-y-1.5">
-                <Label>Academic Year</Label>
+                <Label>{t("academic_year")}</Label>
                 <Select value={academicYearId || '__all__'} onValueChange={(v) => setAcademicYearId(v === '__all__' ? '' : v)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="All years" />
+                    <SelectValue placeholder={t("all_years")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__all__">All years</SelectItem>
+                    <SelectItem value="__all__">{t("all_years")}</SelectItem>
                     {academicYears.map((y: any) => (
                       <SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>
                     ))}
@@ -315,17 +315,17 @@ export function SendReportCards({ toParents = false }: { toParents?: boolean }) 
 
               <div className="space-y-1.5">
                 <Label htmlFor="test_email" className="flex items-center gap-1.5">
-                  <FlaskConical className="h-3.5 w-3.5" /> Test Mode
+                  <FlaskConical className="h-3.5 w-3.5" /> {t("test_mode")}
                 </Label>
                 <Input
                   id="test_email"
                   type="email"
                   value={testEmail}
                   onChange={(e) => setTestEmail(e.target.value)}
-                  placeholder="Optional – all emails go here instead"
+                  placeholder={t("test_mode_placeholder")}
                 />
                 {testEmail.trim() && (
-                  <p className="text-xs text-amber-600">All emails → {testEmail.trim()}</p>
+                  <p className="text-xs text-amber-600">{t("all_emails_to", { email: testEmail.trim() })}</p>
                 )}
               </div>
             </div>
@@ -338,18 +338,18 @@ export function SendReportCards({ toParents = false }: { toParents?: boolean }) 
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" /> Select Students
-              {selectedIds.size > 0 && <Badge>{selectedIds.size} selected</Badge>}
+              <Users className="h-5 w-5" /> {t("select_students")}
+              {selectedIds.size > 0 && <Badge>{t("selected_count", { count: selectedIds.size })}</Badge>}
             </CardTitle>
             <div className="flex items-center gap-2">
               {selectedIds.size > 0 && (
                 <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>
-                  <X className="h-3.5 w-3.5 mr-1" /> Clear
+                  <X className="h-3.5 w-3.5 mr-1" /> {t("clear")}
                 </Button>
               )}
               <Button onClick={handleSubmit} disabled={sending || selectedIds.size === 0} size="sm">
-                {sending ? "Sending..." : (
-                  <><Send className="h-3.5 w-3.5 mr-1.5" />Send to {selectedIds.size || 0}</>
+                {sending ? t("sending") : (
+                  <><Send className="h-3.5 w-3.5 mr-1.5" />{t("send_to_count", { count: selectedIds.size || 0 })}</>
                 )}
               </Button>
             </div>
@@ -359,11 +359,11 @@ export function SendReportCards({ toParents = false }: { toParents?: boolean }) 
         <CardContent className="space-y-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search students..." className="pl-9" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("search_students")} className="pl-9" />
           </div>
 
           {loadingStudents ? (
-            <div className="text-center py-10 text-muted-foreground">Loading students...</div>
+            <div className="text-center py-10 text-muted-foreground">{t("loading_students")}</div>
           ) : (
             <div className="rounded-md border overflow-auto">
               <table className="w-full text-sm">
@@ -372,15 +372,15 @@ export function SendReportCards({ toParents = false }: { toParents?: boolean }) 
                     <th className="w-10 px-3 py-2.5">
                       <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label="Select all" />
                     </th>
-                    <th className="text-left px-3 py-2.5 font-medium">Student</th>
-                    <th className="text-left px-3 py-2.5 font-medium">ID</th>
-                    <th className="text-left px-3 py-2.5 font-medium">Grade</th>
-                    <th className="text-left px-3 py-2.5 font-medium">Email</th>
+                      <th className="text-left px-3 py-2.5 font-medium">{tc("student")}</th>
+                      <th className="text-left px-3 py-2.5 font-medium">{tc("student_id")}</th>
+                      <th className="text-left px-3 py-2.5 font-medium">{tc("grade_level")}</th>
+                      <th className="text-left px-3 py-2.5 font-medium">{tc("email")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {students.length === 0 ? (
-                    <tr><td colSpan={5} className="text-center py-10 text-muted-foreground">No students found</td></tr>
+                    <tr><td colSpan={5} className="text-center py-10 text-muted-foreground">{tc("no_students_found")}</td></tr>
                   ) : (
                     students.map((student) => {
                       const profile = student.profile
@@ -402,7 +402,7 @@ export function SendReportCards({ toParents = false }: { toParents?: boolean }) 
                           <td className="px-3 py-2.5 font-medium">{profile?.first_name} {profile?.last_name}</td>
                           <td className="px-3 py-2.5 text-muted-foreground">{student.student_number}</td>
                           <td className="px-3 py-2.5 text-muted-foreground">{student.grade_level || "—"}</td>
-                          <td className="px-3 py-2.5 text-muted-foreground">{profile?.email || <span className="text-xs italic text-muted-foreground/60">No email</span>}</td>
+                          <td className="px-3 py-2.5 text-muted-foreground">{profile?.email || <span className="text-xs italic text-muted-foreground/60">{t("no_email")}</span>}</td>
                         </tr>
                       )
                     })
@@ -413,10 +413,10 @@ export function SendReportCards({ toParents = false }: { toParents?: boolean }) 
           )}
 
           <div className="flex items-center justify-between text-sm text-muted-foreground pt-1">
-            <span>{students.length} found · {studentsWithEmail.length} with email</span>
+            <span>{t("students_found_with_email", { total: students.length, withEmail: studentsWithEmail.length })}</span>
             <Button onClick={handleSubmit} disabled={sending || selectedIds.size === 0}>
-              {sending ? "Sending..." : (
-                <><Send className="h-4 w-4 mr-1.5" />Send to {selectedIds.size} Student{selectedIds.size !== 1 ? "s" : ""}</>
+              {sending ? t("sending") : (
+                <><Send className="h-4 w-4 mr-1.5" />{t("send_to_students_count", { count: selectedIds.size })}</>
               )}
             </Button>
           </div>

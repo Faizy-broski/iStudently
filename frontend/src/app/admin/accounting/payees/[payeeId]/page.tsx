@@ -89,7 +89,7 @@ export default function PayeeDetailPage() {
     const handleSave = async () => {
         if (!campusId) return
         if (!formData.name.trim()) {
-            toast.error('Name is required')
+            toast.error('الاسم مطلوب')
             return
         }
 
@@ -99,10 +99,10 @@ export default function PayeeDetailPage() {
                 campus_id: campusId,
                 ...formData
             })
-            toast.success('Payee updated successfully')
+            toast.success('تم تحديث المستفيد بنجاح')
             mutatePayee()
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : 'Failed to update payee'
+            const errorMessage = error instanceof Error ? error.message : 'فشل تحديث المستفيد'
             toast.error(errorMessage)
         } finally {
             setSaving(false)
@@ -111,15 +111,15 @@ export default function PayeeDetailPage() {
 
     const handleDelete = async () => {
         if (!campusId) return
-        if (!confirm('Are you sure you want to delete this payee?')) return
+        if (!confirm('هل أنت متأكد من حذف هذا المستفيد؟')) return
 
         setDeleting(true)
         try {
             await accountingApi.deletePayee(campusId, payeeId)
-            toast.success('Payee deleted successfully')
+            toast.success('تم حذف المستفيد بنجاح')
             router.push('/admin/accounting/payees')
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : 'Failed to delete payee'
+            const errorMessage = error instanceof Error ? error.message : 'فشل حذف المستفيد'
             toast.error(errorMessage)
         } finally {
             setDeleting(false)
@@ -129,7 +129,7 @@ export default function PayeeDetailPage() {
     const handleAddPayment = async () => {
         if (!campusId) return
         if (!paymentData.amount || parseFloat(paymentData.amount) <= 0) {
-            toast.error('Amount is required')
+            toast.error('المبلغ مطلوب')
             return
         }
 
@@ -142,7 +142,7 @@ export default function PayeeDetailPage() {
                 description: paymentData.description,
                 reference_number: paymentData.reference_number
             })
-            toast.success('Payment added successfully')
+            toast.success('تمت إضافة الدفعة بنجاح')
             setPaymentData({
                 amount: '',
                 payment_date: new Date().toISOString().split('T')[0],
@@ -152,7 +152,7 @@ export default function PayeeDetailPage() {
             setShowPaymentForm(false)
             mutatePayments()
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : 'Failed to add payment'
+            const errorMessage = error instanceof Error ? error.message : 'فشل إضافة الدفعة'
             toast.error(errorMessage)
         } finally {
             setSavingPayment(false)
@@ -161,14 +161,14 @@ export default function PayeeDetailPage() {
 
     const handleDeletePayment = async (paymentId: string) => {
         if (!campusId) return
-        if (!confirm('Are you sure you want to delete this payment?')) return
+        if (!confirm('هل أنت متأكد من حذف هذه الدفعة؟')) return
 
         try {
             await accountingApi.deletePayeePayment(campusId, paymentId)
-            toast.success('Payment deleted')
+            toast.success('تم حذف الدفعة')
             mutatePayments()
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : 'Failed to delete payment'
+            const errorMessage = error instanceof Error ? error.message : 'فشل حذف الدفعة'
             toast.error(errorMessage)
         }
     }
@@ -199,7 +199,7 @@ export default function PayeeDetailPage() {
             <div className="container mx-auto py-6">
                 <Card>
                     <CardContent className="pt-6">
-                        <p className="text-muted-foreground text-center">Please select a campus.</p>
+                        <p className="text-muted-foreground text-center">يرجى اختيار فرع.</p>
                     </CardContent>
                 </Card>
             </div>
@@ -211,7 +211,7 @@ export default function PayeeDetailPage() {
             <div className="container mx-auto py-6">
                 <Card>
                     <CardContent className="pt-6">
-                        <p className="text-muted-foreground text-center">Payee not found.</p>
+                        <p className="text-muted-foreground text-center">المستفيد غير موجود.</p>
                     </CardContent>
                 </Card>
             </div>
@@ -224,7 +224,7 @@ export default function PayeeDetailPage() {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <IconUsers className="h-8 w-8 text-[#3d8fb5]" />
-                    <h1 className="text-3xl font-bold tracking-tight">Payees</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">المستفيدون</h1>
                 </div>
                 <div className="flex items-center gap-2">
                     <Button 
@@ -232,14 +232,14 @@ export default function PayeeDetailPage() {
                         onClick={handleDelete}
                         disabled={deleting}
                     >
-                        {deleting ? 'DELETING...' : 'DELETE'}
+                        {deleting ? 'جارٍ الحذف...' : 'حذف'}
                     </Button>
                     <Button 
                         onClick={handleSave}
                         disabled={saving}
                         className="bg-[#3d8fb5] hover:bg-[#357ea0]"
                     >
-                        {saving ? 'SAVING...' : 'SAVE'}
+                        {saving ? 'جارٍ الحفظ...' : 'حفظ'}
                     </Button>
                 </div>
             </div>
@@ -247,7 +247,7 @@ export default function PayeeDetailPage() {
             {/* Back Link */}
             <div className="flex items-center gap-2">
                 <Link href="/admin/accounting/payees" className="text-[#3d8fb5] hover:underline">
-                    « Back
+                    « رجوع
                 </Link>
                 <span className="font-medium">{payee.name}</span>
             </div>
@@ -265,23 +265,23 @@ export default function PayeeDetailPage() {
                                     onChange={(e) => handleChange('name', e.target.value)}
                                     className="border-0 border-b rounded-none focus-visible:ring-0 px-0 hidden"
                                 />
-                                <Label className="text-[#3d8fb5] text-xs block">Name</Label>
+                                <Label className="text-[#3d8fb5] text-xs block">الاسم</Label>
                             </div>
                             <div>
                                 <span className="text-sm underline">{formData.phone || '-'}</span>
-                                <Label className="text-[#3d8fb5] text-xs block">Phone Number</Label>
+                                <Label className="text-[#3d8fb5] text-xs block">رقم الهاتف</Label>
                             </div>
                             <div>
                                 <span className="text-sm underline">{formData.bank || '-'}</span>
-                                <Label className="text-[#3d8fb5] text-xs block">Bank</Label>
+                                <Label className="text-[#3d8fb5] text-xs block">البنك</Label>
                             </div>
                             <div>
                                 <span className="text-sm underline">{formData.swift_iban || '-'}</span>
-                                <Label className="text-[#3d8fb5] text-xs block">SWIFT or IBAN</Label>
+                                <Label className="text-[#3d8fb5] text-xs block">SWIFT أو IBAN</Label>
                             </div>
                             <div className="pt-2">
-                                <span className="text-sm underline">{formData.rollover ? 'Yes' : 'No'}</span>
-                                <span className="text-sm ml-1">Rollover</span>
+                                <span className="text-sm underline">{formData.rollover ? 'نعم' : 'لا'}</span>
+                                <span className="text-sm ml-1">ترحيل</span>
                             </div>
                         </div>
 
@@ -289,19 +289,19 @@ export default function PayeeDetailPage() {
                         <div className="space-y-4">
                             <div>
                                 <span className="text-sm underline">{formData.email || '-'}</span>
-                                <Label className="text-[#3d8fb5] text-xs block">Email Address</Label>
+                                <Label className="text-[#3d8fb5] text-xs block">البريد الإلكتروني</Label>
                             </div>
                             <div>
                                 <span className="text-sm underline">{formData.address || '-'}</span>
-                                <Label className="text-[#3d8fb5] text-xs block">Address</Label>
+                                <Label className="text-[#3d8fb5] text-xs block">العنوان</Label>
                             </div>
                             <div>
                                 <span className="text-sm underline">{formData.account_number || '-'}</span>
-                                <Label className="text-[#3d8fb5] text-xs block">Account Number</Label>
+                                <Label className="text-[#3d8fb5] text-xs block">رقم الحساب</Label>
                             </div>
                             <div>
                                 <span className="text-sm underline">{formData.bsb_bic || '-'}</span>
-                                <Label className="text-[#3d8fb5] text-xs block">BSB or BIC</Label>
+                                <Label className="text-[#3d8fb5] text-xs block">BSB أو BIC</Label>
                             </div>
                         </div>
                     </div>
@@ -311,33 +311,33 @@ export default function PayeeDetailPage() {
             {/* Edit Form (Hidden by default, toggle to show) */}
             <Card>
                 <CardContent className="pt-6">
-                    <h3 className="font-medium mb-4">Edit Details</h3>
+                    <h3 className="font-medium mb-4">تعديل التفاصيل</h3>
                     <div className="grid grid-cols-2 gap-x-12 gap-y-4">
                         {/* Left Column */}
                         <div className="space-y-4">
                             <div>
-                                <Label className="text-[#3d8fb5] text-xs">Name</Label>
+                                <Label className="text-[#3d8fb5] text-xs">الاسم</Label>
                                 <Input
                                     value={formData.name}
                                     onChange={(e) => handleChange('name', e.target.value)}
                                 />
                             </div>
                             <div>
-                                <Label className="text-[#3d8fb5] text-xs">Phone Number</Label>
+                                <Label className="text-[#3d8fb5] text-xs">رقم الهاتف</Label>
                                 <Input
                                     value={formData.phone}
                                     onChange={(e) => handleChange('phone', e.target.value)}
                                 />
                             </div>
                             <div>
-                                <Label className="text-[#3d8fb5] text-xs">Bank</Label>
+                                <Label className="text-[#3d8fb5] text-xs">البنك</Label>
                                 <Input
                                     value={formData.bank}
                                     onChange={(e) => handleChange('bank', e.target.value)}
                                 />
                             </div>
                             <div>
-                                <Label className="text-[#3d8fb5] text-xs">SWIFT or IBAN</Label>
+                                <Label className="text-[#3d8fb5] text-xs">SWIFT أو IBAN</Label>
                                 <Input
                                     value={formData.swift_iban}
                                     onChange={(e) => handleChange('swift_iban', e.target.value)}
@@ -350,7 +350,7 @@ export default function PayeeDetailPage() {
                                     onCheckedChange={(checked) => handleChange('rollover', checked === true)}
                                 />
                                 <label htmlFor="rollover" className="text-sm cursor-pointer">
-                                    Rollover
+                                    ترحيل
                                 </label>
                             </div>
                         </div>
@@ -358,7 +358,7 @@ export default function PayeeDetailPage() {
                         {/* Right Column */}
                         <div className="space-y-4">
                             <div>
-                                <Label className="text-[#3d8fb5] text-xs">Email Address</Label>
+                                <Label className="text-[#3d8fb5] text-xs">البريد الإلكتروني</Label>
                                 <Input
                                     type="email"
                                     value={formData.email}
@@ -366,21 +366,21 @@ export default function PayeeDetailPage() {
                                 />
                             </div>
                             <div>
-                                <Label className="text-[#3d8fb5] text-xs">Address</Label>
+                                <Label className="text-[#3d8fb5] text-xs">العنوان</Label>
                                 <Input
                                     value={formData.address}
                                     onChange={(e) => handleChange('address', e.target.value)}
                                 />
                             </div>
                             <div>
-                                <Label className="text-[#3d8fb5] text-xs">Account Number</Label>
+                                <Label className="text-[#3d8fb5] text-xs">رقم الحساب</Label>
                                 <Input
                                     value={formData.account_number}
                                     onChange={(e) => handleChange('account_number', e.target.value)}
                                 />
                             </div>
                             <div>
-                                <Label className="text-[#3d8fb5] text-xs">BSB or BIC</Label>
+                                <Label className="text-[#3d8fb5] text-xs">BSB أو BIC</Label>
                                 <Input
                                     value={formData.bsb_bic}
                                     onChange={(e) => handleChange('bsb_bic', e.target.value)}
@@ -398,7 +398,7 @@ export default function PayeeDetailPage() {
                     disabled={saving}
                     className="bg-[#3d8fb5] hover:bg-[#357ea0] px-8"
                 >
-                    {saving ? 'SAVING...' : 'SAVE'}
+                    {saving ? 'جارٍ الحفظ...' : 'حفظ'}
                 </Button>
             </div>
 
@@ -408,28 +408,28 @@ export default function PayeeDetailPage() {
                     href="#payments"
                     className="text-[#3d8fb5] hover:underline"
                 >
-                    Payments
+                    المدفوعات
                 </Link>
             </div>
 
             <Card id="payments">
                 <CardContent className="pt-6">
-                    <h3 className="font-medium mb-4">Payments History</h3>
+                    <h3 className="font-medium mb-4">سجل المدفوعات</h3>
                     
                     {loadingPayments ? (
                         <div className="flex items-center justify-center py-4">
                             <IconLoader className="h-5 w-5 animate-spin text-muted-foreground" />
                         </div>
                     ) : payments.length === 0 ? (
-                        <p className="text-muted-foreground text-center py-4">No payments recorded.</p>
+                        <p className="text-muted-foreground text-center py-4">لا توجد مدفوعات مسجلة.</p>
                     ) : (
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="text-[#3d8fb5]">DATE</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">DESCRIPTION</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">REFERENCE</TableHead>
-                                    <TableHead className="text-[#3d8fb5] text-right">AMOUNT</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">التاريخ</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">الوصف</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">المرجع</TableHead>
+                                    <TableHead className="text-[#3d8fb5] text-right">المبلغ</TableHead>
                                     <TableHead></TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -452,7 +452,7 @@ export default function PayeeDetailPage() {
                                     </TableRow>
                                 ))}
                                 <TableRow className="font-semibold bg-muted/50">
-                                    <TableCell colSpan={3}>Total</TableCell>
+                                    <TableCell colSpan={3}>الإجمالي</TableCell>
                                     <TableCell className="text-right">{formatCurrency(totalPayments)}</TableCell>
                                     <TableCell></TableCell>
                                 </TableRow>
@@ -463,10 +463,10 @@ export default function PayeeDetailPage() {
                     {/* Add Payment Form */}
                     {showPaymentForm ? (
                         <div className="mt-4 p-4 border rounded-lg space-y-4">
-                            <h4 className="font-medium">Add Payment</h4>
+                            <h4 className="font-medium">إضافة دفعة</h4>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <Label>Amount</Label>
+                                    <Label>المبلغ</Label>
                                     <Input
                                         type="number"
                                         step="0.01"
@@ -477,7 +477,7 @@ export default function PayeeDetailPage() {
                                     />
                                 </div>
                                 <div>
-                                    <Label>Date</Label>
+                                    <Label>التاريخ</Label>
                                     <Input
                                         type="date"
                                         value={paymentData.payment_date}
@@ -485,19 +485,19 @@ export default function PayeeDetailPage() {
                                     />
                                 </div>
                                 <div>
-                                    <Label>Description</Label>
+                                    <Label>الوصف</Label>
                                     <Input
                                         value={paymentData.description}
                                         onChange={(e) => setPaymentData(prev => ({ ...prev, description: e.target.value }))}
-                                        placeholder="Optional description"
+                                        placeholder="وصف اختياري"
                                     />
                                 </div>
                                 <div>
-                                    <Label>Reference Number</Label>
+                                    <Label>رقم المرجع</Label>
                                     <Input
                                         value={paymentData.reference_number}
                                         onChange={(e) => setPaymentData(prev => ({ ...prev, reference_number: e.target.value }))}
-                                        placeholder="Optional reference"
+                                        placeholder="مرجع اختياري"
                                     />
                                 </div>
                             </div>
@@ -507,13 +507,13 @@ export default function PayeeDetailPage() {
                                     disabled={savingPayment}
                                     className="bg-[#3d8fb5] hover:bg-[#357ea0]"
                                 >
-                                    {savingPayment ? 'Saving...' : 'Add Payment'}
+                                    {savingPayment ? 'جارٍ الحفظ...' : 'إضافة دفعة'}
                                 </Button>
                                 <Button 
                                     variant="outline"
                                     onClick={() => setShowPaymentForm(false)}
                                 >
-                                    Cancel
+                                    إلغاء
                                 </Button>
                             </div>
                         </div>
@@ -524,7 +524,7 @@ export default function PayeeDetailPage() {
                             className="mt-4 text-[#3d8fb5]"
                         >
                             <IconPlus className="h-4 w-4 mr-2" />
-                            Add Payment
+                            إضافة دفعة
                         </Button>
                     )}
                 </CardContent>

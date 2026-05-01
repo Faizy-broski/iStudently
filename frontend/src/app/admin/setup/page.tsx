@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/context/AuthContext"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -17,6 +18,7 @@ import { createAcademicYear } from "@/lib/api/academics"
 type Step = "welcome" | "campus" | "academic-year" | "complete"
 
 export default function SetupPage() {
+    const t = useTranslations("common")
     const router = useRouter()
     const { profile, loading: authLoading } = useAuth()
 
@@ -136,7 +138,7 @@ export default function SetupPage() {
             <div className="flex items-center justify-center min-h-[60vh]">
                 <div className="text-center space-y-4">
                     <Loader2 className="h-10 w-10 animate-spin mx-auto text-[#022172]" />
-                    <p className="text-gray-600">Loading...</p>
+                    <p className="text-gray-600">{t("loading")}</p>
                 </div>
             </div>
         )

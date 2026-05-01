@@ -30,6 +30,8 @@ import { getSchoolSettings } from "@/lib/api/school-settings";
 import { useTranslations } from "next-intl";
 
 export default function MassCreateAssignmentsPage() {
+  const t = useTranslations("school.grades_module.mass_create_assignments");
+  const tc = useTranslations("school.grades_module.common");
   useAuth(); // ensure authenticated
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
@@ -95,7 +97,7 @@ export default function MassCreateAssignmentsPage() {
         }
       }
     } catch {
-      toast.error("Failed to load assignment types");
+      toast.error(t("toast_load_types_failed"));
     } finally {
       setLoadingTypes(false);
     }
@@ -110,7 +112,7 @@ export default function MassCreateAssignmentsPage() {
         setCoursePeriods(res.data);
       }
     } catch {
-      toast.error("Failed to load course periods");
+      toast.error(t("toast_load_course_periods_failed"));
     } finally {
       setLoadingCps(false);
     }
@@ -145,16 +147,16 @@ export default function MassCreateAssignmentsPage() {
         campus_id: selectedCampus?.id,
       });
       if (res.success && res.data) {
-        toast.success("Assignment type created");
+        toast.success(t("toast_type_created"));
         setAssignmentTypes((prev) => [...prev, res.data!]);
         setSelectedTypeId(res.data.id);
         setNewTypeName("");
         setShowNewType(false);
       } else {
-        toast.error(res.error || "Failed to create assignment type");
+        toast.error(res.error || t("toast_type_create_failed"));
       }
     } catch {
-      toast.error("Failed to create assignment type");
+      toast.error(t("toast_type_create_failed"));
     } finally {
       setSavingType(false);
     }
@@ -213,7 +215,7 @@ export default function MassCreateAssignmentsPage() {
       if (res.success) {
         const count = res.data?.created_count || selectedCpIds.size;
         toast.success(
-          `Assignment created for ${count} course period${count !== 1 ? "s" : ""}`
+          t("toast_assignment_created_count", { count })
         );
         // Reset form
         setTitle("");
@@ -225,10 +227,10 @@ export default function MassCreateAssignmentsPage() {
         setEnableSubmission(false);
         setSelectedCpIds(new Set());
       } else {
-        toast.error(res.error || "Failed to create assignments");
+        toast.error(res.error || t("toast_create_failed"));
       }
     } catch {
-      toast.error("Failed to create assignments");
+      toast.error(t("toast_create_failed"));
     } finally {
       setCreating(false);
     }
@@ -236,20 +238,20 @@ export default function MassCreateAssignmentsPage() {
 
   // ── Get MP name by id ─────────────────────────────────────────
   const getMpName = (mpId?: string | null) => {
-    if (!mpId) return "—";
+    if (!mpId) return tc("na");
     const mp = markingPeriods.find((m) => m.id === mpId);
-    return mp ? mp.title : "—";
+    return mp ? mp.title : tc("na");
   };
 
   // ── Get teacher name ──────────────────────────────────────────
   const getTeacherName = (cp: CoursePeriod) => {
-    if (!cp.teacher) return "—";
-    return `${cp.teacher.first_name || ""} ${cp.teacher.last_name || ""}`.trim() || "—";
+    if (!cp.teacher) return tc("na");
+    return `${cp.teacher.first_name || ""} ${cp.teacher.last_name || ""}`.trim() || tc("na");
   };
 
   // ── Get course title ──────────────────────────────────────────
   const getCourseTitle = (cp: CoursePeriod) =>
-    cp.course?.title || "Unknown Course";
+    cp.course?.title || t("unknown_course");
 
   const selectedType = assignmentTypes.find((t) => t.id === selectedTypeId);
 
@@ -260,7 +262,7 @@ export default function MassCreateAssignmentsPage() {
         <div>
           <h1 className="text-3xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent flex items-center gap-2">
             <ClipboardList className="h-8 w-8 text-[#57A3CC]" />
-            New Assignment
+            {t("title")}
           </h1>
           <p className="text-muted-foreground mt-2">
             {t("subtitle")}
@@ -302,7 +304,7 @@ export default function MassCreateAssignmentsPage() {
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Assignment title"
+              placeholder={t("assignment_title_placeholder")}
             />
           </div>
 
@@ -314,7 +316,7 @@ export default function MassCreateAssignmentsPage() {
                 variant="secondary"
                 className="text-sm px-3 py-1"
               >
-                {selectedType?.title || "None selected"}
+                {selectedType?.title || t("none_selected")}
               </Badge>
             </div>
           </div>
@@ -323,7 +325,7 @@ export default function MassCreateAssignmentsPage() {
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="points">
-                Points <span className="text-destructive">*</span>
+                {t("points")} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="points"
@@ -332,7 +334,7 @@ export default function MassCreateAssignmentsPage() {
                 step="1"
                 value={points}
                 onChange={(e) => setPoints(e.target.value)}
-                placeholder="100"
+                placeholder={t("points_placeholder")}
                 className={pointsOverCap ? "border-destructive focus-visible:ring-destructive" : ""}
               />
               {pointsOverCap && (
@@ -386,7 +388,7 @@ export default function MassCreateAssignmentsPage() {
             <div className="space-y-1.5">
               <Label htmlFor="assignedDate" className="flex items-center gap-1">
                 <Calendar className="h-3.5 w-3.5" />
-                Assigned Date
+                {t("assigned_date")}
               </Label>
               <Input
                 id="assignedDate"
@@ -398,7 +400,7 @@ export default function MassCreateAssignmentsPage() {
             <div className="space-y-1.5">
               <Label htmlFor="dueDate" className="flex items-center gap-1">
                 <Calendar className="h-3.5 w-3.5" />
-                Due Date
+                {t("due_date")}
               </Label>
               <Input
                 id="dueDate"
@@ -420,7 +422,7 @@ export default function MassCreateAssignmentsPage() {
               htmlFor="enableSubmission"
               className="cursor-pointer font-normal"
             >
-              Enable Assignment Submission
+              {t("enable_submission")}
             </Label>
           </div>
         </CardContent>
@@ -438,7 +440,7 @@ export default function MassCreateAssignmentsPage() {
               <button
                 className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-[#0369a1] transition-colors"
                 onClick={() => setShowNewType(!showNewType)}
-                title="Add assignment type"
+                title={t("add_assignment_type")}
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -462,7 +464,7 @@ export default function MassCreateAssignmentsPage() {
                   {savingType ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
                   ) : (
-                    "Add"
+                    tc("add")
                   )}
                 </Button>
               </div>
@@ -478,7 +480,7 @@ export default function MassCreateAssignmentsPage() {
               </div>
             ) : assignmentTypes.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
-                No assignment types. Click + to create one.
+                {t("no_assignment_types")}
               </p>
             ) : (
               <div className="space-y-1">
@@ -515,7 +517,7 @@ export default function MassCreateAssignmentsPage() {
               </div>
             ) : coursePeriods.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">
-                No course periods found for this campus.
+                {t("no_course_periods")}
               </p>
             ) : (
               <div className="overflow-x-auto">
@@ -533,13 +535,13 @@ export default function MassCreateAssignmentsPage() {
                         />
                       </th>
                       <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2">
-                        Course
+                        {t("course")}
                       </th>
                       <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2">
-                        Period Days - Short Name - Teacher
+                        {t("period_days_short_name_teacher")}
                       </th>
                       <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2">
-                        Marking Period
+                        {t("marking_period")}
                       </th>
                     </tr>
                   </thead>
@@ -562,8 +564,8 @@ export default function MassCreateAssignmentsPage() {
                           {getCourseTitle(cp)}
                         </td>
                         <td className="py-2.5 px-2 text-sm text-muted-foreground">
-                          {cp.room || "—"} -{" "}
-                          {cp.course?.short_name || "—"} -{" "}
+                          {cp.room || tc("na")} -{" "}
+                          {cp.course?.short_name || tc("na")} -{" "}
                           {getTeacherName(cp)}
                         </td>
                         <td className="py-2.5 px-2 text-sm">

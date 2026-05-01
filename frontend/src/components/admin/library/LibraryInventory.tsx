@@ -5,12 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, BookOpen, Search, Layers, Barcode, Users, FileText, AlertTriangle, CheckCircle, Zap, Upload, ImageIcon } from "lucide-react";
+import { Plus, BookOpen, Search, Layers, Barcode, Users, FileText, AlertTriangle, CheckCircle, Zap, Upload, ImageIcon, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { getBooks, type Book } from "@/lib/api/library";
 import { LibraryCategory } from "@/types";
 import { AddBookDialog } from "./AddBookDialog";
+import { EditBookDialog } from "./EditBookDialog";
 import { AddCopiesDialog } from "./AddCopiesDialog";
 import { IssueBookDialog } from "./IssueBookDialog";
 import { ReturnBookDialog } from "./ReturnBookDialog";
@@ -19,8 +20,11 @@ import { CategorySidebar } from "./CategorySidebar";
 import { QuickLoanDialog } from "./QuickLoanDialog";
 import { UploadDocumentDialog } from "./UploadDocumentDialog";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 export function LibraryInventory() {
+  const t = useTranslations("admin.library.inventory");
+  const tCommon = useTranslations("common");
   const { user } = useAuth();
   const [books, setBooks] = useState<Book[]>([]);
   const [filteredBooks, setFilteredBooks] = useState<Book[]>([]);
@@ -32,6 +36,7 @@ export function LibraryInventory() {
 
   // Modal states
   const [showAddBookDialog, setShowAddBookDialog] = useState(false);
+  const [showEditBookDialog, setShowEditBookDialog] = useState(false);
   const [showAddCopiesDialog, setShowAddCopiesDialog] = useState(false);
   const [showIssueBookDialog, setShowIssueBookDialog] = useState(false);
   const [showReturnBookDialog, setShowReturnBookDialog] = useState(false);
@@ -77,11 +82,11 @@ export function LibraryInventory() {
       if (response.success && response.data) {
         setBooks(response.data);
       } else {
-        toast.error(response.error || "Failed to load books");
+        toast.error(response.error || t("toast.load_failed"));
       }
     } catch (error) {
       console.error("Error loading books:", error);
-      toast.error("Failed to load books");
+      toast.error(t("toast.load_failed"));
     } finally {
       setIsLoading(false);
     }
@@ -90,6 +95,15 @@ export function LibraryInventory() {
   const handleBookAdded = () => {
     loadBooks();
     setShowAddBookDialog(false);
+  };
+
+  const handleBookUpdated = () => {
+    loadBooks();
+  };
+
+  const openEditBook = (book: Book) => {
+    setSelectedBook(book);
+    setShowEditBookDialog(true);
   };
 
   const handleCopiesAdded = () => {
@@ -172,10 +186,10 @@ export function LibraryInventory() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent">
-                Library Inventory
+                {t("title")}
               </h1>
               <p className="text-sm md:text-base text-muted-foreground mt-2">
-                Manage books, copies, and circulation
+                {t("subtitle")}
               </p>
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -185,7 +199,7 @@ export function LibraryInventory() {
                 className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400"
               >
                 <Zap className="mr-2 h-4 w-4" />
-                Quick Loan
+                {t("actions.quick_loan")}
               </Button>
               <Button
                 onClick={() => setShowUploadDocumentDialog(true)}
@@ -193,11 +207,11 @@ export function LibraryInventory() {
                 className="border-[#57A3CC] text-[#022172] hover:bg-[#57A3CC]/10"
               >
                 <Upload className="mr-2 h-4 w-4" />
-                Upload Document
+                {t("actions.upload_document")}
               </Button>
               <Button onClick={() => setShowAddBookDialog(true)} className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white hover:opacity-90">
                 <Plus className="mr-2 h-4 w-4" />
-                Add Book
+                {t("actions.add_book")}
               </Button>
             </div>
           </div>
@@ -209,7 +223,7 @@ export function LibraryInventory() {
                 <Search className="h-5 w-5 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="Search by title, author, ISBN, reference..."
+                  placeholder={t("search_placeholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="flex-1"
@@ -223,7 +237,7 @@ export function LibraryInventory() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BookOpen className="h-5 w-5" />
-                Documents ({filteredBooks.length})
+                {t("documents_count", { count: filteredBooks.length })}
                 {selectedCategoryId && (
                   <Badge variant="secondary" className="ml-2 text-xs">
                     {getCategoryName(selectedCategoryId)}
@@ -234,27 +248,27 @@ export function LibraryInventory() {
             <CardContent className="p-0">
               {isLoading ? (
                 <div className="p-8 text-center text-muted-foreground">
-                  Loading books...
+                  {t("loading_books")}
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-muted">
                     <thead>
                       <tr className="bg-muted">
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-12">Cover</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Title</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Author</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ref / ISBN</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Copies</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-12">{t("table.cover")}</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("table.title")}</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("table.author")}</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("table.ref_isbn")}</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("table.copies")}</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{tCommon("status")}</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">{tCommon("actions")}</th>
                       </tr>
                     </thead>
                     <tbody className="bg-background divide-y divide-muted">
                       {filteredBooks.length === 0 ? (
                         <tr>
                           <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                            {searchQuery ? "No books found matching your search." : "No books in the library yet."}
+                            {searchQuery ? t("no_books_search") : t("no_books")}
                           </td>
                         </tr>
                       ) : (
@@ -298,7 +312,7 @@ export function LibraryInventory() {
                                 {book.author}
                               </td>
                               <td className="px-4 py-4 whitespace-nowrap text-sm font-mono text-muted-foreground">
-                                {book.reference || book.isbn || "N/A"}
+                                {book.reference || book.isbn || tCommon("na")}
                               </td>
                               <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                                 {book.available_copies} / {book.total_copies}
@@ -317,10 +331,19 @@ export function LibraryInventory() {
                                   ) : (
                                     <AlertTriangle className="h-3 w-3 mr-1" />
                                   )}
-                                  {book.available_copies > 0 ? "Available" : "Unavailable"}
+                                  {book.available_copies > 0 ? t("status.available") : t("status.unavailable")}
                                 </Badge>
                               </td>
                               <td className="px-4 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => openEditBook(book)}
+                                  className="h-8"
+                                >
+                                  <Pencil className="h-3 w-3 mr-1" />
+                                  {tCommon("edit")}
+                                </Button>
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -328,7 +351,7 @@ export function LibraryInventory() {
                                   className="h-8"
                                 >
                                   <Layers className="h-3 w-3 mr-1" />
-                                  Add Copies
+                                  {t("actions.add_copies")}
                                 </Button>
                                 <Button
                                   size="sm"
@@ -338,7 +361,7 @@ export function LibraryInventory() {
                                   className="h-8"
                                 >
                                   <Barcode className="h-3 w-3 mr-1" />
-                                  Issue
+                                  {t("actions.issue")}
                                 </Button>
                                 <Button
                                   size="sm"
@@ -347,7 +370,7 @@ export function LibraryInventory() {
                                   className="h-8"
                                 >
                                   <FileText className="h-3 w-3 mr-1" />
-                                  Return
+                                  {t("actions.return")}
                                 </Button>
                                 <Button
                                   size="sm"
@@ -356,7 +379,7 @@ export function LibraryInventory() {
                                   className="h-8"
                                 >
                                   <Users className="h-3 w-3 mr-1" />
-                                  Lost
+                                  {t("actions.lost")}
                                 </Button>
                               </td>
                             </tr>
@@ -377,6 +400,13 @@ export function LibraryInventory() {
         open={showAddBookDialog}
         onOpenChange={setShowAddBookDialog}
         onBookAdded={handleBookAdded}
+      />
+
+      <EditBookDialog
+        open={showEditBookDialog}
+        onOpenChange={setShowEditBookDialog}
+        book={selectedBook}
+        onBookUpdated={handleBookUpdated}
       />
 
       <AddCopiesDialog

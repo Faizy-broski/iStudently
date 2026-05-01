@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/context/AuthContext"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -58,14 +59,15 @@ type SchoolException = {
 }
 
 const RECORD_TYPE_OPTIONS = [
-  { value: "ENTRY_AND_EXIT", label: "Entry and Exit" },
-  { value: "ENTRY", label: "Entry" },
-  { value: "EXIT", label: "Exit" },
+  { value: "ENTRY_AND_EXIT", key: "type_entry_exit" },
+  { value: "ENTRY", key: "type_entry" },
+  { value: "EXIT", key: "type_exit" },
 ]
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function ExceptionsPage() {
+  const t = useTranslations("school.entry_exit.exceptions")
   const { profile } = useAuth()
   const schoolId = profile?.school_id || ""
 
@@ -110,11 +112,11 @@ export default function ExceptionsPage() {
       })
       setExceptions(result as SchoolException[])
     } catch (err: unknown) {
-      toast.error((err as Error).message || "Failed to load exceptions")
+      toast.error((err as Error).message || t("msg_error_load"))
     } finally {
       setLoading(false)
     }
-  }, [schoolId, fromDate, toDate, filterCheckpoint, filterType])
+  }, [schoolId, fromDate, toDate, filterCheckpoint, filterType, t])
 
   async function handleDelete() {
     if (!deleteId) return
@@ -123,9 +125,9 @@ export default function ExceptionsPage() {
       await api.deleteExceptionById(deleteId)
       setExceptions(prev => prev.filter(e => e.id !== deleteId))
       setDeleteId(null)
-      toast.success("Exception removed")
+      toast.success(t("msg_success_removed"))
     } catch (err: unknown) {
-      toast.error((err as Error).message || "Failed to delete exception")
+      toast.error((err as Error).message || t("msg_error_delete"))
     } finally {
       setDeleting(false)
     }
@@ -140,9 +142,9 @@ export default function ExceptionsPage() {
   })
 
   const rtLabel = (rt: string) => {
-    if (rt === "ENTRY") return "Entry"
-    if (rt === "EXIT") return "Exit"
-    return "Entry & Exit"
+    if (rt === "ENTRY") return t("type_entry")
+    if (rt === "EXIT") return t("type_exit")
+    return t("type_entry_exit")
   }
 
   return (
@@ -152,7 +154,7 @@ export default function ExceptionsPage() {
         <div className="h-9 w-9 rounded-full bg-red-500 flex items-center justify-center shrink-0">
           <ShieldX className="h-5 w-5 text-white" />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight">Student – Exceptions</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t("page_title")}</h1>
       </div>
 
       {/* Tabs */}
@@ -165,7 +167,7 @@ export default function ExceptionsPage() {
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
-          Students
+          {t("tab_students")}
         </button>
         <button
           onClick={() => setActiveTab("STAFF")}
@@ -175,7 +177,7 @@ export default function ExceptionsPage() {
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
-          Users
+          {t("tab_users")}
         </button>
       </div>
 
@@ -184,44 +186,44 @@ export default function ExceptionsPage() {
         <CardContent className="p-4">
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">From Date</Label>
+              <Label className="text-xs">{t("label_from_date")}</Label>
               <Input type="date" className="h-8 w-36 text-xs" value={fromDate}
                 onChange={e => setFromDate(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Time</Label>
+              <Label className="text-xs">{t("label_time")}</Label>
               <Input type="time" className="h-8 w-28 text-xs" value={fromTime}
                 onChange={e => setFromTime(e.target.value)} placeholder="HH:MM" />
             </div>
 
-            <span className="text-muted-foreground text-sm self-end mb-1">- To</span>
+            <span className="text-muted-foreground text-sm self-end mb-1">- {t("label_to")}</span>
 
             <div className="space-y-1">
-              <Label className="text-xs">To Date</Label>
+              <Label className="text-xs">{t("label_to_date")}</Label>
               <Input type="date" className="h-8 w-36 text-xs" value={toDate}
                 min={fromDate} onChange={e => setToDate(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Time</Label>
+              <Label className="text-xs">{t("label_time")}</Label>
               <Input type="time" className="h-8 w-28 text-xs" value={toTime}
                 onChange={e => setToTime(e.target.value)} placeholder="HH:MM" />
             </div>
 
             <Button className="h-8 px-5 self-end" onClick={search} disabled={loading}>
-              {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "GO"}
+              {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("btn_go")}
             </Button>
           </div>
 
           {/* Second filter row */}
           <div className="flex flex-wrap items-center gap-4 mt-3">
             <div className="flex items-center gap-2">
-              <Label className="text-xs whitespace-nowrap">Checkpoint:</Label>
+              <Label className="text-xs whitespace-nowrap">{t("label_checkpoint")}</Label>
               <Select value={filterCheckpoint} onValueChange={setFilterCheckpoint}>
                 <SelectTrigger className="h-8 w-36 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="all">{t("common.all")}</SelectItem>
                   {checkpoints.map(cp => (
                     <SelectItem key={cp.id} value={cp.id}>{cp.name}</SelectItem>
                   ))}
@@ -230,14 +232,14 @@ export default function ExceptionsPage() {
             </div>
 
             <div className="flex items-center gap-2 ml-auto">
-              <Label className="text-xs whitespace-nowrap">Type:</Label>
+              <Label className="text-xs whitespace-nowrap">{t("label_type")}</Label>
               <Select value={filterType} onValueChange={setFilterType}>
                 <SelectTrigger className="h-8 w-36 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {RECORD_TYPE_OPTIONS.map(opt => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    <SelectItem key={opt.value} value={opt.value}>{t(opt.key)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -250,13 +252,13 @@ export default function ExceptionsPage() {
       {hasSearched && (
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground">
-            {loading ? "Searching…" : `${visible.length} exception${visible.length !== 1 ? "s" : ""} found.`}
+            {loading ? t("msg_loading") : t("stat_found", { count: visible.length })}
           </p>
           <div className="relative w-56">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               className="pl-8 h-8 text-xs"
-              placeholder="Search name or ID…"
+              placeholder={t("toolbar_search")}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
             />
@@ -268,7 +270,7 @@ export default function ExceptionsPage() {
       {!hasSearched ? (
         <Card className="border-0 shadow-sm">
           <CardContent className="py-14 text-center text-sm text-muted-foreground">
-            Use the filters above and press <strong>GO</strong> to search exceptions.
+            {t("msg_filter_prompt")}
           </CardContent>
         </Card>
       ) : loading ? (
@@ -280,7 +282,7 @@ export default function ExceptionsPage() {
       ) : visible.length === 0 ? (
         <Card className="border-0 shadow-sm">
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            No exceptions were found.
+            {t("msg_no_data")}
           </CardContent>
         </Card>
       ) : (
@@ -288,12 +290,12 @@ export default function ExceptionsPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/40">
-                <TableHead className="text-xs uppercase font-semibold">Student / User</TableHead>
-                <TableHead className="text-xs uppercase font-semibold">Checkpoint</TableHead>
-                <TableHead className="text-xs uppercase font-semibold">Type</TableHead>
-                <TableHead className="text-xs uppercase font-semibold">From</TableHead>
-                <TableHead className="text-xs uppercase font-semibold">To</TableHead>
-                <TableHead className="text-xs uppercase font-semibold">Reason</TableHead>
+                <TableHead className="text-xs uppercase font-semibold">{t("table_col_person")}</TableHead>
+                <TableHead className="text-xs uppercase font-semibold">{t("table_col_checkpoint")}</TableHead>
+                <TableHead className="text-xs uppercase font-semibold">{t("table_col_type")}</TableHead>
+                <TableHead className="text-xs uppercase font-semibold">{t("table_col_from")}</TableHead>
+                <TableHead className="text-xs uppercase font-semibold">{t("table_col_to")}</TableHead>
+                <TableHead className="text-xs uppercase font-semibold">{t("table_col_reason")}</TableHead>
                 <TableHead className="w-12" />
               </TableRow>
             </TableHeader>
@@ -334,17 +336,17 @@ export default function ExceptionsPage() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-4 w-4" /> Remove Exception?
+              <AlertTriangle className="h-4 w-4" /> {t("dialog_remove_title")}
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            This person will be included in the automatic record again for this period.
+            {t("dialog_remove_desc")}
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteId(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDeleteId(null)}>{t("btn_cancel")}</Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
               {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
-              Remove
+              {t("btn_remove")}
             </Button>
           </DialogFooter>
         </DialogContent>

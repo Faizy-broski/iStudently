@@ -1,6 +1,7 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect, useCallback, useId } from "react"
+import { useTranslations } from "next-intl"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -40,9 +41,9 @@ import type { AutomaticRecord, AutomaticRecordException, Checkpoint } from "@/ty
 // â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0]
-const DAY_LABELS: Record<number, string> = {
-  1: "Monday", 2: "Tuesday", 3: "Wednesday",
-  4: "Thursday", 5: "Friday", 6: "Saturday", 0: "Sunday",
+const DAY_KEYS: Record<number, string> = {
+  1: "day_monday", 2: "day_tuesday", 3: "day_wednesday",
+  4: "day_thursday", 5: "day_friday", 6: "day_saturday", 0: "day_sunday",
 }
 const DEFAULT_DAYS = new Set([1, 2, 3, 4, 5])
 
@@ -134,6 +135,8 @@ function ExceptionsPanel({
   schoolId: string
   userName: string
 }) {
+  const t = useTranslations("school.entry_exit.automatic_records")
+  const commonT = useTranslations("common")
   const [exceptions, setExceptions] = useState<AutomaticRecordException[]>([])
   const [loading, setLoading] = useState(false)
   const [showAdd, setShowAdd] = useState(false)
@@ -157,7 +160,7 @@ function ExceptionsPanel({
   }, [ruleId])
 
   async function handleAdd() {
-    if (!personId || !fromDate || !toDate) { toast.error("Fill all required fields"); return }
+    if (!personId || !fromDate || !toDate) { toast.error(commonT("fill_required_fields")); return }
     if (!ruleId) return
     setSaving(true)
     try {
@@ -174,7 +177,7 @@ function ExceptionsPanel({
       setExceptions(p => [ex, ...p])
       setShowAdd(false)
       setPersonId(""); setFromDate(""); setToDate(""); setReason("")
-      toast.success("Exception added")
+      toast.success(t("msg_success_added_exception"))
     } catch (err: unknown) { toast.error((err as Error).message) }
     finally { setSaving(false) }
   }
@@ -185,23 +188,23 @@ function ExceptionsPanel({
       await api.deleteAutomaticRecordException(ruleId, id)
       setExceptions(p => p.filter(e => e.id !== id))
       setDeleteId(null)
-      toast.success("Exception removed")
+      toast.success(t("msg_success_deleted_exception"))
     } catch (err: unknown) { toast.error((err as Error).message) }
   }
 
   if (!ruleId) {
-    return <p className="text-xs text-muted-foreground italic p-4">Save this rule first to manage exceptions.</p>
+    return <p className="text-xs text-muted-foreground italic p-4">{t("msg_save_first_exceptions")}</p>
   }
 
   return (
     <div className="p-4 space-y-3 bg-muted/20">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium flex items-center gap-1.5 text-muted-foreground">
-          <ShieldCheck className="h-3.5 w-3.5" /> Exceptions for this rule
+          <ShieldCheck className="h-3.5 w-3.5" /> {t("exceptions_panel_title")}
         </p>
         <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
           onClick={() => setShowAdd(v => !v)}>
-          <Plus className="h-3 w-3" /> Add Exception
+          <Plus className="h-3 w-3" /> {t("btn_add_exception")}
         </Button>
       </div>
       {showAdd && (
@@ -209,28 +212,28 @@ function ExceptionsPanel({
           <Select value={personType} onValueChange={v => setPersonType(v as "STUDENT" | "STAFF")}>
             <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="STUDENT">Student</SelectItem>
-              <SelectItem value="STAFF">Staff</SelectItem>
+              <SelectItem value="STUDENT">{t("option_student")}</SelectItem>
+              <SelectItem value="STAFF">{t("option_staff")}</SelectItem>
             </SelectContent>
           </Select>
-          <Input className="h-8 text-xs" placeholder="Person UUID *" value={personId}
+          <Input className="h-8 text-xs" placeholder={t("placeholder_person_uuid")} value={personId}
             onChange={e => setPersonId(e.target.value)} />
           <Input type="date" className="h-8 text-xs" value={fromDate}
             onChange={e => setFromDate(e.target.value)} />
           <Input type="date" className="h-8 text-xs" value={toDate} min={fromDate}
             onChange={e => setToDate(e.target.value)} />
-          <Input className="h-8 text-xs col-span-2 sm:col-span-1" placeholder="Reason (optional)"
+          <Input className="h-8 text-xs col-span-2 sm:col-span-1" placeholder={t("placeholder_reason")}
             value={reason} onChange={e => setReason(e.target.value)} />
           <Button size="sm" className="h-8 text-xs col-span-2 sm:col-span-5 sm:w-fit"
             onClick={handleAdd} disabled={saving}>
-            {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null} Save Exception
+            {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null} {t("btn_save_exception")}
           </Button>
         </div>
       )}
       {loading ? (
-        <p className="text-xs text-muted-foreground">Loadingâ€¦</p>
+        <p className="text-xs text-muted-foreground">{t("msg_loading_exceptions")}</p>
       ) : exceptions.length === 0 ? (
-        <p className="text-xs text-muted-foreground italic">No exceptions configured.</p>
+        <p className="text-xs text-muted-foreground italic">{t("msg_no_exceptions")}</p>
       ) : (
         <div className="space-y-1">
           {exceptions.map(ex => (
@@ -250,11 +253,11 @@ function ExceptionsPanel({
       )}
       <Dialog open={!!deleteId} onOpenChange={open => !open && setDeleteId(null)}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-4 w-4" />Remove Exception?</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">This person will be included in the automatic record again.</p>
+          <DialogHeader><DialogTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-4 w-4" />{t("dialog_remove_exception_title")}</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">{t("dialog_remove_exception_desc")}</p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteId(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => deleteId && handleDelete(deleteId)}>Remove</Button>
+            <Button variant="outline" onClick={() => setDeleteId(null)}>{t("btn_cancel")}</Button>
+            <Button variant="destructive" onClick={() => deleteId && handleDelete(deleteId)}>{t("btn_remove")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -265,6 +268,8 @@ function ExceptionsPanel({
 // â”€â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function AutomaticRecordsPage() {
+  const t = useTranslations("school.entry_exit.automatic_records")
+  const commonT = useTranslations("common")
   const { user, profile } = useAuth()
   const schoolId = profile?.school_id || ""
   const userName = (user as { name?: string })?.name || ""
@@ -292,7 +297,7 @@ export default function AutomaticRecordsPage() {
       setCheckpoints(cps)
       setRows(ruleToRows(rules))
     } catch {
-      toast.error("Failed to load automatic records")
+      toast.error(t("msg_error_load"))
     } finally {
       setLoading(false)
     }
@@ -330,7 +335,7 @@ export default function AutomaticRecordsPage() {
         try {
           await Promise.all(ids.map(id => api.deleteAutomaticRecord(id)))
         } catch (err: unknown) {
-          toast.error((err as Error).message || "Failed to delete")
+          toast.error((err as Error).message || t("msg_error_delete"))
           setDeleteTarget(null)
           return
         }
@@ -339,17 +344,17 @@ export default function AutomaticRecordsPage() {
     setRows(prev => prev.filter(r => r.uid !== deleteTarget))
     if (expandedUid === deleteTarget) setExpandedUid(null)
     setDeleteTarget(null)
-    toast.success("Rule deleted")
+    toast.success(t("msg_success_deleted"))
   }
 
   // â”€â”€ Save â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async function handleSave() {
     const dirty = rows.filter(r => r.isDirty)
-    if (dirty.length === 0) { toast.info("No changes to save"); return }
+    if (dirty.length === 0) { toast.info(t("msg_no_changes")); return }
     for (const row of dirty) {
-      if (!row.checkpoint_id) { toast.error("Select a checkpoint for each rule"); return }
-      if (!row.scheduled_time) { toast.error("Set a time for each rule"); return }
-      if (row.days.size === 0) { toast.error("Select at least one day for each rule"); return }
+      if (!row.checkpoint_id) { toast.error(t("msg_error_checkpoint")); return }
+      if (!row.scheduled_time) { toast.error(t("msg_error_time")); return }
+      if (row.days.size === 0) { toast.error(t("msg_error_days")); return }
     }
     setSaving(true)
     try {
@@ -395,9 +400,9 @@ export default function AutomaticRecordsPage() {
         row.isDirty = false
       }
       setRows(prev => prev.map(r => ({ ...r, isDirty: false })))
-      toast.success("Automatic records saved")
+      toast.success(t("msg_save_success"))
     } catch (err: unknown) {
-      toast.error((err as Error).message || "Failed to save")
+      toast.error((err as Error).message || t("msg_error_save"))
     } finally {
       setSaving(false)
     }
@@ -416,27 +421,27 @@ export default function AutomaticRecordsPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Automatic Records</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("page_title")}</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
-            Schedule automatic entry/exit records for students or staff
+            {t("page_subtitle")}
           </p>
         </div>
         <Button onClick={handleSave} disabled={saving || dirtyCount === 0} className="gap-2 shrink-0">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Save{dirtyCount > 0 ? ` (${dirtyCount})` : ""}
+          {t("btn_save")}{dirtyCount > 0 ? ` (${dirtyCount})` : ""}
         </Button>
       </div>
 
       {/* Top filter + Add */}
       <Card className="border-0 shadow-sm">
         <CardContent className="p-3 flex items-center gap-3">
-          <Label className="text-sm whitespace-nowrap">Checkpoint:</Label>
+          <Label className="text-sm whitespace-nowrap">{t("label_checkpoint_filter")}</Label>
           <Select value={filterCheckpoint} onValueChange={setFilterCheckpoint}>
             <SelectTrigger className="w-44 h-8">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="all">{commonT("all")}</SelectItem>
               {checkpoints.map(cp => (
                 <SelectItem key={cp.id} value={cp.id}>{cp.name}</SelectItem>
               ))}
@@ -444,7 +449,7 @@ export default function AutomaticRecordsPage() {
           </Select>
           <div className="flex-1" />
           <Button size="sm" variant="outline" className="gap-1.5 h-8" onClick={addRow}>
-            <Plus className="h-3.5 w-3.5" /> Add Rule
+            <Plus className="h-3.5 w-3.5" /> {t("btn_add_rule")}
           </Button>
         </CardContent>
       </Card>
@@ -453,13 +458,13 @@ export default function AutomaticRecordsPage() {
       <Card className="border-0 shadow-sm overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-16 gap-3 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" /> Loadingâ€¦
+            <Loader2 className="h-5 w-5 animate-spin" /> {commonT("loading")}
           </div>
         ) : visibleRows.length === 0 ? (
           <div className="py-14 text-center text-muted-foreground space-y-3">
-            <p className="text-sm font-medium">No automatic records were found.</p>
+            <p className="text-sm font-medium">{t("msg_no_data")}</p>
             <Button size="sm" variant="outline" onClick={addRow} className="gap-1.5">
-              <Plus className="h-3.5 w-3.5" /> Add First Rule
+              <Plus className="h-3.5 w-3.5" /> {t("btn_add_first_rule")}
             </Button>
           </div>
         ) : (
@@ -467,12 +472,12 @@ export default function AutomaticRecordsPage() {
             {/* Table header */}
             <div className="hidden lg:grid lg:grid-cols-[2rem_1fr_0.9fr_1fr_0.7fr_0.8fr_1fr_2rem] gap-x-4 px-4 py-2 bg-muted/40 border-b text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <span />
-              <span>Checkpoint</span>
-              <span>Timeframe</span>
-              <span>Days</span>
-              <span>Time</span>
-              <span>Comments</span>
-              <span>Limit To</span>
+              <span>{t("table_header_checkpoint")}</span>
+              <span>{t("table_header_timeframe")}</span>
+              <span>{t("table_header_days")}</span>
+              <span>{t("table_header_time")}</span>
+              <span>{t("table_header_comments")}</span>
+              <span>{t("table_header_limit_to")}</span>
               <span />
             </div>
 
@@ -484,7 +489,7 @@ export default function AutomaticRecordsPage() {
                   {/* Exceptions toggle */}
                   <div className="hidden lg:flex flex-col items-center pt-1">
                     <button
-                      title="Exceptions"
+                      title={t("tooltip_exceptions")}
                       onClick={() => setExpandedUid(expandedUid === row.uid ? null : row.uid)}
                       className={`h-6 w-6 rounded flex items-center justify-center text-xs border transition-colors ${
                         expandedUid === row.uid
@@ -498,11 +503,11 @@ export default function AutomaticRecordsPage() {
 
                   {/* Checkpoint + Type */}
                   <div className="space-y-1.5">
-                    <p className="text-xs font-medium text-muted-foreground lg:hidden">Checkpoint</p>
+                    <p className="text-xs font-medium text-muted-foreground lg:hidden">{t("table_header_checkpoint")}</p>
                     <Select value={row.checkpoint_id}
                       onValueChange={v => updateRow(row.uid, { checkpoint_id: v })}>
                       <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="N/A" />
+                        <SelectValue placeholder={t("placeholder_na")} />
                       </SelectTrigger>
                       <SelectContent>
                         {checkpoints.map(cp => (
@@ -516,31 +521,31 @@ export default function AutomaticRecordsPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="ENTRY">Entry</SelectItem>
-                        <SelectItem value="EXIT">Exit</SelectItem>
+                        <SelectItem value="ENTRY">{t("type_entry")}</SelectItem>
+                        <SelectItem value="EXIT">{t("type_exit")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   {/* Timeframe */}
                   <div className="space-y-1.5">
-                    <p className="text-xs font-medium text-muted-foreground lg:hidden">Timeframe</p>
+                    <p className="text-xs font-medium text-muted-foreground lg:hidden">{t("table_header_timeframe")}</p>
                     <div>
                       <Input type="date" className="h-8 text-xs" value={row.from_date}
                         onChange={e => updateRow(row.uid, { from_date: e.target.value })} />
-                      <p className="text-[10px] text-muted-foreground mt-0.5 ml-0.5">From</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5 ml-0.5">{t("label_from")}</p>
                     </div>
                     <div>
                       <Input type="date" className="h-8 text-xs" value={row.to_date}
                         min={row.from_date}
                         onChange={e => updateRow(row.uid, { to_date: e.target.value })} />
-                      <p className="text-[10px] text-muted-foreground mt-0.5 ml-0.5">To</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5 ml-0.5">{t("label_to")}</p>
                     </div>
                   </div>
 
                   {/* Days */}
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground lg:hidden mb-1">Days</p>
+                    <p className="text-xs font-medium text-muted-foreground lg:hidden mb-1">{t("table_header_days")}</p>
                     <div className="space-y-1">
                       {DAY_ORDER.map(day => (
                         <div key={day} className="flex items-center gap-1.5">
@@ -552,7 +557,7 @@ export default function AutomaticRecordsPage() {
                           />
                           <label htmlFor={`${uid}-${row.uid}-d${day}`}
                             className="text-xs cursor-pointer select-none">
-                            {DAY_LABELS[day]}
+                            {t(DAY_KEYS[day])}
                           </label>
                         </div>
                       ))}
@@ -566,7 +571,7 @@ export default function AutomaticRecordsPage() {
                         />
                         <label htmlFor={`${uid}-${row.uid}-school`}
                           className="text-xs cursor-pointer select-none">
-                          Only for school days
+                          {t("label_school_days_only")}
                         </label>
                       </div>
                     </div>
@@ -574,32 +579,32 @@ export default function AutomaticRecordsPage() {
 
                   {/* Time */}
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground lg:hidden mb-1">Time</p>
+                    <p className="text-xs font-medium text-muted-foreground lg:hidden mb-1">{t("table_header_time")}</p>
                     <Input type="time" className="h-8 text-xs" value={row.scheduled_time}
                       onChange={e => updateRow(row.uid, { scheduled_time: e.target.value })} />
                     {row.isDirty && (
                       <Badge variant="outline"
                         className="mt-1 text-[10px] px-1 py-0 h-4 border-amber-400 text-amber-600">
-                        unsaved
+                        {t("badge_unsaved")}
                       </Badge>
                     )}
                   </div>
 
                   {/* Comments */}
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground lg:hidden mb-1">Comments</p>
-                    <Input className="h-8 text-xs" placeholder="Commentsâ€¦" value={row.comments}
+                    <p className="text-xs font-medium text-muted-foreground lg:hidden mb-1">{t("table_header_comments")}</p>
+                    <Input className="h-8 text-xs" placeholder={t("placeholder_comments")} value={row.comments}
                       onChange={e => updateRow(row.uid, { comments: e.target.value })} />
                   </div>
 
                   {/* Limit To */}
                   <div className="space-y-1.5">
-                    <p className="text-xs font-medium text-muted-foreground lg:hidden">Limit To</p>
+                    <p className="text-xs font-medium text-muted-foreground lg:hidden">{t("table_header_limit_to")}</p>
                     <div>
-                      <Input className="h-8 text-xs" placeholder="User profile (e.g. admin)"
+                      <Input className="h-8 text-xs" placeholder={t("placeholder_user_profile")}
                         value={row.user_profiles}
                         onChange={e => updateRow(row.uid, { user_profiles: e.target.value, grade_levels: "" })} />
-                      <p className="text-[10px] text-muted-foreground mt-0.5 ml-0.5">User Profiles</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5 ml-0.5">{t("label_user_profiles")}</p>
                     </div>
                     <div>
                       <Select value={row.grade_levels || "__none__"}
@@ -611,13 +616,13 @@ export default function AutomaticRecordsPage() {
                           <SelectValue placeholder="Grade Level" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="__none__">â€” None â€”</SelectItem>
+                          <SelectItem value="__none__">{t("option_none")}</SelectItem>
                           {gradeLevels.map(g => (
                             <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                      <p className="text-[10px] text-muted-foreground mt-0.5 ml-0.5">Grade Levels</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5 ml-0.5">{t("label_grade_levels")}</p>
                     </div>
                   </div>
 
@@ -644,7 +649,7 @@ export default function AutomaticRecordsPage() {
             <div className="border-t px-4 py-2.5">
               <button onClick={addRow}
                 className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                <Plus className="h-3.5 w-3.5" /> Add another rule
+                <Plus className="h-3.5 w-3.5" /> {t("btn_add_another")}
               </button>
             </div>
           </div>
@@ -656,7 +661,7 @@ export default function AutomaticRecordsPage() {
         <div className="flex justify-center pb-2">
           <Button onClick={handleSave} disabled={saving} className="px-10 gap-2">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Save
+            {t("btn_save")}
           </Button>
         </div>
       )}
@@ -666,15 +671,15 @@ export default function AutomaticRecordsPage() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-4 w-4" /> Delete Rule?
+              <AlertTriangle className="h-4 w-4" /> {t("dialog_delete_title")}
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            This will remove the rule for all its scheduled days and cannot be undone.
+            {t("dialog_delete_desc")}
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={confirmDelete}>Delete</Button>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>{t("btn_cancel")}</Button>
+            <Button variant="destructive" onClick={confirmDelete}>{t("btn_confirm_delete")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

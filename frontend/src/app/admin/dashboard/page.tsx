@@ -148,7 +148,7 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={studentGrowthData}>
+              <AreaChart data={studentGrowthData} margin={{ bottom: 20 }}>
                 <defs>
                   <linearGradient id="colorStudents" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8}/>
@@ -156,7 +156,15 @@ export default function AdminDashboard() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                <XAxis dataKey="month" stroke="#666" />
+                <XAxis 
+                  dataKey="month" 
+                  stroke="#666" 
+                  interval={0}
+                  tick={{ fontSize: 12 }}
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                />
                 <YAxis stroke="#666" />
                 <Tooltip 
                   contentStyle={{ 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ import { Plus, Building2, Edit, Trash2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 
 export default function BuildingsPage() {
+  const t = useTranslations("admin.hostel.buildings");
   const { profile } = useAuth();
   const schoolId = profile?.school_id || "";
   const campusId = profile?.campus_id;
@@ -152,12 +154,14 @@ export default function BuildingsPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this building and all its rooms?")) return;
+    if (!confirm(t('msg_delete_confirm'))) return;
     try {
       await deleteBuilding(id, schoolId);
       loadData();
+      toast.success(t('msg_save_success'));
     } catch (err) {
       console.error("Failed to delete building:", err);
+      toast.error(t('msg_save_error'));
     }
   }
 
@@ -165,9 +169,9 @@ export default function BuildingsPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Buildings</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t('header_title')}</h1>
           <p className="text-muted-foreground">
-            Manage hostel buildings and dormitories
+            {t('header_subtitle')}
           </p>
         </div>
         <Dialog
@@ -180,35 +184,35 @@ export default function BuildingsPage() {
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
-              Add Building
+              {t('btn_add')}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>
-                {editingBuilding ? "Edit Building" : "Add Building"}
+                {editingBuilding ? t('dialog_edit_title') : t('dialog_add_title')}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label>Name *</Label>
+                <Label>{t('label_name')}</Label>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Block A"
+                  placeholder={t('placeholder_name')}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Address</Label>
+                <Label>{t('label_address')}</Label>
                 <Input
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Building address..."
+                  placeholder={t('placeholder_address')}
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Floors</Label>
+                  <Label>{t('label_floors')}</Label>
                   <Input
                     type="number"
                     min={1}
@@ -218,18 +222,18 @@ export default function BuildingsPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Description</Label>
+                <Label>{t('label_description')}</Label>
                 <Input
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Optional description..."
+                  placeholder={t('placeholder_description')}
                 />
               </div>
 
               {/* Custom Fields */}
               {customFieldDefs.length > 0 && (
                 <div className="space-y-3 border-t pt-3">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Additional Fields</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('section_additional_fields')}</p>
                   {customFieldDefs.map((def) => (
                     <div key={def.id} className="space-y-1">
                       <Label className="text-sm">
@@ -292,10 +296,10 @@ export default function BuildingsPage() {
                 className="w-full"
               >
                 {submitting
-                  ? "Saving..."
+                  ? t('btn_saving')
                   : editingBuilding
-                    ? "Update Building"
-                    : "Add Building"}
+                    ? t('btn_update')
+                    : t('btn_create')}
               </Button>
             </div>
           </DialogContent>
@@ -304,15 +308,15 @@ export default function BuildingsPage() {
 
       {loading ? (
         <div className="text-center py-12 text-muted-foreground">
-          Loading...
+          {t('msg_loading')}
         </div>
       ) : buildings.length === 0 ? (
         <Card className="border-0 shadow-sm">
           <CardContent className="text-center py-12">
             <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="font-semibold mb-2">No buildings yet</h3>
+            <h3 className="font-semibold mb-2">{t('msg_no_data')}</h3>
             <p className="text-muted-foreground mb-4">
-              Create your first hostel building to get started
+              {t('msg_no_data_desc')}
             </p>
           </CardContent>
         </Card>
@@ -354,14 +358,14 @@ export default function BuildingsPage() {
                   </div>
                 )}
                 <div className="flex gap-2">
-                  <Badge variant="secondary">{b.floors} floor(s)</Badge>
-                  <Badge variant="outline">{b.room_count ?? 0} room(s)</Badge>
+                  <Badge variant="secondary">{b.floors} {t('unit_floors')}</Badge>
+                  <Badge variant="outline">{b.room_count ?? 0} {t('unit_rooms')}</Badge>
                   {b.is_active ? (
                     <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                      Active
+                      {t('status_active')}
                     </Badge>
                   ) : (
-                    <Badge variant="destructive">Inactive</Badge>
+                    <Badge variant="destructive">{t('status_inactive')}</Badge>
                   )}
                 </div>
                 {b.description && (

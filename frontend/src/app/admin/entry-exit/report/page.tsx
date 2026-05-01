@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,6 +55,7 @@ import {
 } from "lucide-react";
 
 export default function RecordsPage() {
+  const t = useTranslations("school.entry_exit.report");
   const { profile } = useAuth();
   const schoolId = profile?.school_id || "";
 
@@ -290,10 +292,10 @@ export default function RecordsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            Entry / Exit Records
+            {t("page_title")}
           </h1>
           <p className="text-muted-foreground">
-            View and manage all entry and exit records
+            {t("page_subtitle")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -304,12 +306,12 @@ export default function RecordsPage() {
               onClick={() => setBulkDeleteOpen(true)}
             >
               <Trash2 className="h-4 w-4 mr-1" />
-              Delete ({selected.size})
+              {t("btn_delete_bulk")} ({selected.size})
             </Button>
           )}
           <Button variant="outline" size="sm" onClick={exportCSV} disabled={records.length === 0}>
             <Download className="h-4 w-4 mr-1" />
-            Export CSV
+            {t("btn_export")}
           </Button>
           <Dialog
           open={dialogOpen}
@@ -321,16 +323,16 @@ export default function RecordsPage() {
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
-              Add Record
+              {t("btn_add_record")}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Add Record</DialogTitle>
+              <DialogTitle>{t("dialog_add_record_title")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label>Checkpoint</Label>
+                <Label>{t("label_checkpoint")}</Label>
                 <Select
                   value={selectedCheckpoint}
                   onValueChange={setSelectedCheckpoint}
@@ -350,26 +352,26 @@ export default function RecordsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Person Type</Label>
+                  <Label>{t("label_person_type")}</Label>
                   <Select value={personType} onValueChange={setPersonType}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="STUDENT">Student</SelectItem>
-                      <SelectItem value="STAFF">Staff</SelectItem>
+                      <SelectItem value="STUDENT">{t("option_student")}</SelectItem>
+                      <SelectItem value="STAFF">{t("option_staff")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Direction</Label>
+                  <Label>{t("label_direction")}</Label>
                   <Select value={recordType} onValueChange={setRecordType}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ENTRY">Entry</SelectItem>
-                      <SelectItem value="EXIT">Exit</SelectItem>
+                      <SelectItem value="ENTRY">{t("option_entry")}</SelectItem>
+                      <SelectItem value="EXIT">{t("option_exit")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -451,7 +453,7 @@ export default function RecordsPage() {
                 }
                 className="w-full"
               >
-                {submitting ? "Recording..." : "Add Record"}
+                {submitting ? t("msg_recording") : t("btn_add_record")}
               </Button>
             </div>
           </DialogContent>
@@ -464,7 +466,7 @@ export default function RecordsPage() {
         <CardContent className="p-4">
           <div className="flex items-center gap-2 mb-3">
             <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Filters</span>
+            <span className="text-sm font-medium">{t("filters_title")}</span>
           </div>
           <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
             <Select
@@ -472,10 +474,10 @@ export default function RecordsPage() {
               onValueChange={setFilterCheckpoint}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Checkpoint" />
+                <SelectValue placeholder={t("filter_checkpoint_placeholder")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Checkpoints</SelectItem>
+                <SelectItem value="all">{t("filter_all_checkpoints")}</SelectItem>
                 {checkpoints.map((cp) => (
                   <SelectItem key={cp.id} value={cp.id}>
                     {cp.name}
@@ -488,12 +490,12 @@ export default function RecordsPage() {
               onValueChange={setFilterPersonType}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Person Type" />
+                <SelectValue placeholder={t("filter_person_type_placeholder")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="STUDENT">Student</SelectItem>
-                <SelectItem value="STAFF">Staff</SelectItem>
+                <SelectItem value="all">{t("filter_all_types")}</SelectItem>
+                <SelectItem value="STUDENT">{t("option_student")}</SelectItem>
+                <SelectItem value="STAFF">{t("option_staff")}</SelectItem>
               </SelectContent>
             </Select>
             <Select
@@ -501,36 +503,36 @@ export default function RecordsPage() {
               onValueChange={setFilterRecordType}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Direction" />
+                <SelectValue placeholder={t("filter_direction_placeholder")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Directions</SelectItem>
-                <SelectItem value="ENTRY">Entry</SelectItem>
-                <SelectItem value="EXIT">Exit</SelectItem>
+                <SelectItem value="all">{t("filter_all_directions")}</SelectItem>
+                <SelectItem value="ENTRY">{t("option_entry")}</SelectItem>
+                <SelectItem value="EXIT">{t("option_exit")}</SelectItem>
               </SelectContent>
             </Select>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger>
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder={t("filter_status_placeholder")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="authorized">Authorized</SelectItem>
-                <SelectItem value="late">Late</SelectItem>
-                <SelectItem value="unauthorized">Unauthorized</SelectItem>
+                <SelectItem value="all">{t("filter_all_status")}</SelectItem>
+                <SelectItem value="authorized">{t("status_authorized")}</SelectItem>
+                <SelectItem value="late">{t("status_late")}</SelectItem>
+                <SelectItem value="unauthorized">{t("status_unauthorized")}</SelectItem>
               </SelectContent>
             </Select>
             <Input
               type="date"
               value={filterDateFrom}
               onChange={(e) => setFilterDateFrom(e.target.value)}
-              placeholder="From"
+              placeholder={t("filter_date_from_placeholder")}
             />
             <Input
               type="date"
               value={filterDateTo}
               onChange={(e) => setFilterDateTo(e.target.value)}
-              placeholder="To"
+              placeholder={t("filter_date_to_placeholder")}
             />
           </div>
         </CardContent>
@@ -541,14 +543,14 @@ export default function RecordsPage() {
         <CardContent className="p-0">
           {loading ? (
             <div className="text-center py-12 text-muted-foreground">
-              Loading records...
+              {t("msg_loading_records")}
             </div>
           ) : records.length === 0 ? (
             <div className="text-center py-12">
               <DoorOpen className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
-              <p className="text-muted-foreground">No records found</p>
+              <p className="text-muted-foreground">{t("msg_no_records")}</p>
               <p className="text-sm text-muted-foreground/60">
-                Try adjusting your filters
+                {t("msg_adjust_filters")}
               </p>
             </div>
           ) : (
@@ -561,11 +563,11 @@ export default function RecordsPage() {
                       onCheckedChange={toggleAll}
                     />
                   </TableHead>
-                  <TableHead>Direction</TableHead>
-                  <TableHead>Person</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Checkpoint</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>{t("table_direction")}</TableHead>
+                  <TableHead>{t("table_person")}</TableHead>
+                  <TableHead>{t("table_type")}</TableHead>
+                  <TableHead>{t("table_checkpoint")}</TableHead>
+                  <TableHead>{t("table_status")}</TableHead>
                   <TableHead>Time</TableHead>
                   <TableHead>Notes</TableHead>
                   <TableHead className="w-10"></TableHead>

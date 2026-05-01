@@ -14,8 +14,11 @@ import {
   type StudentForAssign,
 } from "@/lib/api/billing-elements"
 import { getGradeLevels, getSections, type GradeLevel, type Section } from "@/lib/api/academics"
+import { useTranslations } from "next-intl"
 
 export default function MassAssignElementsPage() {
+  const t = useTranslations("admin.billing_elements.mass_assign")
+  const tCommon = useTranslations("common")
   const { profile } = useAuth()
 
   // Element & Fee form
@@ -50,7 +53,7 @@ export default function MassAssignElementsPage() {
       setAllElements(elementsData)
       if (gradesRes.success && gradesRes.data) setGrades(gradesRes.data)
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Failed to load data")
+      toast.error(error instanceof Error ? error.message : t("toast.load_data_failed"))
     } finally {
       setLoading(false)
     }
@@ -102,7 +105,7 @@ export default function MassAssignElementsPage() {
       setStudents(data)
       setSelectedStudents(new Set())
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Failed to load students")
+      toast.error(error instanceof Error ? error.message : t("toast.load_students_failed"))
     } finally {
       setLoadingStudents(false)
     }
@@ -137,11 +140,11 @@ export default function MassAssignElementsPage() {
 
   const handleAssign = async () => {
     if (selectedStudents.size === 0) {
-      toast.error("Select at least one student")
+      toast.error(t("toast.select_student"))
       return
     }
     if (!formTitle.trim()) {
-      toast.error("Element title is required")
+      toast.error(t("toast.title_required"))
       return
     }
     setAssigning(true)
@@ -154,10 +157,10 @@ export default function MassAssignElementsPage() {
         due_date: formDueDate || null,
         comment: formComment.trim() || null,
       })
-      toast.success(`Element and fee added to ${result.count} students`)
+      toast.success(t("toast.assigned_count", { count: result.count }))
       setSelectedStudents(new Set())
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Operation failed")
+      toast.error(error instanceof Error ? error.message : t("toast.operation_failed"))
     } finally {
       setAssigning(false)
     }
@@ -177,10 +180,10 @@ export default function MassAssignElementsPage() {
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#022172] dark:text-white">
-            Mass Assign Elements
+            {t("title")}
           </h1>
           <p className="text-muted-foreground">
-            Assign billing elements and fees to multiple students at once
+            {t("subtitle")}
           </p>
         </div>
         <Button
@@ -189,7 +192,7 @@ export default function MassAssignElementsPage() {
           disabled={assigning || selectedStudents.size === 0}
         >
           {assigning ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-          ADD ELEMENT AND FEE TO SELECTED STUDENTS
+          {t("assign_button")}
         </Button>
       </div>
 
@@ -197,7 +200,7 @@ export default function MassAssignElementsPage() {
       <div className="flex justify-center">
         <div className="bg-white dark:bg-gray-900 border rounded-lg p-6 w-full max-w-md">
           <h2 className="text-center font-semibold text-[#022172] border-b pb-2 mb-4">
-            ELEMENT AND FEE
+            {t("element_and_fee")}
           </h2>
           <div className="space-y-4">
             <div>
@@ -206,22 +209,22 @@ export default function MassAssignElementsPage() {
                 onChange={(e) => handleElementChange(e.target.value)}
                 className="w-full h-9 border rounded px-3 text-sm"
               >
-                <option value="">N/A</option>
+                <option value="">{tCommon("na")}</option>
                 {allElements.map((el) => (
                   <option key={el.id} value={el.id}>
                     {el.category_title ? `${el.category_title} — ` : ""}{el.title}
                   </option>
                 ))}
               </select>
-              <label className="text-xs font-medium text-red-600">Element</label>
+              <label className="text-xs font-medium text-red-600">{t("element")}</label>
             </div>
             <div>
               <Input
                 value={formTitle}
                 onChange={(e) => setFormTitle(e.target.value)}
-                placeholder="Fee title"
+                placeholder={t("fee_title_placeholder")}
               />
-              <label className="text-xs font-medium text-red-600">Title</label>
+              <label className="text-xs font-medium text-red-600">{tCommon("title")}</label>
             </div>
             <div>
               <Input
@@ -232,7 +235,7 @@ export default function MassAssignElementsPage() {
                 placeholder="0.00"
                 className="w-32"
               />
-              <label className="text-xs font-medium text-red-600">Amount</label>
+              <label className="text-xs font-medium text-red-600">{tCommon("amount")}</label>
             </div>
             <div>
               <Input
@@ -240,7 +243,7 @@ export default function MassAssignElementsPage() {
                 value={formDueDate}
                 onChange={(e) => setFormDueDate(e.target.value)}
               />
-              <label className="text-xs font-medium text-gray-600">Due Date</label>
+              <label className="text-xs font-medium text-gray-600">{t("due_date")}</label>
             </div>
             <div>
               <Input
@@ -248,7 +251,7 @@ export default function MassAssignElementsPage() {
                 onChange={(e) => setFormComment(e.target.value)}
                 placeholder=""
               />
-              <label className="text-xs font-medium text-gray-600">Comment</label>
+              <label className="text-xs font-medium text-gray-600">{t("comment")}</label>
             </div>
           </div>
         </div>
@@ -257,27 +260,27 @@ export default function MassAssignElementsPage() {
       {/* Filters Row */}
       <div className="flex flex-wrap items-center gap-4">
         <div>
-          <label className="text-xs font-medium text-gray-500">Grade</label>
+          <label className="text-xs font-medium text-gray-500">{t("grade")}</label>
           <select
             value={selectedGrade}
             onChange={(e) => handleGradeChange(e.target.value)}
             className="ml-2 h-8 border rounded px-2 text-sm"
           >
-            <option value="">All</option>
+            <option value="">{tCommon("all")}</option>
             {grades.map((g) => (
               <option key={g.id} value={g.id}>{g.name}</option>
             ))}
           </select>
         </div>
         <div>
-          <label className="text-xs font-medium text-gray-500">Section</label>
+          <label className="text-xs font-medium text-gray-500">{t("section")}</label>
           <select
             value={selectedSection}
             onChange={(e) => handleSectionChange(e.target.value)}
             className="ml-2 h-8 border rounded px-2 text-sm"
             disabled={!selectedGrade}
           >
-            <option value="">All</option>
+            <option value="">{tCommon("all")}</option>
             {sections.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
@@ -290,11 +293,11 @@ export default function MassAssignElementsPage() {
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-gray-700">
-              {filtered.length} student{filtered.length !== 1 ? "s" : ""} found.
+              {t("students_found", { count: filtered.length })}
             </span>
             {selectedStudents.size > 0 && (
               <span className="text-sm text-[#008B8B] font-medium">
-                ({selectedStudents.size} selected)
+                ({t("selected_count", { count: selectedStudents.size })})
               </span>
             )}
             <Download className="h-4 w-4 text-gray-400" />
@@ -304,7 +307,7 @@ export default function MassAssignElementsPage() {
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search"
+              placeholder={tCommon("search")}
               className="h-8 w-40"
             />
           </div>
@@ -326,9 +329,9 @@ export default function MassAssignElementsPage() {
                     className="rounded"
                   />
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">Student</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">Admission No.</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">Grade Level</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{tCommon("student")}</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{t("admission_no")}</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{t("grade_level")}</th>
               </tr>
             </thead>
             <tbody>
@@ -347,14 +350,14 @@ export default function MassAssignElementsPage() {
                     />
                   </td>
                   <td className="px-3 py-2 font-medium text-[#008B8B]">{s.name}</td>
-                  <td className="px-3 py-2">{s.admission_number || "—"}</td>
+                  <td className="px-3 py-2">{s.admission_number || tCommon("na")}</td>
                   <td className="px-3 py-2">{s.grade_level}</td>
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-3 py-8 text-center text-gray-400">
-                    No students found
+                    {t("no_students")}
                   </td>
                 </tr>
               )}
@@ -371,7 +374,7 @@ export default function MassAssignElementsPage() {
           disabled={assigning || selectedStudents.size === 0}
         >
           {assigning ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-          ADD ELEMENT AND FEE TO SELECTED STUDENTS
+          {t("assign_button")}
         </Button>
       </div>
     </div>

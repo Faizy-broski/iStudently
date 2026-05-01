@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/context/AuthContext"
 import { useCampus } from "@/context/CampusContext"
 import { Card } from "@/components/ui/card"
@@ -117,6 +118,7 @@ function RadioDot({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function EETakeAttendancePage() {
+  const t = useTranslations("school.entry_exit.take_attendance")
   const { profile } = useAuth()
   const schoolId = profile?.school_id || ""
   const campusContext = useCampus()
@@ -169,7 +171,7 @@ export default function EETakeAttendancePage() {
         if (ay) setAcademicYearId(ay.id)
         setCheckpoints(cps)
       })
-      .catch(() => toast.error("Failed to load data"))
+      .catch(() => toast.error(t("msg_error_load")))
       .finally(() => setLoadingTeachers(false))
   }, [schoolId, campusId])
 
@@ -180,7 +182,7 @@ export default function EETakeAttendancePage() {
     timetableApi
       .getTimetableByTeacher(selectedTeacher.id, academicYearId)
       .then(setTimetableEntries)
-      .catch(() => toast.error("Failed to load timetable"))
+      .catch(() => toast.error(t("msg_error_timetable")))
       .finally(() => setLoadingTimetable(false))
   }, [selectedTeacher, academicYearId])
 
@@ -254,7 +256,7 @@ export default function EETakeAttendancePage() {
       )
     } catch {
       // attendance records may not be generated yet
-      toast.info("No attendance records found for this class. Mark and save to create them.")
+      toast.info(t("msg_no_records_found"))
       setRows([])
     } finally {
       setLoadingRows(false)
@@ -298,8 +300,8 @@ export default function EETakeAttendancePage() {
 
   // ── Save ──────────────────────────────────────────────────────────────────
   async function handleSave() {
-    if (!periodEntryId) { toast.error("No class selected"); return }
-    if (rows.length === 0) { toast.error("No students to save attendance for"); return }
+    if (!periodEntryId) { toast.error(t("msg_error_no_class")); return }
+    if (rows.length === 0) { toast.error(t("msg_error_no_students")); return }
     setSaving(true)
     try {
       await timetableApi.bulkUpdateAttendance(
@@ -324,9 +326,9 @@ export default function EETakeAttendancePage() {
           })
         }
       }
-      toast.success("Attendance saved")
+      toast.success(t("msg_success_saved"))
     } catch (err: unknown) {
-      toast.error((err as Error).message || "Failed to save attendance")
+      toast.error((err as Error).message || t("msg_error_save"))
     } finally {
       setSaving(false)
     }
@@ -358,11 +360,11 @@ export default function EETakeAttendancePage() {
   )
   const periodLabel = selectedEntry
     ? selectedEntry.period?.period_number
-      ? `Period ${selectedEntry.period.period_number}`
+      ? `${t("label_period")} ${selectedEntry.period.period_number}`
       : selectedEntry.start_time
       ? `${selectedEntry.start_time.slice(0, 5)}–${(selectedEntry.end_time ?? "").slice(0, 5)}`
-      : "Period"
-    : "Period"
+      : t("label_period")
+    : t("label_period")
 
   const courseInfoLabel = useMemo(() => {
     if (!selectedCourse || !selectedEntry) return ""
@@ -380,13 +382,13 @@ export default function EETakeAttendancePage() {
             <BookOpen className="h-5 w-5 text-white" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight">
-            Teacher Programs – Take Attendance
+            {t("page_title")}
           </h1>
         </div>
 
         {/* Profile badge */}
         <p className="text-sm text-muted-foreground">
-          <span className="font-semibold text-foreground">Profile:</span> Teacher
+          <span className="font-semibold text-foreground">{t("label_profile")}:</span> {t("option_teacher")}
         </p>
 
         {/* Count + search */}
@@ -396,7 +398,7 @@ export default function EETakeAttendancePage() {
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <>
-                <span className="font-medium text-foreground">{filteredTeachers.length} teachers were found.</span>
+                <span className="font-medium text-foreground">{t("stat_teachers_found", { count: filteredTeachers.length })}</span>
                 <Download className="h-4 w-4 cursor-pointer hover:text-foreground" />
               </>
             )}
@@ -405,7 +407,7 @@ export default function EETakeAttendancePage() {
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               className="pl-8 h-8 text-xs"
-              placeholder="Search…"
+              placeholder={t("toolbar_search")}
               value={teacherSearch}
               onChange={(e) => setTeacherSearch(e.target.value)}
             />
@@ -419,14 +421,14 @@ export default function EETakeAttendancePage() {
             </div>
           ) : filteredTeachers.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">
-              No teachers found.
+              {t("msg_no_teachers")}
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/20">
-                  <TableHead className="text-xs font-semibold text-blue-600 uppercase">Teacher</TableHead>
-                  <TableHead className="text-xs font-semibold text-blue-600 uppercase">Istudently ID</TableHead>
+                  <TableHead className="text-xs font-semibold text-blue-600 uppercase">{t("table_col_teacher")}</TableHead>
+                  <TableHead className="text-xs font-semibold text-blue-600 uppercase">{t("table_col_id")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -464,23 +466,23 @@ export default function EETakeAttendancePage() {
           <ChevronLeft className="h-5 w-5 text-white" />
         </button>
         <h1 className="text-2xl font-bold tracking-tight">
-          Teacher Programs – Take Attendance
+          {t("page_title")}
         </h1>
       </div>
 
       {/* Course dropdown */}
       {loadingTimetable ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading courses…
+          <Loader2 className="h-4 w-4 animate-spin" /> {t("msg_loading_courses")}
         </div>
       ) : (
         <Select value={selectedCourseKey} onValueChange={setSelectedCourseKey}>
           <SelectTrigger className="w-48 h-9">
-            <SelectValue placeholder="Select course…" />
+            <SelectValue placeholder={t("placeholder_select_course")} />
           </SelectTrigger>
           <SelectContent>
             {courseOptions.length === 0 ? (
-              <SelectItem value="__none__" disabled>No courses found</SelectItem>
+              <SelectItem value="__none__" disabled>{t("msg_no_courses")}</SelectItem>
             ) : (
               courseOptions.map((c) => (
                 <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
@@ -498,7 +500,7 @@ export default function EETakeAttendancePage() {
               <div className="h-7 w-7 rounded-full bg-red-500 flex items-center justify-center shrink-0">
                 <BookOpen className="h-3.5 w-3.5 text-white" />
               </div>
-              <h2 className="text-xl font-bold tracking-tight">Take Attendance</h2>
+              <h2 className="text-xl font-bold tracking-tight">{t("subheading_take_attendance")}</h2>
             </div>
 
             {/* Course info */}
@@ -509,13 +511,13 @@ export default function EETakeAttendancePage() {
             {/* Checkpoint + Type */}
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Checkpoint:</span>
+                <span className="text-sm font-medium">{t("label_checkpoint")}:</span>
                 <Select value={checkpointId} onValueChange={setCheckpointId}>
                   <SelectTrigger className="w-36 h-8 text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="all">{t("common.all")}</SelectItem>
                     {checkpoints.map((cp) => (
                       <SelectItem key={cp.id} value={cp.id}>{cp.name}</SelectItem>
                     ))}
@@ -524,14 +526,14 @@ export default function EETakeAttendancePage() {
               </div>
 
               <div className="flex items-center gap-2 ml-auto">
-                <span className="text-sm font-medium">Type:</span>
+                <span className="text-sm font-medium">{t("label_type")}:</span>
                 <Select value={recordType} onValueChange={(v) => setRecordType(v as "ENTRY" | "EXIT")}>
                   <SelectTrigger className="w-24 h-8 text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ENTRY">Entry</SelectItem>
-                    <SelectItem value="EXIT">Exit</SelectItem>
+                    <SelectItem value="ENTRY">{t("type_entry")}</SelectItem>
+                    <SelectItem value="EXIT">{t("type_exit")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -548,7 +550,7 @@ export default function EETakeAttendancePage() {
                     {periodOptions.map((e) => (
                       <SelectItem key={e.id} value={e.id}>
                         {e.period
-                          ? `Period ${e.period.period_number} (${e.period.start_time?.slice(0, 5) ?? ""}–${e.period.end_time?.slice(0, 5) ?? ""})`
+                          ? `${t("label_period")} ${e.period.period_number} (${e.period.start_time?.slice(0, 5) ?? ""}–${e.period.end_time?.slice(0, 5) ?? ""})`
                           : `${e.start_time?.slice(0, 5) ?? ""}–${e.end_time?.slice(0, 5) ?? ""}`}
                       </SelectItem>
                     ))}
@@ -566,7 +568,7 @@ export default function EETakeAttendancePage() {
                     {periodOptions.map((e) => (
                       <SelectItem key={e.id} value={e.id}>
                         {e.period
-                          ? `Period ${e.period.period_number} (${e.period.start_time?.slice(0, 5) ?? ""}–${e.period.end_time?.slice(0, 5) ?? ""})`
+                          ? `${t("label_period")} ${e.period.period_number} (${e.period.start_time?.slice(0, 5) ?? ""}–${e.period.end_time?.slice(0, 5) ?? ""})`
                           : `${e.start_time?.slice(0, 5) ?? ""}–${e.end_time?.slice(0, 5) ?? ""}`}
                       </SelectItem>
                     ))}
@@ -586,7 +588,7 @@ export default function EETakeAttendancePage() {
                 />
                 {rows.length > 0 && (
                   <span className="text-sm text-green-600 font-medium">
-                    You can edit this attendance
+                    {t("msg_can_edit")}
                   </span>
                 )}
               </div>
@@ -596,20 +598,20 @@ export default function EETakeAttendancePage() {
                 className="bg-blue-600 hover:bg-blue-700 text-white h-8 px-6"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-                SAVE
+                {t("btn_save")}
               </Button>
             </div>
 
             {/* ATTENDANCE sub-heading */}
             <div className="border-t pt-4">
               <p className="text-center text-sm font-semibold tracking-widest text-blue-600 uppercase pb-2">
-                Attendance
+                {t("label_attendance")}
               </p>
 
               {/* Student count */}
               {!loadingRows && rows.length > 0 && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-                  <span className="font-medium text-foreground">{rows.length} students were found.</span>
+                  <span className="font-medium text-foreground">{t("stat_students_found", { count: rows.length })}</span>
                   <Download className="h-4 w-4 cursor-pointer hover:text-foreground" />
                 </div>
               )}
@@ -621,8 +623,8 @@ export default function EETakeAttendancePage() {
                 </div>
               ) : rows.length === 0 ? (
                 <div className="py-10 text-center text-sm text-muted-foreground">
-                  No attendance records found.{" "}
-                  {!periodEntryId && "Select a course and date first."}
+                  {t("msg_no_records")}{" "}
+                  {!periodEntryId && t("msg_select_prompt")}
                 </div>
               ) : (
                 <Card className="border shadow-sm overflow-hidden">
@@ -630,15 +632,15 @@ export default function EETakeAttendancePage() {
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-white border-b">
-                          <TableHead className="text-xs font-semibold text-blue-600 uppercase min-w-40">Student</TableHead>
-                          <TableHead className="text-xs font-semibold text-blue-600 uppercase">Istudently ID</TableHead>
-                          <TableHead className="text-xs font-semibold text-blue-600 uppercase">Grade Level</TableHead>
-                          <TableHead className="text-xs font-semibold text-blue-600 uppercase text-center">Absent</TableHead>
-                          <TableHead className="text-xs font-semibold text-blue-600 uppercase text-center">Present</TableHead>
-                          <TableHead className="text-xs font-semibold text-blue-600 uppercase text-center">Tardy</TableHead>
-                          <TableHead className="text-xs font-semibold text-blue-600 uppercase min-w-36">Teacher Comment</TableHead>
-                          <TableHead className="text-xs font-semibold text-blue-600 uppercase text-center">Evening Leave</TableHead>
-                          <TableHead className="text-xs font-semibold text-blue-600 uppercase text-center">Time</TableHead>
+                          <TableHead className="text-xs font-semibold text-blue-600 uppercase min-w-40">{t("table_col_student")}</TableHead>
+                          <TableHead className="text-xs font-semibold text-blue-600 uppercase">{t("table_col_employee_id")}</TableHead>
+                          <TableHead className="text-xs font-semibold text-blue-600 uppercase">{t("table_col_grade")}</TableHead>
+                          <TableHead className="text-xs font-semibold text-blue-600 uppercase text-center">{t("status_absent")}</TableHead>
+                          <TableHead className="text-xs font-semibold text-blue-600 uppercase text-center">{t("status_present")}</TableHead>
+                          <TableHead className="text-xs font-semibold text-blue-600 uppercase text-center">{t("status_late")}</TableHead>
+                          <TableHead className="text-xs font-semibold text-blue-600 uppercase min-w-36">{t("table_col_comment")}</TableHead>
+                          <TableHead className="text-xs font-semibold text-blue-600 uppercase text-center">{t("table_col_evening_leave")}</TableHead>
+                          <TableHead className="text-xs font-semibold text-blue-600 uppercase text-center">{t("table_col_time")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -708,7 +710,7 @@ export default function EETakeAttendancePage() {
                               <TableCell className="text-center py-3 text-sm">
                                 {el ? (
                                   <span className="text-purple-600 font-medium text-xs">
-                                    {el.authorized_return_time?.slice(0, 5) ?? "Yes"}
+                                    {el.authorized_return_time?.slice(0, 5) ?? t("label_yes")}
                                   </span>
                                 ) : (
                                   <span className="text-muted-foreground text-xs">—</span>
@@ -748,7 +750,7 @@ export default function EETakeAttendancePage() {
                 className="bg-blue-600 hover:bg-blue-700 text-white px-10"
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-                SAVE
+                {t("btn_save")}
               </Button>
             </div>
           )}

@@ -15,20 +15,21 @@ import { IconPlus, IconTrash, IconLoader, IconDeviceFloppy } from '@tabler/icons
 import { toast } from 'sonner'
 import useSWR from 'swr'
 import { format, parse } from 'date-fns'
+import { useTranslations } from 'next-intl'
 
 const MONTHS = [
-    { value: '01', label: 'January' },
-    { value: '02', label: 'February' },
-    { value: '03', label: 'March' },
-    { value: '04', label: 'April' },
-    { value: '05', label: 'May' },
-    { value: '06', label: 'June' },
-    { value: '07', label: 'July' },
-    { value: '08', label: 'August' },
-    { value: '09', label: 'September' },
-    { value: '10', label: 'October' },
-    { value: '11', label: 'November' },
-    { value: '12', label: 'December' },
+    { value: '01', monthKey: '0' },
+    { value: '02', monthKey: '1' },
+    { value: '03', monthKey: '2' },
+    { value: '04', monthKey: '3' },
+    { value: '05', monthKey: '4' },
+    { value: '06', monthKey: '5' },
+    { value: '07', monthKey: '6' },
+    { value: '08', monthKey: '7' },
+    { value: '09', monthKey: '8' },
+    { value: '10', monthKey: '9' },
+    { value: '11', monthKey: '10' },
+    { value: '12', monthKey: '11' },
 ]
 
 const getDaysInMonth = (month: string, year: string) => {
@@ -60,6 +61,8 @@ interface IncomeRow {
 }
 
 export default function IncomesPage() {
+    const t = useTranslations('admin.accounting.incomes')
+    const tCommon = useTranslations('common')
     const { selectedCampus, loading: campusLoading } = useCampus() || {}
     const { currentAcademicYear } = useAcademic()
     const campusId = selectedCampus?.id
@@ -242,13 +245,13 @@ export default function IncomesPage() {
 
             if (promises.length > 0) {
                 await Promise.all(promises)
-                toast.success(`${promises.length} income(s) saved`)
+                toast.success(t('toast.saved_count', { count: promises.length }))
                 mutate()
             } else {
-                toast.info('No changes to save')
+                toast.info(t('toast.no_changes'))
             }
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'An error occurred')
+            toast.error(error instanceof Error ? error.message : tCommon('error'))
         } finally {
             setSaving(false)
         }
@@ -259,10 +262,10 @@ export default function IncomesPage() {
         setDeletingId(id)
         try {
             await accountingApi.deleteIncome(id, campusId)
-            toast.success('Income deleted')
+            toast.success(t('toast.deleted'))
             mutate()
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'An error occurred')
+            toast.error(error instanceof Error ? error.message : tCommon('error'))
         } finally {
             setDeletingId(null)
         }
@@ -303,7 +306,7 @@ export default function IncomesPage() {
             <div className="container mx-auto py-6">
                 <Card>
                     <CardContent className="pt-6">
-                        <p className="text-muted-foreground text-center">Please select a campus to manage incomes.</p>
+                        <p className="text-muted-foreground text-center">{t('select_campus')}</p>
                     </CardContent>
                 </Card>
             </div>
@@ -315,14 +318,14 @@ export default function IncomesPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Incomes</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
                     <p className="text-muted-foreground">
-                        Track revenue and money coming in • {selectedCampus.name}
+                        {t('subtitle', { campus: selectedCampus.name })}
                     </p>
                 </div>
                 <Button onClick={handleSave} disabled={saving}>
                     {saving ? <IconLoader className="h-4 w-4 mr-2 animate-spin" /> : <IconDeviceFloppy className="h-4 w-4 mr-2" />}
-                    SAVE
+                    {tCommon('save')}
                 </Button>
             </div>
 
@@ -330,22 +333,22 @@ export default function IncomesPage() {
             <Card>
                 <CardContent className="pt-6">
                     <div className="flex items-center gap-4 flex-wrap">
-                        <span className="font-medium">Timeframe:</span>
+                        <span className="font-medium">{t('period')}</span>
                         <div className="flex items-center gap-2">
                             <Select value={startMonth} onValueChange={setStartMonth}>
                                 <SelectTrigger className="w-28">
-                                    <SelectValue placeholder="Month" />
+                                    <SelectValue placeholder={t('month')} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="N/A">N/A</SelectItem>
                                     {MONTHS.map(m => (
-                                        <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                                        <SelectItem key={m.value} value={m.value}>{tCommon(`months.${m.monthKey}`)}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                             <Select value={startDay} onValueChange={setStartDay}>
                                 <SelectTrigger className="w-20">
-                                    <SelectValue placeholder="Day" />
+                                    <SelectValue placeholder={t('day')} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="N/A">N/A</SelectItem>
@@ -356,7 +359,7 @@ export default function IncomesPage() {
                             </Select>
                             <Select value={startYear} onValueChange={setStartYear}>
                                 <SelectTrigger className="w-24">
-                                    <SelectValue placeholder="Year" />
+                                    <SelectValue placeholder={t('year')} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="N/A">N/A</SelectItem>
@@ -366,21 +369,21 @@ export default function IncomesPage() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <span>to</span>
+                        <span>{tCommon('to')}</span>
                         <div className="flex items-center gap-2">
                             <Select value={endMonth} onValueChange={setEndMonth}>
                                 <SelectTrigger className="w-28">
-                                    <SelectValue placeholder="Month" />
+                                    <SelectValue placeholder={t('month')} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {MONTHS.map(m => (
-                                        <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                                        <SelectItem key={m.value} value={m.value}>{tCommon(`months.${m.monthKey}`)}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                             <Select value={endDay} onValueChange={setEndDay}>
                                 <SelectTrigger className="w-20">
-                                    <SelectValue placeholder="Day" />
+                                    <SelectValue placeholder={t('day')} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {getDaysInMonth(endMonth, endYear).map(d => (
@@ -390,7 +393,7 @@ export default function IncomesPage() {
                             </Select>
                             <Select value={endYear} onValueChange={setEndYear}>
                                 <SelectTrigger className="w-24">
-                                    <SelectValue placeholder="Year" />
+                                    <SelectValue placeholder={t('year')} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {getYears().map(y => (
@@ -400,7 +403,7 @@ export default function IncomesPage() {
                             </Select>
                         </div>
                         <Button onClick={handleApplyFilters} variant="default" className="bg-[#3d8fb5] hover:bg-[#357ea0]">
-                            GO
+                            {tCommon('view')}
                         </Button>
                     </div>
                 </CardContent>
@@ -416,19 +419,19 @@ export default function IncomesPage() {
                     ) : (
                         <>
                             {rows.length === 0 || (rows.length === 1 && rows[0].isNew && !rows[0].title) ? (
-                                <p className="text-muted-foreground mb-4">No incomes were found.</p>
+                                <p className="text-muted-foreground mb-4">{t('no_incomes')}</p>
                             ) : null}
                             <Table>
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead className="w-8"></TableHead>
-                                        <TableHead>INCOME</TableHead>
-                                        <TableHead>CATEGORY</TableHead>
-                                        <TableHead>AMOUNT</TableHead>
-                                        <TableHead>DATE</TableHead>
-                                        <TableHead>METHOD</TableHead>
-                                        <TableHead>COMMENT</TableHead>
-                                        <TableHead>FILE ATTACHED</TableHead>
+                                        <TableHead>{t('col_income')}</TableHead>
+                                        <TableHead>{t('col_category')}</TableHead>
+                                        <TableHead>{tCommon('amount')}</TableHead>
+                                        <TableHead>{tCommon('date')}</TableHead>
+                                        <TableHead>{t('col_payment_method')}</TableHead>
+                                        <TableHead>{t('col_note')}</TableHead>
+                                        <TableHead>{t('col_attachment')}</TableHead>
                                         <TableHead className="w-12"></TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -448,7 +451,7 @@ export default function IncomesPage() {
                                                     <Input
                                                         value={row.title}
                                                         onChange={(e) => handleRowChange(index, 'title', e.target.value)}
-                                                        placeholder="Income description"
+                                                        placeholder={t('placeholder_income_desc')}
                                                         className="w-full"
                                                     />
                                                 </TableCell>
@@ -458,10 +461,10 @@ export default function IncomesPage() {
                                                         onValueChange={(v) => handleRowChange(index, 'category_id', v === 'none' ? '' : v)}
                                                     >
                                                         <SelectTrigger className="w-32">
-                                                            <SelectValue placeholder="N/A" />
+                                                            <SelectValue placeholder={tCommon('na')} />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            <SelectItem value="none">N/A</SelectItem>
+                                                            <SelectItem value="none">{tCommon('na')}</SelectItem>
                                                             {categories?.map(cat => (
                                                                 <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                                                             ))}
@@ -486,7 +489,7 @@ export default function IncomesPage() {
                                                             </SelectTrigger>
                                                             <SelectContent>
                                                                 {MONTHS.map(m => (
-                                                                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                                                                    <SelectItem key={m.value} value={m.value}>{tCommon(`months.${m.monthKey}`)}</SelectItem>
                                                                 ))}
                                                             </SelectContent>
                                                         </Select>
@@ -531,7 +534,7 @@ export default function IncomesPage() {
                                                     <Input
                                                         value={row.comments}
                                                         onChange={(e) => handleRowChange(index, 'comments', e.target.value)}
-                                                        placeholder="Optional comment"
+                                                        placeholder={tCommon('optional')}
                                                         className="w-40"
                                                     />
                                                 </TableCell>
@@ -554,18 +557,18 @@ export default function IncomesPage() {
                                                             </AlertDialogTrigger>
                                                             <AlertDialogContent>
                                                                 <AlertDialogHeader>
-                                                                    <AlertDialogTitle>Delete Income</AlertDialogTitle>
+                                                                    <AlertDialogTitle>{t('delete_title')}</AlertDialogTitle>
                                                                     <AlertDialogDescription>
-                                                                        Are you sure you want to delete this income record?
+                                                                        {t('delete_confirm')}
                                                                     </AlertDialogDescription>
                                                                 </AlertDialogHeader>
                                                                 <AlertDialogFooter>
-                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                    <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
                                                                     <AlertDialogAction
                                                                         onClick={() => handleDelete(row.id!)}
                                                                         className="bg-destructive text-destructive-foreground"
                                                                     >
-                                                                        Delete
+                                                                        {tCommon('delete')}
                                                                     </AlertDialogAction>
                                                                 </AlertDialogFooter>
                                                             </AlertDialogContent>
@@ -580,7 +583,7 @@ export default function IncomesPage() {
                             <div className="flex justify-center mt-4">
                                 <Button onClick={handleSave} disabled={saving} className="bg-[#3d8fb5] hover:bg-[#357ea0]">
                                     {saving ? <IconLoader className="h-4 w-4 mr-2 animate-spin" /> : null}
-                                    SAVE
+                                    {tCommon('save')}
                                 </Button>
                             </div>
                         </>
@@ -594,37 +597,37 @@ export default function IncomesPage() {
                     <div className="space-y-4">
                         <div className="border-b pb-4">
                             <div className="flex justify-between text-sm">
-                                <span>Total from Incomes:</span>
+                                <span>{t('totals.total_incomes')}:</span>
                                 <span>{formatCurrency(totals?.total_incomes || 0)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span>Less: Total from Expenses:</span>
+                                <span>{t('totals.less_total_expenses')}:</span>
                                 <span>{formatCurrency(totals?.total_expenses || 0)}</span>
                             </div>
                             <div className="flex justify-between font-bold">
-                                <span>Balance:</span>
+                                <span>{tCommon('balance')}:</span>
                                 <span>{formatCurrency(totals?.balance || 0)}</span>
                             </div>
                         </div>
                         <div>
                             <div className="flex justify-between text-sm">
-                                <span>Total from Incomes:</span>
+                                <span>{t('totals.total_incomes')}:</span>
                                 <span>{formatCurrency(totals?.total_incomes || 0)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span>&amp; Total from Student Payments:</span>
+                                <span>{t('totals.plus_student_payments')}:</span>
                                 <span>{formatCurrency(totals?.total_student_payments || 0)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span>Less: Total from Expenses:</span>
+                                <span>{t('totals.less_total_expenses')}:</span>
                                 <span>{formatCurrency(totals?.total_expenses || 0)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span>&amp; Total from Staff Payments:</span>
+                                <span>{t('totals.plus_staff_payments')}:</span>
                                 <span>{formatCurrency(totals?.total_staff_payments || 0)}</span>
                             </div>
                             <div className="flex justify-between font-bold">
-                                <span>General Balance:</span>
+                                <span>{t('totals.general_balance')}:</span>
                                 <span>{formatCurrency(totals?.general_balance || 0)}</span>
                             </div>
                         </div>

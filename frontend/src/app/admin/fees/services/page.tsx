@@ -96,7 +96,7 @@ export default function ServicesPage() {
 
     const handleSave = async () => {
         if (!formData.name || !formData.code || !formData.default_charge) {
-            toast.error('Please fill all required fields')
+            toast.error('يرجى تعبئة جميع الحقول المطلوبة')
             return
         }
 
@@ -125,19 +125,19 @@ export default function ServicesPage() {
             const result = await response.json()
 
             if (result.success) {
-                toast.success(editingService ? 'Service updated' : 'Service created')
+                toast.success(editingService ? 'تم تحديث الخدمة' : 'تم إنشاء الخدمة')
                 mutate()
                 resetForm()
             } else {
-                toast.error(result.error || 'Operation failed')
+                toast.error(result.error || 'فشلت العملية')
             }
         } catch (error: any) {
-            toast.error(error.message || 'Failed to save')
+            toast.error(error.message || 'فشل الحفظ')
         }
     }
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this service?')) return
+        if (!confirm('هل أنت متأكد من حذف هذه الخدمة؟')) return
 
         try {
             const { createClient } = await import('@/lib/supabase/client')
@@ -151,13 +151,13 @@ export default function ServicesPage() {
             const result = await response.json()
 
             if (result.success) {
-                toast.success('Service deleted')
+                toast.success('تم حذف الخدمة')
                 mutate()
             } else {
-                toast.error(result.error || 'Delete failed')
+                toast.error(result.error || 'فشل الحذف')
             }
         } catch (error: any) {
-            toast.error(error.message || 'Failed to delete')
+            toast.error(error.message || 'فشل الحذف')
         }
     }
 
@@ -167,10 +167,10 @@ export default function ServicesPage() {
 
     const getFrequencyLabel = (freq: string) => {
         const labels: Record<string, string> = {
-            monthly: 'Monthly',
-            quarterly: 'Quarterly',
-            yearly: 'Yearly',
-            one_time: 'One Time'
+            monthly: 'شهري',
+            quarterly: 'ربع سنوي',
+            yearly: 'سنوي',
+            one_time: 'مرة واحدة'
         }
         return labels[freq] || freq
     }
@@ -185,14 +185,14 @@ export default function ServicesPage() {
                     </Link>
                 </Button>
                 <div className="flex-1">
-                    <h1 className="text-2xl font-bold">School Services</h1>
+                    <h1 className="text-2xl font-bold">خدمات المدرسة</h1>
                     <p className="text-muted-foreground">
-                        Configure optional services like Bus, Meals, Sports that students can subscribe to
+                        ضبط الخدمات الاختيارية مثل النقل والوجبات والرياضة التي يمكن للطلاب الاشتراك بها
                     </p>
                 </div>
                 <Button onClick={() => setIsAdding(true)} disabled={isAdding}>
                     <IconPlus className="h-4 w-4 mr-2" />
-                    Add Service
+                    إضافة خدمة
                 </Button>
             </div>
 
@@ -202,8 +202,8 @@ export default function ServicesPage() {
                     <CardHeader>
                         <div className="flex items-center justify-between">
                             <div>
-                                <CardTitle>{editingService ? 'Edit' : 'Add'} Service</CardTitle>
-                                <CardDescription>Configure service details and pricing</CardDescription>
+                                <CardTitle>{editingService ? 'تعديل' : 'إضافة'} خدمة</CardTitle>
+                                <CardDescription>ضبط تفاصيل الخدمة وتسعيرها</CardDescription>
                             </div>
                             <Button variant="ghost" size="icon" onClick={resetForm}>
                                 <IconX className="h-4 w-4" />
@@ -213,7 +213,7 @@ export default function ServicesPage() {
                     <CardContent className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <Label>Service Name *</Label>
+                                <Label>اسم الخدمة *</Label>
                                 <Input
                                     placeholder="e.g., Bus Service, Meals, Sports"
                                     value={formData.name}
@@ -222,7 +222,7 @@ export default function ServicesPage() {
                             </div>
 
                             <div>
-                                <Label>Code *</Label>
+                                <Label>الرمز *</Label>
                                 <Input
                                     placeholder="e.g., BUS, MEAL, SPORT"
                                     value={formData.code}
@@ -231,7 +231,7 @@ export default function ServicesPage() {
                             </div>
 
                             <div className="col-span-2">
-                                <Label>Description</Label>
+                                <Label>الوصف</Label>
                                 <Input
                                     placeholder="Brief description of the service"
                                     value={formData.description}
@@ -240,7 +240,7 @@ export default function ServicesPage() {
                             </div>
 
                             <div>
-                                <Label>Service Type *</Label>
+                                <Label>نوع الخدمة *</Label>
                                 <Select
                                     value={formData.service_type}
                                     onValueChange={(v: any) => setFormData({ ...formData, service_type: v })}
@@ -249,14 +249,14 @@ export default function ServicesPage() {
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="recurring">Recurring</SelectItem>
-                                        <SelectItem value="one_time">One Time</SelectItem>
+                                        <SelectItem value="recurring">متكرر</SelectItem>
+                                        <SelectItem value="one_time">مرة واحدة</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div>
-                                <Label>Charge Frequency *</Label>
+                                <Label>تكرار التحصيل *</Label>
                                 <Select
                                     value={formData.charge_frequency}
                                     onValueChange={(v: any) => setFormData({ ...formData, charge_frequency: v })}
@@ -265,16 +265,16 @@ export default function ServicesPage() {
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="monthly">Monthly</SelectItem>
-                                        <SelectItem value="quarterly">Quarterly</SelectItem>
-                                        <SelectItem value="yearly">Yearly</SelectItem>
-                                        <SelectItem value="one_time">One Time</SelectItem>
+                                        <SelectItem value="monthly">شهري</SelectItem>
+                                        <SelectItem value="quarterly">ربع سنوي</SelectItem>
+                                        <SelectItem value="yearly">سنوي</SelectItem>
+                                        <SelectItem value="one_time">مرة واحدة</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div>
-                                <Label>Default Charge *</Label>
+                                <Label>الرسوم الافتراضية *</Label>
                                 <Input
                                     type="number"
                                     min="0"
@@ -286,7 +286,7 @@ export default function ServicesPage() {
                             </div>
 
                             <div>
-                                <Label>Display Order</Label>
+                                <Label>ترتيب العرض</Label>
                                 <Input
                                     type="number"
                                     min="0"
@@ -300,17 +300,17 @@ export default function ServicesPage() {
                                     checked={formData.is_mandatory}
                                     onCheckedChange={(checked) => setFormData({ ...formData, is_mandatory: checked })}
                                 />
-                                <Label>Mandatory Service (all students must have it)</Label>
+                                <Label>خدمة إلزامية (لجميع الطلاب)</Label>
                             </div>
                         </div>
 
                         <div className="flex gap-2 pt-4">
                             <Button onClick={handleSave}>
                                 <IconDeviceFloppy className="h-4 w-4 mr-2" />
-                                {editingService ? 'Update' : 'Save'} Service
+                                {editingService ? 'تحديث' : 'حفظ'} الخدمة
                             </Button>
                             <Button variant="outline" onClick={resetForm}>
-                                Cancel
+                                إلغاء
                             </Button>
                         </div>
                     </CardContent>
@@ -320,9 +320,9 @@ export default function ServicesPage() {
             {/* Services List */}
             <Card>
                 <CardHeader>
-                    <CardTitle>Configured Services</CardTitle>
+                    <CardTitle>الخدمات المُعدّة</CardTitle>
                     <CardDescription>
-                        {services?.length || 0} services configured
+                        {services?.length || 0} خدمة مُعدّة
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -337,20 +337,20 @@ export default function ServicesPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Service</TableHead>
-                                        <TableHead>Code</TableHead>
-                                        <TableHead>Type</TableHead>
-                                        <TableHead>Frequency</TableHead>
-                                        <TableHead>Charge</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
+                                        <TableHead>الخدمة</TableHead>
+                                        <TableHead>الرمز</TableHead>
+                                        <TableHead>النوع</TableHead>
+                                        <TableHead>التكرار</TableHead>
+                                        <TableHead>الرسوم</TableHead>
+                                        <TableHead>الحالة</TableHead>
+                                        <TableHead className="text-right">الإجراءات</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {services && services.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                                                No services configured. Click "Add Service" to create one.
+                                                لا توجد خدمات مُعدة. اضغط "إضافة خدمة" لإنشاء واحدة.
                                             </TableCell>
                                         </TableRow>
                                     ) : (
@@ -372,8 +372,8 @@ export default function ServicesPage() {
                                                 <TableCell className="font-semibold">{formatCurrency(service.default_charge)}</TableCell>
                                                 <TableCell>
                                                     <div className="flex gap-1">
-                                                        {service.is_active && <Badge variant="default">Active</Badge>}
-                                                        {service.is_mandatory && <Badge variant="secondary">Mandatory</Badge>}
+                                                        {service.is_active && <Badge variant="default">نشط</Badge>}
+                                                        {service.is_mandatory && <Badge variant="secondary">إلزامي</Badge>}
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-right">
@@ -407,14 +407,14 @@ export default function ServicesPage() {
             {/* Info Card */}
             <Card className="bg-blue-50 border-blue-200">
                 <CardHeader>
-                    <CardTitle className="text-blue-900">💡 How Services Work</CardTitle>
+                    <CardTitle className="text-blue-900">💡 كيف تعمل الخدمات</CardTitle>
                 </CardHeader>
                 <CardContent className="text-sm text-blue-900 space-y-2">
-                    <p>• Services are optional add-ons that students can subscribe to (Bus, Meals, Sports, etc.)</p>
-                    <p>• When onboarding a student, you can select which services they need</p>
-                    <p>• Service charges are automatically added to the student's monthly fee</p>
-                    <p>• You can set different charges per grade level if needed</p>
-                    <p>• Mandatory services are automatically assigned to all students</p>
+                    <p>• الخدمات إضافات اختيارية يمكن للطلاب الاشتراك بها (نقل، وجبات، رياضة، إلخ)</p>
+                    <p>• عند تسجيل طالب يمكنك تحديد الخدمات التي يحتاجها</p>
+                    <p>• تُضاف رسوم الخدمات تلقائيًا إلى الرسوم الشهرية للطالب</p>
+                    <p>• يمكنك تحديد رسوم مختلفة لكل مرحلة عند الحاجة</p>
+                    <p>• الخدمات الإلزامية تُسند تلقائيًا لجميع الطلاب</p>
                 </CardContent>
             </Card>
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -84,6 +85,7 @@ interface StudentRecord {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AddRecordsPage() {
+  const t = useTranslations("school.entry_exit.dashboard");
   const { profile } = useAuth();
   const schoolId = profile?.school_id || "";
 
@@ -128,11 +130,11 @@ export default function AddRecordsPage() {
       setStudents(data);
       setSelected(new Set());
     } catch {
-      toast.error("Failed to load students");
+      toast.error(t("msg_error_load_students"));
     } finally {
       setLoadingStudents(false);
     }
-  }, [schoolId, searchQuery]);
+  }, [schoolId, searchQuery, t]);
 
   useEffect(() => {
     const t = setTimeout(() => void loadStudents(), 300);
@@ -183,15 +185,15 @@ export default function AddRecordsPage() {
   // ── Submit ────────────────────────────────────────────────────────────────
   async function handleSubmit() {
     if (!checkpointId) {
-      toast.error("Please select a checkpoint");
+      toast.error(t("msg_error_checkpoint"));
       return;
     }
     if (!recordType) {
-      toast.error("Please select a record type");
+      toast.error(t("msg_error_type"));
       return;
     }
     if (selected.size === 0) {
-      toast.error("Please select at least one student");
+      toast.error(t("msg_error_no_selection"));
       return;
     }
 
@@ -211,13 +213,13 @@ export default function AddRecordsPage() {
       });
 
       toast.success(
-        `Added ${recordType} record for ${selected.size} student${selected.size > 1 ? "s" : ""}`
+        t("msg_record_added", { type: recordType, count: selected.size })
       );
       setSelected(new Set());
       setComments("");
       setUnauthorized(false);
     } catch (err: unknown) {
-      toast.error((err as Error).message || "Failed to add records");
+      toast.error((err as Error).message || t("msg_record_failed"));
     } finally {
       setSubmitting(false);
     }
@@ -235,12 +237,12 @@ export default function AddRecordsPage() {
               variant="outline"
               className="text-xs font-semibold border-blue-300 text-blue-700 bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:bg-blue-950/40 uppercase tracking-wide"
             >
-              Entry &amp; Exit
+              {t("badge_module")}
             </Badge>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight mt-1">Add Records</h1>
+          <h1 className="text-2xl font-bold tracking-tight mt-1">{t("page_title")}</h1>
           <p className="text-muted-foreground text-sm">
-            Select students and apply an entry or exit record in bulk
+            {t("page_subtitle")}
           </p>
         </div>
 
@@ -254,7 +256,7 @@ export default function AddRecordsPage() {
           ) : (
             <UserPlus className="h-4 w-4" />
           )}
-          Add Records to Selected Students
+          {t("btn_submit_bulk")}
         </Button>
       </div>
 
@@ -262,23 +264,23 @@ export default function AddRecordsPage() {
       <Card className="border-0 shadow-sm">
         <CardContent className="p-6">
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-5">
-            Record Details
+            {t("card_details_title")}
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {/* Checkpoint */}
             <div className="space-y-2">
               <Label>
-                Checkpoint <span className="text-destructive">*</span>
+                {t("label_checkpoint")} <span className="text-destructive">*</span>
               </Label>
               <Select value={checkpointId} onValueChange={setCheckpointId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select checkpoint" />
+                  <SelectValue placeholder={t("placeholder_checkpoint")} />
                 </SelectTrigger>
                 <SelectContent>
                   {checkpoints.length === 0 && (
                     <SelectItem value="__none__" disabled>
-                      No checkpoints found
+                      {t("msg_no_checkpoints")}
                     </SelectItem>
                   )}
                   {checkpoints
@@ -295,26 +297,26 @@ export default function AddRecordsPage() {
             {/* Type */}
             <div className="space-y-2">
               <Label>
-                Type <span className="text-destructive">*</span>
+                {t("label_type")} <span className="text-destructive">*</span>
               </Label>
               <Select
                 value={recordType}
                 onValueChange={(v) => setRecordType(v as "ENTRY" | "EXIT")}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Entry / Exit" />
+                  <SelectValue placeholder={t("placeholder_record_type")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ENTRY">
                     <span className="flex items-center gap-2">
                       <DoorOpen className="h-3.5 w-3.5 text-emerald-600" />
-                      Entry
+                      {t("type_entry")}
                     </span>
                   </SelectItem>
                   <SelectItem value="EXIT">
                     <span className="flex items-center gap-2">
                       <DoorClosed className="h-3.5 w-3.5 text-orange-600" />
-                      Exit
+                      {t("type_exit")}
                     </span>
                   </SelectItem>
                 </SelectContent>
@@ -323,7 +325,7 @@ export default function AddRecordsPage() {
 
             {/* Date */}
             <div className="space-y-2">
-              <Label>Date</Label>
+              <Label>{t("label_date")}</Label>
               <Input
                 type="date"
                 value={date}
@@ -333,7 +335,7 @@ export default function AddRecordsPage() {
 
             {/* Time */}
             <div className="space-y-2">
-              <Label>Time</Label>
+              <Label>{t("label_time")}</Label>
               <Input
                 type="time"
                 value={time}
@@ -351,17 +353,17 @@ export default function AddRecordsPage() {
                 onCheckedChange={(v) => setUnauthorized(!!v)}
               />
               <Label htmlFor="unauthorized" className="cursor-pointer font-normal">
-                Unauthorized
+                {t("option_unauthorized")}
               </Label>
             </div>
 
             {/* Comments */}
             <div className="space-y-2 sm:col-span-3">
-              <Label>Comments</Label>
+              <Label>{t("label_comments")}</Label>
               <Textarea
                 value={comments}
                 onChange={(e) => setComments(e.target.value)}
-                placeholder="Optional notes..."
+                placeholder={t("placeholder_comments")}
                 rows={2}
                 className="resize-none"
               />
@@ -384,10 +386,10 @@ export default function AddRecordsPage() {
               }}
             >
               <SelectTrigger className="w-44">
-                <SelectValue placeholder="All Grades" />
+                <SelectValue placeholder={t("toolbar_all_grades")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Grades</SelectItem>
+                <SelectItem value="all">{t("toolbar_all_grades")}</SelectItem>
                 {gradeLevels.map((g) => (
                   <SelectItem key={g.id} value={g.id}>
                     {g.name}
@@ -403,10 +405,10 @@ export default function AddRecordsPage() {
               disabled={filterGrade === "all"}
             >
               <SelectTrigger className="w-44">
-                <SelectValue placeholder="All Sections" />
+                <SelectValue placeholder={t("toolbar_all_sections")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Sections</SelectItem>
+                <SelectItem value="all">{t("toolbar_all_sections")}</SelectItem>
                 {filteredSections.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
                     {s.name}
@@ -419,7 +421,7 @@ export default function AddRecordsPage() {
             <div className="relative flex-1 min-w-52">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by name or admission no..."
+                placeholder={t("toolbar_search_placeholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -432,7 +434,7 @@ export default function AddRecordsPage() {
               size="icon"
               onClick={() => void loadStudents()}
               disabled={loadingStudents}
-              title="Refresh"
+              title={t("toolbar_refresh")}
             >
               <RefreshCw className={`h-4 w-4 ${loadingStudents ? "animate-spin" : ""}`} />
             </Button>
@@ -441,18 +443,11 @@ export default function AddRecordsPage() {
             <div className="ml-auto flex items-center gap-2 text-sm text-muted-foreground">
               <Users className="h-4 w-4" />
               <span>
-                {loadingStudents ? "Loading..." : (
-                  <>
-                    <span className="font-medium text-foreground">
-                      {filteredStudents.length}
-                    </span>{" "}
-                    student{filteredStudents.length !== 1 ? "s" : ""} found
-                  </>
-                )}
+                {loadingStudents ? t("msg_loading") : t("stat_students_found", { count: filteredStudents.length })}
               </span>
               {selected.size > 0 && (
                 <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 hover:bg-blue-100 ml-1">
-                  {selected.size} selected
+                  {t("stat_selected", { count: selected.size })}
                 </Badge>
               )}
             </div>
@@ -462,15 +457,15 @@ export default function AddRecordsPage() {
           {loadingStudents ? (
             <div className="flex items-center justify-center py-14 gap-3 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" />
-              Loading students...
+              {t("msg_loading_students")}
             </div>
           ) : filteredStudents.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-14 gap-2">
               <Users className="h-10 w-10 text-muted-foreground/30" />
-              <p className="text-muted-foreground">No students found</p>
+              <p className="text-muted-foreground">{t("msg_no_students")}</p>
               {searchQuery && (
                 <p className="text-sm text-muted-foreground/60">
-                  Try clearing the search
+                  {t("msg_clear_search")}
                 </p>
               )}
             </div>
@@ -482,13 +477,13 @@ export default function AddRecordsPage() {
                     <Checkbox
                       checked={allSelected}
                       onCheckedChange={toggleAll}
-                      aria-label="Select all"
+                      aria-label={t("common.selectAll")}
                     />
                   </TableHead>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Admission No.</TableHead>
-                  <TableHead>Grade Level</TableHead>
-                  <TableHead>Section</TableHead>
+                  <TableHead>{t("table_header_student")}</TableHead>
+                  <TableHead>{t("table_header_adm_no")}</TableHead>
+                  <TableHead>{t("table_header_grade")}</TableHead>
+                  <TableHead>{t("table_header_section")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -504,7 +499,7 @@ export default function AddRecordsPage() {
                     student.profiles?.last_name ||
                     student.student_name?.split(" ").slice(1).join(" ") ||
                     "";
-                  const fullName = `${firstName} ${lastName}`.trim() || "Unknown";
+                  const fullName = `${firstName} ${lastName}`.trim() || t("msg_unknown");
                   const admNo =
                     student.admission_number ||
                     student.student_number ||
@@ -581,7 +576,7 @@ export default function AddRecordsPage() {
                 <span className="font-semibold text-foreground">
                   {selected.size}
                 </span>{" "}
-                student{selected.size !== 1 ? "s" : ""} selected
+                {t("stat_selected", { count: selected.size })}
               </p>
               <Button
                 onClick={handleSubmit}
@@ -595,7 +590,7 @@ export default function AddRecordsPage() {
                 ) : (
                   <DoorClosed className="h-4 w-4" />
                 )}
-                Add Records to Selected Students
+                {t("btn_submit_bulk")}
               </Button>
             </div>
           )}

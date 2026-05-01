@@ -112,7 +112,14 @@ export default function BrowseFeesByGradePage() {
             overdue: 'destructive',
             waived: 'secondary'
         }
-        return <Badge variant={variants[status] || 'secondary'}>{status}</Badge>
+        const labels: Record<string, string> = {
+            pending: 'قيد الانتظار',
+            partial: 'جزئي',
+            paid: 'مدفوع',
+            overdue: 'متأخر',
+            waived: 'معفى'
+        }
+        return <Badge variant={variants[status] || 'secondary'}>{labels[status] || status}</Badge>
     }
 
     const formatCurrency = (amount: number) => {
@@ -147,8 +154,8 @@ export default function BrowseFeesByGradePage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold">Browse Fees by Grade</h1>
-                    <p className="text-muted-foreground">View and manage fees by grade level, section, and month</p>
+                    <h1 className="text-2xl font-bold">استعراض الرسوم حسب المرحلة</h1>
+                    <p className="text-muted-foreground">عرض وإدارة الرسوم حسب المرحلة والفصل والشهر</p>
                 </div>
             </div>
 
@@ -157,17 +164,17 @@ export default function BrowseFeesByGradePage() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <IconFilter className="h-5 w-5" />
-                        Filters
+                        الفلاتر
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="flex flex-wrap gap-4">
                         <Select value={gradeLevelId} onValueChange={(v) => { setGradeLevelId(v); setSectionId('all') }}>
                             <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Grade Level" />
+                                <SelectValue placeholder="المرحلة الدراسية" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">All Grades</SelectItem>
+                                <SelectItem value="all">كل المراحل</SelectItem>
                                 {gradeLevels?.map((grade) => (
                                     <SelectItem key={grade.id} value={grade.id}>{grade.name}</SelectItem>
                                 ))}
@@ -176,10 +183,10 @@ export default function BrowseFeesByGradePage() {
 
                         <Select value={sectionId} onValueChange={setSectionId} disabled={gradeLevelId === 'all'}>
                             <SelectTrigger className="w-[150px]">
-                                <SelectValue placeholder="Section" />
+                                <SelectValue placeholder="الفصل" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">All Sections</SelectItem>
+                                <SelectItem value="all">كل الفصول</SelectItem>
                                 {sections?.map((section) => (
                                     <SelectItem key={section.id} value={section.id}>{section.name}</SelectItem>
                                 ))}
@@ -188,10 +195,10 @@ export default function BrowseFeesByGradePage() {
 
                         <Select value={feeMonth} onValueChange={setFeeMonth}>
                             <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Month" />
+                                <SelectValue placeholder="الشهر" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">All Months</SelectItem>
+                                <SelectItem value="all">كل الشهور</SelectItem>
                                 {getMonthOptions().map((month) => (
                                     <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
                                 ))}
@@ -200,14 +207,14 @@ export default function BrowseFeesByGradePage() {
 
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
                             <SelectTrigger className="w-[150px]">
-                                <SelectValue placeholder="Status" />
+                                <SelectValue placeholder="الحالة" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">All Status</SelectItem>
-                                <SelectItem value="pending">Pending</SelectItem>
-                                <SelectItem value="partial">Partial</SelectItem>
-                                <SelectItem value="paid">Paid</SelectItem>
-                                <SelectItem value="overdue">Overdue</SelectItem>
+                                <SelectItem value="all">كل الحالات</SelectItem>
+                                <SelectItem value="pending">قيد الانتظار</SelectItem>
+                                <SelectItem value="partial">جزئي</SelectItem>
+                                <SelectItem value="paid">مدفوع</SelectItem>
+                                <SelectItem value="overdue">متأخر</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -217,9 +224,9 @@ export default function BrowseFeesByGradePage() {
             {/* Fee Records */}
             <Card>
                 <CardHeader>
-                    <CardTitle>Fee Records</CardTitle>
+                    <CardTitle>سجلات الرسوم</CardTitle>
                     <CardDescription>
-                        {feesData?.pagination?.total || 0} records found
+                        {feesData?.pagination?.total || 0} سجل
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -234,21 +241,21 @@ export default function BrowseFeesByGradePage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Student</TableHead>
-                                        <TableHead>Month</TableHead>
-                                        <TableHead>Amount</TableHead>
-                                        <TableHead>Paid</TableHead>
-                                        <TableHead>Balance</TableHead>
-                                        <TableHead>Due Date</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
+                                        <TableHead>الطالب</TableHead>
+                                        <TableHead>الشهر</TableHead>
+                                        <TableHead>المبلغ</TableHead>
+                                        <TableHead>المدفوع</TableHead>
+                                        <TableHead>الرصيد</TableHead>
+                                        <TableHead>تاريخ الاستحقاق</TableHead>
+                                        <TableHead>الحالة</TableHead>
+                                        <TableHead className="text-right">الإجراءات</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {feesData?.data?.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                                                No fee records found. Try adjusting your filters.
+                                                لم يتم العثور على سجلات رسوم. جرّب تعديل الفلاتر.
                                             </TableCell>
                                         </TableRow>
                                     ) : (
@@ -274,7 +281,7 @@ export default function BrowseFeesByGradePage() {
                                                             variant="ghost"
                                                             size="sm"
                                                             asChild
-                                                            title="View Student History"
+                                                            title="عرض سجل الطالب"
                                                         >
                                                             <Link href={`/admin/students/${fee.student_id}/fees`}>
                                                                 <IconUser className="h-4 w-4" />
@@ -284,7 +291,7 @@ export default function BrowseFeesByGradePage() {
                                                             variant="ghost"
                                                             size="sm"
                                                             onClick={() => handleAdjustFee(fee)}
-                                                            title="Adjust Fee"
+                                                            title="تعديل الرسوم"
                                                         >
                                                             <IconAdjustments className="h-4 w-4" />
                                                         </Button>
@@ -292,7 +299,7 @@ export default function BrowseFeesByGradePage() {
                                                             variant="ghost"
                                                             size="sm"
                                                             onClick={() => handleViewChallan(fee.id)}
-                                                            title="View Challan"
+                                                            title="عرض الإيصال"
                                                         >
                                                             <IconFileText className="h-4 w-4" />
                                                         </Button>
@@ -310,7 +317,7 @@ export default function BrowseFeesByGradePage() {
                     {feesData?.pagination && feesData.pagination.totalPages > 1 && (
                         <div className="flex items-center justify-between">
                             <p className="text-sm text-muted-foreground">
-                                Page {page} of {feesData.pagination.totalPages}
+                                الصفحة {page} من {feesData.pagination.totalPages}
                             </p>
                             <div className="flex gap-2">
                                 <Button
@@ -319,7 +326,7 @@ export default function BrowseFeesByGradePage() {
                                     onClick={() => setPage(p => Math.max(1, p - 1))}
                                     disabled={page === 1}
                                 >
-                                    Previous
+                                    السابق
                                 </Button>
                                 <Button
                                     variant="outline"
@@ -327,7 +334,7 @@ export default function BrowseFeesByGradePage() {
                                     onClick={() => setPage(p => p + 1)}
                                     disabled={page >= feesData.pagination.totalPages}
                                 >
-                                    Next
+                                    التالي
                                 </Button>
                             </div>
                         </div>

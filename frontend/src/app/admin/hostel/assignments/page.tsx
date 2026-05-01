@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ import { HostelRoomAssignment, HostelRoom, HostelBuilding } from "@/types";
 import { Plus, Users, UserMinus, Search } from "lucide-react";
 
 export default function AssignmentsPage() {
+  const t = useTranslations("admin.hostel.assignments");
   const { profile } = useAuth();
   const schoolId = profile?.school_id || "";
   const campusId = profile?.campus_id;
@@ -159,14 +161,14 @@ export default function AssignmentsPage() {
       resetForm();
       loadData();
     } catch (err: any) {
-      alert(err.message || "Failed to assign student");
+      alert(err.message || t('msg_assign_error'));
     } finally {
       setSubmitting(false);
     }
   }
 
   async function handleRelease(id: string) {
-    if (!confirm("Release this student from their room?")) return;
+    if (!confirm(t('confirm_release_student'))) return;
     try {
       await releaseStudent(id, campusId);
       loadData();
@@ -184,11 +186,9 @@ export default function AssignmentsPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Room Assignments
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t('header_title')}</h1>
           <p className="text-muted-foreground">
-            Assign students to hostel rooms
+            {t('header_subtitle')}
           </p>
         </div>
         <Dialog
@@ -201,28 +201,28 @@ export default function AssignmentsPage() {
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
-              Assign Student
+              {t('btn_add')}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md overflow-visible">
             <DialogHeader>
-              <DialogTitle>Assign Student to Room</DialogTitle>
+              <DialogTitle>{t('dialog_add_title')}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
               {/* Room selector */}
               <div className="space-y-2">
-                <Label>Room *</Label>
+                <Label>{t('label_room')}</Label>
                 <Select
                   value={selectedRoomId}
                   onValueChange={setSelectedRoomId}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select room" />
+                    <SelectValue placeholder={t('placeholder_room')} />
                   </SelectTrigger>
                   <SelectContent>
                     {availableRooms.map((r) => (
                       <SelectItem key={r.id} value={r.id}>
-                        {r.building_name} — Room {r.room_number} (
+                        {r.building_name} — {t('th_room')} {r.room_number} (
                         {r.occupancy || 0}/{r.capacity})
                       </SelectItem>
                     ))}
@@ -232,57 +232,7 @@ export default function AssignmentsPage() {
 
               {/* Student search */}
               <div className="space-y-2">
-                <Label>Student *</Label>
-                {/* {selectedStudent ? (
-                  <div className="flex items-center justify-between p-2 bg-muted rounded-md">
-                    <span className="text-sm font-medium">
-                      {selectedStudent.first_name} {selectedStudent.last_name}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedStudent(null);
-                        setSearchQuery("");
-                      }}
-                    >
-                      Change
-                    </Button>
-                  </div>
-                ) 
-                : (
-                  <div className="relative">
-                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search students..."
-                      className="pl-9"
-                    />
-                    {searchResults.length > 0 && (
-                      <div className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-lg max-h-40 overflow-y-auto">
-                        {searchResults.map((s: any) => (
-                          <button
-                            key={s.id}
-                            className="w-full text-left px-3 py-2 hover:bg-muted text-sm"
-                            onClick={() => {
-                              setSelectedStudent(s);
-                              setSearchQuery("");
-                              setSearchResults([]);
-                            }}
-                          >
-                            {s.first_name} {s.last_name}{" "}
-                            <span className="text-muted-foreground">
-                              {s.admission_number
-                                ? `#${s.admission_number}`
-                                : ""}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )} */}
+                <Label>{t('label_student')}</Label>
                 {selectedStudentId ? (
                   <div className="flex items-center gap-2 p-2 rounded-md border bg-muted/50">
                     <Users className="h-4 w-4 text-muted-foreground" />
@@ -297,14 +247,14 @@ export default function AssignmentsPage() {
                         setSelectedStudentName("");
                       }}
                     >
-                      Change
+                      {t('btn_release')}
                     </Button>
                   </div>
                 ) : (
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Search student..."
+                      placeholder={t('placeholder_student')}
                       className="pl-9"
                       value={studentSearch}
                       onChange={(e) => handleStudentSearch(e.target.value)}
@@ -342,7 +292,7 @@ export default function AssignmentsPage() {
                     )}
                     {searchingStudents && (
                       <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg p-3 text-sm text-muted-foreground text-center">
-                        Searching...
+                        {t('msg_loading')}
                       </div>
                     )}
                   </div>
@@ -350,21 +300,20 @@ export default function AssignmentsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Notes</Label>
+                <Label>{t('label_notes')}</Label>
                 <Input
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Optional notes..."
+                  placeholder={t('placeholder_notes')}
                 />
               </div>
 
               <Button
                 onClick={handleAssign}
-                // disabled={submitting || !selectedRoomId || !selectedStudent}
                 disabled={submitting || !selectedRoomId || !selectedStudentId}
                 className="w-full"
               >
-                {submitting ? "Assigning..." : "Assign Student"}
+                {submitting ? t('btn_assigning') : t('btn_assign')}
               </Button>
             </div>
           </DialogContent>
@@ -374,7 +323,7 @@ export default function AssignmentsPage() {
       {/* Filters */}
       <div className="flex gap-4 items-center flex-wrap">
         <div className="flex gap-2 items-center">
-          <Label className="text-sm">Building:</Label>
+          <Label className="text-sm">{t('filter_building')}</Label>
           <Select
             value={filterBuilding || "ALL"}
             onValueChange={(v) => setFilterBuilding(v === "ALL" ? "" : v)}
@@ -383,7 +332,7 @@ export default function AssignmentsPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL">All</SelectItem>
+              <SelectItem value="ALL">{t('filter_all')}</SelectItem>
               {buildings.map((b) => (
                 <SelectItem key={b.id} value={b.id}>
                   {b.name}
@@ -398,14 +347,14 @@ export default function AssignmentsPage() {
             size="sm"
             onClick={() => setActiveOnly(true)}
           >
-            Active
+            {t('tab_active')}
           </Button>
           <Button
             variant={!activeOnly ? "default" : "outline"}
             size="sm"
             onClick={() => setActiveOnly(false)}
           >
-            All
+            {t('tab_all')}
           </Button>
         </div>
       </div>
@@ -415,14 +364,14 @@ export default function AssignmentsPage() {
         <CardContent className="p-0">
           {loading ? (
             <div className="text-center py-12 text-muted-foreground">
-              Loading...
+              {t('msg_loading')}
             </div>
           ) : assignments.length === 0 ? (
             <div className="text-center py-12">
               <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="font-semibold mb-2">No assignments</h3>
+              <h3 className="font-semibold mb-2">{t('msg_no_data')}</h3>
               <p className="text-muted-foreground">
-                Assign students to hostel rooms
+                {t('msg_no_data_desc')}
               </p>
             </div>
           ) : (
@@ -430,17 +379,17 @@ export default function AssignmentsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="text-left py-3 px-4 font-medium">Student</th>
+                    <th className="text-left py-3 px-4 font-medium">{t('th_student')}</th>
                     <th className="text-left py-3 px-4 font-medium">
-                      Building
+                      {t('th_building')}
                     </th>
-                    <th className="text-left py-3 px-4 font-medium">Room</th>
+                    <th className="text-left py-3 px-4 font-medium">{t('th_room')}</th>
                     <th className="text-left py-3 px-4 font-medium">
-                      Assigned
+                      {t('th_assigned')}
                     </th>
-                    <th className="text-left py-3 px-4 font-medium">Status</th>
+                    <th className="text-left py-3 px-4 font-medium">{t('th_status')}</th>
                     <th className="text-right py-3 px-4 font-medium">
-                      Actions
+                      {t('th_actions')}
                     </th>
                   </tr>
                 </thead>
@@ -458,11 +407,11 @@ export default function AssignmentsPage() {
                       <td className="py-3 px-4">
                         {a.is_active ? (
                           <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                            Active
+                            {t('status_active')}
                           </Badge>
                         ) : (
                           <Badge variant="secondary">
-                            Released{" "}
+                            {t('status_released')}{" "}
                             {a.released_date
                               ? new Date(a.released_date).toLocaleDateString()
                               : ""}
@@ -478,7 +427,7 @@ export default function AssignmentsPage() {
                             onClick={() => handleRelease(a.id)}
                           >
                             <UserMinus className="h-4 w-4 mr-1" />
-                            Release
+                            {t('btn_release')}
                           </Button>
                         )}
                       </td>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,8 @@ const DAY_OPTIONS = [
 ];
 
 export default function EveningLeavesPage() {
+  const t = useTranslations("school.entry_exit.evening_leaves");
+  const commonT = useTranslations("common");
   const { profile } = useAuth();
   const schoolId = profile?.school_id || "";
 
@@ -187,7 +190,7 @@ export default function EveningLeavesPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this evening leave?")) return;
+    if (!confirm(t("msg_delete_confirm"))) return;
     try {
       await deleteEveningLeave(id);
       loadData();
@@ -228,9 +231,9 @@ export default function EveningLeavesPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Evening Leaves</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("page_title")}</h1>
           <p className="text-muted-foreground">
-            Manage student evening leave authorizations
+            {t("page_subtitle")}
           </p>
         </div>
         <Dialog
@@ -243,17 +246,17 @@ export default function EveningLeavesPage() {
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
-              Add Evening Leave
+              {t("btn_add_evening_leave")}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-lg overflow-visible">
             <DialogHeader>
-              <DialogTitle>Add Evening Leave</DialogTitle>
+              <DialogTitle>{t("dialog_add_title")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
               {/* Student search */}
               <div className="space-y-2">
-                <Label>Student</Label>
+                <Label>{t("label_student")}</Label>
                 {selectedStudentId ? (
                   <div className="flex items-center gap-2 p-2 rounded-md border bg-muted/50">
                     <Users className="h-4 w-4 text-muted-foreground" />
@@ -268,14 +271,14 @@ export default function EveningLeavesPage() {
                         setSelectedStudentName("");
                       }}
                     >
-                      Change
+                      {t("btn_change")}
                     </Button>
                   </div>
                 ) : (
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Search student..."
+                      placeholder={t("placeholder_student")}
                       className="pl-9"
                       value={studentSearch}
                       onChange={(e) => handleStudentSearch(e.target.value)}
@@ -313,7 +316,7 @@ export default function EveningLeavesPage() {
                     )}
                     {searchingStudents && (
                       <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg p-3 text-sm text-muted-foreground text-center">
-                        Searching...
+                        {t("msg_searching")}
                       </div>
                     )}
                   </div>
@@ -322,7 +325,7 @@ export default function EveningLeavesPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Start Date</Label>
+                  <Label>{t("label_start_date")}</Label>
                   <Input
                     type="date"
                     value={startDate}
@@ -330,7 +333,7 @@ export default function EveningLeavesPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>End Date</Label>
+                  <Label>{t("label_end_date")}</Label>
                   <Input
                     type="date"
                     value={endDate}
@@ -340,7 +343,7 @@ export default function EveningLeavesPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Days of Week</Label>
+                <Label>{t("label_days")}</Label>
                 <div className="flex flex-wrap gap-2">
                   {DAY_OPTIONS.map((day) => (
                     <button
@@ -361,7 +364,7 @@ export default function EveningLeavesPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Authorized Return Time</Label>
+                  <Label>{t("label_return_time")}</Label>
                   <Input
                     type="time"
                     value={returnTime}
@@ -369,16 +372,16 @@ export default function EveningLeavesPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Checkpoint (Optional)</Label>
+                  <Label>{t("label_checkpoint")} ({commonT("optional")})</Label>
                   <Select
                     value={selectedCheckpoint}
                     onValueChange={setSelectedCheckpoint}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Any" />
+                      <SelectValue placeholder={commonT("all")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="NULL">Any Checkpoint</SelectItem>
+                      <SelectItem value="NULL">{commonT("all")}</SelectItem>
                       {checkpoints.map((cp) => (
                         <SelectItem key={cp.id} value={cp.id}>
                           {cp.name}
@@ -390,11 +393,11 @@ export default function EveningLeavesPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Reason (Optional)</Label>
+                <Label>{t("label_reason")} ({commonT("optional")})</Label>
                 <Input
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  placeholder="e.g. Sports practice"
+                  placeholder={t("placeholder_reason")}
                 />
               </div>
 

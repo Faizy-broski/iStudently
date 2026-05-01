@@ -183,7 +183,7 @@ export default function FeeOverridesPage() {
             }
         } catch (error) {
             console.error('Failed to load students:', error)
-            toast.error('Failed to load students')
+            toast.error('فشل تحميل الطلاب')
         } finally {
             setLoading(false)
         }
@@ -246,7 +246,7 @@ export default function FeeOverridesPage() {
     // Get student name handling both profile and profiles
     const getStudentName = (student: Student) => {
         const p = student.profile || student.profiles
-        return p ? `${p.first_name} ${p.last_name}` : 'Unknown'
+        return p ? `${p.first_name} ${p.last_name}` : 'غير معروف'
     }
 
     // Get grade name handling both grade_level string and grade_levels object
@@ -321,10 +321,10 @@ export default function FeeOverridesPage() {
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
                         <IconAdjustments className="h-8 w-8" />
-                        Fee Overrides
+                        تجاوزات الرسوم
                     </h1>
                     <p className="text-muted-foreground">
-                        Set custom fee amounts for individual students
+                        تعيين مبالغ رسوم مخصصة لطلاب محددين
                     </p>
                 </div>
                 <Button
@@ -335,7 +335,7 @@ export default function FeeOverridesPage() {
                     }}
                 >
                     <IconRefresh className="h-4 w-4 mr-2" />
-                    Refresh
+                    تحديث
                 </Button>
             </div>
 
@@ -345,11 +345,11 @@ export default function FeeOverridesPage() {
                     <div className="flex items-start gap-3">
                         <IconAdjustments className="text-blue-600 dark:text-blue-400 mt-0.5" size={20} />
                         <div className="text-sm text-blue-700 dark:text-blue-300">
-                            <p className="font-medium">How Fee Overrides Work</p>
+                            <p className="font-medium">كيف تعمل تجاوزات الرسوم</p>
                             <p className="mt-1 text-blue-600 dark:text-blue-400">
-                                Override the default fee structure amount for specific students. When fees are generated,
-                                students with overrides will be charged the custom amount instead of the grade-level fee.
-                                Existing fees are not affected - overrides only apply to future fee generation.
+                                تجاوز مبلغ هيكل الرسوم الافتراضي لطلاب محددين. عند إنشاء الرسوم،
+                                سيتم تحصيل المبلغ المخصص للطلاب الذين لديهم تجاوز بدلًا من رسوم المرحلة.
+                                الرسوم الحالية لا تتأثر — التجاوزات تطبق على الإنشاءات المستقبلية فقط.
                             </p>
                         </div>
                     </div>
@@ -361,10 +361,10 @@ export default function FeeOverridesPage() {
                 <CardHeader className="pb-4">
                     <CardTitle className="text-lg flex items-center gap-2">
                         <IconUsers className="h-5 w-5" />
-                        Students
+                        الطلاب
                     </CardTitle>
                     <CardDescription>
-                        Select a student to manage their fee overrides
+                        اختر طالبًا لإدارة تجاوزات الرسوم الخاصة به
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -375,7 +375,7 @@ export default function FeeOverridesPage() {
                             <div className="relative">
                                 <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
-                                    placeholder="Search students..."
+                                    placeholder="ابحث عن الطلاب..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="pl-9"
@@ -387,10 +387,10 @@ export default function FeeOverridesPage() {
                         <div className="min-w-[150px]">
                             <Select value={selectedGradeId} onValueChange={setSelectedGradeId}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="All Grades" />
+                                    <SelectValue placeholder="كل المراحل" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Grades</SelectItem>
+                                    <SelectItem value="all">كل المراحل</SelectItem>
                                     {gradeLevels?.map((grade) => (
                                         <SelectItem key={grade.id} value={grade.id}>
                                             {grade.name}
@@ -408,10 +408,10 @@ export default function FeeOverridesPage() {
                                 disabled={selectedGradeId === 'all'}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="All Sections" />
+                                    <SelectValue placeholder="كل الفصول" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Sections</SelectItem>
+                                    <SelectItem value="all">كل الفصول</SelectItem>
                                     {sections?.map((section) => (
                                         <SelectItem key={section.id} value={section.id}>
                                             {section.name}
@@ -425,13 +425,13 @@ export default function FeeOverridesPage() {
                         <div className="min-w-[180px]">
                             <Select value={selectedAcademicYear} onValueChange={setSelectedAcademicYear}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Academic Year" />
+                                    <SelectValue placeholder="السنة الدراسية" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Years</SelectItem>
+                                    <SelectItem value="all">كل السنوات</SelectItem>
                                     {academicYears?.map((year) => (
                                         <SelectItem key={year.id} value={year.name}>
-                                            {year.name} {year.is_current ? '(Current)' : ''}
+                                            {year.name} {year.is_current ? '(الحالية)' : ''}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -451,19 +451,19 @@ export default function FeeOverridesPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Student</TableHead>
-                                        <TableHead>Grade</TableHead>
-                                        <TableHead>Section</TableHead>
-                                        <TableHead>Active Overrides</TableHead>
-                                        <TableHead>Override Details</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
+                                        <TableHead>الطالب</TableHead>
+                                        <TableHead>المرحلة</TableHead>
+                                        <TableHead>الفصل</TableHead>
+                                        <TableHead>التجاوزات النشطة</TableHead>
+                                        <TableHead>تفاصيل التجاوز</TableHead>
+                                        <TableHead className="text-right">الإجراءات</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {paginatedStudents.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                                                No students found
+                                                لم يتم العثور على طلاب
                                             </TableCell>
                                         </TableRow>
                                     ) : (
@@ -492,11 +492,11 @@ export default function FeeOverridesPage() {
                                                     <TableCell onClick={() => handleOpenModal(student)}>
                                                         {overrideCount > 0 ? (
                                                             <Badge variant="default" className="bg-emerald-600">
-                                                                {overrideCount} override{overrideCount !== 1 ? 's' : ''}
+                                                                {overrideCount} تجاوز
                                                             </Badge>
                                                         ) : (
                                                             <Badge variant="outline" className="text-muted-foreground">
-                                                                None
+                                                                لا يوجد
                                                             </Badge>
                                                         )}
                                                     </TableCell>
@@ -513,13 +513,13 @@ export default function FeeOverridesPage() {
                                                                 ))}
                                                                 {studentOverrides.length > 3 && (
                                                                     <span className="text-xs text-muted-foreground">
-                                                                        +{studentOverrides.length - 3} more
+                                                                        +{studentOverrides.length - 3} المزيد
                                                                     </span>
                                                                 )}
                                                             </div>
                                                         ) : (
                                                             <span className="text-xs text-muted-foreground">
-                                                                Using default fees
+                                                                استخدام الرسوم الافتراضية
                                                             </span>
                                                         )}
                                                     </TableCell>
@@ -530,7 +530,7 @@ export default function FeeOverridesPage() {
                                                             onClick={() => handleOpenModal(student)}
                                                         >
                                                             <IconEdit className="h-4 w-4 mr-1" />
-                                                            Manage
+                                                            إدارة
                                                         </Button>
                                                     </TableCell>
                                                 </TableRow>
@@ -545,7 +545,7 @@ export default function FeeOverridesPage() {
                     {/* Pagination */}
                     <div className="flex items-center justify-between pt-4 border-t mt-4">
                         <p className="text-sm text-muted-foreground">
-                            Showing {filteredStudents.length > 0 ? (page - 1) * pageSize + 1 : 0} - {Math.min(page * pageSize, filteredStudents.length)} of {filteredStudents.length} students
+                            عرض {filteredStudents.length > 0 ? (page - 1) * pageSize + 1 : 0} - {Math.min(page * pageSize, filteredStudents.length)} من {filteredStudents.length} طالب
                         </p>
                         <div className="flex items-center gap-2">
                             <Button
@@ -555,10 +555,10 @@ export default function FeeOverridesPage() {
                                 disabled={page === 1}
                             >
                                 <IconChevronLeft className="h-4 w-4 mr-1" />
-                                Previous
+                                السابق
                             </Button>
                             <span className="text-sm px-2">
-                                Page {page} of {totalPages || 1}
+                                الصفحة {page} من {totalPages || 1}
                             </span>
                             <Button
                                 variant="outline"
@@ -566,7 +566,7 @@ export default function FeeOverridesPage() {
                                 onClick={() => setPage(p => p + 1)}
                                 disabled={page >= totalPages}
                             >
-                                Next
+                                التالي
                                 <IconChevronRight className="h-4 w-4 ml-1" />
                             </Button>
                         </div>
@@ -577,11 +577,11 @@ export default function FeeOverridesPage() {
             {/* Summary Card */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-lg">Override Summary</CardTitle>
+                    <CardTitle className="text-lg">ملخص التجاوزات</CardTitle>
                     <CardDescription>
                         {selectedAcademicYear !== 'all' 
-                            ? `Active overrides for ${selectedAcademicYear}`
-                            : 'Active overrides across all academic years'}
+                            ? `التجاوزات النشطة لسنة ${selectedAcademicYear}`
+                            : 'التجاوزات النشطة عبر كل السنوات الدراسية'}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -590,25 +590,25 @@ export default function FeeOverridesPage() {
                             <p className="text-2xl font-bold text-emerald-600">
                                 {overrides.filter(o => o.is_active).length}
                             </p>
-                            <p className="text-sm text-muted-foreground">Total Overrides</p>
+                            <p className="text-sm text-muted-foreground">إجمالي التجاوزات</p>
                         </div>
                         <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                             <p className="text-2xl font-bold text-blue-600">
                                 {new Set(overrides.filter(o => o.is_active).map(o => o.student_id)).size}
                             </p>
-                            <p className="text-sm text-muted-foreground">Students with Overrides</p>
+                            <p className="text-sm text-muted-foreground">الطلاب مع تجاوزات</p>
                         </div>
                         <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                             <p className="text-2xl font-bold text-purple-600">
                                 {new Set(overrides.filter(o => o.is_active).map(o => o.fee_category_id)).size}
                             </p>
-                            <p className="text-sm text-muted-foreground">Categories Affected</p>
+                            <p className="text-sm text-muted-foreground">الفئات المتأثرة</p>
                         </div>
                         <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                             <p className="text-2xl font-bold text-orange-600">
                                 {feeCategories.length}
                             </p>
-                            <p className="text-sm text-muted-foreground">Total Fee Categories</p>
+                            <p className="text-sm text-muted-foreground">إجمالي فئات الرسوم</p>
                         </div>
                     </div>
                 </CardContent>

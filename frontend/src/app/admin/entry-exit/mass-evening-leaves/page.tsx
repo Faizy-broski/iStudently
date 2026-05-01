@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,13 +60,13 @@ function initials(name: string) {
 }
 
 const DAY_LABELS = [
-  { value: 1, label: "Monday" },
-  { value: 2, label: "Tuesday" },
-  { value: 3, label: "Wednesday" },
-  { value: 4, label: "Thursday" },
-  { value: 5, label: "Friday" },
-  { value: 6, label: "Saturday" },
-  { value: 0, label: "Sunday" },
+  { value: 1, key: "day_monday" },
+  { value: 2, key: "day_tuesday" },
+  { value: 3, key: "day_wednesday" },
+  { value: 4, key: "day_thursday" },
+  { value: 5, key: "day_friday" },
+  { value: 6, key: "day_saturday" },
+  { value: 0, key: "day_sunday" },
 ];
 
 interface StudentRecord {
@@ -89,6 +90,8 @@ interface StudentRecord {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MassEveningLeavesPage() {
+  const t = useTranslations("school.entry_exit.mass_evening_leaves");
+  const commonT = useTranslations("common");
   const { profile } = useAuth();
   const schoolId = profile?.school_id || "";
 
@@ -141,7 +144,7 @@ export default function MassEveningLeavesPage() {
       setStudents(data);
       setSelected(new Set());
     } catch {
-      toast.error("Failed to load students");
+      toast.error(t("msg_error_load_students"));
     } finally {
       setLoadingStudents(false);
     }
@@ -214,27 +217,27 @@ export default function MassEveningLeavesPage() {
   // ── Submit ────────────────────────────────────────────────────────────────
   async function handleSubmit() {
     if (!checkpointId) {
-      toast.error("Please select a checkpoint");
+      toast.error(t("msg_error_no_checkpoint"));
       return;
     }
     if (!fromDate) {
-      toast.error("Please set a start date");
+      toast.error(t("msg_error_no_start_date"));
       return;
     }
     if (!toDate) {
-      toast.error("Please set an end date");
+      toast.error(t("msg_error_no_end_date"));
       return;
     }
     if (daysOfWeek.size === 0) {
-      toast.error("Please select at least one day of the week");
+      toast.error(t("msg_error_no_days"));
       return;
     }
     if (!returnTime) {
-      toast.error("Please set a return time");
+      toast.error(t("msg_error_no_return_time"));
       return;
     }
     if (selected.size === 0) {
-      toast.error("Please select at least one student");
+      toast.error(t("msg_error_no_students"));
       return;
     }
 
@@ -272,12 +275,12 @@ export default function MassEveningLeavesPage() {
       );
 
       toast.success(
-        `Evening leave added for ${ids.length} student${ids.length !== 1 ? "s" : ""}`,
+        t("msg_success_added", { count: ids.length }),
       );
       setSelected(new Set());
       setComments("");
     } catch (err: unknown) {
-      toast.error((err as Error).message || "Failed to add evening leaves");
+      toast.error((err as Error).message || t("msg_error"));
     } finally {
       setSubmitting(false);
     }
@@ -303,14 +306,14 @@ export default function MassEveningLeavesPage() {
               variant="outline"
               className="text-xs font-semibold border-violet-300 text-violet-700 bg-violet-50 dark:border-violet-700 dark:text-violet-300 dark:bg-violet-950/40 uppercase tracking-wide"
             >
-              Entry &amp; Exit
+              {t("badge_module")}
             </Badge>
           </div>
           <h1 className="text-2xl font-bold tracking-tight mt-1">
-            Mass Add Evening Leaves
+            {t("page_title")}
           </h1>
           <p className="text-muted-foreground text-sm">
-            Apply an evening leave to multiple students at once
+            {t("page_subtitle")}
           </p>
         </div>
 
@@ -324,7 +327,7 @@ export default function MassEveningLeavesPage() {
           ) : (
             <Moon className="h-4 w-4" />
           )}
-          Add Evening Leave to Selected Students
+          {t("btn_submit")}
         </Button>
       </div>
 
@@ -346,9 +349,7 @@ export default function MassEveningLeavesPage() {
               htmlFor="deleteExisting"
               className="cursor-pointer font-normal text-sm text-amber-800 dark:text-amber-300"
             >
-              Delete existing evening leaves for{" "}
-              <span className="font-semibold">this checkpoint</span> before
-              adding new ones
+              {t("label_delete_existing", { checkpoint: checkpoints.find(cp => cp.id === checkpointId)?.name || t("label_checkpoint") })}
             </Label>
             {deleteExisting && (
               <AlertTriangle className="h-4 w-4 text-amber-600 ml-auto shrink-0" />
@@ -359,16 +360,16 @@ export default function MassEveningLeavesPage() {
             {/* Checkpoint */}
             <div className="space-y-2">
               <Label>
-                Checkpoint <span className="text-destructive">*</span>
+                {t("label_checkpoint")} <span className="text-destructive">*</span>
               </Label>
               <Select value={checkpointId} onValueChange={setCheckpointId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select checkpoint" />
+                  <SelectValue placeholder={t("placeholder_checkpoint")} />
                 </SelectTrigger>
                 <SelectContent>
                   {checkpoints.length === 0 && (
                     <SelectItem value="__none__" disabled>
-                      No checkpoints found
+                      {t("msg_no_checkpoints")}
                     </SelectItem>
                   )}
                   {checkpoints
@@ -385,7 +386,7 @@ export default function MassEveningLeavesPage() {
             {/* From date */}
             <div className="space-y-2">
               <Label>
-                From <span className="text-destructive">*</span>
+                {t("label_from")} <span className="text-destructive">*</span>
               </Label>
               <Input
                 type="date"
@@ -397,7 +398,7 @@ export default function MassEveningLeavesPage() {
             {/* To date */}
             <div className="space-y-2">
               <Label>
-                To <span className="text-destructive">*</span>
+                {t("label_to")} <span className="text-destructive">*</span>
               </Label>
               <Input
                 type="date"
@@ -410,7 +411,7 @@ export default function MassEveningLeavesPage() {
             {/* Return time */}
             <div className="space-y-2">
               <Label>
-                Return Time <span className="text-destructive">*</span>
+                {t("label_return_time")} <span className="text-destructive">*</span>
               </Label>
               <Input
                 type="time"
@@ -421,11 +422,11 @@ export default function MassEveningLeavesPage() {
 
             {/* Comments */}
             <div className="space-y-2 sm:col-span-2">
-              <Label>Comments</Label>
+              <Label>{t("label_comments")}</Label>
               <Textarea
                 value={comments}
                 onChange={(e) => setComments(e.target.value)}
-                placeholder="Optional reason or notes..."
+                placeholder={t("placeholder_comments")}
                 rows={2}
                 className="resize-none"
               />
@@ -435,10 +436,10 @@ export default function MassEveningLeavesPage() {
           {/* Days of week */}
           <div className="mt-5">
             <Label className="mb-3 block">
-              Days <span className="text-destructive">*</span>
+              {t("label_days")} <span className="text-destructive">*</span>
             </Label>
             <div className="flex flex-wrap gap-2">
-              {DAY_LABELS.map(({ value, label }) => {
+              {DAY_LABELS.map(({ value, key }) => {
                 const checked = daysOfWeek.has(value);
                 return (
                   <button
@@ -451,7 +452,7 @@ export default function MassEveningLeavesPage() {
                         : "bg-background border-border text-muted-foreground hover:border-violet-400 hover:text-violet-700"
                     }`}
                   >
-                    {label}
+                    {t(key)}
                   </button>
                 );
               })}
@@ -473,10 +474,10 @@ export default function MassEveningLeavesPage() {
               }}
             >
               <SelectTrigger className="w-44">
-                <SelectValue placeholder="All Grades" />
+                <SelectValue placeholder={t("toolbar_grade")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Grades</SelectItem>
+                <SelectItem value="all">{t("toolbar_grade")}</SelectItem>
                 {gradeLevels.map((g) => (
                   <SelectItem key={g.id} value={g.id}>
                     {g.name}
@@ -491,10 +492,10 @@ export default function MassEveningLeavesPage() {
               disabled={filterGrade === "all"}
             >
               <SelectTrigger className="w-44">
-                <SelectValue placeholder="All Sections" />
+                <SelectValue placeholder={t("toolbar_section")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Sections</SelectItem>
+                <SelectItem value="all">{t("toolbar_section")}</SelectItem>
                 {filteredSections.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
                     {s.name}
@@ -506,7 +507,7 @@ export default function MassEveningLeavesPage() {
             <div className="relative flex-1 min-w-52">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by name or admission no..."
+                placeholder={t("toolbar_search")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -518,7 +519,7 @@ export default function MassEveningLeavesPage() {
               size="icon"
               onClick={() => void loadStudents()}
               disabled={loadingStudents}
-              title="Refresh"
+              title={t("toolbar_refresh")}
             >
               <RefreshCw
                 className={`h-4 w-4 ${loadingStudents ? "animate-spin" : ""}`}
@@ -529,19 +530,19 @@ export default function MassEveningLeavesPage() {
               <Users className="h-4 w-4" />
               <span>
                 {loadingStudents ? (
-                  "Loading..."
+                  commonT("loading")
                 ) : (
                   <>
                     <span className="font-medium text-foreground">
                       {filteredStudents.length}
                     </span>{" "}
-                    student{filteredStudents.length !== 1 ? "s" : ""} found
+                    {t("stat_students_found", { count: filteredStudents.length })}
                   </>
                 )}
               </span>
               {selected.size > 0 && (
                 <Badge className="bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 hover:bg-violet-100 ml-1">
-                  {selected.size} selected
+                  {t("stat_selected", { count: selected.size })}
                 </Badge>
               )}
             </div>
@@ -551,12 +552,12 @@ export default function MassEveningLeavesPage() {
           {loadingStudents ? (
             <div className="flex items-center justify-center py-14 gap-3 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" />
-              Loading students...
+              {t("msg_loading_students")}
             </div>
           ) : filteredStudents.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-14 gap-2">
               <Users className="h-10 w-10 text-muted-foreground/30" />
-              <p className="text-muted-foreground">No students found</p>
+              <p className="text-muted-foreground">{t("msg_no_students")}</p>
             </div>
           ) : (
             <Table>
@@ -569,10 +570,10 @@ export default function MassEveningLeavesPage() {
                       aria-label="Select all"
                     />
                   </TableHead>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Admission No.</TableHead>
-                  <TableHead>Grade Level</TableHead>
-                  <TableHead>Section</TableHead>
+                  <TableHead>{t("table_col_student")}</TableHead>
+                  <TableHead>{t("table_col_adm_no")}</TableHead>
+                  <TableHead>{t("table_col_grade")}</TableHead>
+                  <TableHead>{t("table_col_section")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -664,7 +665,7 @@ export default function MassEveningLeavesPage() {
                 <span className="font-semibold text-foreground">
                   {selected.size}
                 </span>{" "}
-                student{selected.size !== 1 ? "s" : ""} selected
+                {t("stat_selected", { count: selected.size })}
               </p>
               <Button
                 onClick={handleSubmit}
@@ -676,7 +677,7 @@ export default function MassEveningLeavesPage() {
                 ) : (
                   <Moon className="h-4 w-4" />
                 )}
-                Add Evening Leave to Selected Students
+                {t("btn_submit")}
               </Button>
             </div>
           )}

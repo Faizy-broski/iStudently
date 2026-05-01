@@ -10,8 +10,11 @@ import useSWR from 'swr'
 import Link from 'next/link'
 import * as accountingApi from '@/lib/api/accounting'
 import type { TeacherWithHours } from '@/lib/api/accounting'
+import { useTranslations } from 'next-intl'
 
 export default function TeacherHoursPage() {
+    const t = useTranslations('admin.accounting.teacher_hours_list')
+    const tCommon = useTranslations('common')
     const { selectedCampus, loading: campusLoading } = useCampus() || {}
     const campusId = selectedCampus?.id
 
@@ -49,7 +52,7 @@ export default function TeacherHoursPage() {
             <div className="container mx-auto py-6">
                 <Card>
                     <CardContent className="pt-6">
-                        <p className="text-muted-foreground text-center">Please select a campus to view teacher hours.</p>
+                        <p className="text-muted-foreground text-center">{t('select_campus')}</p>
                     </CardContent>
                 </Card>
             </div>
@@ -62,9 +65,9 @@ export default function TeacherHoursPage() {
             <div className="flex items-center gap-3">
                 <IconClock className="h-8 w-8 text-[#3d8fb5]" />
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Teacher Hours</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
                     <p className="text-muted-foreground">
-                        Profile: Teacher
+                        {t('subtitle')}
                     </p>
                 </div>
             </div>
@@ -74,11 +77,11 @@ export default function TeacherHoursPage() {
                 <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
                         <p className="text-sm text-muted-foreground">
-                            {filteredTeachers.length} teachers were found.
+                            {t('found_count', { count: filteredTeachers.length })}
                         </p>
                         <div className="relative">
                             <Input
-                                placeholder="Search"
+                                placeholder={tCommon('search')}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-64 pr-8"
@@ -97,13 +100,13 @@ export default function TeacherHoursPage() {
                             <IconLoader className="h-6 w-6 animate-spin text-muted-foreground" />
                         </div>
                     ) : filteredTeachers.length === 0 ? (
-                        <p className="text-muted-foreground text-center py-8">No hourly teachers found. Teachers with &quot;Hourly&quot; payment type will appear here.</p>
+                        <p className="text-muted-foreground text-center py-8">{t('empty')}</p>
                     ) : (
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="text-[#3d8fb5]">TEACHER</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">STUDENTLY ID</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">{tCommon('student')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">{t('studently_id')}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>

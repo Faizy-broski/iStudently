@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import useSWR, { mutate } from 'swr'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -46,6 +47,7 @@ const CATEGORY_TYPE_LABELS: Record<CategoryType, string> = {
 
 export default function InventorySnapshotsPage() {
   useAuth()
+  const t = useTranslations('school.resources.snapshots')
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
 
@@ -77,7 +79,7 @@ export default function InventorySnapshotsPage() {
   const handleCreate = async () => {
     const title = newTitle.trim()
     if (!title) {
-      toast.error('Please enter a snapshot name')
+      toast.error(t('input_placeholder'))
       return
     }
     setCreating(true)
@@ -86,9 +88,9 @@ export default function InventorySnapshotsPage() {
       if (!created) throw new Error('Failed')
       setNewTitle('')
       await mutate(listCacheKey)
-      toast.success(`Snapshot "${created.title}" created`)
+      toast.success(t('msg_create_success', { title: created.title }))
     } catch {
-      toast.error('Failed to create snapshot')
+      toast.error(t('msg_create_error'))
     } finally {
       setCreating(false)
     }
@@ -102,10 +104,10 @@ export default function InventorySnapshotsPage() {
       await deleteInventorySnapshot(deleteDialog.snapshot.id)
       if (selectedSnapshotId === deleteDialog.snapshot.id) setSelectedSnapshotId(null)
       await mutate(listCacheKey)
-      toast.success('Snapshot deleted')
+      toast.success(t('msg_delete_success'))
       setDeleteDialog({ open: false, snapshot: null })
     } catch {
-      toast.error('Failed to delete snapshot')
+      toast.error(t('msg_delete_error'))
     } finally {
       setDeleting(false)
     }
@@ -118,16 +120,16 @@ export default function InventorySnapshotsPage() {
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" onClick={() => setSelectedSnapshotId(null)}>
             <ChevronLeft className="h-4 w-4 mr-1" />
-            Back
+            {t('back_button')}
           </Button>
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Camera className="h-6 w-6 text-primary" />
-              {loadingDetail ? 'Loading...' : snapshotDetail?.title}
+              {loadingDetail ? t('loading') : snapshotDetail?.title}
             </h1>
             {snapshotDetail && (
               <p className="text-sm text-muted-foreground">
-                Snapshot taken on{' '}
+                {t('detail_title')}{' '}
                 {new Date(snapshotDetail.created_at).toLocaleDateString('en-US', {
                   year: 'numeric',
                   month: 'long',
@@ -152,17 +154,17 @@ export default function InventorySnapshotsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <Package className="h-4 w-4" />
-                {snapshotDetail.items.length} Items (read-only)
+                {snapshotDetail.items.length > 1 ? t('detail_items_count', { count: snapshotDetail.items.length }) : t('detail_items_header')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Item</TableHead>
-                    <TableHead className="w-20">Qty</TableHead>
-                    <TableHead>Comments</TableHead>
-                    <TableHead>Assignments</TableHead>
+                    <TableHead>{t('th_item')}</TableHead>
+                    <TableHead className="w-20">{t('th_qty')}</TableHead>
+                    <TableHead>{t('th_comments')}</TableHead>
+                    <TableHead>{t('th_assignments')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -178,13 +180,13 @@ export default function InventorySnapshotsPage() {
                           {item.categories.map((cat) => (
                             <Badge key={cat.id} variant="outline" className="text-xs">
                               <span className="text-muted-foreground mr-1">
-                                {CATEGORY_TYPE_LABELS[cat.category_type]}:
+                                {t(`category_type_${cat.category_type.toLowerCase()}`)}:
                               </span>
                               {cat.title}
                             </Badge>
                           ))}
                           {item.categories.length === 0 && (
-                            <span className="text-xs text-muted-foreground">None</span>
+                            <span className="text-xs text-muted-foreground">{t('no_assignments')}</span>
                           )}
                         </div>
                       </TableCell>
@@ -193,7 +195,7 @@ export default function InventorySnapshotsPage() {
                   {snapshotDetail.items.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                        No items in this snapshot.
+                        {t('no_items')}
                       </TableCell>
                     </TableRow>
                   )}
@@ -202,7 +204,7 @@ export default function InventorySnapshotsPage() {
             </CardContent>
           </Card>
         ) : (
-          <p className="text-muted-foreground">Snapshot not found.</p>
+          <p className="text-muted-foreground">{t('snapshot_not_found')}</p>
         )}
       </div>
     )
@@ -214,11 +216,11 @@ export default function InventorySnapshotsPage() {
       <div className="flex items-center gap-3">
         <Camera className="h-6 w-6 text-primary" />
         <div>
-          <h1 className="text-2xl font-bold">Inventory Snapshots</h1>
+          <h1 className="text-2xl font-bold">{t('title')}</h1>
           <p className="text-sm text-muted-foreground">
-            Point-in-time snapshots of your inventory.
+            {t('subtitle')}
             {selectedCampus && (
-              <span className="ml-1 text-primary font-medium">— {selectedCampus.name}</span>
+              <span className="ml-1 text-primary font-medium">{t('campus_label', { name: selectedCampus.name })}</span>
             )}
           </p>
         </div>
@@ -227,7 +229,7 @@ export default function InventorySnapshotsPage() {
       {/* Create new snapshot */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Create Snapshot</CardTitle>
+          <CardTitle className="text-base">{t('create_section_title')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-3 max-w-md">
@@ -235,7 +237,7 @@ export default function InventorySnapshotsPage() {
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-              placeholder="Snapshot name (e.g. Start of Term 2026)..."
+              placeholder={t('input_placeholder')}
               className="flex-1"
             />
             <Button onClick={handleCreate} disabled={creating || !newTitle.trim()}>
@@ -244,12 +246,12 @@ export default function InventorySnapshotsPage() {
               ) : (
                 <Plus className="mr-2 h-4 w-4" />
               )}
-              Create
+              {creating ? t('creating_button') : t('create_button')}
             </Button>
           </div>
           {selectedCampus && (
             <p className="text-xs text-muted-foreground mt-2">
-              Snapshot will capture inventory for <strong>{selectedCampus.name}</strong>.
+              {t('capture_note', { name: selectedCampus.name })}
             </p>
           )}
         </CardContent>
@@ -260,8 +262,8 @@ export default function InventorySnapshotsPage() {
         <CardHeader>
           <CardTitle className="text-base">
             {isLoading
-              ? 'Loading...'
-              : `${snapshots?.length ?? 0} Snapshot${(snapshots?.length ?? 0) !== 1 ? 's' : ''}`}
+              ? t('loading')
+              : snapshots?.length === 1 ? t('snapshots_found_singular') : t('snapshots_found', { count: snapshots?.length ?? 0 })}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -274,18 +276,18 @@ export default function InventorySnapshotsPage() {
           ) : !snapshots || snapshots.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Camera className="h-12 w-12 mx-auto mb-3 opacity-30" />
-              <p>No snapshots yet.</p>
+              <p>{t('no_snapshots')}</p>
               <p className="text-sm mt-1">
-                Create a snapshot to preserve the current inventory state.
+                {t('no_snapshots_desc')}
               </p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="w-24 text-right">Actions</TableHead>
+                  <TableHead>{t('th_name')}</TableHead>
+                  <TableHead>{t('th_created')}</TableHead>
+                  <TableHead className="w-24 text-right">{t('th_actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -331,10 +333,9 @@ export default function InventorySnapshotsPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Snapshot</DialogTitle>
+            <DialogTitle>{t('delete_dialog_title')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete &quot;{deleteDialog.snapshot?.title}&quot;? This
-              action cannot be undone.
+              {t('delete_confirm', { title: deleteDialog.snapshot?.title })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -342,11 +343,11 @@ export default function InventorySnapshotsPage() {
               variant="outline"
               onClick={() => setDeleteDialog({ open: false, snapshot: null })}
             >
-              Cancel
+              {t('btn_cancel')}
             </Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
               {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Delete
+              {deleting ? t('deleting') : t('btn_confirm')}
             </Button>
           </DialogFooter>
         </DialogContent>

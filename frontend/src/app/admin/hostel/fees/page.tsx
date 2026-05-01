@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ import { HostelRentalFee, HostelBuilding } from "@/types";
 import { DollarSign, Plus, CreditCard, Sparkles } from "lucide-react";
 
 export default function FeesPage() {
+  const t = useTranslations("admin.hostel.fees");
   const { profile } = useAuth();
   const schoolId = profile?.school_id || "";
   const campusId = profile?.campus_id;
@@ -98,7 +100,7 @@ export default function FeesPage() {
       setGenResult(result);
       loadData();
     } catch (err: any) {
-      alert(err.message || "Failed to generate fees");
+      alert(err.message || t('msg_generate_error'));
     } finally {
       setGenerating(false);
     }
@@ -124,7 +126,7 @@ export default function FeesPage() {
       setPayingFee(null);
       loadData();
     } catch (err: any) {
-      alert(err.message || "Failed to record payment");
+      alert(err.message || t('msg_payment_error'));
     } finally {
       setPaying(false);
     }
@@ -148,9 +150,9 @@ export default function FeesPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Rental Fees</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t('header_title')}</h1>
           <p className="text-muted-foreground">
-            Generate and track hostel rental fee payments
+            {t('header_subtitle')}
           </p>
         </div>
         {/* Generate button */}
@@ -158,17 +160,17 @@ export default function FeesPage() {
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Sparkles className="h-4 w-4" />
-              Generate Fees
+              {t('btn_generate')}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md overflow-visible">
             <DialogHeader>
-              <DialogTitle>Generate Rental Fees</DialogTitle>
+              <DialogTitle>{t('dialog_generate_title')}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Period Start *</Label>
+                  <Label>{t('label_period_start')}</Label>
                   <Input
                     type="date"
                     value={periodStart}
@@ -176,7 +178,7 @@ export default function FeesPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Period End *</Label>
+                  <Label>{t('label_period_end')}</Label>
                   <Input
                     type="date"
                     value={periodEnd}
@@ -186,7 +188,7 @@ export default function FeesPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Factor</Label>
+                  <Label>{t('label_factor')}</Label>
                   <Input
                     type="number"
                     min={0}
@@ -195,11 +197,11 @@ export default function FeesPage() {
                     onChange={(e) => setGenFactor(Number(e.target.value))}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Multiplier for room price (1 = full, 0.5 = half)
+                    {t('desc_factor')}
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label>Building</Label>
+                  <Label>{t('label_building')}</Label>
                   <Select
                     value={genBuildingId || "ALL"}
                     onValueChange={(v) =>
@@ -210,7 +212,7 @@ export default function FeesPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ALL">All Buildings</SelectItem>
+                      <SelectItem value="ALL">{t('option_all_buildings')}</SelectItem>
                       {buildings.map((b) => (
                         <SelectItem key={b.id} value={b.id}>
                           {b.name}
@@ -223,9 +225,7 @@ export default function FeesPage() {
               {genResult && (
                 <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-md text-sm">
                   <p>
-                    ✅ Generated <strong>{genResult.fees_created}</strong>{" "}
-                    fee(s) totalling{" "}
-                    <strong>${genResult.total_amount.toFixed(2)}</strong>
+                    ✅ {t('msg_generate_success_count', { count: genResult.fees_created, amount: genResult.total_amount.toFixed(2) })}
                   </p>
                 </div>
               )}
@@ -234,7 +234,7 @@ export default function FeesPage() {
                 disabled={generating || !periodStart || !periodEnd}
                 className="w-full"
               >
-                {generating ? "Generating..." : "Generate Fees"}
+                {generating ? t('btn_generating') : t('btn_create')}
               </Button>
             </div>
           </DialogContent>
@@ -249,7 +249,7 @@ export default function FeesPage() {
               <DollarSign className="h-5 w-5 text-emerald-600" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Collected</p>
+              <p className="text-sm text-muted-foreground">{t('stat_collected')}</p>
               <p className="text-xl font-bold">${totalCollected.toFixed(2)}</p>
             </div>
           </CardContent>
@@ -260,7 +260,7 @@ export default function FeesPage() {
               <CreditCard className="h-5 w-5 text-yellow-600" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Outstanding</p>
+              <p className="text-sm text-muted-foreground">{t('stat_outstanding')}</p>
               <p className="text-xl font-bold">${totalPending.toFixed(2)}</p>
             </div>
           </CardContent>
@@ -271,7 +271,7 @@ export default function FeesPage() {
               <Plus className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Total Records</p>
+              <p className="text-sm text-muted-foreground">{t('stat_total')}</p>
               <p className="text-xl font-bold">{fees.length}</p>
             </div>
           </CardContent>
@@ -280,7 +280,7 @@ export default function FeesPage() {
 
       {/* Filters */}
       <div className="flex gap-2 items-center">
-        <Label className="text-sm">Status:</Label>
+        <Label className="text-sm">{t('filter_status')}</Label>
         <Select
           value={filterStatus || "ALL"}
           onValueChange={(v) => setFilterStatus(v === "ALL" ? "" : v)}
@@ -289,11 +289,11 @@ export default function FeesPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="ALL">All</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="partial">Partial</SelectItem>
-            <SelectItem value="paid">Paid</SelectItem>
-            <SelectItem value="waived">Waived</SelectItem>
+            <SelectItem value="ALL">{t('filter_all')}</SelectItem>
+            <SelectItem value="pending">{t('filter_pending')}</SelectItem>
+            <SelectItem value="partial">{t('filter_partial')}</SelectItem>
+            <SelectItem value="paid">{t('filter_paid')}</SelectItem>
+            <SelectItem value="waived">{t('filter_waived')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -302,19 +302,19 @@ export default function FeesPage() {
       <Dialog open={payDialogOpen} onOpenChange={setPayDialogOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Record Payment</DialogTitle>
+            <DialogTitle>{t('dialog_payment_title')}</DialogTitle>
           </DialogHeader>
           {payingFee && (
             <div className="space-y-4 pt-2">
               <div className="text-sm">
                 <p>
-                  Student: <strong>{payingFee.student_name}</strong>
+                  {t('label_student')} <strong>{payingFee.student_name}</strong>
                 </p>
                 <p>
-                  Room: <strong>{payingFee.room_number}</strong>
+                  {t('label_room')} <strong>{payingFee.room_number}</strong>
                 </p>
                 <p>
-                  Outstanding:{" "}
+                  {t('label_outstanding')}{" "}
                   <strong>
                     $
                     {(payingFee.final_amount - payingFee.amount_paid).toFixed(
@@ -324,7 +324,7 @@ export default function FeesPage() {
                 </p>
               </div>
               <div className="space-y-2">
-                <Label>Amount *</Label>
+                <Label>{t('label_amount')}</Label>
                 <Input
                   type="number"
                   min={0}
@@ -334,11 +334,11 @@ export default function FeesPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Notes</Label>
+                <Label>{t('label_notes')}</Label>
                 <Input
                   value={payNotes}
                   onChange={(e) => setPayNotes(e.target.value)}
-                  placeholder="Optional..."
+                  placeholder={t('placeholder_notes')}
                 />
               </div>
               <Button
@@ -346,7 +346,7 @@ export default function FeesPage() {
                 disabled={paying || payAmount <= 0}
                 className="w-full"
               >
-                {paying ? "Processing..." : "Record Payment"}
+                {paying ? t('btn_processing') : t('btn_record_payment')}
               </Button>
             </div>
           )}
@@ -358,14 +358,14 @@ export default function FeesPage() {
         <CardContent className="p-0">
           {loading ? (
             <div className="text-center py-12 text-muted-foreground">
-              Loading...
+              {t('msg_loading')}
             </div>
           ) : fees.length === 0 ? (
             <div className="text-center py-12">
               <DollarSign className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="font-semibold mb-2">No fees</h3>
+              <h3 className="font-semibold mb-2">{t('msg_no_data')}</h3>
               <p className="text-muted-foreground">
-                Generate rental fees for the current period
+                {t('msg_no_data_desc')}
               </p>
             </div>
           ) : (
@@ -373,15 +373,15 @@ export default function FeesPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="text-left py-3 px-4 font-medium">Student</th>
-                    <th className="text-left py-3 px-4 font-medium">Room</th>
-                    <th className="text-left py-3 px-4 font-medium">Period</th>
-                    <th className="text-left py-3 px-4 font-medium">Base</th>
-                    <th className="text-left py-3 px-4 font-medium">Final</th>
-                    <th className="text-left py-3 px-4 font-medium">Paid</th>
-                    <th className="text-left py-3 px-4 font-medium">Status</th>
+                    <th className="text-left py-3 px-4 font-medium">{t('th_student')}</th>
+                    <th className="text-left py-3 px-4 font-medium">{t('th_room')}</th>
+                    <th className="text-left py-3 px-4 font-medium">{t('th_period')}</th>
+                    <th className="text-left py-3 px-4 font-medium">{t('th_base')}</th>
+                    <th className="text-left py-3 px-4 font-medium">{t('th_final')}</th>
+                    <th className="text-left py-3 px-4 font-medium">{t('th_paid')}</th>
+                    <th className="text-left py-3 px-4 font-medium">{t('th_status')}</th>
                     <th className="text-right py-3 px-4 font-medium">
-                      Actions
+                      {t('th_actions')}
                     </th>
                   </tr>
                 </thead>
@@ -407,7 +407,7 @@ export default function FeesPage() {
                       </td>
                       <td className="py-3 px-4">
                         <Badge className={statusColors[f.status] || ""}>
-                          {f.status}
+                          {t(`filter_${f.status}`)}
                         </Badge>
                       </td>
                       <td className="py-3 px-4 text-right">
@@ -418,7 +418,7 @@ export default function FeesPage() {
                             onClick={() => openPayment(f)}
                           >
                             <CreditCard className="h-4 w-4 mr-1" />
-                            Pay
+                            {t('btn_pay')}
                           </Button>
                         )}
                       </td>

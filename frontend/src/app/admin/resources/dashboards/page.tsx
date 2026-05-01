@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import useSWR, { mutate } from 'swr'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -31,6 +32,7 @@ import * as dashboardsApi from '@/lib/api/dashboards'
 
 export default function ResourceDashboardsPage() {
   useAuth()
+  const t = useTranslations('school.resources.dashboards')
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
   const router = useRouter()
@@ -58,14 +60,14 @@ export default function ResourceDashboardsPage() {
         campus_id: selectedCampus?.id,
       })
       if (result) {
-        toast.success('Dashboard created!')
+        toast.success(t('msg_create_success'))
         setNewTitle('')
         mutate(cacheKey)
       } else {
-        toast.error('Failed to create dashboard')
+        toast.error(t('msg_create_error'))
       }
     } catch {
-      toast.error('Failed to create dashboard')
+      toast.error(t('msg_create_error'))
     } finally {
       setSaving(false)
     }
@@ -82,13 +84,13 @@ export default function ResourceDashboardsPage() {
     try {
       const ok = await dashboardsApi.deleteDashboard(dashboardToDelete.id)
       if (ok) {
-        toast.success('Dashboard deleted')
+        toast.success(t('msg_delete_success'))
         mutate(cacheKey)
       } else {
-        toast.error('Failed to delete dashboard')
+        toast.error(t('msg_delete_error'))
       }
     } catch {
-      toast.error('Failed to delete dashboard')
+      toast.error(t('msg_delete_error'))
     } finally {
       setDeleting(false)
       setDeleteDialogOpen(false)
@@ -102,10 +104,10 @@ export default function ResourceDashboardsPage() {
       <div>
         <h1 className="text-2xl md:text-3xl font-bold text-[#022172] dark:text-white flex items-center gap-2">
           <LayoutDashboard className="h-7 w-7" />
-          Dashboards
+          {t('title')}
         </h1>
         <p className="text-muted-foreground mt-1">
-          Design your own dashboards by combining various pages and reports on one screen.
+          {t('subtitle')}
         </p>
       </div>
 
@@ -113,7 +115,7 @@ export default function ResourceDashboardsPage() {
       <Card>
         <CardHeader>
           <CardTitle>
-            {isLoading ? 'Loading...' : `${(dashboards || []).length} dashboard${(dashboards || []).length !== 1 ? 's' : ''} found.`}
+            {isLoading ? t('loading') : (dashboards || []).length === 1 ? t('dashboards_found_singular') : t('dashboards_found', { count: (dashboards || []).length })}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -129,9 +131,9 @@ export default function ResourceDashboardsPage() {
                 <TableHeader>
                   <TableRow className="bg-gray-900 hover:bg-gray-900">
                     <TableHead className="w-12 text-white" />
-                    <TableHead className="text-white font-semibold">Title</TableHead>
-                    <TableHead className="text-white font-semibold text-center w-40">Configuration</TableHead>
-                    <TableHead className="text-white font-semibold text-center w-24">View</TableHead>
+                    <TableHead className="text-white font-semibold">{t('th_title')}</TableHead>
+                    <TableHead className="text-white font-semibold text-center w-40">{t('th_configuration')}</TableHead>
+                    <TableHead className="text-white font-semibold text-center w-24">{t('th_view')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -160,7 +162,7 @@ export default function ResourceDashboardsPage() {
                           onClick={() => router.push(`/admin/resources/dashboards/${d.id}/configure`)}
                         >
                           <Settings className="h-4 w-4" />
-                          Configuration
+                          {t('btn_configuration')}
                         </button>
                       </TableCell>
                       <TableCell className="text-center">
@@ -188,7 +190,7 @@ export default function ResourceDashboardsPage() {
                     </TableCell>
                     <TableCell colSpan={3}>
                       <Input
-                        placeholder="New dashboard title..."
+                        placeholder={t('input_placeholder')}
                         value={newTitle}
                         onChange={(e) => setNewTitle(e.target.value)}
                         onKeyDown={(e) => {
@@ -209,24 +211,23 @@ export default function ResourceDashboardsPage() {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Dashboard</DialogTitle>
+            <DialogTitle>{t('delete_confirm_title')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete &quot;{dashboardToDelete?.title}&quot;?
-              This will also delete all its elements. This action cannot be undone.
+              {t('delete_confirm_desc', { name: dashboardToDelete?.title })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>
-              Cancel
+              {t('btn_cancel')}
             </Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
               {deleting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Deleting...
+                  {t('deleting')}
                 </>
               ) : (
-                'Delete'
+                t('btn_confirm')
               )}
             </Button>
           </DialogFooter>

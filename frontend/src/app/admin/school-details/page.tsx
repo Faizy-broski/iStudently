@@ -179,6 +179,7 @@ export default function SchoolDetailsPage() {
       })
     }
     setIsEditing(false)
+    toast.info("Edit cancelled")
   }
 
   const selectedCampusName = selectedCampus?.name || "All Campuses"
@@ -196,18 +197,32 @@ export default function SchoolDetailsPage() {
           </p>
         </div>
         {selectedCampus && !isEditing && (
-          <Button onClick={() => setIsEditing(true)}>
+          <Button 
+            type="button"
+            onClick={() => setIsEditing(true)}
+            className="bg-gray-900 hover:bg-gray-800 text-white"
+          >
             <Edit className="h-4 w-4 mr-2" />
             {t("edit_campus")}
           </Button>
         )}
         {isEditing && (
           <div className="flex gap-2">
-            <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
+            <Button 
+              type="button"
+              variant="outline" 
+              onClick={handleCancel} 
+              disabled={isSaving}
+            >
               <X className="h-4 w-4 mr-2" />
               {t("cancel")}
             </Button>
-            <Button onClick={handleSave} disabled={isSaving}>
+            <Button 
+              type="button"
+              onClick={handleSave} 
+              disabled={isSaving}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
               {isSaving ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (

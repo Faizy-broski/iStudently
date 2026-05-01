@@ -12,8 +12,11 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { IconArrowLeft, IconCalculator, IconLoader2, IconCheck, IconAlertCircle } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 
 export default function GenerateSalariesPage() {
+    const t = useTranslations('admin.salary.generate')
+    const tCommon = useTranslations('common')
     const { profile } = useAuth()
     const campusContext = useCampus()
     const schoolId = profile?.school_id || null
@@ -25,26 +28,16 @@ export default function GenerateSalariesPage() {
     const [generating, setGenerating] = useState(false)
     const [result, setResult] = useState<{ success: number; failed: number; errors: string[] } | null>(null)
 
-    const months = [
-        { value: 1, label: 'January' },
-        { value: 2, label: 'February' },
-        { value: 3, label: 'March' },
-        { value: 4, label: 'April' },
-        { value: 5, label: 'May' },
-        { value: 6, label: 'June' },
-        { value: 7, label: 'July' },
-        { value: 8, label: 'August' },
-        { value: 9, label: 'September' },
-        { value: 10, label: 'October' },
-        { value: 11, label: 'November' },
-        { value: 12, label: 'December' }
-    ]
+    const months = Array.from({ length: 12 }, (_, i) => ({
+        value: i + 1,
+        label: tCommon(`months.${i}`)
+    }))
 
     const years = [2024, 2025, 2026, 2027]
 
     const handleGenerate = async () => {
         if (!schoolId) {
-            toast.error('School ID not found. Please ensure you are logged in.')
+            toast.error(t('toast.missing_school'))
             console.error('Missing schoolId:', { profile, schoolId })
             return
         }
@@ -63,14 +56,14 @@ export default function GenerateSalariesPage() {
             console.log('Generation result:', res)
             setResult(res)
             if (res.success > 0) {
-                toast.success(`Generated ${res.success} salary records`)
+                toast.success(t('toast.generated_success', { count: res.success }))
             }
             if (res.failed > 0) {
-                toast.warning(`${res.failed} failed to generate`)
+                toast.warning(t('toast.generated_failed', { count: res.failed }))
             }
         } catch (error: any) {
             console.error('Generation error:', error)
-            toast.error(error.message || 'Failed to generate salaries')
+            toast.error(error.message || t('toast.generate_error'))
         } finally {
             setGenerating(false)
         }
@@ -83,30 +76,30 @@ export default function GenerateSalariesPage() {
                     <Link href="/admin/salary"><IconArrowLeft className="h-4 w-4" /></Link>
                 </Button>
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Generate Salaries</h1>
-                    <p className="text-muted-foreground">Calculate monthly salaries for all staff</p>
+                    <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+                    <p className="text-muted-foreground">{t('subtitle')}</p>
                 </div>
             </div>
 
             {!schoolId && (
                 <Alert variant="destructive">
                     <IconAlertCircle className="h-4 w-4" />
-                    <AlertTitle>Error</AlertTitle>
+                    <AlertTitle>{tCommon('error')}</AlertTitle>
                     <AlertDescription>
-                        School ID not found. Please ensure you are logged in with proper permissions.
+                        {t('missing_school_desc')}
                     </AlertDescription>
                 </Alert>
             )}
 
             <Card className="max-w-xl">
                 <CardHeader>
-                    <CardTitle>Bulk Salary Generation</CardTitle>
-                    <CardDescription>Generate salary records for all staff with salary structures</CardDescription>
+                    <CardTitle>{t('card.title')}</CardTitle>
+                    <CardDescription>{t('card.description')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <Label>Month</Label>
+                            <Label>{t('filters.month')}</Label>
                             <Select value={month.toString()} onValueChange={(v) => setMonth(parseInt(v))}>
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
@@ -117,7 +110,7 @@ export default function GenerateSalariesPage() {
                             </Select>
                         </div>
                         <div>
-                            <Label>Year</Label>
+                            <Label>{t('filters.year')}</Label>
                             <Select value={year.toString()} onValueChange={(v) => setYear(parseInt(v))}>
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
@@ -130,15 +123,13 @@ export default function GenerateSalariesPage() {
                     </div>
 
                     <div className="bg-muted p-4 rounded-lg">
-                        <p className="text-sm">
-                            This will generate salary records for <strong>{formatMonthYear(month, year)}</strong> including:
-                        </p>
+                        <p className="text-sm">{t('summary.intro', { monthYear: formatMonthYear(month, year) })}</p>
                         <ul className="text-sm mt-2 space-y-1 list-disc list-inside">
-                            <li>Base salary from staff salary structure</li>
-                            <li>All configured allowances</li>
-                            <li>Attendance-based deductions (late arrivals, absences)</li>
-                            <li>Attendance bonus (if perfect attendance)</li>
-                            <li>Salary advance deductions (if any due)</li>
+                            <li>{t('summary.item_1')}</li>
+                            <li>{t('summary.item_2')}</li>
+                            <li>{t('summary.item_3')}</li>
+                            <li>{t('summary.item_4')}</li>
+                            <li>{t('summary.item_5')}</li>
                         </ul>
                     </div>
 
@@ -151,19 +142,19 @@ export default function GenerateSalariesPage() {
                         {generating ? (
                             <>
                                 <IconLoader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Generating...
+                                {t('actions.generating')}
                             </>
                         ) : (
                             <>
                                 <IconCalculator className="mr-2 h-4 w-4" />
-                                Generate All Salaries
+                                {t('actions.generate_all')}
                             </>
                         )}
                     </Button>
 
                     {!schoolId && (
                         <p className="text-sm text-destructive">
-                            Cannot generate: School ID is missing
+                            {t('cannot_generate_missing_school')}
                         </p>
                     )}
 
@@ -172,18 +163,18 @@ export default function GenerateSalariesPage() {
                             {result.success > 0 && (
                                 <Alert>
                                     <IconCheck className="h-4 w-4" />
-                                    <AlertTitle>Success</AlertTitle>
+                                    <AlertTitle>{tCommon('success')}</AlertTitle>
                                     <AlertDescription>
-                                        Generated {result.success} salary record(s)
+                                        {t('result.success_count', { count: result.success })}
                                     </AlertDescription>
                                 </Alert>
                             )}
                             {result.failed > 0 && (
                                 <Alert variant="destructive">
                                     <IconAlertCircle className="h-4 w-4" />
-                                    <AlertTitle>Failed</AlertTitle>
+                                    <AlertTitle>{t('result.failed_title')}</AlertTitle>
                                     <AlertDescription>
-                                        {result.failed} record(s) failed:
+                                        {t('result.failed_count', { count: result.failed })}:
                                         <ul className="mt-2 text-xs">
                                             {result.errors.map((err, i) => (
                                                 <li key={i}>{err}</li>

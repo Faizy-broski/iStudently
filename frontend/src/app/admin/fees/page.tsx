@@ -18,6 +18,7 @@ import FeeAdjustmentModal from '@/components/admin/FeeAdjustmentModal'
 import FeeChallanModal from '@/components/admin/FeeChallanModal'
 import StudentFeeOverrideModal from '@/components/admin/StudentFeeOverrideModal'
 import useSWR from 'swr'
+import { useTranslations } from 'next-intl'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
@@ -34,6 +35,8 @@ interface Section {
 }
 
 export default function FeesPage() {
+    const t = useTranslations('admin.fees.page')
+    const tCommon = useTranslations('common')
     const { profile } = useAuth()
     const { selectedCampus } = useCampus()
     const { formatCurrency, isLoading: settingsLoading } = useSchoolSettings()
@@ -147,7 +150,14 @@ export default function FeesPage() {
             overdue: 'destructive',
             waived: 'secondary'
         }
-        return <Badge variant={variants[status] || 'secondary'}>{status}</Badge>
+        const labels: Record<string, string> = {
+            pending: tCommon('pending'),
+            partial: t('status.partial'),
+            paid: tCommon('paid'),
+            overdue: t('status.overdue'),
+            waived: t('status.waived')
+        }
+        return <Badge variant={variants[status] || 'secondary'}>{labels[status] || status}</Badge>
     }
 
     const handleAdjustFee = (fee: StudentFee) => {
@@ -181,18 +191,18 @@ export default function FeesPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Fee Management</h1>
-                    <p className="text-muted-foreground">Manage student fees, discounts, and payments</p>
+                    <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+                    <p className="text-muted-foreground">{t('subtitle')}</p>
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" asChild>
                         <Link href="/admin/fees/settings">
                             <IconSettings className="mr-2 h-4 w-4" />
-                            Settings
+                            {t('actions.settings')}
                         </Link>
                     </Button>
                     <Button asChild>
-                        <Link href="/admin/fees/generate">Generate Fees</Link>
+                        <Link href="/admin/fees/generate">{t('actions.generate')}</Link>
                     </Button>
                 </div>
             </div>
@@ -201,7 +211,7 @@ export default function FeesPage() {
             <div className="grid gap-4 md:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Fees</CardTitle>
+                        <CardTitle className="text-sm font-medium">{t('stats.total_fees')}</CardTitle>
                         <IconReceipt className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
@@ -215,7 +225,7 @@ export default function FeesPage() {
 
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Collected</CardTitle>
+                        <CardTitle className="text-sm font-medium">{t('stats.collected')}</CardTitle>
                         <IconCheck className="h-4 w-4 text-green-500" />
                     </CardHeader>
                     <CardContent>
@@ -229,7 +239,7 @@ export default function FeesPage() {
 
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Pending</CardTitle>
+                        <CardTitle className="text-sm font-medium">{t('stats.pending')}</CardTitle>
                         <IconCash className="h-4 w-4 text-yellow-500" />
                     </CardHeader>
                     <CardContent>
@@ -243,7 +253,7 @@ export default function FeesPage() {
 
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Overdue</CardTitle>
+                        <CardTitle className="text-sm font-medium">{t('stats.overdue')}</CardTitle>
                         <IconAlertCircle className="h-4 w-4 text-red-500" />
                     </CardHeader>
                     <CardContent>
@@ -259,20 +269,20 @@ export default function FeesPage() {
             {/* Filters */}
             <Card>
                 <CardHeader>
-                    <CardTitle>Student Fees</CardTitle>
-                    <CardDescription>View and manage all student fee records</CardDescription>
+                    <CardTitle>{t('table.title')}</CardTitle>
+                    <CardDescription>{t('table.description')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex flex-wrap gap-3 items-end">
                         {/* Grade Level Filter */}
                         <div className="min-w-[150px]">
-                            <label className="text-xs text-muted-foreground mb-1 block">Grade Level</label>
+                            <label className="text-xs text-muted-foreground mb-1 block">{tCommon('grade_level')}</label>
                             <Select value={gradeLevelId} onValueChange={setGradeLevelId}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="All Grades" />
+                                    <SelectValue placeholder={tCommon('all_grades')} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Grades</SelectItem>
+                                    <SelectItem value="all">{tCommon('all_grades')}</SelectItem>
                                     {gradeLevels?.sort((a, b) => a.order_index - b.order_index).map((grade) => (
                                         <SelectItem key={grade.id} value={grade.id}>{grade.name}</SelectItem>
                                     ))}
@@ -282,17 +292,17 @@ export default function FeesPage() {
 
                         {/* Section Filter */}
                         <div className="min-w-[150px]">
-                            <label className="text-xs text-muted-foreground mb-1 block">Section</label>
+                            <label className="text-xs text-muted-foreground mb-1 block">{tCommon('section')}</label>
                             <Select 
                                 value={sectionId} 
                                 onValueChange={setSectionId}
                                 disabled={gradeLevelId === 'all'}
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="All Sections" />
+                                    <SelectValue placeholder={tCommon('all_sections')} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Sections</SelectItem>
+                                    <SelectItem value="all">{tCommon('all_sections')}</SelectItem>
                                     {sections?.map((section) => (
                                         <SelectItem key={section.id} value={section.id}>{section.name}</SelectItem>
                                     ))}
@@ -302,43 +312,43 @@ export default function FeesPage() {
 
                         {/* Fee Month Filter */}
                         <div className="min-w-[150px]">
-                            <label className="text-xs text-muted-foreground mb-1 block">Fee Month</label>
+                            <label className="text-xs text-muted-foreground mb-1 block">{t('filters.fee_month')}</label>
                             <Select value={feeMonth} onValueChange={setFeeMonth}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="All Months" />
+                                    <SelectValue placeholder={t('filters.all_months')} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Months</SelectItem>
-                                    <SelectItem value="January">January</SelectItem>
-                                    <SelectItem value="February">February</SelectItem>
-                                    <SelectItem value="March">March</SelectItem>
-                                    <SelectItem value="April">April</SelectItem>
-                                    <SelectItem value="May">May</SelectItem>
-                                    <SelectItem value="June">June</SelectItem>
-                                    <SelectItem value="July">July</SelectItem>
-                                    <SelectItem value="August">August</SelectItem>
-                                    <SelectItem value="September">September</SelectItem>
-                                    <SelectItem value="October">October</SelectItem>
-                                    <SelectItem value="November">November</SelectItem>
-                                    <SelectItem value="December">December</SelectItem>
+                                    <SelectItem value="all">{t('filters.all_months')}</SelectItem>
+                                    <SelectItem value="January">{tCommon('months.0')}</SelectItem>
+                                    <SelectItem value="February">{tCommon('months.1')}</SelectItem>
+                                    <SelectItem value="March">{tCommon('months.2')}</SelectItem>
+                                    <SelectItem value="April">{tCommon('months.3')}</SelectItem>
+                                    <SelectItem value="May">{tCommon('months.4')}</SelectItem>
+                                    <SelectItem value="June">{tCommon('months.5')}</SelectItem>
+                                    <SelectItem value="July">{tCommon('months.6')}</SelectItem>
+                                    <SelectItem value="August">{tCommon('months.7')}</SelectItem>
+                                    <SelectItem value="September">{tCommon('months.8')}</SelectItem>
+                                    <SelectItem value="October">{tCommon('months.9')}</SelectItem>
+                                    <SelectItem value="November">{tCommon('months.10')}</SelectItem>
+                                    <SelectItem value="December">{tCommon('months.11')}</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
 
                         {/* Status Filter */}
                         <div className="min-w-[150px]">
-                            <label className="text-xs text-muted-foreground mb-1 block">Status</label>
+                            <label className="text-xs text-muted-foreground mb-1 block">{tCommon('status')}</label>
                             <Select value={statusFilter} onValueChange={setStatusFilter}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="All Status" />
+                                    <SelectValue placeholder={t('filters.all_statuses')} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Status</SelectItem>
-                                    <SelectItem value="pending">Pending</SelectItem>
-                                    <SelectItem value="partial">Partial</SelectItem>
-                                    <SelectItem value="paid">Paid</SelectItem>
-                                    <SelectItem value="overdue">Overdue</SelectItem>
-                                    <SelectItem value="waived">Waived</SelectItem>
+                                    <SelectItem value="all">{t('filters.all_statuses')}</SelectItem>
+                                    <SelectItem value="pending">{tCommon('pending')}</SelectItem>
+                                    <SelectItem value="partial">{t('status.partial')}</SelectItem>
+                                    <SelectItem value="paid">{tCommon('paid')}</SelectItem>
+                                    <SelectItem value="overdue">{t('status.overdue')}</SelectItem>
+                                    <SelectItem value="waived">{t('status.waived')}</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -358,7 +368,7 @@ export default function FeesPage() {
                                     setIsRefreshing(false)
                                 }
                             }}
-                            title="Refresh fee data"
+                            title={t('actions.refresh')}
                             className="h-9"
                         >
                             <IconRefresh className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -375,21 +385,21 @@ export default function FeesPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Student</TableHead>
-                                        <TableHead>Fee Type</TableHead>
-                                        <TableHead>Amount</TableHead>
-                                        <TableHead>Paid</TableHead>
-                                        <TableHead>Balance</TableHead>
-                                        <TableHead>Due Date</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
+                                        <TableHead>{tCommon('student')}</TableHead>
+                                        <TableHead>{t('table.fee_type')}</TableHead>
+                                        <TableHead>{tCommon('amount')}</TableHead>
+                                        <TableHead>{tCommon('paid')}</TableHead>
+                                        <TableHead>{tCommon('balance')}</TableHead>
+                                        <TableHead>{t('table.due_date')}</TableHead>
+                                        <TableHead>{tCommon('status')}</TableHead>
+                                        <TableHead className="text-right">{tCommon('actions')}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {feesData?.data?.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                                                No fee records found
+                                                {t('table.empty')}
                                             </TableCell>
                                         </TableRow>
                                     ) : (
@@ -415,7 +425,7 @@ export default function FeesPage() {
                                                                 variant="ghost"
                                                                 size="sm"
                                                                 onClick={() => handleSetFeeOverride(fee)}
-                                                                title="Set Fee Override"
+                                                                title={t('actions.override')}
                                                             >
                                                                 <IconEdit className="h-4 w-4" />
                                                             </Button>
@@ -423,7 +433,7 @@ export default function FeesPage() {
                                                                 variant="ghost"
                                                                 size="sm"
                                                                 onClick={() => handleAdjustFee(fee)}
-                                                                title="Adjust Fee"
+                                                                title={t('actions.adjust')}
                                                             >
                                                                 <IconAdjustments className="h-4 w-4" />
                                                             </Button>
@@ -431,7 +441,7 @@ export default function FeesPage() {
                                                                 variant="ghost"
                                                                 size="sm"
                                                                 onClick={() => handleViewChallan(fee.id)}
-                                                                title="View Challan"
+                                                                title={t('actions.view_challan')}
                                                             >
                                                                 <IconFileText className="h-4 w-4" />
                                                             </Button>
@@ -451,13 +461,13 @@ export default function FeesPage() {
                         <div className="flex items-center gap-4">
                             <p className="text-sm text-muted-foreground">
                                 {feesData?.pagination ? (
-                                    <>Showing {(page - 1) * pageSize + 1} - {Math.min(page * pageSize, feesData.pagination.total)} of {feesData.pagination.total}</>
+                                    <>{t('pagination.showing', { start: (page - 1) * pageSize + 1, end: Math.min(page * pageSize, feesData.pagination.total), total: feesData.pagination.total })}</>
                                 ) : (
-                                    'No records'
+                                    t('pagination.no_records')
                                 )}
                             </p>
                             <div className="flex items-center gap-2">
-                                <span className="text-sm text-muted-foreground">Per page:</span>
+                                <span className="text-sm text-muted-foreground">{tCommon('perPage')}:</span>
                                 <Select value={pageSize.toString()} onValueChange={(v) => setPageSize(parseInt(v))}>
                                     <SelectTrigger className="w-[70px] h-8">
                                         <SelectValue />
@@ -479,10 +489,10 @@ export default function FeesPage() {
                                 disabled={page === 1}
                             >
                                 <IconChevronLeft className="h-4 w-4 mr-1" />
-                                Previous
+                                {tCommon('previous')}
                             </Button>
                             <span className="text-sm px-2">
-                                Page {page} of {feesData?.pagination?.totalPages || 1}
+                                {tCommon('page_x_of_y', { current: page, total: feesData?.pagination?.totalPages || 1 })}
                             </span>
                             <Button
                                 variant="outline"
@@ -490,7 +500,7 @@ export default function FeesPage() {
                                 onClick={() => setPage(p => p + 1)}
                                 disabled={!feesData?.pagination || page >= feesData.pagination.totalPages}
                             >
-                                Next
+                                {tCommon('next')}
                                 <IconChevronRight className="h-4 w-4 ml-1" />
                             </Button>
                         </div>

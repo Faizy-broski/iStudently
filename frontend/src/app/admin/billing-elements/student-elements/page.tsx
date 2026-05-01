@@ -26,8 +26,11 @@ import {
   type BillingElement,
 } from "@/lib/api/billing-elements"
 import { getGradeLevels, getSections, type GradeLevel, type Section } from "@/lib/api/academics"
+import { useTranslations } from "next-intl"
 
 export default function StudentElementsPage() {
+  const t = useTranslations("admin.billing_elements.student_elements")
+  const tCommon = useTranslations("common")
   const { profile } = useAuth()
 
   // View mode
@@ -81,7 +84,7 @@ export default function StudentElementsPage() {
       const data = await getStudentsForAssign(gradeId, sectionId)
       setStudents(data)
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Failed to load students")
+      toast.error(error instanceof Error ? error.message : t("toast.load_students_failed"))
     } finally {
       setLoadingStudents(false)
     }
@@ -128,7 +131,7 @@ export default function StudentElementsPage() {
       setAllElements(elementsData)
       setStudentElements(sbeData)
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Failed to load student elements")
+      toast.error(error instanceof Error ? error.message : t("toast.load_student_elements_failed"))
     } finally {
       setLoadingDetail(false)
     }
@@ -154,7 +157,7 @@ export default function StudentElementsPage() {
 
   const handleAddElement = async () => {
     if (!selectedStudent || !newRow.element_title.trim()) {
-      toast.error("Element title is required")
+      toast.error(t("toast.element_title_required"))
       return
     }
     setSaving(true)
@@ -167,13 +170,13 @@ export default function StudentElementsPage() {
         due_date: newRow.due_date || null,
         comment: newRow.comment.trim() || null,
       })
-      toast.success("Element added")
+      toast.success(t("toast.element_added"))
       // Refresh
       const data = await getStudentElements({ student_id: selectedStudent.id })
       setStudentElements(data)
       setNewRow({ billing_element_id: "", element_title: "", amount: 0, due_date: "", comment: "" })
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Operation failed")
+      toast.error(error instanceof Error ? error.message : t("toast.operation_failed"))
     } finally {
       setSaving(false)
     }
@@ -188,25 +191,25 @@ export default function StudentElementsPage() {
         due_date: sbe.due_date,
         comment: sbe.comment,
       })
-      toast.success("Saved")
+      toast.success(t("toast.saved"))
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Operation failed")
+      toast.error(error instanceof Error ? error.message : t("toast.operation_failed"))
     } finally {
       setSaving(false)
     }
   }
 
   const handleDeleteElement = async (id: string) => {
-    if (!confirm("Remove this element from the student?")) return
+    if (!confirm(t("confirm.remove_element"))) return
     try {
       await deleteStudentElement(id)
-      toast.success("Removed")
+      toast.success(t("toast.removed"))
       if (selectedStudent) {
         const data = await getStudentElements({ student_id: selectedStudent.id })
         setStudentElements(data)
       }
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Operation failed")
+      toast.error(error instanceof Error ? error.message : t("toast.operation_failed"))
     }
   }
 
@@ -234,10 +237,10 @@ export default function StudentElementsPage() {
           <div className="space-y-1">
             <div className="flex items-center gap-3">
               <Button variant="ghost" size="sm" onClick={goBack}>
-                <ArrowLeft className="h-4 w-4 mr-1" /> Back
+                <ArrowLeft className="h-4 w-4 mr-1" /> {tCommon("back")}
               </Button>
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#022172]">
-                Student Elements
+                {t("title")}
               </h1>
             </div>
             <p className="text-muted-foreground ml-20">
@@ -253,19 +256,19 @@ export default function StudentElementsPage() {
         ) : (
           <div className="bg-white dark:bg-gray-900 rounded-lg border">
             {studentElements.length === 0 && (
-              <p className="px-4 py-3 text-sm text-gray-500 border-b font-medium">No fees were found.</p>
+              <p className="px-4 py-3 text-sm text-gray-500 border-b font-medium">{t("no_fees")}</p>
             )}
 
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10">
                   <th className="w-10 px-3 py-2"></th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">Element and Fee</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">Amount</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">Assigned</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">Due</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">Status</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">Comment</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{t("element_and_fee")}</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{tCommon("amount")}</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{t("assigned")}</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{t("due")}</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{tCommon("status")}</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{t("comment")}</th>
                   <th className="w-16 px-3 py-2"></th>
                 </tr>
               </thead>
@@ -295,7 +298,7 @@ export default function StudentElementsPage() {
                           }}
                           className="h-7 border rounded px-1 text-sm w-24"
                         >
-                          <option value="">N/A</option>
+                          <option value="">{tCommon("na")}</option>
                           {allElements.map((el) => (
                             <option key={el.id} value={el.id}>{el.title}</option>
                           ))}
@@ -317,7 +320,7 @@ export default function StudentElementsPage() {
                       />
                     </td>
                     <td className="px-3 py-2 text-xs text-gray-500">
-                      {sbe.assigned_date ? new Date(sbe.assigned_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "—"}
+                      {sbe.assigned_date ? new Date(sbe.assigned_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : t("dash")}
                     </td>
                     <td className="px-3 py-2">
                       <Input
@@ -365,7 +368,7 @@ export default function StudentElementsPage() {
                         onChange={(e) => handleNewElementChange(e.target.value)}
                         className="h-7 border rounded px-1 text-sm w-24"
                       >
-                        <option value="">N/A</option>
+                        <option value="">{tCommon("na")}</option>
                         {allElements.map((el) => (
                           <option key={el.id} value={el.id}>{el.title}</option>
                         ))}
@@ -373,7 +376,7 @@ export default function StudentElementsPage() {
                       <Input
                         value={newRow.element_title}
                         onChange={(e) => setNewRow({ ...newRow, element_title: e.target.value })}
-                        placeholder="Title"
+                        placeholder={tCommon("title")}
                         className="h-7 w-32 text-xs"
                       />
                     </div>
@@ -420,13 +423,13 @@ export default function StudentElementsPage() {
                 disabled={saving || !newRow.element_title.trim()}
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
-                SAVE
+                {tCommon("save")}
               </Button>
             </div>
 
             {/* Total */}
             <div className="px-4 py-3 border-t bg-gray-50 text-sm font-medium text-[#008B8B]">
-              Total from Elements: {totalFromElements.toFixed(2)}
+              {t("total_from_elements")}: {totalFromElements.toFixed(2)}
             </div>
           </div>
         )}
@@ -439,10 +442,10 @@ export default function StudentElementsPage() {
     <div className="p-4 md:p-6 space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#022172] dark:text-white">
-          Student Elements
+          {t("title")}
         </h1>
         <p className="text-muted-foreground">
-          View and manage billing elements assigned to individual students
+          {t("subtitle")}
         </p>
       </div>
 
@@ -452,31 +455,31 @@ export default function StudentElementsPage() {
           className="text-sm text-[#008B8B] hover:underline"
           onClick={() => setExpanded(!expanded)}
         >
-          {expanded ? "Compact View" : "Expanded View"}
+          {expanded ? t("compact_view") : t("expanded_view")}
         </button>
         <span className="text-gray-300">|</span>
         <div>
-          <label className="text-xs font-medium text-gray-500">Grade</label>
+          <label className="text-xs font-medium text-gray-500">{t("grade")}</label>
           <select
             value={selectedGrade}
             onChange={(e) => handleGradeChange(e.target.value)}
             className="ml-2 h-8 border rounded px-2 text-sm"
           >
-            <option value="">All</option>
+            <option value="">{tCommon("all")}</option>
             {grades.map((g) => (
               <option key={g.id} value={g.id}>{g.name}</option>
             ))}
           </select>
         </div>
         <div>
-          <label className="text-xs font-medium text-gray-500">Section</label>
+          <label className="text-xs font-medium text-gray-500">{t("section")}</label>
           <select
             value={selectedSection}
             onChange={(e) => handleSectionChange(e.target.value)}
             className="ml-2 h-8 border rounded px-2 text-sm"
             disabled={!selectedGrade}
           >
-            <option value="">All</option>
+            <option value="">{tCommon("all")}</option>
             {sections.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
@@ -489,7 +492,7 @@ export default function StudentElementsPage() {
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-gray-700">
-              {filtered.length} student{filtered.length !== 1 ? "s" : ""} found.
+              {t("students_found", { count: filtered.length })}
             </span>
             <Download className="h-4 w-4 text-gray-400" />
           </div>
@@ -498,7 +501,7 @@ export default function StudentElementsPage() {
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search"
+              placeholder={tCommon("search")}
               className="h-8 w-40"
             />
           </div>
@@ -512,9 +515,9 @@ export default function StudentElementsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10">
-                <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">Student</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">Admission No.</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">Grade Level</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{tCommon("student")}</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{t("admission_no")}</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{t("grade_level")}</th>
               </tr>
             </thead>
             <tbody>
@@ -529,14 +532,14 @@ export default function StudentElementsPage() {
                       {s.name}
                     </span>
                   </td>
-                  <td className="px-3 py-2">{s.admission_number || "—"}</td>
+                  <td className="px-3 py-2">{s.admission_number || t("dash")}</td>
                   <td className="px-3 py-2">{s.grade_level}</td>
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={3} className="px-3 py-8 text-center text-gray-400">
-                    No students found
+                    {t("no_students")}
                   </td>
                 </tr>
               )}

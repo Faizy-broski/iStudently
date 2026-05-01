@@ -14,8 +14,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { IconCash, IconCheck, IconClock, IconSettings, IconUsers, IconArrowUp, IconRefresh } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 
 export default function SalaryPage() {
+    const t = useTranslations('admin.salary.page')
+    const tCommon = useTranslations('common')
     const { profile } = useAuth()
     const campusContext = useCampus()
     const schoolId = profile?.school_id || null
@@ -28,7 +31,7 @@ export default function SalaryPage() {
     const [page, setPage] = useState(1)
     const [refreshing, setRefreshing] = useState(false)
 
-    const { data: stats, isLoading: statsLoading, mutate: mutateStats } = useSalaryDashboardStats(schoolId, month, year, campusId)
+    const { data: stats, isLoading: statsLoading, mutate: mutateStats } = useSalaryDashboardStats(schoolId, month, year)
     const { data: salaryData, isLoading: salaryLoading, mutate: mutateSalary } = useSalaryRecords(schoolId, {
         month,
         year,
@@ -41,16 +44,16 @@ export default function SalaryPage() {
 
     const handleRefresh = async () => {
         setRefreshing(true)
-        toast.info('Refreshing data...')
+        toast.info(t('toast.refreshing'))
         try {
             await Promise.all([
                 mutateStats(),
                 mutateSalary(),
                 mutateAdvances()
             ])
-            toast.success('Data refreshed successfully')
+            toast.success(t('toast.refresh_success'))
         } catch (error) {
-            toast.error('Failed to refresh data')
+            toast.error(t('toast.refresh_error'))
         } finally {
             setRefreshing(false)
         }
@@ -71,23 +74,18 @@ export default function SalaryPage() {
             approved: 'bg-blue-100 text-blue-800',
             paid: 'bg-green-100 text-green-800'
         }
-        return <Badge className={colors[status]}>{status}</Badge>
+        const labels: Record<string, string> = {
+            pending: tCommon('pending'),
+            approved: tCommon('approved'),
+            paid: tCommon('paid')
+        }
+        return <Badge className={colors[status]}>{labels[status] || status}</Badge>
     }
 
-    const months = [
-        { value: 1, label: 'January' },
-        { value: 2, label: 'February' },
-        { value: 3, label: 'March' },
-        { value: 4, label: 'April' },
-        { value: 5, label: 'May' },
-        { value: 6, label: 'June' },
-        { value: 7, label: 'July' },
-        { value: 8, label: 'August' },
-        { value: 9, label: 'September' },
-        { value: 10, label: 'October' },
-        { value: 11, label: 'November' },
-        { value: 12, label: 'December' }
-    ]
+    const months = Array.from({ length: 12 }, (_, i) => ({
+        value: i + 1,
+        label: tCommon(`months.${i}`)
+    }))
 
     const years = [2024, 2025, 2026, 2027]
 
@@ -96,8 +94,8 @@ export default function SalaryPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight dark:text-white">Salary Management</h1>
-                    <p className="text-muted-foreground">Manage staff salaries, advances, and payroll</p>
+                    <h1 className="text-3xl font-bold tracking-tight dark:text-white">{t('title')}</h1>
+                    <p className="text-muted-foreground">{t('subtitle')}</p>
                 </div>
                 <div className="flex gap-2">
                     <Button 
@@ -105,18 +103,18 @@ export default function SalaryPage() {
                         size="icon" 
                         onClick={handleRefresh} 
                         disabled={refreshing}
-                        title="Refresh"
+                        title={t('actions.refresh')}
                     >
                         <IconRefresh className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
                     </Button>
                     <Button variant="outline" asChild>
                         <Link href="/admin/salary/settings">
                             <IconSettings className="mr-2 h-4 w-4" />
-                            Settings
+                            {t('actions.settings')}
                         </Link>
                     </Button>
                     <Button asChild>
-                        <Link href="/admin/salary/generate">Generate Salaries</Link>
+                        <Link href="/admin/salary/generate">{t('actions.generate')}</Link>
                     </Button>
                 </div>
             </div>
@@ -125,7 +123,7 @@ export default function SalaryPage() {
             <div className="flex gap-4">
                 <Select value={month.toString()} onValueChange={(v) => setMonth(parseInt(v))}>
                     <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Month" />
+                        <SelectValue placeholder={t('filters.month')} />
                     </SelectTrigger>
                     <SelectContent>
                         {months.map((m) => (
@@ -137,7 +135,7 @@ export default function SalaryPage() {
                 </Select>
                 <Select value={year.toString()} onValueChange={(v) => setYear(parseInt(v))}>
                     <SelectTrigger className="w-[120px]">
-                        <SelectValue placeholder="Year" />
+                        <SelectValue placeholder={t('filters.year')} />
                     </SelectTrigger>
                     <SelectContent>
                         {years.map((y) => (
@@ -153,7 +151,7 @@ export default function SalaryPage() {
             <div className="grid gap-4 md:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Payroll</CardTitle>
+                        <CardTitle className="text-sm font-medium">{t('stats.total_payroll')}</CardTitle>
                         <IconUsers className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
@@ -168,7 +166,7 @@ export default function SalaryPage() {
 
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Paid</CardTitle>
+                        <CardTitle className="text-sm font-medium">{t('stats.paid')}</CardTitle>
                         <IconCheck className="h-4 w-4 text-green-500" />
                     </CardHeader>
                     <CardContent>
@@ -177,13 +175,13 @@ export default function SalaryPage() {
                         ) : (
                             <div className="text-2xl font-bold text-green-600">{formatCurrency(stats?.total_paid || 0)}</div>
                         )}
-                        <p className="text-xs text-muted-foreground">{stats?.counts?.paid || 0} staff</p>
+                        <p className="text-xs text-muted-foreground">{t('stats.staff_count', { count: stats?.counts?.paid || 0 })}</p>
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Pending</CardTitle>
+                        <CardTitle className="text-sm font-medium">{t('stats.pending')}</CardTitle>
                         <IconClock className="h-4 w-4 text-yellow-500" />
                     </CardHeader>
                     <CardContent>
@@ -193,19 +191,19 @@ export default function SalaryPage() {
                             <div className="text-2xl font-bold text-yellow-600">{formatCurrency(stats?.total_pending || 0)}</div>
                         )}
                         <p className="text-xs text-muted-foreground">
-                            {(stats?.counts?.pending || 0) + (stats?.counts?.approved || 0)} staff
+                            {t('stats.staff_count', { count: (stats?.counts?.pending || 0) + (stats?.counts?.approved || 0) })}
                         </p>
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Advance Requests</CardTitle>
+                        <CardTitle className="text-sm font-medium">{t('stats.advance_requests')}</CardTitle>
                         <IconArrowUp className="h-4 w-4 text-blue-500" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-blue-600">{pendingAdvances?.length || 0}</div>
-                        <p className="text-xs text-muted-foreground">Pending approval</p>
+                        <p className="text-xs text-muted-foreground">{t('stats.awaiting_approval')}</p>
                     </CardContent>
                 </Card>
             </div>
@@ -213,20 +211,20 @@ export default function SalaryPage() {
             {/* Salary Records Table */}
             <Card>
                 <CardHeader>
-                    <CardTitle>Salary Records</CardTitle>
-                    <CardDescription>Staff salary records for {formatMonthYear(month, year)}</CardDescription>
+                    <CardTitle>{t('table.title')}</CardTitle>
+                    <CardDescription>{t('table.description', { monthYear: formatMonthYear(month, year) })}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex gap-4">
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
                             <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="All Status" />
+                                <SelectValue placeholder={t('filters.all_statuses')} />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">All Status</SelectItem>
-                                <SelectItem value="pending">Pending</SelectItem>
-                                <SelectItem value="approved">Approved</SelectItem>
-                                <SelectItem value="paid">Paid</SelectItem>
+                                <SelectItem value="all">{t('filters.all_statuses')}</SelectItem>
+                                <SelectItem value="pending">{tCommon('pending')}</SelectItem>
+                                <SelectItem value="approved">{tCommon('approved')}</SelectItem>
+                                <SelectItem value="paid">{tCommon('paid')}</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -242,32 +240,32 @@ export default function SalaryPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Staff</TableHead>
-                                        <TableHead>Employee ID</TableHead>
-                                        <TableHead>Designation</TableHead>
-                                        <TableHead>Base Salary</TableHead>
-                                        <TableHead>Allowances</TableHead>
-                                        <TableHead>Deductions</TableHead>
-                                        <TableHead>Net Salary</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
+                                        <TableHead>{t('table.employee')}</TableHead>
+                                        <TableHead>{t('table.employee_number')}</TableHead>
+                                        <TableHead>{t('table.job_title')}</TableHead>
+                                        <TableHead>{t('table.base_salary')}</TableHead>
+                                        <TableHead>{t('table.allowances')}</TableHead>
+                                        <TableHead>{t('table.deductions')}</TableHead>
+                                        <TableHead>{t('table.net_salary')}</TableHead>
+                                        <TableHead>{tCommon('status')}</TableHead>
+                                        <TableHead className="text-right">{tCommon('actions')}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {salaryData?.data?.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                                                No salary records found for {formatMonthYear(month, year)}
+                                                {t('table.empty', { monthYear: formatMonthYear(month, year) })}
                                             </TableCell>
                                         </TableRow>
                                     ) : (
                                         salaryData?.data?.map((record) => (
                                             <TableRow key={record.id}>
                                                 <TableCell className="font-medium">
-                                                    {record.staff?.profile?.first_name} {record.staff?.profile?.last_name}
+                                                    {record.staff?.profiles?.first_name} {record.staff?.profiles?.last_name}
                                                 </TableCell>
-                                                <TableCell>{record.staff?.employee_number || 'N/A'}</TableCell>
-                                                <TableCell>{record.staff?.title || 'N/A'}</TableCell>
+                                                <TableCell>{(record.staff as any)?.employee_number || tCommon('na')}</TableCell>
+                                                <TableCell>{record.staff?.designation || tCommon('na')}</TableCell>
                                                 <TableCell>{formatCurrency(record.base_salary)}</TableCell>
                                                 <TableCell className="text-green-600">
                                                     +{formatCurrency(record.total_allowances + record.attendance_bonus)}
@@ -279,7 +277,7 @@ export default function SalaryPage() {
                                                 <TableCell>{getStatusBadge(record.status)}</TableCell>
                                                 <TableCell className="text-right">
                                                     <Button variant="ghost" size="sm" asChild>
-                                                        <Link href={`/admin/salary/records/${record.id}`}>View</Link>
+                                                        <Link href={`/admin/salary/records/${record.id}`}>{tCommon('view')}</Link>
                                                     </Button>
                                                 </TableCell>
                                             </TableRow>
@@ -294,7 +292,11 @@ export default function SalaryPage() {
                     {salaryData?.pagination && salaryData.pagination.totalPages > 1 && (
                         <div className="flex items-center justify-between px-2">
                             <p className="text-sm text-muted-foreground">
-                                Showing {(page - 1) * 10 + 1} - {Math.min(page * 10, salaryData.pagination.total)} of {salaryData.pagination.total}
+                                {t('pagination.showing', {
+                                    start: (page - 1) * 10 + 1,
+                                    end: Math.min(page * 10, salaryData.pagination.total),
+                                    total: salaryData.pagination.total
+                                })}
                             </p>
                             <div className="flex items-center gap-2">
                                 <Button
@@ -303,7 +305,7 @@ export default function SalaryPage() {
                                     onClick={() => setPage(1)}
                                     disabled={page === 1}
                                 >
-                                    First
+                                    {t('pagination.first')}
                                 </Button>
                                 <Button
                                     variant="outline"
@@ -311,10 +313,10 @@ export default function SalaryPage() {
                                     onClick={() => setPage(p => Math.max(1, p - 1))}
                                     disabled={page === 1}
                                 >
-                                    Previous
+                                    {tCommon('previous')}
                                 </Button>
                                 <span className="text-sm font-medium">
-                                    Page {page} of {salaryData.pagination.totalPages}
+                                    {tCommon('page_x_of_y', { current: page, total: salaryData.pagination.totalPages })}
                                 </span>
                                 <Button
                                     variant="outline"
@@ -322,7 +324,7 @@ export default function SalaryPage() {
                                     onClick={() => setPage(p => p + 1)}
                                     disabled={page >= salaryData.pagination.totalPages}
                                 >
-                                    Next
+                                    {tCommon('next')}
                                 </Button>
                                 <Button
                                     variant="outline"
@@ -330,7 +332,7 @@ export default function SalaryPage() {
                                     onClick={() => setPage(salaryData.pagination.totalPages)}
                                     disabled={page >= salaryData.pagination.totalPages}
                                 >
-                                    Last
+                                    {t('pagination.last')}
                                 </Button>
                             </div>
                         </div>

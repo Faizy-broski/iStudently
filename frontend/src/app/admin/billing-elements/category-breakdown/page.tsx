@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { useAuth } from "@/context/AuthContext"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
+import { useTranslations } from "next-intl"
 import {
   getCategories,
   getCategoryBreakdown,
@@ -14,6 +15,8 @@ import {
 } from "@/lib/api/billing-elements"
 
 export default function CategoryBreakdownPage() {
+  const t = useTranslations("admin.billing_elements.category_breakdown")
+  const tCommon = useTranslations("common")
   const { profile } = useAuth()
 
   const [categories, setCategories] = useState<BillingElementCategory[]>([])
@@ -56,7 +59,7 @@ export default function CategoryBreakdownPage() {
       })
       setResult(data)
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Failed to fetch breakdown")
+      toast.error(error instanceof Error ? error.message : t("toast.fetch_failed"))
     } finally {
       setFetching(false)
     }
@@ -74,10 +77,10 @@ export default function CategoryBreakdownPage() {
     <div className="p-4 md:p-6 space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#022172] dark:text-white">
-          Category Breakdown
+          {t("title")}
         </h1>
         <p className="text-muted-foreground">
-          Analyze billing elements by category with optional grade-level breakdown
+          {t("subtitle")}
         </p>
       </div>
 
@@ -90,7 +93,7 @@ export default function CategoryBreakdownPage() {
             onChange={(e) => setSelectedCategory(e.target.value)}
             className="h-9 border rounded px-3 text-sm"
           >
-            <option value="">Please choose a category</option>
+            <option value="">{t("choose_category")}</option>
             {categories.map((cat) => (
               <option key={cat.id} value={cat.id}>{cat.title}</option>
             ))}
@@ -107,7 +110,7 @@ export default function CategoryBreakdownPage() {
                 onChange={() => setMetric("number")}
                 className="accent-[#008B8B]"
               />
-              Number
+              {t("number")}
             </label>
             <label className="flex items-center gap-1 text-sm cursor-pointer">
               <input
@@ -116,10 +119,10 @@ export default function CategoryBreakdownPage() {
                 onChange={() => setMetric("amount")}
                 className="accent-[#008B8B]"
               />
-              Amount
+              {tCommon("amount")}
             </label>
           </div>
-          <div className="text-sm font-medium text-[#008B8B]">Total</div>
+          <div className="text-sm font-medium text-[#008B8B]">{t("total")}</div>
           <div className="ml-auto">
             <label className="flex items-center gap-1 text-sm cursor-pointer">
               <input
@@ -128,21 +131,21 @@ export default function CategoryBreakdownPage() {
                 onChange={(e) => setBreakdownByGrade(e.target.checked)}
                 className="accent-[#008B8B]"
               />
-              Breakdown by Grade Level
+              {t("breakdown_by_grade")}
             </label>
           </div>
         </div>
 
         {/* Date Range */}
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm font-medium text-gray-600">Report Timeframe:</span>
+          <span className="text-sm font-medium text-gray-600">{t("report_timeframe")}</span>
           <Input
             type="date"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
             className="h-8 w-40"
           />
-          <span className="text-sm text-gray-400">to</span>
+          <span className="text-sm text-gray-400">{tCommon("to")}</span>
           <Input
             type="date"
             value={toDate}
@@ -155,7 +158,7 @@ export default function CategoryBreakdownPage() {
             onClick={handleGo}
             disabled={fetching}
           >
-            {fetching ? <Loader2 className="h-4 w-4 animate-spin" /> : "GO"}
+            {fetching ? <Loader2 className="h-4 w-4 animate-spin" /> : tCommon("go")}
           </Button>
         </div>
       </div>
@@ -167,10 +170,10 @@ export default function CategoryBreakdownPage() {
             <thead>
               <tr className="border-b bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10">
                 <th className="px-4 py-3 text-left text-xs font-semibold text-[#022172] uppercase">
-                  {breakdownByGrade ? "Grade Level" : "Category"}
+                  {breakdownByGrade ? t("grade_level") : t("category")}
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-[#022172] uppercase">
-                  {metric === "number" ? "Count" : "Amount"}
+                  {metric === "number" ? t("count") : tCommon("amount")}
                 </th>
               </tr>
             </thead>
@@ -179,8 +182,8 @@ export default function CategoryBreakdownPage() {
                 <tr key={i} className="border-b hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium text-[#008B8B]">
                     {breakdownByGrade
-                      ? row.grade_name || "Unknown"
-                      : row.category_title || "Uncategorized"}
+                      ? row.grade_name || t("unknown")
+                      : row.category_title || t("uncategorized")}
                   </td>
                   <td className="px-4 py-3 text-right font-mono">
                     {metric === "number" ? row.count : row.total_amount.toFixed(2)}
@@ -190,14 +193,14 @@ export default function CategoryBreakdownPage() {
               {result.breakdown.length === 0 && (
                 <tr>
                   <td colSpan={2} className="px-4 py-8 text-center text-gray-400">
-                    No data found for the selected filters
+                    {t("no_data")}
                   </td>
                 </tr>
               )}
             </tbody>
             <tfoot>
               <tr className="border-t bg-gray-50 font-semibold">
-                <td className="px-4 py-3 text-[#022172]">Total</td>
+                <td className="px-4 py-3 text-[#022172]">{t("total")}</td>
                 <td className="px-4 py-3 text-right font-mono text-[#022172]">
                   {metric === "number" ? result.total_count : result.total_amount.toFixed(2)}
                 </td>

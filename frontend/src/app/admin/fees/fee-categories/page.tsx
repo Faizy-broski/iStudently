@@ -48,7 +48,7 @@ export default function FeeCategoriesPage() {
 
     const handleAddCategory = async () => {
         if (!schoolId || !newCategoryName || !newCategoryCode) {
-            toast.error('Please fill in all fields')
+            toast.error('يرجى تعبئة جميع الحقول')
             return
         }
         setAdding(true)
@@ -63,7 +63,7 @@ export default function FeeCategoriesPage() {
             setNewCategoryName('')
             setNewCategoryCode('')
             setNewCategoryDiscountable(true)
-            toast.success('Category added successfully')
+            toast.success('تمت إضافة الفئة بنجاح')
         } catch (error: any) {
             toast.error(error.message)
         }
@@ -88,7 +88,7 @@ export default function FeeCategoriesPage() {
 
     const handleSaveEdit = async () => {
         if (!editingId || !editName || !editCode || !schoolId) {
-            toast.error('Please fill in all fields')
+            toast.error('يرجى تعبئة جميع الحقول')
             return
         }
         setSaving(true)
@@ -102,7 +102,7 @@ export default function FeeCategoriesPage() {
             })
             mutateCategories()
             cancelEdit()
-            toast.success('Category updated successfully')
+            toast.success('تم تحديث الفئة بنجاح')
         } catch (error: any) {
             toast.error(error.message)
         }
@@ -111,16 +111,16 @@ export default function FeeCategoriesPage() {
 
     const handleDelete = async (categoryId: string) => {
         if (!schoolId) return
-        if (!confirm('Are you sure you want to delete this category? This cannot be undone.')) {
+        if (!confirm('هل أنت متأكد من حذف هذه الفئة؟ لا يمكن التراجع عن هذا الإجراء.')) {
             return
         }
         setDeleting(categoryId)
         try {
             await deleteFeeCategory(categoryId, schoolId)
             mutateCategories()
-            toast.success('Category deleted successfully')
+            toast.success('تم حذف الفئة بنجاح')
         } catch (error: any) {
-            toast.error(error.message || 'Failed to delete category')
+            toast.error(error.message || 'فشل حذف الفئة')
         }
         setDeleting(null)
     }
@@ -134,8 +134,8 @@ export default function FeeCategoriesPage() {
                 <div className="flex items-center gap-3 flex-1">
                     <IconFolderOpen className="h-8 w-8 text-[#3d8fb5]" />
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Fee Categories</h1>
-                        <p className="text-muted-foreground">Manage fee types (tuition, bus, books, etc.)</p>
+                        <h1 className="text-3xl font-bold tracking-tight">فئات الرسوم</h1>
+                        <p className="text-muted-foreground">إدارة أنواع الرسوم (دراسة، نقل، كتب، إلخ)</p>
                     </div>
                 </div>
             </div>
@@ -143,23 +143,23 @@ export default function FeeCategoriesPage() {
             {/* Add New Category */}
             <Card>
                 <CardHeader>
-                    <CardTitle>Add New Category</CardTitle>
-                    <CardDescription>Create a new fee category for your school</CardDescription>
+                    <CardTitle>إضافة فئة جديدة</CardTitle>
+                    <CardDescription>إنشاء فئة رسوم جديدة للمدرسة</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="flex flex-wrap gap-4 items-end">
                         <div className="flex-1 min-w-[200px]">
-                            <Label>Category Name</Label>
+                            <Label>اسم الفئة</Label>
                             <Input 
-                                placeholder="e.g., Tuition Fee" 
+                                placeholder="مثال: رسوم دراسية"
                                 value={newCategoryName} 
                                 onChange={(e) => setNewCategoryName(e.target.value)} 
                             />
                         </div>
                         <div className="w-32">
-                            <Label>Code</Label>
+                            <Label>الرمز</Label>
                             <Input 
-                                placeholder="e.g., TUI" 
+                                placeholder="مثال: TUI"
                                 value={newCategoryCode} 
                                 onChange={(e) => setNewCategoryCode(e.target.value.toUpperCase())} 
                             />
@@ -169,11 +169,11 @@ export default function FeeCategoriesPage() {
                                 checked={newCategoryDiscountable} 
                                 onCheckedChange={setNewCategoryDiscountable} 
                             />
-                            <Label className="text-sm">Discountable</Label>
+                            <Label className="text-sm">قابل للخصم</Label>
                         </div>
                         <Button onClick={handleAddCategory} disabled={adding}>
                             <IconPlus className="mr-2 h-4 w-4" />
-                            {adding ? 'Adding...' : 'Add Category'}
+                            {adding ? 'جارٍ الإضافة...' : 'إضافة فئة'}
                         </Button>
                     </div>
                 </CardContent>
@@ -182,27 +182,27 @@ export default function FeeCategoriesPage() {
             {/* Categories List */}
             <Card>
                 <CardHeader>
-                    <CardTitle>Existing Categories</CardTitle>
+                    <CardTitle>الفئات الحالية</CardTitle>
                     <CardDescription>
-                        {categories?.length || 0} categories configured
+                        {categories?.length || 0} فئة مُعدّة
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (
-                        <div className="text-center py-8 text-muted-foreground">Loading categories...</div>
+                        <div className="text-center py-8 text-muted-foreground">جارٍ تحميل الفئات...</div>
                     ) : !categories || categories.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
-                            No fee categories found. Add your first category above.
+                            لا توجد فئات رسوم. أضف أول فئة أعلاه.
                         </div>
                     ) : (
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="text-[#3d8fb5]">NAME</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">CODE</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">DISCOUNTABLE</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">STATUS</TableHead>
-                                    <TableHead className="text-[#3d8fb5] text-right">ACTIONS</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">الاسم</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">الرمز</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">قابل للخصم</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">الحالة</TableHead>
+                                    <TableHead className="text-[#3d8fb5] text-right">الإجراءات</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -269,7 +269,7 @@ export default function FeeCategoriesPage() {
                                                             ? 'bg-green-100 text-green-800' 
                                                             : 'bg-gray-100 text-gray-800'
                                                     }`}>
-                                                        {cat.is_discountable ? 'Yes' : 'No'}
+                                                        {cat.is_discountable ? 'نعم' : 'لا'}
                                                     </span>
                                                 </TableCell>
                                                 <TableCell>
@@ -278,7 +278,7 @@ export default function FeeCategoriesPage() {
                                                             ? 'bg-green-100 text-green-800' 
                                                             : 'bg-red-100 text-red-800'
                                                     }`}>
-                                                        {cat.is_active ? 'Active' : 'Inactive'}
+                                                        {cat.is_active ? 'نشط' : 'غير نشط'}
                                                     </span>
                                                 </TableCell>
                                                 <TableCell className="text-right">

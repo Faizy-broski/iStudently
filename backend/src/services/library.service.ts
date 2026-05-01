@@ -823,7 +823,9 @@ export class LibraryService {
   /**
    * Get book loans with filters
    */
-  async getBookLoans(schoolId: string, filters: { search?: string; status?: string; student_id?: string }) {
+  async getBookLoans(schoolId: string, filters: { search?: string; status?: string; student_id?: string }, userRole?: string, campusId?: string) {
+    const schoolIds = await this.resolveSchoolIds(schoolId, userRole, campusId);
+
     let query = supabase
       .from('library_loans')
       .select(`
@@ -834,7 +836,7 @@ export class LibraryService {
           book:library_books(title)
         )
       `)
-      .eq('school_id', schoolId);
+      .in('school_id', schoolIds);
 
     if (filters.status) {
       query = query.eq('status', filters.status);
@@ -1247,20 +1249,37 @@ export class LibraryService {
   }
 
   /**
+   * Resolves the set of school/campus IDs to query.
+   * If campusId is explicitly provided by an admin, use only that campus.
+   * For a parent-school admin with no campus selected, aggregates all campuses.
+   * For a campus-scoped user (librarian, campus admin), uses their campus ID.
+   */
+  private async resolveSchoolIds(schoolId: string, userRole?: string, campusId?: string): Promise<string[]> {
+    if (campusId) return [campusId];
+    const isParentSchool = !(await isCampus(schoolId));
+    if (userRole === 'admin' && isParentSchool) {
+      return getAllCampusIds(schoolId);
+    }
+    return [schoolId];
+  }
+
+  /**
    * Get comprehensive library statistics for dashboard
    */
-  async getLibraryStats(schoolId: string) {
+  async getLibraryStats(schoolId: string, userRole?: string, campusId?: string) {
+    const schoolIds = await this.resolveSchoolIds(schoolId, userRole, campusId);
+
     // Get total books count
     const { count: totalBooks } = await supabase
       .from('library_books')
       .select('*', { count: 'exact', head: true })
-      .eq('school_id', schoolId);
+      .in('school_id', schoolIds);
 
     // Get total copies and available copies
     const { data: copies } = await supabase
       .from('library_book_copies')
       .select('status')
-      .eq('school_id', schoolId);
+      .in('school_id', schoolIds);
 
     const totalCopies = copies?.length || 0;
     const availableCopies = copies?.filter(c => c.status === 'available').length || 0;
@@ -1271,7 +1290,7 @@ export class LibraryService {
     const { count: activeLoans } = await supabase
       .from('library_loans')
       .select('*', { count: 'exact', head: true })
-      .eq('school_id', schoolId)
+      .in('school_id', schoolIds)
       .eq('status', 'active');
 
     // Get overdue loans count
@@ -1279,7 +1298,7 @@ export class LibraryService {
     const { count: overdueLoans } = await supabase
       .from('library_loans')
       .select('*', { count: 'exact', head: true })
-      .eq('school_id', schoolId)
+      .in('school_id', schoolIds)
       .eq('status', 'active')
       .lt('due_date', today);
 
@@ -1287,7 +1306,7 @@ export class LibraryService {
     const { data: fines } = await supabase
       .from('library_fines')
       .select('amount, paid')
-      .eq('school_id', schoolId);
+      .in('school_id', schoolIds);
 
     const totalFinesCollected = fines?.filter(f => f.paid).reduce((sum, f) => sum + f.amount, 0) || 0;
     const pendingFines = fines?.filter(f => !f.paid).reduce((sum, f) => sum + f.amount, 0) || 0;
@@ -1302,7 +1321,7 @@ export class LibraryService {
           book:library_books(title)
         )
       `)
-      .eq('school_id', schoolId)
+      .in('school_id', schoolIds)
       .order('issue_date', { ascending: false })
       .limit(5);
 
@@ -1333,7 +1352,7 @@ export class LibraryService {
           book:library_books(title)
         )
       `)
-      .eq('school_id', schoolId)
+      .in('school_id', schoolIds)
       .eq('status', 'active')
       .lt('due_date', today)
       .order('due_date', { ascending: true })
@@ -1727,7 +1746,9 @@ export class LibraryService {
   // PREMIUM: LOANS BREAKDOWN (Chart data)
   // ============================================================================
 
-  async getLoansBreakdown(schoolId: string, startDate: string, endDate: string, byCategory: boolean = false) {
+  async getLoansBreakdown(schoolId: string, startDate: string, endDate: string, byCategory: boolean = false, userRole?: string, campusId?: string) {
+    const schoolIds = await this.resolveSchoolIds(schoolId, userRole, campusId);
+
     let query = supabase
       .from('library_loans')
       .select(`
@@ -1739,7 +1760,7 @@ export class LibraryService {
           )
         )
       `)
-      .eq('school_id', schoolId)
+      .in('school_id', schoolIds)
       .gte('issue_date', startDate)
       .lte('issue_date', endDate);
 

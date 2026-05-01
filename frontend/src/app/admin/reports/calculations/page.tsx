@@ -32,10 +32,11 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
-import { Calculator, Play, Save, Trash2, Edit2, Plus, Delete, Loader2, X } from 'lucide-react'
+import { Calculator, Play, Save, Trash2, Edit2, Delete, Loader2, X } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import { useGradeLevels } from '@/hooks/useAcademics'
+import { useTranslations } from 'next-intl'
 import {
   type Calculation,
   type RunResult,
@@ -52,25 +53,21 @@ import {
 
 const FUNCTIONS = ['sum', 'average', 'count', 'max', 'min', 'average-max', 'average-min', 'sum-max', 'sum-min']
 const OPERATORS = ['+', '-', '*', '/', '(', ')']
-const TIME_VALUE_FIELDS = [
-  { label: 'Present', value: 'present' },
-  { label: 'Absent', value: 'absent' },
-  { label: 'Enrolled', value: 'enrolled' },
-]
-const ROSARIO_FIELDS = [
-  { label: 'Student ID', value: 'student_id' },
-]
+const TIME_VALUE_FIELDS = ['present', 'absent', 'enrolled'] as const
+const ROSARIO_FIELDS = ['student_id'] as const
 const CONSTANTS = ['7', '8', '9', '4', '5', '6', '1', '2', '3', '.', '0']
 const BREAKDOWN_OPTIONS = [
-  { label: 'None', value: '' },
-  { label: 'Grade Level', value: 'grade_level' },
-  { label: 'Section', value: 'section' },
-  { label: 'Student', value: 'student' },
+  { value: '' },
+  { value: 'grade_level' },
+  { value: 'section' },
+  { value: 'student' },
 ]
 
 // ---- Component ----
 
 export default function CalculationsPage() {
+  const t = useTranslations('admin.reports.calculations')
+  const tCommon = useTranslations('common')
   useAuth()
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
@@ -164,7 +161,7 @@ export default function CalculationsPage() {
         trimmed === '' ||
         !/[\+\-\*\/\(]/.test(lastChar)
       ) {
-        toast.error('A field cannot be placed here; choose an operator instead.')
+        toast.error(t('toast.invalid_field_position'))
         return
       }
     }
@@ -195,13 +192,13 @@ export default function CalculationsPage() {
   // ---- Save / Edit ----
 
   const handleSave = async () => {
-    if (!title.trim()) { toast.error('Please enter a title'); return }
-    if (!formula.trim()) { toast.error('Please build a formula'); return }
+    if (!title.trim()) { toast.error(t('toast.enter_title')); return }
+    if (!formula.trim()) { toast.error(t('toast.build_formula')); return }
     setSaving(true)
     try {
       if (editingId) {
         await updateCalculation(editingId, { title, formula, breakdown: breakdown || undefined })
-        toast.success('Calculation updated')
+        toast.success(t('toast.updated'))
       } else {
         await createCalculation({
           title,
@@ -209,12 +206,12 @@ export default function CalculationsPage() {
           breakdown: breakdown || undefined,
           campus_id: selectedCampus?.id,
         })
-        toast.success('Calculation saved')
+        toast.success(t('toast.saved'))
       }
       await mutate(cacheKey)
       resetForm()
     } catch {
-      toast.error('Failed to save calculation')
+      toast.error(t('toast.save_failed'))
     } finally {
       setSaving(false)
     }
@@ -242,7 +239,7 @@ export default function CalculationsPage() {
 
   const handleRun = useCallback(async (calcId?: string) => {
     const id = calcId || editingId
-    if (!id && !formula.trim()) { toast.error('No formula to run'); return }
+    if (!id && !formula.trim()) { toast.error(t('toast.no_formula')); return }
 
     setRunning(true)
     setRunForId(calcId || null)
@@ -274,7 +271,7 @@ export default function CalculationsPage() {
       if (!id) {
         toast.custom((t) => (
           <div className="bg-white rounded-md shadow p-3 max-w-xs">
-            <p className="text-sm">Calculation ran successfully.</p>
+            <p className="text-sm">{t('toast.ran_success')}</p>
             <Button
               size="sm"
               className="mt-2"
@@ -283,13 +280,13 @@ export default function CalculationsPage() {
                 handleSave()
               }}
             >
-              Save formula
+              {t('save_formula')}
             </Button>
           </div>
         ))
       }
     } catch {
-      toast.error('Failed to run calculation')
+      toast.error(t('toast.run_failed'))
     } finally {
       setRunning(false)
       setRunForId(null)
@@ -305,10 +302,10 @@ export default function CalculationsPage() {
       await deleteCalculation(deleteDialog.calc.id)
       await mutate(cacheKey)
       if (editingId === deleteDialog.calc.id) resetForm()
-      toast.success('Calculation deleted')
+      toast.success(t('toast.deleted'))
       setDeleteDialog({ open: false, calc: null })
     } catch {
-      toast.error('Failed to delete calculation')
+      toast.error(t('toast.delete_failed'))
     } finally {
       setDeleting(false)
     }
@@ -323,16 +320,16 @@ export default function CalculationsPage() {
         <div className="flex items-center gap-3">
           <Calculator className="h-6 w-6 text-primary" />
           <div>
-            <h1 className="text-2xl font-bold">Calculations</h1>
+            <h1 className="text-2xl font-bold">{t('title')}</h1>
             <p className="text-sm text-muted-foreground">
-              Build and save formulas using attendance and grade data.
+              {t('subtitle')}
               {selectedCampus && <span className="ml-2 text-primary font-medium">— {selectedCampus.name}</span>}
             </p>
           </div>
         </div>
         {pendingFn && (
           <Badge variant="secondary" className="animate-pulse">
-            Select a field for <strong className="ml-1">{pendingFn}(…)</strong>
+            {t('select_field_for')} <strong className="ml-1">{pendingFn}(…)</strong>
             <button onClick={() => setPendingFn(null)} className="ml-2"><X className="h-3 w-3" /></button>
           </Badge>
         )}
@@ -344,13 +341,13 @@ export default function CalculationsPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Functions &amp; Operators
+              {t('functions_operators')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-2">Functions</p>
+                <p className="text-xs font-medium text-muted-foreground mb-2">{t('functions')}</p>
                 <div className="flex flex-wrap gap-1">
                   {FUNCTIONS.map((fn) => (
                     <Button
@@ -366,7 +363,7 @@ export default function CalculationsPage() {
                 </div>
               </div>
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-2">Operators</p>
+                <p className="text-xs font-medium text-muted-foreground mb-2">{t('operators')}</p>
                 <div className="flex flex-wrap gap-1">
                   {OPERATORS.map((op) => (
                     <Button
@@ -389,45 +386,45 @@ export default function CalculationsPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Fields
+              {t('fields')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-2">Time Values</p>
+                <p className="text-xs font-medium text-muted-foreground mb-2">{t('time_values')}</p>
                 <div className="flex flex-col gap-1">
                   {TIME_VALUE_FIELDS.map((f) => (
                     <Button
-                      key={f.value}
+                      key={f}
                       variant="outline"
                       size="sm"
                       className={`text-xs h-8 justify-start ${pendingFn ? 'border-primary text-primary' : ''}`}
-                      onClick={() => handleFieldClick(f.value)}
+                      onClick={() => handleFieldClick(f)}
                     >
-                      {f.label}
+                      {t(`time_fields.${f}`)}
                     </Button>
                   ))}
                 </div>
               </div>
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-2">Istudently Fields</p>
+                <p className="text-xs font-medium text-muted-foreground mb-2">{t('istudently_fields')}</p>
                 <div className="flex flex-col gap-1">
                   {ROSARIO_FIELDS.map((f) => (
                     <Button
-                      key={f.value}
+                      key={f}
                       variant="outline"
                       size="sm"
                       className={`text-xs h-8 justify-start ${pendingFn ? 'border-primary text-primary' : ''}`}
-                      onClick={() => handleFieldClick(f.value)}
+                      onClick={() => handleFieldClick(f)}
                     >
-                      {f.label}
+                      {t(`rosario_fields.${f}`)}
                     </Button>
                   ))}
                 </div>
               </div>
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-2">Constants</p>
+                <p className="text-xs font-medium text-muted-foreground mb-2">{t('constants')}</p>
                 <div className="grid grid-cols-3 gap-1">
                   {CONSTANTS.map((c) => (
                     <Button
@@ -451,7 +448,7 @@ export default function CalculationsPage() {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Equation
+            {t('equation')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -459,51 +456,51 @@ export default function CalculationsPage() {
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Calculation title..."
+              placeholder={t('title_placeholder')}
               className="max-w-xs h-9"
             />
             <Select value={breakdown} onValueChange={setBreakdown}>
               <SelectTrigger className="w-40 h-9">
-                <SelectValue placeholder="Breakdown" />
+                <SelectValue placeholder={t('breakdown')} />
               </SelectTrigger>
               <SelectContent>
                 {BREAKDOWN_OPTIONS.map((o) => (
                   <SelectItem key={o.value} value={o.value || 'none'}>
-                    {o.label}
+                    {o.value ? t(`breakdown_options.${o.value}`) : t('breakdown_options.none')}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             {editingId && (
               <Button variant="outline" size="sm" onClick={resetForm}>
-                <X className="h-4 w-4 mr-1" /> Cancel Edit
+                <X className="h-4 w-4 mr-1" /> {t('cancel_edit')}
               </Button>
             )}
           </div>
 
           {/* Formula display */}
           <div className="bg-muted rounded-md px-4 py-3 font-mono text-sm min-h-[2.5rem] border">
-            {formula || <span className="text-muted-foreground">Formula will appear here...</span>}
+            {formula || <span className="text-muted-foreground">{t('formula_placeholder')}</span>}
           </div>
 
           {/* Formula actions */}
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleBackspace}>
-              <Delete className="h-4 w-4 mr-1" /> Backspace
+              <Delete className="h-4 w-4 mr-1" /> {t('backspace')}
             </Button>
             <Button variant="outline" size="sm" onClick={handleClear}>
-              <X className="h-4 w-4 mr-1" /> Clear
+              <X className="h-4 w-4 mr-1" /> {tCommon('clearAll')}
             </Button>
             <Popover open={filterOpen} onOpenChange={setFilterOpen}>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className="h-8">
-                  Filters
+                  {t('filters')}
                 </Button>
               </PopoverTrigger>
               <PopoverContent side="bottom" align="start" className="w-80">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground whitespace-nowrap">Date from:</span>
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">{t('date_from')}</span>
                     <Input
                       type="date"
                       value={startDate}
@@ -512,7 +509,7 @@ export default function CalculationsPage() {
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">to:</span>
+                    <span className="text-sm text-muted-foreground">{tCommon('to')}</span>
                     <Input
                       type="date"
                       value={endDate}
@@ -521,7 +518,7 @@ export default function CalculationsPage() {
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Grade level:</span>
+                    <span className="text-sm text-muted-foreground">{t('grade_level')}</span>
                     <Select
                       value={gradeLevelId}
                       onValueChange={(val) => setGradeLevelId(val === 'none' ? '' : val)}
@@ -529,10 +526,10 @@ export default function CalculationsPage() {
                       disabled={gradesLoading}
                     >
                       <SelectTrigger className="w-full h-8">
-                        <SelectValue placeholder="All grades" />
+                        <SelectValue placeholder={tCommon('all_grades')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">All grades</SelectItem>
+                        <SelectItem value="none">{tCommon('all_grades')}</SelectItem>
                         {gradeLevels.map((g) => (
                           <SelectItem key={g.id} value={g.id}>
                             {g.name}
@@ -556,11 +553,11 @@ export default function CalculationsPage() {
               ) : (
                 <Play className="h-4 w-4 mr-1" />
               )}
-              Run
+              {t('run')}
             </Button>
             <Button size="sm" onClick={handleSave} disabled={saving || !title.trim() || !formula.trim()}>
               {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
-              {editingId ? 'Update' : 'Save'}
+              {editingId ? tCommon('update') : tCommon('save')}
             </Button>
           </div>
         </CardContent>
@@ -573,7 +570,7 @@ export default function CalculationsPage() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Play className="h-4 w-4 text-primary" />
-              Result
+              {t('result')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -587,8 +584,8 @@ export default function CalculationsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Group</TableHead>
-                    <TableHead className="text-right">Value</TableHead>
+                    <TableHead>{t('group')}</TableHead>
+                    <TableHead className="text-right">{t('value')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -613,7 +610,7 @@ export default function CalculationsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
-            Saved Calculations
+            {t('saved_calculations')}
             {selectedCampus && <span className="ml-2 text-sm font-normal text-muted-foreground">— {selectedCampus.name}</span>}
           </CardTitle>
         </CardHeader>
@@ -623,17 +620,17 @@ export default function CalculationsPage() {
           ) : !calculations || calculations.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Calculator className="h-10 w-10 mx-auto mb-2 opacity-30" />
-              <p>No calculations saved yet.</p>
-              <p className="text-sm">Build a formula above and click Save.</p>
+              <p>{t('no_saved')}</p>
+              <p className="text-sm">{t('no_saved_desc')}</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Formula</TableHead>
-                  <TableHead>Breakdown</TableHead>
-                  <TableHead className="w-36 text-right">Actions</TableHead>
+                  <TableHead>{tCommon('title')}</TableHead>
+                  <TableHead>{t('formula')}</TableHead>
+                  <TableHead>{t('breakdown')}</TableHead>
+                  <TableHead className="w-36 text-right">{tCommon('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -696,16 +693,16 @@ export default function CalculationsPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Calculation</DialogTitle>
+            <DialogTitle>{t('delete_title')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete &quot;{deleteDialog.calc?.title}&quot;? Any reports using this calculation will be affected.
+              {t('delete_desc', { title: deleteDialog.calc?.title || '' })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialog({ open: false, calc: null })}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDeleteDialog({ open: false, calc: null })}>{tCommon('cancel')}</Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
               {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Delete
+              {tCommon('delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ import {
 } from "lucide-react";
 
 export default function PackagesPage() {
+  const t = useTranslations("school.entry_exit.packages");
   const { profile } = useAuth();
   const schoolId = profile?.school_id || "";
 
@@ -158,13 +160,13 @@ export default function PackagesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            Package Tracking
+            {t("page_title")}
           </h1>
           <p className="text-muted-foreground">
-            Track and manage package deliveries for students
+            {t("page_subtitle")}
             {pendingCount > 0 && (
               <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-                {pendingCount} pending
+                {t("stat_pending", { count: pendingCount })}
               </span>
             )}
           </p>
@@ -179,16 +181,16 @@ export default function PackagesPage() {
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
-              Add Package
+              {t("btn_add")}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md overflow-visible">
             <DialogHeader>
-              <DialogTitle>Register Package</DialogTitle>
+              <DialogTitle>{t("dialog_add_title")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label>Student</Label>
+                <Label>{t("label_student")}</Label>
                 {selectedStudentId ? (
                   <div className="flex items-center gap-2 p-2 rounded-md border bg-muted/50">
                     <Users className="h-4 w-4 text-muted-foreground" />
@@ -203,14 +205,14 @@ export default function PackagesPage() {
                         setSelectedStudentName("");
                       }}
                     >
-                      Change
+                      {t("btn_change")}
                     </Button>
                   </div>
                 ) : (
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Search student..."
+                      placeholder={t("placeholder_student")}
                       className="pl-9"
                       value={studentSearch}
                       onChange={(e) => handleStudentSearch(e.target.value)}
@@ -248,7 +250,7 @@ export default function PackagesPage() {
                     )}
                     {searchingStudents && (
                       <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg p-3 text-sm text-muted-foreground text-center">
-                        Searching...
+                        {t("msg_searching")}
                       </div>
                     )}
                   </div>
@@ -256,20 +258,20 @@ export default function PackagesPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Description (Optional)</Label>
+                <Label>{t("label_description")}</Label>
                 <Input
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="e.g. Small cardboard box"
+                  placeholder={t("placeholder_description")}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Sender (Optional)</Label>
+                <Label>{t("label_sender")}</Label>
                 <Input
                   value={sender}
                   onChange={(e) => setSender(e.target.value)}
-                  placeholder="e.g. Amazon, Parent name..."
+                  placeholder={t("placeholder_sender")}
                 />
               </div>
 
@@ -278,7 +280,7 @@ export default function PackagesPage() {
                 disabled={submitting || !selectedStudentId}
                 className="w-full"
               >
-                {submitting ? "Registering..." : "Register Package"}
+                {submitting ? t("btn_registering") : t("btn_register")}
               </Button>
             </div>
           </DialogContent>
@@ -289,12 +291,12 @@ export default function PackagesPage() {
       <div className="flex items-center gap-3">
         <Select value={filterStatus} onValueChange={setFilterStatus}>
           <SelectTrigger className="w-48">
-            <SelectValue placeholder="Filter by status" />
+            <SelectValue placeholder={t("filter_status")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Packages</SelectItem>
-            <SelectItem value="pending">Pending Pickup</SelectItem>
-            <SelectItem value="collected">Collected</SelectItem>
+            <SelectItem value="all">{t("status_all")}</SelectItem>
+            <SelectItem value="pending">{t("status_pending")}</SelectItem>
+            <SelectItem value="collected">{t("status_collected")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -304,24 +306,24 @@ export default function PackagesPage() {
         <CardContent className="p-0">
           {loading ? (
             <div className="text-center py-12 text-muted-foreground">
-              Loading packages...
+              {t("msg_loading")}
             </div>
           ) : packages.length === 0 ? (
             <div className="text-center py-12">
               <Gift className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
-              <p className="text-muted-foreground">No packages found</p>
+              <p className="text-muted-foreground">{t("msg_no_data")}</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Sender</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Received</TableHead>
-                  <TableHead>Collected</TableHead>
-                  <TableHead>Action</TableHead>
+                  <TableHead>{t("table_col_student")}</TableHead>
+                  <TableHead>{t("table_col_description")}</TableHead>
+                  <TableHead>{t("table_col_sender")}</TableHead>
+                  <TableHead>{t("table_col_status")}</TableHead>
+                  <TableHead>{t("table_col_received")}</TableHead>
+                  <TableHead>{t("table_col_collected")}</TableHead>
+                  <TableHead>{t("table_col_action")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -350,12 +352,12 @@ export default function PackagesPage() {
                         {pkg.status === "pending" ? (
                           <>
                             <Package className="h-3 w-3 mr-1" />
-                            Pending
+                            {t("status_pending")}
                           </>
                         ) : (
                           <>
                             <PackageCheck className="h-3 w-3 mr-1" />
-                            Collected
+                            {t("status_collected")}
                           </>
                         )}
                       </Badge>
@@ -390,7 +392,7 @@ export default function PackagesPage() {
                           onClick={() => handlePickup(pkg.id)}
                         >
                           <PackageCheck className="h-3 w-3" />
-                          Mark Collected
+                          {t("btn_mark_collected")}
                         </Button>
                       )}
                     </TableCell>

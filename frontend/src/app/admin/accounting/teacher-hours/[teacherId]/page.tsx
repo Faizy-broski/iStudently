@@ -18,18 +18,18 @@ import * as accountingApi from '@/lib/api/accounting'
 import type { TeacherHoursEntry } from '@/lib/api/accounting'
 
 const MONTHS = [
-    { value: '01', label: 'January' },
-    { value: '02', label: 'February' },
-    { value: '03', label: 'March' },
-    { value: '04', label: 'April' },
-    { value: '05', label: 'May' },
-    { value: '06', label: 'June' },
-    { value: '07', label: 'July' },
-    { value: '08', label: 'August' },
-    { value: '09', label: 'September' },
-    { value: '10', label: 'October' },
-    { value: '11', label: 'November' },
-    { value: '12', label: 'December' },
+    { value: '01', label: 'يناير' },
+    { value: '02', label: 'فبراير' },
+    { value: '03', label: 'مارس' },
+    { value: '04', label: 'أبريل' },
+    { value: '05', label: 'مايو' },
+    { value: '06', label: 'يونيو' },
+    { value: '07', label: 'يوليو' },
+    { value: '08', label: 'أغسطس' },
+    { value: '09', label: 'سبتمبر' },
+    { value: '10', label: 'أكتوبر' },
+    { value: '11', label: 'نوفمبر' },
+    { value: '12', label: 'ديسمبر' },
 ]
 
 const getDaysInMonth = (month: string, year: string) => {
@@ -142,10 +142,10 @@ export default function TeacherHoursDetailPage() {
                 hourly_rate
             }))
             await accountingApi.updateTeacherHourlyRates(campusId, teacherId, ratesArray)
-            toast.success('Hourly rates saved successfully')
+            toast.success('تم حفظ أسعار الساعة بنجاح')
             mutate()
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : 'Failed to save rates'
+            const errorMessage = error instanceof Error ? error.message : 'فشل حفظ الأسعار'
             toast.error(errorMessage)
         } finally {
             setSaving(false)
@@ -169,7 +169,7 @@ export default function TeacherHoursDetailPage() {
             <div className="container mx-auto py-6">
                 <Card>
                     <CardContent className="pt-6">
-                        <p className="text-muted-foreground text-center">Please select a campus to view teacher hours.</p>
+                        <p className="text-muted-foreground text-center">يرجى اختيار فرع لعرض ساعات المعلمين.</p>
                     </CardContent>
                 </Card>
             </div>
@@ -183,11 +183,11 @@ export default function TeacherHoursDetailPage() {
                 <div className="flex items-center gap-3">
                     <IconClock className="h-8 w-8 text-[#3d8fb5]" />
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Teacher Hours</h1>
+                        <h1 className="text-3xl font-bold tracking-tight">ساعات المعلمين</h1>
                     </div>
                 </div>
                 <Link href="/admin/accounting/teacher-hours" className="text-[#3d8fb5] hover:underline text-sm">
-                    All Teachers
+                    جميع المعلمين
                 </Link>
             </div>
 
@@ -200,13 +200,13 @@ export default function TeacherHoursDetailPage() {
                         onCheckedChange={(checked) => setManualMode(checked === true)}
                     />
                     <label htmlFor="manualMode" className="text-sm cursor-pointer">
-                        Manual Mode
+                        الوضع اليدوي
                     </label>
                 </div>
 
                 {/* Timeframe */}
                 <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className="font-medium">Timeframe:</span>
+                    <span className="font-medium">الفترة الزمنية:</span>
                     <div className="flex items-center gap-1">
                         <Select value={startMonth} onValueChange={setStartMonth}>
                             <SelectTrigger className="w-28 h-8">
@@ -240,7 +240,7 @@ export default function TeacherHoursDetailPage() {
                         </Select>
                         <IconCalendar className="h-4 w-4 text-muted-foreground" />
                     </div>
-                    <span>to</span>
+                    <span>إلى</span>
                     <div className="flex items-center gap-1">
                         <Select value={endMonth} onValueChange={setEndMonth}>
                             <SelectTrigger className="w-28 h-8">
@@ -275,7 +275,7 @@ export default function TeacherHoursDetailPage() {
                         <IconCalendar className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <Button size="sm" onClick={() => mutate()} className="bg-[#3d8fb5] hover:bg-[#357ea0]">
-                        GO
+                        عرض
                     </Button>
                 </div>
 
@@ -286,7 +286,7 @@ export default function TeacherHoursDetailPage() {
                         onCheckedChange={(checked) => setDeduceAbsences(checked === true)}
                     />
                     <label htmlFor="deduceAbsences" className="text-sm cursor-pointer">
-                        Deduce Absences
+                        خصم الغيابات
                     </label>
                     <span className="text-xs text-muted-foreground">(ⓘ)</span>
                 </div>
@@ -297,11 +297,11 @@ export default function TeacherHoursDetailPage() {
                 <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
                         <p className="text-sm text-muted-foreground">
-                            {calculatedEntries.length} course period{calculatedEntries.length !== 1 ? 's were' : ' was'} found.
+                            تم العثور على {calculatedEntries.length} حصة دراسية.
                         </p>
                         <div className="relative">
                             <Input
-                                placeholder="Search"
+                                placeholder="بحث"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-64 pr-8"
@@ -320,21 +320,21 @@ export default function TeacherHoursDetailPage() {
                             <IconLoader className="h-6 w-6 animate-spin text-muted-foreground" />
                         </div>
                     ) : calculatedEntries.length === 0 ? (
-                        <p className="text-muted-foreground text-center py-8">No course periods found for this teacher.</p>
+                        <p className="text-muted-foreground text-center py-8">لم يتم العثور على حصص دراسية لهذا المعلم.</p>
                     ) : (
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="text-[#3d8fb5]">COURSE</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">PERIOD DAYS - SHORT NAME</TableHead>
-                                    <TableHead className="text-[#3d8fb5] text-right">HOURS</TableHead>
-                                    <TableHead className="text-[#3d8fb5] text-right">HOURLY RATE</TableHead>
-                                    <TableHead className="text-[#3d8fb5] text-right">TOTAL</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">المادة</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">أيام الحصة - الاسم المختصر</TableHead>
+                                    <TableHead className="text-[#3d8fb5] text-right">الساعات</TableHead>
+                                    <TableHead className="text-[#3d8fb5] text-right">سعر الساعة</TableHead>
+                                    <TableHead className="text-[#3d8fb5] text-right">الإجمالي</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {calculatedEntries.map(entry => {
-                                    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                                    const dayNames = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
                                     const dayIndex = entry.day_of_week === 7 ? 0 : entry.day_of_week
                                     
                                     return (
@@ -360,7 +360,7 @@ export default function TeacherHoursDetailPage() {
                                 })}
                                 {/* Total Row */}
                                 <TableRow className="font-semibold bg-muted/50">
-                                    <TableCell colSpan={2}>Total</TableCell>
+                                    <TableCell colSpan={2}>الإجمالي</TableCell>
                                     <TableCell className="text-right">{totalHours}</TableCell>
                                     <TableCell></TableCell>
                                     <TableCell className="text-right">{formatCurrency(totalAmount)}</TableCell>
@@ -379,7 +379,7 @@ export default function TeacherHoursDetailPage() {
                         disabled={saving}
                         className="bg-[#3d8fb5] hover:bg-[#357ea0] px-8"
                     >
-                        {saving ? 'SAVING...' : 'SAVE'}
+                        {saving ? 'جارٍ الحفظ...' : 'حفظ'}
                     </Button>
                 </div>
             )}

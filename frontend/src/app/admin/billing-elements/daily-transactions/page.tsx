@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { useAuth } from "@/context/AuthContext"
 import { toast } from "sonner"
 import { Loader2, Plus } from "lucide-react"
+import { useTranslations } from "next-intl"
 import {
   getCategories,
   getTransactions,
@@ -14,6 +15,8 @@ import {
 } from "@/lib/api/billing-elements"
 
 export default function DailyTransactionsPage() {
+  const t = useTranslations("admin.billing_elements.daily_transactions")
+  const tCommon = useTranslations("common")
   const { profile } = useAuth()
 
   const [categories, setCategories] = useState<BillingElementCategory[]>([])
@@ -54,7 +57,7 @@ export default function DailyTransactionsPage() {
       })
       setTransactions(data)
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Failed to fetch transactions")
+      toast.error(error instanceof Error ? error.message : t("toast.fetch_failed"))
     } finally {
       setFetching(false)
     }
@@ -80,10 +83,10 @@ export default function DailyTransactionsPage() {
     <div className="p-4 md:p-6 space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#022172] dark:text-white">
-          Daily Transactions
+          {t("title")}
         </h1>
         <p className="text-muted-foreground">
-          View billing element transactions within a date range
+          {t("subtitle")}
         </p>
       </div>
 
@@ -92,16 +95,16 @@ export default function DailyTransactionsPage() {
         {/* View type + Date Range */}
         <div className="flex flex-wrap items-center gap-3">
           <select className="h-8 border rounded px-2 text-sm" defaultValue="daily">
-            <option value="daily">Daily Transactions</option>
+            <option value="daily">{t("title")}</option>
           </select>
-          <span className="text-sm font-medium text-gray-600">Report Timeframe:</span>
+          <span className="text-sm font-medium text-gray-600">{t("report_timeframe")}</span>
           <Input
             type="date"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
             className="h-8 w-40"
           />
-          <span className="text-sm text-gray-400">to</span>
+          <span className="text-sm text-gray-400">{tCommon("to")}</span>
           <Input
             type="date"
             value={toDate}
@@ -114,26 +117,26 @@ export default function DailyTransactionsPage() {
             onClick={handleGo}
             disabled={fetching}
           >
-            {fetching ? <Loader2 className="h-4 w-4 animate-spin" /> : "GO"}
+            {fetching ? <Loader2 className="h-4 w-4 animate-spin" /> : tCommon("go")}
           </Button>
           <button
             className="ml-auto text-sm text-[#008B8B] hover:underline"
             onClick={() => setExpanded(!expanded)}
           >
-            {expanded ? "Compact View" : "Expanded View"}
+            {expanded ? t("compact_view") : t("expanded_view")}
           </button>
         </div>
 
         {/* Category + Reconcile */}
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600">Category:</label>
+            <label className="text-sm text-gray-600">{t("category")}:</label>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="h-8 border rounded px-2 text-sm"
             >
-              <option value="">All</option>
+              <option value="">{tCommon("all")}</option>
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>{cat.title}</option>
               ))}
@@ -147,7 +150,7 @@ export default function DailyTransactionsPage() {
                 onChange={(e) => setReconcile(e.target.checked)}
                 className="accent-[#008B8B]"
               />
-              Reconcile Payments
+              {t("reconcile_payments")}
             </label>
           </div>
         </div>
@@ -157,7 +160,7 @@ export default function DailyTransactionsPage() {
       <div className="bg-white dark:bg-gray-900 rounded-lg border">
         {transactions.length === 0 && (
           <p className="px-4 py-3 text-sm text-gray-500 font-medium border-b">
-            No transactions were found.
+            {t("no_transactions")}
           </p>
         )}
 
@@ -165,11 +168,11 @@ export default function DailyTransactionsPage() {
           <thead>
             <tr className="border-b bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10">
               <th className="w-8 px-3 py-2"></th>
-              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">Student</th>
-              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">Grade Level</th>
-              <th className="px-3 py-2 text-right text-xs font-semibold text-[#022172] uppercase">Fee</th>
-              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">Date</th>
-              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">Comment</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{tCommon("student")}</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{t("grade_level")}</th>
+              <th className="px-3 py-2 text-right text-xs font-semibold text-[#022172] uppercase">{t("fee")}</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{tCommon("date")}</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{t("comment")}</th>
             </tr>
           </thead>
           <tbody>
@@ -184,7 +187,7 @@ export default function DailyTransactionsPage() {
                 <td className="px-3 py-2 text-gray-500">
                   {t.transaction_date ? new Date(t.transaction_date).toLocaleDateString("en-US", {
                     month: "short", day: "numeric", year: "numeric"
-                  }) : "—"}
+                  }) : t("dash")}
                 </td>
                 <td className="px-3 py-2 text-gray-400">{t.comment || ""}</td>
               </tr>
@@ -195,7 +198,7 @@ export default function DailyTransactionsPage() {
               <td className="px-3 py-3">
                 <Plus className="h-3.5 w-3.5 text-gray-400" />
               </td>
-              <td className="px-3 py-3 text-gray-600">Total:</td>
+              <td className="px-3 py-3 text-gray-600">{t("total")}:</td>
               <td className="px-3 py-3"></td>
               <td className="px-3 py-3 text-right font-mono font-bold text-[#022172]">
                 {totalFee.toFixed(2)}

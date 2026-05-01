@@ -64,6 +64,8 @@ interface MarkingPeriodItem {
 }
 
 export default function StudentGradesPage() {
+  const t = useTranslations("school.grades_module.student_grades");
+  const tc = useTranslations("school.grades_module.common");
   const { user } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;

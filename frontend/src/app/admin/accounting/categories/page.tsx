@@ -60,7 +60,7 @@ export default function AccountingCategoriesPage() {
 
     const handleSave = async () => {
         if (!campusId || !formName.trim()) {
-            toast.error('Category name is required')
+            toast.error('اسم الفئة مطلوب')
             return
         }
 
@@ -74,7 +74,7 @@ export default function AccountingCategoriesPage() {
                     description: formDescription.trim() || undefined,
                     display_order: formOrder
                 })
-                toast.success('Category updated')
+                toast.success('تم تحديث الفئة')
             } else {
                 await accountingApi.createCategory({
                     campus_id: campusId,
@@ -83,12 +83,12 @@ export default function AccountingCategoriesPage() {
                     description: formDescription.trim() || undefined,
                     display_order: formOrder
                 })
-                toast.success('Category created')
+                toast.success('تم إنشاء الفئة')
             }
             mutate()
             setDialogOpen(false)
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'An error occurred')
+            toast.error(error instanceof Error ? error.message : 'حدث خطأ')
         } finally {
             setSaving(false)
         }
@@ -101,10 +101,10 @@ export default function AccountingCategoriesPage() {
                 campus_id: campusId,
                 is_active: !category.is_active
             })
-            toast.success(category.is_active ? 'Category deactivated' : 'Category activated')
+            toast.success(category.is_active ? 'تم تعطيل الفئة' : 'تم تفعيل الفئة')
             mutate()
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'An error occurred')
+            toast.error(error instanceof Error ? error.message : 'حدث خطأ')
         }
     }
 
@@ -112,21 +112,21 @@ export default function AccountingCategoriesPage() {
         if (!campusId) return
         try {
             await accountingApi.deleteCategory(category.id, campusId)
-            toast.success('Category deleted')
+            toast.success('تم حذف الفئة')
             mutate()
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'An error occurred')
+            toast.error(error instanceof Error ? error.message : 'حدث خطأ')
         }
     }
 
     const getCategoryTypeBadge = (type: accountingApi.CategoryType) => {
         switch (type) {
             case 'incomes':
-                return <Badge variant="default" className="bg-green-500">Incomes</Badge>
+                return <Badge variant="default" className="bg-green-500">إيرادات</Badge>
             case 'expenses':
-                return <Badge variant="default" className="bg-red-500">Expenses</Badge>
+                return <Badge variant="default" className="bg-red-500">مصروفات</Badge>
             case 'common':
-                return <Badge variant="secondary">Both</Badge>
+                return <Badge variant="secondary">كلاهما</Badge>
         }
     }
 
@@ -143,7 +143,7 @@ export default function AccountingCategoriesPage() {
             <div className="container mx-auto py-6">
                 <Card>
                     <CardContent className="pt-6">
-                        <p className="text-muted-foreground text-center">Please select a campus to manage accounting categories.</p>
+                        <p className="text-muted-foreground text-center">يرجى اختيار فرع لإدارة فئات المحاسبة.</p>
                     </CardContent>
                 </Card>
             </div>
@@ -158,64 +158,64 @@ export default function AccountingCategoriesPage() {
                     <Link href="/admin/accounting/incomes"><IconArrowLeft className="h-4 w-4" /></Link>
                 </Button>
                 <div className="flex-1">
-                    <h1 className="text-3xl font-bold tracking-tight">Accounting Categories</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">فئات المحاسبة</h1>
                     <p className="text-muted-foreground">
-                        Manage categories for incomes and expenses • {selectedCampus.name}
+                        إدارة فئات الإيرادات والمصروفات • {selectedCampus.name}
                     </p>
                 </div>
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                     <DialogTrigger asChild>
                         <Button>
                             <IconPlus className="h-4 w-4 mr-2" />
-                            Add Category
+                            إضافة فئة
                         </Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>{editingCategory ? 'Edit Category' : 'New Category'}</DialogTitle>
+                            <DialogTitle>{editingCategory ? 'تعديل الفئة' : 'فئة جديدة'}</DialogTitle>
                             <DialogDescription>
                                 {editingCategory 
-                                    ? 'Update the category details below.'
-                                    : 'Create a new category for tracking incomes or expenses.'}
+                                    ? 'حدّث تفاصيل الفئة أدناه.'
+                                    : 'أنشئ فئة جديدة لتتبع الإيرادات أو المصروفات.'}
                             </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
                             <div className="space-y-2">
-                                <Label htmlFor="name">Name</Label>
+                                <Label htmlFor="name">الاسم</Label>
                                 <Input
                                     id="name"
                                     value={formName}
                                     onChange={(e) => setFormName(e.target.value)}
-                                    placeholder="e.g., Utilities, Tuition Fees"
+                                    placeholder="مثال: خدمات، رسوم دراسية"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="type">Category Type</Label>
+                                <Label htmlFor="type">نوع الفئة</Label>
                                 <Select value={formType} onValueChange={(v) => setFormType(v as accountingApi.CategoryType)}>
                                     <SelectTrigger>
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="incomes">Incomes Only</SelectItem>
-                                        <SelectItem value="expenses">Expenses Only</SelectItem>
-                                        <SelectItem value="common">Both (Common)</SelectItem>
+                                        <SelectItem value="incomes">إيرادات فقط</SelectItem>
+                                        <SelectItem value="expenses">مصروفات فقط</SelectItem>
+                                        <SelectItem value="common">كلاهما (مشتركة)</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <p className="text-xs text-muted-foreground">
-                                    &quot;Both&quot; categories appear in both income and expense dropdowns
+                                    تظهر الفئات &quot;المشتركة&quot; في قوائم الإيرادات والمصروفات
                                 </p>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="description">Description (Optional)</Label>
+                                <Label htmlFor="description">الوصف (اختياري)</Label>
                                 <Input
                                     id="description"
                                     value={formDescription}
                                     onChange={(e) => setFormDescription(e.target.value)}
-                                    placeholder="Brief description of this category"
+                                    placeholder="وصف مختصر لهذه الفئة"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="order">Display Order</Label>
+                                <Label htmlFor="order">ترتيب العرض</Label>
                                 <Input
                                     id="order"
                                     type="number"
@@ -224,15 +224,15 @@ export default function AccountingCategoriesPage() {
                                     placeholder="0"
                                 />
                                 <p className="text-xs text-muted-foreground">
-                                    Lower numbers appear first in dropdowns
+                                    الأرقام الأصغر تظهر أولاً في القوائم
                                 </p>
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+                            <Button variant="outline" onClick={() => setDialogOpen(false)}>إلغاء</Button>
                             <Button onClick={handleSave} disabled={saving || !formName.trim()}>
                                 {saving && <IconLoader className="h-4 w-4 mr-2 animate-spin" />}
-                                {editingCategory ? 'Update' : 'Create'}
+                                {editingCategory ? 'تحديث' : 'إنشاء'}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -242,9 +242,9 @@ export default function AccountingCategoriesPage() {
             {/* Categories Table */}
             <Card>
                 <CardHeader>
-                    <CardTitle>Categories</CardTitle>
+                    <CardTitle>الفئات</CardTitle>
                     <CardDescription>
-                        Categories are used to organize and filter your incomes and expenses
+                        تُستخدم الفئات لتنظيم وتصفية الإيرادات والمصروفات
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -254,18 +254,18 @@ export default function AccountingCategoriesPage() {
                         </div>
                     ) : !categories?.length ? (
                         <div className="text-center py-8 text-muted-foreground">
-                            No categories found. Create your first category to get started.
+                            لم يتم العثور على فئات. أنشئ أول فئة للبدء.
                         </div>
                     ) : (
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Order</TableHead>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>Type</TableHead>
-                                    <TableHead>Description</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
+                                    <TableHead>الترتيب</TableHead>
+                                    <TableHead>الاسم</TableHead>
+                                    <TableHead>النوع</TableHead>
+                                    <TableHead>الوصف</TableHead>
+                                    <TableHead>الحالة</TableHead>
+                                    <TableHead className="text-right">الإجراءات</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -279,7 +279,7 @@ export default function AccountingCategoriesPage() {
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant={category.is_active ? 'default' : 'outline'}>
-                                                {category.is_active ? 'Active' : 'Inactive'}
+                                                {category.is_active ? 'نشط' : 'غير نشط'}
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-right">
@@ -299,7 +299,7 @@ export default function AccountingCategoriesPage() {
                                                     size="sm"
                                                     onClick={() => handleToggleActive(category)}
                                                 >
-                                                    {category.is_active ? 'Deactivate' : 'Activate'}
+                                                    {category.is_active ? 'تعطيل' : 'تفعيل'}
                                                 </Button>
                                                 <AlertDialog>
                                                     <AlertDialogTrigger asChild>
@@ -309,19 +309,19 @@ export default function AccountingCategoriesPage() {
                                                     </AlertDialogTrigger>
                                                     <AlertDialogContent>
                                                         <AlertDialogHeader>
-                                                            <AlertDialogTitle>Delete Category</AlertDialogTitle>
+                                                            <AlertDialogTitle>حذف الفئة</AlertDialogTitle>
                                                             <AlertDialogDescription>
-                                                                Are you sure you want to delete &quot;{category.name}&quot;? 
-                                                                This will remove the category from all existing incomes and expenses.
+                                                                هل أنت متأكد من حذف &quot;{category.name}&quot;؟
+                                                                سيؤدي ذلك إلى إزالة الفئة من جميع الإيرادات والمصروفات الحالية.
                                                             </AlertDialogDescription>
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>
-                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                            <AlertDialogCancel>إلغاء</AlertDialogCancel>
                                                             <AlertDialogAction
                                                                 onClick={() => handleDelete(category)}
                                                                 className="bg-destructive text-destructive-foreground"
                                                             >
-                                                                Delete
+                                                                حذف
                                                             </AlertDialogAction>
                                                         </AlertDialogFooter>
                                                     </AlertDialogContent>

@@ -21,18 +21,18 @@ import { getAllStaff, Staff } from '@/lib/api/staff'
 import { getSchoolSettings, PAYMENT_METHOD_OPTIONS, type PaymentMethodOption } from '@/lib/api/school-settings'
 
 const MONTHS = [
-    { value: '01', label: 'January' },
-    { value: '02', label: 'February' },
-    { value: '03', label: 'March' },
-    { value: '04', label: 'April' },
-    { value: '05', label: 'May' },
-    { value: '06', label: 'June' },
-    { value: '07', label: 'July' },
-    { value: '08', label: 'August' },
-    { value: '09', label: 'September' },
-    { value: '10', label: 'October' },
-    { value: '11', label: 'November' },
-    { value: '12', label: 'December' },
+    { value: '01', label: 'يناير' },
+    { value: '02', label: 'فبراير' },
+    { value: '03', label: 'مارس' },
+    { value: '04', label: 'أبريل' },
+    { value: '05', label: 'مايو' },
+    { value: '06', label: 'يونيو' },
+    { value: '07', label: 'يوليو' },
+    { value: '08', label: 'أغسطس' },
+    { value: '09', label: 'سبتمبر' },
+    { value: '10', label: 'أكتوبر' },
+    { value: '11', label: 'نوفمبر' },
+    { value: '12', label: 'ديسمبر' },
 ]
 
 const getDaysInMonth = (month: string, year: string) => {
@@ -230,13 +230,13 @@ export default function StaffPaymentsPage() {
 
             if (promises.length > 0) {
                 await Promise.all(promises)
-                toast.success(`${promises.length} payment(s) saved`)
+            toast.success(`تم حفظ ${promises.length} من المدفوعات`)
                 mutate()
             } else {
-                toast.info('No changes to save')
+                toast.info('لا توجد تغييرات للحفظ')
             }
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'An error occurred')
+            toast.error(error instanceof Error ? error.message : 'حدث خطأ')
         } finally {
             setSaving(false)
         }
@@ -247,10 +247,10 @@ export default function StaffPaymentsPage() {
         setDeletingId(id)
         try {
             await accountingApi.deleteStaffPayment(id, campusId)
-            toast.success('Payment deleted')
+            toast.success('تم حذف الدفعة')
             mutate()
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'An error occurred')
+            toast.error(error instanceof Error ? error.message : 'حدث خطأ')
         } finally {
             setDeletingId(null)
         }
@@ -265,10 +265,10 @@ export default function StaffPaymentsPage() {
         setMarkingPaidId(salaryRecordId)
         try {
             await salaryApi.approveSalary(salaryRecordId, schoolId)
-            toast.success('Salary approved')
+            toast.success('تم اعتماد الراتب')
             mutateSalaries()
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Failed to approve salary')
+            toast.error(error instanceof Error ? error.message : 'فشل اعتماد الراتب')
         } finally {
             setMarkingPaidId(null)
         }
@@ -279,10 +279,10 @@ export default function StaffPaymentsPage() {
         setMarkingPaidId(salaryRecordId)
         try {
             await salaryApi.markSalaryPaid(salaryRecordId, { school_id: schoolId, payment_method: defaultPaymentMethod })
-            toast.success('Salary marked as paid')
+            toast.success('تم تعليم الراتب كمدفوع')
             mutateSalaries()
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Failed to mark salary as paid')
+            toast.error(error instanceof Error ? error.message : 'فشل تعليم الراتب كمدفوع')
         } finally {
             setMarkingPaidId(null)
         }
@@ -312,11 +312,11 @@ export default function StaffPaymentsPage() {
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'pending':
-                return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200"><IconClock className="h-3 w-3 mr-1" />Pending</Badge>
+                return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200"><IconClock className="h-3 w-3 mr-1" />قيد الانتظار</Badge>
             case 'approved':
-                return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200"><IconCheck className="h-3 w-3 mr-1" />Approved</Badge>
+                return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200"><IconCheck className="h-3 w-3 mr-1" />معتمد</Badge>
             case 'paid':
-                return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200"><IconCircleCheck className="h-3 w-3 mr-1" />Paid</Badge>
+                return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200"><IconCircleCheck className="h-3 w-3 mr-1" />مدفوع</Badge>
             default:
                 return <Badge variant="outline">{status}</Badge>
         }
@@ -352,7 +352,7 @@ export default function StaffPaymentsPage() {
             <div className="container mx-auto py-6">
                 <Card>
                     <CardContent className="pt-6">
-                        <p className="text-muted-foreground text-center">Please select a campus to manage staff payments.</p>
+                        <p className="text-muted-foreground text-center">يرجى اختيار فرع لإدارة مدفوعات الموظفين.</p>
                     </CardContent>
                 </Card>
             </div>
@@ -367,14 +367,14 @@ export default function StaffPaymentsPage() {
                 <div className="flex items-center gap-3">
                     <IconUsers className="h-8 w-8 text-[#3d8fb5]" />
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Staff Payments</h1>
-                        <p className="text-muted-foreground">Select a staff member to manage their payments</p>
+                        <h1 className="text-3xl font-bold tracking-tight">مدفوعات الموظفين</h1>
+                        <p className="text-muted-foreground">اختر موظفًا لإدارة مدفوعاته</p>
                     </div>
                 </div>
 
                 {/* Expanded View Link */}
                 <div className="text-[#3d8fb5] cursor-pointer hover:underline text-sm">
-                    Expanded View
+                    عرض موسع
                 </div>
 
                 {/* Staff List */}
@@ -382,11 +382,11 @@ export default function StaffPaymentsPage() {
                     <CardContent className="pt-6">
                         <div className="flex items-center justify-between mb-4">
                             <p className="text-sm text-muted-foreground">
-                                {filteredStaff.length} users were found.
+                                تم العثور على {filteredStaff.length} مستخدم.
                             </p>
                             <div className="relative">
                                 <Input
-                                    placeholder="Search"
+                                    placeholder="بحث"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="w-48 pr-8"
@@ -403,9 +403,9 @@ export default function StaffPaymentsPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>USER</TableHead>
-                                        <TableHead>PROFILE</TableHead>
-                                        <TableHead>DESIGNATION</TableHead>
+                                        <TableHead>المستخدم</TableHead>
+                                        <TableHead>الملف الشخصي</TableHead>
+                                        <TableHead>المسمى الوظيفي</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -420,10 +420,10 @@ export default function StaffPaymentsPage() {
                                                 </span>
                                             </TableCell>
                                             <TableCell>
-                                                {staff.role === 'teacher' ? 'Teacher' :
-                                                 staff.role === 'admin' ? 'Administrator' :
-                                                 staff.role === 'librarian' ? 'Librarian' :
-                                                 staff.role === 'counselor' ? 'Counselor' : 'Staff'}
+                                                {staff.role === 'teacher' ? 'معلم' :
+                                                 staff.role === 'admin' ? 'مسؤول' :
+                                                 staff.role === 'librarian' ? 'أمين مكتبة' :
+                                                 staff.role === 'counselor' ? 'مرشد' : 'موظف'}
                                             </TableCell>
                                             <TableCell>{staff.title || '-'}</TableCell>
                                         </TableRow>
@@ -431,7 +431,7 @@ export default function StaffPaymentsPage() {
                                     {filteredStaff.length === 0 && (
                                         <TableRow>
                                             <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
-                                                No staff members found.
+                                                لم يتم العثور على موظفين.
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -455,7 +455,7 @@ export default function StaffPaymentsPage() {
                     </Button>
                     <IconUsers className="h-8 w-8 text-[#3d8fb5]" />
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Staff Payments</h1>
+                        <h1 className="text-3xl font-bold tracking-tight">مدفوعات الموظفين</h1>
                         <p className="text-muted-foreground">
                             {selectedStaff.profile?.first_name} {selectedStaff.profile?.last_name}
                             {selectedStaff.title && <span className="ml-2 text-sm">({selectedStaff.title})</span>}
@@ -465,7 +465,7 @@ export default function StaffPaymentsPage() {
                 {activeTab === 'payments' && (
                     <Button onClick={handleSave} disabled={saving} className="bg-[#3d8fb5] hover:bg-[#357ea0]">
                         {saving ? <IconLoader className="h-4 w-4 mr-2 animate-spin" /> : <IconDeviceFloppy className="h-4 w-4 mr-2" />}
-                        SAVE
+                        حفظ
                     </Button>
                 )}
             </div>
@@ -473,8 +473,8 @@ export default function StaffPaymentsPage() {
             {/* Tabs for Salary Records and Manual Payments */}
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'payments' | 'salaries')}>
                 <TabsList className="grid w-full grid-cols-2 max-w-md">
-                    <TabsTrigger value="salaries">Salary Records</TabsTrigger>
-                    <TabsTrigger value="payments">Manual Payments</TabsTrigger>
+                    <TabsTrigger value="salaries">سجلات الرواتب</TabsTrigger>
+                    <TabsTrigger value="payments">مدفوعات يدوية</TabsTrigger>
                 </TabsList>
 
                 {/* Salary Records Tab */}
@@ -487,19 +487,19 @@ export default function StaffPaymentsPage() {
                                 </div>
                             ) : salaryRecords.length === 0 ? (
                                 <p className="text-muted-foreground text-center py-8">
-                                    No salary records found. Salaries are auto-generated on the 1st of each month via the Salary module.
+                                    لا توجد سجلات رواتب. يتم إنشاء الرواتب تلقائيًا في اليوم الأول من كل شهر عبر وحدة الرواتب.
                                 </p>
                             ) : (
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>PERIOD</TableHead>
-                                            <TableHead>BASE SALARY</TableHead>
-                                            <TableHead>ALLOWANCES</TableHead>
-                                            <TableHead>DEDUCTIONS</TableHead>
-                                            <TableHead>NET SALARY</TableHead>
-                                            <TableHead>STATUS</TableHead>
-                                            <TableHead className="text-right">ACTIONS</TableHead>
+                                            <TableHead>الفترة</TableHead>
+                                            <TableHead>الراتب الأساسي</TableHead>
+                                            <TableHead>البدلات</TableHead>
+                                            <TableHead>الخصومات</TableHead>
+                                            <TableHead>صافي الراتب</TableHead>
+                                            <TableHead>الحالة</TableHead>
+                                            <TableHead className="text-right">الإجراءات</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -526,7 +526,7 @@ export default function StaffPaymentsPage() {
                                                             ) : (
                                                                 <>
                                                                     <IconCheck className="h-4 w-4 mr-1" />
-                                                                    Approve
+                                                                    اعتماد
                                                                 </>
                                                             )}
                                                         </Button>
@@ -543,14 +543,14 @@ export default function StaffPaymentsPage() {
                                                             ) : (
                                                                 <>
                                                                     <IconCircleCheck className="h-4 w-4 mr-1" />
-                                                                    Mark Paid
+                                                                    تعليم كمدفوع
                                                                 </>
                                                             )}
                                                         </Button>
                                                     )}
                                                     {record.status === 'paid' && record.payment_date && (
                                                         <span className="text-sm text-muted-foreground">
-                                                            Paid {format(new Date(record.payment_date), 'MMM d, yyyy')}
+                                                            مدفوع {format(new Date(record.payment_date), 'MMM d, yyyy')}
                                                         </span>
                                                     )}
                                                 </TableCell>
@@ -567,15 +567,15 @@ export default function StaffPaymentsPage() {
                         <CardContent className="pt-6">
                             <div className="space-y-2 max-w-sm">
                                 <div className="flex justify-between text-sm">
-                                    <span>Total Paid Salaries:</span>
+                                    <span>إجمالي الرواتب المدفوعة:</span>
                                     <span className="text-green-600">{formatCurrency(totalSalaryPaid)}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
-                                    <span>Pending/Approved Salaries:</span>
+                                    <span>الرواتب المعلقة/المعتمدة:</span>
                                     <span className="text-yellow-600">{formatCurrency(totalSalaryDue)}</span>
                                 </div>
                                 <div className="flex justify-between font-bold border-t pt-2">
-                                    <span>Total:</span>
+                                    <span>الإجمالي:</span>
                                     <span>{formatCurrency(totalSalaryPaid + totalSalaryDue)}</span>
                                 </div>
                             </div>
@@ -594,16 +594,17 @@ export default function StaffPaymentsPage() {
                             ) : (
                                 <>
                                     {rows.length === 1 && rows[0].isNew && !rows[0].amount && (
-                                        <p className="text-muted-foreground mb-4">No manual payments were found. Use this for ad-hoc payments outside of the salary system.</p>
+                                        <p className="text-muted-foreground mb-4">لم يتم العثور على مدفوعات يدوية. استخدم هذا للمدفوعات الاستثنائية خارج نظام الرواتب.</p>
                                     )}
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
                                                 <TableHead className="w-8"></TableHead>
-                                                <TableHead>AMOUNT</TableHead>
-                                                <TableHead>DATE</TableHead>
-                                                <TableHead>COMMENT</TableHead>
-                                                <TableHead>FILE ATTACHED</TableHead>
+                                                <TableHead>رقم الإيصال</TableHead>
+                                                <TableHead>المبلغ</TableHead>
+                                                <TableHead>التاريخ</TableHead>
+                                                <TableHead>ملاحظة</TableHead>
+                                                <TableHead>ملف مرفق</TableHead>
                                                 <TableHead className="w-12"></TableHead>
                                             </TableRow>
                                         </TableHeader>
@@ -623,7 +624,7 @@ export default function StaffPaymentsPage() {
                                                             <Input
                                                                 value={row.receipt_number}
                                                                 onChange={(e) => handleRowChange(index, 'receipt_number', e.target.value)}
-                                                                placeholder="Auto"
+                                                                placeholder="تلقائي"
                                                                 className="w-32"
                                                                 disabled={!row.isNew}
                                                             />
@@ -699,18 +700,18 @@ export default function StaffPaymentsPage() {
                                                                     </AlertDialogTrigger>
                                                                     <AlertDialogContent>
                                                                         <AlertDialogHeader>
-                                                                            <AlertDialogTitle>Delete Payment</AlertDialogTitle>
+                                                                        <AlertDialogTitle>حذف الدفعة</AlertDialogTitle>
                                                                             <AlertDialogDescription>
-                                                                                Are you sure you want to delete this payment record?
+                                                                                هل أنت متأكد من حذف سجل الدفعة هذا؟
                                                                             </AlertDialogDescription>
                                                                         </AlertDialogHeader>
                                                                         <AlertDialogFooter>
-                                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                            <AlertDialogCancel>إلغاء</AlertDialogCancel>
                                                                             <AlertDialogAction
                                                                                 onClick={() => handleDelete(row.id!)}
                                                                                 className="bg-destructive text-destructive-foreground"
                                                                             >
-                                                                                Delete
+                                                                                حذف
                                                                             </AlertDialogAction>
                                                                         </AlertDialogFooter>
                                                                     </AlertDialogContent>
@@ -725,7 +726,7 @@ export default function StaffPaymentsPage() {
                                     <div className="flex justify-center mt-4">
                                         <Button onClick={handleSave} disabled={saving} className="bg-[#3d8fb5] hover:bg-[#357ea0]">
                                             {saving ? <IconLoader className="h-4 w-4 mr-2 animate-spin" /> : null}
-                                            SAVE
+                                            حفظ
                                         </Button>
                                     </div>
                                 </>
@@ -738,15 +739,15 @@ export default function StaffPaymentsPage() {
                         <CardContent className="pt-6">
                             <div className="space-y-2 max-w-xs">
                                 <div className="flex justify-between text-sm">
-                                    <span>Total from Base Salary:</span>
+                                    <span>إجمالي الراتب الأساسي:</span>
                                     <span>{formatCurrency(legacySalary)}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
-                                    <span>Less: Manual Payments:</span>
+                                    <span>ناقص: المدفوعات اليدوية:</span>
                                     <span>{formatCurrency(totalPayments)}</span>
                                 </div>
                                 <div className="flex justify-between font-bold border-t pt-2">
-                                    <span>Balance:</span>
+                                    <span>الرصيد:</span>
                                     <span>{formatCurrency(balance)}</span>
                                 </div>
                             </div>

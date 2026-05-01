@@ -99,7 +99,7 @@ export default function GradingScalesPage() {
         }
       }
     } catch {
-      toast.error("Failed to load grading scales");
+      toast.error(t("toast_load_scales_failed"));
     } finally {
       setLoadingScales(false);
     }
@@ -119,7 +119,7 @@ export default function GradingScalesPage() {
         setRows(res.data.map((g) => ({ ...g })));
       }
     } catch {
-      toast.error("Failed to load grades");
+      toast.error(t("toast_load_grades_failed"));
     } finally {
       setLoadingRows(false);
     }
@@ -161,7 +161,7 @@ export default function GradingScalesPage() {
 
   const addRow = () => {
     if (!newTitle.trim()) {
-      toast.error("Title is required");
+      toast.error(t("title_required"));
       return;
     }
     setRows((prev) => [
@@ -227,11 +227,11 @@ export default function GradingScalesPage() {
         });
         if (!res.success) errors++;
       }
-      if (errors === 0) toast.success("Grades saved");
-      else toast.error(`${errors} operation(s) failed`);
+      if (errors === 0) toast.success(t("toast_grades_saved"));
+      else toast.error(t("toast_ops_failed", { count: errors }));
       await loadGrades();
     } catch {
-      toast.error("Save failed");
+      toast.error(t("toast_save_failed"));
     } finally {
       setSaving(false);
     }
@@ -239,15 +239,15 @@ export default function GradingScalesPage() {
 
   // ── Grading Scale Generation ─────────────────────────────────
   const handleGenerateScale = async () => {
-    if (!genScaleId) { toast.error("Select a scale to generate into"); return; }
+    if (!genScaleId) { toast.error(t("toast_select_scale_generate")); return; }
     const min = parseFloat(genMin);
     const max = parseFloat(genMax);
     const step = parseFloat(genStep);
     if (isNaN(min) || isNaN(max) || min >= max) {
-      toast.error("Maximum grade must be greater than minimum grade"); return;
+      toast.error(t("toast_max_gt_min")); return;
     }
     if (!window.confirm(
-      `This will DELETE all existing grades in the selected scale and replace them with a generated numeric scale (${genMin}–${genMax}, step ${genStep}).\n\nContinue?`
+      t("confirm_generate_replace", { min: genMin, max: genMax, step: genStep })
     )) return;
 
     setGenerating(true);
@@ -256,15 +256,15 @@ export default function GradingScalesPage() {
         grade_min: min, grade_max: max, grade_step: step, decimal_separator: genDecimal,
       });
       if (res.success) {
-        toast.success(res.message || `Scale generated successfully`);
+        toast.success(res.message || t("toast_generated_success"));
         // Reload grades if the generated scale is currently active
         if (activeTab === genScaleId) await loadGrades();
         await loadScales();
       } else {
-        toast.error(res.error || "Generation failed");
+        toast.error(res.error || t("toast_generation_failed"));
       }
     } catch {
-      toast.error("Generation failed");
+      toast.error(t("toast_generation_failed"));
     } finally {
       setGenerating(false);
     }
@@ -290,7 +290,7 @@ export default function GradingScalesPage() {
     } else {
       if (row.grades && row.grades.length > 0) {
         toast.error(
-          "Cannot delete a scale that has grades. Remove grades first."
+          t("toast_cannot_delete_scale_with_grades")
         );
         return;
       }
@@ -302,7 +302,7 @@ export default function GradingScalesPage() {
 
   const addScaleRow = () => {
     if (!newScaleTitle.trim()) {
-      toast.error("Title is required");
+      toast.error(t("title_required"));
       return;
     }
     setScaleRows((prev) => [
@@ -359,11 +359,11 @@ export default function GradingScalesPage() {
         });
         if (!res.success) errors++;
       }
-      if (errors === 0) toast.success("Scales saved");
-      else toast.error(`${errors} operation(s) failed`);
+      if (errors === 0) toast.success(t("toast_scales_saved"));
+      else toast.error(t("toast_ops_failed", { count: errors }));
       await loadScales();
     } catch {
-      toast.error("Save failed");
+      toast.error(t("toast_save_failed"));
     } finally {
       setSavingScales(false);
     }
@@ -407,7 +407,7 @@ export default function GradingScalesPage() {
               variant="outline"
               className="mt-3"
             >
-              Create Scale
+              {t("create_scale")}
             </Button>
           </CardContent>
         </Card>
@@ -423,14 +423,14 @@ export default function GradingScalesPage() {
                 {s.title}
                 {s.is_default && (
                   <span className="ml-1.5 text-[10px] uppercase bg-[#0369a1] text-white rounded px-1 py-0.5">
-                    Default
+                    {t("default_badge")}
                   </span>
                 )}
               </TabsTrigger>
             ))}
             <TabsTrigger value="manage">
               <Settings2 className="h-3.5 w-3.5 mr-1" />
-              Manage
+              {t("manage")}
             </TabsTrigger>
           </TabsList>
 
@@ -441,9 +441,7 @@ export default function GradingScalesPage() {
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between mb-4">
                     <p className="text-sm text-[#0369a1] font-medium">
-                      {visibleRows.length} grade
-                      {visibleRows.length !== 1 ? "s" : ""} in &ldquo;
-                      {scale.title}&rdquo;
+                      {t("grades_in_scale", { count: visibleRows.length, scale: scale.title })}
                     </p>
                     <Button
                       onClick={handleSaveGrades}
@@ -456,7 +454,7 @@ export default function GradingScalesPage() {
                       ) : (
                         <Save className="h-4 w-4" />
                       )}
-                      Save
+                      {t("save")}
                     </Button>
                   </div>
 
@@ -473,28 +471,28 @@ export default function GradingScalesPage() {
                           <tr className="bg-[#0369a1] text-white">
                             <th className="w-8 py-3 px-2" />
                             <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2">
-                              Title
+                              {t("th_title")}
                             </th>
                             <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-20">
-                              Letter
+                              {t("th_letter")}
                             </th>
                             <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-20">
-                              GPA
+                              {t("th_gpa")}
                             </th>
                             <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-20">
-                              Min %
+                              {t("th_min_pct")}
                             </th>
                             <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-20">
-                              Max %
+                              {t("th_max_pct")}
                             </th>
                             <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-20">
-                              Break Off
+                              {t("th_break_off")}
                             </th>
                             <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-16">
-                              Sort
+                              {t("th_sort")}
                             </th>
                             <th className="text-center text-xs font-semibold uppercase tracking-wider py-3 px-2 w-16">
-                              Pass
+                              {t("th_pass")}
                             </th>
                           </tr>
                         </thead>
@@ -642,7 +640,7 @@ export default function GradingScalesPage() {
                               <Input
                                 value={newTitle}
                                 onChange={(e) => setNewTitle(e.target.value)}
-                                placeholder="e.g. Excellent"
+                                placeholder={t("placeholder_title")}
                                 className="h-8 text-sm"
                                 onKeyDown={(e) =>
                                   e.key === "Enter" && addRow()
@@ -653,7 +651,7 @@ export default function GradingScalesPage() {
                               <Input
                                 value={newLetter}
                                 onChange={(e) => setNewLetter(e.target.value)}
-                                placeholder="A+"
+                                placeholder={t("placeholder_letter")}
                                 className="h-8 text-sm"
                               />
                             </td>
@@ -663,7 +661,7 @@ export default function GradingScalesPage() {
                                 step="0.1"
                                 value={newGPA}
                                 onChange={(e) => setNewGPA(e.target.value)}
-                                placeholder="4.0"
+                                placeholder={t("placeholder_gpa")}
                                 className="h-8 text-sm"
                               />
                             </td>
@@ -672,7 +670,7 @@ export default function GradingScalesPage() {
                                 type="number"
                                 value={newMinPct}
                                 onChange={(e) => setNewMinPct(e.target.value)}
-                                placeholder="93"
+                                placeholder={t("placeholder_min")}
                                 className="h-8 text-sm"
                               />
                             </td>
@@ -681,7 +679,7 @@ export default function GradingScalesPage() {
                                 type="number"
                                 value={newMaxPct}
                                 onChange={(e) => setNewMaxPct(e.target.value)}
-                                placeholder="100"
+                                placeholder={t("placeholder_max")}
                                 className="h-8 text-sm"
                               />
                             </td>
@@ -730,7 +728,7 @@ export default function GradingScalesPage() {
                       ) : (
                         <Save className="h-4 w-4" />
                       )}
-                      Save
+                      {t("save")}
                     </Button>
                   </div>
                 </CardContent>
@@ -743,7 +741,7 @@ export default function GradingScalesPage() {
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-4">
-                  <p className="text-sm font-semibold">Grading Scales</p>
+                  <p className="text-sm font-semibold">{t("title")}</p>
                   <Button
                     onClick={handleSaveScales}
                     disabled={savingScales || !hasDirtyScales}
@@ -755,7 +753,7 @@ export default function GradingScalesPage() {
                     ) : (
                       <Save className="h-4 w-4" />
                     )}
-                    Save
+                    {t("save")}
                   </Button>
                 </div>
 
@@ -765,22 +763,22 @@ export default function GradingScalesPage() {
                       <tr className="border-b">
                         <th className="w-8" />
                         <th className="text-left text-xs font-semibold uppercase tracking-wider text-[#0369a1] py-3 px-2">
-                          Title
+                          {t("scale_title")}
                         </th>
                         <th className="text-left text-xs font-semibold uppercase tracking-wider text-[#0369a1] py-3 px-2 w-20">
-                          Sort
+                          {t("scale_sort")}
                         </th>
                         <th className="text-left text-xs font-semibold uppercase tracking-wider text-[#0369a1] py-3 px-2 w-24">
-                          HR GPA
+                          {t("hr_gpa")}
                         </th>
                         <th className="text-left text-xs font-semibold uppercase tracking-wider text-[#0369a1] py-3 px-2 w-24">
-                          HHR GPA
+                          {t("hhr_gpa")}
                         </th>
                         <th className="text-center text-xs font-semibold uppercase tracking-wider text-[#0369a1] py-3 px-2 w-20">
-                          Default
+                          {t("scale_default")}
                         </th>
                         <th className="text-center text-xs font-semibold uppercase tracking-wider text-[#0369a1] py-3 px-2 w-20">
-                          Active
+                          {t("active")}
                         </th>
                       </tr>
                     </thead>
@@ -905,7 +903,7 @@ export default function GradingScalesPage() {
                             onChange={(e) =>
                               setNewScaleTitle(e.target.value)
                             }
-                            placeholder="Scale title"
+                            placeholder={t("scale_title")}
                             className="h-8 text-sm"
                             onKeyDown={(e) =>
                               e.key === "Enter" && addScaleRow()
@@ -930,7 +928,7 @@ export default function GradingScalesPage() {
                             max="99"
                             value={newScaleHrGpa}
                             onChange={(e) => setNewScaleHrGpa(e.target.value)}
-                            placeholder="HR"
+                            placeholder={t("hr_gpa")}
                             className="h-8 text-sm"
                           />
                         </td>
@@ -942,7 +940,7 @@ export default function GradingScalesPage() {
                             max="99"
                             value={newScaleHhrGpa}
                             onChange={(e) => setNewScaleHhrGpa(e.target.value)}
-                            placeholder="HHR"
+                            placeholder={t("hhr_gpa")}
                             className="h-8 text-sm"
                           />
                         </td>
@@ -972,7 +970,7 @@ export default function GradingScalesPage() {
                     ) : (
                       <Save className="h-4 w-4" />
                     )}
-                    Save
+                    {t("save")}
                   </Button>
                 </div>
               </CardContent>
@@ -989,24 +987,22 @@ export default function GradingScalesPage() {
           <div className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-amber-600" />
             <h2 className="text-sm font-semibold uppercase tracking-wide text-amber-800">
-              Generate Grading Scale
+              {t("generate_scale")}
             </h2>
           </div>
           <p className="text-xs text-amber-700">
-            Automatically generates numeric grade entries (e.g. 0 → 10 at 0.1 step) and
-            replaces all existing grades in the selected scale. An &ldquo;N/A&rdquo; entry
-            is appended at the end.
+            {t("generate_help")}
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             {/* Target scale */}
             <div className="lg:col-span-2 space-y-1">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Scale
+                {t("scale")}
               </label>
               <Select value={genScaleId} onValueChange={setGenScaleId}>
                 <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder="Select scale…" />
+                  <SelectValue placeholder={t("select_scale_placeholder")} />
                 </SelectTrigger>
                 <SelectContent>
                   {scales.map((s) => (
@@ -1021,7 +1017,7 @@ export default function GradingScalesPage() {
             {/* Min */}
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Min Grade
+                {t("min_grade")}
               </label>
               <input
                 type="number" min="0" max="99" step="1"
@@ -1034,7 +1030,7 @@ export default function GradingScalesPage() {
             {/* Max */}
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Max Grade
+                {t("max_grade")}
               </label>
               <input
                 type="number" min="1" max="100" step="1"
@@ -1047,7 +1043,7 @@ export default function GradingScalesPage() {
             {/* Step */}
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Step
+                {t("generate_step")}
               </label>
               <Select value={genStep} onValueChange={setGenStep}>
                 <SelectTrigger className="h-9 text-sm">
@@ -1066,7 +1062,7 @@ export default function GradingScalesPage() {
             {/* Decimal separator */}
             <div className="flex items-center gap-2">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Decimal separator:
+                {t("generate_decimal")}:
               </label>
               <Select value={genDecimal} onValueChange={(v) => setGenDecimal(v as "." | ",")}>
                 <SelectTrigger className="h-8 w-20 text-sm">
@@ -1082,7 +1078,7 @@ export default function GradingScalesPage() {
             {/* Preview count */}
             {genStep && genMin !== "" && genMax !== "" && parseFloat(genMax) > parseFloat(genMin) && (
               <span className="text-xs text-muted-foreground">
-                ≈ {Math.round((parseFloat(genMax) - parseFloat(genMin)) / parseFloat(genStep)) + 1} grades + N/A
+                {t("grades_preview_count", { count: Math.round((parseFloat(genMax) - parseFloat(genMin)) / parseFloat(genStep)) + 1 })}
               </span>
             )}
 
@@ -1097,12 +1093,12 @@ export default function GradingScalesPage() {
               ) : (
                 <Zap className="h-4 w-4" />
               )}
-              Generate
+              {t("generate")}
             </Button>
           </div>
 
           <p className="text-xs text-amber-600 font-medium">
-            Warning: all existing grade entries in the selected scale will be deleted and replaced.
+            {t("generate_warning")}
           </p>
         </CardContent>
       </Card>

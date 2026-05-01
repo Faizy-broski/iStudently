@@ -50,6 +50,7 @@ type SortDir = "asc" | "desc";
 
 export default function GPAClassRanksPage() {
   const t = useTranslations("school.grades_module.class_ranks");
+  const tc = useTranslations("school.grades_module.common");
   const { user } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;

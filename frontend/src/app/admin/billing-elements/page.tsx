@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { useAuth } from "@/context/AuthContext"
 import { toast } from "sonner"
 import { Plus, Trash2, Save, Loader2, ChevronDown, ChevronRight, Pencil } from "lucide-react"
+import { useTranslations } from "next-intl"
 import {
   getCategories,
   createCategory,
@@ -28,6 +29,8 @@ import {
 } from "@/lib/api/academics"
 
 export default function BillingElementsPage() {
+  const t = useTranslations("admin.billing_elements.elements")
+  const tCommon = useTranslations("common")
   const { profile } = useAuth()
 
   // Categories
@@ -75,7 +78,7 @@ export default function BillingElementsPage() {
       const data = await getCategories()
       setCategories(data)
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Failed to load categories")
+      toast.error(error instanceof Error ? error.message : t("toast.load_categories_failed"))
     } finally {
       setLoading(false)
     }
@@ -101,7 +104,7 @@ export default function BillingElementsPage() {
       const data = await getElements(categoryId)
       setElements(data)
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Failed to load elements")
+      toast.error(error instanceof Error ? error.message : t("toast.load_elements_failed"))
     } finally {
       setLoadingElements(false)
     }
@@ -140,7 +143,7 @@ export default function BillingElementsPage() {
   // ---- CATEGORY CRUD ----
   const handleCreateCategory = async () => {
     if (!newCatTitle.trim()) {
-      toast.error("Title is required")
+      toast.error(t("toast.title_required"))
       return
     }
     setSaving(true)
@@ -148,10 +151,10 @@ export default function BillingElementsPage() {
       await createCategory({ title: newCatTitle.trim(), sort_order: newCatOrder })
       setNewCatTitle("")
       setNewCatOrder(0)
-      toast.success("Category created")
+      toast.success(t("toast.category_created"))
       fetchCategories()
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Operation failed")
+      toast.error(error instanceof Error ? error.message : t("toast.operation_failed"))
     } finally {
       setSaving(false)
     }
@@ -163,34 +166,34 @@ export default function BillingElementsPage() {
     try {
       await updateCategory(id, { title: editCatTitle.trim(), sort_order: editCatOrder })
       setEditingCatId(null)
-      toast.success("Category updated")
+      toast.success(t("toast.category_updated"))
       fetchCategories()
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Operation failed")
+      toast.error(error instanceof Error ? error.message : t("toast.operation_failed"))
     } finally {
       setSaving(false)
     }
   }
 
   const handleDeleteCategory = async (id: string) => {
-    if (!confirm("Delete this category?")) return
+    if (!confirm(t("confirm.delete_category"))) return
     try {
       await deleteCategory(id)
-      toast.success("Category deleted")
+      toast.success(t("toast.category_deleted"))
       if (expandedCat === id) {
         setExpandedCat(null)
         setElements([])
       }
       fetchCategories()
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Operation failed")
+      toast.error(error instanceof Error ? error.message : t("toast.operation_failed"))
     }
   }
 
   // ---- ELEMENT CRUD ----
   const handleCreateElement = async () => {
     if (!expandedCat || !newElement.title.trim()) {
-      toast.error("Title is required")
+      toast.error(t("toast.title_required"))
       return
     }
     setSaving(true)
@@ -206,11 +209,11 @@ export default function BillingElementsPage() {
         sort_order: newElement.sort_order || 0,
       })
       setNewElement({ title: "", amount: 0, grade_level_id: "", course_period_section_id: "", course_period_subject_id: "", comment: "", sort_order: 0 })
-      toast.success("Element created")
+      toast.success(t("toast.element_created"))
       fetchElements(expandedCat)
       fetchCategories() // update count
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Operation failed")
+      toast.error(error instanceof Error ? error.message : t("toast.operation_failed"))
     } finally {
       setSaving(false)
     }
@@ -246,26 +249,26 @@ export default function BillingElementsPage() {
         sort_order: editElement.sort_order,
       })
       setEditingElementId(null)
-      toast.success("Element updated")
+      toast.success(t("toast.element_updated"))
       if (expandedCat) fetchElements(expandedCat)
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Operation failed")
+      toast.error(error instanceof Error ? error.message : t("toast.operation_failed"))
     } finally {
       setSaving(false)
     }
   }
 
   const handleDeleteElement = async (id: string) => {
-    if (!confirm("Delete this element?")) return
+    if (!confirm(t("confirm.delete_element"))) return
     try {
       await deleteElement(id)
-      toast.success("Element deleted")
+      toast.success(t("toast.element_deleted"))
       if (expandedCat) {
         fetchElements(expandedCat)
         fetchCategories()
       }
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Operation failed")
+      toast.error(error instanceof Error ? error.message : t("toast.operation_failed"))
     }
   }
 
@@ -282,38 +285,39 @@ export default function BillingElementsPage() {
       {/* Header */}
       <div className="space-y-1">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#022172] dark:text-white">
-          Elements
+          {t("title")}
         </h1>
         <p className="text-muted-foreground">
-          Define billing element categories and elements (books, lab fees, trips, etc.)
+          {t("subtitle")}
         </p>
       </div>
 
       {/* New Category */}
       <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold text-[#022172]">New Category</h2>
+          <h2 className="font-semibold text-[#022172]">{t("new_category")}</h2>
           <Button
             size="sm"
             className="bg-[#008B8B] hover:bg-[#007070] text-white"
             onClick={handleCreateCategory}
             disabled={saving || !newCatTitle.trim()}
           >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "SAVE"}
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : tCommon("save")}
           </Button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="text-sm font-medium text-red-600">Title</label>
+            <label className="text-sm font-medium text-red-600">{tCommon("title")}</label>
             <Input
+              id="new-cat-title"
               value={newCatTitle}
               onChange={(e) => setNewCatTitle(e.target.value)}
-              placeholder="Category title"
+              placeholder={t("category_title_placeholder")}
               className="mt-1"
             />
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-600">Sort Order</label>
+            <label className="text-sm font-medium text-gray-600">{t("sort_order")}</label>
             <Input
               type="number"
               value={newCatOrder}
@@ -327,10 +331,10 @@ export default function BillingElementsPage() {
       {/* Categories List */}
       {categories.length === 0 ? (
         <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
-          <p className="text-gray-500">No categories were found.</p>
+          <p className="text-gray-500">{t("no_categories")}</p>
           <button
             className="mt-2 text-green-600 hover:text-green-700"
-            onClick={() => document.querySelector<HTMLInputElement>('input[placeholder="Category title"]')?.focus()}
+            onClick={() => document.getElementById("new-cat-title")?.focus()}
           >
             <Plus className="h-5 w-5" />
           </button>
@@ -367,7 +371,7 @@ export default function BillingElementsPage() {
                       <Save className="h-4 w-4" />
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => setEditingCatId(null)}>
-                      Cancel
+                      {tCommon("cancel")}
                     </Button>
                   </div>
                 ) : (
@@ -376,10 +380,10 @@ export default function BillingElementsPage() {
                       {cat.title}
                     </span>
                     <span className="text-sm text-gray-500 mr-2">
-                      Order: {cat.sort_order}
+                      {t("order")}: {cat.sort_order}
                     </span>
                     <span className="text-sm text-gray-500 mr-2">
-                      {cat.elements_count || 0} element{(cat.elements_count || 0) !== 1 ? 's' : ''}
+                      {t("elements_count", { count: cat.elements_count || 0 })}
                     </span>
                     <Button
                       size="sm" variant="ghost"
@@ -413,13 +417,13 @@ export default function BillingElementsPage() {
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="border-b">
-                              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">Title</th>
-                              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">Amount</th>
-                              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">Grade</th>
-                              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">Section</th>
-                              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">Subject</th>
-                              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">Order</th>
-                              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">Comment</th>
+                              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{tCommon("title")}</th>
+                              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{tCommon("amount")}</th>
+                              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{t("grade")}</th>
+                              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{t("section")}</th>
+                              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{t("subject")}</th>
+                              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{t("sort_order")}</th>
+                              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{t("comment")}</th>
                               <th className="px-3 py-2 w-20"></th>
                             </tr>
                           </thead>
@@ -450,7 +454,7 @@ export default function BillingElementsPage() {
                                         onChange={(e) => handleGradeChange(e.target.value, true)}
                                         className="h-8 border rounded px-2 text-sm w-28"
                                       >
-                                        <option value="">N/A</option>
+                                        <option value="">{tCommon("na")}</option>
                                         {grades.map((g) => (
                                           <option key={g.id} value={g.id}>{g.name}</option>
                                         ))}
@@ -463,7 +467,7 @@ export default function BillingElementsPage() {
                                         className="h-8 border rounded px-2 text-sm w-28"
                                         disabled={!editElement.grade_level_id}
                                       >
-                                        <option value="">N/A</option>
+                                        <option value="">{tCommon("na")}</option>
                                         {sections.map((s) => (
                                           <option key={s.id} value={s.id}>{s.name}</option>
                                         ))}
@@ -476,7 +480,7 @@ export default function BillingElementsPage() {
                                         className="h-8 border rounded px-2 text-sm w-28"
                                         disabled={!editElement.grade_level_id}
                                       >
-                                        <option value="">N/A</option>
+                                        <option value="">{tCommon("na")}</option>
                                         {subjects.map((s) => (
                                           <option key={s.id} value={s.id}>{s.name}</option>
                                         ))}
@@ -512,9 +516,9 @@ export default function BillingElementsPage() {
                                   <>
                                     <td className="px-3 py-2 font-medium text-[#008B8B]">{el.title}</td>
                                     <td className="px-3 py-2">{el.amount.toFixed(2)}</td>
-                                    <td className="px-3 py-2 text-gray-500">{el.grade_name || "—"}</td>
-                                    <td className="px-3 py-2 text-gray-500">{el.section_name || "—"}</td>
-                                    <td className="px-3 py-2 text-gray-500">{el.subject_name || "—"}</td>
+                                    <td className="px-3 py-2 text-gray-500">{el.grade_name || t("dash")}</td>
+                                    <td className="px-3 py-2 text-gray-500">{el.section_name || t("dash")}</td>
+                                    <td className="px-3 py-2 text-gray-500">{el.subject_name || t("dash")}</td>
                                     <td className="px-3 py-2 text-gray-500">{el.sort_order}</td>
                                     <td className="px-3 py-2 text-gray-400 text-xs">{el.comment || ""}</td>
                                     <td className="px-3 py-2">
@@ -538,20 +542,20 @@ export default function BillingElementsPage() {
                       {/* New Element Form */}
                       <div className="mt-4 pt-4 border-t">
                         <h3 className="text-sm font-semibold text-[#022172] mb-3 flex items-center gap-1">
-                          <Plus className="h-4 w-4 text-green-600" /> NEW ELEMENT
+                          <Plus className="h-4 w-4 text-green-600" /> {t("new_element")}
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3">
                           <div>
-                            <label className="text-xs font-medium text-red-600">Title</label>
+                            <label className="text-xs font-medium text-red-600">{tCommon("title")}</label>
                             <Input
                               value={newElement.title}
                               onChange={(e) => setNewElement({ ...newElement, title: e.target.value })}
-                              placeholder="Element title"
+                              placeholder={t("element_title_placeholder")}
                               className="mt-1 h-8"
                             />
                           </div>
                           <div>
-                            <label className="text-xs font-medium text-red-600">Amount</label>
+                            <label className="text-xs font-medium text-red-600">{tCommon("amount")}</label>
                             <Input
                               type="number"
                               step="0.01"
@@ -562,48 +566,48 @@ export default function BillingElementsPage() {
                             />
                           </div>
                           <div>
-                            <label className="text-xs font-medium text-gray-600">Grade</label>
+                            <label className="text-xs font-medium text-gray-600">{t("grade")}</label>
                             <select
                               value={newElement.grade_level_id}
                               onChange={(e) => handleGradeChange(e.target.value)}
                               className="mt-1 h-8 w-full border rounded px-2 text-sm"
                             >
-                              <option value="">N/A</option>
+                              <option value="">{tCommon("na")}</option>
                               {grades.map((g) => (
                                 <option key={g.id} value={g.id}>{g.name}</option>
                               ))}
                             </select>
                           </div>
                           <div>
-                            <label className="text-xs font-medium text-gray-600">Section (Course Period)</label>
+                            <label className="text-xs font-medium text-gray-600">{t("section_course_period")}</label>
                             <select
                               value={newElement.course_period_section_id}
                               onChange={(e) => setNewElement({ ...newElement, course_period_section_id: e.target.value })}
                               className="mt-1 h-8 w-full border rounded px-2 text-sm"
                               disabled={!newElement.grade_level_id}
                             >
-                              <option value="">N/A</option>
+                              <option value="">{tCommon("na")}</option>
                               {sections.map((s) => (
                                 <option key={s.id} value={s.id}>{s.name}</option>
                               ))}
                             </select>
                           </div>
                           <div>
-                            <label className="text-xs font-medium text-gray-600">Subject (Course Period)</label>
+                            <label className="text-xs font-medium text-gray-600">{t("subject_course_period")}</label>
                             <select
                               value={newElement.course_period_subject_id}
                               onChange={(e) => setNewElement({ ...newElement, course_period_subject_id: e.target.value })}
                               className="mt-1 h-8 w-full border rounded px-2 text-sm"
                               disabled={!newElement.grade_level_id}
                             >
-                              <option value="">N/A</option>
+                              <option value="">{tCommon("na")}</option>
                               {subjects.map((s) => (
                                 <option key={s.id} value={s.id}>{s.name}</option>
                               ))}
                             </select>
                           </div>
                           <div>
-                            <label className="text-xs font-medium text-gray-600">Sort Order</label>
+                            <label className="text-xs font-medium text-gray-600">{t("sort_order")}</label>
                             <Input
                               type="number"
                               value={newElement.sort_order}
@@ -612,12 +616,12 @@ export default function BillingElementsPage() {
                             />
                           </div>
                           <div>
-                            <label className="text-xs font-medium text-gray-600">Comment</label>
+                            <label className="text-xs font-medium text-gray-600">{t("comment")}</label>
                             <Input
                               value={newElement.comment}
                               onChange={(e) => setNewElement({ ...newElement, comment: e.target.value })}
                               className="mt-1 h-8"
-                              placeholder="Optional"
+                              placeholder={tCommon("optional")}
                             />
                           </div>
                         </div>
@@ -629,7 +633,7 @@ export default function BillingElementsPage() {
                             disabled={saving || !newElement.title.trim()}
                           >
                             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
-                            Add Element
+                            {t("add_element")}
                           </Button>
                         </div>
                       </div>

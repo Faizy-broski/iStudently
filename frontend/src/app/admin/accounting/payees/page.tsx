@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { IconLoader, IconSearch, IconUsers, IconPlus, IconFileExport } from '@tabler/icons-react'
+import { IconLoader, IconSearch, IconUsers, IconPlus } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import useSWR from 'swr'
 import Link from 'next/link'
@@ -44,7 +44,7 @@ export default function PayeesPage() {
     }
 
     const handleExportPayments = () => {
-        toast.info('Export functionality coming soon')
+        toast.info('ميزة التصدير ستتوفر قريبًا')
     }
 
     if (campusLoading) {
@@ -60,7 +60,7 @@ export default function PayeesPage() {
             <div className="container mx-auto py-6">
                 <Card>
                     <CardContent className="pt-6">
-                        <p className="text-muted-foreground text-center">Please select a campus to view payees.</p>
+                        <p className="text-muted-foreground text-center">يرجى اختيار فرع لعرض المستفيدين.</p>
                     </CardContent>
                 </Card>
             </div>
@@ -73,14 +73,14 @@ export default function PayeesPage() {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <IconUsers className="h-8 w-8 text-[#3d8fb5]" />
-                    <h1 className="text-3xl font-bold tracking-tight">Payees</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">المستفيدون</h1>
                 </div>
                 <Button 
                     variant="link" 
                     onClick={handleExportPayments}
                     className="text-[#3d8fb5]"
                 >
-                    Export Payments
+                    تصدير المدفوعات
                 </Button>
             </div>
 
@@ -89,11 +89,11 @@ export default function PayeesPage() {
                 <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
                         <p className="text-sm text-muted-foreground">
-                            {filteredPayees.length} payee{filteredPayees.length !== 1 ? 's were' : ' was'} found.
+                            تم العثور على {filteredPayees.length} مستفيد.
                         </p>
                         <div className="relative">
                             <Input
-                                placeholder="Search"
+                                placeholder="بحث"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-64 pr-8"
@@ -115,11 +115,11 @@ export default function PayeesPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="text-[#3d8fb5]">NAME</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">EMAIL ADDRESS</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">PHONE NUMBER</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">BANK</TableHead>
-                                    <TableHead className="text-[#3d8fb5] text-right">PAYMENTS</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">الاسم</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">البريد الإلكتروني</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">رقم الهاتف</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">البنك</TableHead>
+                                    <TableHead className="text-[#3d8fb5] text-right">المدفوعات</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -149,7 +149,7 @@ export default function PayeesPage() {
                                             className="flex items-center gap-2 text-[#3d8fb5] hover:underline"
                                         >
                                             <IconPlus className="h-4 w-4" />
-                                            ADD A PAYEE
+                                            إضافة مستفيد
                                         </Link>
                                     </TableCell>
                                 </TableRow>

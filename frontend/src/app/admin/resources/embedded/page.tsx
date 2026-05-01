@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 import { Plus, Minus, Save, Globe, ExternalLink, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,6 +45,7 @@ function isValidUrl(value: string) {
 // ── Component ──────────────────────────────────────────────────────────────
 
 export default function EmbeddedResourcesPage() {
+  const t = useTranslations('school.resources.embedded')
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
 
@@ -120,15 +122,15 @@ export default function EmbeddedResourcesPage() {
   const saveAll = async () => {
     const dirtyRows = rows.filter((r) => r.dirty)
     if (dirtyRows.length === 0) {
-      toast.info('No changes to save')
+      toast.info(t('msg_no_changes'))
       return
     }
 
     // Validate existing rows (not new)
     for (const r of dirtyRows) {
       if (r.id !== 'new') {
-        if (!r.title.trim()) { toast.error('Title cannot be empty'); return }
-        if (!r.url.trim() || !isValidUrl(r.url)) { toast.error(`Invalid URL: ${r.url}`); return }
+        if (!r.title.trim()) { toast.error(t('msg_title_empty')); return }
+        if (!r.url.trim() || !isValidUrl(r.url)) { toast.error(t('msg_url_invalid', { url: r.url })); return }
       }
     }
 
@@ -138,26 +140,26 @@ export default function EmbeddedResourcesPage() {
     for (const r of dirtyRows) {
       if (r.id === 'new') {
         if (!r.title.trim() || !r.url.trim()) continue // skip blank new row
-        if (!isValidUrl(r.url)) { toast.error(`Invalid URL: ${r.url}`); hadError = true; continue }
+        if (!isValidUrl(r.url)) { toast.error(t('msg_url_invalid', { url: r.url })); hadError = true; continue }
         const res = await embeddedApi.createEmbeddedResource({
           title: r.title,
           url: r.url,
           published_grade_ids: r.published_grade_ids,
           campus_id: selectedCampus?.id,
         })
-        if (!res.success) { toast.error(res.error || 'Failed to create resource'); hadError = true }
+        if (!res.success) { toast.error(res.error || t('msg_create_error')); hadError = true }
       } else {
         const res = await embeddedApi.updateEmbeddedResource(r.id, {
           title: r.title,
           url: r.url,
           published_grade_ids: r.published_grade_ids,
         }, selectedCampus?.id)
-        if (!res.success) { toast.error(res.error || 'Failed to update resource'); hadError = true }
+        if (!res.success) { toast.error(res.error || t('msg_update_error')); hadError = true }
       }
     }
 
     setSaving(false)
-    if (!hadError) toast.success('Saved successfully')
+    if (!hadError) toast.success(t('msg_save_success'))
     await fetchData()
   }
 
@@ -167,10 +169,10 @@ export default function EmbeddedResourcesPage() {
     if (!deleteTarget) return
     const res = await embeddedApi.deleteEmbeddedResource(deleteTarget, selectedCampus?.id)
     if (res.success) {
-      toast.success('Resource deleted')
+      toast.success(t('msg_delete_success'))
       setRows((prev) => prev.filter((r) => r.id !== deleteTarget))
     } else {
-      toast.error(res.error || 'Failed to delete resource')
+      toast.error(res.error || t('msg_delete_error'))
     }
     setDeleteTarget(null)
   }
@@ -190,23 +192,21 @@ export default function EmbeddedResourcesPage() {
             <Globe className="h-6 w-6 text-blue-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Embedded Resources</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
             <p className="text-sm text-gray-500">
-              Add external websites that appear in the Resources menu for all users
+              {t('subtitle')}
             </p>
           </div>
         </div>
         <Button onClick={saveAll} disabled={saving} className="gap-2">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Save
+          {saving ? t('saving_button') : t('save_button')}
         </Button>
       </div>
 
       {/* Note banner */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-800">
-        <strong>Note:</strong> Links added here will appear under the <em>Resources</em> menu for
-        Administrators, Teachers, Parents, and Students. You can optionally limit access by grade
-        level. Some websites may block embedding for security reasons.
+        {t('note_banner')}
       </div>
 
       {/* Table */}
@@ -221,13 +221,13 @@ export default function EmbeddedResourcesPage() {
               <tr>
                 <th className="w-10 px-4 py-3" />
                 <th className="px-4 py-3 text-left font-semibold text-blue-600 uppercase text-xs tracking-wide w-48">
-                  Title
+                  {t('table_header_title')}
                 </th>
                 <th className="px-4 py-3 text-left font-semibold text-blue-600 uppercase text-xs tracking-wide">
-                  Link
+                  {t('table_header_link')}
                 </th>
                 <th className="px-4 py-3 text-left font-semibold text-blue-600 uppercase text-xs tracking-wide w-80">
-                  Limit to Grade Levels
+                  {t('table_header_grades')}
                 </th>
               </tr>
             </thead>
@@ -260,7 +260,7 @@ export default function EmbeddedResourcesPage() {
                     <Input
                       value={row.title}
                       onChange={(e) => updateRow(row.id, { title: e.target.value })}
-                      placeholder="Title"
+                      placeholder={t('input_title_placeholder')}
                       maxLength={30}
                       className="h-8 text-sm"
                       required={row.id !== 'new'}
@@ -284,7 +284,7 @@ export default function EmbeddedResourcesPage() {
                       <Input
                         value={row.url}
                         onChange={(e) => updateRow(row.id, { url: e.target.value })}
-                        placeholder="https://example.com"
+                        placeholder={t('input_url_placeholder')}
                         className="h-8 text-sm flex-1"
                       />
                     </div>
@@ -314,7 +314,7 @@ export default function EmbeddedResourcesPage() {
                     </button>
                   </td>
                   <td colSpan={3} className="px-4 py-3 text-sm text-gray-400 italic">
-                    Click + to add a new embedded resource
+                    {t('btn_add_row')}
                   </td>
                 </tr>
               )}
@@ -322,7 +322,7 @@ export default function EmbeddedResourcesPage() {
               {rows.length === 0 && !rows.some((r) => r.id === 'new') && (
                 <tr>
                   <td colSpan={4} className="text-center py-12 text-gray-400">
-                    No embedded resources yet. Click + to add one.
+                    {t('msg_loading')}
                   </td>
                 </tr>
               )}
@@ -335,7 +335,7 @@ export default function EmbeddedResourcesPage() {
       <div className="flex justify-center">
         <Button onClick={saveAll} disabled={saving} size="lg" className="gap-2 px-10">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Save
+          {saving ? t('saving_button') : t('save_button')}
         </Button>
       </div>
 
@@ -343,10 +343,9 @@ export default function EmbeddedResourcesPage() {
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Embedded Resource</AlertDialogTitle>
+            <AlertDialogTitle>{t('title')}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove the resource and its link from the Resources menu for all
-              users. This action cannot be undone.
+              {t('msg_delete_success')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

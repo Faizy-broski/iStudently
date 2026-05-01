@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/context/AuthContext";
 import { getSchoolSettings, updateSchoolSettings } from "@/lib/api/school-settings";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 export default function HostelSettingsPage() {
+  const t = useTranslations("admin.hostel.settings");
   const { profile } = useAuth();
   const schoolId = profile?.school_id || "";
 
@@ -49,35 +51,35 @@ export default function HostelSettingsPage() {
         },
       });
       if (res.success) {
-        toast.success("Hostel settings saved");
+        toast.success(t('msg_save_success'));
       } else {
-        toast.error(res.error || "Failed to save");
+        toast.error(res.error || t('msg_save_error'));
       }
     } catch {
-      toast.error("Failed to save");
+      toast.error(t('msg_save_error'));
     } finally {
       setSaving(false);
     }
   }
 
   if (loading) {
-    return <div className="p-4">Loading...</div>;
+    return <div className="p-4">{t('msg_loading')}</div>;
   }
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Hostel Configuration</h1>
+      <h1 className="text-2xl font-bold">{t('header_title')}</h1>
       <Card>
         <CardHeader>
-          <CardTitle>Rooms</CardTitle>
-          <CardDescription>Options for hostel rooms</CardDescription>
+          <CardTitle>{t('card_rooms')}</CardTitle>
+          <CardDescription>{t('card_rooms_desc')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <Label>Auto remove inactive students</Label>
+              <Label>{t('label_auto_remove')}</Label>
               <p className="text-sm text-muted-foreground">
-                When enabled, inactive students will be automatically released from their room by the daily cron.
+                {t('label_auto_remove_desc')}
               </p>
             </div>
             <Switch checked={autoRemove} onCheckedChange={setAutoRemove} />
@@ -85,7 +87,7 @@ export default function HostelSettingsPage() {
           <div className="flex justify-end">
             <Button onClick={handleSave} disabled={saving} className="bg-blue-600 text-white">
               <Save className="mr-2 h-4 w-4"/>
-              {saving ? "Saving..." : "Save"}
+              {saving ? t('btn_saving') : t('btn_save')}
             </Button>
           </div>
         </CardContent>

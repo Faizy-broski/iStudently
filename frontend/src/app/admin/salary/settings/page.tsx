@@ -15,8 +15,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { IconArrowLeft, IconDeviceFloppy } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 
 export default function SalarySettingsPage() {
+    const t = useTranslations('admin.salary.settings')
+    const tCommon = useTranslations('common')
     const { profile } = useAuth()
     const campusContext = useCampus()
     const schoolId = profile?.school_id || null
@@ -89,7 +92,7 @@ export default function SalarySettingsPage() {
                 monthly_deduction_reason: monthlyDeductionReason
             }, campusId)
             mutate()
-            toast.success('Settings saved successfully')
+            toast.success(t('toast.saved'))
         } catch (error: any) {
             toast.error(error.message)
         }
@@ -103,75 +106,75 @@ export default function SalarySettingsPage() {
                     <Link href="/admin/salary"><IconArrowLeft className="h-4 w-4" /></Link>
                 </Button>
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight dark:text-white">Payroll Settings</h1>
+                    <h1 className="text-3xl font-bold tracking-tight dark:text-white">{t('title')}</h1>
                     {campusId && campusContext?.selectedCampus && (
-                        <p className="text-sm text-muted-foreground">Campus: {campusContext.selectedCampus.name}</p>
+                        <p className="text-sm text-muted-foreground">{t('campus', { name: campusContext.selectedCampus.name })}</p>
                     )}
-                    <p className="text-muted-foreground">Configure salary deductions, bonuses, and advance rules</p>
+                    <p className="text-muted-foreground">{t('subtitle')}</p>
                 </div>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Attendance Deduction Rules</CardTitle>
-                        <CardDescription>Configure late arrival and absence deductions</CardDescription>
+                        <CardTitle>{t('attendance_rules.title')}</CardTitle>
+                        <CardDescription>{t('attendance_rules.description')}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <Label>Grace Late Count</Label>
+                                <Label>{t('attendance_rules.grace_late_count')}</Label>
                                 <Input type="number" value={graceLateCount} onChange={(e) => setGraceLateCount(parseInt(e.target.value))} />
-                                <p className="text-xs text-muted-foreground mt-1">Free late arrivals before deduction</p>
+                                <p className="text-xs text-muted-foreground mt-1">{t('attendance_rules.grace_late_count_hint')}</p>
                             </div>
                             <div>
-                                <Label>Late Threshold (minutes)</Label>
+                                <Label>{t('attendance_rules.late_threshold_minutes')}</Label>
                                 <Input type="number" value={lateThresholdMinutes} onChange={(e) => setLateThresholdMinutes(parseInt(e.target.value))} />
-                                <p className="text-xs text-muted-foreground mt-1">Minutes late before counting</p>
+                                <p className="text-xs text-muted-foreground mt-1">{t('attendance_rules.late_threshold_minutes_hint')}</p>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <Label>Deduction Type</Label>
+                                <Label>{t('attendance_rules.deduction_type')}</Label>
                                 <Select value={deductionType} onValueChange={(v) => setDeductionType(v as any)}>
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="per_minute">Per Minute</SelectItem>
-                                        <SelectItem value="percentage">Percentage of Daily</SelectItem>
-                                        <SelectItem value="fixed">Fixed Amount</SelectItem>
+                                        <SelectItem value="per_minute">{t('attendance_rules.type_per_minute')}</SelectItem>
+                                        <SelectItem value="percentage">{t('attendance_rules.type_percentage')}</SelectItem>
+                                        <SelectItem value="fixed">{t('attendance_rules.type_fixed')}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div>
-                                <Label>Deduction Value</Label>
+                                <Label>{t('attendance_rules.deduction_value')}</Label>
                                 <Input type="number" step="0.01" value={deductionValue} onChange={(e) => setDeductionValue(parseFloat(e.target.value))} />
                             </div>
                         </div>
 
                         <div>
-                            <Label>Absence Deduction (%)</Label>
+                            <Label>{t('attendance_rules.absence_deduction_percent')}</Label>
                             <Input type="number" value={absenceDeductionPercent} onChange={(e) => setAbsenceDeductionPercent(parseFloat(e.target.value))} className="w-32" />
-                            <p className="text-xs text-muted-foreground mt-1">% of daily salary to deduct for absence</p>
+                            <p className="text-xs text-muted-foreground mt-1">{t('attendance_rules.absence_deduction_percent_hint')}</p>
                         </div>
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Attendance Bonus</CardTitle>
-                        <CardDescription>Reward perfect attendance</CardDescription>
+                        <CardTitle>{t('attendance_bonus.title')}</CardTitle>
+                        <CardDescription>{t('attendance_bonus.description')}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <Label>Enable Attendance Bonus</Label>
+                            <Label>{t('attendance_bonus.enabled')}</Label>
                             <Switch checked={attendanceBonusEnabled} onCheckedChange={setAttendanceBonusEnabled} />
                         </div>
                         {attendanceBonusEnabled && (
                             <div>
-                                <Label>Bonus Amount ($)</Label>
+                                <Label>{t('attendance_bonus.amount')}</Label>
                                 <Input type="number" step="0.01" value={attendanceBonusAmount} onChange={(e) => setAttendanceBonusAmount(parseFloat(e.target.value))} />
-                                <p className="text-xs text-muted-foreground mt-1">Bonus for zero late arrivals/absences in a month</p>
+                                <p className="text-xs text-muted-foreground mt-1">{t('attendance_bonus.amount_hint')}</p>
                             </div>
                         )}
                     </CardContent>
@@ -179,18 +182,18 @@ export default function SalarySettingsPage() {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Monthly Bonus</CardTitle>
-                        <CardDescription>One-time bonus applied to all staff this month</CardDescription>
+                        <CardTitle>{t('monthly_bonus.title')}</CardTitle>
+                        <CardDescription>{t('monthly_bonus.description')}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <Label>Enable Monthly Bonus</Label>
+                            <Label>{t('monthly_bonus.enabled')}</Label>
                             <Switch checked={monthlyBonusEnabled} onCheckedChange={setMonthlyBonusEnabled} />
                         </div>
                         {monthlyBonusEnabled && (
                             <>
                                 <div>
-                                    <Label>Bonus Amount ($)</Label>
+                                    <Label>{t('monthly_bonus.amount')}</Label>
                                     <Input
                                         type="number"
                                         step="0.01"
@@ -201,11 +204,11 @@ export default function SalarySettingsPage() {
                                     />
                                 </div>
                                 <div>
-                                    <Label>Bonus Reason</Label>
+                                    <Label>{t('monthly_bonus.reason')}</Label>
                                     <Textarea
                                         value={monthlyBonusReason}
                                         onChange={(e) => setMonthlyBonusReason(e.target.value)}
-                                        placeholder="e.g. Eid bonus, Performance reward…"
+                                        placeholder={t('monthly_bonus.reason_placeholder')}
                                         className="h-20 resize-none"
                                     />
                                 </div>
@@ -216,18 +219,18 @@ export default function SalarySettingsPage() {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Monthly Deduction</CardTitle>
-                        <CardDescription>One-time deduction applied to all staff this month</CardDescription>
+                        <CardTitle>{t('monthly_deduction.title')}</CardTitle>
+                        <CardDescription>{t('monthly_deduction.description')}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <Label>Enable Monthly Deduction</Label>
+                            <Label>{t('monthly_deduction.enabled')}</Label>
                             <Switch checked={monthlyDeductionEnabled} onCheckedChange={setMonthlyDeductionEnabled} />
                         </div>
                         {monthlyDeductionEnabled && (
                             <>
                                 <div>
-                                    <Label>Deduction Amount ($)</Label>
+                                    <Label>{t('monthly_deduction.amount')}</Label>
                                     <Input
                                         type="number"
                                         step="0.01"
@@ -238,11 +241,11 @@ export default function SalarySettingsPage() {
                                     />
                                 </div>
                                 <div>
-                                    <Label>Deduction Reason</Label>
+                                    <Label>{t('monthly_deduction.reason')}</Label>
                                     <Textarea
                                         value={monthlyDeductionReason}
                                         onChange={(e) => setMonthlyDeductionReason(e.target.value)}
-                                        placeholder="e.g. Equipment damage, Policy violation…"
+                                        placeholder={t('monthly_deduction.reason_placeholder')}
                                         className="h-20 resize-none"
                                     />
                                 </div>
@@ -253,31 +256,31 @@ export default function SalarySettingsPage() {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Salary Advance</CardTitle>
-                        <CardDescription>Configure advance request limits</CardDescription>
+                        <CardTitle>{t('advance.title')}</CardTitle>
+                        <CardDescription>{t('advance.description')}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div>
-                            <Label>Maximum Advance (%)</Label>
+                            <Label>{t('advance.max_percent')}</Label>
                             <Input type="number" value={maxAdvancePercent} onChange={(e) => setMaxAdvancePercent(parseFloat(e.target.value))} className="w-32" />
-                            <p className="text-xs text-muted-foreground mt-1">% of base salary allowed as advance</p>
+                            <p className="text-xs text-muted-foreground mt-1">{t('advance.max_percent_hint')}</p>
                         </div>
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Working Hours</CardTitle>
-                        <CardDescription>Define standard work schedule</CardDescription>
+                        <CardTitle>{t('working_hours.title')}</CardTitle>
+                        <CardDescription>{t('working_hours.description')}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <Label>Expected Check-In</Label>
+                                <Label>{t('working_hours.expected_check_in')}</Label>
                                 <Input type="time" value={expectedCheckIn} onChange={(e) => setExpectedCheckIn(e.target.value)} />
                             </div>
                             <div>
-                                <Label>Working Days/Month</Label>
+                                <Label>{t('working_hours.working_days_per_month')}</Label>
                                 <Input type="number" value={workingDaysPerMonth} onChange={(e) => setWorkingDaysPerMonth(parseInt(e.target.value))} />
                             </div>
                         </div>
@@ -287,7 +290,7 @@ export default function SalarySettingsPage() {
 
             <Button onClick={handleSave} disabled={saving} size="lg">
                 <IconDeviceFloppy className="mr-2 h-4 w-4" />
-                {saving ? 'Saving...' : 'Save Settings'}
+                {saving ? tCommon('saving') + '...' : t('save')}
             </Button>
         </div>
     )

@@ -27,10 +27,10 @@ interface MPRow extends HistoryMarkingPeriod {
   _deleted?: boolean;
 }
 
-const MP_TYPES: { label: string; value: HistoryMPType }[] = [
-  { label: "Year", value: "year" },
-  { label: "Semester", value: "semester" },
-  { label: "Quarter", value: "quarter" },
+const MP_TYPES: { value: HistoryMPType }[] = [
+  { value: "year" },
+  { value: "semester" },
+  { value: "quarter" },
 ];
 
 // Generate school year options (current - 20 years to current + 2)
@@ -44,6 +44,8 @@ function getSchoolYearOptions(): string[] {
 }
 
 export default function HistoryMarkingPeriodsPage() {
+  const t = useTranslations("school.grades_module.history_marking_periods");
+  const tc = useTranslations("school.grades_module.common");
   const { user } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
@@ -71,7 +73,7 @@ export default function HistoryMarkingPeriodsPage() {
         setRows(res.data.map((mp) => ({ ...mp })));
       }
     } catch {
-      toast.error("Failed to load history marking periods");
+      toast.error(t("toast_load_failed"));
     } finally {
       setLoading(false);
     }
@@ -164,11 +166,11 @@ export default function HistoryMarkingPeriodsPage() {
         });
         if (!res.success) errors++;
       }
-      if (errors === 0) toast.success("History marking periods saved");
-      else toast.error(`${errors} operation(s) failed`);
+      if (errors === 0) toast.success(t("toast_saved"));
+      else toast.error(t("toast_ops_failed", { count: errors }));
       await loadData();
     } catch {
-      toast.error("Save failed");
+      toast.error(t("toast_save_failed"));
     } finally {
       setSaving(false);
     }
@@ -184,7 +186,7 @@ export default function HistoryMarkingPeriodsPage() {
         <div>
           <h1 className="text-3xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent flex items-center gap-2">
             <History className="h-8 w-8 text-[#57A3CC]" />
-            History Marking Periods
+            {t("title")}
           </h1>
           <p className="text-muted-foreground mt-2">
             {t("subtitle")}
@@ -224,19 +226,19 @@ export default function HistoryMarkingPeriodsPage() {
                   <tr className="bg-[#0369a1] text-white">
                     <th className="w-8 py-3 px-2" />
                     <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-32">
-                      Type
+                      {t("th_type")}
                     </th>
                     <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2">
-                      Name
+                      {t("th_name")}
                     </th>
                     <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-36">
-                      Short Name
+                      {t("th_short_name")}
                     </th>
                     <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-44">
-                      Grade Post Date
+                      {t("th_grade_post_date")}
                     </th>
                     <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-40">
-                      School Year
+                      {t("th_school_year")}
                     </th>
                   </tr>
                 </thead>
@@ -269,9 +271,9 @@ export default function HistoryMarkingPeriodsPage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {MP_TYPES.map((t) => (
-                                <SelectItem key={t.value} value={t.value}>
-                                  {t.label}
+                              {MP_TYPES.map((mpType) => (
+                                <SelectItem key={mpType.value} value={mpType.value}>
+                                  {t(`mp_type_${mpType.value}`)}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -321,7 +323,7 @@ export default function HistoryMarkingPeriodsPage() {
                             }
                           >
                             <SelectTrigger className="h-8 text-sm">
-                              <SelectValue placeholder="Select" />
+                              <SelectValue placeholder={t("select_placeholder")} />
                             </SelectTrigger>
                             <SelectContent>
                               {schoolYears.map((y) => (
@@ -356,9 +358,9 @@ export default function HistoryMarkingPeriodsPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {MP_TYPES.map((t) => (
-                            <SelectItem key={t.value} value={t.value}>
-                              {t.label}
+                          {MP_TYPES.map((mpType) => (
+                            <SelectItem key={mpType.value} value={mpType.value}>
+                              {t(`mp_type_${mpType.value}`)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -368,7 +370,7 @@ export default function HistoryMarkingPeriodsPage() {
                       <Input
                         value={newName}
                         onChange={(e) => setNewName(e.target.value)}
-                        placeholder="Period name"
+                        placeholder={t("period_name_placeholder")}
                         className="h-8 text-sm"
                         onKeyDown={(e) => e.key === "Enter" && addRow()}
                       />
@@ -377,7 +379,7 @@ export default function HistoryMarkingPeriodsPage() {
                       <Input
                         value={newShortName}
                         onChange={(e) => setNewShortName(e.target.value)}
-                        placeholder="Short"
+                        placeholder={t("short_placeholder")}
                         className="h-8 text-sm"
                       />
                     </td>
@@ -395,7 +397,7 @@ export default function HistoryMarkingPeriodsPage() {
                         onValueChange={setNewSchoolYear}
                       >
                         <SelectTrigger className="h-8 text-sm">
-                          <SelectValue placeholder="Select" />
+                          <SelectValue placeholder={t("select_placeholder")} />
                         </SelectTrigger>
                         <SelectContent>
                           {schoolYears.map((y) => (
@@ -414,8 +416,7 @@ export default function HistoryMarkingPeriodsPage() {
 
           <div className="flex items-center justify-between pt-4">
             <p className="text-sm text-muted-foreground">
-              {visibleRows.length} marking period
-              {visibleRows.length !== 1 ? "s" : ""}
+              {t("marking_periods_count", { count: visibleRows.length })}
             </p>
             <Button
               onClick={handleSave}
@@ -428,7 +429,7 @@ export default function HistoryMarkingPeriodsPage() {
               ) : (
                 <Save className="h-4 w-4" />
               )}
-              Save
+              {tc("save")}
             </Button>
           </div>
         </CardContent>

@@ -47,6 +47,8 @@ interface StudentItem {
 }
 
 export default function TranscriptsPage() {
+  const t = useTranslations("school.grades_module.transcripts");
+  const tc = useTranslations("school.grades_module.common");
   const { user } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
@@ -110,7 +112,7 @@ export default function TranscriptsPage() {
         setGradeLevels(glRes.data);
       }
     } catch {
-      toast.error("Failed to load data");
+      toast.error(t("toast_load_failed"));
     } finally {
       setLoading(false);
     }
@@ -141,7 +143,7 @@ export default function TranscriptsPage() {
       s.profile?.father_name,
       s.profile?.last_name,
     ].filter(Boolean);
-    return parts.join(" ") || "Unknown";
+    return parts.join(" ") || t("unknown");
   };
 
   const handleGenerate = async () => {
@@ -179,14 +181,14 @@ export default function TranscriptsPage() {
           printReportCards("Transcript", cards as ReportCardData[], pdfSettings, selectedCampus?.name, selectedCampus ?? undefined, isPluginActive('pdf_header_footer'));
         } else {
           toast.success(
-            `Transcripts generated for ${selectedStudentIds.length} student(s)`
+            t("toast_generated_count", { count: selectedStudentIds.length })
           );
         }
       } else {
-        toast.error(res.error || "Failed to generate transcripts");
+        toast.error(res.error || t("toast_generate_failed"));
       }
     } catch {
-      toast.error("Failed to generate transcripts");
+      toast.error(t("toast_generate_failed"));
     } finally {
       setGenerating(false);
     }
@@ -200,7 +202,7 @@ export default function TranscriptsPage() {
         <div>
           <h1 className="text-3xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent flex items-center gap-2">
             <GraduationCap className="h-8 w-8 text-[#57A3CC]" />
-            Transcripts
+            {t("title")}
           </h1>
           <p className="text-muted-foreground mt-2">
             {t("subtitle")}
@@ -229,7 +231,7 @@ export default function TranscriptsPage() {
       <Card>
         <CardContent className="pt-6 space-y-4">
           <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">
-            Include on Transcript
+            {t("include_on_transcript")}
           </h2>
 
           {/* Grades */}
@@ -240,7 +242,7 @@ export default function TranscriptsPage() {
               onCheckedChange={(v) => setIncludeGrades(!!v)}
             />
             <Label htmlFor="grades" className="text-sm cursor-pointer font-medium">
-              Grades
+              {t("include_grades")}
             </Label>
           </div>
 
@@ -252,7 +254,7 @@ export default function TranscriptsPage() {
               onCheckedChange={(v) => setIncludeStudentPhoto(!!v)}
             />
             <Label htmlFor="student-photo" className="text-sm cursor-pointer">
-              Student Photo
+              {t("include_student_photo")}
             </Label>
           </div>
 
@@ -264,7 +266,7 @@ export default function TranscriptsPage() {
               onCheckedChange={(v) => setIncludeComments(!!v)}
             />
             <Label htmlFor="comments" className="text-sm cursor-pointer">
-              Comments
+              {t("include_comments")}
             </Label>
           </div>
 
@@ -276,7 +278,7 @@ export default function TranscriptsPage() {
               onCheckedChange={(v) => setIncludeCredits(!!v)}
             />
             <Label htmlFor="credits" className="text-sm cursor-pointer font-medium">
-              Credits
+              {t("include_credits")}
             </Label>
           </div>
 
@@ -288,7 +290,7 @@ export default function TranscriptsPage() {
               onCheckedChange={(v) => setIncludeCreditHours(!!v)}
             />
             <Label htmlFor="credit-hours" className="text-sm cursor-pointer">
-              Credit Hours
+              {t("include_credit_hours")}
             </Label>
           </div>
 
@@ -302,19 +304,19 @@ export default function TranscriptsPage() {
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="na" id="lr-na" />
                 <Label htmlFor="lr-na" className="text-sm cursor-pointer">
-                  N/A
+                  {tc("na")}
                 </Label>
               </div>
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="gpa" id="lr-gpa" />
                 <Label htmlFor="lr-gpa" className="text-sm cursor-pointer">
-                  GPA
+                  {t("gpa")}
                 </Label>
               </div>
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="total" id="lr-total" />
                 <Label htmlFor="lr-total" className="text-sm cursor-pointer">
-                  Total
+                  {tc("total")}
                 </Label>
               </div>
             </RadioGroup>
@@ -336,7 +338,7 @@ export default function TranscriptsPage() {
               htmlFor="studies-certificate"
               className="text-sm cursor-pointer"
             >
-              Studies Certificate
+              {t("studies_certificate")}
             </Label>
           </div>
         </CardContent>
@@ -353,7 +355,7 @@ export default function TranscriptsPage() {
                 onCheckedChange={(v) => setMpQuarter(!!v)}
               />
               <Label htmlFor="mp-quarter" className="text-sm cursor-pointer">
-                Quarter
+                {t("quarter")}
               </Label>
             </div>
             <div className="flex items-center gap-2">
@@ -363,7 +365,7 @@ export default function TranscriptsPage() {
                 onCheckedChange={(v) => setMpSemester(!!v)}
               />
               <Label htmlFor="mp-semester" className="text-sm cursor-pointer">
-                Semester
+                {t("semester")}
               </Label>
             </div>
             <div className="flex items-center gap-2">
@@ -373,7 +375,7 @@ export default function TranscriptsPage() {
                 onCheckedChange={(v) => setMpYear(!!v)}
               />
               <Label htmlFor="mp-year" className="text-sm cursor-pointer">
-                Year
+                {t("year")}
               </Label>
             </div>
           </div>
@@ -394,7 +396,7 @@ export default function TranscriptsPage() {
               htmlFor="graduation-paths"
               className="text-sm cursor-pointer"
             >
-              Graduation Paths
+              {t("graduation_paths")}
             </Label>
           </div>
         </CardContent>
@@ -408,7 +410,7 @@ export default function TranscriptsPage() {
             <Label className="text-sm font-medium">{tc("filter_by_grade")}</Label>
             <Select value={gradeFilter} onValueChange={setGradeFilter}>
               <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="All Grades" />
+                <SelectValue placeholder={tc("all_grades")} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{tc("all_grades")}</SelectItem>
@@ -479,7 +481,7 @@ export default function TranscriptsPage() {
                           {getStudentName(s)}
                         </TableCell>
                         <TableCell>{s.student_number}</TableCell>
-                        <TableCell>{s.grade_level || "—"}</TableCell>
+                        <TableCell>{s.grade_level || tc("na")}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
