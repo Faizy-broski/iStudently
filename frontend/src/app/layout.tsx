@@ -7,6 +7,8 @@ import { SWRProvider } from "@/lib/swr-config";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { NextIntlClientProvider } from "next-intl";
 import { cookies } from "next/headers";
+import enMessages from "../../messages/en.json";
+import arMessages from "../../messages/ar.json";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -31,7 +33,7 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const rawLocale = cookieStore.get('studently_language')?.value;
   const locale = rawLocale === 'ar' ? 'ar' : 'en';
-  const messages = (await import(`../../messages/${locale}.json`)).default;
+  const messages = locale === 'ar' ? arMessages : enMessages;
   const isRTL = locale === "ar";
 
   return (
