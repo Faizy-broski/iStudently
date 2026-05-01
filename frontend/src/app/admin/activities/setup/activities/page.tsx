@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -40,6 +41,8 @@ const emptyForm = (): ActivityForm => ({
 });
 
 export default function ActivitiesSetupPage() {
+  const t = useTranslations('activities');
+  const tCommon = useTranslations('common');
   const { user } = useAuth();
   const campusCtx = useCampus();
   const campusId = campusCtx?.selectedCampus?.id;
@@ -56,22 +59,22 @@ export default function ActivitiesSetupPage() {
   const [editActivity, setEditActivity] = useState<Activity | null>(null);
   const [editForm, setEditForm] = useState<ActivityForm>(emptyForm());
 
-  useEffect(() => {
-    if (!schoolId) return;
-    fetchActivities();
-  }, [schoolId, campusId]);
-
-  async function fetchActivities() {
+  const fetchActivities = useCallback(async () => {
     setLoading(true);
     try {
       const res = await getActivities({ school_id: schoolId, campus_id: campusId, include_inactive: true });
       setActivities(res.data ?? []);
     } catch {
-      toast.error('Failed to load activities');
+      toast.error(t('failedToLoadActivities'));
     } finally {
       setLoading(false);
     }
-  }
+  }, [campusId, schoolId, t]);
+
+  useEffect(() => {
+    if (!schoolId) return;
+    void fetchActivities();
+  }, [fetchActivities, schoolId]);
 
   function openEdit(activity: Activity) {
     setEditActivity(activity);
@@ -84,7 +87,10 @@ export default function ActivitiesSetupPage() {
   }
 
   async function handleAdd() {
-    if (!addForm.title.trim()) { toast.error('Title is required'); return; }
+    if (!addForm.title.trim()) {
+      toast.error(t('titleRequired'));
+      return;
+    }
     setSaving(true);
     try {
       const res = await createActivity({
@@ -95,20 +101,26 @@ export default function ActivitiesSetupPage() {
         end_date: addForm.end_date || null,
         comment: addForm.comment || null,
       });
-      if (res.error) { toast.error(res.error); return; }
-      toast.success('Activity added');
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success(t('activityAdded'));
       setShowAdd(false);
       setAddForm(emptyForm());
-      fetchActivities();
+      void fetchActivities();
     } catch {
-      toast.error('Failed to add activity');
+      toast.error(t('failedToCreateActivity'));
     } finally {
       setSaving(false);
     }
   }
 
   async function handleEdit() {
-    if (!editActivity || !editForm.title.trim()) { toast.error('Title is required'); return; }
+    if (!editActivity || !editForm.title.trim()) {
+      toast.error(t('titleRequired'));
+      return;
+    }
     setSaving(true);
     try {
       const res = await updateActivity(editActivity.id, {
@@ -117,12 +129,15 @@ export default function ActivitiesSetupPage() {
         end_date: editForm.end_date || null,
         comment: editForm.comment || null,
       });
-      if (res.error) { toast.error(res.error); return; }
-      toast.success('Activity updated');
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success(t('activityUpdated'));
       setEditActivity(null);
-      fetchActivities();
+      void fetchActivities();
     } catch {
-      toast.error('Failed to update activity');
+      toast.error(t('failedToUpdateActivity'));
     } finally {
       setSaving(false);
     }
@@ -132,11 +147,14 @@ export default function ActivitiesSetupPage() {
     setDeletingId(activity.id);
     try {
       const res = await deleteActivity(activity.id);
-      if (res.error) { toast.error(res.error); return; }
-      toast.success(`"${activity.title}" deleted`);
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success(t('activityDeleted', { title: activity.title }));
       setActivities((prev) => prev.filter((a) => a.id !== activity.id));
     } catch {
-      toast.error('Failed to delete activity');
+      toast.error(t('failedToDeleteActivity'));
     } finally {
       setDeletingId(null);
     }
@@ -145,36 +163,38 @@ export default function ActivitiesSetupPage() {
   async function toggleActive(activity: Activity) {
     try {
       const res = await updateActivity(activity.id, { is_active: !activity.is_active });
-      if (res.error) { toast.error(res.error); return; }
-      fetchActivities();
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
+      void fetchActivities();
     } catch {
-      toast.error('Failed to update activity');
+      toast.error(t('failedToToggleActivity'));
     }
   }
 
   return (
     <div className="container mx-auto py-8">
       <div className="max-w-3xl mx-auto space-y-6">
-
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Activities</h1>
-            <p className="text-muted-foreground mt-1">Configure activities for the eligibility module.</p>
+            <h1 className="text-3xl font-bold">{t('title')}</h1>
+            <p className="text-muted-foreground mt-1">{t('subtitle')}</p>
           </div>
           <Button onClick={() => { setShowAdd(true); setAddForm(emptyForm()); }}>
             <Plus className="h-4 w-4 mr-2" />
-            Add Activity
+            {t('addActivity')}
           </Button>
         </div>
 
         {loading ? (
           <div className="flex items-center gap-2 text-muted-foreground text-sm py-8 justify-center">
-            <Loader2 className="h-5 w-5 animate-spin" /> Loading…
+            <Loader2 className="h-5 w-5 animate-spin" /> {t('loadingActivities')}
           </div>
         ) : activities.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center text-muted-foreground">
-              No activities configured yet. Click <strong>Add Activity</strong> to get started.
+              {t('noActivitiesConfigured')}
             </CardContent>
           </Card>
         ) : (
@@ -187,13 +207,13 @@ export default function ActivitiesSetupPage() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium">{activity.title}</span>
                         {!activity.is_active && (
-                          <Badge variant="outline" className="bg-gray-100 text-gray-500">Inactive</Badge>
+                          <Badge variant="outline" className="bg-gray-100 text-gray-500">{tCommon('inactive')}</Badge>
                         )}
                       </div>
                       <div className="flex flex-wrap gap-x-4 mt-0.5">
                         {(activity.start_date || activity.end_date) && (
                           <p className="text-xs text-muted-foreground">
-                            {activity.start_date ?? '—'} → {activity.end_date ?? '—'}
+                            {activity.start_date ?? '-'} - {activity.end_date ?? '-'}
                           </p>
                         )}
                         {activity.comment && (
@@ -208,7 +228,7 @@ export default function ActivitiesSetupPage() {
                         onClick={() => toggleActive(activity)}
                         className="text-xs h-7 px-2"
                       >
-                        {activity.is_active ? 'Disable' : 'Enable'}
+                        {activity.is_active ? t('disable') : t('enable')}
                       </Button>
                       <Button
                         variant="ghost"
@@ -237,30 +257,41 @@ export default function ActivitiesSetupPage() {
             ))}
           </div>
         )}
-
       </div>
 
-      {/* Add Dialog */}
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Settings className="h-4 w-4" /> Add Activity
+              <Settings className="h-4 w-4" /> {t('addActivityDialogTitle')}
             </DialogTitle>
           </DialogHeader>
-          <ActivityFormFields form={addForm} onChange={setAddForm} onSubmit={handleAdd} onCancel={() => setShowAdd(false)} saving={saving} submitLabel="Add Activity" />
+          <ActivityFormFields
+            form={addForm}
+            onChange={setAddForm}
+            onSubmit={handleAdd}
+            onCancel={() => setShowAdd(false)}
+            saving={saving}
+            submitLabel={t('addActivity')}
+          />
         </DialogContent>
       </Dialog>
 
-      {/* Edit Dialog */}
       <Dialog open={!!editActivity} onOpenChange={(open) => { if (!open) setEditActivity(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Pencil className="h-4 w-4" /> Edit Activity
+              <Pencil className="h-4 w-4" /> {t('editActivityDialogTitle')}
             </DialogTitle>
           </DialogHeader>
-          <ActivityFormFields form={editForm} onChange={setEditForm} onSubmit={handleEdit} onCancel={() => setEditActivity(null)} saving={saving} submitLabel="Save Changes" />
+          <ActivityFormFields
+            form={editForm}
+            onChange={setEditForm}
+            onSubmit={handleEdit}
+            onCancel={() => setEditActivity(null)}
+            saving={saving}
+            submitLabel={t('saveChanges')}
+          />
         </DialogContent>
       </Dialog>
     </div>
@@ -277,19 +308,22 @@ interface FieldProps {
 }
 
 function ActivityFormFields({ form, onChange, onSubmit, onCancel, saving, submitLabel }: FieldProps) {
+  const t = useTranslations('activities');
+  const tCommon = useTranslations('common');
+
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <Label>Title <span className="text-destructive">*</span></Label>
+        <Label>{t('titleField')} <span className="text-destructive">*</span></Label>
         <Input
           value={form.title}
           onChange={(e) => onChange({ ...form, title: e.target.value })}
-          placeholder="e.g. Basketball, Chess Club"
+          placeholder={t('titlePlaceholder')}
         />
       </div>
       <div className="flex gap-3">
         <div className="space-y-1.5 flex-1">
-          <Label className="text-xs">Start Date</Label>
+          <Label className="text-xs">{t('startDate')}</Label>
           <Input
             type="date"
             value={form.start_date}
@@ -298,7 +332,7 @@ function ActivityFormFields({ form, onChange, onSubmit, onCancel, saving, submit
           />
         </div>
         <div className="space-y-1.5 flex-1">
-          <Label className="text-xs">End Date</Label>
+          <Label className="text-xs">{t('endDate')}</Label>
           <Input
             type="date"
             value={form.end_date}
@@ -308,16 +342,16 @@ function ActivityFormFields({ form, onChange, onSubmit, onCancel, saving, submit
         </div>
       </div>
       <div className="space-y-1.5">
-        <Label>Comment</Label>
+        <Label>{t('comment')}</Label>
         <Textarea
           value={form.comment}
           onChange={(e) => onChange({ ...form, comment: e.target.value })}
-          placeholder="Optional notes…"
+          placeholder={t('commentPlaceholder')}
           rows={3}
         />
       </div>
       <div className="flex justify-end gap-2 pt-2">
-        <Button variant="outline" onClick={onCancel} disabled={saving}>Cancel</Button>
+        <Button variant="outline" onClick={onCancel} disabled={saving}>{tCommon('cancel')}</Button>
         <Button onClick={onSubmit} disabled={saving}>
           {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
           {submitLabel}

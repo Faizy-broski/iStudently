@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import useSWR from 'swr'
+import { useTranslations } from 'next-intl'
 import {
   Dialog,
   DialogContent,
@@ -33,6 +34,7 @@ interface Props {
 const NONE = '__none__'
 
 export function AddEditQuizDialog({ quiz, schoolId, campusId, onClose, onSaved }: Props) {
+  const t = useTranslations('quiz')
   const isEdit = !!quiz
 
   const [title, setTitle] = useState(quiz?.title ?? '')
@@ -55,7 +57,7 @@ export function AddEditQuizDialog({ quiz, schoolId, campusId, onClose, onSaved }
   )
 
   const handleSave = async () => {
-    if (!title.trim()) { setError('Title is required'); return }
+    if (!title.trim()) { setError(t('errors.titleRequired')); return }
     setSaving(true)
     setError('')
     try {
@@ -78,7 +80,7 @@ export function AddEditQuizDialog({ quiz, schoolId, campusId, onClose, onSaved }
       }
       onSaved()
     } catch (e: any) {
-      setError(e.message || 'Failed to save quiz')
+      setError(e.message || t('errors.failedToSaveQuiz'))
     } finally {
       setSaving(false)
     }
@@ -88,40 +90,40 @@ export function AddEditQuizDialog({ quiz, schoolId, campusId, onClose, onSaved }
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Edit Quiz' : 'New Quiz'}</DialogTitle>
+          <DialogTitle>{isEdit ? t('actions.editQuiz') : t('newQuiz')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           <div className="space-y-1">
-            <Label htmlFor="q-title">Title *</Label>
+            <Label htmlFor="q-title">{t('table.title')} *</Label>
             <Input
               id="q-title"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              placeholder="Quiz title"
+              placeholder={t('placeholders.quizTitle')}
             />
           </div>
 
           <div className="space-y-1">
-            <Label htmlFor="q-desc">Description</Label>
+            <Label htmlFor="q-desc">{t('description')}</Label>
             <Textarea
               id="q-desc"
               value={description}
               onChange={e => setDescription(e.target.value)}
               rows={3}
-              placeholder="Optional description"
+              placeholder={t('placeholders.optionalDescription')}
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <Label>Course Period</Label>
+              <Label>{t('coursePeriod')}</Label>
               <Select value={coursePeriodId || NONE} onValueChange={v => { setCoursePeriodId(v === NONE ? '' : v); setAssignmentId('') }}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select course period" />
+                  <SelectValue placeholder={t('selectCoursePeriod')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NONE}>— None —</SelectItem>
+                  <SelectItem value={NONE}>{t('none')}</SelectItem>
                   {(coursePeriods ?? []).map(cp => (
                     <SelectItem key={cp.id} value={cp.id}>
                       {(cp.courses as any)?.title ?? cp.id.slice(0, 8)}
@@ -132,13 +134,13 @@ export function AddEditQuizDialog({ quiz, schoolId, campusId, onClose, onSaved }
             </div>
 
             <div className="space-y-1">
-              <Label>Assignment (optional)</Label>
+              <Label>{t('assignmentOptional')}</Label>
               <Select value={assignmentId || NONE} onValueChange={v => setAssignmentId(v === NONE ? '' : v)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select assignment" />
+                  <SelectValue placeholder={t('selectAssignment')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NONE}>— None —</SelectItem>
+                  <SelectItem value={NONE}>{t('none')}</SelectItem>
                   {(assignments ?? []).map(a => (
                     <SelectItem key={a.id} value={a.id}>{a.title}</SelectItem>
                   ))}
@@ -150,11 +152,11 @@ export function AddEditQuizDialog({ quiz, schoolId, campusId, onClose, onSaved }
           <div className="flex gap-6">
             <div className="flex items-center gap-2">
               <Switch id="show-correct" checked={showCorrect} onCheckedChange={setShowCorrect} />
-              <Label htmlFor="show-correct">Show Correct Answers</Label>
+              <Label htmlFor="show-correct">{t('showCorrectAnswers')}</Label>
             </div>
             <div className="flex items-center gap-2">
               <Switch id="shuffle" checked={shuffle} onCheckedChange={setShuffle} />
-              <Label htmlFor="shuffle">Random Question Order</Label>
+              <Label htmlFor="shuffle">{t('randomQuestionOrder')}</Label>
             </div>
           </div>
 
@@ -162,9 +164,9 @@ export function AddEditQuizDialog({ quiz, schoolId, campusId, onClose, onSaved }
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button variant="outline" onClick={onClose} disabled={saving}>{t('cancel')}</Button>
           <Button onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Quiz'}
+            {saving ? t('saving') : isEdit ? t('saveChanges') : t('createQuiz')}
           </Button>
         </DialogFooter>
       </DialogContent>

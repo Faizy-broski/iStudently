@@ -5,9 +5,11 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AddParentForm } from "@/components/admin/AddParentForm";
+import { useTranslations } from "next-intl";
 
 export default function AddParentPage() {
   const router = useRouter();
+  const t = useTranslations("parents");
 
   const handleSuccess = async () => {
     // Small delay to allow cache invalidation to complete
@@ -28,10 +30,10 @@ export default function AddParentPage() {
         </Button>
         <div>
           <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent">
-            Add New Parent/Guardian
+            {t("addNewParentTitle")}
           </h1>
           <p className="text-sm md:text-base text-muted-foreground mt-1">
-            Register a new parent or guardian to the system
+            {t("addNewParentSubtitle")}
           </p>
         </div>
       </div>

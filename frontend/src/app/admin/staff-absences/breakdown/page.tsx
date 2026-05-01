@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
+import { useTranslations } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import * as api from '@/lib/api/staff-absences'
@@ -20,6 +21,7 @@ const COLORS = [
 ]
 
 export default function BreakdownPage() {
+  const t = useTranslations('staffAbsences')
   const { profile } = useAuth()
   const campusCtx = useCampus()
   const schoolId = profile?.school_id || ''
@@ -73,7 +75,7 @@ export default function BreakdownPage() {
     <div className="p-6 space-y-4">
       <div className="flex items-center gap-3">
         <BarChart3 className="h-6 w-6 text-muted-foreground" />
-        <h1 className="text-2xl font-semibold">Days Absent Breakdown</h1>
+        <h1 className="text-2xl font-semibold">{t('breakdown.title')}</h1>
       </div>
 
       {/* Filters */}
@@ -81,7 +83,7 @@ export default function BreakdownPage() {
         <CardContent className="pt-4">
           <div className="flex flex-wrap gap-3 items-end">
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-muted-foreground">From</label>
+              <label className="text-xs text-muted-foreground">{t('filters.from')}</label>
               <Input
                 type="date"
                 value={startDate}
@@ -90,7 +92,7 @@ export default function BreakdownPage() {
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-muted-foreground">To</label>
+              <label className="text-xs text-muted-foreground">{t('filters.to')}</label>
               <Input
                 type="date"
                 value={endDate}
@@ -100,7 +102,7 @@ export default function BreakdownPage() {
             </div>
             <Button variant="outline" onClick={() => mutate()}>
               <Filter className="h-4 w-4 mr-2" />
-              Refresh
+              {t('refresh')}
             </Button>
           </div>
         </CardContent>
@@ -115,7 +117,7 @@ export default function BreakdownPage() {
       ) : rows.length === 0 ? (
         <Card>
           <CardContent className="py-16 text-center text-muted-foreground">
-            No absence data found for the selected period.
+            {t('empty.breakdown')}
           </CardContent>
         </Card>
       ) : (
@@ -123,7 +125,7 @@ export default function BreakdownPage() {
           {/* Bar Chart */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Staff Absence by Month</CardTitle>
+              <CardTitle className="text-base">{t('breakdown.staffAbsenceByMonth')}</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={320}>
@@ -132,7 +134,7 @@ export default function BreakdownPage() {
                   <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                   <YAxis
                     label={{
-                      value: 'Days',
+                      value: t('table.days'),
                       angle: -90,
                       position: 'insideLeft',
                       style: { fontSize: 11 },
@@ -157,14 +159,14 @@ export default function BreakdownPage() {
           {/* Summary table */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Total Days Absent by Staff</CardTitle>
+              <CardTitle className="text-base">{t('breakdown.totalDaysAbsentByStaff')}</CardTitle>
             </CardHeader>
             <CardContent>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-2 font-medium">Staff Member</th>
-                    <th className="text-right py-2 font-medium">Total Days</th>
+                    <th className="text-left py-2 font-medium">{t('table.staffMember')}</th>
+                    <th className="text-right py-2 font-medium">{t('breakdown.totalDays')}</th>
                   </tr>
                 </thead>
                 <tbody>

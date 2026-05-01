@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -48,6 +49,7 @@ async function fetchAllCoursePeriods(schoolId: string, campusId?: string): Promi
 }
 
 export default function TeacherCompletionPage() {
+  const t = useTranslations('activities');
   const { user } = useAuth();
   const campusCtx = useCampus();
   const campusId = campusCtx?.selectedCampus?.id;
@@ -71,35 +73,36 @@ export default function TeacherCompletionPage() {
       ]);
 
       setCoursePeriods(cpData);
-      if (compRes.error) { toast.error(compRes.error); return; }
+      if (compRes.error) {
+        toast.error(compRes.error);
+        return;
+      }
       setCompleted(compRes.data ?? []);
       setHasLoaded(true);
     } catch {
-      toast.error('Failed to load report');
+      toast.error(t('failedToLoadReport'));
     } finally {
       setLoading(false);
     }
   }
 
   const completedSet = new Set(completed.map((c) => c.course_period_id));
-
   const completedCount = coursePeriods.filter((cp) => completedSet.has(cp.id)).length;
   const totalCount = coursePeriods.length;
 
   return (
     <div className="container mx-auto py-8">
       <div className="max-w-4xl mx-auto space-y-6">
-
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <CheckSquare className="h-7 w-7 text-primary" />
-          Teacher Completion
+          {t('teacherCompletionTitle')}
         </h1>
 
         <Card>
           <CardContent className="pt-5 pb-5">
             <div className="flex flex-wrap items-end gap-3">
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Date</Label>
+                <Label className="text-xs text-muted-foreground">{t('date')}</Label>
                 <Input
                   type="date"
                   value={schoolDate}
@@ -114,7 +117,7 @@ export default function TeacherCompletionPage() {
                 className="h-8"
               >
                 {loading && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
-                Go
+                {t('go')}
               </Button>
             </div>
           </CardContent>
@@ -125,9 +128,9 @@ export default function TeacherCompletionPage() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">
-                  Completion for {schoolDate}
+                  {t('completionFor', { date: schoolDate })}
                   <span className="ml-2 text-sm font-normal text-muted-foreground">
-                    ({completedCount}/{totalCount} course periods completed)
+                    ({t('coursePeriodsCompleted', { completedCount, totalCount })})
                   </span>
                 </CardTitle>
                 <Button
@@ -137,23 +140,23 @@ export default function TeacherCompletionPage() {
                   className="print:hidden"
                 >
                   <Printer className="h-3.5 w-3.5 mr-1.5" />
-                  Print
+                  {t('print')}
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
               {coursePeriods.length === 0 ? (
                 <p className="text-center py-10 text-muted-foreground text-sm">
-                  No course periods found.
+                  {t('noCoursePeriodsFound')}
                 </p>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Course Period</TableHead>
-                      <TableHead>Subject</TableHead>
-                      <TableHead>Completed By</TableHead>
-                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead>{t('coursePeriod')}</TableHead>
+                      <TableHead>{t('subject')}</TableHead>
+                      <TableHead>{t('completedBy')}</TableHead>
+                      <TableHead className="text-center">{t('status')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -162,15 +165,15 @@ export default function TeacherCompletionPage() {
                       return (
                         <TableRow key={cp.id}>
                           <TableCell className="font-medium">{cp.name}</TableCell>
-                          <TableCell className="text-muted-foreground">{cp.subject ?? '—'}</TableCell>
+                          <TableCell className="text-muted-foreground">{cp.subject ?? '-'}</TableCell>
                           <TableCell className="text-muted-foreground">
-                            {comp?.staff?.full_name ?? '—'}
+                            {comp?.staff?.full_name ?? '-'}
                           </TableCell>
                           <TableCell className="text-center">
                             {comp ? (
-                              <Badge className="bg-green-100 text-green-800">Completed</Badge>
+                              <Badge className="bg-green-100 text-green-800">{t('completed')}</Badge>
                             ) : (
-                              <Badge variant="outline" className="bg-gray-50 text-gray-600">Pending</Badge>
+                              <Badge variant="outline" className="bg-gray-50 text-gray-600">{t('pending')}</Badge>
                             )}
                           </TableCell>
                         </TableRow>
@@ -182,7 +185,6 @@ export default function TeacherCompletionPage() {
             </CardContent>
           </Card>
         )}
-
       </div>
     </div>
   );

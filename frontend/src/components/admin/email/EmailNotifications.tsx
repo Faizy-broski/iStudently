@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useTranslations } from "next-intl"
 import { getNotificationSettings, saveNotificationSettings } from "@/lib/api/email"
 import type { NotificationSettings } from "@/lib/api/email"
 import { useCampus } from "@/context/CampusContext"
@@ -45,59 +46,61 @@ function Field({
 function EmailTemplateFields({
   values: v,
   onChange,
+  t,
 }: {
   values: Record<string, string>
   onChange: (key: string, val: string) => void
+  t: (key: string) => string
 }) {
   return (
     <div className="space-y-4">
-      <Field label="Subject" id="subj">
+      <Field label={t("email_subject_label")} id="subj">
         <Input
           id="subj"
           value={v.subject || ""}
           onChange={(e) => onChange("subject", e.target.value)}
-          placeholder="Email subject..."
+          placeholder={t("email_subject_placeholder")}
           maxLength={200}
         />
       </Field>
 
-      <Field label="Body (HTML supported)" id="body">
+      <Field label={t("email_body_label")} id="body">
         <Textarea
           id="body"
           value={v.body || ""}
           onChange={(e) => onChange("body", e.target.value)}
           rows={6}
           className="font-mono text-sm resize-y"
-          placeholder="Email body..."
+          placeholder={t("email_body_placeholder_short")}
         />
       </Field>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Field label="Reply-To Email" id="reply">
+        <Field label={t("email_reply_to")} id="reply">
           <Input
             id="reply"
             type="email"
             value={v.reply_to || ""}
             onChange={(e) => onChange("reply_to", e.target.value)}
-            placeholder="reply@example.com"
+            placeholder={t("email_reply_to_placeholder")}
           />
         </Field>
-        <Field label="Copy To (CC)" id="copy">
+        <Field label={t("email_copy_to")} id="copy">
           <Input
             id="copy"
             type="email"
             value={v.copy_to || ""}
             onChange={(e) => onChange("copy_to", e.target.value)}
-            placeholder="admin@example.com"
+            placeholder={t("email_copy_to_placeholder")}
           />
         </Field>
-        <Field label="Test Email" id="test">
+        <Field label={t("email_test_email")} id="test">
           <Input
             id="test"
             type="email"
             value={v.test_email || ""}
             onChange={(e) => onChange("test_email", e.target.value)}
-            placeholder="Optional – all go here"
+            placeholder={t("email_test_placeholder")}
           />
         </Field>
       </div>
@@ -108,6 +111,7 @@ function EmailTemplateFields({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function EmailNotifications() {
+  const t = useTranslations("email")
   const { selectedCampus } = useCampus()
   const campusId = selectedCampus?.id
 
@@ -122,7 +126,7 @@ export function EmailNotifications() {
     getNotificationSettings(campusId)
       .then((res) => {
         if (res.success && res.data) setSettings(res.data)
-        else toast.error(res.error || "Failed to load notification settings")
+        else toast.error(res.error || t("notifications_load_failed"))
       })
       .finally(() => setLoading(false))
   }, [campusId])
@@ -158,9 +162,9 @@ export function EmailNotifications() {
       const payload = settings[type] || {}
       const res = await saveNotificationSettings(type, payload, campusId)
       if (res.success !== false) {
-        toast.success("Notification settings saved")
+        toast.success(t("notifications_saved"))
       } else {
-        toast.error((res as any).error || "Failed to save")
+        toast.error((res as any).error || t("notifications_save_failed"))
       }
     } finally {
       setSaving(null)
@@ -170,7 +174,7 @@ export function EmailNotifications() {
   if (loading) {
     return (
       <div className="text-center py-16 text-muted-foreground">
-        Loading notification settings...
+        {t("loading_notifications")}
       </div>
     )
   }
@@ -183,25 +187,23 @@ export function EmailNotifications() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Bell className="h-5 w-5" /> Automated Notifications
+          <Bell className="h-5 w-5" /> {t("notifications_title")}
         </CardTitle>
         <CardDescription>
-          Configure automated emails sent by the system for{" "}
-          <strong>{selectedCampus?.name ?? "the school"}</strong>.
-          Changes take effect at the next scheduled run.
+          {t("notifications_desc", { campus: selectedCampus?.name ?? t("school_fallback") })}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="absences">
           <TabsList className="mb-6">
             <TabsTrigger value="absences" className="gap-1.5">
-              <UserX className="h-3.5 w-3.5" /> Absences
+              <UserX className="h-3.5 w-3.5" /> {t("tab_absences")}
             </TabsTrigger>
             <TabsTrigger value="birthday" className="gap-1.5">
-              <Cake className="h-3.5 w-3.5" /> Birthday
+              <Cake className="h-3.5 w-3.5" /> {t("tab_birthday")}
             </TabsTrigger>
             <TabsTrigger value="payments" className="gap-1.5">
-              <CreditCard className="h-3.5 w-3.5" /> Payments
+              <CreditCard className="h-3.5 w-3.5" /> {t("tab_payments")}
             </TabsTrigger>
           </TabsList>
 
@@ -209,9 +211,9 @@ export function EmailNotifications() {
           <TabsContent value="absences" className="space-y-6">
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div>
-                <p className="font-medium">Enable Absence Alerts</p>
+                <p className="font-medium">{t("absence_alert_title")}</p>
                 <p className="text-sm text-muted-foreground">
-                  Automatically email students/parents when absence threshold is reached.
+                  {t("absence_alert_desc")}
                 </p>
               </div>
               <Switch
@@ -221,41 +223,41 @@ export function EmailNotifications() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <Field label="Attendance Code (comma-separated)" id="att_code">
+              <Field label={t("attendance_code_label")} id="att_code">
                 <Input
                   id="att_code"
                   value={absences.attendance_code || ""}
                   onChange={(e) => patchAbsences("attendance_code", e.target.value)}
-                  placeholder="e.g. A, UA"
+                  placeholder={t("attendance_code_placeholder")}
                 />
               </Field>
 
-              <Field label="Threshold (number of absences)" id="threshold">
+              <Field label={t("threshold_label")} id="threshold">
                 <Input
                   id="threshold"
                   type="number"
                   min={1}
                   value={absences.threshold_count ?? ""}
                   onChange={(e) => patchAbsences("threshold_count", e.target.value ? Number(e.target.value) : undefined)}
-                  placeholder="e.g. 3"
+                  placeholder={t("threshold_placeholder")}
                 />
               </Field>
 
-              <Field label="Period" id="period">
+              <Field label={t("period_label")} id="period">
                 <Select
                   value={absences.period || ""}
                   onValueChange={(v) => patchAbsences("period", v)}
                 >
                   <SelectTrigger id="period">
-                    <SelectValue placeholder="Select period" />
+                    <SelectValue placeholder={t("period_select")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="school_year">School Year</SelectItem>
-                    <SelectItem value="semester">Semester</SelectItem>
-                    <SelectItem value="quarter">Quarter</SelectItem>
-                    <SelectItem value="month">Month</SelectItem>
-                    <SelectItem value="week">Week</SelectItem>
-                    <SelectItem value="day">Day</SelectItem>
+                    <SelectItem value="school_year">{t("period_school_year")}</SelectItem>
+                    <SelectItem value="semester">{t("period_semester")}</SelectItem>
+                    <SelectItem value="quarter">{t("period_quarter")}</SelectItem>
+                    <SelectItem value="month">{t("period_month")}</SelectItem>
+                    <SelectItem value="week">{t("period_week")}</SelectItem>
+                    <SelectItem value="day">{t("period_day")}</SelectItem>
                   </SelectContent>
                 </Select>
               </Field>
@@ -264,11 +266,12 @@ export function EmailNotifications() {
             <EmailTemplateFields
               values={absences as Record<string, string>}
               onChange={patchAbsences}
+              t={t}
             />
 
             <Button onClick={() => save("absences")} disabled={saving === "absences"}>
               <Save className="h-4 w-4 mr-1.5" />
-              {saving === "absences" ? "Saving..." : "Save Absence Settings"}
+              {saving === "absences" ? t("saving") : t("save_absence_settings")}
             </Button>
           </TabsContent>
 
@@ -276,9 +279,9 @@ export function EmailNotifications() {
           <TabsContent value="birthday" className="space-y-6">
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div>
-                <p className="font-medium">Enable Birthday Emails</p>
+                <p className="font-medium">{t("birthday_alert_title")}</p>
                 <p className="text-sm text-muted-foreground">
-                  Automatically send a birthday email to students on their birthday.
+                  {t("birthday_alert_desc")}
                 </p>
               </div>
               <Switch
@@ -290,11 +293,12 @@ export function EmailNotifications() {
             <EmailTemplateFields
               values={birthday as Record<string, string>}
               onChange={patchBirthday}
+              t={t}
             />
 
             <Button onClick={() => save("birthday")} disabled={saving === "birthday"}>
               <Save className="h-4 w-4 mr-1.5" />
-              {saving === "birthday" ? "Saving..." : "Save Birthday Settings"}
+              {saving === "birthday" ? t("saving") : t("save_birthday_settings")}
             </Button>
           </TabsContent>
 
@@ -302,9 +306,9 @@ export function EmailNotifications() {
           <TabsContent value="payments" className="space-y-6">
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div>
-                <p className="font-medium">Enable Payment Reminders</p>
+                <p className="font-medium">{t("payment_alert_title")}</p>
                 <p className="text-sm text-muted-foreground">
-                  Automatically email students/parents before or after fee due dates.
+                  {t("payment_alert_desc")}
                 </p>
               </div>
               <Switch
@@ -314,24 +318,24 @@ export function EmailNotifications() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Days Before Due Date" id="days_before">
+              <Field label={t("days_before_due")} id="days_before">
                 <Input
                   id="days_before"
                   type="number"
                   min={0}
                   value={payments.days_before_due ?? ""}
                   onChange={(e) => patchPayments("days_before_due", e.target.value ? Number(e.target.value) : undefined)}
-                  placeholder="e.g. 7"
+                  placeholder={t("days_before_due_placeholder")}
                 />
               </Field>
-              <Field label="Days After Due Date" id="days_after">
+              <Field label={t("days_after_due")} id="days_after">
                 <Input
                   id="days_after"
                   type="number"
                   min={0}
                   value={payments.days_after_due ?? ""}
                   onChange={(e) => patchPayments("days_after_due", e.target.value ? Number(e.target.value) : undefined)}
-                  placeholder="e.g. 3"
+                  placeholder={t("days_after_due_placeholder")}
                 />
               </Field>
             </div>
@@ -339,11 +343,12 @@ export function EmailNotifications() {
             <EmailTemplateFields
               values={payments as Record<string, string>}
               onChange={patchPayments}
+              t={t}
             />
 
             <Button onClick={() => save("payments")} disabled={saving === "payments"}>
               <Save className="h-4 w-4 mr-1.5" />
-              {saving === "payments" ? "Saving..." : "Save Payment Settings"}
+              {saving === "payments" ? t("saving") : t("save_payment_settings")}
             </Button>
           </TabsContent>
         </Tabs>

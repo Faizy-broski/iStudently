@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import useSWR, { mutate as globalMutate } from 'swr'
+import { useTranslations } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import {
@@ -71,6 +72,7 @@ function QuestionDialog({
   onClose: () => void
   onSaved: () => void
 }) {
+  const t = useTranslations('quiz')
   const isEdit = !!question
   const [title, setTitle] = useState(question?.title ?? '')
   const [type, setType] = useState<QuestionType>(question?.type ?? 'select')
@@ -81,15 +83,15 @@ function QuestionDialog({
   const [error, setError] = useState('')
 
   const answerPlaceholder: Record<QuestionType, string> = {
-    select: '*Correct option\nWrong option A\nWrong option B',
-    multiple: '*Correct A\n*Correct B\nWrong C',
-    gap: 'The sky is __blue__.\nThe grass is __green__.',
-    text: 'Expected answer (case-insensitive)',
+    select: t('placeholders.selectAnswer'),
+    multiple: t('placeholders.multipleAnswer'),
+    gap: t('placeholders.gapAnswer'),
+    text: t('placeholders.textAnswer'),
     textarea: '',
   }
 
   const handleSave = async () => {
-    if (!title.trim()) { setError('Title is required'); return }
+    if (!title.trim()) { setError(t('errors.titleRequired')); return }
     setSaving(true); setError('')
     try {
       const payload = {
@@ -110,7 +112,7 @@ function QuestionDialog({
       }
       onSaved()
     } catch (e: any) {
-      setError(e.message || 'Failed to save')
+      setError(e.message || t('errors.failedToSave'))
     } finally {
       setSaving(false)
     }
@@ -120,21 +122,21 @@ function QuestionDialog({
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Edit Question' : 'New Question'}</DialogTitle>
+          <DialogTitle>{isEdit ? t('editQuestion') : t('newQuestion')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <Label>Question *</Label>
-              <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Question text" />
+              <Label>{t('question')} *</Label>
+              <Input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('placeholders.questionText')} />
             </div>
             <div className="space-y-1">
-              <Label>Type</Label>
+              <Label>{t('type')}</Label>
               <Select value={type} onValueChange={v => { setType(v as QuestionType); setAnswer('') }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {(Object.entries(QUESTION_TYPE_LABELS) as [QuestionType, string][]).map(([k, v]) => (
-                    <SelectItem key={k} value={k}>{v}</SelectItem>
+                  {(Object.entries(QUESTION_TYPE_LABELS) as [QuestionType, string][]).map(([k]) => (
+                    <SelectItem key={k} value={k}>{t(`questionTypes.${k}`)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -142,25 +144,25 @@ function QuestionDialog({
           </div>
 
           <div className="space-y-1">
-            <Label>Category</Label>
+            <Label>{t('category')}</Label>
             <Select value={categoryId || NONE} onValueChange={v => setCategoryId(v === NONE ? '' : v)}>
-              <SelectTrigger><SelectValue placeholder="— None —" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={t('none')} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={NONE}>— None —</SelectItem>
+                <SelectItem value={NONE}>{t('none')}</SelectItem>
                 {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-1">
-            <Label>Description (optional)</Label>
-            <Textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Additional context shown before the question" />
+            <Label>{t('descriptionOptional')}</Label>
+            <Textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder={t('placeholders.questionDescription')} />
           </div>
 
           {type !== 'textarea' && (
             <div className="space-y-1">
               <Label>
-                {type === 'select' || type === 'multiple' ? 'Options (one per line, * = correct)' : type === 'gap' ? 'Text with gaps (use __answer__)' : 'Correct Answer'}
+                {type === 'select' || type === 'multiple' ? t('answerInput.options') : type === 'gap' ? t('answerInput.gapText') : t('answerInput.correctAnswer')}
               </Label>
               <Textarea
                 value={answer}
@@ -170,10 +172,10 @@ function QuestionDialog({
                 className="font-mono text-sm"
               />
               {(type === 'select' || type === 'multiple') && (
-                <p className="text-xs text-muted-foreground">Prefix correct answer(s) with * e.g. <code>*True</code></p>
+                <p className="text-xs text-muted-foreground">{t('answerInput.correctPrefix')} <code>*True</code></p>
               )}
               {type === 'gap' && (
-                <p className="text-xs text-muted-foreground">Delimit gaps with double underscores e.g. <code>The sky is __blue__.</code></p>
+                <p className="text-xs text-muted-foreground">{t('answerInput.gapHint')} <code>The sky is __blue__.</code></p>
               )}
             </div>
           )}
@@ -181,8 +183,8 @@ function QuestionDialog({
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Question'}</Button>
+          <Button variant="outline" onClick={onClose} disabled={saving}>{t('cancel')}</Button>
+          <Button onClick={handleSave} disabled={saving}>{saving ? t('saving') : isEdit ? t('saveChanges') : t('addQuestionAction')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -204,6 +206,7 @@ function CategoryDialog({
   onClose: () => void
   onSaved: () => void
 }) {
+  const t = useTranslations('quiz')
   const [title, setTitle] = useState(category?.title ?? '')
   const [sortOrder, setSortOrder] = useState(String(category?.sort_order ?? 0))
   const [saving, setSaving] = useState(false)
@@ -224,20 +227,20 @@ function CategoryDialog({
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-sm">
-        <DialogHeader><DialogTitle>{category ? 'Edit Category' : 'New Category'}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{category ? t('editCategory') : t('newCategory')}</DialogTitle></DialogHeader>
         <div className="space-y-3 py-2">
           <div className="space-y-1">
-            <Label>Title *</Label>
-            <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Category name" />
+            <Label>{t('table.title')} *</Label>
+            <Input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('placeholders.categoryName')} />
           </div>
           <div className="space-y-1">
-            <Label>Sort Order</Label>
+            <Label>{t('sortOrder')}</Label>
             <Input type="number" value={sortOrder} onChange={e => setSortOrder(e.target.value)} />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button onClick={handleSave} disabled={saving || !title.trim()}>{saving ? 'Saving…' : 'Save'}</Button>
+          <Button variant="outline" onClick={onClose} disabled={saving}>{t('cancel')}</Button>
+          <Button onClick={handleSave} disabled={saving || !title.trim()}>{saving ? t('saving') : t('save')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -247,6 +250,7 @@ function CategoryDialog({
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function QuestionsPage() {
+  const t = useTranslations('quiz')
   const { profile } = useAuth()
   const { selectedCampus } = useCampus()
   const schoolId = profile?.school_id ?? ''
@@ -285,14 +289,14 @@ export default function QuestionsPage() {
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-bold">Question Bank</h1>
+      <h1 className="text-2xl font-bold">{t('questionBank')}</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* ── Categories Sidebar ── */}
         <Card className="md:col-span-1">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center justify-between text-base">
-              <span className="flex items-center gap-1"><FolderOpen className="w-4 h-4" /> Categories</span>
+              <span className="flex items-center gap-1"><FolderOpen className="w-4 h-4" /> {t('categories')}</span>
               <Button size="sm" variant="ghost" onClick={() => { setEditCategory(null); setCatDialogOpen(true) }}>
                 <Plus className="w-3 h-3" />
               </Button>
@@ -303,7 +307,7 @@ export default function QuestionsPage() {
               onClick={() => setSelectedCategoryId(null)}
               className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${!selectedCategoryId ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
             >
-              All Questions
+              {t('allQuestions')}
             </button>
             {catLoading
               ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)
@@ -345,18 +349,18 @@ export default function QuestionsPage() {
               <CardTitle className="flex items-center gap-2 text-base">
                 <BookOpen className="w-4 h-4" />
                 {selectedCategoryId
-                  ? (categories ?? []).find(c => c.id === selectedCategoryId)?.title ?? 'Questions'
-                  : 'All Questions'}
+                  ? (categories ?? []).find(c => c.id === selectedCategoryId)?.title ?? t('questions')
+                  : t('allQuestions')}
               </CardTitle>
               <Button size="sm" onClick={() => { setEditQuestion(null); setQDialogOpen(true) }}>
-                <Plus className="w-3 h-3 mr-1" /> Add Question
+                <Plus className="w-3 h-3 mr-1" /> {t('addQuestionAction')}
               </Button>
             </div>
             <div className="relative mt-2">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 className="pl-9"
-                placeholder="Search questions…"
+                placeholder={t('searchQuestions')}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
@@ -366,13 +370,13 @@ export default function QuestionsPage() {
             {qLoading
               ? Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)
               : (questions ?? []).length === 0
-              ? <p className="text-center py-8 text-muted-foreground text-sm">No questions found.</p>
+              ? <p className="text-center py-8 text-muted-foreground text-sm">{t('noQuestions')}</p>
               : (questions ?? []).map(q => (
                   <div key={q.id} className="border rounded-md px-4 py-3 flex items-start justify-between gap-2 hover:bg-muted/30 transition-colors">
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">{q.title}</p>
                       <div className="flex gap-2 mt-1 flex-wrap">
-                        <Badge variant="secondary" className="text-xs">{QUESTION_TYPE_LABELS[q.type]}</Badge>
+                        <Badge variant="secondary" className="text-xs">{t(`questionTypes.${q.type}`)}</Badge>
                         {q.category && (
                           <Badge variant="outline" className="text-xs">{q.category.title}</Badge>
                         )}
@@ -428,15 +432,15 @@ export default function QuestionsPage() {
       <AlertDialog open={!!deleteCatId} onOpenChange={() => setDeleteCatId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Category?</AlertDialogTitle>
-            <AlertDialogDescription>Questions in this category will be unassigned, not deleted.</AlertDialogDescription>
+            <AlertDialogTitle>{t('deleteCategory')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('deleteCategoryWarning')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground"
               onClick={async () => { await deleteCategory(deleteCatId!); refreshAll(); setDeleteCatId(null) }}
-            >Delete</AlertDialogAction>
+            >{t('delete')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -444,15 +448,15 @@ export default function QuestionsPage() {
       <AlertDialog open={!!deleteQId} onOpenChange={() => setDeleteQId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Question?</AlertDialogTitle>
-            <AlertDialogDescription>This will remove the question from all quizzes it belongs to.</AlertDialogDescription>
+            <AlertDialogTitle>{t('deleteQuestion')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('removeFromQuizzes')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground"
               onClick={async () => { await deleteQuestion(deleteQId!); globalMutate(qKey); setDeleteQId(null) }}
-            >Delete</AlertDialogAction>
+            >{t('delete')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

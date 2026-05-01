@@ -34,10 +34,11 @@ import { type Staff } from "@/lib/api/staff";
 import { useStaff } from "@/hooks/useStaff";
 import { useCampus } from "@/context/CampusContext";
 import { format } from "date-fns";
+import { useTranslations } from "next-intl";
 
 // Helper to format dates
-const formatDate = (dateString: string | null | undefined) => {
-  if (!dateString) return "Not provided";
+const formatDate = (dateString: string | null | undefined, notProvidedLabel: string) => {
+  if (!dateString) return notProvidedLabel;
   try {
     return format(new Date(dateString), "MMMM d, yyyy");
   } catch {
@@ -51,23 +52,24 @@ const getInitials = (firstName?: string | null, lastName?: string | null) => {
 };
 
 // Helper to format currency
-const formatCurrency = (amount: number | null | undefined) => {
-  if (!amount) return "Not set";
+const formatCurrency = (amount: number | null | undefined, notSetLabel: string) => {
+  if (!amount) return notSetLabel;
   return amount.toLocaleString();
 };
 
 // Info Row Component
-const InfoRow = ({ label, value, icon: Icon }: { label: string; value: React.ReactNode; icon?: LucideIcon }) => (
+const InfoRow = ({ label, value, icon: Icon, fallbackLabel }: { label: string; value: React.ReactNode; icon?: LucideIcon; fallbackLabel: string }) => (
   <div className="flex flex-col gap-1">
     <span className="text-sm text-muted-foreground flex items-center gap-2">
       {Icon && <Icon className="h-4 w-4" />}
       {label}
     </span>
-    <span className="font-medium">{value || <span className="text-muted-foreground italic">Not provided</span>}</span>
+    <span className="font-medium">{value || <span className="text-muted-foreground italic">{fallbackLabel}</span>}</span>
   </div>
 );
 
 export default function StaffDetailsPage() {
+  const t = useTranslations("staff");
   const params = useParams();
   const router = useRouter();
   const { setViewedProfile, clearViewedProfile } = useProfileView();
@@ -128,11 +130,11 @@ export default function StaffDetailsPage() {
       <div className="p-6">
         <div className="text-center py-12">
           <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Staff Member Not Found</h2>
-          <p className="text-muted-foreground mb-4">The staff member you&apos;re looking for doesn&apos;t exist or has been removed.</p>
+          <h2 className="text-xl font-semibold mb-2">{t("notFound")}</h2>
+          <p className="text-muted-foreground mb-4">{t("notFoundDesc")}</p>
           <Button onClick={() => router.push("/admin/staff")}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Staff
+            {t("backToStaff")}
           </Button>
         </div>
       </div>
@@ -143,13 +145,14 @@ export default function StaffDetailsPage() {
 
   // Format employment type
   const formatEmploymentType = (type: string | null | undefined) => {
-    if (!type) return "N/A";
+    if (!type) return t("na");
     return type.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
   };
 
   // Get role display name
   const getRoleDisplay = (role: string | null | undefined) => {
-    if (!role) return "Staff";
+    if (!role) return t("filters.staff");
+    if (role === "librarian") return t("designations.librarian");
     return role.charAt(0).toUpperCase() + role.slice(1);
   };
 
@@ -163,10 +166,10 @@ export default function StaffDetailsPage() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent dark:text-white">
-              Staff Details
+              {t("staffDetails")}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Viewing {currentIndex + 1} of {total} staff members
+              {t("viewingCount", { current: currentIndex + 1, total })}
             </p>
           </div>
         </div>
@@ -179,7 +182,7 @@ export default function StaffDetailsPage() {
             onClick={() => prevStaff && navigateToStaff(prevStaff)}
           >
             <ChevronLeft className="h-4 w-4 mr-1" />
-            Previous
+            {t("previous")}
           </Button>
           <Button
             variant="outline"
@@ -187,7 +190,7 @@ export default function StaffDetailsPage() {
             disabled={!nextStaff}
             onClick={() => nextStaff && navigateToStaff(nextStaff)}
           >
-            Next
+            {t("next")}
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
           <Separator orientation="vertical" className="h-6" />
@@ -195,7 +198,7 @@ export default function StaffDetailsPage() {
             onClick={() => router.push(`/admin/staff?edit=${currentStaff.id}`)}
           >
             <Edit className="h-4 w-4 mr-2" />
-            Edit Staff
+            {t("actions.edit")}
           </Button>
         </div>
       </div>
@@ -219,14 +222,14 @@ export default function StaffDetailsPage() {
             <div className="flex-1">
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold">{fullName || "N/A"}</h2>
+                  <h2 className="text-2xl font-bold">{fullName || t("na")}</h2>
                   <p className="text-muted-foreground">
-                    {currentStaff.employee_number} • {currentStaff.department || "No Department"}
+                    {currentStaff.employee_number} • {currentStaff.department || t("noDepartment")}
                   </p>
                 </div>
                 <div className="flex gap-2">
                   <Badge className={currentStaff.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                    {currentStaff.is_active ? "Active" : "Inactive"}
+                    {currentStaff.is_active ? t("active") : t("inactive")}
                   </Badge>
                   <Badge variant="outline" className="capitalize">
                     {getRoleDisplay((currentStaff.profile as any)?.role)}
@@ -268,19 +271,19 @@ export default function StaffDetailsPage() {
         <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
           <TabsTrigger value="personal" className="gap-2">
             <User className="h-4 w-4" />
-            <span className="hidden sm:inline">Personal</span>
+            <span className="hidden sm:inline">{t("tabs.personal")}</span>
           </TabsTrigger>
           <TabsTrigger value="professional" className="gap-2">
             <Briefcase className="h-4 w-4" />
-            <span className="hidden sm:inline">Professional</span>
+            <span className="hidden sm:inline">{t("tabs.professional")}</span>
           </TabsTrigger>
           <TabsTrigger value="qualifications" className="gap-2">
             <GraduationCap className="h-4 w-4" />
-            <span className="hidden sm:inline">Qualifications</span>
+            <span className="hidden sm:inline">{t("tabs.qualifications")}</span>
           </TabsTrigger>
           <TabsTrigger value="system" className="gap-2">
             <Settings className="h-4 w-4" />
-            <span className="hidden sm:inline">System</span>
+            <span className="hidden sm:inline">{t("tabs.system")}</span>
           </TabsTrigger>
         </TabsList>
 
@@ -290,16 +293,16 @@ export default function StaffDetailsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
-                Personal Information
+                {t("personal")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <InfoRow label="First Name" value={currentStaff.profile?.first_name} />
-                <InfoRow label="Last Name" value={currentStaff.profile?.last_name} />
-                <InfoRow label="Email" value={currentStaff.profile?.email} icon={Mail} />
-                <InfoRow label="Phone Number" value={currentStaff.profile?.phone} icon={Phone} />
-                <InfoRow label="Username" value={currentStaff.profile?.username} icon={User} />
+                <InfoRow label={t("fields.firstName")} value={currentStaff.profile?.first_name} fallbackLabel={t("notProvided")} />
+                <InfoRow label={t("fields.lastName")} value={currentStaff.profile?.last_name} fallbackLabel={t("notProvided")} />
+                <InfoRow label={t("fields.email")} value={currentStaff.profile?.email} icon={Mail} fallbackLabel={t("notProvided")} />
+                <InfoRow label={t("fields.phone")} value={currentStaff.profile?.phone} icon={Phone} fallbackLabel={t("notProvided")} />
+                <InfoRow label={t("fields.username")} value={currentStaff.profile?.username} icon={User} fallbackLabel={t("notProvided")} />
               </div>
             </CardContent>
           </Card>
@@ -311,46 +314,50 @@ export default function StaffDetailsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Briefcase className="h-5 w-5" />
-                Professional Information
+                {t("professional")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <InfoRow label="Employee Number" value={currentStaff.employee_number} />
-                <InfoRow label="Title" value={currentStaff.title} icon={Briefcase} />
-                <InfoRow label="Department" value={currentStaff.department} icon={Building} />
+                <InfoRow label={t("fields.employeeNumber")} value={currentStaff.employee_number} fallbackLabel={t("notProvided")} />
+                <InfoRow label={t("fields.title")} value={currentStaff.title} icon={Briefcase} fallbackLabel={t("notProvided")} />
+                <InfoRow label={t("fields.department")} value={currentStaff.department} icon={Building} fallbackLabel={t("notProvided")} />
                 <InfoRow 
-                  label="Role" 
+                  label={t("fields.role")} 
                   value={
                     <Badge variant="outline" className="capitalize">
                       {getRoleDisplay((currentStaff.profile as any)?.role)}
                     </Badge>
                   }
                   icon={Shield}
+                  fallbackLabel={t("notProvided")}
                 />
                 <InfoRow 
-                  label="Employment Type" 
+                  label={t("fields.employmentType")} 
                   value={
                     <Badge variant="secondary" className="capitalize">
                       {formatEmploymentType(currentStaff.employment_type)}
                     </Badge>
                   }
+                  fallbackLabel={t("notProvided")}
                 />
                 <InfoRow 
-                  label="Date of Joining" 
-                  value={formatDate(currentStaff.date_of_joining)}
+                  label={t("fields.dateOfJoining")} 
+                  value={formatDate(currentStaff.date_of_joining, t("notProvided"))}
                   icon={Calendar}
+                  fallbackLabel={t("notProvided")}
                 />
                 <InfoRow 
-                  label="Base Salary" 
-                  value={formatCurrency(currentStaff.base_salary)}
+                  label={t("fields.baseSalary")} 
+                  value={formatCurrency(currentStaff.base_salary, t("notSet"))}
                   icon={DollarSign}
+                  fallbackLabel={t("notProvided")}
                 />
                 <div className="md:col-span-2 lg:col-span-3">
-                  <InfoRow label="Qualifications" value={currentStaff.qualifications} />
+                  <InfoRow label={t("fields.qualifications")} value={currentStaff.qualifications} fallbackLabel={t("notProvided")} />
                 </div>
                 <div className="md:col-span-2 lg:col-span-3">
-                  <InfoRow label="Specialization" value={currentStaff.specialization} />
+                  <InfoRow label={t("fields.specialization")} value={currentStaff.specialization} fallbackLabel={t("notProvided")} />
                 </div>
               </div>
             </CardContent>
@@ -363,7 +370,7 @@ export default function StaffDetailsPage() {
             <QualificationsTab profileId={currentStaff.profile_id} />
           ) : (
             <p className="text-sm text-muted-foreground text-center py-8">
-              Profile ID not available for this staff member.
+              {t("profileIdNotAvailable")}
             </p>
           )}
         </TabsContent>
@@ -374,31 +381,34 @@ export default function StaffDetailsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Settings className="h-5 w-5" />
-                System Information
+                {t("tabs.system")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <InfoRow label="Staff ID" value={currentStaff.id} />
-                <InfoRow label="Profile ID" value={currentStaff.profile_id} />
-                <InfoRow label="School ID" value={currentStaff.school_id} />
+                <InfoRow label={t("fields.staffId")} value={currentStaff.id} fallbackLabel={t("notProvided")} />
+                <InfoRow label={t("fields.profileId")} value={currentStaff.profile_id} fallbackLabel={t("notProvided")} />
+                <InfoRow label={t("fields.schoolId")} value={currentStaff.school_id} fallbackLabel={t("notProvided")} />
                 <InfoRow 
-                  label="Status" 
+                  label={t("fields.status")} 
                   value={
                     <Badge className={currentStaff.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                      {currentStaff.is_active ? "Active" : "Inactive"}
+                      {currentStaff.is_active ? t("active") : t("inactive")}
                     </Badge>
                   }
+                  fallbackLabel={t("notProvided")}
                 />
                 <InfoRow 
-                  label="Created At" 
-                  value={formatDate(currentStaff.created_at)}
+                  label={t("fields.createdAt")} 
+                  value={formatDate(currentStaff.created_at, t("notProvided"))}
                   icon={Clock}
+                  fallbackLabel={t("notProvided")}
                 />
                 <InfoRow 
-                  label="Last Updated" 
-                  value={formatDate(currentStaff.updated_at)}
+                  label={t("fields.lastUpdated")} 
+                  value={formatDate(currentStaff.updated_at, t("notProvided"))}
                   icon={Clock}
+                  fallbackLabel={t("notProvided")}
                 />
               </div>
 
@@ -408,7 +418,7 @@ export default function StaffDetailsPage() {
                   <Separator className="my-6" />
                   <h4 className="font-semibold mb-4 flex items-center gap-2">
                     <Shield className="h-4 w-4" />
-                    Permissions
+                    {t("permissions")}
                   </h4>
                   <div className="flex flex-wrap gap-2">
                     {Object.entries(currentStaff.permissions).map(([key, value]) => (

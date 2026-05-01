@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, useCallback } from "react"
+import { useTranslations, useLocale } from "next-intl"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -46,8 +47,6 @@ interface StudentWithAttendance {
   record_id?: string
 }
 
-const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-
 function getDayOfWeek(dateStr: string): number {
   const d = new Date(dateStr + "T00:00:00")
   const jsDay = d.getDay()
@@ -55,6 +54,8 @@ function getDayOfWeek(dateStr: string): number {
 }
 
 export default function AdminTakeAttendancePage() {
+  const t = useTranslations('attendance')
+  const locale = useLocale()
   const { profile } = useAuth()
   const schoolId = profile?.school_id || ""
   useCampus()
@@ -220,7 +221,7 @@ export default function AdminTakeAttendancePage() {
       setAttendanceData(studentData)
       setHasChanges(false)
     } catch {
-      toast.error("Failed to load attendance. Records may not be generated yet.")
+      toast.error(t('loadAttendanceFailed'))
       setAttendanceData([])
     } finally {
       setLoadingAttendance(false)
@@ -274,18 +275,18 @@ export default function AdminTakeAttendancePage() {
   const markAllPresent = useCallback(() => {
     setAttendanceData((prev) => prev.map((s) => ({ ...s, status: "present" as AttendanceStatus })))
     setHasChanges(true)
-    toast.success("Marked all students as present")
+    toast.success(t('markAllPresent'))
   }, [])
 
   const markAllAbsent = useCallback(() => {
     setAttendanceData((prev) => prev.map((s) => ({ ...s, status: "absent" as AttendanceStatus })))
     setHasChanges(true)
-    toast.info("Marked all students as absent")
+    toast.info(t('markAllAbsent'))
   }, [])
 
   const handleSave = async () => {
     if (!selectedSlot) {
-      toast.error("No class selected")
+      toast.error(t('noClassSelected'))
       return
     }
     setSaving(true)
@@ -297,9 +298,9 @@ export default function AdminTakeAttendancePage() {
       }))
       await timetableApi.bulkUpdateAttendance(selectedSlot, selectedDate, updates)
       setHasChanges(false)
-      toast.success("Attendance saved successfully!")
+      toast.success(t('saveAttendanceSuccess'))
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Failed to save attendance"
+      const msg = error instanceof Error ? error.message : t('saveAttendanceFailed')
       toast.error(msg)
     } finally {
       setSaving(false)
@@ -353,7 +354,7 @@ export default function AdminTakeAttendancePage() {
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr + "T00:00:00")
-    return d.toLocaleDateString("en-US", {
+    return d.toLocaleDateString(locale, {
       weekday: "long",
       year: "numeric",
       month: "long",
@@ -361,13 +362,16 @@ export default function AdminTakeAttendancePage() {
     })
   }
 
+  const localizedDayName = (dateStr: string) =>
+    new Date(dateStr + "T00:00:00").toLocaleDateString(locale, { weekday: "long" })
+
   return (
     <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-[#022172] dark:text-white">Take Attendance</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-[#022172] dark:text-white">{t('takeAttendance')}</h1>
         <p className="text-muted-foreground mt-1">
-          Select a date, grade, section and period to take attendance
+          {t('takeAttendance_subtitle')}
         </p>
       </div>
 
@@ -376,7 +380,7 @@ export default function AdminTakeAttendancePage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <Calendar className="h-5 w-5 text-[#022172]" />
-            Select Class
+            {t('takeAttendance_selectClass')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -393,7 +397,7 @@ export default function AdminTakeAttendancePage() {
                 className="border rounded-md px-3 py-2 text-sm w-full max-w-48 mx-auto block"
               />
               <p className="text-sm text-muted-foreground mt-1">
-                {formatDate(selectedDate)} — {DAY_NAMES[getDayOfWeek(selectedDate)]}
+                {formatDate(selectedDate)}
               </p>
             </div>
             <Button variant="outline" size="icon" onClick={() => navigateDate(1)}>
@@ -405,7 +409,7 @@ export default function AdminTakeAttendancePage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Select value={selectedGrade} onValueChange={setSelectedGrade}>
               <SelectTrigger>
-                <SelectValue placeholder="Select Grade" />
+                <SelectValue placeholder={t('takeAttendance_selectGrade')} />
               </SelectTrigger>
               <SelectContent>
                 {gradeLevels.map((g) => (
@@ -425,7 +429,7 @@ export default function AdminTakeAttendancePage() {
               disabled={!selectedGrade}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select Section" />
+                <SelectValue placeholder={t('takeAttendance_selectSection')} />
               </SelectTrigger>
               <SelectContent>
                 {filteredSections.map((s) => (
@@ -438,10 +442,10 @@ export default function AdminTakeAttendancePage() {
 
             <Select value={eeCheckpoint || "__none__"} onValueChange={(v) => setEeCheckpoint(v === "__none__" ? "" : v)}>
               <SelectTrigger>
-                <SelectValue placeholder="Entry/Exit Checkpoint (optional)" />
+                <SelectValue placeholder={t('takeAttendance_eeCheckpoint')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">None</SelectItem>
+                <SelectItem value="__none__">{t('takeAttendance_none')}</SelectItem>
                 {checkpoints.map((cp) => (
                   <SelectItem key={cp.id} value={cp.id}>
                     {cp.name}
@@ -455,16 +459,16 @@ export default function AdminTakeAttendancePage() {
           {selectedSection && (
             <div>
               <p className="text-sm font-medium mb-2 text-muted-foreground">
-                Timetable Slots for {DAY_NAMES[getDayOfWeek(selectedDate)]}
+                {t('takeAttendance_timetableFor', { day: localizedDayName(selectedDate) })}
               </p>
               {loadingTimetable ? (
                 <div className="flex items-center gap-2 py-4 justify-center">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm text-muted-foreground">Loading timetable...</span>
+                  <span className="text-sm text-muted-foreground">{t('takeAttendance_loadingTimetable')}</span>
                 </div>
               ) : daySlots.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">
-                  No classes scheduled for this day and section.
+                  {t('takeAttendance_noClasses')}
                 </p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -546,10 +550,9 @@ export default function AdminTakeAttendancePage() {
           ) : attendanceData.length === 0 ? (
             <Card className="p-8 text-center">
               <AlertCircle className="h-12 w-12 mx-auto text-yellow-500 mb-3" />
-              <h3 className="font-semibold mb-1">No Attendance Records</h3>
+              <h3 className="font-semibold mb-1">{t('takeAttendance_noRecords')}</h3>
               <p className="text-sm text-muted-foreground">
-                Attendance records may not be generated for this date yet. Try generating daily attendance
-                first.
+                {t('takeAttendance_noRecordsHint')}
               </p>
             </Card>
           ) : (
@@ -559,31 +562,31 @@ export default function AdminTakeAttendancePage() {
                 <Card className="border-gray-200">
                   <CardContent className="py-3 px-2 text-center">
                     <p className="text-2xl font-bold">{stats.total}</p>
-                    <p className="text-xs text-muted-foreground">Total</p>
+                    <p className="text-xs text-muted-foreground">{t('takeAttendance_total')}</p>
                   </CardContent>
                 </Card>
                 <Card className="border-green-200 bg-green-50">
                   <CardContent className="py-3 px-2 text-center">
                     <p className="text-2xl font-bold text-green-600">{stats.present}</p>
-                    <p className="text-xs text-green-700">Present</p>
+                    <p className="text-xs text-green-700">{t('takeAttendance_present')}</p>
                   </CardContent>
                 </Card>
                 <Card className="border-red-200 bg-red-50">
                   <CardContent className="py-3 px-2 text-center">
                     <p className="text-2xl font-bold text-red-600">{stats.absent}</p>
-                    <p className="text-xs text-red-700">Absent</p>
+                    <p className="text-xs text-red-700">{t('takeAttendance_absent')}</p>
                   </CardContent>
                 </Card>
                 <Card className="border-yellow-200 bg-yellow-50">
                   <CardContent className="py-3 px-2 text-center">
                     <p className="text-2xl font-bold text-yellow-600">{stats.late}</p>
-                    <p className="text-xs text-yellow-700">Late</p>
+                    <p className="text-xs text-yellow-700">{t('takeAttendance_late')}</p>
                   </CardContent>
                 </Card>
                 <Card className="border-blue-200 bg-blue-50">
                   <CardContent className="py-3 px-2 text-center">
                     <p className="text-2xl font-bold text-blue-600">{stats.percentage}%</p>
-                    <p className="text-xs text-blue-700">Rate</p>
+                    <p className="text-xs text-blue-700">{t('takeAttendance_rate')}</p>
                   </CardContent>
                 </Card>
               </div>
@@ -592,11 +595,11 @@ export default function AdminTakeAttendancePage() {
               <div className="flex gap-2 flex-wrap">
                 <Button variant="outline" size="sm" onClick={markAllPresent} className="flex-1 sm:flex-none">
                   <UserCheck className="h-4 w-4 mr-1" />
-                  All Present
+                  {t('takeAttendance_allPresent')}
                 </Button>
                 <Button variant="outline" size="sm" onClick={markAllAbsent} className="flex-1 sm:flex-none">
                   <UserX className="h-4 w-4 mr-1" />
-                  All Absent
+                  {t('takeAttendance_allAbsent')}
                 </Button>
               </div>
 
@@ -605,7 +608,7 @@ export default function AdminTakeAttendancePage() {
                 <div className="flex-1 relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search by name or number..."
+                    placeholder={t('takeAttendance_searchPlaceholder')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-9"
@@ -618,7 +621,7 @@ export default function AdminTakeAttendancePage() {
                 >
                   <TabsList className="h-10">
                     <TabsTrigger value="all" className="px-3">
-                      All
+                      {t('takeAttendance_all')}
                     </TabsTrigger>
                     <TabsTrigger value="present" className="px-2">
                       <CheckCircle className="h-4 w-4 text-green-600" />
@@ -634,7 +637,7 @@ export default function AdminTakeAttendancePage() {
               </div>
 
               <p className="text-xs text-center text-muted-foreground">
-                Tap a student to cycle: Present → Absent → Late | Or use the quick buttons
+                {t('takeAttendance_tapCycle')}
               </p>
 
               {/* Student List */}
@@ -761,17 +764,17 @@ export default function AdminTakeAttendancePage() {
                   {saving ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
+                      {t('takeAttendance_saving')}
                     </>
                   ) : hasChanges ? (
                     <>
                       <Save className="h-4 w-4 mr-2" />
-                      Save Attendance ({stats.present}P / {stats.absent}A / {stats.late}L)
+                      {t('takeAttendance_saveBtn', { present: stats.present, absent: stats.absent, late: stats.late })}
                     </>
                   ) : (
                     <>
                       <CheckCircle className="h-4 w-4 mr-2" />
-                      All Changes Saved
+                      {t('takeAttendance_savedChanges')}
                     </>
                   )}
                 </Button>

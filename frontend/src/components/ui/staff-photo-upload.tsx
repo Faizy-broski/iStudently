@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useTranslations } from "next-intl";
 
 interface StaffPhotoUploadProps {
     value?: string;
@@ -27,6 +28,7 @@ export function StaffPhotoUpload({
     label = "Upload Photo",
     className
 }: StaffPhotoUploadProps) {
+    const t = useTranslations("staff");
     const [preview, setPreview] = React.useState<string | null>(value || null);
     const [isUploading, setIsUploading] = React.useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -53,13 +55,13 @@ export function StaffPhotoUpload({
 
         // Validate file type
         if (!ALLOWED_TYPES.includes(file.type)) {
-            toast.error("Invalid file type. Allowed: PNG, JPEG, WebP, SVG");
+            toast.error(t("photoUpload.invalidType"));
             return;
         }
 
         // Validate file size
         if (file.size > MAX_SIZE_BYTES) {
-            toast.error("File too large. Maximum size is 2MB");
+            toast.error(t("photoUpload.fileTooLarge"));
             return;
         }
 
@@ -84,7 +86,7 @@ export function StaffPhotoUpload({
 
             if (error) {
                 console.error('Upload error:', error);
-                toast.error(`Upload failed: ${error.message}`);
+                toast.error(t("photoUpload.uploadFailedWithMessage", { message: error.message }));
                 return;
             }
 
@@ -97,10 +99,10 @@ export function StaffPhotoUpload({
 
             setPreview(publicUrl);
             onChange(publicUrl);
-            toast.success("Photo uploaded successfully!");
+            toast.success(t("photoUpload.uploaded"));
         } catch (err: any) {
             console.error('Upload error:', err);
-            toast.error("Failed to upload photo");
+            toast.error(t("photoUpload.failed"));
         } finally {
             setIsUploading(false);
         }
@@ -171,18 +173,18 @@ export function StaffPhotoUpload({
                     {isUploading ? (
                         <>
                             <Loader2 className="h-4 w-4 animate-spin" />
-                            Uploading...
+                            {t("photoUpload.uploading")}
                         </>
                     ) : (
                         <>
                             <Camera className="h-4 w-4" />
-                            {preview ? 'Change Photo' : label}
+                            {preview ? t("photoUpload.changePhoto") : label}
                         </>
                     )}
                 </label>
 
                 <p className="text-xs text-gray-400 text-center">
-                    PNG, JPG, WebP or SVG. Max 2MB
+                    {t("photoUpload.hint")}
                 </p>
             </div>
         </div>
