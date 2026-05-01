@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -35,11 +35,21 @@ import {
 import { API_URL } from '@/config/api';
 import { getAuthToken } from '@/lib/api/schools';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+interface ActivityStudentProfile {
+  first_name?: string | null;
+  last_name?: string | null;
+}
 
-async function fetchStudents(schoolId: string, campusId?: string, search?: string): Promise<any[]> {
+interface ActivityStudent {
+  id: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  student_number?: string | null;
+  grade_level?: string | null;
+  profile?: ActivityStudentProfile | null;
+}
+
+async function fetchStudents(schoolId: string, campusId?: string, search?: string): Promise<ActivityStudent[]> {
   try {
     const token = await getAuthToken();
     const params = new URLSearchParams({ school_id: schoolId, limit: '200' });
@@ -55,68 +65,53 @@ async function fetchStudents(schoolId: string, campusId?: string, search?: strin
   }
 }
 
-async function fetchStudentActivities(studentId: string, schoolId: string): Promise<any[]> {
-  // Returns all activities the student is enrolled in
-  try {
-    const token = await getAuthToken();
-    const res = await fetch(`${API_URL}/student-activities?student_id=${studentId}&school_id=${schoolId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    // Fallback: query student_activities through activities enrolled list
-    // We'll use a different approach - check each activity
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.data ?? [];
-  } catch {
-    return [];
-  }
-}
-
-// ---------------------------------------------------------------------------
-// List View
-// ---------------------------------------------------------------------------
-
 interface StudentListViewProps {
   schoolId: string;
   campusId?: string;
-  onSelectStudent: (student: any) => void;
+  onSelectStudent: (student: ActivityStudent) => void;
 }
 
 function StudentListView({ schoolId, campusId, onSelectStudent }: StudentListViewProps) {
+  const t = useTranslations('activities');
   const [search, setSearch] = useState('');
-  const [students, setStudents] = useState<any[]>([]);
+  const [students, setStudents] = useState<ActivityStudent[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
 
-  async function handleSearch() {
+  const runSearch = useCallback(async (searchValue?: string) => {
     setLoading(true);
     try {
-      const data = await fetchStudents(schoolId, campusId, search || undefined);
+      const data = await fetchStudents(schoolId, campusId, searchValue);
       setStudents(data);
       setHasLoaded(true);
     } catch {
-      toast.error('Failed to load students');
+      toast.error(t('failedToLoadStudents'));
     } finally {
       setLoading(false);
     }
-  }
+  }, [campusId, schoolId, t]);
+
+  const handleSearch = useCallback(() => {
+    void runSearch(search || undefined);
+  }, [runSearch, search]);
 
   useEffect(() => {
-    if (schoolId) handleSearch();
-  }, [schoolId, campusId]);
+    if (schoolId) {
+      void runSearch();
+    }
+  }, [runSearch, schoolId]);
 
   return (
     <div className="space-y-4">
-      {/* Search row */}
       <div className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">
-          {hasLoaded ? `${students.length} student${students.length !== 1 ? 's' : ''} found` : ''}
+          {hasLoaded ? t('studentsFound', { count: students.length }) : ''}
         </span>
         <div className="flex items-center gap-2">
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search…"
+            placeholder={t('searchPlaceholder')}
             className="w-48 h-8 text-sm"
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           />
@@ -130,17 +125,17 @@ function StudentListView({ schoolId, campusId, onSelectStudent }: StudentListVie
         <CardContent className="p-0">
           {loading && !hasLoaded ? (
             <div className="flex items-center gap-2 justify-center py-12 text-muted-foreground text-sm">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading students…
+              <Loader2 className="h-4 w-4 animate-spin" /> {t('loadingStudents')}
             </div>
           ) : students.length === 0 && hasLoaded ? (
-            <p className="text-center py-10 text-sm text-muted-foreground">No students found.</p>
+            <p className="text-center py-10 text-sm text-muted-foreground">{t('noStudentsFound')}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Istudently ID</TableHead>
-                  <TableHead>Grade Level</TableHead>
+                  <TableHead>{t('studentLabel')}</TableHead>
+                  <TableHead>{t('studentTableId')}</TableHead>
+                  <TableHead>{t('gradeLevel')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -151,14 +146,11 @@ function StudentListView({ schoolId, campusId, onSelectStudent }: StudentListVie
                         className="text-primary hover:underline font-medium text-left"
                         onClick={() => onSelectStudent(s)}
                       >
-                        {
-                          // prefer flattened fields but fall back to profile object if needed
-                          `${s.first_name || s?.profile?.first_name || ''} ${s.last_name || s?.profile?.last_name || ''}`.trim()
-                        }
+                        {`${s.first_name || s?.profile?.first_name || ''} ${s.last_name || s?.profile?.last_name || ''}`.trim()}
                       </button>
                     </TableCell>
                     <TableCell className="text-muted-foreground">{s.student_number}</TableCell>
-                    <TableCell>{s.grade_level ?? '—'}</TableCell>
+                    <TableCell>{s.grade_level ?? '-'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -170,18 +162,16 @@ function StudentListView({ schoolId, campusId, onSelectStudent }: StudentListVie
   );
 }
 
-// ---------------------------------------------------------------------------
-// Student Detail View
-// ---------------------------------------------------------------------------
-
 interface StudentDetailViewProps {
-  student: any;
+  student: ActivityStudent;
   schoolId: string;
   campusId?: string;
   onBack: () => void;
 }
 
 function StudentDetailView({ student, schoolId, campusId, onBack }: StudentDetailViewProps) {
+  const t = useTranslations('activities');
+  const locale = useLocale();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [enrolled, setEnrolled] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -189,20 +179,22 @@ function StudentDetailView({ student, schoolId, campusId, onBack }: StudentDetai
   const [adding, setAdding] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, [student.id]);
+  const formatDate = (value?: string | null) => {
+    if (!value) return '-';
+    return new Intl.DateTimeFormat(locale, {
+      month: 'long',
+      day: '2-digit',
+      year: 'numeric',
+    }).format(new Date(value));
+  };
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch all available activities
-      const { getActivities: fetchAll } = await import('@/lib/api/activities');
-      const allRes = await fetchAll({ school_id: schoolId, campus_id: campusId });
+      const allRes = await getActivities({ school_id: schoolId, campus_id: campusId });
       const allActivities = allRes.data ?? [];
       setActivities(allActivities);
 
-      // Find which activities this student is enrolled in by checking each activity's enrollment
       const enrolledActivities: Activity[] = [];
       for (const act of allActivities) {
         const studRes = await getActivityStudents(act.id);
@@ -213,11 +205,15 @@ function StudentDetailView({ student, schoolId, campusId, onBack }: StudentDetai
       }
       setEnrolled(enrolledActivities);
     } catch {
-      toast.error('Failed to load student activities');
+      toast.error(t('failedToLoadStudentActivities'));
     } finally {
       setLoading(false);
     }
-  }
+  }, [campusId, schoolId, student.id, t]);
+
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
 
   async function handleAdd() {
     if (!addActivityId) return;
@@ -228,12 +224,15 @@ function StudentDetailView({ student, schoolId, campusId, onBack }: StudentDetai
         school_id: schoolId,
         campus_id: campusId || null,
       });
-      if (res.error) { toast.error(res.error); return; }
-      toast.success('Student added to activity');
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success(t('studentAddedToActivity'));
       setAddActivityId('');
-      loadData();
+      void loadData();
     } catch {
-      toast.error('Failed to add activity');
+      toast.error(t('failedToAddActivityToStudent'));
     } finally {
       setAdding(false);
     }
@@ -243,17 +242,19 @@ function StudentDetailView({ student, schoolId, campusId, onBack }: StudentDetai
     setRemovingId(activityId);
     try {
       const res = await unenrollStudent(activityId, student.id);
-      if (res.error) { toast.error(res.error); return; }
-      toast.success('Removed from activity');
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success(t('removedFromActivity'));
       setEnrolled((prev) => prev.filter((a) => a.id !== activityId));
     } catch {
-      toast.error('Failed to remove activity');
+      toast.error(t('failedToRemoveActivity'));
     } finally {
       setRemovingId(null);
     }
   }
 
-  // always present all activities, but disable those the student already has
   const enrolledIds = new Set(enrolled.map((e) => e.id));
 
   return (
@@ -263,7 +264,7 @@ function StudentDetailView({ student, schoolId, campusId, onBack }: StudentDetai
         className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ChevronLeft className="h-4 w-4" />
-        Back to all students
+        {t('backToAllStudents')}
       </button>
 
       <p className="text-lg font-semibold">
@@ -273,21 +274,21 @@ function StudentDetailView({ student, schoolId, campusId, onBack }: StudentDetai
 
       {loading ? (
         <div className="flex items-center gap-2 justify-center py-12 text-muted-foreground text-sm">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          <Loader2 className="h-4 w-4 animate-spin" /> {t('loadingActivities')}
         </div>
       ) : (
         <Card>
           <CardContent className="p-0">
             <div className="px-4 py-2 text-sm text-muted-foreground border-b">
-              {enrolled.length} activit{enrolled.length !== 1 ? 'ies' : 'y'} found
+              {t('activitiesFound', { count: enrolled.length })}
             </div>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12"></TableHead>
-                  <TableHead>Activity</TableHead>
-                  <TableHead>Starts</TableHead>
-                  <TableHead>Ends</TableHead>
+                  <TableHead>{t('activity')}</TableHead>
+                  <TableHead>{t('starts')}</TableHead>
+                  <TableHead>{t('ends')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -308,20 +309,11 @@ function StudentDetailView({ student, schoolId, campusId, onBack }: StudentDetai
                       </Button>
                     </TableCell>
                     <TableCell className="font-medium">{act.title}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {act.start_date
-                        ? new Date(act.start_date).toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' })
-                        : '—'}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {act.end_date
-                        ? new Date(act.end_date).toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' })
-                        : '—'}
-                    </TableCell>
+                    <TableCell className="text-muted-foreground">{formatDate(act.start_date)}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatDate(act.end_date)}</TableCell>
                   </TableRow>
                 ))}
 
-                {/* Add row */}
                 <TableRow>
                   <TableCell>
                     <Button
@@ -341,17 +333,19 @@ function StudentDetailView({ student, schoolId, campusId, onBack }: StudentDetai
                     <div className="flex items-center gap-2">
                       <Select value={addActivityId || '__none__'} onValueChange={(v) => setAddActivityId(v === '__none__' ? '' : v)}>
                         <SelectTrigger className="h-7 w-48 text-xs">
-                          <SelectValue placeholder="Select activity" />
+                          <SelectValue placeholder={t('selectActivityPlaceholder')} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="__none__">N/A</SelectItem>
+                          <SelectItem value="__none__">{t('notApplicable')}</SelectItem>
                           {activities.map((a) => (
                             <SelectItem
                               key={a.id}
                               value={a.id}
                               disabled={enrolledIds.has(a.id)}
                             >
-                              {a.title}{enrolledIds.has(a.id) ? ' (enrolled)' : ''}
+                              {enrolledIds.has(a.id)
+                                ? t('activityOptionEnrolled', { title: a.title })
+                                : a.title}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -362,7 +356,7 @@ function StudentDetailView({ student, schoolId, campusId, onBack }: StudentDetai
                         onClick={handleAdd}
                         disabled={!addActivityId || adding}
                       >
-                        ADD
+                        {t('addShort')}
                       </Button>
                     </div>
                   </TableCell>
@@ -376,25 +370,21 @@ function StudentDetailView({ student, schoolId, campusId, onBack }: StudentDetai
   );
 }
 
-// ---------------------------------------------------------------------------
-// Page
-// ---------------------------------------------------------------------------
-
 export default function ActivitiesStudentScreen() {
+  const t = useTranslations('activities');
   const { user } = useAuth();
   const campusCtx = useCampus();
   const campusId = campusCtx?.selectedCampus?.id;
   const schoolId = user?.school_id || campusCtx?.selectedCampus?.parent_school_id || '';
 
-  const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<ActivityStudent | null>(null);
 
   return (
     <div className="container mx-auto py-8">
       <div className="max-w-4xl mx-auto space-y-6">
-
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <Star className="h-7 w-7 text-primary" />
-          Student Screen
+          {t('studentScreen')}
         </h1>
 
         {selectedStudent ? (
@@ -411,7 +401,6 @@ export default function ActivitiesStudentScreen() {
             onSelectStudent={setSelectedStudent}
           />
         )}
-
       </div>
     </div>
   );

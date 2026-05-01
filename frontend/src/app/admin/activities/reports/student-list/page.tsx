@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -49,6 +50,7 @@ function overallEligibility(records: StudentListReportRow['eligibility_records']
 }
 
 export default function StudentListReportPage() {
+  const t = useTranslations('activities');
   const { user } = useAuth();
   const campusCtx = useCampus();
   const campusId = campusCtx?.selectedCampus?.id;
@@ -63,12 +65,15 @@ export default function StudentListReportPage() {
   const [hasLoaded, setHasLoaded] = useState(false);
 
   useEffect(() => {
-    if (!schoolId) { setLoadingActivities(false); return; }
+    if (!schoolId) {
+      setLoadingActivities(false);
+      return;
+    }
     getActivities({ school_id: schoolId, campus_id: campusId })
       .then((res) => setActivities(res.data ?? []))
-      .catch(() => toast.error('Failed to load activities'))
+      .catch(() => toast.error(t('failedToLoadActivities')))
       .finally(() => setLoadingActivities(false));
-  }, [schoolId, campusId]);
+  }, [schoolId, campusId, t]);
 
   async function handleGo() {
     if (!schoolId || !selectedActivityId) return;
@@ -79,7 +84,10 @@ export default function StudentListReportPage() {
         activity_id: selectedActivityId,
         campus_id: campusId,
       });
-      if (res.error) { toast.error(res.error); return; }
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
       const sorted = (res.data ?? []).sort((a, b) => {
         const an = a.student ? `${a.student.last_name} ${a.student.first_name}` : '';
         const bn = b.student ? `${b.student.last_name} ${b.student.first_name}` : '';
@@ -88,7 +96,7 @@ export default function StudentListReportPage() {
       setRows(sorted);
       setHasLoaded(true);
     } catch {
-      toast.error('Failed to load report');
+      toast.error(t('failedToLoadReport'));
     } finally {
       setLoading(false);
     }
@@ -96,33 +104,27 @@ export default function StudentListReportPage() {
 
   const selectedActivity = activities.find((a) => a.id === selectedActivityId);
 
-  // Collect all unique course period IDs from the data
-  const allPeriods = Array.from(
-    new Set(rows.flatMap((r) => r.eligibility_records.map((e) => e.course_period_id)))
-  ).sort();
-
   return (
     <div className="container mx-auto py-8">
       <div className="max-w-5xl mx-auto space-y-6">
-
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <Users className="h-7 w-7 text-primary" />
-          Student List
+          {t('studentListTitle')}
         </h1>
 
         <Card>
           <CardContent className="pt-5 pb-5 space-y-4">
             <div className="flex flex-wrap items-end gap-3">
               <div className="space-y-1.5">
-                <Label>Activity</Label>
+                <Label>{t('activity')}</Label>
                 {loadingActivities ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+                    <Loader2 className="h-4 w-4 animate-spin" /> {t('loadingActivities')}
                   </div>
                 ) : (
                   <Select value={selectedActivityId} onValueChange={setSelectedActivityId}>
                     <SelectTrigger className="w-64">
-                      <SelectValue placeholder="Select an activity" />
+                      <SelectValue placeholder={t('selectActivity')} />
                     </SelectTrigger>
                     <SelectContent>
                       {activities.map((a) => (
@@ -139,7 +141,7 @@ export default function StudentListReportPage() {
                 className="h-8"
               >
                 {loading && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
-                Go
+                {t('go')}
               </Button>
             </div>
           </CardContent>
@@ -150,9 +152,9 @@ export default function StudentListReportPage() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">
-                  {selectedActivity?.title ?? 'Activity'} — Student List
+                  {t('studentListReportHeader', { activity: selectedActivity?.title ?? t('activity') })}
                   <span className="ml-2 text-sm font-normal text-muted-foreground">
-                    ({rows.length} student{rows.length !== 1 ? 's' : ''})
+                    ({t('studentsCount', { count: rows.length })})
                   </span>
                 </CardTitle>
                 <Button
@@ -162,25 +164,25 @@ export default function StudentListReportPage() {
                   className="print:hidden"
                 >
                   <Printer className="h-3.5 w-3.5 mr-1.5" />
-                  Print
+                  {t('print')}
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
               {rows.length === 0 ? (
                 <p className="text-center py-10 text-muted-foreground text-sm">
-                  No students enrolled in this activity.
+                  {t('noStudentsEnrolled')}
                 </p>
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Student</TableHead>
-                        <TableHead>ID</TableHead>
-                        <TableHead>Grade</TableHead>
-                        <TableHead className="text-center">Overall Eligibility</TableHead>
-                        <TableHead className="text-center">Records</TableHead>
+                        <TableHead>{t('studentLabel')}</TableHead>
+                        <TableHead>{t('id')}</TableHead>
+                        <TableHead>{t('grade')}</TableHead>
+                        <TableHead className="text-center">{t('overallEligibility')}</TableHead>
+                        <TableHead className="text-center">{t('records')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -191,15 +193,15 @@ export default function StudentListReportPage() {
                             <TableCell className="font-medium">
                               {row.student
                                 ? `${row.student.last_name}, ${row.student.first_name}`
-                                : '—'}
+                                : '-'}
                             </TableCell>
                             <TableCell className="text-muted-foreground">
-                              {row.student?.student_number ?? '—'}
+                              {row.student?.student_number ?? '-'}
                             </TableCell>
-                            <TableCell>{row.student?.grade_level ?? '—'}</TableCell>
+                            <TableCell>{row.student?.grade_level ?? '-'}</TableCell>
                             <TableCell className="text-center">
                               <Badge className={ELIGIBILITY_COLORS[overall]}>
-                                {overall}
+                                {t(`eligibilityCodes.${overall}`)}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-center text-muted-foreground text-sm">
@@ -215,7 +217,6 @@ export default function StudentListReportPage() {
             </CardContent>
           </Card>
         )}
-
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { useTranslations, useLocale } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import * as attendanceApi from '@/lib/api/attendance'
@@ -22,6 +23,8 @@ import { toast } from 'sonner'
 import useSWR from 'swr'
 
 export default function AddAbsencesPage() {
+  const t = useTranslations('attendance')
+  const locale = useLocale()
   const { profile } = useAuth()
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
@@ -137,9 +140,12 @@ export default function AddAbsencesPage() {
   // Calendar helpers
   const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate()
   const firstDayOfMonth = new Date(selectedYear, selectedMonth, 1).getDay()
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December']
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const monthNames = Array.from({ length: 12 }, (_, i) =>
+    new Intl.DateTimeFormat(locale, { month: 'long' }).format(new Date(2000, i, 1))
+  )
+  const dayNames = Array.from({ length: 7 }, (_, i) =>
+    new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(new Date(2000, 0, 2 + i))
+  )
 
   const toggleOffDay = (dayIndex: number) => {
     setOffDays(prev =>
@@ -231,19 +237,19 @@ export default function AddAbsencesPage() {
 
   const handleSubmit = async () => {
     if (selectedStudents.size === 0) {
-      toast.error('Please select at least one student')
+      toast.error(t('addAbsences_selectStudent'))
       return
     }
     if (selectedDates.size === 0) {
-      toast.error('Please select at least one date')
+      toast.error(t('addAbsences_selectDate'))
       return
     }
     if (selectedPeriods.length === 0) {
-      toast.error('Please select at least one period')
+      toast.error(t('addAbsences_selectPeriod'))
       return
     }
     if (!selectedCodeId) {
-      toast.error('Please select an absence code')
+      toast.error(t('addAbsences_selectCode'))
       return
     }
 
@@ -293,9 +299,9 @@ export default function AddAbsencesPage() {
         <div className="flex items-center gap-3">
           <IconUserMinus className="h-7 w-7 text-primary" />
           <div>
-            <h1 className="text-2xl font-bold">Add Absences</h1>
+            <h1 className="text-2xl font-bold">{t('addAbsences_title')}</h1>
             <p className="text-sm text-muted-foreground">
-              Add absences for multiple students across multiple dates
+              {t('addAbsences_subtitle')}
             </p>
           </div>
         </div>
@@ -312,7 +318,7 @@ export default function AddAbsencesPage() {
       {/* Absence Configuration Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-center text-base font-semibold">ADD ABSENCES</CardTitle>
+          <CardTitle className="text-center text-base font-semibold">{t('addAbsences_title').toUpperCase()}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Period Selection */}
