@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { useTranslations } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import * as attendanceApi from '@/lib/api/attendance'
@@ -29,10 +28,19 @@ interface CodeRow {
   _deleted?: boolean
 }
 
-// Labels resolved inside component using t()
+const TYPE_LABELS: Record<AttendanceCodeType, string> = {
+  both: 'Teacher & Office',
+  teacher: 'Teacher Only',
+  official: 'Office Only'
+}
+
+const STATE_CODE_LABELS: Record<AttendanceStateCode, string> = {
+  P: 'Present',
+  A: 'Absent',
+  H: 'Half Day'
+}
 
 export default function AttendanceCodesPage() {
-  const t = useTranslations('attendance')
   const { profile } = useAuth()
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
@@ -66,10 +74,10 @@ export default function AttendanceCodesPage() {
           state_code: c.state_code
         })))
       } else {
-        toast.error(result.error || t('codes_loadFailed'))
+        toast.error(result.error || 'Failed to load attendance codes')
       }
     } catch {
-      toast.error(t('codes_loadFailed'))
+      toast.error('Failed to load attendance codes')
     } finally {
       setLoading(false)
     }
@@ -91,7 +99,7 @@ export default function AttendanceCodesPage() {
       // New unsaved row — just remove
       setRows(prev => prev.filter((_, i) => i !== idx))
     } else {
-      const confirmed = window.confirm(t('codes_deleteConfirm', { title: row.title }))
+      const confirmed = window.confirm(`Delete attendance code "${row.title}"?`)
       if (confirmed) {
         setRows(prev => prev.map((r, i) => i === idx ? { ...r, _deleted: true } : r))
       }
@@ -101,7 +109,7 @@ export default function AttendanceCodesPage() {
   // Add new code row
   const addNewRow = () => {
     if (!newTitle.trim() || !newShortName.trim()) {
-      toast.error(t('codes_required'))
+      toast.error('Title and Short Name are required')
       return
     }
 
@@ -177,13 +185,13 @@ export default function AttendanceCodesPage() {
       }
 
       if (errors === 0) {
-        toast.success(t('codes_saved'))
+        toast.success('Attendance codes saved successfully')
       }
 
       // Reload to get fresh data
       await loadCodes()
     } catch {
-      toast.error(t('codes_saveFailed'))
+      toast.error('Save failed')
     } finally {
       setSaving(false)
     }
@@ -195,7 +203,7 @@ export default function AttendanceCodesPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{t('codes_title')}</h1>
+        <h1 className="text-2xl font-bold">Attendance Codes</h1>
         <Button
           onClick={handleSave}
           disabled={saving || !hasDirty}
@@ -213,7 +221,7 @@ export default function AttendanceCodesPage() {
       <Card>
         <CardHeader className="border-b bg-muted/50">
           <CardTitle className="text-center text-sm font-semibold uppercase tracking-wider">
-            {t('title')}
+            Attendance
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
@@ -229,12 +237,12 @@ export default function AttendanceCodesPage() {
                 <thead>
                   <tr className="border-b">
                     <th className="w-8"></th>
-                    <th className="text-left text-xs font-semibold uppercase tracking-wider text-primary py-3 px-2">{t('codes_th_title')}</th>
-                    <th className="text-left text-xs font-semibold uppercase tracking-wider text-primary py-3 px-2">{t('codes_th_code')}</th>
-                    <th className="text-left text-xs font-semibold uppercase tracking-wider text-primary py-3 px-2">{t('codes_th_sortOrder')}</th>
-                    <th className="text-left text-xs font-semibold uppercase tracking-wider text-primary py-3 px-2">{t('codes_th_type')}</th>
-                    <th className="text-left text-xs font-semibold uppercase tracking-wider text-primary py-3 px-2">{t('codes_th_default')}</th>
-                    <th className="text-left text-xs font-semibold uppercase tracking-wider text-primary py-3 px-2">{t('codes_th_stateCode')}</th>
+                    <th className="text-left text-xs font-semibold uppercase tracking-wider text-primary py-3 px-2">Title</th>
+                    <th className="text-left text-xs font-semibold uppercase tracking-wider text-primary py-3 px-2">Short Name</th>
+                    <th className="text-left text-xs font-semibold uppercase tracking-wider text-primary py-3 px-2">Sort Order</th>
+                    <th className="text-left text-xs font-semibold uppercase tracking-wider text-primary py-3 px-2">Type</th>
+                    <th className="text-left text-xs font-semibold uppercase tracking-wider text-primary py-3 px-2">Default for Teacher</th>
+                    <th className="text-left text-xs font-semibold uppercase tracking-wider text-primary py-3 px-2">State Code</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -283,9 +291,9 @@ export default function AttendanceCodesPage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="both">{t('codeTypes.both')}</SelectItem>
-                              <SelectItem value="teacher">{t('codeTypes.teacher')}</SelectItem>
-                              <SelectItem value="official">{t('codeTypes.official')}</SelectItem>
+                              <SelectItem value="both">Teacher & Office</SelectItem>
+                              <SelectItem value="teacher">Teacher Only</SelectItem>
+                              <SelectItem value="official">Office Only</SelectItem>
                             </SelectContent>
                           </Select>
                         </td>
@@ -296,7 +304,7 @@ export default function AttendanceCodesPage() {
                               onCheckedChange={(c) => updateRow(actualIdx, 'is_default', !!c)}
                             />
                             <span className="ml-2 text-sm text-muted-foreground">
-                              {row.is_default ? t('common.yes' as any) : t('common.no' as any)}
+                              {row.is_default ? 'Yes' : 'No'}
                             </span>
                           </div>
                         </td>
@@ -309,9 +317,9 @@ export default function AttendanceCodesPage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="P">{t('stateCodes.P')}</SelectItem>
-                              <SelectItem value="A">{t('stateCodes.A')}</SelectItem>
-                              <SelectItem value="H">{t('stateCodes.H')}</SelectItem>
+                              <SelectItem value="P">Present</SelectItem>
+                              <SelectItem value="A">Absent</SelectItem>
+                              <SelectItem value="H">Half Day</SelectItem>
                             </SelectContent>
                           </Select>
                         </td>
@@ -334,7 +342,7 @@ export default function AttendanceCodesPage() {
                       <Input
                         value={newTitle}
                         onChange={(e) => setNewTitle(e.target.value)}
-                        placeholder={t('codes_titlePlaceholder')}
+                        placeholder="Title"
                         className="h-8 text-sm"
                       />
                     </td>
@@ -342,7 +350,7 @@ export default function AttendanceCodesPage() {
                       <Input
                         value={newShortName}
                         onChange={(e) => setNewShortName(e.target.value)}
-                        placeholder={t('codes_codePlaceholder')}
+                        placeholder="Code"
                         className="h-8 text-sm w-20"
                       />
                     </td>
@@ -360,9 +368,9 @@ export default function AttendanceCodesPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="both">{t('codeTypes.both')}</SelectItem>
-                          <SelectItem value="teacher">{t('codeTypes.teacher')}</SelectItem>
-                          <SelectItem value="official">{t('codeTypes.official')}</SelectItem>
+                          <SelectItem value="both">Teacher & Office</SelectItem>
+                          <SelectItem value="teacher">Teacher Only</SelectItem>
+                          <SelectItem value="official">Office Only</SelectItem>
                         </SelectContent>
                       </Select>
                     </td>
@@ -378,9 +386,9 @@ export default function AttendanceCodesPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="P">{t('stateCodes.P')}</SelectItem>
-                          <SelectItem value="A">{t('stateCodes.A')}</SelectItem>
-                          <SelectItem value="H">{t('stateCodes.H')}</SelectItem>
+                          <SelectItem value="P">Present</SelectItem>
+                          <SelectItem value="A">Absent</SelectItem>
+                          <SelectItem value="H">Half Day</SelectItem>
                         </SelectContent>
                       </Select>
                     </td>

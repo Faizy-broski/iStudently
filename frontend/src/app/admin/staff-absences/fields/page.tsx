@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
-import { useTranslations } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import * as api from '@/lib/api/staff-absences'
@@ -24,18 +23,18 @@ import {
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2, Settings2 } from 'lucide-react'
 
-const FIELD_TYPE_VALUES: AbsenceFieldType[] = [
-  'text',
-  'numeric',
-  'date',
-  'textarea',
-  'radio',
-  'select',
-  'autos',
-  'exports',
-  'multiple',
-  'files',
-]
+const FIELD_TYPE_LABELS: Record<AbsenceFieldType, string> = {
+  text: 'Text',
+  numeric: 'Number',
+  date: 'Date',
+  textarea: 'Long Text',
+  radio: 'Checkbox (Yes/No)',
+  select: 'Pull-Down',
+  autos: 'Auto Pull-Down',
+  exports: 'Export Pull-Down',
+  multiple: 'Select Multiple',
+  files: 'Files',
+}
 
 const TYPES_WITH_OPTIONS: AbsenceFieldType[] = ['select', 'autos', 'exports', 'multiple']
 
@@ -49,7 +48,6 @@ const emptyForm = {
 }
 
 export default function AbsenceFieldsPage() {
-  const t = useTranslations('staffAbsences')
   const { profile } = useAuth()
   const campusCtx = useCampus()
   const schoolId = profile?.school_id || ''
@@ -89,8 +87,8 @@ export default function AbsenceFieldsPage() {
   }
 
   const handleSave = async () => {
-    if (!form.title.trim()) return toast.error(t('fieldValidation.fieldNameRequired'))
-    if (!form.type) return toast.error(t('fieldValidation.fieldTypeRequired'))
+    if (!form.title.trim()) return toast.error('Field name is required')
+    if (!form.type) return toast.error('Field type is required')
 
     setSaving(true)
     const payload = {
@@ -112,7 +110,7 @@ export default function AbsenceFieldsPage() {
     if (res.error) {
       toast.error(res.error)
     } else {
-      toast.success(editingId ? t('toasts.fieldUpdated') : t('toasts.fieldCreated'))
+      toast.success(editingId ? 'Field updated' : 'Field created')
       mutate()
       setDialogOpen(false)
     }
@@ -126,7 +124,7 @@ export default function AbsenceFieldsPage() {
     if (res.error) {
       toast.error(res.error)
     } else {
-      toast.success(t('toasts.fieldDeleted'))
+      toast.success('Field deleted')
       mutate()
     }
     setDeleteId(null)
@@ -139,11 +137,11 @@ export default function AbsenceFieldsPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Settings2 className="h-6 w-6 text-muted-foreground" />
-          <h1 className="text-2xl font-semibold">{t('fieldsPage.title')}</h1>
+          <h1 className="text-2xl font-semibold">Absence Fields</h1>
         </div>
         <Button onClick={openNew}>
           <Plus className="h-4 w-4 mr-2" />
-          {t('fieldsPage.newField')}
+          New Field
         </Button>
       </div>
 
@@ -158,19 +156,19 @@ export default function AbsenceFieldsPage() {
           ) : fields.length === 0 ? (
             <div className="py-16 text-center text-muted-foreground">
               <Settings2 className="h-10 w-10 mx-auto mb-3 opacity-30" />
-              <p>{t('fieldsPage.noCustomFields')}</p>
+              <p>No custom fields yet.</p>
               <p className="text-sm mt-1">
-                {t('fieldsPage.noCustomFieldsHelp')}
+                Add fields to capture additional absence information.
               </p>
             </div>
           ) : (
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/40">
-                  <th className="text-left px-4 py-3 font-medium">{t('fieldsPage.table.fieldName')}</th>
-                  <th className="text-left px-4 py-3 font-medium">{t('fieldsPage.table.type')}</th>
-                  <th className="text-center px-4 py-3 font-medium">{t('fieldsPage.table.sort')}</th>
-                  <th className="text-center px-4 py-3 font-medium">{t('fieldsPage.table.required')}</th>
+                  <th className="text-left px-4 py-3 font-medium">Field Name</th>
+                  <th className="text-left px-4 py-3 font-medium">Type</th>
+                  <th className="text-center px-4 py-3 font-medium">Sort</th>
+                  <th className="text-center px-4 py-3 font-medium">Required</th>
                   <th className="px-4 py-3 w-20" />
                 </tr>
               </thead>
@@ -180,19 +178,19 @@ export default function AbsenceFieldsPage() {
                     <td className="px-4 py-3 font-medium">{field.title}</td>
                     <td className="px-4 py-3">
                       <Badge variant="secondary" className="text-xs">
-                        {t(`fieldTypes.${field.type}`)}
+                        {FIELD_TYPE_LABELS[field.type] || field.type}
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-center text-muted-foreground">
-                      {field.sort_order ?? t('notAvailable')}
+                      {field.sort_order ?? '—'}
                     </td>
                     <td className="px-4 py-3 text-center">
                       {field.required ? (
                         <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
-                          {t('yes')}
+                          Yes
                         </Badge>
                       ) : (
-                        <span className="text-muted-foreground text-xs">{t('no')}</span>
+                        <span className="text-muted-foreground text-xs">No</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -227,20 +225,20 @@ export default function AbsenceFieldsPage() {
       <Dialog open={dialogOpen} onOpenChange={(o) => !saving && setDialogOpen(o)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingId ? t('fieldsPage.editField') : t('fieldsPage.newAbsenceField')}</DialogTitle>
+            <DialogTitle>{editingId ? 'Edit Field' : 'New Absence Field'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label>{t('fieldsPage.fieldName')} <span className="text-destructive">*</span></Label>
+              <Label>Field Name <span className="text-destructive">*</span></Label>
               <Input
-                placeholder={t('fieldsPage.placeholders.fieldName')}
+                placeholder="e.g. Absence Type, Certificate…"
                 value={form.title}
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label>{t('fieldsPage.fieldType')} <span className="text-destructive">*</span></Label>
+              <Label>Type <span className="text-destructive">*</span></Label>
               <Select
                 value={form.type}
                 onValueChange={(v) =>
@@ -251,9 +249,9 @@ export default function AbsenceFieldsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {FIELD_TYPE_VALUES.map((value) => (
+                  {Object.entries(FIELD_TYPE_LABELS).map(([value, label]) => (
                     <SelectItem key={value} value={value}>
-                      {t(`fieldTypes.${value}`)}
+                      {label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -262,9 +260,9 @@ export default function AbsenceFieldsPage() {
 
             {showOptions && (
               <div className="space-y-1.5">
-                <Label>{t('fieldsPage.optionsOnePerLine')}</Label>
+                <Label>Options (one per line)</Label>
                 <Textarea
-                  placeholder={t('fieldsPage.placeholders.options')}
+                  placeholder="Option 1&#10;Option 2&#10;Option 3"
                   rows={4}
                   value={form.select_options}
                   onChange={(e) =>
@@ -276,9 +274,9 @@ export default function AbsenceFieldsPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>{t('fieldsPage.defaultValue')}</Label>
+                <Label>Default Value</Label>
                 <Input
-                  placeholder={t('fieldsPage.placeholders.optional')}
+                  placeholder="Optional"
                   value={form.default_selection}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, default_selection: e.target.value }))
@@ -286,10 +284,10 @@ export default function AbsenceFieldsPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>{t('fieldsPage.sortOrder')}</Label>
+                <Label>Sort Order</Label>
                 <Input
                   type="number"
-                  placeholder={t('fieldsPage.placeholders.sortOrder')}
+                  placeholder="e.g. 1"
                   value={form.sort_order}
                   onChange={(e) =>
                     setForm((f) => ({ ...f, sort_order: e.target.value }))
@@ -303,15 +301,15 @@ export default function AbsenceFieldsPage() {
                 checked={form.required}
                 onCheckedChange={(v) => setForm((f) => ({ ...f, required: v }))}
               />
-              <Label>{t('fieldsPage.requiredField')}</Label>
+              <Label>Required field</Label>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              {t('cancel')}
+              Cancel
             </Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? t('saving') : editingId ? t('saveChanges') : t('fieldsPage.createField')}
+              {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Create Field'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -321,17 +319,17 @@ export default function AbsenceFieldsPage() {
       <Dialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('fieldsPage.deleteFieldTitle')}</DialogTitle>
+            <DialogTitle>Delete Field</DialogTitle>
             <DialogDescription>
-              {t('fieldsPage.deleteFieldDescription')}
+              Are you sure? This will permanently delete the field and all its data.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteId(null)}>
-              {t('cancel')}
+              Cancel
             </Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
-              {deleting ? t('deleting') : t('delete')}
+              {deleting ? 'Deleting…' : 'Delete'}
             </Button>
           </DialogFooter>
         </DialogContent>

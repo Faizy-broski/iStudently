@@ -16,7 +16,6 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { getFieldOrders, saveFieldOrders, getEffectiveFieldOrder, DefaultFieldOrder } from '@/lib/utils/field-ordering';
-import { useTranslations } from "next-intl";
 
 // Default/Standard Fields for Parents
 const DEFAULT_FIELDS_BY_CATEGORY: Record<string, Array<{label: string, sort_order: number}>> = {
@@ -54,7 +53,6 @@ type ExtendedCategory = CustomFieldCategory & { order: number };
 
 export default function ParentCustomFieldsPage() {
   const { selectedCampus } = useCampus();
-  const t = useTranslations("parents");
   const [categories, setCategories] = useState<ExtendedCategory[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -173,7 +171,7 @@ export default function ParentCustomFieldsPage() {
         }
       } catch (error) {
         console.error('Error loading custom fields:', error);
-        toast.error(t("customFieldsPage.toasts.failedLoad"));
+        toast.error('Failed to load custom fields');
       } finally {
         setIsLoading(false);
       }
@@ -207,7 +205,7 @@ export default function ParentCustomFieldsPage() {
 
   const addNewCategory = () => {
     if (!newCategoryName.trim()) {
-      toast.error(t("customFieldsPage.toasts.categoryNameEmpty"));
+      toast.error('Category name cannot be empty');
       return;
     }
     
@@ -223,17 +221,17 @@ export default function ParentCustomFieldsPage() {
     setExpandedCategories(prev => new Set(prev).add(categoryId));
     setNewCategoryName('');
     setShowAddCategory(false);
-    toast.success(t("customFieldsPage.toasts.categoryAdded"));
+    toast.success('New category added');
   };
 
   const deleteCategory = (categoryId: string) => {
     if (STANDARD_CATEGORIES.includes(categoryId)) {
-      toast.error(t("customFieldsPage.toasts.cannotDeleteStandard"));
+      toast.error('Cannot delete standard categories');
       return;
     }
     
     setCategories(categories.filter(c => c.id !== categoryId));
-    toast.success(t("customFieldsPage.toasts.categoryDeleted"));
+    toast.success('Category deleted');
   };
 
   const addFieldToCategory = (categoryId: string) => {
@@ -323,10 +321,10 @@ export default function ParentCustomFieldsPage() {
           await customFieldsApi.deleteFieldDefinition(id);
         }
       }
-      toast.success(t("customFieldsPage.toasts.saved"));
+      toast.success("Custom fields saved!");
     } catch (error) {
       console.error("Error saving:", error);
-      toast.error(t("customFieldsPage.toasts.failedSave"));
+      toast.error("Failed to save");
     } finally {
       setIsSaving(false);
     }
@@ -362,7 +360,7 @@ export default function ParentCustomFieldsPage() {
       const result = await saveFieldOrders('parent', categoryId, fieldOrders);
       
       if (result.success) {
-        toast.success(t("customFieldsPage.toasts.defaultOrderSaved", { categoryId }));
+        toast.success(`Default field order saved for ${categoryId}`);
         // Reload saved orders and re-apply them
         const response = await getFieldOrders('parent');
         if (response.success && response.data) {
@@ -381,11 +379,11 @@ export default function ParentCustomFieldsPage() {
           setDefaultFieldsByCategory(updatedDefaults);
         }
       } else {
-        toast.error(result.message || t("customFieldsPage.toasts.failedSaveFieldOrder"));
+        toast.error(result.message || 'Failed to save field order');
       }
     } catch (error) {
       console.error('Error saving default field order:', error);
-      toast.error(t("customFieldsPage.toasts.failedSaveFieldOrder"));
+      toast.error('Failed to save field order');
     }
   };
 
@@ -404,7 +402,7 @@ export default function ParentCustomFieldsPage() {
     return (
       <div className="p-6 flex items-center justify-center">
         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#022172]"></div>
-        <span className="ml-2 text-gray-600 text-sm">{t("loading")}</span>
+        <span className="ml-2 text-gray-600 text-sm">Loading...</span>
       </div>
     );
   }
@@ -414,8 +412,8 @@ export default function ParentCustomFieldsPage() {
       {/* Compact Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-xl font-bold text-[#022172] dark:text-white">{t("customFields")}</h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400">{t("defineCustomFields")}</p>
+          <h1 className="text-xl font-bold text-[#022172] dark:text-white">Parent Custom Fields</h1>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Define custom fields for parent forms</p>
         </div>
         <div className="flex gap-2">
           <Button 
@@ -424,11 +422,11 @@ export default function ParentCustomFieldsPage() {
             size="sm"
           >
             <FolderPlus className="mr-1 h-3 w-3" />
-            {t("customFieldsPage.addCategory")}
+            Add Category
           </Button>
           <Button onClick={handleSaveTemplate} disabled={isSaving} size="sm" className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white">
             <Save className="mr-1 h-3 w-3" />
-            {isSaving ? t("saving") : t("save")}
+            {isSaving ? "Saving..." : "Save"}
           </Button>
         </div>
       </div>
@@ -441,12 +439,12 @@ export default function ParentCustomFieldsPage() {
               <Input
                 value={newCategoryName}
                 onChange={(e) => setNewCategoryName(e.target.value)}
-                placeholder={t("customFieldsPage.placeholders.categoryName")}
+                placeholder="Enter category name..."
                 className="flex-1"
                 onKeyPress={(e) => e.key === 'Enter' && addNewCategory()}
               />
-              <Button onClick={addNewCategory} size="sm">{t("add")}</Button>
-              <Button onClick={() => { setShowAddCategory(false); setNewCategoryName(''); }} variant="outline" size="sm">{t("cancel")}</Button>
+              <Button onClick={addNewCategory} size="sm">Add</Button>
+              <Button onClick={() => { setShowAddCategory(false); setNewCategoryName(''); }} variant="outline" size="sm">Cancel</Button>
             </div>
           </CardContent>
         </Card>
@@ -455,7 +453,7 @@ export default function ParentCustomFieldsPage() {
       {/* Compact Info */}
       <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md p-2 flex items-center gap-2">
         <Settings2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-        <span className="text-xs text-blue-800 dark:text-blue-300">{t.rich("customFieldsPage.info", { strong: (chunks) => <strong>{chunks}</strong> })}</span>
+        <span className="text-xs text-blue-800 dark:text-blue-300">Drag categories to reorder. Default fields shown in gray. Set custom field <strong>Sort Order</strong> to position between default fields.</span>
       </div>
 
       {/* Categories - Draggable */}

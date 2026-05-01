@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -43,28 +42,6 @@ interface CoursePeriod {
   displayName: string;
 }
 
-interface CoursePeriodResponse {
-  id: string;
-  title?: string | null;
-  course?: { title?: string | null } | null;
-  period?: { period_name?: string | null } | null;
-  teacher?: { profile?: { last_name?: string | null } | null } | null;
-}
-
-interface EligibilityStudentProfile {
-  first_name?: string | null;
-  father_name?: string | null;
-  last_name?: string | null;
-}
-
-interface EligibilityStudent {
-  id: string;
-  first_name?: string | null;
-  last_name?: string | null;
-  student_number?: string | null;
-  profile?: EligibilityStudentProfile | null;
-}
-
 interface StudentRow {
   student_id: string;
   name: string;
@@ -72,21 +49,24 @@ interface StudentRow {
   eligibility_code: EligibilityCode;
 }
 
+// Course periods endpoint only accepts campus_id (no school_id param)
 async function fetchCoursePeriods(campusId?: string): Promise<CoursePeriod[]> {
   try {
     const token = await getAuthToken();
     const params = new URLSearchParams();
     if (campusId) params.append('campus_id', campusId);
-    const res = await fetch(`${API_URL}/course-periods${params.toString() ? `?${params}` : ''}`, {
+    const res = await fetch(`${API_URL}/course-periods${params.toString() ? '?' + params : ''}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) return [];
     const data = await res.json();
-    const raw: CoursePeriodResponse[] = data.data ?? [];
+    const raw: any[] = data.data ?? [];
     return raw.map((cp) => {
       const periodName = cp.period?.period_name ?? '';
       const courseTitle = cp.course?.title ?? cp.title ?? '';
-      const teacherName = cp.teacher?.profile ? `${cp.teacher.profile.last_name}` : '';
+      const teacherName = cp.teacher?.profile
+        ? `${cp.teacher.profile.last_name}`
+        : '';
       const label = [periodName, courseTitle, teacherName ? `(${teacherName})` : '']
         .filter(Boolean)
         .join(' ');
@@ -97,7 +77,8 @@ async function fetchCoursePeriods(campusId?: string): Promise<CoursePeriod[]> {
   }
 }
 
-async function fetchStudents(schoolId: string, campusId?: string): Promise<EligibilityStudent[]> {
+// Fetch all students for the school/campus
+async function fetchStudents(schoolId: string, campusId?: string): Promise<any[]> {
   try {
     const token = await getAuthToken();
     const params = new URLSearchParams({ school_id: schoolId, limit: '500' });
@@ -114,7 +95,6 @@ async function fetchStudents(schoolId: string, campusId?: string): Promise<Eligi
 }
 
 export default function EnterEligibilityPage() {
-  const t = useTranslations('activities');
   const { user } = useAuth();
   const campusCtx = useCampus();
   const campusId = campusCtx?.selectedCampus?.id;
@@ -142,8 +122,10 @@ export default function EnterEligibilityPage() {
     if (!schoolId || !selectedPeriodId || !schoolDate) return;
     setLoading(true);
     try {
+      // Fetch all students for the campus
       const students = await fetchStudents(schoolId, campusId);
 
+      // Fetch existing eligibility records for this period + date
       const eligRes = await getEligibility({
         school_id: schoolId,
         course_period_id: selectedPeriodId,
@@ -154,7 +136,8 @@ export default function EnterEligibilityPage() {
       const existingMap: Record<string, EligibilityCode> = {};
       for (const e of existing) existingMap[e.student_id] = e.eligibility_code;
 
-      const studentRows: StudentRow[] = students.map((s: EligibilityStudent) => {
+      const studentRows: StudentRow[] = students.map((s: any) => {
+        // build display name; include father/grandfather if present in profile
         const prof = s.profile || {};
         const first = s.first_name || prof.first_name || '';
         const father = prof.father_name || '';
@@ -174,7 +157,7 @@ export default function EnterEligibilityPage() {
       setRows(studentRows);
       setHasLoaded(true);
     } catch {
-      toast.error(t('failedToLoadStudents'));
+      toast.error('Failed to load students');
     } finally {
       setLoading(false);
     }
@@ -201,13 +184,10 @@ export default function EnterEligibilityPage() {
         school_date: schoolDate,
         records: rows.map((r) => ({ student_id: r.student_id, eligibility_code: r.eligibility_code })),
       });
-      if (res.error) {
-        toast.error(res.error);
-        return;
-      }
-      toast.success(t('eligibilitySaved'));
+      if (res.error) { toast.error(res.error); return; }
+      toast.success('Eligibility saved');
     } catch {
-      toast.error(t('failedToSaveEligibility'));
+      toast.error('Failed to save eligibility');
     } finally {
       setSaving(false);
     }
@@ -216,29 +196,31 @@ export default function EnterEligibilityPage() {
   return (
     <div className="container mx-auto py-8">
       <div className="max-w-4xl mx-auto space-y-6">
+
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <ClipboardCheck className="h-7 w-7 text-primary" />
-          {t('enterEligibilityTitle')}
+          Enter Eligibility
         </h1>
 
         <Card>
           <CardContent className="pt-5 pb-5 space-y-4">
+            {/* Course Period */}
             <div className="space-y-1.5">
-              <Label>{t('coursePeriod')}</Label>
+              <Label>Course Period</Label>
               {loadingPeriods ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-                  <Loader2 className="h-4 w-4 animate-spin" /> {t('loadingCoursePeriods')}
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading course periods…
                 </div>
               ) : (
                 <Select value={selectedPeriodId || '__none__'} onValueChange={(v) => setSelectedPeriodId(v === '__none__' ? '' : v)}>
                   <SelectTrigger className="max-w-sm">
-                    <SelectValue placeholder={t('selectCoursePeriod')} />
+                    <SelectValue placeholder="Select a course period" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none__">{t('selectOption')}</SelectItem>
+                    <SelectItem value="__none__">— Select —</SelectItem>
                     {coursePeriods.length === 0 ? (
                       <div className="px-3 py-2 text-sm text-muted-foreground">
-                        {campusId ? t('noCoursePeriodsFound') : t('noCoursePeriodsFoundSelectCampus')}
+                        No course periods found{!campusId ? ' — select a campus first' : ''}
                       </div>
                     ) : (
                       coursePeriods.map((cp) => (
@@ -252,9 +234,10 @@ export default function EnterEligibilityPage() {
               )}
             </div>
 
+            {/* Date + Load */}
             <div className="flex flex-wrap items-end gap-3">
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">{t('date')}</Label>
+                <Label className="text-xs text-muted-foreground">Date</Label>
                 <Input
                   type="date"
                   value={schoolDate}
@@ -269,7 +252,7 @@ export default function EnterEligibilityPage() {
                 className="h-8"
               >
                 {loading && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
-                {t('loadStudents')}
+                Load Students
               </Button>
             </div>
           </CardContent>
@@ -280,10 +263,10 @@ export default function EnterEligibilityPage() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <CardTitle className="text-base">
-                  {t('studentsWithCount', { count: rows.length })}
+                  Students ({rows.length})
                 </CardTitle>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">{t('setAll')}</span>
+                  <span className="text-xs text-muted-foreground">Set all:</span>
                   {ELIGIBILITY_CODES.map((code) => (
                     <Button
                       key={code}
@@ -292,7 +275,7 @@ export default function EnterEligibilityPage() {
                       className="h-6 text-xs px-2"
                       onClick={() => setAllCodes(code)}
                     >
-                      {t(`eligibilityCodes.${code}`)}
+                      {code}
                     </Button>
                   ))}
                 </div>
@@ -301,16 +284,16 @@ export default function EnterEligibilityPage() {
             <CardContent>
               {rows.length === 0 ? (
                 <p className="text-center py-8 text-sm text-muted-foreground">
-                  {t('noStudentsFound')}
+                  No students found.
                 </p>
               ) : (
                 <>
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>{t('studentLabel')}</TableHead>
-                        <TableHead>{t('id')}</TableHead>
-                        <TableHead className="w-52">{t('eligibility')}</TableHead>
+                        <TableHead>Student</TableHead>
+                        <TableHead>ID</TableHead>
+                        <TableHead className="w-52">Eligibility</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -330,7 +313,7 @@ export default function EnterEligibilityPage() {
                                 {ELIGIBILITY_CODES.map((code) => (
                                   <SelectItem key={code} value={code}>
                                     <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium ${ELIGIBILITY_COLORS[code]}`}>
-                                      {t(`eligibilityCodes.${code}`)}
+                                      {code}
                                     </span>
                                   </SelectItem>
                                 ))}
@@ -348,7 +331,7 @@ export default function EnterEligibilityPage() {
                         ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
                         : <Save className="h-4 w-4 mr-2" />
                       }
-                      {t('saveEligibility')}
+                      Save Eligibility
                     </Button>
                   </div>
                 </>
@@ -356,6 +339,7 @@ export default function EnterEligibilityPage() {
             </CardContent>
           </Card>
         )}
+
       </div>
     </div>
   );

@@ -3,7 +3,6 @@ import { cookies } from 'next/headers'
 
 export default getRequestConfig(async () => {
   const cookieStore = await cookies()
-
   const locale = cookieStore.get('studently_language')?.value ?? 'en'
   const validLocale = locale === 'ar' ? 'ar' : 'en'
 

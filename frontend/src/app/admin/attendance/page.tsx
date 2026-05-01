@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
-import { useTranslations, useLocale } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import * as attendanceApi from '@/lib/api/attendance'
@@ -72,8 +71,6 @@ function hasStudentChange(
 }
 
 export default function AdministrationPage() {
-  const t = useTranslations('attendance')
-  const locale = useLocale()
   const { profile } = useAuth()
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
@@ -103,9 +100,8 @@ export default function AdministrationPage() {
 
   const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`
 
-  const monthNames = Array.from({ length: 12 }, (_, i) =>
-    new Intl.DateTimeFormat(locale, { month: 'long' }).format(new Date(2000, i, 1))
-  )
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December']
   const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate()
 
   // Fetch attendance codes
@@ -199,9 +195,9 @@ export default function AdministrationPage() {
 
   const stateLabel = (value: number | null) => {
     if (value === null || value === undefined) return '-'
-    if (value === 1.0) return t('statePresent')
-    if (value === 0.5) return t('stateHalf')
-    if (value === 0.0) return t('stateNone')
+    if (value === 1.0) return 'Full'
+    if (value === 0.5) return 'Half'
+    if (value === 0.0) return 'None'
     return `${Math.round(value * 100)}%`
   }
 
@@ -245,7 +241,7 @@ export default function AdministrationPage() {
   // UPDATE button handler: save all pending changes in one batch
   const handleUpdate = async () => {
     if (pendingChanges.size === 0 && pendingComments.size === 0) {
-      toast.info(t('noChanges'))
+      toast.info('No changes to save')
       return
     }
 
@@ -259,9 +255,9 @@ export default function AdministrationPage() {
         }))
         const result = await attendanceApi.bulkOverrideAttendanceRecords(changes)
         if (result.success) {
-          toast.success(t('updatedRecords', { count: result.data?.updated || 0 }))
+          toast.success(`Updated ${result.data?.updated || 0} attendance record(s)`)
         } else {
-          toast.error(result.error || t('failedUpdate'))
+          toast.error(result.error || 'Failed to update records')
         }
       }
 
@@ -282,7 +278,7 @@ export default function AdministrationPage() {
       setPendingComments(new Map())
       mutateGrid()
     } catch (error: any) {
-      toast.error(error.message || t('failedUpdateMsg'))
+      toast.error(error.message || 'Failed to update')
     } finally {
       setUpdating(false)
     }
@@ -308,7 +304,7 @@ export default function AdministrationPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <IconCalendar className="h-7 w-7 text-primary" />
-          <h1 className="text-2xl font-bold">{t('administration')}</h1>
+          <h1 className="text-2xl font-bold">Administration</h1>
         </div>
         <Button
           className="bg-teal-600 hover:bg-teal-700"
@@ -316,7 +312,7 @@ export default function AdministrationPage() {
           disabled={updating || !hasChanges}
         >
           {updating ? <IconLoader className="mr-2 h-4 w-4 animate-spin" /> : null}
-          {t('update')}
+          UPDATE
           {hasChanges && (
             <Badge className="ml-2 bg-white text-teal-700 text-xs">
               {pendingChanges.size + pendingComments.size}
@@ -368,11 +364,11 @@ export default function AdministrationPage() {
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className="gap-1.5">
               <span className="w-3 h-3 bg-gray-800 dark:bg-gray-200 rounded-sm" />
-              {t('attendanceCodes')}
+              ATTENDANCE CODES
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-56 p-3" align="start">
-            <h4 className="font-semibold text-sm mb-2">{t('attendanceCodes')}</h4>
+            <h4 className="font-semibold text-sm mb-2">ATTENDANCE CODES</h4>
             <div className="space-y-1.5">
               {codes.map(code => (
                 <div key={code.id} className="flex items-center gap-2">
@@ -393,7 +389,7 @@ export default function AdministrationPage() {
           <Input
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            placeholder={t('searchStudents')}
+            placeholder="Search students, ID, grade..."
             className="pr-10"
           />
           <IconSearch className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -408,7 +404,7 @@ export default function AdministrationPage() {
               <SelectValue placeholder="All Grades" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">{t('allGrades')}</SelectItem>
+              <SelectItem value="all">All Grades</SelectItem>
               {grades.map(g => (
                 <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
               ))}
@@ -421,7 +417,7 @@ export default function AdministrationPage() {
                 <SelectValue placeholder="All Sections" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{t('allSections')}</SelectItem>
+                <SelectItem value="all">All Sections</SelectItem>
                 {sections.map(s => (
                   <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                 ))}
@@ -435,11 +431,11 @@ export default function AdministrationPage() {
               <SelectValue placeholder="All" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">{t('statusAll')}</SelectItem>
-              <SelectItem value="not_present">{t('statusNotPresent')}</SelectItem>
-              <SelectItem value="present">{t('statusPresent')}</SelectItem>
-              <SelectItem value="absent">{t('statusAbsent')}</SelectItem>
-              <SelectItem value="half">{t('statusHalfDay')}</SelectItem>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="not_present">+ Not Present</SelectItem>
+              <SelectItem value="present">Present</SelectItem>
+              <SelectItem value="absent">Absent</SelectItem>
+              <SelectItem value="half">Half Day</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -456,13 +452,13 @@ export default function AdministrationPage() {
             </div>
           ) : filteredStudents.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
-              <p className="font-medium">{t('noStudentsFound')}</p>
+              <p className="font-medium">No students were found.</p>
               <p className="text-sm mt-1">
                 {gridStudents.length === 0
-                  ? t('noRecordsForDate')
+                  ? 'No attendance records for this date. Attendance may not have been taken yet.'
                   : expandedView
-                    ? t('totalRecordsFilter', { total: gridStudents.length })
-                    : t('noNonPresentStudents')}
+                    ? `${gridStudents.length} total records, but none match the current filter.`
+                    : 'No non-present students. Click "Expanded View" to see all students.'}
               </p>
             </div>
           ) : (
@@ -470,13 +466,13 @@ export default function AdministrationPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="text-teal-600 font-semibold sticky left-0 bg-background z-10 min-w-[180px]">
-                    {t('th_student')}
+                    STUDENT
                   </TableHead>
                   <TableHead className="text-teal-600 font-semibold text-center min-w-[120px]">
-                    {t('th_studentId')}
+                    Studently ID
                   </TableHead>
                   <TableHead className="text-teal-600 font-semibold text-center min-w-[140px]">
-                    {t('th_gradeLevel')}
+                    GRADE LEVEL
                   </TableHead>
                   {/* One column per school period */}
                   {gridPeriods.map(period => (
@@ -485,10 +481,10 @@ export default function AdministrationPage() {
                     </TableHead>
                   ))}
                   <TableHead className="text-teal-600 font-semibold text-center min-w-[70px]">
-                    {t('th_present')}
+                    PRESENT
                   </TableHead>
                   <TableHead className="text-teal-600 font-semibold text-center min-w-[120px]">
-                    {t('th_dayComment')}
+                    DAY COMMENT
                   </TableHead>
                   <TableHead className="text-teal-600 font-semibold text-center w-10">
                     <IconEye className="h-4 w-4 mx-auto" />
@@ -575,7 +571,7 @@ export default function AdministrationPage() {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
-                          title={t('viewPeriodDetails')}
+                          title="View period details"
                           onClick={() => openStudentDetail(student)}
                         >
                           <IconEye className="h-4 w-4" />
@@ -593,12 +589,12 @@ export default function AdministrationPage() {
       {/* Footer */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {t('studentsShown', { count: filteredStudents.length })}
+          {filteredStudents.length} student{filteredStudents.length !== 1 ? 's' : ''} shown
           {!expandedView && gridStudents.length > filteredStudents.length && (
             <span>
               {' '}({gridStudents.length} total –{' '}
               <button onClick={() => setExpandedView(true)} className="text-teal-600 hover:underline">
-                {t('showAll')}
+                show all
               </button>)
             </span>
           )}
@@ -609,7 +605,7 @@ export default function AdministrationPage() {
           disabled={updating || !hasChanges}
         >
           {updating ? <IconLoader className="mr-2 h-4 w-4 animate-spin" /> : null}
-          {t('update')}
+          UPDATE
         </Button>
       </div>
 
@@ -619,10 +615,9 @@ export default function AdministrationPage() {
           <DialogHeader>
             <DialogTitle>{selectedStudent?.student_name}</DialogTitle>
             <DialogDescription>
-              {t('periodLevelAttendance', {
-                date: new Date(dateStr + 'T00:00:00').toLocaleDateString(locale, {
-                  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-                })
+              Period-level attendance for{' '}
+              {new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
               })}
             </DialogDescription>
           </DialogHeader>
@@ -630,11 +625,11 @@ export default function AdministrationPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t('th_period')}</TableHead>
-                  <TableHead>{t('th_time')}</TableHead>
-                  <TableHead>{t('th_attendanceCode')}</TableHead>
-                  <TableHead>{t('th_teacherEntry')}</TableHead>
-                  <TableHead>{t('th_officeComment')}</TableHead>
+                  <TableHead>Period</TableHead>
+                  <TableHead>Time</TableHead>
+                  <TableHead>Attendance Code</TableHead>
+                  <TableHead>Teacher&apos;s Entry</TableHead>
+                  <TableHead>Office Comment</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -701,7 +696,7 @@ export default function AdministrationPage() {
               onClick={() => setStudentDialogOpen(false)}
               className="text-sm text-teal-600 hover:underline"
             >
-              {t('studentList')}
+              ← Student List
             </button>
             <Button
               className="bg-teal-600 hover:bg-teal-700"

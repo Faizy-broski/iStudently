@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -47,12 +46,12 @@ function studentFullName(r: DisciplineReferral): string {
 }
 
 function formatFieldValue(val: unknown): string {
-  if (val === null || val === undefined || val === '') return '-';
-  if (val === 'Y' || val === true) return 'Y';
-  if (val === 'N' || val === false) return 'N';
+  if (val === null || val === undefined || val === '') return '—';
+  if (val === 'Y' || val === true) return 'Yes';
+  if (val === 'N' || val === false) return 'No';
   if (Array.isArray(val)) return val.join(', ');
   const s = String(val).replace(/^\|+|\|+$/g, '').replace(/\|\|/g, ', ');
-  return s || '-';
+  return s || '—';
 }
 
 function groupByStudent(referrals: DisciplineReferral[]): Map<string, DisciplineReferral[]> {
@@ -80,7 +79,6 @@ interface IncludeColumns {
 // ---------------------------------------------------------------------------
 
 export default function DisciplineLogPage() {
-  const t = useTranslations('discipline');
   const { user } = useAuth();
   const campusCtx = useCampus();
   const campusId = campusCtx?.selectedCampus?.id;
@@ -123,7 +121,7 @@ export default function DisciplineLogPage() {
         });
         setIncludeColumns(initial);
       })
-      .catch(() => toast.error(t('errors.loadFields')))
+      .catch(() => toast.error('Failed to load fields'))
       .finally(() => setLoadingFields(false));
   }, [schoolId]);
 
@@ -149,7 +147,7 @@ export default function DisciplineLogPage() {
       setReferrals(res.data ?? []);
       setHasLoaded(true);
     } catch {
-      toast.error(t('errors.loadReferrals'));
+      toast.error('Failed to load referrals');
     } finally {
       setLoading(false);
     }
@@ -198,12 +196,12 @@ export default function DisciplineLogPage() {
         <div className="flex items-start justify-between print:hidden">
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <FileText className="h-7 w-7 text-primary" />
-            {t('title')}
+            Discipline Log
           </h1>
           {hasLoaded && filtered.length > 0 && (
             <Button variant="outline" onClick={handlePrint} className="gap-2">
               <Printer className="h-4 w-4" />
-              {t('printLog')}
+              Print Log
             </Button>
           )}
         </div>
@@ -212,20 +210,20 @@ export default function DisciplineLogPage() {
         <Card className="print:hidden">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-              {t('filters')}
+              Filters
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Reporter */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="space-y-1.5">
-                <Label>{t('reporter')}</Label>
+                <Label>Reporter</Label>
                 <Select value={reporterFilter} onValueChange={setReporterFilter}>
                   <SelectTrigger>
-                    <SelectValue placeholder={t('notSpecified')} />
+                    <SelectValue placeholder="Not Specified" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">{t('allReporters')}</SelectItem>
+                    <SelectItem value="all">All Reporters</SelectItem>
                     {reporters.map(([id, name]) => (
                       <SelectItem key={id} value={id}>
                         {name}
@@ -237,7 +235,7 @@ export default function DisciplineLogPage() {
 
               {/* Incident date range */}
               <div className="space-y-1.5">
-                <Label>{t('incidentDateMin')}</Label>
+                <Label>Incident Date ≥</Label>
                 <Input
                   type="date"
                   value={incidentFrom}
@@ -246,7 +244,7 @@ export default function DisciplineLogPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>{t('incidentDateMax')}</Label>
+                <Label>Incident Date ≤</Label>
                 <Input
                   type="date"
                   value={incidentTo}
@@ -258,12 +256,12 @@ export default function DisciplineLogPage() {
 
             {/* Student search */}
             <div className="space-y-1.5">
-              <Label>{t('studentSearch')}</Label>
+              <Label>Student Search</Label>
               <div className="relative max-w-xs">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   className="pl-8 h-9"
-                  placeholder={t('search_placeholder')}
+                  placeholder="Name or student number…"
                   value={studentSearch}
                   onChange={(e) => setStudentSearch(e.target.value)}
                 />
@@ -273,11 +271,11 @@ export default function DisciplineLogPage() {
             {/* Include in log checkboxes */}
             <div className="border rounded-md p-4 space-y-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {t('email.includeInLog')}
+                Include in Discipline Log
               </p>
               {loadingFields ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> {t('loadingFields')}
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading fields…
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -286,14 +284,14 @@ export default function DisciplineLogPage() {
                       checked={includeColumns.entry_date}
                       onCheckedChange={() => toggleColumn('entry_date')}
                     />
-                    {t('entryDate')}
+                    Entry Date
                   </label>
                   <label className="flex items-center gap-2 text-sm cursor-pointer">
                     <Checkbox
                       checked={includeColumns.reporter}
                       onCheckedChange={() => toggleColumn('reporter')}
                     />
-                    {t('reporter')}
+                    Reporter
                   </label>
                   {fields.map((f) => (
                     <label key={f.id} className="flex items-center gap-2 text-sm cursor-pointer">
@@ -316,11 +314,11 @@ export default function DisciplineLogPage() {
                 ) : (
                   <Search className="h-4 w-4 mr-2" />
                 )}
-                {t('search')}
+                Search
               </Button>
               <Button variant="outline" size="sm" onClick={handleReset}>
                 <RefreshCcw className="h-4 w-4 mr-2" />
-                {t('reset')}
+                Reset
               </Button>
             </div>
           </CardContent>
@@ -328,12 +326,12 @@ export default function DisciplineLogPage() {
 
         {/* Print title */}
         <div className="hidden print:block">
-          <h1 className="text-2xl font-bold mb-1">{t('title')}</h1>
+          <h1 className="text-2xl font-bold mb-1">Discipline Log</h1>
           <p className="text-sm text-gray-500">
             {incidentFrom && incidentTo
-              ? `${incidentFrom} ${t('to')} ${incidentTo}`
+              ? `${incidentFrom} to ${incidentTo}`
               : incidentTo
-              ? `${t('upTo')} ${incidentTo}`
+              ? `Up to ${incidentTo}`
               : ''}
           </p>
         </div>
@@ -343,7 +341,7 @@ export default function DisciplineLogPage() {
           <div ref={printRef} className="space-y-6 print:space-y-4">
             {grouped.size === 0 ? (
               <div className="text-center py-12 text-muted-foreground text-sm print:hidden">
-                {t('noStudentsMatchingFilters')}
+                No students found matching the selected filters.
               </div>
             ) : (
               Array.from(grouped.entries()).map(([studentId, studentReferrals]) => {
@@ -369,7 +367,7 @@ export default function DisciplineLogPage() {
                           </Badge>
                         )}
                         <span className="ml-auto text-sm text-muted-foreground">
-                          {t('referralsCount', { count: studentReferrals.length })}
+                          {studentReferrals.length} referral{studentReferrals.length !== 1 ? 's' : ''}
                         </span>
                       </div>
                     </CardHeader>
@@ -378,8 +376,8 @@ export default function DisciplineLogPage() {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              {includeColumns.entry_date && <TableHead>{t('incidentDate')}</TableHead>}
-                              {includeColumns.reporter && <TableHead>{t('reporter')}</TableHead>}
+                              {includeColumns.entry_date && <TableHead>Incident Date</TableHead>}
+                              {includeColumns.reporter && <TableHead>Reporter</TableHead>}
                               {activeFields.map((f) => (
                                 <TableHead key={f.id}>{f.name}</TableHead>
                               ))}
@@ -401,7 +399,7 @@ export default function DisciplineLogPage() {
                                   )}
                                   {includeColumns.reporter && (
                                     <TableCell className="text-sm text-muted-foreground">
-                                      {r.reporter?.full_name ?? '-'}
+                                      {r.reporter?.full_name ?? '—'}
                                     </TableCell>
                                   )}
                                   {activeFields.map((f) => (
@@ -422,7 +420,7 @@ export default function DisciplineLogPage() {
 
             {grouped.size > 0 && (
               <div className="text-xs text-muted-foreground text-right print:hidden">
-                {t('referralsAcrossStudents', { referrals: filtered.length, students: grouped.size })}
+                {filtered.length} referral{filtered.length !== 1 ? 's' : ''} across {grouped.size} student{grouped.size !== 1 ? 's' : ''}
               </div>
             )}
           </div>

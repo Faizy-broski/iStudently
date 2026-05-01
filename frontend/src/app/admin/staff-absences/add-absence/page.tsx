@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import * as api from '@/lib/api/staff-absences'
@@ -21,7 +20,6 @@ import { ArrowLeft, UserMinus } from 'lucide-react'
 import type { StaffMember, CoursePeriod } from '@/lib/api/staff-absences'
 
 export default function AddAbsencePage() {
-  const t = useTranslations('staffAbsences')
   const { profile } = useAuth()
   const campusCtx = useCampus()
   const router = useRouter()
@@ -81,9 +79,9 @@ export default function AddAbsencePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.staff_id) return toast.error(t('validation.selectStaff'))
-    if (!form.start_date || !form.end_date) return toast.error(t('validation.startEndRequired'))
-    if (form.start_date > form.end_date) return toast.error(t('validation.endAfterStart'))
+    if (!form.staff_id) return toast.error('Please select a staff member')
+    if (!form.start_date || !form.end_date) return toast.error('Start and end dates are required')
+    if (form.start_date > form.end_date) return toast.error('End date must be after start date')
 
     setSaving(true)
     const res = await api.createAbsence({
@@ -102,7 +100,7 @@ export default function AddAbsencePage() {
     if (res.error) {
       toast.error(res.error)
     } else {
-      toast.success(t('toasts.absenceAdded'))
+      toast.success('Absence added successfully')
       router.push('/admin/staff-absences/absences')
     }
   }
@@ -118,19 +116,19 @@ export default function AddAbsencePage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <UserMinus className="h-6 w-6 text-muted-foreground" />
-        <h1 className="text-2xl font-semibold">{t('addAbsence')}</h1>
+        <h1 className="text-2xl font-semibold">Add Absence</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">{t('absenceDetails')}</CardTitle>
+            <CardTitle className="text-base">Absence Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Staff member */}
             <div className="space-y-1.5">
               <Label htmlFor="staff_id">
-                {t('fields.staffMember')} <span className="text-destructive">*</span>
+                Staff Member <span className="text-destructive">*</span>
               </Label>
               {loadingStaff ? (
                 <Skeleton className="h-9 w-full" />
@@ -140,7 +138,7 @@ export default function AddAbsencePage() {
                   onValueChange={(v) => setForm((f) => ({ ...f, staff_id: v }))}
                 >
                   <SelectTrigger id="staff_id">
-                    <SelectValue placeholder={t('placeholders.selectStaff')} />
+                    <SelectValue placeholder="Select staff member…" />
                   </SelectTrigger>
                   <SelectContent>
                     {staffList.map((s) => (
@@ -160,7 +158,7 @@ export default function AddAbsencePage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="start_date">
-                  {t('fields.startDate')} <span className="text-destructive">*</span>
+                  Start Date <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="start_date"
@@ -172,7 +170,7 @@ export default function AddAbsencePage() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="end_date">
-                  {t('fields.endDate')} <span className="text-destructive">*</span>
+                  End Date <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="end_date"
@@ -186,10 +184,10 @@ export default function AddAbsencePage() {
 
             {/* Reason */}
             <div className="space-y-1.5">
-              <Label htmlFor="reason">{t('fields.reason')}</Label>
+              <Label htmlFor="reason">Reason</Label>
               <Input
                 id="reason"
-                placeholder={t('placeholders.reason')}
+                placeholder="e.g. Sick leave, vacation…"
                 value={form.reason}
                 onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
               />
@@ -197,10 +195,10 @@ export default function AddAbsencePage() {
 
             {/* Notes */}
             <div className="space-y-1.5">
-              <Label htmlFor="notes">{t('fields.notes')}</Label>
+              <Label htmlFor="notes">Notes</Label>
               <Textarea
                 id="notes"
-                placeholder={t('placeholders.notes')}
+                placeholder="Additional notes…"
                 rows={3}
                 value={form.notes}
                 onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
@@ -209,7 +207,7 @@ export default function AddAbsencePage() {
 
             {/* Status */}
             <div className="space-y-1.5">
-              <Label htmlFor="status">{t('fields.status')}</Label>
+              <Label htmlFor="status">Status</Label>
               <Select
                 value={form.status}
                 onValueChange={(v) =>
@@ -220,9 +218,9 @@ export default function AddAbsencePage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pending">{t('statuses.pending')}</SelectItem>
-                  <SelectItem value="approved">{t('statuses.approved')}</SelectItem>
-                  <SelectItem value="rejected">{t('statuses.rejected')}</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -233,7 +231,7 @@ export default function AddAbsencePage() {
         {form.staff_id && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">{t('cancelledClasses.title')}</CardTitle>
+              <CardTitle className="text-base">Cancelled Classes</CardTitle>
             </CardHeader>
             <CardContent>
               {loadingCPs ? (
@@ -244,12 +242,12 @@ export default function AddAbsencePage() {
                 </div>
               ) : coursePeriods.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  {t('cancelledClasses.noCoursePeriods')}
+                  No course periods found for this staff member.
                 </p>
               ) : (
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground mb-3">
-                    {t('cancelledClasses.selectCoursePeriods')}
+                    Select the course periods that will be cancelled during this absence:
                   </p>
                   {coursePeriods.map((cp) => (
                     <label
@@ -278,14 +276,14 @@ export default function AddAbsencePage() {
 
         <div className="flex gap-3">
           <Button type="submit" disabled={saving}>
-            {saving ? t('saving') : t('saveAbsence')}
+            {saving ? 'Saving…' : 'Save Absence'}
           </Button>
           <Button
             type="button"
             variant="outline"
             onClick={() => router.push('/admin/staff-absences/absences')}
           >
-            {t('cancel')}
+            Cancel
           </Button>
         </div>
       </form>

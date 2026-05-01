@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useEffect, useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -34,15 +33,7 @@ import {
 import { API_URL } from '@/config/api';
 import { getAuthToken } from '@/lib/api/schools';
 
-interface ActivityStudent {
-  id: string;
-  first_name?: string | null;
-  last_name?: string | null;
-  student_number?: string | null;
-  grade_level?: string | null;
-}
-
-async function fetchAllStudents(schoolId: string, campusId?: string): Promise<ActivityStudent[]> {
+async function fetchAllStudents(schoolId: string, campusId?: string): Promise<any[]> {
   try {
     const token = await getAuthToken();
     const params = new URLSearchParams({ school_id: schoolId, limit: '500' });
@@ -58,7 +49,6 @@ async function fetchAllStudents(schoolId: string, campusId?: string): Promise<Ac
 }
 
 export default function AddActivityPage() {
-  const t = useTranslations('activities');
   const { user } = useAuth();
   const campusCtx = useCampus();
   const campusId = campusCtx?.selectedCampus?.id;
@@ -68,7 +58,7 @@ export default function AddActivityPage() {
   const [loadingActivities, setLoadingActivities] = useState(true);
   const [selectedActivityId, setSelectedActivityId] = useState('__none__');
 
-  const [students, setStudents] = useState<ActivityStudent[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [search, setSearch] = useState('');
 
@@ -76,21 +66,15 @@ export default function AddActivityPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!schoolId) {
-      setLoadingActivities(false);
-      return;
-    }
+    if (!schoolId) { setLoadingActivities(false); return; }
     getActivities({ school_id: schoolId, campus_id: campusId })
       .then((res) => setActivities(res.data ?? []))
-      .catch(() => toast.error(t('failedToLoadActivities')))
+      .catch(() => toast.error('Failed to load activities'))
       .finally(() => setLoadingActivities(false));
-  }, [schoolId, campusId, t]);
+  }, [schoolId, campusId]);
 
   useEffect(() => {
-    if (!schoolId) {
-      setLoadingStudents(false);
-      return;
-    }
+    if (!schoolId) { setLoadingStudents(false); return; }
     fetchAllStudents(schoolId, campusId)
       .then(setStudents)
       .finally(() => setLoadingStudents(false));
@@ -125,14 +109,8 @@ export default function AddActivityPage() {
 
   async function handleAddToSelected() {
     const activityId = selectedActivityId === '__none__' ? '' : selectedActivityId;
-    if (!activityId) {
-      toast.error(t('selectActivityError'));
-      return;
-    }
-    if (selected.size === 0) {
-      toast.error(t('selectStudentError'));
-      return;
-    }
+    if (!activityId) { toast.error('Please select an activity'); return; }
+    if (selected.size === 0) { toast.error('Please select at least one student'); return; }
 
     setSaving(true);
     try {
@@ -141,14 +119,11 @@ export default function AddActivityPage() {
         school_id: schoolId,
         campus_id: campusId || null,
       });
-      if (res.error) {
-        toast.error(res.error);
-        return;
-      }
-      toast.success(t('studentsAddedToActivity', { count: selected.size }));
+      if (res.error) { toast.error(res.error); return; }
+      toast.success(`${selected.size} student${selected.size !== 1 ? 's' : ''} added to activity`);
       setSelected(new Set());
     } catch {
-      toast.error(t('failedToAddStudentsToActivity'));
+      toast.error('Failed to add students to activity');
     } finally {
       setSaving(false);
     }
@@ -160,28 +135,30 @@ export default function AddActivityPage() {
   return (
     <div className="container mx-auto py-8">
       <div className="max-w-4xl mx-auto space-y-4">
+
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <UserPlus className="h-7 w-7 text-primary" />
-            {t('addActivity')}
+            Add Activity
           </h1>
           <Button
             onClick={handleAddToSelected}
             disabled={saving || selected.size === 0 || selectedActivityId === '__none__'}
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-            {t('addActivityToSelectedStudents')}
+            ADD ACTIVITY TO SELECTED STUDENTS
           </Button>
         </div>
 
+        {/* Activity selector */}
         <Card>
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center gap-3 flex-wrap">
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">{t('activity')}</Label>
+                <Label className="text-xs text-muted-foreground">Activity</Label>
                 {loadingActivities ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" /> {t('loadingActivities')}
+                    <Loader2 className="h-4 w-4 animate-spin" /> Loading…
                   </div>
                 ) : (
                   <Select value={selectedActivityId} onValueChange={setSelectedActivityId}>
@@ -189,7 +166,7 @@ export default function AddActivityPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__none__">{t('notApplicable')}</SelectItem>
+                      <SelectItem value="__none__">N/A</SelectItem>
                       {activities.map((a) => (
                         <SelectItem key={a.id} value={a.id}>{a.title}</SelectItem>
                       ))}
@@ -201,24 +178,24 @@ export default function AddActivityPage() {
           </CardContent>
         </Card>
 
+        {/* Student table */}
         <Card>
           <CardContent className="p-0">
+            {/* Table header row */}
             <div className="flex items-center justify-between px-4 py-2 border-b">
               <span className="text-sm text-muted-foreground">
                 {loadingStudents
-                  ? t('loadingStudents')
-                  : t('studentsFound', { count: filtered.length })}
+                  ? 'Loading students…'
+                  : `${filtered.length} student${filtered.length !== 1 ? 's' : ''} found`}
                 {selected.size > 0 && (
-                  <span className="ml-2 text-primary font-medium">
-                    ({t('selectedCount', { count: selected.size })})
-                  </span>
+                  <span className="ml-2 text-primary font-medium">({selected.size} selected)</span>
                 )}
               </span>
               <div className="flex items-center gap-2">
                 <Input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder={t('searchPlaceholder')}
+                  placeholder="Search…"
                   className="w-40 h-7 text-sm"
                 />
                 <Search className="h-4 w-4 text-muted-foreground" />
@@ -227,7 +204,7 @@ export default function AddActivityPage() {
 
             {loadingStudents ? (
               <div className="flex items-center gap-2 justify-center py-12 text-muted-foreground text-sm">
-                <Loader2 className="h-4 w-4 animate-spin" /> {t('loadingStudents')}
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading students…
               </div>
             ) : (
               <Table>
@@ -240,16 +217,16 @@ export default function AddActivityPage() {
                         onCheckedChange={toggleAll}
                       />
                     </TableHead>
-                    <TableHead>{t('studentLabel')}</TableHead>
-                    <TableHead>{t('studentTableId')}</TableHead>
-                    <TableHead>{t('gradeLevel')}</TableHead>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Istudently ID</TableHead>
+                    <TableHead>Grade Level</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={4} className="text-center py-8 text-muted-foreground text-sm">
-                        {t('noStudentsFound')}
+                        No students found.
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -265,7 +242,7 @@ export default function AddActivityPage() {
                           {s.first_name} {s.last_name}
                         </TableCell>
                         <TableCell className="text-muted-foreground">{s.student_number}</TableCell>
-                        <TableCell>{s.grade_level ?? '-'}</TableCell>
+                        <TableCell>{s.grade_level ?? '—'}</TableCell>
                       </TableRow>
                     ))
                   )}
@@ -275,6 +252,7 @@ export default function AddActivityPage() {
           </CardContent>
         </Card>
 
+        {/* Bottom action button */}
         {filtered.length > 0 && (
           <div className="flex justify-center">
             <Button
@@ -283,10 +261,11 @@ export default function AddActivityPage() {
               className="px-8"
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              {t('addActivityToSelectedStudents')}
+              ADD ACTIVITY TO SELECTED STUDENTS
             </Button>
           </div>
         )}
+
       </div>
     </div>
   );

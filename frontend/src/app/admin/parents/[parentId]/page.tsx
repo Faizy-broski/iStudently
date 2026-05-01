@@ -34,11 +34,10 @@ import { useProfileView } from "@/context/ProfileViewContext";
 import { type Parent } from "@/lib/api/parents";
 import { useParents } from "@/hooks/useParents";
 import { format } from "date-fns";
-import { useTranslations } from "next-intl";
 
 // Helper to format dates
-const formatDate = (t: (key: string, values?: Record<string, any>) => string, dateString: string | null | undefined) => {
-  if (!dateString) return t("notProvided");
+const formatDate = (dateString: string | null | undefined) => {
+  if (!dateString) return "Not provided";
   try {
     return format(new Date(dateString), "MMMM d, yyyy");
   } catch {
@@ -65,7 +64,6 @@ const InfoRow = ({ label, value, icon: Icon }: { label: string; value: React.Rea
 export default function ParentDetailsPage() {
   const params = useParams();
   const router = useRouter();
-  const t = useTranslations("parents");
   const { setViewedProfile, clearViewedProfile } = useProfileView();
   
   // Get parent ID from URL
@@ -103,7 +101,7 @@ export default function ParentDetailsPage() {
         }
       } catch (error) {
         console.error("Error fetching parent:", error);
-        toast.error(t("toasts.failedLoadParentDetails"));
+        toast.error("Failed to load parent details");
       } finally {
         setLoading(false);
       }
@@ -137,11 +135,11 @@ export default function ParentDetailsPage() {
       <div className="p-6">
         <div className="text-center py-12">
           <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h2 className="text-xl font-semibold mb-2">{t("notFound")}</h2>
-          <p className="text-muted-foreground mb-4">{t("notFoundDesc")}</p>
+          <h2 className="text-xl font-semibold mb-2">Parent Not Found</h2>
+          <p className="text-muted-foreground mb-4">The parent you&apos;re looking for doesn&apos;t exist or has been removed.</p>
           <Button onClick={() => router.push("/admin/parents/parent-info")}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            {t("backToParents")}
+            Back to Parents
           </Button>
         </div>
       </div>
@@ -160,10 +158,10 @@ export default function ParentDetailsPage() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent dark:text-white">
-              {t("parentDetails")}
+              Parent Details
             </h1>
             <p className="text-sm text-muted-foreground">
-              {t("viewingCount", { current: currentIndex + 1, total })}
+              Viewing {currentIndex + 1} of {total} parents
             </p>
           </div>
         </div>
@@ -176,7 +174,7 @@ export default function ParentDetailsPage() {
             onClick={() => prevParent && navigateToParent(prevParent)}
           >
             <ChevronLeft className="h-4 w-4 mr-1" />
-            {t("previous")}
+            Previous
           </Button>
           <Button
             variant="outline"
@@ -184,7 +182,7 @@ export default function ParentDetailsPage() {
             disabled={!nextParent}
             onClick={() => nextParent && navigateToParent(nextParent)}
           >
-            {t("next")}
+            Next
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
           <Separator orientation="vertical" className="h-6" />
@@ -192,7 +190,7 @@ export default function ParentDetailsPage() {
             onClick={() => router.push(`/admin/parents/${currentParent.id}/edit`)}
           >
             <Edit className="h-4 w-4 mr-2" />
-            {t("actions.editParent")}
+            Edit Parent
           </Button>
         </div>
       </div>
@@ -216,18 +214,18 @@ export default function ParentDetailsPage() {
             <div className="flex-1">
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold">{fullName || t("na")}</h2>
+                  <h2 className="text-2xl font-bold">{fullName || "N/A"}</h2>
                   <p className="text-muted-foreground">
-                    {currentParent.occupation || t("noOccupation")} {currentParent.workplace ? t("atWorkplace", { workplace: currentParent.workplace }) : ""}
+                    {currentParent.occupation || "No Occupation"} {currentParent.workplace ? `at ${currentParent.workplace}` : ""}
                   </p>
                 </div>
                 <div className="flex gap-2">
                   <Badge className={currentParent.profile?.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                    {currentParent.profile?.is_active ? t("active") : t("inactive")}
+                    {currentParent.profile?.is_active ? "Active" : "Inactive"}
                   </Badge>
                   {currentParent.children && currentParent.children.length > 0 && (
                     <Badge variant="outline">
-                      {t("childrenCountLabel", { count: currentParent.children.length })}
+                      {currentParent.children.length} {currentParent.children.length === 1 ? "Child" : "Children"}
                     </Badge>
                   )}
                 </div>
@@ -264,19 +262,19 @@ export default function ParentDetailsPage() {
         <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
           <TabsTrigger value="personal" className="gap-2">
             <User className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("tabs.personal")}</span>
+            <span className="hidden sm:inline">Personal</span>
           </TabsTrigger>
           <TabsTrigger value="work" className="gap-2">
             <Briefcase className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("tabs.work")}</span>
+            <span className="hidden sm:inline">Work</span>
           </TabsTrigger>
           <TabsTrigger value="children" className="gap-2">
             <Users className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("tabs.children")}</span>
+            <span className="hidden sm:inline">Children</span>
           </TabsTrigger>
           <TabsTrigger value="system" className="gap-2">
             <Settings className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("tabs.system")}</span>
+            <span className="hidden sm:inline">System</span>
           </TabsTrigger>
         </TabsList>
 
@@ -286,32 +284,32 @@ export default function ParentDetailsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
-                {t("personalInfo")}
+                Personal Information
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <InfoRow label={t("fields.firstName")} value={currentParent.profile?.first_name} />
-                <InfoRow label={t("fields.lastName")} value={currentParent.profile?.last_name} />
-                <InfoRow label={t("fields.email")} value={currentParent.profile?.email} icon={Mail} />
-                <InfoRow label={t("fields.phoneNumber")} value={currentParent.profile?.phone} icon={Phone} />
-                <InfoRow label={t("fields.cnic")} value={currentParent.cnic} icon={CreditCard} />
+                <InfoRow label="First Name" value={currentParent.profile?.first_name} />
+                <InfoRow label="Last Name" value={currentParent.profile?.last_name} />
+                <InfoRow label="Email" value={currentParent.profile?.email} icon={Mail} />
+                <InfoRow label="Phone Number" value={currentParent.profile?.phone} icon={Phone} />
+                <InfoRow label="CNIC / ID Number" value={currentParent.cnic} icon={CreditCard} />
               </div>
               
               <Separator className="my-6" />
               
               <h4 className="font-semibold mb-4 flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
-                {t("addressInfo")}
+                Address Information
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div className="md:col-span-2 lg:col-span-3">
-                  <InfoRow label={t("streetAddress")} value={currentParent.address} icon={MapPin} />
+                  <InfoRow label="Street Address" value={currentParent.address} icon={MapPin} />
                 </div>
-                <InfoRow label={t("fields.city")} value={currentParent.city} icon={Building} />
-                <InfoRow label={t("fields.state")} value={currentParent.state} />
-                <InfoRow label={t("zipCode")} value={currentParent.zip_code} />
-                <InfoRow label={t("fields.country")} value={currentParent.country} />
+                <InfoRow label="City" value={currentParent.city} icon={Building} />
+                <InfoRow label="State / Province" value={currentParent.state} />
+                <InfoRow label="Zip / Postal Code" value={currentParent.zip_code} />
+                <InfoRow label="Country" value={currentParent.country} />
               </div>
 
               {/* Emergency Contact */}
@@ -320,12 +318,12 @@ export default function ParentDetailsPage() {
                   <Separator className="my-6" />
                   <h4 className="font-semibold mb-4 flex items-center gap-2">
                     <AlertCircle className="h-4 w-4 text-red-500" />
-                    {t("emergencyContact")}
+                    Emergency Contact
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <InfoRow label={t("contactName")} value={currentParent.emergency_contact_name} />
-                    <InfoRow label={t("relationship")} value={currentParent.emergency_contact_relation} />
-                    <InfoRow label={t("fields.phone")} value={currentParent.emergency_contact_phone} icon={Phone} />
+                    <InfoRow label="Contact Name" value={currentParent.emergency_contact_name} />
+                    <InfoRow label="Relationship" value={currentParent.emergency_contact_relation} />
+                    <InfoRow label="Phone" value={currentParent.emergency_contact_phone} icon={Phone} />
                   </div>
                 </>
               )}
@@ -339,14 +337,14 @@ export default function ParentDetailsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Briefcase className="h-5 w-5" />
-                {t("workInformation")}
+                Work Information
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <InfoRow label={t("occupation")} value={currentParent.occupation} icon={Briefcase} />
-                <InfoRow label={t("workplace")} value={currentParent.workplace} icon={Building} />
-                <InfoRow label={t("income")} value={currentParent.income} />
+                <InfoRow label="Occupation" value={currentParent.occupation} icon={Briefcase} />
+                <InfoRow label="Workplace" value={currentParent.workplace} icon={Building} />
+                <InfoRow label="Income" value={currentParent.income} />
               </div>
             </CardContent>
           </Card>
@@ -358,7 +356,7 @@ export default function ParentDetailsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                {t("linkedChildren")}
+                Linked Children
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -381,17 +379,17 @@ export default function ParentDetailsPage() {
                             {child.profile?.first_name || ""} {child.profile?.last_name || ""}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            {child.student_number} • {t("gradeLabel", { grade: child.grade_level || t("na") })}
+                            {child.student_number} • Grade {child.grade_level || "N/A"}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="capitalize">
-                          {child.relationship || t("related")}
+                          {child.relationship || "Related"}
                         </Badge>
                         {child.is_emergency_contact && (
                           <Badge variant="destructive" className="text-xs">
-                            {t("emergencyContact")}
+                            Emergency Contact
                           </Badge>
                         )}
                         <GraduationCap className="h-5 w-5 text-muted-foreground" />
@@ -402,14 +400,14 @@ export default function ParentDetailsPage() {
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>{t("noChildrenLinked")}</p>
-                  <p className="text-sm">{t("goToAssociate")}</p>
+                  <p>No children linked yet</p>
+                  <p className="text-sm">Go to Associate Parent to link students</p>
                   <Button 
                     variant="outline" 
                     className="mt-4"
                     onClick={() => router.push('/admin/parents/associate-parent')}
                   >
-                    {t("linkChildren")}
+                    Link Children
                   </Button>
                 </div>
               )}
@@ -423,30 +421,30 @@ export default function ParentDetailsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Settings className="h-5 w-5" />
-                {t("systemInformation")}
+                System Information
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <InfoRow label={t("system.parentId")} value={currentParent.id} />
-                <InfoRow label={t("system.profileId")} value={currentParent.profile_id} />
-                <InfoRow label={t("system.schoolId")} value={currentParent.school_id} />
+                <InfoRow label="Parent ID" value={currentParent.id} />
+                <InfoRow label="Profile ID" value={currentParent.profile_id} />
+                <InfoRow label="School ID" value={currentParent.school_id} />
                 <InfoRow 
-                  label={t("table.status")} 
+                  label="Status" 
                   value={
                     <Badge className={currentParent.profile?.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                      {currentParent.profile?.is_active ? t("active") : t("inactive")}
+                      {currentParent.profile?.is_active ? "Active" : "Inactive"}
                     </Badge>
                   }
                 />
                 <InfoRow 
-                  label={t("system.createdAt")} 
-                  value={formatDate(t, currentParent.created_at)}
+                  label="Created At" 
+                  value={formatDate(currentParent.created_at)}
                   icon={Clock}
                 />
                 <InfoRow 
-                  label={t("system.lastUpdated")} 
-                  value={formatDate(t, currentParent.updated_at)}
+                  label="Last Updated" 
+                  value={formatDate(currentParent.updated_at)}
                   icon={Clock}
                 />
               </div>
@@ -457,7 +455,7 @@ export default function ParentDetailsPage() {
                   <Separator className="my-6" />
                   <h4 className="font-semibold mb-4 flex items-center gap-2">
                     <FileText className="h-4 w-4" />
-                    {t("notes")}
+                    Notes
                   </h4>
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted p-4 rounded-lg">
                     {currentParent.notes}

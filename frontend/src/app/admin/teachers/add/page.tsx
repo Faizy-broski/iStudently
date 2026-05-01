@@ -5,10 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import { AddTeacherForm } from "@/components/admin/AddTeacherForm"
-import { useTranslations } from "next-intl"
 
 export default function AddTeacherPage() {
-  const t = useTranslations("teachers")
   const router = useRouter()
 
   return (
@@ -24,14 +22,14 @@ export default function AddTeacherPage() {
               className="text-[#022172] hover:text-[#022172]/80"
             >
               <ArrowLeft className="h-4 w-4 mr-1" />
-              {t("backToTeachers")}
+              Back to Teachers
             </Button>
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-[#022172] dark:text-white">
-            {t("addNewTeacherTitle")}
+            Add New Teacher
           </h1>
           <p className="text-muted-foreground">
-            {t("addNewTeacherSubtitle")}
+            Create a new teacher profile with all required information
           </p>
         </div>
       </div>
@@ -39,9 +37,9 @@ export default function AddTeacherPage() {
       {/* Form Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-[#022172]">{t("teacherRegistrationForm")}</CardTitle>
+          <CardTitle className="text-[#022172]">Teacher Registration Form</CardTitle>
           <CardDescription>
-            {t("teacherRegistrationDescription")}
+            Fill in all the details to create a new teacher account. Fields marked with * are required.
           </CardDescription>
         </CardHeader>
         <CardContent>

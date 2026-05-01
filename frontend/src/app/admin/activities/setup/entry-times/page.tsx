@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -18,6 +17,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useCampus } from '@/context/CampusContext';
 import { getEntryTimes, saveEntryTimes, type EligibilitySettings } from '@/lib/api/activities';
 
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const MINUTES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
 
@@ -26,23 +26,9 @@ function pad2(n: number) {
 }
 
 export default function EntryTimesPage() {
-  const t = useTranslations('activities');
   const { user } = useAuth();
   const campusCtx = useCampus();
   const schoolId = user?.school_id || campusCtx?.selectedCampus?.parent_school_id || '';
-
-  const days = useMemo(
-    () => [
-      t('days.sunday'),
-      t('days.monday'),
-      t('days.tuesday'),
-      t('days.wednesday'),
-      t('days.thursday'),
-      t('days.friday'),
-      t('days.saturday'),
-    ],
-    [t]
-  );
 
   const [settings, setSettings] = useState<EligibilitySettings>({
     school_id: schoolId,
@@ -57,29 +43,23 @@ export default function EntryTimesPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!schoolId) {
-      setLoading(false);
-      return;
-    }
+    if (!schoolId) { setLoading(false); return; }
     getEntryTimes(schoolId)
       .then((res) => {
         if (res.data) setSettings(res.data);
       })
-      .catch(() => toast.error(t('failedToLoadEntryTimes')))
+      .catch(() => toast.error('Failed to load entry time settings'))
       .finally(() => setLoading(false));
-  }, [schoolId, t]);
+  }, [schoolId]);
 
   async function handleSave() {
     setSaving(true);
     try {
       const res = await saveEntryTimes({ ...settings, school_id: schoolId });
-      if (res.error) {
-        toast.error(res.error);
-        return;
-      }
-      toast.success(t('entryTimesSaved'));
+      if (res.error) { toast.error(res.error); return; }
+      toast.success('Entry times saved');
     } catch {
-      toast.error(t('failedToSaveEntryTimes'));
+      toast.error('Failed to save entry times');
     } finally {
       setSaving(false);
     }
@@ -88,7 +68,7 @@ export default function EntryTimesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20 gap-2 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" /> {t('loadingEntryTimes')}
+        <Loader2 className="h-5 w-5 animate-spin" /> Loading…
       </div>
     );
   }
@@ -96,25 +76,28 @@ export default function EntryTimesPage() {
   return (
     <div className="container mx-auto py-8">
       <div className="max-w-xl mx-auto space-y-6">
+
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <Clock className="h-7 w-7 text-primary" />
-          {t('entryTimesTitle')}
+          Entry Times
         </h1>
 
         <p className="text-sm text-muted-foreground">
-          {t('entryTimesDescription')}
+          Configure the days and times during which teachers can enter eligibility. Outside this window, the eligibility form will be read-only.
         </p>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">{t('entryWindow')}</CardTitle>
+            <CardTitle className="text-base">Entry Window</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
+
+            {/* Start */}
             <div className="space-y-2">
-              <Label className="font-medium">{t('start')}</Label>
+              <Label className="font-medium">Start</Label>
               <div className="flex flex-wrap gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">{t('day')}</Label>
+                  <Label className="text-xs text-muted-foreground">Day</Label>
                   <Select
                     value={String(settings.start_day)}
                     onValueChange={(v) => setSettings({ ...settings, start_day: Number(v) })}
@@ -123,14 +106,14 @@ export default function EntryTimesPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {days.map((d, i) => (
+                      {DAYS.map((d, i) => (
                         <SelectItem key={i} value={String(i)}>{d}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">{t('hour')}</Label>
+                  <Label className="text-xs text-muted-foreground">Hour</Label>
                   <Select
                     value={String(settings.start_hour)}
                     onValueChange={(v) => setSettings({ ...settings, start_hour: Number(v) })}
@@ -146,7 +129,7 @@ export default function EntryTimesPage() {
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">{t('minute')}</Label>
+                  <Label className="text-xs text-muted-foreground">Minute</Label>
                   <Select
                     value={String(settings.start_minute)}
                     onValueChange={(v) => setSettings({ ...settings, start_minute: Number(v) })}
@@ -164,11 +147,12 @@ export default function EntryTimesPage() {
               </div>
             </div>
 
+            {/* End */}
             <div className="space-y-2">
-              <Label className="font-medium">{t('end')}</Label>
+              <Label className="font-medium">End</Label>
               <div className="flex flex-wrap gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">{t('day')}</Label>
+                  <Label className="text-xs text-muted-foreground">Day</Label>
                   <Select
                     value={String(settings.end_day)}
                     onValueChange={(v) => setSettings({ ...settings, end_day: Number(v) })}
@@ -177,14 +161,14 @@ export default function EntryTimesPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {days.map((d, i) => (
+                      {DAYS.map((d, i) => (
                         <SelectItem key={i} value={String(i)}>{d}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">{t('hour')}</Label>
+                  <Label className="text-xs text-muted-foreground">Hour</Label>
                   <Select
                     value={String(settings.end_hour)}
                     onValueChange={(v) => setSettings({ ...settings, end_hour: Number(v) })}
@@ -200,7 +184,7 @@ export default function EntryTimesPage() {
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">{t('minute')}</Label>
+                  <Label className="text-xs text-muted-foreground">Minute</Label>
                   <Select
                     value={String(settings.end_minute)}
                     onValueChange={(v) => setSettings({ ...settings, end_minute: Number(v) })}
@@ -218,13 +202,12 @@ export default function EntryTimesPage() {
               </div>
             </div>
 
+            {/* Summary */}
             <p className="text-sm text-muted-foreground border rounded-md p-3 bg-muted/40">
-              {t('entryWindowSummary', {
-                startDay: days[settings.start_day],
-                startTime: `${pad2(settings.start_hour)}:${pad2(settings.start_minute)}`,
-                endDay: days[settings.end_day],
-                endTime: `${pad2(settings.end_hour)}:${pad2(settings.end_minute)}`,
-              })}
+              Entry window: <strong>{DAYS[settings.start_day]}</strong> at{' '}
+              <strong>{pad2(settings.start_hour)}:{pad2(settings.start_minute)}</strong> through{' '}
+              <strong>{DAYS[settings.end_day]}</strong> at{' '}
+              <strong>{pad2(settings.end_hour)}:{pad2(settings.end_minute)}</strong>
             </p>
 
             <div className="flex justify-end">
@@ -233,11 +216,12 @@ export default function EntryTimesPage() {
                   ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   : <Save className="h-4 w-4 mr-2" />
                 }
-                {t('saveEntryTimes')}
+                Save Entry Times
               </Button>
             </div>
           </CardContent>
         </Card>
+
       </div>
     </div>
   );

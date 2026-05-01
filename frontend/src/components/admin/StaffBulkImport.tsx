@@ -4,7 +4,6 @@ import { useState, useCallback, useRef } from "react"
 import Papa from "papaparse"
 import * as XLSX from "xlsx"
 import { toast } from "sonner"
-import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -35,12 +34,12 @@ const VALID_EMP_TYPES = ["full_time", "part_time", "contract"] as const
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const DASHBOARD_ROLES: StaffBulkRole[] = ["teacher", "librarian", "admin", "counselor"]
 
-const ROLE_BADGE: Record<StaffBulkRole, { labelKey: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  teacher:   { labelKey: "bulkImport.roles.teacher",   variant: "default" },
-  librarian: { labelKey: "bulkImport.roles.librarian", variant: "secondary" },
-  admin:     { labelKey: "bulkImport.roles.admin",     variant: "destructive" },
-  counselor: { labelKey: "bulkImport.roles.counselor", variant: "outline" },
-  staff:     { labelKey: "bulkImport.roles.staff",     variant: "outline" }
+const ROLE_BADGE: Record<StaffBulkRole, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  teacher:   { label: "Teacher",   variant: "default" },
+  librarian: { label: "Librarian", variant: "secondary" },
+  admin:     { label: "Admin",     variant: "destructive" },
+  counselor: { label: "Counselor", variant: "outline" },
+  staff:     { label: "Staff",     variant: "outline" }
 }
 
 // ─── Field definitions ────────────────────────────────────────────────────────
@@ -245,7 +244,6 @@ type Step = 1 | 2 | 3 | 4 | 5
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function StaffBulkImport() {
-  const t = useTranslations("staff")
   const campusCtx = useCampus()
   const campusId = campusCtx?.selectedCampus?.id
 
@@ -268,7 +266,7 @@ export function StaffBulkImport() {
     setFileName(file.name)
 
     const handleRows = (data: Record<string, any>[]) => {
-      if (!data.length) { toast.error(t("bulkImport.errors.fileEmpty")); return }
+      if (!data.length) { toast.error("File appears to be empty"); return }
       const cols = Object.keys(data[0])
       setCsvColumns(cols)
       setRawRows(data)
@@ -280,7 +278,7 @@ export function StaffBulkImport() {
       Papa.parse(file, {
         header: true, skipEmptyLines: true,
         complete: ({ data }) => handleRows(data as Record<string, any>[]),
-        error: () => toast.error(t("bulkImport.errors.parseCsvFailed")),
+        error: () => toast.error("Failed to parse CSV file"),
       })
     } else if (ext === "xlsx" || ext === "xls") {
       const reader = new FileReader()
@@ -289,11 +287,11 @@ export function StaffBulkImport() {
           const wb = XLSX.read(e.target?.result, { type: "binary" })
           const ws = wb.Sheets[wb.SheetNames[0]]
           handleRows(XLSX.utils.sheet_to_json(ws, { defval: "" }) as Record<string, any>[])
-        } catch { toast.error(t("bulkImport.errors.parseExcelFailed")) }
+        } catch { toast.error("Failed to parse Excel file") }
       }
       reader.readAsBinaryString(file)
     } else {
-      toast.error(t("bulkImport.errors.invalidFileType"))
+      toast.error("Please upload a .csv, .xlsx, or .xls file")
     }
   }, [])
 
@@ -316,7 +314,7 @@ export function StaffBulkImport() {
       f => f.required && (!mapping[f.key] || mapping[f.key] === SKIP)
     )
     if (requiredMissing.length > 0) {
-      toast.error(t("bulkImport.errors.mapRequiredFirst", { fields: requiredMissing.map(f => f.label).join(", ") }))
+      toast.error(`Map required fields first: ${requiredMissing.map(f => f.label).join(", ")}`)
       return
     }
     setParsedRows(applyMappingAndValidate(rawRows, mapping))
@@ -327,7 +325,7 @@ export function StaffBulkImport() {
 
   const handleImport = async () => {
     const validRows = parsedRows.filter(r => r._clientErrors.length === 0)
-    if (validRows.length === 0) { toast.error(t("bulkImport.errors.noValidRows")); return }
+    if (validRows.length === 0) { toast.error("No valid rows to import"); return }
 
     setIsImporting(true)
     setStep(4)
@@ -339,7 +337,7 @@ export function StaffBulkImport() {
       const result = await bulkImportStaff(payload, campusId)
 
       if (!result.success || !result.data) {
-        toast.error(result.error || t("bulkImport.errors.importFailed"))
+        toast.error(result.error || "Import failed")
         setStep(3)
         return
       }
@@ -348,11 +346,11 @@ export function StaffBulkImport() {
       setImportErrors(result.data.errors)
       setStep(5)
       if (result.data.success_count > 0)
-        toast.success(t("bulkImport.toasts.importedSuccessfully", { count: result.data.success_count }))
+        toast.success(`Imported ${result.data.success_count} staff member(s) successfully`)
       if (result.data.error_count > 0)
-        toast.warning(t("bulkImport.toasts.rowsFailedDownloadReport", { count: result.data.error_count }))
+        toast.warning(`${result.data.error_count} row(s) failed — download the error report`)
     } catch {
-      toast.error(t("bulkImport.errors.networkError"))
+      toast.error("Import failed due to a network error")
       setStep(3)
     } finally {
       setIsImporting(false)
@@ -396,7 +394,7 @@ export function StaffBulkImport() {
                 ${done ? "bg-green-600 text-white" : active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
                 {done ? <CheckCircle2 className="h-4 w-4" /> : s}
               </span>
-              <span className={active ? "font-medium" : "text-muted-foreground"}>{t(`bulkImport.steps.${label}` as any)}</span>
+              <span className={active ? "font-medium" : "text-muted-foreground"}>{label}</span>
               {idx < STEPS.length - 1 && <ArrowRight className="h-4 w-4 text-muted-foreground" />}
             </div>
           )
@@ -407,9 +405,9 @@ export function StaffBulkImport() {
       {step === 1 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" /> {t("bulkImport.title")}</CardTitle>
+            <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" /> Staff Bulk Import</CardTitle>
             <CardDescription>
-              {t("bulkImport.description")}
+              Import teachers, librarians, counselors, and other staff. You'll map your file's columns to system fields on the next screen.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -422,29 +420,29 @@ export function StaffBulkImport() {
               onClick={() => fileRef.current?.click()}
             >
               <Upload className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
-              <p className="font-medium">{t("bulkImport.dropHereOrBrowse")}</p>
-              <p className="text-sm text-muted-foreground mt-1">{t("bulkImport.supports")}</p>
+              <p className="font-medium">Drop your file here or click to browse</p>
+              <p className="text-sm text-muted-foreground mt-1">Supports .csv, .xlsx, .xls</p>
               <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={onFileChange} />
             </div>
 
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <FileText className="h-4 w-4" />
-              <span>{t("bulkImport.requiredFieldsLabel")} <code className="bg-muted px-1 rounded text-xs">{t("bulkImport.requiredFields")}</code></span>
+              <span>Required fields: <code className="bg-muted px-1 rounded text-xs">First Name, Last Name, Email</code></span>
             </div>
 
             <div className="rounded-md bg-muted/50 p-4 space-y-2 text-sm">
-              <p className="font-medium text-xs">{t("bulkImport.roleValuesTitle")}</p>
+              <p className="font-medium text-xs">Role values (role column or auto-detected from title):</p>
               <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
-                <span><code>teacher</code> — {t("bulkImport.roleValueDescriptions.teacher")}</span>
-                <span><code>librarian</code> — {t("bulkImport.roleValueDescriptions.librarian")}</span>
-                <span><code>admin</code> — {t("bulkImport.roleValueDescriptions.admin")}</span>
-                <span><code>counselor</code> — {t("bulkImport.roleValueDescriptions.counselor")}</span>
-                <span><code>staff</code> — {t("bulkImport.roleValueDescriptions.staff")}</span>
+                <span><code>teacher</code> — Teacher portal + timetable</span>
+                <span><code>librarian</code> — Library dashboard</span>
+                <span><code>admin</code> — Administrative access</span>
+                <span><code>counselor</code> — Counseling portal</span>
+                <span><code>staff</code> — No dashboard (general staff)</span>
               </div>
             </div>
 
             <Button variant="outline" size="sm" onClick={downloadStaffImportTemplate} className="gap-2">
-              <Download className="h-4 w-4" /> {t("bulkImport.downloadTemplate")}
+              <Download className="h-4 w-4" /> Download CSV Template
             </Button>
           </CardContent>
         </Card>
@@ -455,17 +453,18 @@ export function StaffBulkImport() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-base font-semibold">{t("bulkImport.mapColumnsTitle")}</h2>
+              <h2 className="text-base font-semibold">Map Columns</h2>
               <p className="text-sm text-muted-foreground">
-                {t("bulkImport.mapColumnsSubtitle", { fileName, rows: rawRows.length })}
+                File: <span className="font-medium">{fileName}</span> — {rawRows.length} rows detected.
+                Match each field to a column in your file.
               </p>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={reset} className="gap-2">
-                <ArrowLeft className="h-4 w-4" /> {t("back")}
+                <ArrowLeft className="h-4 w-4" /> Back
               </Button>
               <Button size="sm" onClick={applyMapping} className="gap-2">
-                {t("continue")} <ArrowRight className="h-4 w-4" />
+                Continue <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -489,10 +488,10 @@ export function StaffBulkImport() {
                         onValueChange={val => setMapping(prev => ({ ...prev, [field.key]: val }))}
                       >
                         <SelectTrigger className={`${field.required && (!currentVal || currentVal === SKIP) ? "border-red-400" : ""}`}>
-                          <SelectValue placeholder={t("bulkImport.skip")} />
+                          <SelectValue placeholder="— Skip —" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value={SKIP}>{t("bulkImport.skip")}</SelectItem>
+                          <SelectItem value={SKIP}>— Skip —</SelectItem>
                           {csvColumns.map(col => (
                             <SelectItem key={col} value={col}>{col}</SelectItem>
                           ))}
@@ -508,7 +507,7 @@ export function StaffBulkImport() {
           {/* Column preview table */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-muted-foreground">{t("bulkImport.first3Rows")}</CardTitle>
+              <CardTitle className="text-sm text-muted-foreground">Your file's first 3 rows</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -543,20 +542,20 @@ export function StaffBulkImport() {
         <div className="space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex gap-2 flex-wrap">
-              <Badge variant="default" className="gap-1"><CheckCircle2 className="h-3 w-3" /> {t("bulkImport.validCount", { count: validCount })}</Badge>
-              {invalidCount > 0 && <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> {t("bulkImport.invalidCount", { count: invalidCount })}</Badge>}
+              <Badge variant="default" className="gap-1"><CheckCircle2 className="h-3 w-3" /> {validCount} valid</Badge>
+              {invalidCount > 0 && <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> {invalidCount} invalid</Badge>}
               {Object.entries(roleSummary).map(([role, count]) => (
                 <Badge key={role} variant={ROLE_BADGE[role as StaffBulkRole]?.variant || "outline"} className="gap-1">
-                  {t("bulkImport.roleCount", { count, role: t(ROLE_BADGE[role as StaffBulkRole].labelKey as any) })}
+                  {count} {role}
                 </Badge>
               ))}
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => setStep(2)} className="gap-2">
-                <ArrowLeft className="h-4 w-4" /> {t("bulkImport.remap")}
+                <ArrowLeft className="h-4 w-4" /> Remap
               </Button>
               <Button size="sm" onClick={handleImport} disabled={validCount === 0} className="gap-2">
-                {t("bulkImport.importMembers", { count: validCount })} <ArrowRight className="h-4 w-4" />
+                Import {validCount} Member{validCount !== 1 ? "s" : ""} <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -565,7 +564,7 @@ export function StaffBulkImport() {
             <div className="flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
               <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
               <span>
-                {t("bulkImport.dashboardCredentialWarning", { count: dashboardCount })}
+                <strong>{dashboardCount} member{dashboardCount !== 1 ? "s" : ""}</strong> (teacher/librarian/admin/counselor) will receive dashboard login credentials.
               </span>
             </div>
           )}
@@ -574,7 +573,7 @@ export function StaffBulkImport() {
             <Card className="border-destructive/50">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2 text-destructive">
-                  <AlertTriangle className="h-4 w-4" /> {t("bulkImport.rowsSkipped", { count: invalidCount })}
+                  <AlertTriangle className="h-4 w-4" /> {invalidCount} row(s) will be skipped
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -591,25 +590,14 @@ export function StaffBulkImport() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">{t("bulkImport.previewFirstRows")}</CardTitle>
+              <CardTitle className="text-sm">Preview — first 20 rows</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b">
-                      {[
-                        t("bulkImport.previewHeaders.row"),
-                        t("bulkImport.previewHeaders.employeeNumber"),
-                        t("bulkImport.previewHeaders.firstName"),
-                        t("bulkImport.previewHeaders.lastName"),
-                        t("bulkImport.previewHeaders.email"),
-                        t("bulkImport.previewHeaders.role"),
-                        t("bulkImport.previewHeaders.title"),
-                        t("bulkImport.previewHeaders.department"),
-                        t("bulkImport.previewHeaders.dashboard"),
-                        t("bulkImport.previewHeaders.status"),
-                      ].map(h => (
+                      {["Row", "Employee #", "First Name", "Last Name", "Email", "Role", "Title", "Dept", "Dashboard", "Status"].map(h => (
                         <th key={h} className="text-left py-1 px-2 font-medium text-muted-foreground whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -618,37 +606,37 @@ export function StaffBulkImport() {
                     {parsedRows.slice(0, 20).map(row => (
                       <tr key={row._rowIndex} className={`border-b ${row._clientErrors.length > 0 ? "bg-destructive/5" : ""}`}>
                         <td className="py-1 px-2">{row._rowIndex}</td>
-                        <td className="py-1 px-2">{row.employee_number || t("dash")}</td>
+                        <td className="py-1 px-2">{row.employee_number || "—"}</td>
                         <td className="py-1 px-2">{row.first_name}</td>
                         <td className="py-1 px-2">{row.last_name}</td>
                         <td className="py-1 px-2">{row.email}</td>
                         <td className="py-1 px-2">
                           {row._clientErrors.length === 0 && (
                             <Badge variant={ROLE_BADGE[row._resolvedRole]?.variant || "outline"} className="text-xs">
-                              {t(ROLE_BADGE[row._resolvedRole]?.labelKey as any) || row._resolvedRole}
+                              {ROLE_BADGE[row._resolvedRole]?.label || row._resolvedRole}
                             </Badge>
                           )}
                         </td>
-                        <td className="py-1 px-2">{row.title || t("dash")}</td>
-                        <td className="py-1 px-2">{row.department || t("dash")}</td>
+                        <td className="py-1 px-2">{row.title || "—"}</td>
+                        <td className="py-1 px-2">{row.department || "—"}</td>
                         <td className="py-1 px-2">
                           {row._clientErrors.length === 0 && (
                             DASHBOARD_ROLES.includes(row._resolvedRole)
-                              ? <span className="text-green-600">{t("bulkImport.yes")}</span>
-                              : <span className="text-muted-foreground">{t("dash")}</span>
+                              ? <span className="text-green-600">✓ Yes</span>
+                              : <span className="text-muted-foreground">—</span>
                           )}
                         </td>
                         <td className="py-1 px-2">
                           {row._clientErrors.length > 0
                             ? <span className="text-destructive flex items-center gap-1"><XCircle className="h-3 w-3" /> {row._clientErrors[0]}</span>
-                            : <span className="text-green-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> {t("bulkImport.ok")}</span>}
+                            : <span className="text-green-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> OK</span>}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
                 {parsedRows.length > 20 && (
-                  <p className="text-xs text-muted-foreground mt-2">{t("bulkImport.moreRows", { count: parsedRows.length - 20 })}</p>
+                  <p className="text-xs text-muted-foreground mt-2">...and {parsedRows.length - 20} more row(s)</p>
                 )}
               </div>
             </CardContent>
@@ -661,9 +649,9 @@ export function StaffBulkImport() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="font-medium">{t("bulkImport.creatingAccounts")}</p>
+            <p className="font-medium">Creating staff accounts...</p>
             <p className="text-sm text-muted-foreground">
-              {t("bulkImport.processingMembers", { count: validCount })}
+              Processing {validCount} member{validCount !== 1 ? "s" : ""}. This may take a moment.
             </p>
           </CardContent>
         </Card>
@@ -674,11 +662,11 @@ export function StaffBulkImport() {
         <div className="space-y-4">
           <div className="flex gap-3 flex-wrap">
             <Badge variant="default" className="gap-1 text-sm py-1 px-3">
-              <CheckCircle2 className="h-4 w-4" /> {t("bulkImport.importedCount", { count: successCount })}
+              <CheckCircle2 className="h-4 w-4" /> {successCount} imported
             </Badge>
             {importErrors.length > 0 && (
               <Badge variant="destructive" className="gap-1 text-sm py-1 px-3">
-                <XCircle className="h-4 w-4" /> {t("bulkImport.failedCount", { count: importErrors.length })}
+                <XCircle className="h-4 w-4" /> {importErrors.length} failed
               </Badge>
             )}
           </div>
@@ -688,10 +676,10 @@ export function StaffBulkImport() {
               <CardHeader>
                 <CardTitle className="text-sm flex items-center justify-between">
                   <span className="flex items-center gap-2 text-destructive">
-                    <AlertTriangle className="h-4 w-4" /> {t("bulkImport.failedRows")}
+                    <AlertTriangle className="h-4 w-4" /> Failed Rows
                   </span>
                   <Button variant="outline" size="sm" onClick={() => downloadErrorReport(importErrors)} className="gap-2">
-                    <Download className="h-4 w-4" /> {t("bulkImport.downloadErrorReport")}
+                    <Download className="h-4 w-4" /> Download Error Report
                   </Button>
                 </CardTitle>
               </CardHeader>
@@ -700,16 +688,16 @@ export function StaffBulkImport() {
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left py-1 px-2 font-medium">{t("bulkImport.previewHeaders.row")}</th>
-                        <th className="text-left py-1 px-2 font-medium">{t("bulkImport.previewHeaders.email")}</th>
-                        <th className="text-left py-1 px-2 font-medium">{t("bulkImport.previewHeaders.error")}</th>
+                        <th className="text-left py-1 px-2 font-medium">Row</th>
+                        <th className="text-left py-1 px-2 font-medium">Email</th>
+                        <th className="text-left py-1 px-2 font-medium">Error</th>
                       </tr>
                     </thead>
                     <tbody>
                       {importErrors.map(e => (
                         <tr key={e.row} className="border-b">
                           <td className="py-1 px-2">{e.row}</td>
-                          <td className="py-1 px-2">{e.email || t("dash")}</td>
+                          <td className="py-1 px-2">{e.email || "—"}</td>
                           <td className="py-1 px-2 text-destructive">{e.error}</td>
                         </tr>
                       ))}
@@ -722,10 +710,10 @@ export function StaffBulkImport() {
 
           <div className="flex gap-2">
             <Button onClick={reset} variant="outline" className="gap-2">
-              <Upload className="h-4 w-4" /> {t("bulkImport.importMore")}
+              <Upload className="h-4 w-4" /> Import More
             </Button>
             <Button asChild>
-              <a href="/admin/staff">{t("bulkImport.viewStaff")}</a>
+              <a href="/admin/staff">View Staff</a>
             </Button>
           </div>
         </div>

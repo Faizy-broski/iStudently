@@ -11,12 +11,10 @@ import { ArrowLeft, Loader2 } from "lucide-react"
 import { type Parent, getParentById, updateParent } from "@/lib/api/parents"
 import { toast } from "sonner"
 import { CustomFieldsRenderer } from "@/components/admin/CustomFieldsRenderer"
-import { useTranslations } from "next-intl"
 
 export default function EditParentPage() {
   const params = useParams()
   const router = useRouter()
-  const t = useTranslations("parents")
   const parentId = params.parentId as string
   
   const [parent, setParent] = useState<Parent | null>(null)
@@ -33,12 +31,12 @@ export default function EditParentPage() {
           setParent(response.data)
           setEditCustomFields(response.data.custom_fields || {})
         } else {
-          toast.error(response.error || t("notFound"))
+          toast.error(response.error || "Parent not found")
           router.push('/admin/parents/parent-info')
         }
       } catch (error) {
         console.error("Error fetching parent:", error)
-        toast.error(t("toasts.failedLoadParent"))
+        toast.error("Failed to load parent")
         router.push('/admin/parents/parent-info')
       } finally {
         setLoading(false)
@@ -78,10 +76,10 @@ export default function EditParentPage() {
       }
 
       await updateParent(parent.id, updateData)
-      toast.success(t("toasts.parentUpdated"))
+      toast.success('Parent updated successfully!')
       router.push(`/admin/parents/${parentId}`)
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : t("toasts.failedUpdateParent")
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update parent'
       toast.error(errorMessage)
       console.error(error)
     } finally {
@@ -116,14 +114,14 @@ export default function EditParentPage() {
               className="text-[#022172] hover:text-[#022172]/80"
             >
               <ArrowLeft className="h-4 w-4 mr-1" />
-              {t("backToParentDetails")}
+              Back to Parent Details
             </Button>
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-[#022172] dark:text-white">
-            {t("editParentTitle")}
+            Edit Parent
           </h1>
           <p className="text-muted-foreground">
-            {t("updateInfoFor", { parentName })}
+            Update information for {parentName}
           </p>
         </div>
       </div>
@@ -131,65 +129,65 @@ export default function EditParentPage() {
       {/* Form Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-[#022172]">{t("editInfo")}</CardTitle>
+          <CardTitle className="text-[#022172]">Edit Parent Information</CardTitle>
           <CardDescription>
-            {t("editParentDescription")}
+            Update the parent&apos;s details. Fields marked with * are required.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-6" onSubmit={handleSubmit}>
             {/* Personal Information */}
             <div>
-              <h4 className="font-semibold mb-3 text-sm">{t("personalInfo")}</h4>
+              <h4 className="font-semibold mb-3 text-sm">Personal Information</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="firstName">{t("firstName")}</Label>
+                  <Label htmlFor="firstName">First Name *</Label>
                   <Input
                     id="firstName"
                     name="firstName"
                     defaultValue={parent.profile?.first_name || ''}
-                    placeholder={t("placeholders.firstName")}
+                    placeholder="First Name"
                     required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="lastName">{t("lastName")}</Label>
+                  <Label htmlFor="lastName">Last Name *</Label>
                   <Input
                     id="lastName"
                     name="lastName"
                     defaultValue={parent.profile?.last_name || ''}
-                    placeholder={t("placeholders.lastName")}
+                    placeholder="Last Name"
                     required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="email">{t("emailRequired")}</Label>
+                  <Label htmlFor="email">Email *</Label>
                   <Input
                     id="email"
                     name="email"
                     type="email"
                     defaultValue={parent.profile?.email || ''}
-                    placeholder={t("placeholders.email")}
+                    placeholder="email@example.com"
                     required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="phone">{t("phoneRequired")}</Label>
+                  <Label htmlFor="phone">Phone *</Label>
                   <Input
                     id="phone"
                     name="phone"
                     defaultValue={parent.profile?.phone || ''}
-                    placeholder={t("placeholders.phone")}
+                    placeholder="+92 XXX XXXXXXX"
                     required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="cnic">{t("fields.cnic")}</Label>
+                  <Label htmlFor="cnic">CNIC / ID Number</Label>
                   <Input
                     id="cnic"
                     name="cnic"
                     defaultValue={parent.cnic || ''}
-                    placeholder={t("placeholders.cnic")}
+                    placeholder="XXXXX-XXXXXXX-X"
                   />
                 </div>
               </div>
@@ -197,34 +195,34 @@ export default function EditParentPage() {
 
             {/* Professional Information */}
             <div>
-              <h4 className="font-semibold mb-3 text-sm">{t("professionalInfo")}</h4>
+              <h4 className="font-semibold mb-3 text-sm">Professional Information</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="occupation">{t("occupation")}</Label>
+                  <Label htmlFor="occupation">Occupation</Label>
                   <Input
                     id="occupation"
                     name="occupation"
                     defaultValue={parent.occupation || ''}
-                    placeholder={t("placeholders.occupation")}
+                    placeholder="e.g., Teacher, Engineer"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="workplace">{t("workplace")}</Label>
+                  <Label htmlFor="workplace">Workplace</Label>
                   <Input
                     id="workplace"
                     name="workplace"
                     defaultValue={parent.workplace || ''}
-                    placeholder={t("placeholders.workplace")}
+                    placeholder="Company/Organization name"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="income">{t("monthlyIncome")}</Label>
+                  <Label htmlFor="income">Monthly Income</Label>
                   <Input
                     id="income"
                     name="income"
                     type="number"
                     defaultValue={parent.income || ''}
-                    placeholder={t("placeholders.monthlyIncome")}
+                    placeholder="Monthly income"
                   />
                 </div>
               </div>
@@ -232,52 +230,52 @@ export default function EditParentPage() {
 
             {/* Address Information */}
             <div>
-              <h4 className="font-semibold mb-3 text-sm">{t("addressInfo")}</h4>
+              <h4 className="font-semibold mb-3 text-sm">Address Information</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
-                  <Label htmlFor="address">{t("fields.address")}</Label>
+                  <Label htmlFor="address">Address</Label>
                   <Textarea
                     id="address"
                     name="address"
                     defaultValue={parent.address || ''}
-                    placeholder={t("placeholders.address")}
+                    placeholder="Street address"
                     rows={2}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="city">{t("fields.city")}</Label>
+                  <Label htmlFor="city">City</Label>
                   <Input
                     id="city"
                     name="city"
                     defaultValue={parent.city || ''}
-                    placeholder={t("placeholders.city")}
+                    placeholder="City"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="state">{t("state")}</Label>
+                  <Label htmlFor="state">State/Province</Label>
                   <Input
                     id="state"
                     name="state"
                     defaultValue={parent.state || ''}
-                    placeholder={t("placeholders.state")}
+                    placeholder="State/Province"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="zipCode">{t("zipCode")}</Label>
+                  <Label htmlFor="zipCode">ZIP/Postal Code</Label>
                   <Input
                     id="zipCode"
                     name="zipCode"
                     defaultValue={parent.zip_code || ''}
-                    placeholder={t("placeholders.zipCode")}
+                    placeholder="ZIP Code"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="country">{t("fields.country")}</Label>
+                  <Label htmlFor="country">Country</Label>
                   <Input
                     id="country"
                     name="country"
                     defaultValue={parent.country || 'Pakistan'}
-                    placeholder={t("placeholders.country")}
+                    placeholder="Country"
                   />
                 </div>
               </div>
@@ -285,33 +283,33 @@ export default function EditParentPage() {
 
             {/* Emergency Contact */}
             <div>
-              <h4 className="font-semibold mb-3 text-sm">{t("emergencyContact")}</h4>
+              <h4 className="font-semibold mb-3 text-sm">Emergency Contact</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <Label htmlFor="emergencyName">{t("contactName")}</Label>
+                  <Label htmlFor="emergencyName">Contact Name</Label>
                   <Input
                     id="emergencyName"
                     name="emergencyName"
                     defaultValue={parent.emergency_contact_name || ''}
-                    placeholder={t("placeholders.emergencyContactName")}
+                    placeholder="Emergency contact name"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="emergencyRelation">{t("relationship")}</Label>
+                  <Label htmlFor="emergencyRelation">Relationship</Label>
                   <Input
                     id="emergencyRelation"
                     name="emergencyRelation"
                     defaultValue={parent.emergency_contact_relation || ''}
-                    placeholder={t("placeholders.relationshipExample")}
+                    placeholder="e.g., Brother, Friend"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="emergencyPhone">{t("fields.phone")}</Label>
+                  <Label htmlFor="emergencyPhone">Phone</Label>
                   <Input
                     id="emergencyPhone"
                     name="emergencyPhone"
                     defaultValue={parent.emergency_contact_phone || ''}
-                    placeholder={t("placeholders.phone")}
+                    placeholder="+92 XXX XXXXXXX"
                   />
                 </div>
               </div>
@@ -319,7 +317,7 @@ export default function EditParentPage() {
 
             {/* Custom Fields */}
             <div>
-              <h4 className="font-semibold mb-3 text-sm">{t("additionalInfo")}</h4>
+              <h4 className="font-semibold mb-3 text-sm">Additional Information</h4>
               <CustomFieldsRenderer
                 entityType="parent"
                 values={editCustomFields}
@@ -329,12 +327,12 @@ export default function EditParentPage() {
 
             {/* Notes */}
             <div>
-              <Label htmlFor="notes">{t("additionalNotes")}</Label>
+              <Label htmlFor="notes">Additional Notes</Label>
               <Textarea
                 id="notes"
                 name="notes"
                 defaultValue={parent.notes || ''}
-                placeholder={t("placeholders.additionalNotes")}
+                placeholder="Additional notes..."
                 rows={3}
               />
             </div>
@@ -346,16 +344,16 @@ export default function EditParentPage() {
                 onClick={() => router.push(`/admin/parents/${parentId}`)} 
                 disabled={isSubmitting}
               >
-                {t("cancel")}
+                Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t("saving")}
+                    Saving...
                   </>
                 ) : (
-                  t("saveChanges")
+                  'Save Changes'
                 )}
               </Button>
             </div>

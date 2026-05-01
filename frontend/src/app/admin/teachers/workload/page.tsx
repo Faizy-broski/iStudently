@@ -16,10 +16,8 @@ import * as academicsApi from "@/lib/api/academics"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAcademic } from "@/context/AcademicContext"
 import { useCampus } from "@/context/CampusContext"
-import { useTranslations } from "next-intl"
 
 export default function WorkloadPage() {
-  const t = useTranslations("teachers")
   const { selectedAcademicYear, currentAcademicYear } = useAcademic()
   const { selectedCampus } = useCampus()
   const [assignments, setAssignments] = useState<teachersApi.TeacherSubjectAssignment[]>([])
@@ -112,7 +110,7 @@ export default function WorkloadPage() {
       setSections(sectionsRes.data || [])
       setSubjects(subjectsRes.data || [])
     } catch (error: any) {
-      toast.error(error.message || t("errors.loadData"))
+      toast.error(error.message || "Failed to load data")
     } finally {
       setLoading(false)
     }
@@ -130,8 +128,8 @@ export default function WorkloadPage() {
     )
     
     if (existing) {
-      const teacherName = existing.teacher_name || t("unknownTeacher")
-      setConflictWarning(t("workload.primaryConflict", { teacherName }))
+      const teacherName = existing.teacher_name || 'Unknown Teacher'
+      setConflictWarning(`⚠️ ${teacherName} is already the primary teacher for this subject-section combination.`)
     } else {
       setConflictWarning("")
     }
@@ -141,12 +139,12 @@ export default function WorkloadPage() {
     e.preventDefault()
     
     if (!selectedAcademicYear) {
-      toast.error(t("workload.selectAcademicYear"))
+      toast.error("Please select an academic year from the top menu")
       return
     }
     
     if (!selectedCampus?.id) {
-      toast.error(t("workload.selectCampus"))
+      toast.error("Please select a campus from the top menu")
       return
     }
     
@@ -162,25 +160,25 @@ export default function WorkloadPage() {
       console.log('Selected campus:', selectedCampus.id)
       
       await teachersApi.createTeacherAssignment(assignmentData as any)
-      toast.success(t("workload.assignmentCreated"))
+      toast.success("Assignment created successfully")
       setIsDialogOpen(false)
       resetForm()
       loadData()
     } catch (error: any) {
       console.error('Error creating teacher assignment:', error)
-      toast.error(error.message || t("workload.failedCreateAssignment"))
+      toast.error(error.message || "Failed to create assignment")
     }
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm(t("workload.confirmRemoveAssignment"))) return
+    if (!confirm("Are you sure you want to remove this assignment?")) return
 
     try {
       await teachersApi.deleteTeacherAssignment(id)
-      toast.success(t("workload.assignmentRemoved"))
+      toast.success("Assignment removed successfully")
       loadData()
     } catch (error: any) {
-      toast.error(error.message || t("workload.failedRemoveAssignment"))
+      toast.error(error.message || "Failed to remove assignment")
     }
   }
 
@@ -224,14 +222,14 @@ export default function WorkloadPage() {
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-brand-blue dark:text-white">{t("workloadTitle")}</h1>
-            <p className="text-muted-foreground">{t("assignWorkload")}</p>
+            <h1 className="text-3xl font-bold text-brand-blue dark:text-white">Teacher Workload</h1>
+            <p className="text-muted-foreground">Assign teachers to subjects and sections</p>
           </div>
         </div>
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            {t("workload.selectCampusToManage")}
+            Please select a campus from the top menu to view and manage teacher workload.
           </AlertDescription>
         </Alert>
       </div>
@@ -243,8 +241,8 @@ export default function WorkloadPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-brand-blue dark:text-white">{t("workloadTitle")}</h1>
-          <p className="text-muted-foreground">{t("assignWorkloadForCampus", { campus: selectedCampus.name })}</p>
+          <h1 className="text-3xl font-bold text-brand-blue dark:text-white">Teacher Workload</h1>
+          <p className="text-muted-foreground">Assign teachers to subjects and sections for {selectedCampus.name}</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open)
@@ -256,19 +254,19 @@ export default function WorkloadPage() {
               className="text-white hover:opacity-90 transition-opacity shadow-md"
             >
               <Plus className="h-4 w-4 mr-2" />
-              {t("workload.assignTeacher")}
+              Assign Teacher
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{t("assignStep1")}</DialogTitle>
+              <DialogTitle>Assign Teacher to Class (Step 1: Workload Allocation)</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               {!selectedAcademicYear && (
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    {t("workload.selectAcademicYearBeforeAssigning")}
+                    Please select an academic year from the top menu before assigning teachers.
                   </AlertDescription>
                 </Alert>
               )}
@@ -282,14 +280,14 @@ export default function WorkloadPage() {
               
               <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <Label>{t("teacher")}</Label>
+                  <Label>Teacher *</Label>
                   <Select
                     value={formData.teacher_id}
                     onValueChange={(value) => setFormData({ ...formData, teacher_id: value })}
                     required
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={t("workload.selectTeacher")} />
+                      <SelectValue placeholder="Select teacher" />
                     </SelectTrigger>
                     <SelectContent>
                       {teachers.map((teacher) => (
@@ -303,12 +301,12 @@ export default function WorkloadPage() {
 
                 <div className="border-t pt-4">
                   <p className="text-sm text-muted-foreground mb-4">
-                    {t("workload.steps")}
+                    Step 1: Select Grade → Step 2: Select Section → Step 3: Select Subject
                   </p>
                 </div>
 
                 <div>
-                  <Label>{t("gradeLevel")}</Label>
+                  <Label>Grade Level *</Label>
                   <Select
                     value={selectedGrade}
                     onValueChange={(value) => {
@@ -319,7 +317,7 @@ export default function WorkloadPage() {
                     required
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={t("workload.step1SelectGrade")} />
+                      <SelectValue placeholder="Step 1: Select grade first" />
                     </SelectTrigger>
                     <SelectContent>
                       {gradeLevels
@@ -335,7 +333,7 @@ export default function WorkloadPage() {
                 </div>
 
                 <div>
-                  <Label>{t("section")}</Label>
+                  <Label>Section *</Label>
                   <Select
                     value={formData.section_id}
                     onValueChange={(value) => setFormData({ ...formData, section_id: value })}
@@ -343,12 +341,12 @@ export default function WorkloadPage() {
                     required
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={selectedGrade ? t("workload.step2SelectSection") : t("workload.selectGradeFirst")} />
+                      <SelectValue placeholder={selectedGrade ? "Step 2: Select section" : "Select grade first"} />
                     </SelectTrigger>
                     <SelectContent>
                       {filteredSections.map((section) => (
                         <SelectItem key={section.id} value={section.id}>
-                          {t("workload.sectionCapacity", { section: section.name, capacity: section.capacity })}
+                          {section.name} (Capacity: {section.capacity})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -356,7 +354,7 @@ export default function WorkloadPage() {
                 </div>
 
                 <div>
-                  <Label>{t("subject")}</Label>
+                  <Label>Subject *</Label>
                   <Select
                     value={formData.subject_id}
                     onValueChange={(value) => setFormData({ ...formData, subject_id: value })}
@@ -364,7 +362,7 @@ export default function WorkloadPage() {
                     required
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={selectedGrade ? t("workload.step3SelectSubject") : t("workload.selectGradeFirst")} />
+                      <SelectValue placeholder={selectedGrade ? "Step 3: Select subject" : "Select grade first"} />
                     </SelectTrigger>
                     <SelectContent>
                       {filteredSubjects.map((subject) => (
@@ -376,7 +374,7 @@ export default function WorkloadPage() {
                   </Select>
                   {selectedGrade && filteredSubjects.length === 0 && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      {t("workload.noSubjectsForGrade")}
+                      No subjects found for this grade. Please add subjects in Academics → Subjects.
                     </p>
                   )}
                 </div>
@@ -390,13 +388,13 @@ export default function WorkloadPage() {
                     className="rounded border-gray-300"
                   />
                   <Label htmlFor="is_primary" className="cursor-pointer">
-                    {t("workload.primaryTeacherHint")}
+                    Primary Teacher (unchecked means assistant/substitute)
                   </Label>
                 </div>
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  {t("cancel")}
+                  Cancel
                 </Button>
                 <Button 
                   type="submit"
@@ -404,7 +402,7 @@ export default function WorkloadPage() {
                   className="text-white hover:opacity-90 transition-opacity"
                   disabled={!!conflictWarning && formData.is_primary}
                 >
-                  {t("workload.createAssignment")}
+                  Create Assignment
                 </Button>
               </div>
             </form>
@@ -418,7 +416,7 @@ export default function WorkloadPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">{t("totalAssignments")}</p>
+                <p className="text-sm text-muted-foreground">Total Assignments</p>
                 <h3 className="text-2xl font-bold dark:text-white">{assignments.length}</h3>
               </div>
               <div className="h-12 w-12 rounded-full bg-gradient-blue flex items-center justify-center">
@@ -431,7 +429,7 @@ export default function WorkloadPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">{t("activeTeachers")}</p>
+                <p className="text-sm text-muted-foreground">Active Teachers</p>
                 <h3 className="text-2xl font-bold dark:text-white">{Object.keys(assignmentsByTeacher).length}</h3>
               </div>
               <div className="h-12 w-12 rounded-full bg-gradient-teal flex items-center justify-center">
@@ -444,7 +442,7 @@ export default function WorkloadPage() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">{t("primaryAssignments")}</p>
+                <p className="text-sm text-muted-foreground">Primary Assignments</p>
                 <h3 className="text-2xl font-bold dark:text-white">
                   {assignments.filter(a => a.is_primary).length}
                 </h3>
@@ -464,7 +462,7 @@ export default function WorkloadPage() {
             <div className="flex items-center gap-2 flex-1">
               <Search className="h-5 w-5 text-muted-foreground" />
               <Input
-                placeholder={t("workload.searchPlaceholder")}
+                placeholder="Search by teacher, subject, or section..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="max-w-sm"
@@ -472,10 +470,10 @@ export default function WorkloadPage() {
             </div>
             <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
               <SelectTrigger className="w-full sm:w-[200px]">
-                <SelectValue placeholder={t("workload.filterByTeacher")} />
+                <SelectValue placeholder="Filter by teacher" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value=" ">{t("allTeachers")}</SelectItem>
+                <SelectItem value=" ">All Teachers</SelectItem>
                 {teachers.map((teacher) => (
                   <SelectItem key={teacher.id} value={teacher.id}>
                     {teacher.profile?.first_name} {teacher.profile?.last_name}
@@ -499,48 +497,48 @@ export default function WorkloadPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10">
-                    <TableHead>{t("table.teacher")}</TableHead>
-                    <TableHead>{t("table.subject")}</TableHead>
-                    <TableHead>{t("table.section")}</TableHead>
-                    <TableHead>{t("table.academicYear")}</TableHead>
-                    <TableHead>{t("table.type")}</TableHead>
-                    <TableHead>{t("table.assignedDate")}</TableHead>
-                    <TableHead className="text-right">{t("table.actions")}</TableHead>
+                    <TableHead>Teacher</TableHead>
+                    <TableHead>Subject</TableHead>
+                    <TableHead>Section</TableHead>
+                    <TableHead>Academic Year</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Assigned Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredAssignments.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        {t("workload.noAssignmentsFound")}
+                        No assignments found
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredAssignments.map((assignment) => {
-                      const teacherName = assignment.teacher_name || t("na")
+                      const teacherName = assignment.teacher_name || "N/A"
                       
                       return (
                         <TableRow key={assignment.id} className="hover:bg-muted/50">
                           <TableCell className="font-medium">{teacherName}</TableCell>
-                          <TableCell>{assignment.subject_name || t("dash")}</TableCell>
-                          <TableCell>{assignment.section_name || t("dash")}</TableCell>
-                          <TableCell>{currentAcademicYear?.name || t("dash")}</TableCell>
+                          <TableCell>{assignment.subject_name || "—"}</TableCell>
+                          <TableCell>{assignment.section_name || "—"}</TableCell>
+                          <TableCell>{currentAcademicYear?.name || "—"}</TableCell>
                           <TableCell>
                             <Badge variant={assignment.is_primary ? "default" : "secondary"}>
-                              {assignment.is_primary ? t("workload.primary") : t("workload.secondary")}
+                              {assignment.is_primary ? "Primary" : "Secondary"}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-sm">
                             {assignment.assigned_at 
                               ? new Date(assignment.assigned_at).toLocaleDateString()
-                              : t("dash")}
+                              : "—"}
                           </TableCell>
                           <TableCell className="text-right">
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={() => handleDelete(assignment.id)}
-                              title={t("workload.removeAssignment")}
+                              title="Remove Assignment"
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>

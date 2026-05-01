@@ -14,10 +14,8 @@ import { toast } from "sonner";
 import { useDebounce } from "@/hooks/useDebounce";
 import { searchParents, linkParentToStudent, type Parent } from "@/lib/api/parents";
 import { getStudents, type Student } from "@/lib/api/students";
-import { useTranslations } from "next-intl";
 
 export default function AssociateParentPage() {
-  const t = useTranslations("parents");
   const [selectedParent, setSelectedParent] = useState<string>("");
   const [parentSearchQuery, setParentSearchQuery] = useState("");
   const [searchStudent, setSearchStudent] = useState("");
@@ -54,8 +52,8 @@ export default function AssociateParentPage() {
             const childrenCount = p.children?.length || 0;
             return {
               value: p.id,
-              label: fullName || t("na"),
-              subtitle: `${p.profile?.email || t("noEmail")} • ${t("childrenCount", { count: childrenCount })}`
+              label: fullName || 'N/A',
+              subtitle: `${p.profile?.email || 'No email'} • ${childrenCount} children`
             };
           });
 
@@ -65,7 +63,7 @@ export default function AssociateParentPage() {
         }
       } catch (error) {
         console.error("Error fetching parents:", error);
-        toast.error(t("toasts.failedFetchParents"));
+        toast.error("Failed to fetch parents");
         setParentOptions([]);
       } finally {
         setIsLoadingParents(false);
@@ -94,7 +92,7 @@ export default function AssociateParentPage() {
         }
       } catch (error) {
         console.error("Error fetching students:", error);
-        toast.error(t("toasts.failedFetchStudents"));
+        toast.error("Failed to fetch students");
         setStudents([]);
       } finally {
         setIsLoadingStudents(false);
@@ -119,11 +117,11 @@ export default function AssociateParentPage() {
 
   const handleAssociate = async () => {
     if (!selectedParent) {
-      toast.error(t("validation.selectParent"));
+      toast.error("Please select a parent/guardian");
       return;
     }
     if (selectedStudents.length === 0) {
-      toast.error(t("validation.selectAtLeastOneStudent"));
+      toast.error("Please select at least one student");
       return;
     }
 
@@ -148,17 +146,17 @@ export default function AssociateParentPage() {
       }
 
       if (successCount === selectedStudents.length) {
-        toast.success(t("toasts.associatedSuccess", { count: successCount }));
+        toast.success(`Successfully associated ${successCount} student(s) with parent`);
         setSelectedParent("");
         setSelectedStudents([]);
         setSearchStudent("");
         setGradeFilter("all");
       } else {
-        toast.warning(t("toasts.associatedPartial", { success: successCount, total: selectedStudents.length }));
+        toast.warning(`Associated ${successCount} of ${selectedStudents.length} students`);
       }
     } catch (error) {
       console.error("Error associating students:", error);
-      toast.error(t("toasts.failedAssociate"));
+      toast.error("Failed to associate students");
     } finally {
       setIsSubmitting(false);
     }
@@ -170,10 +168,10 @@ export default function AssociateParentPage() {
     <div className="p-4 md:p-6 space-y-6">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent">
-          {t("associate.title")}
+          Associate Parent with Students
         </h1>
         <p className="text-sm md:text-base text-muted-foreground mt-2">
-          {t("associate.subtitle")}
+          Link existing parents/guardians with their children
         </p>
       </div>
 
@@ -182,47 +180,47 @@ export default function AssociateParentPage() {
         <Card>
           <CardContent className="pt-6 space-y-4">
             <div>
-              <h2 className="text-lg font-semibold mb-4">{t("selectParent")}</h2>
+              <h2 className="text-lg font-semibold mb-4">Select Parent/Guardian</h2>
               <div className="space-y-4">
                 <div>
-                  <Label>{t("searchParent")}</Label>
+                  <Label>Search Parent/Guardian by Name or ID</Label>
                   <Combobox
                     options={parentOptions}
                     value={selectedParent}
                     onValueChange={setSelectedParent}
                     onSearchChange={setParentSearchQuery}
-                    placeholder={isLoadingParents ? t("loading") : t("associate.parentSearchPlaceholder")}
-                    emptyMessage={t("associate.noParentsFoundTryDifferent")}
-                    searchPlaceholder={t("associate.typeToSearchParents")}
+                    placeholder={isLoadingParents ? "Loading..." : "Search parent by name, email..."}
+                    emptyMessage="No parents found. Try a different search."
+                    searchPlaceholder="Type to search parents..."
                     disabled={isLoadingParents}
                   />
                   <p className="text-xs text-muted-foreground mt-2">
                     {isLoadingParents && (
                       <span className="flex items-center gap-2">
                         <Loader2 className="h-3 w-3 animate-spin" />
-                        {t("associate.searchingParents")}
+                        Searching parents...
                       </span>
                     )}
                     {!isLoadingParents && parentOptions.length > 0 && (
-                      <span>{t("associate.foundParentsCount", { count: parentOptions.length })}</span>
+                      <span>Found {parentOptions.length} parent(s)</span>
                     )}
                   </p>
                 </div>
 
                 {selectedParentDetails && (
                   <div className="p-4 bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10 rounded-lg">
-                    <p className="text-sm font-medium">{t("selectedParent")}</p>
+                    <p className="text-sm font-medium">Selected Parent</p>
                     <p className="text-lg font-semibold">
-                      {`${selectedParentDetails.profile?.first_name || ''} ${selectedParentDetails.profile?.last_name || ''}`.trim() || t("na")}
+                      {`${selectedParentDetails.profile?.first_name || ''} ${selectedParentDetails.profile?.last_name || ''}`.trim() || 'N/A'}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {selectedParentDetails.profile?.email || t("noEmail")}
+                      {selectedParentDetails.profile?.email || 'No email'}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {selectedParentDetails.profile?.phone || t("noPhone")}
+                      {selectedParentDetails.profile?.phone || 'No phone'}
                     </p>
                     <Badge className="mt-2 bg-blue-100 text-blue-800">
-                      {t("associate.existingChildrenCount", { count: selectedParentDetails.children?.length || 0 })}
+                      {selectedParentDetails.children?.length || 0} Existing Children
                     </Badge>
                   </div>
                 )}
@@ -235,13 +233,13 @@ export default function AssociateParentPage() {
         <Card>
           <CardContent className="pt-6 space-y-4">
             <div>
-              <h2 className="text-lg font-semibold mb-4">{t("selectStudents")}</h2>
+              <h2 className="text-lg font-semibold mb-4">Select Students</h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder={t("associate.searchStudentsPlaceholder")}
+                    placeholder="Search by name or ID..."
                     value={searchStudent}
                     onChange={(e) => setSearchStudent(e.target.value)}
                     className="pl-10"
@@ -250,21 +248,21 @@ export default function AssociateParentPage() {
                 
                 <Select value={gradeFilter} onValueChange={setGradeFilter}>
                   <SelectTrigger>
-                    <SelectValue placeholder={t("associate.filterByGrade")} />
+                    <SelectValue placeholder="Filter by Grade" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">{t("associate.allGrades")}</SelectItem>
-                    <SelectItem value="Grade 9">{t("associate.grade", { grade: 9 })}</SelectItem>
-                    <SelectItem value="Grade 10">{t("associate.grade", { grade: 10 })}</SelectItem>
-                    <SelectItem value="Grade 11">{t("associate.grade", { grade: 11 })}</SelectItem>
-                    <SelectItem value="Grade 12">{t("associate.grade", { grade: 12 })}</SelectItem>
+                    <SelectItem value="all">All Grades</SelectItem>
+                    <SelectItem value="Grade 9">Grade 9</SelectItem>
+                    <SelectItem value="Grade 10">Grade 10</SelectItem>
+                    <SelectItem value="Grade 11">Grade 11</SelectItem>
+                    <SelectItem value="Grade 12">Grade 12</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               {(debouncedStudentSearch || gradeFilter !== "all") && (
                 <p className="text-xs text-muted-foreground mb-2">
-                  {t("associate.foundStudentsCount", { count: students.length })}
+                  Found {students.length} student(s)
                 </p>
               )}
 
@@ -276,7 +274,7 @@ export default function AssociateParentPage() {
               <div className="border rounded-lg max-h-[300px] overflow-y-auto">
                 {students.length === 0 ? (
                   <div className="p-4 text-center text-muted-foreground">
-                    {t("associate.noStudentsFound")}
+                    No students found
                   </div>
                 ) : (
                   students.map((student: Student) => {
@@ -287,9 +285,9 @@ export default function AssociateParentPage() {
                     className="flex items-center justify-between p-3 hover:bg-muted/50 border-b last:border-b-0"
                   >
                     <div className="flex-1">
-                      <p className="font-medium text-sm">{fullName || t("na")}</p>
+                      <p className="font-medium text-sm">{fullName || 'N/A'}</p>
                       <p className="text-xs text-muted-foreground">
-                        {student.student_number} • {student.grade_level || t("na")}
+                        {student.student_number} • {student.grade_level || 'N/A'}
                       </p>
                     </div>
                     <Button
@@ -298,7 +296,7 @@ export default function AssociateParentPage() {
                       onClick={() => handleAddStudent(student.id)}
                       disabled={selectedStudents.includes(student.id)}
                     >
-                      {selectedStudents.includes(student.id) ? t("added") : t("add")}
+                      {selectedStudents.includes(student.id) ? "Added" : "Add"}
                     </Button>
                   </div>
                   );
@@ -316,16 +314,16 @@ export default function AssociateParentPage() {
         <Card>
           <CardContent className="pt-6">
             <h2 className="text-lg font-semibold mb-4">
-              {t("associate.selectedStudentsCount", { count: selectedStudents.length })}
+              Selected Students ({selectedStudents.length})
             </h2>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10">
-                    <TableHead>{t("associate.table.studentId")}</TableHead>
-                    <TableHead>{t("associate.table.name")}</TableHead>
-                    <TableHead>{t("associate.table.grade")}</TableHead>
-                    <TableHead className="text-right">{t("associate.table.action")}</TableHead>
+                    <TableHead>Student ID</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Grade</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -334,8 +332,8 @@ export default function AssociateParentPage() {
                     return (
                     <TableRow key={student.id}>
                       <TableCell className="font-medium">{student.student_number}</TableCell>
-                      <TableCell>{fullName || t("na")}</TableCell>
-                      <TableCell>{student.grade_level || t("na")}</TableCell>
+                      <TableCell>{fullName || 'N/A'}</TableCell>
+                      <TableCell>{student.grade_level || 'N/A'}</TableCell>
                       <TableCell className="text-right">
                         <Button
                           size="sm"
@@ -353,21 +351,21 @@ export default function AssociateParentPage() {
 
             {/* Relationship and Emergency Contact Settings */}
             <div className="mt-6 pt-6 border-t">
-              <h3 className="text-md font-semibold mb-4">{t("relationshipSettings")}</h3>
+              <h3 className="text-md font-semibold mb-4">Relationship Settings</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                {t("associate.relationshipAppliesAll")}
+                These settings will apply to all selected students
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label>{t("relationship")}</Label>
+                  <Label>Relationship</Label>
                   <Select value={relationship} onValueChange={(value: "mother" | "father" | "guardian") => setRelationship(value)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="mother">{t("mother")}</SelectItem>
-                      <SelectItem value="father">{t("father")}</SelectItem>
-                      <SelectItem value="guardian">{t("guardian")}</SelectItem>
+                      <SelectItem value="mother">Mother</SelectItem>
+                      <SelectItem value="father">Father</SelectItem>
+                      <SelectItem value="guardian">Guardian</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -382,7 +380,7 @@ export default function AssociateParentPage() {
                       className="rounded border-gray-300"
                     />
                     <Label htmlFor="emergencyContact" className="cursor-pointer text-sm">
-                      {t("associate.markAsEmergencyContact")}
+                      Mark as Emergency Contact
                     </Label>
                   </div>
                 </div>
@@ -403,7 +401,7 @@ export default function AssociateParentPage() {
           }}
           className="w-full sm:w-auto"
         >
-          {t("clearAll")}
+          Clear All
         </Button>
         <Button
           onClick={handleAssociate}
@@ -413,12 +411,12 @@ export default function AssociateParentPage() {
           {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {t("associate.associating")}
+              Associating...
             </>
           ) : (
             <>
               <Link2 className="mr-2 h-4 w-4" />
-              {t("associate.associateWithStudentsCount", { count: selectedStudents.length })}
+              Associate Parent with {selectedStudents.length} Student(s)
             </>
           )}
         </Button>

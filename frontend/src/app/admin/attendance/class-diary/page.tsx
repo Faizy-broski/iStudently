@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useMemo, useCallback } from "react"
-import { useTranslations, useLocale } from "next-intl"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -30,40 +29,47 @@ import { useGradeLevels, useSections } from "@/hooks/useAcademics"
 import * as classDiaryApi from "@/lib/api/class-diary"
 import type { DiaryEntry, DiaryComment } from "@/lib/api/class-diary"
 
+const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
 function getDayOfWeek(dateStr: string): number {
   const d = new Date(dateStr + "T00:00:00")
+  // JS: 0=Sun, convert to our 0=Mon system
   const jsDay = d.getDay()
   return jsDay === 0 ? 6 : jsDay - 1
 }
 
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00")
+  return d.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
+}
+
+function formatEntryTime(timeStr?: string): string {
+  if (!timeStr) return ""
+  // timeStr could be "14:05:30" or a full ISO string
+  try {
+    if (timeStr.includes("T")) {
+      return new Date(timeStr).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    }
+    const [h, m, s] = timeStr.split(":")
+    const date = new Date()
+    date.setHours(parseInt(h), parseInt(m), parseInt(s || "0"))
+    return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+  } catch {
+    return timeStr
+  }
+}
+
+function formatTimestamp(ts: string): string {
+  try {
+    const d = new Date(ts)
+    return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "2-digit" }) +
+      " " + d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+  } catch {
+    return ts
+  }
+}
+
 export default function ClassDiaryReadPage() {
-  const t = useTranslations('attendance')
-  const locale = useLocale()
-
-  const formatDate = (dateStr: string) =>
-    new Date(dateStr + "T00:00:00").toLocaleDateString(locale, { weekday: "long", year: "numeric", month: "long", day: "numeric" })
-
-  const formatEntryTime = (timeStr?: string): string => {
-    if (!timeStr) return ""
-    try {
-      if (timeStr.includes("T")) {
-        return new Date(timeStr).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-      }
-      const [h, m, s] = timeStr.split(":")
-      const date = new Date()
-      date.setHours(parseInt(h), parseInt(m), parseInt(s || "0"))
-      return date.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-    } catch { return timeStr }
-  }
-
-  const formatTimestamp = (ts: string): string => {
-    try {
-      const d = new Date(ts)
-      return d.toLocaleDateString(locale, { year: "numeric", month: "long", day: "2-digit" }) +
-        " " + d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-    } catch { return ts }
-  }
-
   const { profile } = useAuth()
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
@@ -125,7 +131,7 @@ export default function ClassDiaryReadPage() {
         }
       }
     } catch {
-      toast.error(t('diary_loadFailed'))
+      toast.error("Failed to load diary entries")
       setEntries([])
     } finally {
       setLoading(false)
@@ -160,12 +166,12 @@ export default function ClassDiaryReadPage() {
       const result = await classDiaryApi.toggleComments(entryId, !currentState)
       if (result.success) {
         setEntries(prev => prev.map(e => e.id === entryId ? { ...e, enable_comments: !currentState } : e))
-        toast.success(!currentState ? t('diary_commentsEnabled') : t('diary_commentsDisabled'))
+        toast.success(`Comments ${!currentState ? "enabled" : "disabled"}`)
       } else {
-        toast.error(result.error || t('diary_toggleFailed'))
+        toast.error(result.error || "Failed to toggle comments")
       }
     } catch {
-      toast.error(t('diary_toggleFailed'))
+      toast.error("Failed to toggle comments")
     }
   }
 
@@ -185,12 +191,12 @@ export default function ClassDiaryReadPage() {
           return e
         }))
         setCommentTexts(prev => ({ ...prev, [entryId]: "" }))
-        toast.success(t('diary_commentAdded'))
+        toast.success("Comment added")
       } else {
-        toast.error(result.error || t('diary_commentFailed'))
+        toast.error(result.error || "Failed to add comment")
       }
     } catch {
-      toast.error(t('diary_commentFailed'))
+      toast.error("Failed to add comment")
     } finally {
       setSubmittingComment(null)
     }
@@ -207,12 +213,12 @@ export default function ClassDiaryReadPage() {
           }
           return e
         }))
-        toast.success(t('diary_commentDeleted'))
+        toast.success("Comment deleted")
       } else {
-        toast.error(result.error || t('diary_commentDeleteFailed'))
+        toast.error(result.error || "Failed to delete comment")
       }
     } catch {
-      toast.error(t('diary_commentDeleteFailed'))
+      toast.error("Failed to delete comment")
     }
   }
 
@@ -224,11 +230,9 @@ export default function ClassDiaryReadPage() {
     const teacherName = entry.teacher?.profile
       ? `${entry.teacher.profile.first_name || ""} ${entry.teacher.profile.last_name || ""}`.trim()
       : "Teacher"
-    const rawDay = entry.day_of_week !== undefined && entry.day_of_week !== null
-      ? entry.day_of_week
-      : getDayOfWeek(entry.diary_date)
-    const refDate = new Date(2000, 0, 2 + rawDay) // Jan 2 2000 = Monday
-    const dayName = refDate.toLocaleDateString(locale, { weekday: "long" })
+    const dayName = entry.day_of_week !== undefined && entry.day_of_week !== null
+      ? DAY_NAMES[entry.day_of_week]
+      : DAY_NAMES[getDayOfWeek(entry.diary_date)]
 
     return { sectionName, gradeName, subjectName, teacherName, dayName }
   }
@@ -251,8 +255,8 @@ export default function ClassDiaryReadPage() {
           <BookOpen className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{t('classDiaryRead')}</h1>
-          <p className="text-sm text-muted-foreground">{t('diary_subtitle_read')}</p>
+          <h1 className="text-2xl font-bold tracking-tight">Class Diary — Read</h1>
+          <p className="text-sm text-muted-foreground">Browse diary entries by date and class</p>
         </div>
       </div>
 
@@ -281,13 +285,13 @@ export default function ClassDiaryReadPage() {
 
             {/* Grade Filter */}
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">{t('diary_gradeLevel')}</label>
+              <label className="text-xs font-medium text-muted-foreground">Grade Level</label>
               <Select value={selectedGrade} onValueChange={setSelectedGrade} disabled={dataLoading}>
                 <SelectTrigger className="w-45">
-                  <SelectValue placeholder={t('diary_allGrades')} />
+                  <SelectValue placeholder="All Grades" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{t('diary_allGrades')}</SelectItem>
+                  <SelectItem value="all">All Grades</SelectItem>
                   {gradeLevels.map(g => (
                     <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
                   ))}
@@ -297,13 +301,13 @@ export default function ClassDiaryReadPage() {
 
             {/* Section Filter */}
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">{t('diary_sectionLabel')}</label>
+              <label className="text-xs font-medium text-muted-foreground">Section</label>
               <Select value={selectedSection} onValueChange={setSelectedSection} disabled={dataLoading}>
                 <SelectTrigger className="w-45">
-                  <SelectValue placeholder={t('diary_allSections')} />
+                  <SelectValue placeholder="All Sections" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{t('diary_allSections')}</SelectItem>
+                  <SelectItem value="all">All Sections</SelectItem>
                   {filteredSections.map(s => (
                     <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                   ))}
@@ -312,7 +316,7 @@ export default function ClassDiaryReadPage() {
             </div>
 
             <Button variant="outline" onClick={() => setSelectedDate(todayStr)} className="ml-auto">
-              {t('diary_today')}
+              Today
             </Button>
           </div>
         </CardContent>
@@ -321,7 +325,7 @@ export default function ClassDiaryReadPage() {
       {/* Date + Day Display */}
       <div className="flex items-center justify-between text-sm text-muted-foreground px-1">
         <span className="font-medium text-foreground">{formatDate(selectedDate)}</span>
-        <Badge variant="outline">{new Date(selectedDate + "T00:00:00").toLocaleDateString(locale, { weekday: "long" })}</Badge>
+        <Badge variant="outline">{DAY_NAMES[getDayOfWeek(selectedDate)]}</Badge>
       </div>
 
       {/* Loading */}
@@ -337,8 +341,8 @@ export default function ClassDiaryReadPage() {
           <CardContent className="py-16">
             <div className="flex flex-col items-center gap-3 text-center">
               <BookOpen className="h-12 w-12 text-muted-foreground/40" />
-              <h3 className="text-lg font-medium text-muted-foreground">{t('diary_noEntries')}</h3>
-              <p className="text-sm text-muted-foreground/70">{t('diary_noEntriesFound')}</p>
+              <h3 className="text-lg font-medium text-muted-foreground">No diary entries</h3>
+              <p className="text-sm text-muted-foreground/70">No diary entries found for this date and class selection.</p>
             </div>
           </CardContent>
         </Card>
@@ -376,7 +380,7 @@ export default function ClassDiaryReadPage() {
                       htmlFor={`enable-comments-${entry.id}`}
                       className="text-sm font-medium cursor-pointer select-none"
                     >
-                      {t('diary_enableComments')}
+                      Enable Comments
                     </label>
                   </div>
                 )}
@@ -428,7 +432,7 @@ export default function ClassDiaryReadPage() {
                               </Button>
                             </div>
                           ))}
-                          <p className="text-xs text-muted-foreground">{t('diary_fileAttached')}</p>
+                          <p className="text-xs text-muted-foreground">File Attached</p>
                         </div>
                       )}
 
@@ -475,7 +479,7 @@ export default function ClassDiaryReadPage() {
                             <Input
                               value={commentTexts[entry.id] || ""}
                               onChange={(e) => setCommentTexts(prev => ({ ...prev, [entry.id]: e.target.value }))}
-                              placeholder={t('diary_commentPlaceholder')}
+                              placeholder="Write a comment..."
                               className="flex-1"
                               onKeyDown={(e) => {
                                 if (e.key === "Enter" && !e.shiftKey) {
@@ -494,11 +498,11 @@ export default function ClassDiaryReadPage() {
                               ) : (
                                 <Send className="h-4 w-4 mr-1" />
                               )}
-                              {t('diary_saveComment')}
+                              SAVE
                             </Button>
                           </div>
                           <p className="text-xs text-muted-foreground flex items-center gap-1">
-                            <MessageSquare className="h-3 w-3" /> {t('diary_commentsLabel')}
+                            <MessageSquare className="h-3 w-3" /> Comments
                           </p>
                         </div>
                       )}

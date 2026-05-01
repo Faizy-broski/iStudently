@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -32,16 +31,27 @@ import {
   type DisciplineFieldType,
 } from '@/lib/api/discipline';
 
-const FIELD_TYPES: DisciplineFieldType[] = [
-  'select',
-  'multiple_radio',
-  'multiple_checkbox',
-  'text',
-  'textarea',
-  'checkbox',
-  'numeric',
-  'date',
+const FIELD_TYPES: { value: DisciplineFieldType; label: string }[] = [
+  { value: 'select', label: 'Pull-Down (Select One)' },
+  { value: 'multiple_radio', label: 'Select One from Options (Radio)' },
+  { value: 'multiple_checkbox', label: 'Select Multiple from Options (Checkbox)' },
+  { value: 'text', label: 'Text' },
+  { value: 'textarea', label: 'Long Text' },
+  { value: 'checkbox', label: 'Checkbox (Yes/No)' },
+  { value: 'numeric', label: 'Number' },
+  { value: 'date', label: 'Date' },
 ];
+
+const FIELD_TYPE_LABELS: Record<DisciplineFieldType, string> = {
+  select: 'Pull-Down',
+  multiple_radio: 'Select One',
+  multiple_checkbox: 'Select Multiple',
+  text: 'Text',
+  textarea: 'Long Text',
+  checkbox: 'Checkbox',
+  numeric: 'Number',
+  date: 'Date',
+};
 
 const FIELD_TYPE_COLORS: Record<DisciplineFieldType, string> = {
   select: 'bg-blue-100 text-blue-800',
@@ -71,7 +81,6 @@ const emptyForm = (): FieldFormState => ({
 });
 
 export default function ReferralFormPage() {
-  const t = useTranslations('discipline');
   const { user } = useAuth();
   const campusCtx = useCampus();
   const schoolId =
@@ -114,7 +123,7 @@ export default function ReferralFormPage() {
       const res = await getDisciplineFields(schoolId, true);
       setFields(res.data ?? []);
     } catch {
-      toast.error(t('errors.loadReferralFields'));
+      toast.error('Failed to load referral form fields');
     } finally {
       setLoading(false);
     }
@@ -137,7 +146,7 @@ export default function ReferralFormPage() {
 
   async function handleAdd() {
     if (!addForm.name.trim()) {
-      toast.error(t('validation.fieldNameRequired'));
+      toast.error('Field name is required');
       return;
     }
     setSaving(true);
@@ -153,12 +162,12 @@ export default function ReferralFormPage() {
         toast.error(res.error);
         return;
       }
-      toast.success(t('toasts.fieldAdded'));
+      toast.success('Field added');
       setShowAdd(false);
       setAddForm(emptyForm());
       fetchFields();
     } catch {
-      toast.error(t('errors.addField'));
+      toast.error('Failed to add field');
     } finally {
       setSaving(false);
     }
@@ -166,7 +175,7 @@ export default function ReferralFormPage() {
 
   async function handleEdit() {
     if (!editField || !editForm.name.trim()) {
-      toast.error(t('validation.fieldNameRequired'));
+      toast.error('Field name is required');
       return;
     }
     setSaving(true);
@@ -181,11 +190,11 @@ export default function ReferralFormPage() {
         toast.error(res.error);
         return;
       }
-      toast.success(t('toasts.fieldUpdated'));
+      toast.success('Field updated');
       setEditField(null);
       fetchFields();
     } catch {
-      toast.error(t('errors.updateField'));
+      toast.error('Failed to update field');
     } finally {
       setSaving(false);
     }
@@ -199,10 +208,10 @@ export default function ReferralFormPage() {
         toast.error(res.error);
         return;
       }
-      toast.success(t('toasts.fieldDeletedWithName', { name: field.name }));
+      toast.success(`"${field.name}" deleted`);
       setFields((prev) => prev.filter((f) => f.id !== field.id));
     } catch {
-      toast.error(t('errors.deleteField'));
+      toast.error('Failed to delete field');
     } finally {
       setDeleting(null);
     }
@@ -217,7 +226,7 @@ export default function ReferralFormPage() {
       }
       fetchFields();
     } catch {
-      toast.error(t('errors.updateField'));
+      toast.error('Failed to update field');
     }
   }
 
@@ -228,14 +237,14 @@ export default function ReferralFormPage() {
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold">{t('referralForm')}</h1>
+            <h1 className="text-3xl font-bold">Referral Form</h1>
             <p className="text-muted-foreground mt-1">
-              {t('referralFormSubtitle')}
+              Configure custom fields that appear on discipline referrals.
             </p>
           </div>
           <Button onClick={() => { setShowAdd(true); setAddForm(emptyForm()); }}>
             <Plus className="h-4 w-4 mr-2" />
-            {t('addField')}
+            Add Field
           </Button>
         </div>
 
@@ -243,7 +252,9 @@ export default function ReferralFormPage() {
         <Alert>
           <Info className="h-4 w-4" />
           <AlertDescription className="text-sm">
-              {t('fieldsInfo')}
+            Fields are school-wide and apply to all campuses. They appear in the "Add Referral"
+            form in the order you specify. Fields with options (Select, Radio, Checkbox) require
+            you to enter one option per line.
           </AlertDescription>
         </Alert>
 
@@ -252,19 +263,21 @@ export default function ReferralFormPage() {
           <Alert className="border-yellow-200 bg-yellow-50">
             <Info className="h-4 w-4" />
             <AlertDescription className="text-sm">
-              {t('noSchoolSelectedForForm')}
+              No school selected. You may be a super‑admin – pick a campus from the
+              header dropdown to establish a school context before configuring the
+              referral form.
             </AlertDescription>
           </Alert>
         )}
         {loading ? (
           <div className="flex items-center gap-2 text-muted-foreground text-sm py-8 justify-center">
             <Loader2 className="h-5 w-5 animate-spin" />
-            {t('loadingFields')}
+            Loading fields…
           </div>
         ) : fields.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center text-muted-foreground">
-              {t('noFieldsConfigured')} <strong>{t('addField')}</strong> {t('toGetStarted')}
+              No fields configured yet. Click <strong>Add Field</strong> to get started.
             </CardContent>
           </Card>
         ) : (
@@ -281,21 +294,21 @@ export default function ReferralFormPage() {
                           variant="outline"
                           className={FIELD_TYPE_COLORS[field.field_type]}
                         >
-                          {t(`fieldTypes.${field.field_type}`)}
+                          {FIELD_TYPE_LABELS[field.field_type]}
                         </Badge>
                         {!field.is_active && (
                           <Badge variant="outline" className="bg-gray-100 text-gray-500">
-                            {t('inactive')}
+                            Inactive
                           </Badge>
                         )}
                       </div>
                       {field.options && field.options.length > 0 && (
                         <p className="text-xs text-muted-foreground mt-1 truncate">
-                          {t('options')}: {field.options.join(', ')}
+                          Options: {field.options.join(', ')}
                         </p>
                       )}
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {t('sort_order')}: {field.sort_order}
+                        Sort order: {field.sort_order}
                       </p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
@@ -305,7 +318,7 @@ export default function ReferralFormPage() {
                         onClick={() => toggleActive(field)}
                         className="text-xs h-7 px-2"
                       >
-                        {field.is_active ? t('disable') : t('enable')}
+                        {field.is_active ? 'Disable' : 'Enable'}
                       </Button>
                       <Button
                         variant="ghost"
@@ -342,7 +355,7 @@ export default function ReferralFormPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
-              {t('addReferralFormField')}
+              Add Referral Form Field
             </DialogTitle>
           </DialogHeader>
           <FieldForm
@@ -351,7 +364,7 @@ export default function ReferralFormPage() {
             onSubmit={handleAdd}
             onCancel={() => setShowAdd(false)}
             saving={saving}
-            submitLabel={t('addField')}
+            submitLabel="Add Field"
           />
         </DialogContent>
       </Dialog>
@@ -362,7 +375,7 @@ export default function ReferralFormPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Pencil className="h-4 w-4" />
-              {t('editField')}
+              Edit Field
             </DialogTitle>
           </DialogHeader>
           <FieldForm
@@ -371,7 +384,7 @@ export default function ReferralFormPage() {
             onSubmit={handleEdit}
             onCancel={() => setEditField(null)}
             saving={saving}
-            submitLabel={t('saveChanges')}
+            submitLabel="Save Changes"
           />
         </DialogContent>
       </Dialog>
@@ -393,22 +406,21 @@ interface FieldFormProps {
 }
 
 function FieldForm({ form, onChange, onSubmit, onCancel, saving, submitLabel }: FieldFormProps) {
-  const t = useTranslations('discipline');
   const needsOptions = OPTIONS_TYPES.includes(form.field_type);
 
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <Label>{t('titleLabel')} <span className="text-destructive">*</span></Label>
+        <Label>Title <span className="text-destructive">*</span></Label>
         <Input
           value={form.name}
           onChange={(e) => onChange({ ...form, name: e.target.value })}
-          placeholder={t('titlePlaceholder')}
+          placeholder="e.g. Violation, Detention Assigned"
         />
       </div>
 
       <div className="space-y-1.5">
-        <Label>{t('dataType')}</Label>
+        <Label>Data Type</Label>
         <Select
           value={form.field_type}
           onValueChange={(v) => onChange({ ...form, field_type: v as DisciplineFieldType })}
@@ -418,8 +430,8 @@ function FieldForm({ form, onChange, onSubmit, onCancel, saving, submitLabel }: 
           </SelectTrigger>
           <SelectContent>
             {FIELD_TYPES.map((ft) => (
-              <SelectItem key={ft} value={ft}>
-                {t(`fieldTypes.${ft}`)}
+              <SelectItem key={ft.value} value={ft.value}>
+                {ft.label}
               </SelectItem>
             ))}
           </SelectContent>
@@ -428,7 +440,7 @@ function FieldForm({ form, onChange, onSubmit, onCancel, saving, submitLabel }: 
 
       {needsOptions && (
         <div className="space-y-1.5">
-          <Label>{t('options')} <span className="text-xs text-muted-foreground">({t('onePerLine')})</span></Label>
+          <Label>Options <span className="text-xs text-muted-foreground">(one per line)</span></Label>
           <Textarea
             value={form.options_text}
             onChange={(e) => onChange({ ...form, options_text: e.target.value })}
@@ -439,7 +451,7 @@ function FieldForm({ form, onChange, onSubmit, onCancel, saving, submitLabel }: 
       )}
 
       <div className="space-y-1.5">
-        <Label>{t('sort_order')}</Label>
+        <Label>Sort Order</Label>
         <Input
           type="number"
           value={form.sort_order}
@@ -450,7 +462,7 @@ function FieldForm({ form, onChange, onSubmit, onCancel, saving, submitLabel }: 
 
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="outline" onClick={onCancel} disabled={saving}>
-          {t('cancel')}
+          Cancel
         </Button>
         <Button onClick={onSubmit} disabled={saving}>
           {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}

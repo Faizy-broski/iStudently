@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -60,16 +59,14 @@ const CHARTABLE_TYPES = ['select', 'multiple_radio', 'multiple_checkbox', 'check
 
 function computeCounts(
   referrals: DisciplineReferral[],
-  field: DisciplineField,
-  yesLabel: string,
-  noLabel: string
+  field: DisciplineField
 ): Array<{ name: string; value: number }> {
   const counts: Record<string, number> = {};
 
   // Pre-seed with known options (ensures zero counts appear)
   if (field.field_type === 'checkbox') {
-    counts[yesLabel] = 0;
-    counts[noLabel] = 0;
+    counts['Yes'] = 0;
+    counts['No'] = 0;
   } else if (field.options) {
     for (const opt of field.options) {
       counts[opt] = 0;
@@ -81,7 +78,7 @@ function computeCounts(
     if (val === null || val === undefined || val === '') continue;
 
     if (field.field_type === 'checkbox') {
-      const k = val === 'Y' || val === true ? yesLabel : noLabel;
+      const k = val === 'Y' || val === true ? 'Yes' : 'No';
       counts[k] = (counts[k] ?? 0) + 1;
     } else if (field.field_type === 'multiple_checkbox' || Array.isArray(val)) {
       const arr: string[] = Array.isArray(val)
@@ -103,7 +100,6 @@ function computeCounts(
 // ---------------------------------------------------------------------------
 
 export default function CategoryBreakdownPage() {
-  const t = useTranslations('discipline');
   const { user } = useAuth();
   const campusCtx = useCampus();
   const campusId = campusCtx?.selectedCampus?.id;
@@ -131,7 +127,7 @@ export default function CategoryBreakdownPage() {
         );
         setFields(chartable);
       })
-      .catch(() => toast.error(t('errors.loadCategories')))
+      .catch(() => toast.error('Failed to load categories'))
       .finally(() => setLoadingFields(false));
   }, [schoolId]);
 
@@ -148,14 +144,14 @@ export default function CategoryBreakdownPage() {
       setReferrals(res.data ?? []);
       setHasLoaded(true);
     } catch {
-      toast.error(t('errors.loadReferrals'));
+      toast.error('Failed to load referrals');
     } finally {
       setLoading(false);
     }
   }
 
   const selectedField = fields.find((f) => f.id === selectedFieldId);
-  const chartData = selectedField ? computeCounts(referrals, selectedField, t('yes'), t('no')) : [];
+  const chartData = selectedField ? computeCounts(referrals, selectedField) : [];
   const total = chartData.reduce((s, d) => s + d.value, 0);
 
   return (
@@ -165,27 +161,27 @@ export default function CategoryBreakdownPage() {
         {/* Header */}
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <BarChart3 className="h-7 w-7 text-primary" />
-          {t('categoryBreakdown')}
+          Category Breakdown
         </h1>
 
         {/* Controls */}
         <Card>
           <CardContent className="pt-5 pb-5 space-y-4">
             <div className="space-y-1.5">
-              <Label>{t('category')}</Label>
+              <Label>Category</Label>
               {loadingFields ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-                  <Loader2 className="h-4 w-4 animate-spin" /> {t('loadingCategories')}
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading categories…
                 </div>
               ) : (
                 <Select value={selectedFieldId} onValueChange={setSelectedFieldId}>
                   <SelectTrigger className="max-w-xs">
-                    <SelectValue placeholder={t('chooseCategory')} />
+                    <SelectValue placeholder="Please choose a category" />
                   </SelectTrigger>
                   <SelectContent>
                     {fields.length === 0 ? (
                       <div className="px-3 py-2 text-sm text-muted-foreground">
-                        {t('noChartableFields')}
+                        No chartable fields configured
                       </div>
                     ) : (
                       fields.map((f) => (
@@ -202,7 +198,7 @@ export default function CategoryBreakdownPage() {
             <div className="flex flex-wrap items-end gap-3">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">
-                  {t('reportTimeframeFrom')}
+                  Report Timeframe: From
                 </Label>
                 <Input
                   type="date"
@@ -212,7 +208,7 @@ export default function CategoryBreakdownPage() {
                 />
               </div>
               <div className="flex items-end gap-1.5">
-                <span className="text-sm text-muted-foreground pb-1.5">{t('to')}</span>
+                <span className="text-sm text-muted-foreground pb-1.5">to</span>
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground sr-only">To</Label>
                   <Input
@@ -230,7 +226,7 @@ export default function CategoryBreakdownPage() {
                 className="h-8"
               >
                 {loading && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
-                {t('go')}
+                Go
               </Button>
             </div>
           </CardContent>
@@ -243,21 +239,21 @@ export default function CategoryBreakdownPage() {
               <CardTitle className="text-base">
                 {selectedField.name} Breakdown
                 <span className="ml-2 text-sm font-normal text-muted-foreground">
-                  ({t('referralsCount', { count: total })})
+                  ({total} referral{total !== 1 ? 's' : ''})
                 </span>
               </CardTitle>
             </CardHeader>
             <CardContent>
               {chartData.length === 0 ? (
                 <p className="text-center py-10 text-muted-foreground text-sm">
-                  {t('noReferralsForFilters')}
+                  No referrals found for the selected filters.
                 </p>
               ) : (
                 <Tabs defaultValue="column">
                   <TabsList>
-                    <TabsTrigger value="column">{t('column')}</TabsTrigger>
-                    <TabsTrigger value="pie">{t('pie')}</TabsTrigger>
-                    <TabsTrigger value="list">{t('list')}</TabsTrigger>
+                    <TabsTrigger value="column">Column</TabsTrigger>
+                    <TabsTrigger value="pie">Pie</TabsTrigger>
+                    <TabsTrigger value="list">List</TabsTrigger>
                   </TabsList>
 
                   {/* Bar chart */}
@@ -274,7 +270,7 @@ export default function CategoryBreakdownPage() {
                         />
                         <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
                         <Tooltip />
-                        <Bar dataKey="value" name={t('referrals')} radius={[4, 4, 0, 0]}>
+                        <Bar dataKey="value" name="Referrals" radius={[4, 4, 0, 0]}>
                           {chartData.map((_, i) => (
                             <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                           ))}
@@ -303,7 +299,7 @@ export default function CategoryBreakdownPage() {
                             <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                           ))}
                         </Pie>
-                        <Tooltip formatter={(v) => [`${v} ${t('referrals')}`, '']} />
+                        <Tooltip formatter={(v) => [`${v} referral(s)`, '']} />
                         <Legend />
                       </PieChart>
                     </ResponsiveContainer>
@@ -314,8 +310,8 @@ export default function CategoryBreakdownPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>{t('option')}</TableHead>
-                          <TableHead className="text-right">{t('numberOfReferrals')}</TableHead>
+                          <TableHead>Option</TableHead>
+                          <TableHead className="text-right">Number of Referrals</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -326,7 +322,7 @@ export default function CategoryBreakdownPage() {
                           </TableRow>
                         ))}
                         <TableRow className="border-t-2 font-semibold">
-                          <TableCell>{t('total')}</TableCell>
+                          <TableCell>Total</TableCell>
                           <TableCell className="text-right">{total}</TableCell>
                         </TableRow>
                       </TableBody>

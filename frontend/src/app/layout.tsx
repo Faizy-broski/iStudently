@@ -6,7 +6,6 @@ import { AcademicProvider } from "@/context/AcademicContext";
 import { SWRProvider } from "@/lib/swr-config";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { NextIntlClientProvider } from "next-intl";
-import { getLocale, getMessages } from "next-intl/server";
 import { cookies } from "next/headers";
 
 const inter = Inter({
@@ -29,8 +28,10 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const locale = await getLocale();
-  const messages = await getMessages();
+  const cookieStore = await cookies();
+  const rawLocale = cookieStore.get('studently_language')?.value;
+  const locale = rawLocale === 'ar' ? 'ar' : 'en';
+  const messages = (await import(`../../messages/${locale}.json`)).default;
   const isRTL = locale === "ar";
 
   return (

@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useTranslations } from "next-intl"
 import { getEmailLog } from "@/lib/api/email"
 import type { EmailLogEntry } from "@/lib/api/email"
 import { Button } from "@/components/ui/button"
@@ -38,9 +37,9 @@ function formatDate(iso: string) {
   }
 }
 
-function getSenderName(entry: EmailLogEntry, systemLabel: string, unknownLabel: string) {
-  if (!entry.sent_by) return systemLabel
-  return `${entry.sent_by.first_name || ""} ${entry.sent_by.last_name || ""}`.trim() || unknownLabel
+function getSenderName(entry: EmailLogEntry) {
+  if (!entry.sent_by) return "System"
+  return `${entry.sent_by.first_name || ""} ${entry.sent_by.last_name || ""}`.trim() || "Unknown"
 }
 
 // ─── Email Detail Dialog ──────────────────────────────────────────────────────
@@ -49,12 +48,10 @@ function EmailDetailDialog({
   entry,
   open,
   onClose,
-  t,
 }: {
   entry: EmailLogEntry | null
   open: boolean
   onClose: () => void
-  t: (key: string, values?: Record<string, any>) => string
 }) {
   if (!entry) return null
 
@@ -72,33 +69,34 @@ function EmailDetailDialog({
           {/* Meta */}
           <div className="grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border p-4 bg-muted/30">
             <div>
-              <span className="text-muted-foreground font-medium">{t("detail_sent_by")}</span>{" "}
-              {getSenderName(entry, t("system_sender"), t("unknown_sender"))}
+              <span className="text-muted-foreground font-medium">Sent by:</span>{" "}
+              {getSenderName(entry)}
             </div>
             <div>
-              <span className="text-muted-foreground font-medium">{t("detail_date")}</span>{" "}
+              <span className="text-muted-foreground font-medium">Date:</span>{" "}
               {formatDate(entry.created_at)}
             </div>
             <div>
-              <span className="text-muted-foreground font-medium">{t("detail_type")}</span>{" "}
+              <span className="text-muted-foreground font-medium">Type:</span>{" "}
               <Badge variant="outline" className="capitalize text-xs">
                 {entry.recipient_type === "student" ? (
-                  <><GraduationCap className="h-3 w-3 mr-1" />{t("type_students")}</>
+                  <><GraduationCap className="h-3 w-3 mr-1" />Students</>
                 ) : (
-                  <><Users className="h-3 w-3 mr-1" />{t("type_staff")}</>
+                  <><Users className="h-3 w-3 mr-1" />Staff</>
                 )}
               </Badge>
             </div>
             <div>
-              <span className="text-muted-foreground font-medium">{t("detail_recipients")}</span>{" "}
-              {t("detail_recipients_value", { total: entry.total_recipients, sent: entry.success_count })} &nbsp;
+              <span className="text-muted-foreground font-medium">Recipients:</span>{" "}
+              {entry.total_recipients} total &nbsp;
+              <span className="text-green-600">✓ {entry.success_count} sent</span>
               {entry.fail_count > 0 && (
-                <span className="text-red-600 ml-2">{t("detail_failed_value", { count: entry.fail_count })}</span>
+                <span className="text-red-600 ml-2">✗ {entry.fail_count} failed</span>
               )}
             </div>
             {entry.cc && (
               <div className="col-span-2">
-                <span className="text-muted-foreground font-medium">{t("detail_cc")}</span>{" "}
+                <span className="text-muted-foreground font-medium">CC:</span>{" "}
                 {entry.cc}
               </div>
             )}
@@ -106,7 +104,7 @@ function EmailDetailDialog({
               <div className="col-span-2">
                 <Badge variant="secondary" className="gap-1">
                   <FlaskConical className="h-3 w-3" />
-                  {t("detail_test_mode", { email: entry.test_email })}
+                  Test Mode — sent to {entry.test_email}
                 </Badge>
               </div>
             )}
@@ -115,7 +113,7 @@ function EmailDetailDialog({
           {/* To addresses */}
           {entry.to_addresses && (
             <div>
-              <p className="text-muted-foreground font-medium mb-1">{t("detail_sent_to")}</p>
+              <p className="text-muted-foreground font-medium mb-1">Sent to:</p>
               <p className="text-xs text-muted-foreground break-all leading-relaxed">
                 {entry.to_addresses}
               </p>
@@ -124,7 +122,7 @@ function EmailDetailDialog({
 
           {/* Body preview */}
           <div>
-            <p className="text-muted-foreground font-medium mb-2">{t("detail_message")}</p>
+            <p className="text-muted-foreground font-medium mb-2">Message:</p>
             <div
               className="rounded-md border p-4 bg-white dark:bg-muted/20 prose prose-sm max-w-none dark:prose-invert"
               dangerouslySetInnerHTML={{ __html: entry.body || "" }}
@@ -135,15 +133,15 @@ function EmailDetailDialog({
           {entry.errors?.length > 0 && (
             <div>
               <p className="text-muted-foreground font-medium mb-2 flex items-center gap-1">
-                <AlertTriangle className="h-3.5 w-3.5 text-amber-500" /> {t("detail_failed_deliveries")}
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-500" /> Failed deliveries:
               </p>
               <div className="rounded-md border overflow-auto max-h-40">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="text-left px-3 py-1.5">{t("th_name")}</th>
-                      <th className="text-left px-3 py-1.5">{t("th_email")}</th>
-                      <th className="text-left px-3 py-1.5">{t("th_error")}</th>
+                      <th className="text-left px-3 py-1.5">Name</th>
+                      <th className="text-left px-3 py-1.5">Email</th>
+                      <th className="text-left px-3 py-1.5">Error</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -170,7 +168,6 @@ function EmailDetailDialog({
 const PAGE_SIZE = 20
 
 export function EmailLog() {
-  const t = useTranslations("email")
   // Date filter — default to last 7 days
   const today = new Date()
   const weekAgo = new Date(today)
@@ -210,7 +207,7 @@ export function EmailLog() {
         setTotal(res.data.total)
         setTotalPages(res.data.totalPages)
       } else {
-        toast.error(res.error || t("log_load_failed"))
+        toast.error(res.error || "Failed to load email log")
       }
     } finally {
       setLoading(false)
@@ -233,16 +230,15 @@ export function EmailLog() {
         entry={selected}
         open={!!selected}
         onClose={() => setSelected(null)}
-        t={t}
       />
 
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <CardTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5" /> {t("page_log_title")}
+              <Mail className="h-5 w-5" /> Email Log
               {total > 0 && (
-                <Badge variant="secondary">{t("log_emails_count", { total })}</Badge>
+                <Badge variant="secondary">{total} emails</Badge>
               )}
             </CardTitle>
 
@@ -257,7 +253,7 @@ export function EmailLog() {
                 {loading ? (
                   <RefreshCw className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <>{t("go")}</>
+                  "Go"
                 )}
               </Button>
             </div>
@@ -267,7 +263,7 @@ export function EmailLog() {
         <CardContent className="space-y-3 p-0">
           {loading ? (
             <div className="text-center py-12 text-muted-foreground">
-              {t("log_loading")}
+              Loading email log...
             </div>
           ) : (
             <>
@@ -275,14 +271,14 @@ export function EmailLog() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="text-left px-4 py-3 font-medium">{t("th_date")}</th>
-                      <th className="text-left px-4 py-3 font-medium">{t("th_sent_by")}</th>
-                      <th className="text-left px-4 py-3 font-medium">{t("th_type")}</th>
-                      <th className="text-left px-4 py-3 font-medium">{t("th_subject")}</th>
-                      <th className="text-center px-4 py-3 font-medium">{t("th_total")}</th>
-                      <th className="text-center px-4 py-3 font-medium">{t("th_sent")}</th>
-                      <th className="text-center px-4 py-3 font-medium">{t("failed")}</th>
-                      <th className="text-center px-4 py-3 font-medium">{t("th_test")}</th>
+                      <th className="text-left px-4 py-3 font-medium">Date</th>
+                      <th className="text-left px-4 py-3 font-medium">Sent By</th>
+                      <th className="text-left px-4 py-3 font-medium">Type</th>
+                      <th className="text-left px-4 py-3 font-medium">Subject</th>
+                      <th className="text-center px-4 py-3 font-medium">Total</th>
+                      <th className="text-center px-4 py-3 font-medium">Sent</th>
+                      <th className="text-center px-4 py-3 font-medium">Failed</th>
+                      <th className="text-center px-4 py-3 font-medium">Test</th>
                       <th className="px-4 py-3" />
                     </tr>
                   </thead>
@@ -293,7 +289,7 @@ export function EmailLog() {
                           colSpan={9}
                           className="text-center py-12 text-muted-foreground"
                         >
-                          {t("log_no_emails")}
+                          No emails found for the selected period.
                         </td>
                       </tr>
                     ) : (
@@ -306,19 +302,19 @@ export function EmailLog() {
                             {formatDate(entry.created_at)}
                           </td>
                           <td className="px-4 py-3 font-medium">
-                            {getSenderName(entry, t("system_sender"), t("unknown_sender"))}
+                            {getSenderName(entry)}
                           </td>
                           <td className="px-4 py-3">
                             <Badge variant="outline" className="text-xs gap-1">
                               {entry.recipient_type === "student" ? (
                                 <>
                                   <GraduationCap className="h-3 w-3" />
-                                  {t("type_students")}
+                                  Students
                                 </>
                               ) : (
                                 <>
                                   <Users className="h-3 w-3" />
-                                  {t("type_staff")}
+                                  Staff
                                 </>
                               )}
                             </Badge>
@@ -351,7 +347,7 @@ export function EmailLog() {
                                 <FlaskConical className="h-3 w-3" />
                               </Badge>
                             ) : (
-                              <span className="text-muted-foreground">-</span>
+                              <span className="text-muted-foreground">—</span>
                             )}
                           </td>
                           <td className="px-4 py-3">
@@ -362,7 +358,7 @@ export function EmailLog() {
                               className="h-7 px-2"
                             >
                               <Eye className="h-3.5 w-3.5 mr-1" />
-                              {t("view")}
+                              View
                             </Button>
                           </td>
                         </tr>
@@ -376,7 +372,7 @@ export function EmailLog() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between px-4 py-3 border-t">
                   <span className="text-sm text-muted-foreground">
-                    {t("pagination_label", { page, totalPages, total })}
+                    Page {page} of {totalPages} &middot; {total} total
                   </span>
                   <div className="flex items-center gap-2">
                     <Button

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { useTranslations } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import * as attendanceApi from '@/lib/api/attendance'
@@ -12,7 +11,6 @@ import { IconLoader, IconRefresh } from '@tabler/icons-react'
 import { toast } from 'sonner'
 
 export default function RecalculateDailyAttendancePage() {
-  const t = useTranslations('attendance')
   const { profile } = useAuth()
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
@@ -35,9 +33,10 @@ export default function RecalculateDailyAttendancePage() {
   const startDateStr = `${startYear}-${String(startMonth + 1).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`
   const endDateStr = `${endYear}-${String(endMonth + 1).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`
 
-  const months = Array.from({ length: 12 }, (_, i) =>
-    new Intl.DateTimeFormat(undefined, { month: 'long' }).format(new Date(2000, i, 1))
-  )
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ]
 
   const handleOK = useCallback(async () => {
     if (!schoolId) return
@@ -59,10 +58,10 @@ export default function RecalculateDailyAttendancePage() {
         toast.success(`The Daily Attendance for that timeframe has been recalculated. (${result.data.recalculated} records processed)`)
         setConfirmed(false)
       } else {
-        toast.error(result.error || t('recalculate_failed'))
+        toast.error(result.error || 'Recalculation failed')
       }
     } catch {
-      toast.error(t('recalculate_failed'))
+      toast.error('Recalculation failed')
     } finally {
       setCalculating(false)
     }
@@ -70,23 +69,23 @@ export default function RecalculateDailyAttendancePage() {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold">{t('recalculate_title')}</h1>
+      <h1 className="text-2xl font-bold">Recalculate Daily Attendance</h1>
 
       <div className="flex justify-center pt-8">
         <Card className="w-full max-w-2xl">
           <CardHeader className="bg-muted/50 border-b">
             <CardTitle className="text-center text-base font-semibold uppercase tracking-wide">
-              {t('recalculate_confirm')}
+              Confirm
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-8 pb-8 space-y-6">
             <p className="text-center font-semibold text-base">
-              {t('recalculate_when')}
+              When do you want to recalculate the daily attendance?
             </p>
 
             {/* Date Range - matching RosarioSIS layout: From [M] [D] [Y] to [M] [D] [Y] */}
             <div className="flex flex-wrap items-center justify-center gap-2">
-              <span className="text-sm font-medium">{t('recalculate_from')}</span>
+              <span className="text-sm font-medium">From</span>
               <Select value={String(startMonth)} onValueChange={v => setStartMonth(Number(v))}>
                 <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -112,7 +111,7 @@ export default function RecalculateDailyAttendancePage() {
                 </SelectContent>
               </Select>
 
-              <span className="text-sm font-medium">{t('recalculate_to')}</span>
+              <span className="text-sm font-medium">to</span>
 
               <Select value={String(endMonth)} onValueChange={v => setEndMonth(Number(v))}>
                 <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
@@ -145,20 +144,20 @@ export default function RecalculateDailyAttendancePage() {
               {calculating ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <IconLoader className="h-4 w-4 animate-spin" />
-                  {t('recalculate_subtitle')}
+                  Calculating...
                 </div>
               ) : (
                 <>
                   <Button onClick={handleOK} variant="outline" className="min-w-[80px]">
                     <IconRefresh className="h-4 w-4 mr-2" />
-                    {t('recalculate_ok')}
+                    OK
                   </Button>
                   <Button
                     variant="default"
                     className="min-w-[80px]"
                     onClick={() => window.history.back()}
                   >
-                    {t('common.cancel' as any)}
+                    CANCEL
                   </Button>
                 </>
               )}

@@ -16,7 +16,6 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { getFieldOrders, saveFieldOrders, getEffectiveFieldOrder, DefaultFieldOrder } from '@/lib/utils/field-ordering';
-import { useTranslations } from "next-intl";
 
 // Default/Standard Fields for Teachers
 const DEFAULT_FIELDS_BY_CATEGORY: Record<string, Array<{label: string, sort_order: number}>> = {
@@ -60,7 +59,6 @@ const DEFAULT_FIELDS_BY_CATEGORY: Record<string, Array<{label: string, sort_orde
 type ExtendedCategory = CustomFieldCategory & { order: number };
 
 export default function TeacherCustomFieldsPage() {
-  const t = useTranslations("teachers");
   const { selectedCampus } = useCampus();
   const [categories, setCategories] = useState<ExtendedCategory[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -180,7 +178,7 @@ export default function TeacherCustomFieldsPage() {
         }
       } catch (error) {
         console.error('Error loading custom fields:', error);
-        toast.error(t('errors.loadCustomFields'));
+        toast.error('Failed to load custom fields');
       } finally {
         setIsLoading(false);
       }
@@ -214,7 +212,7 @@ export default function TeacherCustomFieldsPage() {
 
   const addNewCategory = () => {
     if (!newCategoryName.trim()) {
-      toast.error(t('customFields.categoryNameCannotBeEmpty'));
+      toast.error('Category name cannot be empty');
       return;
     }
     
@@ -230,17 +228,17 @@ export default function TeacherCustomFieldsPage() {
     setExpandedCategories(prev => new Set(prev).add(categoryId));
     setNewCategoryName('');
     setShowAddCategory(false);
-    toast.success(t('customFields.newCategoryAdded'));
+    toast.success('New category added');
   };
 
   const deleteCategory = (categoryId: string) => {
     if (STANDARD_CATEGORIES.includes(categoryId)) {
-      toast.error(t('customFields.cannotDeleteStandardCategories'));
+      toast.error('Cannot delete standard categories');
       return;
     }
     
     setCategories(categories.filter(c => c.id !== categoryId));
-    toast.success(t('customFields.categoryDeleted'));
+    toast.success('Category deleted');
   };
 
   const addFieldToCategory = (categoryId: string) => {
@@ -330,10 +328,10 @@ export default function TeacherCustomFieldsPage() {
           await customFieldsApi.deleteFieldDefinition(id);
         }
       }
-      toast.success(t("customFields.saved"));
+      toast.success("Custom fields saved!");
     } catch (error) {
       console.error("Error saving:", error);
-      toast.error(t("customFields.failedSave"));
+      toast.error("Failed to save");
     } finally {
       setIsSaving(false);
     }
@@ -369,7 +367,7 @@ export default function TeacherCustomFieldsPage() {
       const result = await saveFieldOrders('teacher', categoryId, fieldOrders);
       
       if (result.success) {
-        toast.success(t("customFields.defaultOrderSavedFor", { categoryId }));
+        toast.success(`Default field order saved for ${categoryId}`);
         // Reload saved orders and re-apply them
         const response = await getFieldOrders('teacher');
         if (response.success && response.data) {
@@ -388,11 +386,11 @@ export default function TeacherCustomFieldsPage() {
           setDefaultFieldsByCategory(updatedDefaults);
         }
       } else {
-        toast.error(result.message || t('customFields.failedSaveFieldOrder'));
+        toast.error(result.message || 'Failed to save field order');
       }
     } catch (error) {
       console.error('Error saving default field order:', error);
-      toast.error(t('customFields.failedSaveFieldOrder'));
+      toast.error('Failed to save field order');
     }
   };
 
@@ -411,7 +409,7 @@ export default function TeacherCustomFieldsPage() {
     return (
       <div className="p-6 flex items-center justify-center">
         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#022172]"></div>
-        <span className="ml-2 text-gray-600 text-sm">{t("loading")}</span>
+        <span className="ml-2 text-gray-600 text-sm">Loading...</span>
       </div>
     );
   }
@@ -421,8 +419,8 @@ export default function TeacherCustomFieldsPage() {
       {/* Compact Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-xl font-bold text-[#022172] dark:text-white">{t("customFields")}</h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400">{t("defineCustomFields")}</p>
+          <h1 className="text-xl font-bold text-[#022172] dark:text-white">Teacher Custom Fields</h1>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Define custom fields for teacher forms</p>
         </div>
         <div className="flex gap-2">
           <Button 
@@ -431,11 +429,11 @@ export default function TeacherCustomFieldsPage() {
             size="sm"
           >
             <FolderPlus className="mr-1 h-3 w-3" />
-            {t("customFields.addCategory")}
+            Add Category
           </Button>
           <Button onClick={handleSaveTemplate} disabled={isSaving} size="sm" className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white">
             <Save className="mr-1 h-3 w-3" />
-            {isSaving ? t("saving") : t("save")}
+            {isSaving ? "Saving..." : "Save"}
           </Button>
         </div>
       </div>
@@ -448,12 +446,12 @@ export default function TeacherCustomFieldsPage() {
               <Input
                 value={newCategoryName}
                 onChange={(e) => setNewCategoryName(e.target.value)}
-                placeholder={t("customFields.enterCategoryName")}
+                placeholder="Enter category name..."
                 className="flex-1"
                 onKeyPress={(e) => e.key === 'Enter' && addNewCategory()}
               />
-              <Button onClick={addNewCategory} size="sm">{t("add")}</Button>
-              <Button onClick={() => { setShowAddCategory(false); setNewCategoryName(''); }} variant="outline" size="sm">{t("cancel")}</Button>
+              <Button onClick={addNewCategory} size="sm">Add</Button>
+              <Button onClick={() => { setShowAddCategory(false); setNewCategoryName(''); }} variant="outline" size="sm">Cancel</Button>
             </div>
           </CardContent>
         </Card>
@@ -462,7 +460,7 @@ export default function TeacherCustomFieldsPage() {
       {/* Compact Info */}
       <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md p-2 flex items-center gap-2">
         <Settings2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-        <span className="text-xs text-blue-800 dark:text-blue-300">{t("customFields.dragInfoPrefix")} <strong>{t("customFields.sortOrder")}</strong> {t("customFields.dragInfoSuffix")}</span>
+        <span className="text-xs text-blue-800 dark:text-blue-300">Drag categories to reorder. Default fields shown in gray. Set custom field <strong>Sort Order</strong> to position between default fields.</span>
       </div>
 
       {/* Categories - Draggable */}
@@ -531,7 +529,6 @@ function SortableCategoryItem({
   onDefaultFieldDragEnd: (event: DragEndEvent) => void;
   onSaveDefaultFieldOrder: () => void;
 }) {
-  const t = useTranslations("teachers");
   const {
     attributes,
     listeners,
@@ -569,7 +566,7 @@ function SortableCategoryItem({
             <ChevronRight className="h-4 w-4 text-gray-500" />
           )}
           <span className="font-medium text-sm text-[#022172] dark:text-gray-100">{category.name}</span>
-          <span className="text-xs text-gray-400 dark:text-gray-500">{t("customFields.customCount", { count: category.fields.length })}</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500">({category.fields.length} custom)</span>
         </div>
         <div className="flex gap-1">
           <Button
@@ -579,7 +576,7 @@ function SortableCategoryItem({
             onClick={(e) => { e.stopPropagation(); onAddField(category.id); }}
           >
             <Plus className="h-3 w-3 mr-1" />
-            {t("customFields.addField")}
+            Add Field
           </Button>
           {!isStandard && (
             <Button
@@ -601,14 +598,14 @@ function SortableCategoryItem({
           {defaultFields.length > 0 && (
             <div className="mb-2 p-2 bg-blue-50 dark:bg-blue-900/30 rounded border border-blue-200 dark:border-blue-800">
               <div className="flex items-center justify-between mb-2">
-                <div className="text-xs font-semibold text-blue-700 dark:text-blue-300">{t("customFields.defaultFieldsDragToReorder")}</div>
+                <div className="text-xs font-semibold text-blue-700 dark:text-blue-300">Default Fields - Drag to Reorder:</div>
                 <Button
                   size="sm"
                   onClick={onSaveDefaultFieldOrder}
                   className="h-6 px-2 text-xs bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white hover:opacity-90"
                 >
                   <Save className="h-3 w-3 mr-1" />
-                  {t("customFields.saveOrder")}
+                  Save Order
                 </Button>
               </div>
               <DndContext
@@ -635,12 +632,12 @@ function SortableCategoryItem({
             <div className="border dark:border-gray-700 rounded-md overflow-hidden">
               {/* Header Row */}
               <div className="grid grid-cols-12 gap-1 bg-gray-100 dark:bg-gray-700 px-2 py-1 text-xs font-semibold text-gray-600 dark:text-gray-200">
-                <div className="col-span-3">{t("customFields.columns.label")}</div>
-                <div className="col-span-2">{t("customFields.columns.type")}</div>
-                <div className="col-span-1">{t("customFields.columns.order")}</div>
-                <div className="col-span-2">{t("customFields.columns.scope")}</div>
-                <div className="col-span-2">{t("customFields.columns.options")}</div>
-                <div className="col-span-1">{t("customFields.columns.required")}</div>
+                <div className="col-span-3">Label</div>
+                <div className="col-span-2">Type</div>
+                <div className="col-span-1">Order</div>
+                <div className="col-span-2">Scope</div>
+                <div className="col-span-2">Options</div>
+                <div className="col-span-1">Req</div>
                 <div className="col-span-1"></div>
               </div>
 
@@ -651,7 +648,7 @@ function SortableCategoryItem({
                     <Input
                       value={field.label}
                       onChange={(e) => onUpdateField(category.id, field.id, { label: e.target.value })}
-                      placeholder={t("customFields.fieldLabelPlaceholder")}
+                      placeholder="Field label..."
                       className="h-7 text-xs"
                     />
                   </div>
@@ -659,14 +656,14 @@ function SortableCategoryItem({
                     <Select value={field.type} onValueChange={(v) => onUpdateField(category.id, field.id, { type: v as CustomFieldType })}>
                       <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="text">{t("customFields.types.text")}</SelectItem>
-                        <SelectItem value="long-text">{t("customFields.types.longText")}</SelectItem>
-                        <SelectItem value="number">{t("customFields.types.number")}</SelectItem>
-                        <SelectItem value="date">{t("customFields.types.date")}</SelectItem>
-                        <SelectItem value="checkbox">{t("customFields.types.checkbox")}</SelectItem>
-                        <SelectItem value="select">{t("customFields.types.select")}</SelectItem>
-                        <SelectItem value="multi-select">{t("customFields.types.multiSelect")}</SelectItem>
-                        <SelectItem value="file">{t("customFields.types.file")}</SelectItem>
+                        <SelectItem value="text">Text</SelectItem>
+                        <SelectItem value="long-text">Long Text</SelectItem>
+                        <SelectItem value="number">Number</SelectItem>
+                        <SelectItem value="date">Date</SelectItem>
+                        <SelectItem value="checkbox">Checkbox</SelectItem>
+                        <SelectItem value="select">Select</SelectItem>
+                        <SelectItem value="multi-select">Multi-Select</SelectItem>
+                        <SelectItem value="file">File</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -691,11 +688,11 @@ function SortableCategoryItem({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="this_campus">{t("customFields.thisOnly")}</SelectItem>
+                        <SelectItem value="this_campus">This Only</SelectItem>
                         {branchSchools.length > 0 && (
-                          <SelectItem value="selected_campuses">{t("customFields.selected")}</SelectItem>
+                          <SelectItem value="selected_campuses">Selected</SelectItem>
                         )}
-                        <SelectItem value="all_campuses">{t("customFields.all")}</SelectItem>
+                        <SelectItem value="all_campuses">All</SelectItem>
                       </SelectContent>
                     </Select>
                     {field.campus_scope === 'selected_campuses' && branchSchools.length > 0 && (
@@ -708,7 +705,7 @@ function SortableCategoryItem({
                         </PopoverTrigger>
                         <PopoverContent className="w-56 p-2" align="start">
                           <div className="space-y-2">
-                            <span className="text-xs font-semibold dark:text-gray-200">{t("selectCampuses")}</span>
+                            <span className="text-xs font-semibold dark:text-gray-200">Select Campuses</span>
                             <div className="max-h-40 overflow-y-auto space-y-1">
                               {branchSchools.map(school => (
                                 <label key={school.id} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded dark:text-gray-200">
@@ -730,7 +727,7 @@ function SortableCategoryItem({
                       <Input
                         defaultValue={field.options?.join(", ") || ""}
                         onBlur={(e) => onUpdateField(category.id, field.id, { options: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })}
-                        placeholder={t("customFields.optionsPlaceholder")}
+                        placeholder="Male, Female, Other"
                         className="h-7 text-xs"
                       />
                     ) : (
@@ -758,7 +755,7 @@ function SortableCategoryItem({
             </div>
           ) : (
             <div className="text-center py-3 text-xs text-gray-400 dark:text-gray-500 border dark:border-gray-700 border-dashed rounded">
-              {t("customFields.noCustomFieldsYet")}
+              No custom fields yet. Click "Add Field" to create one.
             </div>
           )}
         </CardContent>

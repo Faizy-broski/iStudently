@@ -1,7 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
 import useSWR, { mutate } from 'swr'
-import { useTranslations } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import { getQuizConfig, upsertQuizConfig } from '@/lib/api/quiz'
@@ -14,7 +13,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Settings, ShieldCheck } from 'lucide-react'
 
 export default function QuizConfigurationPage() {
-  const t = useTranslations('quiz')
   const { profile } = useAuth()
   const { selectedCampus } = useCampus()
   const schoolId = profile?.school_id ?? ''
@@ -55,18 +53,18 @@ export default function QuizConfigurationPage() {
     <div className="p-6 space-y-6 max-w-2xl">
       <div className="flex items-center gap-3">
         <Settings className="w-6 h-6" />
-        <h1 className="text-2xl font-bold">{t('configuration')}</h1>
-        <Badge variant="secondary" className="ml-1">{t('premiumBadge')}</Badge>
+        <h1 className="text-2xl font-bold">Quiz Configuration</h1>
+        <Badge variant="secondary" className="ml-1">Premium</Badge>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <ShieldCheck className="w-4 h-4" />
-            {t('questionAccessControl')}
+            Question Access Control
           </CardTitle>
           <CardDescription>
-            {t('questionAccessControlDescription')}
+            Control who can edit questions in the question bank.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -76,10 +74,11 @@ export default function QuizConfigurationPage() {
             <div className="flex items-start justify-between gap-4 p-4 border rounded-md">
               <div className="space-y-1">
                 <Label htmlFor="teacher-edit-own" className="text-sm font-medium">
-                  {t('teacherEditOwn')}
+                  Teachers can only edit their own questions
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  {t('teacherEditOwnHelp')}
+                  When enabled, teachers can only create, edit, and delete questions they created.
+                  Administrators and other teachers can view but not modify other teachers' questions.
                 </p>
               </div>
               <Switch
@@ -92,23 +91,23 @@ export default function QuizConfigurationPage() {
 
           <div className="flex items-center gap-3">
             <Button onClick={handleSave} disabled={saving || isLoading}>
-              {saving ? t('saving') : t('saveSettings')}
+              {saving ? 'Saving…' : 'Save Settings'}
             </Button>
-            {saved && <span className="text-sm text-green-600">{t('premium.settingsSaved')}</span>}
+            {saved && <span className="text-sm text-green-600">Settings saved.</span>}
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">{t('premium.title')}</CardTitle>
+          <CardTitle className="text-base">About Premium Features</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>{t('premium.quizModuleFeatures')}</p>
+          <p>The following premium features are included in the Quiz module:</p>
           <ul className="list-disc list-inside space-y-1 ml-2">
-            <li><strong>{t('premium.copyQuizLabel')}</strong> {t('premium.duplicateQuiz')}</li>
-            <li><strong>{t('premium.answerBreakdownLabel')}</strong> {t('premium.questionAnalysis')}</li>
-            <li><strong>{t('premium.teacherAccessControlLabel')}</strong> {t('premium.restrictEditing')}</li>
+            <li><strong>Copy Quiz from Last Year</strong> — Duplicate a quiz to a new academic year from the Quizzes list.</li>
+            <li><strong>Answer Breakdown</strong> — Identify which questions students struggled with most.</li>
+            <li><strong>Teacher Access Control</strong> — Restrict question editing to question owners (this page).</li>
           </ul>
         </CardContent>
       </Card>

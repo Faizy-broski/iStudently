@@ -9,10 +9,8 @@ import { AddTeacherForm } from "@/components/admin/AddTeacherForm"
 import * as teachersApi from "@/lib/api/teachers"
 import { toast } from "sonner"
 import { useCampus } from "@/context/CampusContext"
-import { useTranslations } from "next-intl"
 
 export default function EditTeacherPage() {
-  const t = useTranslations("teachers")
   const params = useParams()
   const router = useRouter()
   const campusContext = useCampus()
@@ -39,16 +37,16 @@ export default function EditTeacherPage() {
           if (fullTeacher) {
             setTeacher(fullTeacher)
           } else {
-            toast.error(t("errors.loadTeacherDetails"))
+            toast.error("Failed to load teacher details")
             router.push('/admin/teachers')
           }
         } else {
-          toast.error(t("notFound"))
+          toast.error("Teacher not found")
           router.push('/admin/teachers')
         }
       } catch (error) {
         console.error("Error fetching teacher:", error)
-        toast.error(t("errors.loadTeacher"))
+        toast.error("Failed to load teacher")
         router.push('/admin/teachers')
       } finally {
         setLoading(false)
@@ -85,14 +83,14 @@ export default function EditTeacherPage() {
               className="text-[#022172] hover:text-[#022172]/80"
             >
               <ArrowLeft className="h-4 w-4 mr-1" />
-              {t("backToTeacherDetails")}
+              Back to Teacher Details
             </Button>
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-[#022172] dark:text-white">
-            {t("editTeacherTitle")}
+            Edit Teacher
           </h1>
           <p className="text-muted-foreground">
-            {t("updateInfoFor", { teacherName })}
+            Update information for {teacherName}
           </p>
         </div>
       </div>
@@ -100,9 +98,9 @@ export default function EditTeacherPage() {
       {/* Form Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-[#022172]">{t("editTeacherInformation")}</CardTitle>
+          <CardTitle className="text-[#022172]">Edit Teacher Information</CardTitle>
           <CardDescription>
-            {t("editTeacherDescription")}
+            Update the teacher&apos;s details. Fields marked with * are required.
           </CardDescription>
         </CardHeader>
         <CardContent>

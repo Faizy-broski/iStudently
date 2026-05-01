@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { useTranslations, useLocale } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import * as attendanceApi from '@/lib/api/attendance'
@@ -23,8 +22,6 @@ import { toast } from 'sonner'
 import useSWR from 'swr'
 
 export default function AddAbsencesPage() {
-  const t = useTranslations('attendance')
-  const locale = useLocale()
   const { profile } = useAuth()
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
@@ -140,12 +137,9 @@ export default function AddAbsencesPage() {
   // Calendar helpers
   const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate()
   const firstDayOfMonth = new Date(selectedYear, selectedMonth, 1).getDay()
-  const monthNames = Array.from({ length: 12 }, (_, i) =>
-    new Intl.DateTimeFormat(locale, { month: 'long' }).format(new Date(2000, i, 1))
-  )
-  const dayNames = Array.from({ length: 7 }, (_, i) =>
-    new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(new Date(2000, 0, 2 + i))
-  )
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December']
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
   const toggleOffDay = (dayIndex: number) => {
     setOffDays(prev =>
@@ -237,19 +231,19 @@ export default function AddAbsencesPage() {
 
   const handleSubmit = async () => {
     if (selectedStudents.size === 0) {
-      toast.error(t('addAbsences_selectStudent'))
+      toast.error('Please select at least one student')
       return
     }
     if (selectedDates.size === 0) {
-      toast.error(t('addAbsences_selectDate'))
+      toast.error('Please select at least one date')
       return
     }
     if (selectedPeriods.length === 0) {
-      toast.error(t('addAbsences_selectPeriod'))
+      toast.error('Please select at least one period')
       return
     }
     if (!selectedCodeId) {
-      toast.error(t('addAbsences_selectCode'))
+      toast.error('Please select an absence code')
       return
     }
 
@@ -299,9 +293,9 @@ export default function AddAbsencesPage() {
         <div className="flex items-center gap-3">
           <IconUserMinus className="h-7 w-7 text-primary" />
           <div>
-            <h1 className="text-2xl font-bold">{t('addAbsences_title')}</h1>
+            <h1 className="text-2xl font-bold">Add Absences</h1>
             <p className="text-sm text-muted-foreground">
-              {t('addAbsences_subtitle')}
+              Add absences for multiple students across multiple dates
             </p>
           </div>
         </div>
@@ -311,14 +305,14 @@ export default function AddAbsencesPage() {
           className="bg-teal-600 hover:bg-teal-700"
         >
           {submitting ? <IconLoader className="mr-2 h-4 w-4 animate-spin" /> : null}
-          {t('addAbsences_btn')}
+          ADD ABSENCES TO SELECTED STUDENTS
         </Button>
       </div>
 
       {/* Absence Configuration Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-center text-base font-semibold">{t('addAbsences_title').toUpperCase()}</CardTitle>
+          <CardTitle className="text-center text-base font-semibold">ADD ABSENCES</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Period Selection */}
@@ -339,7 +333,7 @@ export default function AddAbsencesPage() {
               ) : periodsLoading ? (
                 <Skeleton className="h-5 w-40" />
               ) : (
-                <span className="text-sm text-muted-foreground">{t('noPeriods')}</span>
+                <span className="text-sm text-muted-foreground">No periods configured</span>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -347,14 +341,14 @@ export default function AddAbsencesPage() {
                 onClick={toggleAllPeriods}
                 className="text-sm text-teal-600 hover:text-teal-700 hover:underline"
               >
-                {t('addAbsences_addToPeriods')}
+                Add Absence to Periods
               </button>
               <label className="flex items-center gap-1.5 text-sm">
                 <Checkbox
                   checked={activePeriods.length > 0 && selectedPeriods.length === activePeriods.length}
                   onCheckedChange={toggleAllPeriods}
                 />
-                {t('addAbsences_checkAll')}
+                Check All
               </label>
             </div>
           </div>
@@ -363,7 +357,7 @@ export default function AddAbsencesPage() {
           <div className="space-y-1">
             <Select value={selectedCodeId} onValueChange={setSelectedCodeId}>
               <SelectTrigger className="w-48">
-                <SelectValue placeholder={t('addAbsences_absenceCode')} />
+                <SelectValue placeholder="Absence Code" />
               </SelectTrigger>
               <SelectContent>
                 {codes.map(code => (
@@ -390,14 +384,14 @@ export default function AddAbsencesPage() {
               placeholder=""
               className="h-16 w-64"
             />
-            <Label className="text-xs text-muted-foreground">{t('addAbsences_reason')}</Label>
+            <Label className="text-xs text-muted-foreground">Absence Reason</Label>
           </div>
 
           {/* Calendar */}
           <div className="space-y-2">
             {/* Off-day selector */}
             <div className="flex items-center gap-3 justify-center flex-wrap">
-              <span className="text-xs text-muted-foreground font-medium">{t('addAbsences_offDays')}</span>
+              <span className="text-xs text-muted-foreground font-medium">Off days:</span>
               {dayNames.map((name, i) => (
                 <label key={i} className="flex items-center gap-1 text-xs cursor-pointer select-none">
                   <Checkbox
@@ -486,10 +480,10 @@ export default function AddAbsencesPage() {
         <div className="flex items-center gap-4 flex-wrap">
           <Select value={gradeFilter} onValueChange={v => { setGradeFilter(v); setSectionFilter('all') }}>
             <SelectTrigger className="w-40">
-              <SelectValue placeholder={t('allGrades')} />
+              <SelectValue placeholder="All Grades" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">{t('allGrades')}</SelectItem>
+              <SelectItem value="all">All Grades</SelectItem>
               {grades.map(g => (
                 <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
               ))}
@@ -499,10 +493,10 @@ export default function AddAbsencesPage() {
           {gradeFilter !== 'all' && sections.length > 0 && (
             <Select value={sectionFilter} onValueChange={setSectionFilter}>
               <SelectTrigger className="w-40">
-                <SelectValue placeholder={t('allSections')} />
+                <SelectValue placeholder="All Sections" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{t('allSections')}</SelectItem>
+                <SelectItem value="all">All Sections</SelectItem>
                 {sections.map(s => (
                   <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                 ))}
@@ -538,9 +532,9 @@ export default function AddAbsencesPage() {
                       onCheckedChange={toggleAllStudents}
                     />
                   </TableHead>
-                  <TableHead className="text-teal-600 font-semibold">{t('th_student')}</TableHead>
-                  <TableHead className="text-teal-600 font-semibold">{t('th_studentId')}</TableHead>
-                  <TableHead className="text-teal-600 font-semibold">{t('th_gradeLevel')}</TableHead>
+                  <TableHead className="text-teal-600 font-semibold">STUDENT</TableHead>
+                  <TableHead className="text-teal-600 font-semibold">STUDENT ID</TableHead>
+                  <TableHead className="text-teal-600 font-semibold">GRADE LEVEL</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -556,7 +550,7 @@ export default function AddAbsencesPage() {
                 ) : filteredStudents.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                      {t('addAbsences_noStudentsFound')}
+                      No students found.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -597,7 +591,7 @@ export default function AddAbsencesPage() {
             className="bg-teal-600 hover:bg-teal-700"
           >
             {submitting ? <IconLoader className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {t('addAbsences_btn')}
+            ADD ABSENCES TO SELECTED STUDENTS
           </Button>
         </div>
       </div>
