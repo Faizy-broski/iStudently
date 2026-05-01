@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useTranslations } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import * as attendanceApi from '@/lib/api/attendance'
@@ -15,6 +16,7 @@ import { IconLoader, IconPrinter, IconSearch } from '@tabler/icons-react'
 import { toast } from 'sonner'
 
 export default function PrintAttendanceSheetsPage() {
+  const t = useTranslations('attendance')
   const { profile } = useAuth()
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
@@ -45,10 +47,9 @@ export default function PrintAttendanceSheetsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState('')
 
-  const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ]
+  const months = Array.from({ length: 12 }, (_, i) =>
+    new Intl.DateTimeFormat(undefined, { month: 'long' }).format(new Date(2000, i, 1))
+  )
 
   // Load course periods
   const loadCoursePeriods = useCallback(async () => {
@@ -112,11 +113,11 @@ export default function PrintAttendanceSheetsPage() {
   // Download
   const handleDownload = useCallback(async () => {
     if (selectedIds.size === 0) {
-      toast.error('Please select at least one course period')
+      toast.error(t('print_selectCourse'))
       return
     }
     if (startDateStr > endDateStr) {
-      toast.error('Start date must be before end date')
+      toast.error(t('print_startBeforeEnd'))
       return
     }
 
@@ -160,7 +161,7 @@ export default function PrintAttendanceSheetsPage() {
       ) : (
         <IconPrinter className="h-4 w-4" />
       )}
-      CREATE ATTENDANCE SHEET FOR SELECTED COURSE PERIODS
+      {t('print_createBtn')}
     </Button>
   )
 
@@ -168,14 +169,14 @@ export default function PrintAttendanceSheetsPage() {
     <div className="p-6 space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Print Attendance Sheets</CardTitle>
+          <CardTitle>{t('print_title')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Date Range */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Start Date */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Start Date</label>
+              <label className="text-sm font-medium">{t('print_startDate')}</label>
               <div className="flex gap-2">
                 <Select value={String(startMonth)} onValueChange={v => setStartMonth(Number(v))}>
                   <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
@@ -206,7 +207,7 @@ export default function PrintAttendanceSheetsPage() {
 
             {/* End Date */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">End Date</label>
+              <label className="text-sm font-medium">{t('print_endDate')}</label>
               <div className="flex gap-2">
                 <Select value={String(endMonth)} onValueChange={v => setEndMonth(Number(v))}>
                   <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
@@ -244,7 +245,7 @@ export default function PrintAttendanceSheetsPage() {
               onCheckedChange={(checked) => setIncludeInactive(!!checked)}
             />
             <label htmlFor="includeInactive" className="text-sm cursor-pointer">
-              Include Inactive Students
+              {t('print_includeInactiveStudents')}
             </label>
           </div>
 
@@ -257,7 +258,7 @@ export default function PrintAttendanceSheetsPage() {
           <div className="relative max-w-sm">
             <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search course periods..."
+              placeholder={t('print_courseSearch')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
@@ -273,9 +274,7 @@ export default function PrintAttendanceSheetsPage() {
             </div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              {coursePeriods.length === 0
-                ? 'No course periods found. Please set up timetable entries first.'
-                : 'No course periods match your search.'}
+              {coursePeriods.length === 0 ? t('print_noCoursePeriods') : t('print_noResults')}
             </div>
           ) : (
             <div className="border rounded-lg">
@@ -286,10 +285,10 @@ export default function PrintAttendanceSheetsPage() {
                   onCheckedChange={toggleSelectAll}
                 />
                 <span className="text-sm font-medium">
-                  Select All ({filtered.length} course period{filtered.length !== 1 ? 's' : ''})
+                  {t('print_selectAll', { count: filtered.length })}
                 </span>
                 <span className="ml-auto text-xs text-muted-foreground">
-                  {selectedIds.size} selected
+                  {t('print_selected', { count: selectedIds.size })}
                 </span>
               </div>
 

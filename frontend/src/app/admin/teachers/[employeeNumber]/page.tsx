@@ -34,10 +34,11 @@ import { QualificationsTab } from "@/components/admin/QualificationsTab";
 import { type Staff } from "@/lib/api/teachers";
 import { useTeachers } from "@/hooks/useTeachers";
 import { format } from "date-fns";
+import { useTranslations } from "next-intl";
 
 // Helper to format dates
-const formatDate = (dateString: string | null | undefined) => {
-  if (!dateString) return "Not provided";
+const formatDate = (dateString: string | null | undefined, notProvidedLabel: string) => {
+  if (!dateString) return notProvidedLabel;
   try {
     return format(new Date(dateString), "MMMM d, yyyy");
   } catch {
@@ -51,23 +52,24 @@ const getInitials = (firstName?: string | null, lastName?: string | null) => {
 };
 
 // Helper to format currency
-const formatCurrency = (amount: number | null | undefined) => {
-  if (!amount) return "Not set";
+const formatCurrency = (amount: number | null | undefined, notSetLabel: string) => {
+  if (!amount) return notSetLabel;
   return amount.toLocaleString();
 };
 
 // Info Row Component
-const InfoRow = ({ label, value, icon: Icon }: { label: string; value: React.ReactNode; icon?: LucideIcon }) => (
+const InfoRow = ({ label, value, icon: Icon, fallbackLabel }: { label: string; value: React.ReactNode; icon?: LucideIcon; fallbackLabel: string }) => (
   <div className="flex flex-col gap-1">
     <span className="text-sm text-muted-foreground flex items-center gap-2">
       {Icon && <Icon className="h-4 w-4" />}
       {label}
     </span>
-    <span className="font-medium">{value || <span className="text-muted-foreground italic">Not provided</span>}</span>
+    <span className="font-medium">{value || <span className="text-muted-foreground italic">{fallbackLabel}</span>}</span>
   </div>
 );
 
 export default function TeacherDetailsPage() {
+  const t = useTranslations("teachers");
   const params = useParams();
   const router = useRouter();
   const { setViewedProfile, clearViewedProfile } = useProfileView();
@@ -107,7 +109,7 @@ export default function TeacherDetailsPage() {
         }
       } catch (error) {
         console.error("Error fetching teacher:", error);
-        toast.error("Failed to load teacher details");
+        toast.error(t("errors.loadTeacherDetails"));
       } finally {
         setLoading(false);
       }
@@ -141,11 +143,11 @@ export default function TeacherDetailsPage() {
       <div className="p-6">
         <div className="text-center py-12">
           <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Teacher Not Found</h2>
-          <p className="text-muted-foreground mb-4">The teacher you&apos;re looking for doesn&apos;t exist or has been removed.</p>
+          <h2 className="text-xl font-semibold mb-2">{t("notFound")}</h2>
+          <p className="text-muted-foreground mb-4">{t("notFoundDesc")}</p>
           <Button onClick={() => router.push("/admin/teachers")}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Teachers
+            {t("backToTeachers")}
           </Button>
         </div>
       </div>
@@ -156,7 +158,7 @@ export default function TeacherDetailsPage() {
 
   // Format employment type
   const formatEmploymentType = (type: string | null | undefined) => {
-    if (!type) return "N/A";
+    if (!type) return t("na");
     return type.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
   };
 
@@ -170,10 +172,10 @@ export default function TeacherDetailsPage() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent dark:text-white">
-              Teacher Details
+              {t("teacherDetails")}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Viewing {currentIndex + 1} of {total} teachers
+              {t("viewingTeacherCount", { current: currentIndex + 1, total })}
             </p>
           </div>
         </div>
@@ -186,7 +188,7 @@ export default function TeacherDetailsPage() {
             onClick={() => prevTeacher && navigateToTeacher(prevTeacher)}
           >
             <ChevronLeft className="h-4 w-4 mr-1" />
-            Previous
+            {t("previous")}
           </Button>
           <Button
             variant="outline"
@@ -194,7 +196,7 @@ export default function TeacherDetailsPage() {
             disabled={!nextTeacher}
             onClick={() => nextTeacher && navigateToTeacher(nextTeacher)}
           >
-            Next
+            {t("next")}
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
           <Separator orientation="vertical" className="h-6" />
@@ -202,7 +204,7 @@ export default function TeacherDetailsPage() {
             onClick={() => router.push(`/admin/teachers/${encodeURIComponent(currentTeacher.employee_number)}/edit`)}
           >
             <Edit className="h-4 w-4 mr-2" />
-            Edit Teacher
+            {t("actions.editTeacher")}
           </Button>
         </div>
       </div>
@@ -226,14 +228,14 @@ export default function TeacherDetailsPage() {
             <div className="flex-1">
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold">{fullName || "N/A"}</h2>
+                  <h2 className="text-2xl font-bold">{fullName || t("na")}</h2>
                   <p className="text-muted-foreground">
-                    {currentTeacher.employee_number} • {currentTeacher.department || "No Department"}
+                    {currentTeacher.employee_number} • {currentTeacher.department || t("noDepartment")}
                   </p>
                 </div>
                 <div className="flex gap-2">
                   <Badge className={currentTeacher.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                    {currentTeacher.is_active ? "Active" : "Inactive"}
+                    {currentTeacher.is_active ? t("active") : t("inactive")}
                   </Badge>
                   <Badge variant="outline" className="capitalize">
                     {formatEmploymentType(currentTeacher.employment_type)}
@@ -272,23 +274,23 @@ export default function TeacherDetailsPage() {
         <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
           <TabsTrigger value="personal" className="gap-2">
             <User className="h-4 w-4" />
-            <span className="hidden sm:inline">Personal</span>
+            <span className="hidden sm:inline">{t("tabs.personal")}</span>
           </TabsTrigger>
           <TabsTrigger value="professional" className="gap-2">
             <Briefcase className="h-4 w-4" />
-            <span className="hidden sm:inline">Professional</span>
+            <span className="hidden sm:inline">{t("tabs.professional")}</span>
           </TabsTrigger>
           <TabsTrigger value="subjects" className="gap-2">
             <BookOpen className="h-4 w-4" />
-            <span className="hidden sm:inline">Subjects</span>
+            <span className="hidden sm:inline">{t("tabs.subjects")}</span>
           </TabsTrigger>
           <TabsTrigger value="qualifications" className="gap-2">
             <GraduationCap className="h-4 w-4" />
-            <span className="hidden sm:inline">Qualifications</span>
+            <span className="hidden sm:inline">{t("tabs.qualifications")}</span>
           </TabsTrigger>
           <TabsTrigger value="system" className="gap-2">
             <Settings className="h-4 w-4" />
-            <span className="hidden sm:inline">System</span>
+            <span className="hidden sm:inline">{t("tabs.system")}</span>
           </TabsTrigger>
         </TabsList>
 
@@ -298,16 +300,16 @@ export default function TeacherDetailsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
-                Personal Information
+                {t("personalInformation")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <InfoRow label="First Name" value={currentTeacher.profile?.first_name} />
-                <InfoRow label="Last Name" value={currentTeacher.profile?.last_name} />
-                <InfoRow label="Email" value={currentTeacher.profile?.email} icon={Mail} />
-                <InfoRow label="Phone Number" value={currentTeacher.profile?.phone} icon={Phone} />
-                <InfoRow label="Username" value={currentTeacher.profile?.username} icon={User} />
+                <InfoRow label={t("fields.firstName")} value={currentTeacher.profile?.first_name} fallbackLabel={t("notProvided")} />
+                <InfoRow label={t("fields.lastName")} value={currentTeacher.profile?.last_name} fallbackLabel={t("notProvided")} />
+                <InfoRow label={t("fields.email")} value={currentTeacher.profile?.email} icon={Mail} fallbackLabel={t("notProvided")} />
+                <InfoRow label={t("fields.phoneNumber")} value={currentTeacher.profile?.phone} icon={Phone} fallbackLabel={t("notProvided")} />
+                <InfoRow label={t("fields.username")} value={currentTeacher.profile?.username} icon={User} fallbackLabel={t("notProvided")} />
               </div>
             </CardContent>
           </Card>
@@ -319,37 +321,40 @@ export default function TeacherDetailsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Briefcase className="h-5 w-5" />
-                Professional Information
+                {t("professionalInformation")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <InfoRow label="Employee Number" value={currentTeacher.employee_number} />
-                <InfoRow label="Title" value={currentTeacher.title} icon={Briefcase} />
-                <InfoRow label="Department" value={currentTeacher.department} icon={Building} />
+                <InfoRow label={t("fields.employeeNumber")} value={currentTeacher.employee_number} fallbackLabel={t("notProvided")} />
+                <InfoRow label={t("fields.title")} value={currentTeacher.title} icon={Briefcase} fallbackLabel={t("notProvided")} />
+                <InfoRow label={t("fields.department")} value={currentTeacher.department} icon={Building} fallbackLabel={t("notProvided")} />
                 <InfoRow 
-                  label="Employment Type" 
+                  label={t("fields.employmentType")} 
                   value={
                     <Badge variant="outline" className="capitalize">
                       {formatEmploymentType(currentTeacher.employment_type)}
                     </Badge>
                   }
+                  fallbackLabel={t("notProvided")}
                 />
                 <InfoRow 
-                  label="Date of Joining" 
-                  value={formatDate(currentTeacher.date_of_joining)}
+                  label={t("fields.dateOfJoining")} 
+                  value={formatDate(currentTeacher.date_of_joining, t("notProvided"))}
                   icon={Calendar}
+                  fallbackLabel={t("notProvided")}
                 />
                 <InfoRow 
-                  label="Base Salary" 
-                  value={formatCurrency(currentTeacher.base_salary)}
+                  label={t("fields.baseSalary")} 
+                  value={formatCurrency(currentTeacher.base_salary, t("notSet"))}
                   icon={DollarSign}
+                  fallbackLabel={t("notProvided")}
                 />
                 <div className="md:col-span-2 lg:col-span-3">
-                  <InfoRow label="Qualifications" value={currentTeacher.qualifications} icon={GraduationCap} />
+                  <InfoRow label={t("fields.qualifications")} value={currentTeacher.qualifications} icon={GraduationCap} fallbackLabel={t("notProvided")} />
                 </div>
                 <div className="md:col-span-2 lg:col-span-3">
-                  <InfoRow label="Specialization" value={currentTeacher.specialization} />
+                  <InfoRow label={t("fields.specialization")} value={currentTeacher.specialization} fallbackLabel={t("notProvided")} />
                 </div>
               </div>
             </CardContent>
@@ -362,7 +367,7 @@ export default function TeacherDetailsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BookOpen className="h-5 w-5" />
-                Assigned Subjects & Sections
+                {t("assignedSubjectsSections")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -371,13 +376,13 @@ export default function TeacherDetailsPage() {
                   {currentTeacher.assigned_subjects.map((assignment, index) => (
                     <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
                       <div>
-                        <p className="font-medium">{assignment.subject?.name || "Unknown Subject"}</p>
+                        <p className="font-medium">{assignment.subject?.name || t("unknownSubject")}</p>
                         <p className="text-sm text-muted-foreground">
-                          {assignment.section?.name || "Unknown Section"} • {typeof assignment.section?.grade_level === 'object' ? assignment.section?.grade_level?.name : assignment.section?.grade_level || "N/A"}
+                          {assignment.section?.name || t("unknownSection")} • {typeof assignment.section?.grade_level === 'object' ? assignment.section?.grade_level?.name : assignment.section?.grade_level || t("na")}
                         </p>
                       </div>
                       <Badge variant="secondary">
-                        {assignment.is_primary ? "Primary Teacher" : "Subject Teacher"}
+                        {assignment.is_primary ? t("primaryTeacher") : t("subjectTeacher")}
                       </Badge>
                     </div>
                   ))}
@@ -385,8 +390,8 @@ export default function TeacherDetailsPage() {
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No subjects assigned yet</p>
-                  <p className="text-sm">Go to Teacher Workload to assign subjects</p>
+                  <p>{t("noSubjectsAssigned")}</p>
+                  <p className="text-sm">{t("goToWorkload")}</p>
                 </div>
               )}
             </CardContent>
@@ -399,7 +404,7 @@ export default function TeacherDetailsPage() {
             <QualificationsTab profileId={currentTeacher.profile_id} />
           ) : (
             <p className="text-sm text-muted-foreground text-center py-8">
-              Profile ID not available for this teacher.
+              {t("profileIdNotAvailable")}
             </p>
           )}
         </TabsContent>
@@ -410,31 +415,34 @@ export default function TeacherDetailsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Settings className="h-5 w-5" />
-                System Information
+                {t("systemInformation")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <InfoRow label="Teacher ID" value={currentTeacher.id} />
-                <InfoRow label="Profile ID" value={currentTeacher.profile_id} />
-                <InfoRow label="School ID" value={currentTeacher.school_id} />
+                <InfoRow label={t("fields.teacherId")} value={currentTeacher.id} fallbackLabel={t("notProvided")} />
+                <InfoRow label={t("fields.profileId")} value={currentTeacher.profile_id} fallbackLabel={t("notProvided")} />
+                <InfoRow label={t("fields.schoolId")} value={currentTeacher.school_id} fallbackLabel={t("notProvided")} />
                 <InfoRow 
-                  label="Status" 
+                  label={t("fields.status")} 
                   value={
                     <Badge className={currentTeacher.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                      {currentTeacher.is_active ? "Active" : "Inactive"}
+                      {currentTeacher.is_active ? t("active") : t("inactive")}
                     </Badge>
                   }
+                  fallbackLabel={t("notProvided")}
                 />
                 <InfoRow 
-                  label="Created At" 
-                  value={formatDate(currentTeacher.created_at)}
+                  label={t("fields.createdAt")} 
+                  value={formatDate(currentTeacher.created_at, t("notProvided"))}
                   icon={Clock}
+                  fallbackLabel={t("notProvided")}
                 />
                 <InfoRow 
-                  label="Last Updated" 
-                  value={formatDate(currentTeacher.updated_at)}
+                  label={t("fields.lastUpdated")} 
+                  value={formatDate(currentTeacher.updated_at, t("notProvided"))}
                   icon={Clock}
+                  fallbackLabel={t("notProvided")}
                 />
               </div>
             </CardContent>

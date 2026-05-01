@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import {
     ArrowLeft,
     Save,
@@ -49,6 +50,7 @@ function generatePassword(firstName: string): string {
 
 export default function AddStaffPage() {
     const router = useRouter()
+    const t = useTranslations('staff')
     const campusContext = useCampus()
     const { profile } = useAuth()
     const [loading, setLoading] = useState(false)
@@ -107,7 +109,7 @@ export default function AddStaffPage() {
         if (formData.password) {
             navigator.clipboard.writeText(formData.password)
             setCopied(true)
-            toast.success('Password copied to clipboard')
+            toast.success(t('toasts.passwordCopied'))
             setTimeout(() => setCopied(false), 2000)
         }
     }
@@ -118,14 +120,14 @@ export default function AddStaffPage() {
         try {
             // Validate
             if (!formData.first_name || !formData.last_name || !formData.email || !formData.title) {
-                toast.error('Please fill in all required fields')
+                toast.error(t('errors.fillRequiredFields'))
                 setLoading(false)
                 return
             }
 
             // For Librarian, password is required
             if (isLibrarian && !formData.password) {
-                toast.error('Password is required for Librarian accounts')
+                toast.error(t('errors.passwordRequiredForLibrarian'))
                 setLoading(false)
                 return
             }
@@ -138,11 +140,11 @@ export default function AddStaffPage() {
             console.log('✅ Staff created with campus_id:', campusContext?.selectedCampus?.id)
             console.log('   Campus name:', campusContext?.selectedCampus?.name)
             
-            toast.success('Staff member added successfully')
+            toast.success(t('toasts.added'))
 
             // Show credentials if it's a Librarian
             if (isLibrarian) {
-                toast.info(`Login credentials: ${formData.email} / ${formData.password}`, {
+                toast.info(t('toasts.loginCredentials', { email: formData.email, password: formData.password }), {
                     duration: 10000
                 })
             }
@@ -150,7 +152,7 @@ export default function AddStaffPage() {
             router.push('/admin/staff')
         } catch (error: any) {
             console.error(error)
-            toast.error(error.message || 'Failed to add staff member')
+            toast.error(error.message || t('errors.addStaff'))
         } finally {
             setLoading(false)
         }
@@ -177,8 +179,8 @@ export default function AddStaffPage() {
                     <ArrowLeft className="h-5 w-5" />
                 </Button>
                 <div>
-                    <h1 className="text-2xl font-bold text-[#022172] dark:text-white">Add New Staff Member</h1>
-                    <p className="text-gray-500">Onboard non-teaching staff and librarians</p>
+                    <h1 className="text-2xl font-bold text-[#022172] dark:text-white">{t('addStaff')}</h1>
+                    <p className="text-gray-500">{t('onboard')}</p>
                 </div>
             </div>
 
@@ -188,13 +190,13 @@ export default function AddStaffPage() {
                     <CardHeader>
                         <CardTitle className="text-lg flex items-center gap-2">
                             <User className="h-5 w-5 text-[#57A3CC]" />
-                            Personal Information
+                            {t('personal')}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {/* Photo Upload - Left Side */}
                         <div className="flex flex-col items-center justify-center md:border-r md:pr-6">
-                            <Label className="mb-3">Profile Photo</Label>
+                            <Label className="mb-3">{t('profilePhoto')}</Label>
                             <StaffPhotoUpload
                                 value={formData.profile_photo_url || ''}
                                 onChange={(url) => handleChange('profile_photo_url', url)}
@@ -206,23 +208,23 @@ export default function AddStaffPage() {
                         {/* Form Fields - Right Side */}
                         <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <Label>First Name <span className="text-red-500">*</span></Label>
+                                <Label>{t('firstName')} <span className="text-red-500">*</span></Label>
                                 <Input
                                     value={formData.first_name}
                                     onChange={e => handleChange('first_name', e.target.value)}
-                                    placeholder="e.g. John"
+                                    placeholder={t('placeholders.firstName')}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>Last Name <span className="text-red-500">*</span></Label>
+                                <Label>{t('lastName')} <span className="text-red-500">*</span></Label>
                                 <Input
                                     value={formData.last_name}
                                     onChange={e => handleChange('last_name', e.target.value)}
-                                    placeholder="e.g. Doe"
+                                    placeholder={t('placeholders.lastName')}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>Email <span className="text-red-500">*</span></Label>
+                                <Label>{t('emailRequired')} <span className="text-red-500">*</span></Label>
                                 <div className="relative">
                                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                                     <Input
@@ -230,19 +232,19 @@ export default function AddStaffPage() {
                                         value={formData.email}
                                         onChange={e => handleChange('email', e.target.value)}
                                         className="pl-10"
-                                        placeholder="john.doe@school.edu"
+                                        placeholder={t('placeholders.email')}
                                     />
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label>Phone</Label>
+                                <Label>{t('phone')}</Label>
                                 <div className="relative">
                                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                                     <Input
                                         value={formData.phone}
                                         onChange={e => handleChange('phone', e.target.value)}
                                         className="pl-10"
-                                        placeholder="+1 (555) 000-0000"
+                                        placeholder={t('placeholders.phone')}
                                     />
                                 </div>
                             </div>
@@ -255,28 +257,28 @@ export default function AddStaffPage() {
                     <CardHeader>
                         <CardTitle className="text-lg flex items-center gap-2">
                             <Briefcase className="h-5 w-5 text-[#57A3CC]" />
-                            Employment Details
+                            {t('professional')}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <Label>Designation (Job Title) <span className="text-red-500">*</span></Label>
+                                <Label>{t('form.designationJobTitle')} <span className="text-red-500">*</span></Label>
                                 <Select
                                     value={formData.title}
                                     onValueChange={val => handleChange('title', val)}
                                     disabled={designationsLoading}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder={designationsLoading ? "Loading designations..." : "Select Designation"} />
+                                        <SelectValue placeholder={designationsLoading ? t('designations.loadingDesignations') : t('designations.selectDesignation')} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {/* Always show Librarian first with special badge */}
                                         <SelectItem value="Librarian">
                                             <div className="flex items-center gap-2">
-                                                Librarian
+                                                {t('designations.librarian')}
                                                 <span className="text-[10px] px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded">
-                                                    Has Login
+                                                    {t('designations.hasLogin')}
                                                 </span>
                                             </div>
                                         </SelectItem>
@@ -300,22 +302,22 @@ export default function AddStaffPage() {
                                 </Select>
                                 {formData.title?.toLowerCase() === 'librarian' && (
                                     <p className="text-xs text-purple-600">
-                                        💡 Librarian will get login credentials for dashboard access
+                                        {t('designations.librarianGetsLoginHint')}
                                     </p>
                                 )}
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Department</Label>
+                                <Label>{t('department')}</Label>
                                 <Input
                                     value={formData.department}
                                     onChange={e => handleChange('department', e.target.value)}
-                                    placeholder="e.g. Administration, Library, Transport"
+                                    placeholder={t('placeholders.departmentLong')}
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Employment Type</Label>
+                                <Label>{t('employmentType')}</Label>
                                 <Select
                                     value={formData.employment_type}
                                     onValueChange={(val: any) => handleChange('employment_type', val)}
@@ -324,15 +326,15 @@ export default function AddStaffPage() {
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="full_time">Full Time</SelectItem>
-                                        <SelectItem value="part_time">Part Time</SelectItem>
-                                        <SelectItem value="contract">Contract</SelectItem>
+                                        <SelectItem value="full_time">{t('employmentTypeOptions.fullTime')}</SelectItem>
+                                        <SelectItem value="part_time">{t('employmentTypeOptions.partTime')}</SelectItem>
+                                        <SelectItem value="contract">{t('employmentTypeOptions.contract')}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Date of Joining</Label>
+                                <Label>{t('dateOfJoining')}</Label>
                                 <div className="relative">
                                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                                     <Input
@@ -345,20 +347,20 @@ export default function AddStaffPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Base Salary (Monthly) <span className="text-red-500">*</span></Label>
+                                <Label>{t('baseSalary')} <span className="text-red-500">*</span></Label>
                                 <div className="relative">
                                     <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                                     <Input
                                         type="number"
                                         value={formData.base_salary || ''}
                                         onChange={e => handleChange('base_salary', e.target.value ? parseFloat(e.target.value) : undefined)}
-                                        placeholder="e.g. 50000"
+                                        placeholder={t('placeholders.baseSalary')}
                                         className="pl-10"
                                         min="0"
                                         step="100"
                                     />
                                 </div>
-                                <p className="text-xs text-muted-foreground">Required for payroll generation</p>
+                                <p className="text-xs text-muted-foreground">{t('requiredForPayroll')}</p>
                             </div>
                         </div>
 
@@ -366,30 +368,28 @@ export default function AddStaffPage() {
                         {isLibrarian && (
                             <Alert className="bg-purple-50 border-purple-200">
                                 <BookOpen className="h-4 w-4 text-purple-600" />
-                                <AlertTitle className="text-purple-800">System Role Assignment</AlertTitle>
+                                <AlertTitle className="text-purple-800">{t('designations.systemRole')}</AlertTitle>
                                 <AlertDescription className="text-purple-700">
-                                    This user will be assigned the <strong>System Librarian</strong> role.
-                                    They will have full access to the Library Management Dashboard.
-                                    Login credentials will be auto-generated below.
+                                    {t('designations.systemRoleDescPrefix')} <strong>{t('designations.systemLibrarian')}</strong> {t('designations.systemRoleDescSuffix')}
                                 </AlertDescription>
                             </Alert>
                         )}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <Label>Qualifications</Label>
+                                <Label>{t('qualifications')}</Label>
                                 <Input
                                     value={formData.qualifications}
                                     onChange={e => handleChange('qualifications', e.target.value)}
-                                    placeholder="e.g. MBA, B.Lib"
+                                    placeholder={t('placeholders.qualifications')}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>Specialization/Skills</Label>
+                                <Label>{t('specializationSkills')}</Label>
                                 <Input
                                     value={formData.specialization}
                                     onChange={e => handleChange('specialization', e.target.value)}
-                                    placeholder="e.g. Accounting, Driving"
+                                    placeholder={t('placeholders.specializationSkills')}
                                 />
                             </div>
                         </div>
@@ -402,13 +402,13 @@ export default function AddStaffPage() {
                         <CardHeader>
                             <CardTitle className="text-lg flex items-center gap-2 text-purple-800">
                                 <Shield className="h-5 w-5 text-purple-600" />
-                                Librarian Login Credentials
+                                {t('designations.librarianLoginCredentials')}
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <Label>Email (Username)</Label>
+                                    <Label>{t('designations.emailUsername')}</Label>
                                     <Input
                                         value={formData.email}
                                         disabled
@@ -416,7 +416,7 @@ export default function AddStaffPage() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Auto-Generated Password</Label>
+                                    <Label>{t('designations.autoGeneratedPassword')}</Label>
                                     <div className="flex gap-2">
                                         <div className="relative flex-1">
                                             <Input
@@ -448,7 +448,7 @@ export default function AddStaffPage() {
                                         </div>
                                     </div>
                                     <p className="text-xs text-purple-700">
-                                        Save these credentials! The librarian will use them to log in.
+                                        {t('designations.saveCredentialsHint')}
                                     </p>
                                 </div>
                             </div>
@@ -458,7 +458,7 @@ export default function AddStaffPage() {
 
                 <div className="flex justify-end gap-3">
                     <Button type="button" variant="outline" onClick={() => router.back()}>
-                        Cancel
+                        {t('cancel')}
                     </Button>
                     <Button
                         type="button"
@@ -466,7 +466,7 @@ export default function AddStaffPage() {
                         onClick={() => { if (!loading) handleSubmit(); }}
                         className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white min-w-[120px]"
                     >
-                        {loading ? 'Creating...' : 'Create Staff'}
+                        {loading ? t('creating') : t('createStaff')}
                     </Button>
                 </div>
             </form>

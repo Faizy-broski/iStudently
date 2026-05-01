@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
+import { useTranslations } from "next-intl"
 import { sendDisciplineLogEmail, sendDisciplineLogToParentsEmail } from "@/lib/api/email"
 import { getStudents } from "@/lib/api/students"
 import { getAcademicYears } from "@/lib/api/academics"
@@ -36,13 +37,13 @@ import {
 // ─── Substitution definitions ─────────────────────────────────────────────────
 
 const SUBS = [
-  { key: "full_name", label: "Full Name" },
-  { key: "first_name", label: "First Name" },
-  { key: "last_name", label: "Last Name" },
-  { key: "email", label: "Email" },
-  { key: "grade", label: "Grade Level" },
-  { key: "referral_count", label: "Referral Count" },
-  { key: "discipline_log", label: "Discipline Log Table" },
+  { key: "full_name", labelKey: "email.subs.fullName" },
+  { key: "first_name", labelKey: "email.subs.firstName" },
+  { key: "last_name", labelKey: "email.subs.lastName" },
+  { key: "email", labelKey: "email.subs.email" },
+  { key: "grade", labelKey: "email.subs.gradeLevel" },
+  { key: "referral_count", labelKey: "email.subs.referralCount" },
+  { key: "discipline_log", labelKey: "email.subs.disciplineLogTable" },
 ]
 
 const DEFAULT_INCLUDE = {
@@ -57,10 +58,11 @@ const DEFAULT_INCLUDE = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function SendDisciplineLog({ toParents = false }: { toParents?: boolean }) {
+  const t = useTranslations("discipline")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Compose
-  const [subject, setSubject] = useState("Discipline Log – {{full_name}}")
+  const [subject, setSubject] = useState("{{full_name}} - Discipline Log")
   const [body, setBody] = useState(
     "<p>Dear {{full_name}},</p>\n<p>Please review the following discipline records:</p>\n{{discipline_log}}"
   )
@@ -126,9 +128,9 @@ export function SendDisciplineLog({ toParents = false }: { toParents?: boolean }
   // ── Submit ─────────────────────────────────────────────────────────────────
 
   const handleSubmit = async () => {
-    if (!subject.trim()) { toast.error("Subject is required"); return }
-    if (!body.trim()) { toast.error("Email body is required"); return }
-    if (selectedIds.size === 0) { toast.error("Select at least one student"); return }
+    if (!subject.trim()) { toast.error(t("email.subjectRequired")); return }
+    if (!body.trim()) { toast.error(t("email.bodyRequired")); return }
+    if (selectedIds.size === 0) { toast.error(t("email.selectAtLeastOneStudent")); return }
 
     setSending(true)
     setResult(null)
@@ -146,10 +148,10 @@ export function SendDisciplineLog({ toParents = false }: { toParents?: boolean }
       if (res.success && res.data) {
         setResult(res.data)
         res.data.fail_count === 0
-          ? toast.success(`${res.data.success_count} email(s) sent successfully`)
-          : toast.warning(`${res.data.success_count} sent, ${res.data.fail_count} failed`)
+          ? toast.success(t("email.sentSuccess", { count: res.data.success_count }))
+          : toast.warning(t("email.sentPartial", { success: res.data.success_count, failed: res.data.fail_count }))
       } else {
-        toast.error(res.error || "Failed to send emails")
+        toast.error(res.error || t("email.failedToSend"))
       }
     } finally {
       setSending(false)
@@ -163,37 +165,37 @@ export function SendDisciplineLog({ toParents = false }: { toParents?: boolean }
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5" /> Send Results
+            <Mail className="h-5 w-5" /> {t("email.sendResults")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="grid grid-cols-3 gap-4">
             <div className="rounded-lg border p-4 text-center">
               <div className="text-3xl font-bold">{result.total}</div>
-              <div className="text-sm text-muted-foreground mt-1">Total</div>
+              <div className="text-sm text-muted-foreground mt-1">{t("total")}</div>
             </div>
             <div className="rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/30 p-4 text-center">
               <div className="text-3xl font-bold text-green-600">{result.success_count}</div>
-              <div className="text-sm text-muted-foreground mt-1">Sent</div>
+              <div className="text-sm text-muted-foreground mt-1">{t("email.sent")}</div>
             </div>
             <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/30 p-4 text-center">
               <div className="text-3xl font-bold text-red-600">{result.fail_count}</div>
-              <div className="text-sm text-muted-foreground mt-1">Failed</div>
+              <div className="text-sm text-muted-foreground mt-1">{t("email.failed")}</div>
             </div>
           </div>
 
           {result.errors.length > 0 && (
             <div>
               <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
-                <AlertTriangle className="h-4 w-4 text-amber-500" /> Failed Recipients
+                <AlertTriangle className="h-4 w-4 text-amber-500" /> {t("email.failedRecipients")}
               </h4>
               <div className="rounded-md border overflow-auto max-h-64">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="text-left px-3 py-2">Name</th>
-                      <th className="text-left px-3 py-2">Email</th>
-                      <th className="text-left px-3 py-2">Error</th>
+                      <th className="text-left px-3 py-2">{t("name")}</th>
+                      <th className="text-left px-3 py-2">{t("email.email")}</th>
+                      <th className="text-left px-3 py-2">{t("email.error")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -211,7 +213,7 @@ export function SendDisciplineLog({ toParents = false }: { toParents?: boolean }
           )}
 
           <Button variant="outline" onClick={() => { setResult(null); setSelectedIds(new Set()) }}>
-            <RotateCcw className="h-4 w-4 mr-2" /> Send Another
+            <RotateCcw className="h-4 w-4 mr-2" /> {t("email.sendAnother")}
           </Button>
         </CardContent>
       </Card>
@@ -226,28 +228,28 @@ export function SendDisciplineLog({ toParents = false }: { toParents?: boolean }
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <ShieldAlert className="h-5 w-5" /> Compose Email
+            <ShieldAlert className="h-5 w-5" /> {t("email.composeEmail")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
           {/* Subject */}
           <div className="space-y-1.5">
-            <Label htmlFor="subject">Subject <span className="text-destructive">*</span></Label>
+            <Label htmlFor="subject">{t("email.subject")} <span className="text-destructive">*</span></Label>
             <Input id="subject" value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={200} />
           </div>
 
           {/* Body */}
           <div className="space-y-1.5">
             <Label htmlFor="body">
-              Body <span className="text-destructive">*</span>
-              <span className="ml-2 text-xs text-muted-foreground font-normal">HTML is supported</span>
+              {t("email.body")} <span className="text-destructive">*</span>
+              <span className="ml-2 text-xs text-muted-foreground font-normal">{t("email.htmlSupported")}</span>
             </Label>
             <Textarea id="body" ref={textareaRef} value={body} onChange={(e) => setBody(e.target.value)} rows={8} className="font-mono text-sm resize-y" />
           </div>
 
           {/* Substitution chips */}
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Click to insert substitution:</Label>
+            <Label className="text-xs text-muted-foreground">{t("email.clickToInsertSubstitution")}</Label>
             <div className="flex flex-wrap gap-2">
               {SUBS.map((sub) => (
                 <button
@@ -256,7 +258,7 @@ export function SendDisciplineLog({ toParents = false }: { toParents?: boolean }
                   onClick={() => insertSub(sub.key)}
                   className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md border bg-muted hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors"
                 >
-                  {sub.label}
+                  {t(sub.labelKey)}
                   <span className="opacity-60 font-mono">{`{{${sub.key}}}`}</span>
                 </button>
               ))}
@@ -269,12 +271,12 @@ export function SendDisciplineLog({ toParents = false }: { toParents?: boolean }
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {/* Include fields */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Include in discipline log:</Label>
+              <Label className="text-sm font-medium">{t("email.includeInLog")}</Label>
               <div className="space-y-1.5">
                 {(Object.keys(DEFAULT_INCLUDE) as Array<keyof typeof DEFAULT_INCLUDE>).map((field) => (
                   <label key={field} className="flex items-center gap-2 cursor-pointer text-sm">
                     <Checkbox checked={includeFields[field]} onCheckedChange={() => toggleField(field)} />
-                    <span className="capitalize">{field === "entryDate" ? "Entry Date" : field}</span>
+                    <span className="capitalize">{field === "entryDate" ? t("entryDate") : field}</span>
                   </label>
                 ))}
               </div>
@@ -283,13 +285,13 @@ export function SendDisciplineLog({ toParents = false }: { toParents?: boolean }
             {/* Options */}
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label>Academic Year</Label>
+                <Label>{t("academicYear")}</Label>
                 <Select value={academicYearId || '__all__'} onValueChange={(v) => setAcademicYearId(v === '__all__' ? '' : v)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="All years" />
+                    <SelectValue placeholder={t("allYears")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__all__">All years</SelectItem>
+                    <SelectItem value="__all__">{t("allYears")}</SelectItem>
                     {academicYears.map((y: any) => (
                       <SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>
                     ))}
@@ -299,17 +301,17 @@ export function SendDisciplineLog({ toParents = false }: { toParents?: boolean }
 
               <div className="space-y-1.5">
                 <Label htmlFor="test_email" className="flex items-center gap-1.5">
-                  <FlaskConical className="h-3.5 w-3.5" /> Test Mode
+                  <FlaskConical className="h-3.5 w-3.5" /> {t("email.testMode")}
                 </Label>
                 <Input
                   id="test_email"
                   type="email"
                   value={testEmail}
                   onChange={(e) => setTestEmail(e.target.value)}
-                  placeholder="Optional – all emails go here instead"
+                  placeholder={t("email.testModePlaceholder")}
                 />
                 {testEmail.trim() && (
-                  <p className="text-xs text-amber-600">All emails → {testEmail.trim()}</p>
+                  <p className="text-xs text-amber-600">{t("email.allEmailsTo")} {testEmail.trim()}</p>
                 )}
               </div>
             </div>
@@ -322,18 +324,18 @@ export function SendDisciplineLog({ toParents = false }: { toParents?: boolean }
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" /> Select Students
-              {selectedIds.size > 0 && <Badge>{selectedIds.size} selected</Badge>}
+              <Users className="h-5 w-5" /> {t("email.selectStudents")}
+              {selectedIds.size > 0 && <Badge>{t("email.selectedCount", { count: selectedIds.size })}</Badge>}
             </CardTitle>
             <div className="flex items-center gap-2">
               {selectedIds.size > 0 && (
                 <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>
-                  <X className="h-3.5 w-3.5 mr-1" /> Clear
+                  <X className="h-3.5 w-3.5 mr-1" /> {t("clear")}
                 </Button>
               )}
               <Button onClick={handleSubmit} disabled={sending || selectedIds.size === 0} size="sm">
-                {sending ? "Sending..." : (
-                  <><Send className="h-3.5 w-3.5 mr-1.5" />Send to {selectedIds.size || 0}</>
+                {sending ? t("email.sending") : (
+                  <><Send className="h-3.5 w-3.5 mr-1.5" />{t("email.sendToCount", { count: selectedIds.size || 0 })}</>
                 )}
               </Button>
             </div>
@@ -343,28 +345,28 @@ export function SendDisciplineLog({ toParents = false }: { toParents?: boolean }
         <CardContent className="space-y-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search students..." className="pl-9" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("email.searchStudents")} className="pl-9" />
           </div>
 
           {loadingStudents ? (
-            <div className="text-center py-10 text-muted-foreground">Loading students...</div>
+            <div className="text-center py-10 text-muted-foreground">{t("email.loadingStudents")}</div>
           ) : (
             <div className="rounded-md border overflow-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
                     <th className="w-10 px-3 py-2.5">
-                      <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label="Select all" />
+                      <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label={t("email.selectAll")} />
                     </th>
-                    <th className="text-left px-3 py-2.5 font-medium">Student</th>
-                    <th className="text-left px-3 py-2.5 font-medium">ID</th>
-                    <th className="text-left px-3 py-2.5 font-medium">Grade</th>
-                    <th className="text-left px-3 py-2.5 font-medium">Email</th>
+                    <th className="text-left px-3 py-2.5 font-medium">{t("student")}</th>
+                    <th className="text-left px-3 py-2.5 font-medium">{t("id")}</th>
+                    <th className="text-left px-3 py-2.5 font-medium">{t("gradeLevel")}</th>
+                    <th className="text-left px-3 py-2.5 font-medium">{t("email.email")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {students.length === 0 ? (
-                    <tr><td colSpan={5} className="text-center py-10 text-muted-foreground">No students found</td></tr>
+                    <tr><td colSpan={5} className="text-center py-10 text-muted-foreground">{t("email.noStudentsFound")}</td></tr>
                   ) : (
                     students.map((student) => {
                       const profile = student.profile
@@ -385,8 +387,8 @@ export function SendDisciplineLog({ toParents = false }: { toParents?: boolean }
                           </td>
                           <td className="px-3 py-2.5 font-medium">{profile?.first_name} {profile?.last_name}</td>
                           <td className="px-3 py-2.5 text-muted-foreground">{student.student_number}</td>
-                          <td className="px-3 py-2.5 text-muted-foreground">{student.grade_level || "—"}</td>
-                          <td className="px-3 py-2.5 text-muted-foreground">{profile?.email || <span className="text-xs italic text-muted-foreground/60">No email</span>}</td>
+                          <td className="px-3 py-2.5 text-muted-foreground">{student.grade_level || "-"}</td>
+                          <td className="px-3 py-2.5 text-muted-foreground">{profile?.email || <span className="text-xs italic text-muted-foreground/60">{t("email.noEmail")}</span>}</td>
                         </tr>
                       )
                     })
@@ -397,10 +399,10 @@ export function SendDisciplineLog({ toParents = false }: { toParents?: boolean }
           )}
 
           <div className="flex items-center justify-between text-sm text-muted-foreground pt-1">
-            <span>{students.length} found · {studentsWithEmail.length} with email</span>
+            <span>{t("email.studentsFoundWithEmail", { total: students.length, withEmail: studentsWithEmail.length })}</span>
             <Button onClick={handleSubmit} disabled={sending || selectedIds.size === 0}>
-              {sending ? "Sending..." : (
-                <><Send className="h-4 w-4 mr-1.5" />Send to {selectedIds.size} Student{selectedIds.size !== 1 ? "s" : ""}</>
+              {sending ? t("email.sending") : (
+                <><Send className="h-4 w-4 mr-1.5" />{t("email.sendToStudentsCount", { count: selectedIds.size })}</>
               )}
             </Button>
           </div>

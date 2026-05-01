@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
+import { useTranslations } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import * as api from '@/lib/api/staff-absences'
@@ -40,6 +41,7 @@ function daysAbsent(start: string, end: string) {
 }
 
 export default function AbsencesPage() {
+  const t = useTranslations('staffAbsences')
   const { profile } = useAuth()
   const campusCtx = useCampus()
   const router = useRouter()
@@ -83,7 +85,7 @@ export default function AbsencesPage() {
     if (res.error) {
       toast.error(res.error)
     } else {
-      toast.success('Absence deleted')
+      toast.success(t('toasts.absenceDeleted'))
       mutate()
     }
     setDeleteId(null)
@@ -95,11 +97,11 @@ export default function AbsencesPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <CalendarOff className="h-6 w-6 text-muted-foreground" />
-          <h1 className="text-2xl font-semibold">Staff Absences</h1>
+          <h1 className="text-2xl font-semibold">{t('title')}</h1>
         </div>
         <Button onClick={() => router.push('/admin/staff-absences/add-absence')}>
           <Plus className="h-4 w-4 mr-2" />
-          Add Absence
+          {t('addAbsence')}
         </Button>
       </div>
 
@@ -108,7 +110,7 @@ export default function AbsencesPage() {
         <CardContent className="pt-4">
           <div className="flex flex-wrap gap-3 items-end">
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-muted-foreground">From</label>
+              <label className="text-xs text-muted-foreground">{t('filters.from')}</label>
               <Input
                 type="date"
                 value={startDate}
@@ -117,7 +119,7 @@ export default function AbsencesPage() {
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-muted-foreground">To</label>
+              <label className="text-xs text-muted-foreground">{t('filters.to')}</label>
               <Input
                 type="date"
                 value={endDate}
@@ -126,25 +128,25 @@ export default function AbsencesPage() {
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-muted-foreground">Status</label>
+              <label className="text-xs text-muted-foreground">{t('filters.status')}</label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-36">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="all">{t('statuses.all')}</SelectItem>
+                  <SelectItem value="pending">{t('statuses.pending')}</SelectItem>
+                  <SelectItem value="approved">{t('statuses.approved')}</SelectItem>
+                  <SelectItem value="rejected">{t('statuses.rejected')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="flex flex-col gap-1 flex-1 min-w-40">
-              <label className="text-xs text-muted-foreground">Search staff</label>
+              <label className="text-xs text-muted-foreground">{t('filters.searchStaff')}</label>
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Name…"
+                  placeholder={t('filters.namePlaceholder')}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-8"
@@ -153,7 +155,7 @@ export default function AbsencesPage() {
             </div>
             <Button variant="outline" onClick={() => mutate()}>
               <Filter className="h-4 w-4 mr-2" />
-              Refresh
+              {t('refresh')}
             </Button>
           </div>
         </CardContent>
@@ -165,14 +167,14 @@ export default function AbsencesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Staff Member</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Start</TableHead>
-                <TableHead>End</TableHead>
-                <TableHead>Days</TableHead>
-                <TableHead>Reason</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-20">Actions</TableHead>
+                <TableHead>{t('table.staffMember')}</TableHead>
+                <TableHead>{t('table.role')}</TableHead>
+                <TableHead>{t('table.start')}</TableHead>
+                <TableHead>{t('table.end')}</TableHead>
+                <TableHead>{t('table.days')}</TableHead>
+                <TableHead>{t('table.reason')}</TableHead>
+                <TableHead>{t('table.status')}</TableHead>
+                <TableHead className="w-20">{t('table.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -190,17 +192,17 @@ export default function AbsencesPage() {
                 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center text-muted-foreground py-12">
-                        No absences found for the selected period.
+                        {t('empty.absences')}
                       </TableCell>
                     </TableRow>
                   )
                 : absences.map((absence) => (
                     <TableRow key={absence.id}>
                       <TableCell className="font-medium">
-                        {absence.staff_name || '—'}
+                        {absence.staff_name || t('notAvailable')}
                       </TableCell>
                       <TableCell className="capitalize text-sm text-muted-foreground">
-                        {absence.staff_role || '—'}
+                        {absence.staff_role || t('notAvailable')}
                       </TableCell>
                       <TableCell className="text-sm">{formatDate(absence.start_date)}</TableCell>
                       <TableCell className="text-sm">{formatDate(absence.end_date)}</TableCell>
@@ -208,14 +210,14 @@ export default function AbsencesPage() {
                         {daysAbsent(absence.start_date, absence.end_date)}
                       </TableCell>
                       <TableCell className="text-sm max-w-40 truncate">
-                        {absence.reason || '—'}
+                        {absence.reason || t('notAvailable')}
                       </TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"
                           className={STATUS_COLORS[absence.status] || ''}
                         >
-                          {absence.status}
+                          {t(`statuses.${absence.status}`)}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -248,28 +250,28 @@ export default function AbsencesPage() {
       </Card>
 
       <p className="text-sm text-muted-foreground">
-        {absences.length} absence{absences.length !== 1 ? 's' : ''} found
+        {t('resultsCount', { count: absences.length })}
       </p>
 
       {/* Delete confirmation */}
       <Dialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Absence</DialogTitle>
+            <DialogTitle>{t('deleteAbsence.title')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this absence? This action cannot be undone.
+              {t('deleteAbsence.description')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteId(null)}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button
               variant="destructive"
               onClick={handleDelete}
               disabled={deleting}
             >
-              {deleting ? 'Deleting…' : 'Delete'}
+              {deleting ? t('deleting') : t('delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

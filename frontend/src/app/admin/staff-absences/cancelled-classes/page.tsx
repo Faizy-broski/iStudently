@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
+import { useTranslations } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import * as api from '@/lib/api/staff-absences'
@@ -22,6 +23,7 @@ function formatDate(dt: string) {
 }
 
 export default function CancelledClassesPage() {
+  const t = useTranslations('staffAbsences')
   const { profile } = useAuth()
   const campusCtx = useCampus()
   const schoolId = profile?.school_id || ''
@@ -50,7 +52,7 @@ export default function CancelledClassesPage() {
     <div className="p-6 space-y-4">
       <div className="flex items-center gap-3">
         <BookX className="h-6 w-6 text-muted-foreground" />
-        <h1 className="text-2xl font-semibold">Cancelled Classes</h1>
+        <h1 className="text-2xl font-semibold">{t('cancelledClasses.title')}</h1>
       </div>
 
       {/* Filters */}
@@ -58,7 +60,7 @@ export default function CancelledClassesPage() {
         <CardContent className="pt-4">
           <div className="flex flex-wrap gap-3 items-end">
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-muted-foreground">From</label>
+              <label className="text-xs text-muted-foreground">{t('filters.from')}</label>
               <Input
                 type="date"
                 value={startDate}
@@ -67,7 +69,7 @@ export default function CancelledClassesPage() {
               />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-muted-foreground">To</label>
+              <label className="text-xs text-muted-foreground">{t('filters.to')}</label>
               <Input
                 type="date"
                 value={endDate}
@@ -77,7 +79,7 @@ export default function CancelledClassesPage() {
             </div>
             <Button variant="outline" onClick={() => mutate()}>
               <Filter className="h-4 w-4 mr-2" />
-              Refresh
+              {t('refresh')}
             </Button>
           </div>
         </CardContent>
@@ -89,11 +91,11 @@ export default function CancelledClassesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Staff Member</TableHead>
-                <TableHead>Course Period</TableHead>
-                <TableHead>Short Name</TableHead>
-                <TableHead>Absence Start</TableHead>
-                <TableHead>Absence End</TableHead>
+                <TableHead>{t('cancelledClasses.table.staffMember')}</TableHead>
+                <TableHead>{t('cancelledClasses.table.coursePeriod')}</TableHead>
+                <TableHead>{t('cancelledClasses.table.shortName')}</TableHead>
+                <TableHead>{t('cancelledClasses.table.absenceStart')}</TableHead>
+                <TableHead>{t('cancelledClasses.table.absenceEnd')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -111,7 +113,7 @@ export default function CancelledClassesPage() {
                 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center text-muted-foreground py-12">
-                        No cancelled classes found for the selected period.
+                        {t('empty.cancelledClasses')}
                       </TableCell>
                     </TableRow>
                   )
@@ -130,7 +132,7 @@ export default function CancelledClassesPage() {
       </Card>
 
       <p className="text-sm text-muted-foreground">
-        {rows.length} cancelled class{rows.length !== 1 ? 'es' : ''} found
+        {t('cancelledClasses.resultsCount', { count: rows.length })}
       </p>
     </div>
   )

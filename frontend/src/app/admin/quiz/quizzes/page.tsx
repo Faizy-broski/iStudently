@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import useSWR, { mutate } from 'swr'
+import { useTranslations } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import { getQuizzes, deleteQuiz, copyQuiz, type Quiz } from '@/lib/api/quiz'
@@ -27,10 +28,11 @@ import { AddEditQuizDialog } from '@/components/admin/quiz/AddEditQuizDialog'
 import { ManageQuizQuestionsDialog } from '@/components/admin/quiz/ManageQuizQuestionsDialog'
 
 export default function QuizzesPage() {
+  const t = useTranslations('quiz')
   const { profile } = useAuth()
-  const { selectedCampus } = useCampus()
+  const campusContext = useCampus()
   const schoolId = profile?.school_id ?? ''
-  const campusId = selectedCampus?.id ?? null
+  const campusId = campusContext?.selectedCampus?.id ?? null
 
   const [search, setSearch] = useState('')
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -66,9 +68,9 @@ export default function QuizzesPage() {
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Quizzes</h1>
+        <h1 className="text-2xl font-bold">{t('title')}</h1>
         <Button onClick={() => setAddOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" /> New Quiz
+          <Plus className="w-4 h-4 mr-2" /> {t('newQuiz')}
         </Button>
       </div>
 
@@ -76,7 +78,7 @@ export default function QuizzesPage() {
         <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
           className="pl-9 max-w-sm"
-          placeholder="Search quizzes…"
+          placeholder={t('searchQuizzes')}
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
@@ -85,19 +87,19 @@ export default function QuizzesPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <FileQuestion className="w-5 h-5" /> Quiz List
+            <FileQuestion className="w-5 h-5" /> {t('quizList')}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Assignment</TableHead>
-                <TableHead>Questions</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead>Options</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t('table.title')}</TableHead>
+                <TableHead>{t('table.assignment')}</TableHead>
+                <TableHead>{t('table.questions')}</TableHead>
+                <TableHead>{t('table.dueDate')}</TableHead>
+                <TableHead>{t('table.options')}</TableHead>
+                <TableHead className="text-right">{t('table.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -113,7 +115,7 @@ export default function QuizzesPage() {
                 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
-                        No quizzes found. Create one to get started.
+                        {t('noQuizzes')}
                       </TableCell>
                     </TableRow>
                   )
@@ -121,22 +123,22 @@ export default function QuizzesPage() {
                     <TableRow key={quiz.id}>
                       <TableCell className="font-medium">{quiz.title}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {quiz.assignment?.title ?? <span className="italic">No assignment</span>}
+                        {quiz.assignment?.title ?? <span className="italic">{t('noAssignment')}</span>}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary">{quiz.question_count ?? 0} Q</Badge>
+                        <Badge variant="secondary">{quiz.question_count ?? 0} {t('questionCountSuffix')}</Badge>
                       </TableCell>
                       <TableCell className="text-sm">
                         {quiz.assignment?.due_date
                           ? format(new Date(quiz.assignment.due_date), 'MMM d, yyyy')
-                          : '—'}
+                          : t('notAvailable')}
                       </TableCell>
                       <TableCell className="flex gap-1 flex-wrap">
                         {quiz.show_correct_answers && (
-                          <Badge variant="outline" className="text-xs">Show Answers</Badge>
+                          <Badge variant="outline" className="text-xs">{t('showAnswers')}</Badge>
                         )}
                         {quiz.shuffle && (
-                          <Badge variant="outline" className="text-xs">Shuffle</Badge>
+                          <Badge variant="outline" className="text-xs">{t('shuffle')}</Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
@@ -144,12 +146,12 @@ export default function QuizzesPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            title="Manage Questions"
+                            title={t('actions.manageQuestions')}
                             onClick={() => setManageQuiz(quiz)}
                           >
                             <ListChecks className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" asChild title="Answer Breakdown">
+                          <Button variant="ghost" size="icon" asChild title={t('actions.answerBreakdown')}>
                             <Link href={`/admin/quiz/answer-breakdown?quiz_id=${quiz.id}`}>
                               <BarChart2 className="w-4 h-4" />
                             </Link>
@@ -157,7 +159,7 @@ export default function QuizzesPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            title="Copy Quiz"
+                            title={t('actions.copyQuiz')}
                             disabled={copying === quiz.id}
                             onClick={() => handleCopy(quiz.id)}
                           >
@@ -166,7 +168,7 @@ export default function QuizzesPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            title="Edit Quiz"
+                            title={t('actions.editQuiz')}
                             onClick={() => setEditQuiz(quiz)}
                           >
                             <Pencil className="w-4 h-4" />
@@ -174,7 +176,7 @@ export default function QuizzesPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            title="Delete Quiz"
+                            title={t('actions.deleteQuiz')}
                             className="text-destructive"
                             onClick={() => setDeleteId(quiz.id)}
                           >
@@ -212,15 +214,15 @@ export default function QuizzesPage() {
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Quiz?</AlertDialogTitle>
+            <AlertDialogTitle>{t('deleteQuiz')}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the quiz and all student answers. This action cannot be undone.
+              {t('deleteQuizWarning')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
-              Delete
+              {t('delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

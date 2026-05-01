@@ -22,6 +22,7 @@ import { useAuth } from "@/context/AuthContext";
 import { CustomFieldsRenderer } from "@/components/admin/CustomFieldsRenderer";
 import { getFieldDefinitions, CustomFieldDefinition } from "@/lib/api/custom-fields";
 import { getFieldOrders, getEffectiveFieldOrder, DefaultFieldOrder } from '@/lib/utils/field-ordering';
+import { useTranslations } from "next-intl";
 
 // Zod validation schema
 const parentSchema = z.object({
@@ -79,6 +80,7 @@ interface AddParentFormProps {
 }
 
 export function AddParentForm({ onSuccess }: AddParentFormProps) {
+  const t = useTranslations("parents");
   const { user } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
@@ -232,14 +234,13 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
 
       if (Object.keys(customErrors).length > 0) {
         setFormErrors(customErrors);
-        toast.error("Please fill in all required custom fields");
+        toast.error(t("validation.fillRequiredCustomFields"));
         return;
       }
 
       setIsSubmitting(true);
 
       const response = await createParent({
-        school_id: user?.school_id, // Admin's base school_id (parents are school-wide)
         first_name: validatedData.primaryFirstName,
         last_name: validatedData.primaryLastName,
         email: validatedData.primaryEmail || undefined,
@@ -276,12 +277,12 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
       });
 
       if (response.success) {
-        toast.success("Parent/Guardian added successfully!");
+        toast.success(t("toasts.parentAdded"));
         // Invalidate all parents cache to refresh the list
         await mutate((key) => Array.isArray(key) && key[0] === 'parents', undefined, { revalidate: true });
         onSuccess();
       } else {
-        toast.error(response.error || "Failed to add parent");
+        toast.error(response.error || t("toasts.failedAddParent"));
       }
     } catch (error) {
       setIsSubmitting(false);
@@ -293,7 +294,7 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
           }
         });
         setFormErrors(errors);
-        toast.error("Please fix the errors in the form");
+        toast.error(t("validation.fixFormErrors"));
 
         // Simple tab switching logic based on errors
         const hasPrimaryError = Object.keys(errors).some(k => k.startsWith('primary'));
@@ -310,19 +311,19 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
 
   const getPrimaryLabel = () => {
     switch (formData.relationshipType) {
-      case "mother": return "Mother's";
-      case "father": return "Father's";
-      case "both": return "Mother's";
-      case "guardian": return formData.guardianRelationship ? `${formData.guardianRelationship}'s` : "Guardian's";
-      default: return "Primary Guardian's";
+      case "mother": return t("relationshipLabels.motherPossessive");
+      case "father": return t("relationshipLabels.fatherPossessive");
+      case "both": return t("relationshipLabels.motherPossessive");
+      case "guardian": return formData.guardianRelationship ? t("relationshipLabels.guardianPossessiveCustom", { relation: formData.guardianRelationship }) : t("relationshipLabels.guardianPossessive");
+      default: return t("relationshipLabels.primaryGuardianPossessive");
     }
   };
 
   const getSecondaryLabel = () => {
     switch (formData.relationshipType) {
-      case "both": return "Father's";
-      case "guardian": return "Secondary Guardian's";
-      default: return "Secondary Guardian's";
+      case "both": return t("relationshipLabels.fatherPossessive");
+      case "guardian": return t("relationshipLabels.secondaryGuardianPossessive");
+      default: return t("relationshipLabels.secondaryGuardianPossessive");
     }
   };
 
@@ -350,7 +351,7 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
     // 3. Merge
     const merged = [...relevantStandard, ...relevantCustom];
 
-    console.log('Parent merged before sort:', merged.map(f => ({ label: f.label, sort_order: f.sort_order, isCustom: !!f.isCustom })));
+    console.log('Parent merged before sort:', merged.map((f: any) => ({ label: f.label, sort_order: f.sort_order, isCustom: !!f.isCustom })));
 
     // 4. Sort
     const sorted = merged.sort((a, b) => {
@@ -359,7 +360,7 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
       return aOrder - bOrder;
     });
 
-    console.log('Parent merged after sort:', sorted.map(f => ({ label: f.label, sort_order: f.sort_order, isCustom: !!f.isCustom })));
+    console.log('Parent merged after sort:', sorted.map((f: any) => ({ label: f.label, sort_order: f.sort_order, isCustom: !!f.isCustom })));
 
     return sorted;
   };
@@ -383,7 +384,7 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
     const renderSelect = () => (
       <Select value={value} onValueChange={handleChange}>
         <SelectTrigger className={error ? "border-red-500" : ""}>
-          <SelectValue placeholder={`Select ${field.label}`} />
+          <SelectValue placeholder={t("selectField", { field: field.label })} />
         </SelectTrigger>
         <SelectContent>
           {field.options && field.options.length > 0 ? (
@@ -392,7 +393,7 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
             ))
           ) : (
             <SelectItem value="no-options" disabled>
-              No options available
+              {t("noOptionsAvailable")}
             </SelectItem>
           )}
         </SelectContent>
@@ -411,7 +412,7 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
             type={field.type}
             value={value}
             onChange={(e) => handleChange(e.target.value)}
-            placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+            placeholder={field.placeholder || t("enterField", { field: String(field.label).toLowerCase() })}
             className={error ? "border-red-500" : ""}
           />
         ) : field.type === 'textarea' || field.type === 'long-text' ? (
@@ -451,7 +452,7 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
               className={error ? "border-red-500" : ""}
             />
             {value && (
-              <p className="text-xs text-muted-foreground">Current: {value}</p>
+              <p className="text-xs text-muted-foreground">{t("currentValue", { value })}</p>
             )}
           </div>
         ) : field.type === 'multi-select' ? (
@@ -459,7 +460,7 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
             options={field.options || []}
             value={Array.isArray(value) ? value : (value ? [value] : [])}
             onChange={handleChange}
-            placeholder={`Select ${field.label.toLowerCase()}`}
+            placeholder={t("selectField", { field: String(field.label).toLowerCase() })}
           />
         ) : null}
 
@@ -502,13 +503,13 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium">
-              Step {activeTab === "relationship" ? "1" : activeTab === "primary" ? "2" : activeTab === "contact" ? "3" : "4"} of 4
+              {t("stepOf", { step: activeTab === "relationship" ? 1 : activeTab === "primary" ? 2 : activeTab === "contact" ? 3 : 4, total: 4 })}
             </span>
             <span className="text-sm text-muted-foreground">
-              {activeTab === "relationship" && "Relationship Type"}
-              {activeTab === "primary" && "Guardian Information"}
-              {activeTab === "contact" && "Contact & Address"}
-              {activeTab === "preferences" && "Preferences"}
+              {activeTab === "relationship" && t("steps.relationshipType")}
+              {activeTab === "primary" && t("steps.guardianInformation")}
+              {activeTab === "contact" && t("steps.contactAddress")}
+              {activeTab === "preferences" && t("steps.preferences")}
             </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
@@ -527,7 +528,7 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
             <CardContent className="pt-6 space-y-6">
               <div className="space-y-4">
                 <Label className="text-base font-semibold">
-                  Select Relationship Type <span className="text-red-500">*</span>
+                  {t("relationshipTypeLabel")} <span className="text-red-500">*</span>
                 </Label>
                 <RadioGroup
                   value={formData.relationshipType}
@@ -536,10 +537,10 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
                 >
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Radio options ... simplified for brevity but kept functional */}
-                    {[{ id: 'mother', label: 'Mother Only', sub: 'Single mother guardian' },
-                    { id: 'father', label: 'Father Only', sub: 'Single father guardian' },
-                    { id: 'both', label: 'Both Parents', sub: 'Mother and father' },
-                    { id: 'guardian', label: 'Guardian / Other', sub: 'Legal guardian or other' }].map((opt) => (
+                    {[{ id: 'mother', label: t('relationshipTypes.motherOnly'), sub: t('relationshipTypes.motherOnlySub') },
+                    { id: 'father', label: t('relationshipTypes.fatherOnly'), sub: t('relationshipTypes.fatherOnlySub') },
+                    { id: 'both', label: t('relationshipTypes.bothParents'), sub: t('relationshipTypes.bothParentsSub') },
+                    { id: 'guardian', label: t('relationshipTypes.guardianOther'), sub: t('relationshipTypes.guardianOtherSub') }].map((opt) => (
                       <div key={opt.id} className="flex items-center space-x-3 border rounded-lg p-4 hover:bg-muted/50 cursor-pointer">
                         <RadioGroupItem value={opt.id} id={opt.id} />
                         <Label htmlFor={opt.id} className="flex-1 cursor-pointer">
@@ -556,12 +557,12 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
               {/* Guardian Relationship Input */}
               {formData.relationshipType === 'guardian' && (
                 <div className="space-y-2">
-                  <Label htmlFor="guardianRelationship">Specify Relationship</Label>
+                  <Label htmlFor="guardianRelationship">{t("specifyRelationship")}</Label>
                   <Input
                     id="guardianRelationship"
                     value={formData.guardianRelationship}
                     onChange={(e) => setFormData(prev => ({ ...prev, guardianRelationship: e.target.value }))}
-                    placeholder="e.g. Uncle"
+                    placeholder={t("placeholders.relationshipExample")}
                   />
                 </div>
               )}
@@ -587,35 +588,35 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Manually render Secondary fields for now as they are not in the main 'custom field' flow typically */}
                     <div className="space-y-2">
-                      <Label>First Name</Label>
+                      <Label>{t("fields.firstName")}</Label>
                       <Input value={formData.secondaryFirstName} onChange={(e) => handleStandardChange('secondaryFirstName', e.target.value)} />
                     </div>
                     <div className="space-y-2">
-                      <Label>Last Name</Label>
+                      <Label>{t("fields.lastName")}</Label>
                       <Input value={formData.secondaryLastName} onChange={(e) => handleStandardChange('secondaryLastName', e.target.value)} />
                     </div>
                     <div className="space-y-2">
-                      <Label>CNIC</Label>
+                      <Label>{t("fields.cnic")}</Label>
                       <Input value={formData.secondaryCNIC} onChange={(e) => handleStandardChange('secondaryCNIC', e.target.value)} />
                     </div>
                     <div className="space-y-2">
-                      <Label>Phone</Label>
+                      <Label>{t("fields.phone")}</Label>
                       <Input value={formData.secondaryPhone} onChange={(e) => handleStandardChange('secondaryPhone', e.target.value)} />
                     </div>
                     <div className="space-y-2">
-                      <Label>Email</Label>
+                      <Label>{t("fields.email")}</Label>
                       <Input value={formData.secondaryEmail} onChange={(e) => handleStandardChange('secondaryEmail', e.target.value)} />
                     </div>
                     <div className="space-y-2">
-                      <Label>Occupation</Label>
+                      <Label>{t("occupation")}</Label>
                       <Input value={formData.secondaryOccupation} onChange={(e) => handleStandardChange('secondaryOccupation', e.target.value)} />
                     </div>
                     <div className="space-y-2">
-                      <Label>Workplace</Label>
+                      <Label>{t("workplace")}</Label>
                       <Input value={formData.secondaryWorkplace} onChange={(e) => handleStandardChange('secondaryWorkplace', e.target.value)} />
                     </div>
                     <div className="space-y-2">
-                      <Label>Income</Label>
+                      <Label>{t("income")}</Label>
                       <Input value={formData.secondaryIncome} onChange={(e) => handleStandardChange('secondaryIncome', e.target.value)} />
                     </div>
                   </div>
@@ -629,13 +630,13 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
         <TabsContent value="contact" className="space-y-6 mt-6">
           <Card>
             <CardContent className="pt-6 space-y-6">
-              <h3 className="text-lg font-semibold">Contact Information</h3>
+              <h3 className="text-lg font-semibold">{t("contactInfo")}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {getMergedFields(['contact']).map(renderField)}
               </div>
 
               <hr className="my-6" />
-              <h3 className="text-lg font-semibold">Emergency Contact</h3>
+              <h3 className="text-lg font-semibold">{t("emergencyContact")}</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {getMergedFields(['emergency']).map(renderField)}
               </div>
@@ -647,7 +648,7 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
         <TabsContent value="preferences" className="space-y-6 mt-6">
           <Card>
             <CardContent className="pt-6 space-y-6">
-              <h3 className="text-lg font-semibold">System Access</h3>
+              <h3 className="text-lg font-semibold">{t("systemAccess")}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {getMergedFields(['system']).map(renderField)}
               </div>
@@ -667,20 +668,20 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
           }}
           disabled={activeTab === 'relationship'}
         >
-          Back
+          {t("back")}
         </Button>
 
         {activeTab !== 'preferences' ? (
           <Button type="button" onClick={() => {
             if (activeTab === 'relationship' && !formData.relationshipType) {
-              toast.error("Please select a relationship type");
+              toast.error(t("validation.selectRelationshipType"));
               return;
             }
             if (activeTab === 'relationship') setActiveTab('primary');
             else if (activeTab === 'primary') setActiveTab('contact');
             else if (activeTab === 'contact') setActiveTab('preferences');
           }} className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white">
-            Next
+            {t("next")}
           </Button>
         ) : (
           <Button
@@ -689,7 +690,7 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
             onClick={() => { if (!isSubmitting) handleSubmit(); }}
             className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white"
           >
-            {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : "Add Parent"}
+            {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("saving")}</> : t("addParent")}
           </Button>
         )}
       </div>

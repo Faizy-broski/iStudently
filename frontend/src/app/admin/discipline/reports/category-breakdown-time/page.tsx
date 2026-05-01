@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -106,12 +107,14 @@ function buildTimeSeriesData(
   field: DisciplineField,
   timeframe: 'month' | 'year',
   startDate: string,
-  endDate: string
+  endDate: string,
+  yesLabel: string,
+  noLabel: string
 ): SeriesData[] {
   // Determine options
   let options: string[] = [];
   if (field.field_type === 'checkbox') {
-    options = ['Yes', 'No'];
+    options = [yesLabel, noLabel];
   } else {
     options = field.options ?? [];
   }
@@ -139,7 +142,7 @@ function buildTimeSeriesData(
     if (val === null || val === undefined || val === '') continue;
 
     if (field.field_type === 'checkbox') {
-      const k = val === 'Y' || val === true ? 'Yes' : 'No';
+      const k = val === 'Y' || val === true ? yesLabel : noLabel;
       map[periodKey][k] = (map[periodKey][k] ?? 0) + 1;
     } else if (field.field_type === 'multiple_checkbox' || Array.isArray(val)) {
       const arr: string[] = Array.isArray(val)
@@ -170,6 +173,7 @@ function buildTimeSeriesData(
 // ---------------------------------------------------------------------------
 
 export default function CategoryBreakdownTimePage() {
+  const t = useTranslations('discipline');
   const { user } = useAuth();
   const campusCtx = useCampus();
   const campusId = campusCtx?.selectedCampus?.id;
@@ -197,7 +201,7 @@ export default function CategoryBreakdownTimePage() {
         );
         setFields(chartable);
       })
-      .catch(() => toast.error('Failed to load categories'))
+      .catch(() => toast.error(t('errors.loadCategories')))
       .finally(() => setLoadingFields(false));
   }, [schoolId]);
 
@@ -214,7 +218,7 @@ export default function CategoryBreakdownTimePage() {
       setReferrals(res.data ?? []);
       setHasLoaded(true);
     } catch {
-      toast.error('Failed to load referrals');
+      toast.error(t('errors.loadReferrals'));
     } finally {
       setLoading(false);
     }
@@ -222,12 +226,12 @@ export default function CategoryBreakdownTimePage() {
 
   const selectedField = fields.find((f) => f.id === selectedFieldId);
   const seriesData = selectedField
-    ? buildTimeSeriesData(referrals, selectedField, timeframe, startDate, endDate)
+    ? buildTimeSeriesData(referrals, selectedField, timeframe, startDate, endDate, t('yes'), t('no'))
     : [];
 
   const options: string[] =
     selectedField?.field_type === 'checkbox'
-      ? ['Yes', 'No']
+      ? [t('yes'), t('no')]
       : (selectedField?.options ?? []);
 
   return (
@@ -236,22 +240,22 @@ export default function CategoryBreakdownTimePage() {
 
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <TrendingUp className="h-7 w-7 text-primary" />
-          Category Breakdown over Time
+          {t('categoryBreakdownOverTime')}
         </h1>
 
         <Card>
           <CardContent className="pt-5 pb-5 space-y-4">
             {/* Category select */}
             <div className="space-y-1.5">
-              <Label>Category</Label>
+              <Label>{t('category')}</Label>
               {loadingFields ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+                  <Loader2 className="h-4 w-4 animate-spin" /> {t('loading')}
                 </div>
               ) : (
                 <Select value={selectedFieldId} onValueChange={setSelectedFieldId}>
                   <SelectTrigger className="max-w-xs">
-                    <SelectValue placeholder="Please choose a category" />
+                    <SelectValue placeholder={t('chooseCategory')} />
                   </SelectTrigger>
                   <SelectContent>
                     {fields.map((f) => (
@@ -266,7 +270,7 @@ export default function CategoryBreakdownTimePage() {
 
             {/* Timeframe radio */}
             <div className="space-y-1.5">
-              <Label>Timeframe</Label>
+              <Label>{t('timeframe')}</Label>
               <div className="flex gap-4">
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input
@@ -277,7 +281,7 @@ export default function CategoryBreakdownTimePage() {
                     onChange={() => setTimeframe('month')}
                     className="accent-primary"
                   />
-                  Month
+                  {t('month')}
                 </label>
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input
@@ -288,7 +292,7 @@ export default function CategoryBreakdownTimePage() {
                     onChange={() => setTimeframe('year')}
                     className="accent-primary"
                   />
-                  School Year
+                  {t('schoolYear')}
                 </label>
               </div>
             </div>
@@ -296,7 +300,7 @@ export default function CategoryBreakdownTimePage() {
             {/* Date range */}
             <div className="flex flex-wrap items-end gap-3">
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Report Timeframe: From</Label>
+                <Label className="text-xs text-muted-foreground">{t('reportTimeframeFrom')}</Label>
                 <Input
                   type="date"
                   value={startDate}
@@ -305,7 +309,7 @@ export default function CategoryBreakdownTimePage() {
                 />
               </div>
               <div className="flex items-end gap-1.5">
-                <span className="text-sm text-muted-foreground pb-1.5">to</span>
+                <span className="text-sm text-muted-foreground pb-1.5">{t('to')}</span>
                 <Input
                   type="date"
                   value={endDate}
@@ -320,7 +324,7 @@ export default function CategoryBreakdownTimePage() {
                 className="h-8"
               >
                 {loading && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
-                Go
+                {t('go')}
               </Button>
             </div>
           </CardContent>
@@ -331,19 +335,19 @@ export default function CategoryBreakdownTimePage() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">
-                {selectedField.name} Breakdown over Time
+                {selectedField.name} {t('breakdownOverTime')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               {seriesData.length === 0 ? (
                 <p className="text-center py-10 text-muted-foreground text-sm">
-                  No data for the selected filters.
+                  {t('noDataForFilters')}
                 </p>
               ) : (
                 <Tabs defaultValue="column">
                   <TabsList>
-                    <TabsTrigger value="column">Column</TabsTrigger>
-                    <TabsTrigger value="list">List</TabsTrigger>
+                    <TabsTrigger value="column">{t('column')}</TabsTrigger>
+                    <TabsTrigger value="list">{t('list')}</TabsTrigger>
                   </TabsList>
 
                   {/* Grouped bar chart */}
@@ -383,7 +387,7 @@ export default function CategoryBreakdownTimePage() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Option</TableHead>
+                            <TableHead>{t('option')}</TableHead>
                             {seriesData.map((d) => (
                               <TableHead key={d.periodKey} className="text-center">
                                 {d.label}

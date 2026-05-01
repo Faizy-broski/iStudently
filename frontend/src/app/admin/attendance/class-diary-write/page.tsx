@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
+import { useTranslations, useLocale } from "next-intl"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -54,42 +55,10 @@ import type { DiaryEntry, CreateDiaryEntryDTO } from "@/lib/api/class-diary"
 import type { TimetableEntry } from "@/lib/api/timetable"
 import { createClient } from "@/lib/supabase/client"
 
-const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-
 function getDayOfWeek(dateStr: string): number {
   const d = new Date(dateStr + "T00:00:00")
   const jsDay = d.getDay()
   return jsDay === 0 ? 6 : jsDay - 1
-}
-
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00")
-  return d.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
-}
-
-function formatEntryTime(timeStr?: string): string {
-  if (!timeStr) return ""
-  try {
-    if (timeStr.includes("T")) {
-      return new Date(timeStr).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-    }
-    const [h, m, s] = timeStr.split(":")
-    const date = new Date()
-    date.setHours(parseInt(h), parseInt(m), parseInt(s || "0"))
-    return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-  } catch {
-    return timeStr
-  }
-}
-
-function formatTimestamp(ts: string): string {
-  try {
-    const d = new Date(ts)
-    return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "2-digit" }) +
-      " " + d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-  } catch {
-    return ts
-  }
 }
 
 // Debounce helper
@@ -107,6 +76,33 @@ function debounce(
 }
 
 export default function ClassDiaryWritePage() {
+  const t = useTranslations('attendance')
+  const locale = useLocale()
+
+  const formatDate = (dateStr: string) =>
+    new Date(dateStr + "T00:00:00").toLocaleDateString(locale, { weekday: "long", year: "numeric", month: "long", day: "numeric" })
+
+  const formatEntryTime = (timeStr?: string): string => {
+    if (!timeStr) return ""
+    try {
+      if (timeStr.includes("T")) {
+        return new Date(timeStr).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+      }
+      const [h, m, s] = timeStr.split(":")
+      const date = new Date()
+      date.setHours(parseInt(h), parseInt(m), parseInt(s || "0"))
+      return date.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    } catch { return timeStr }
+  }
+
+  const formatTimestamp = (ts: string): string => {
+    try {
+      const d = new Date(ts)
+      return d.toLocaleDateString(locale, { year: "numeric", month: "long", day: "2-digit" }) +
+        " " + d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    } catch { return ts }
+  }
+
   const { profile } = useAuth()
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
@@ -274,7 +270,7 @@ export default function ClassDiaryWritePage() {
         debouncedUpdateContent(newContent)
       }
     } catch {
-      toast.error("Text formatting failed")
+      toast.error(t('diary_textFormatFailed'))
     }
   }, [debouncedUpdateContent])
 
@@ -326,7 +322,7 @@ export default function ClassDiaryWritePage() {
           .upload(filePath, file, { cacheControl: "3600", upsert: false })
 
         if (error) {
-          toast.error(`Failed to upload ${file.name}: ${error.message}`)
+          toast.error(t('diary_uploadFileFailed', { name: file.name, error: error.message }))
           continue
         }
 
@@ -342,9 +338,9 @@ export default function ClassDiaryWritePage() {
         })
       }
       setPendingFiles([])
-      toast.success("Files uploaded successfully")
+      toast.success(t('diary_filesUploaded'))
     } catch {
-      toast.error("Failed to upload some files")
+      toast.error(t('diary_uploadFailed'))
     } finally {
       setUploadingFiles(false)
     }
@@ -361,12 +357,12 @@ export default function ClassDiaryWritePage() {
           }
           return e
         }))
-        toast.success("File removed")
+        toast.success(t('diary_fileRemoved'))
       } else {
-        toast.error(result.error || "Failed to remove file")
+        toast.error(result.error || t('diary_removeFailed'))
       }
     } catch {
-      toast.error("Failed to remove file")
+      toast.error(t('diary_removeFailed'))
     }
   }
 
@@ -374,12 +370,12 @@ export default function ClassDiaryWritePage() {
   const handleSave = async () => {
     const editorContent = editorRef.current?.innerHTML || content
     if (!editorContent || editorContent === "<br>" || editorContent.trim() === "") {
-      toast.error("Please write some content for the diary entry")
+      toast.error(t('diary_writeContent'))
       return
     }
 
     if (!selectedSection) {
-      toast.error("Please select a section")
+      toast.error(t('diary_selectSectionRequired'))
       return
     }
 
@@ -396,11 +392,11 @@ export default function ClassDiaryWritePage() {
           if (pendingFiles.length > 0) {
             await uploadAndAttachFiles(editingEntry.id)
           }
-          toast.success("Diary entry updated successfully")
+          toast.success(t('diary_updated'))
           clearEditor()
           loadExistingEntries()
         } else {
-          toast.error(result.error || "Failed to update entry")
+          toast.error(result.error || t('diary_updateFailed'))
         }
       } else {
         // Create new entry
@@ -434,15 +430,15 @@ export default function ClassDiaryWritePage() {
           if (pendingFiles.length > 0) {
             await uploadAndAttachFiles(result.data.id)
           }
-          toast.success("Diary entry created successfully")
+          toast.success(t('diary_created'))
           clearEditor()
           loadExistingEntries()
         } else {
-          toast.error(result.error || "Failed to create entry")
+          toast.error(result.error || t('diary_createEntryFailed'))
         }
       }
     } catch {
-      toast.error("Failed to save diary entry")
+      toast.error(t('diary_saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -478,16 +474,16 @@ export default function ClassDiaryWritePage() {
     try {
       const result = await classDiaryApi.deleteDiaryEntry(entryToDelete)
       if (result.success) {
-        toast.success("Diary entry deleted")
+        toast.success(t('diary_deleted'))
         loadExistingEntries()
         if (editingEntry?.id === entryToDelete) {
           clearEditor()
         }
       } else {
-        toast.error(result.error || "Failed to delete entry")
+        toast.error(result.error || t('diary_deleteFailed'))
       }
     } catch {
-      toast.error("Failed to delete entry")
+      toast.error(t('diary_deleteFailed'))
     } finally {
       setDeleting(false)
       setDeleteDialogOpen(false)
@@ -523,8 +519,8 @@ export default function ClassDiaryWritePage() {
           <CardContent className="py-16">
             <div className="flex flex-col items-center gap-3 text-center">
               <Pencil className="h-12 w-12 text-muted-foreground/40" />
-              <h3 className="text-lg font-medium text-muted-foreground">Access Restricted</h3>
-              <p className="text-sm text-muted-foreground/70">Only teachers and administrators can write diary entries.</p>
+              <h3 className="text-lg font-medium text-muted-foreground">{t('diary_accessRestricted')}</h3>
+              <p className="text-sm text-muted-foreground/70">{t('diary_onlyTeachers')}</p>
             </div>
           </CardContent>
         </Card>
@@ -540,8 +536,8 @@ export default function ClassDiaryWritePage() {
           <Pencil className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Class Diary — Write</h1>
-          <p className="text-sm text-muted-foreground">Create and manage diary entries for your classes</p>
+          <h1 className="text-2xl font-bold tracking-tight">{t('classDiaryWrite')}</h1>
+          <p className="text-sm text-muted-foreground">{t('diary_subtitle_write')}</p>
         </div>
       </div>
 
@@ -570,10 +566,10 @@ export default function ClassDiaryWritePage() {
 
             {/* Grade */}
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Grade Level</label>
+              <label className="text-xs font-medium text-muted-foreground">{t('diary_gradeLevel')}</label>
               <Select value={selectedGrade} onValueChange={setSelectedGrade} disabled={dataLoading}>
                 <SelectTrigger className="w-45">
-                  <SelectValue placeholder="Select Grade..." />
+                  <SelectValue placeholder={t('diary_selectGrade')} />
                 </SelectTrigger>
                 <SelectContent>
                   {gradeLevels.map(g => (
@@ -585,10 +581,10 @@ export default function ClassDiaryWritePage() {
 
             {/* Section */}
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Section</label>
+              <label className="text-xs font-medium text-muted-foreground">{t('diary_sectionLabel')}</label>
               <Select value={selectedSection} onValueChange={setSelectedSection} disabled={!selectedGrade || dataLoading}>
                 <SelectTrigger className="w-45">
-                  <SelectValue placeholder="Select Section..." />
+                  <SelectValue placeholder={t('diary_selectSection')} />
                 </SelectTrigger>
                 <SelectContent>
                   {filteredSections.map(s => (
@@ -600,10 +596,10 @@ export default function ClassDiaryWritePage() {
 
             {/* Course Period (Timetable Slot) */}
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Course Period</label>
+              <label className="text-xs font-medium text-muted-foreground">{t('diary_coursePeriod')}</label>
               <Select value={selectedSlot} onValueChange={setSelectedSlot} disabled={!selectedSection || loadingTimetable}>
                 <SelectTrigger className="w-62.5">
-                  <SelectValue placeholder={loadingTimetable ? "Loading..." : daySlots.length === 0 ? "No slots for this day" : "Select Period..."} />
+                  <SelectValue placeholder={loadingTimetable ? t('diary_loadingSlots') : daySlots.length === 0 ? t('diary_noSlotsForDay') : t('diary_selectPeriod')} />
                 </SelectTrigger>
                 <SelectContent>
                   {daySlots.map(slot => (
@@ -618,7 +614,7 @@ export default function ClassDiaryWritePage() {
 
           {/* Day info */}
           <div className="flex items-center gap-2 mt-3">
-            <Badge variant="outline">{DAY_NAMES[getDayOfWeek(selectedDate)]}</Badge>
+            <Badge variant="outline">{new Date(selectedDate + "T00:00:00").toLocaleDateString(locale, { weekday: "long" })}</Badge>
             <span className="text-sm text-muted-foreground">{formatDate(selectedDate)}</span>
             {selectedTimetableEntry && (
               <Badge variant="secondary" className="ml-auto">
@@ -638,12 +634,12 @@ export default function ClassDiaryWritePage() {
               {editingEntry ? (
                 <>
                   <Pencil className="h-4 w-4" />
-                  Edit Diary Entry
+                  {t('diary_editEntry')}
                 </>
               ) : (
                 <>
                   <Plus className="h-4 w-4" />
-                  New Diary Entry
+                  {t('diary_newEntry')}
                 </>
               )}
             </CardTitle>
@@ -695,12 +691,12 @@ export default function ClassDiaryWritePage() {
                   </div>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="black">Black</SelectItem>
-                  <SelectItem value="red">Red</SelectItem>
-                  <SelectItem value="blue">Blue</SelectItem>
-                  <SelectItem value="green">Green</SelectItem>
-                  <SelectItem value="orange">Orange</SelectItem>
-                  <SelectItem value="purple">Purple</SelectItem>
+                  <SelectItem value="black">{t('diary_colorBlack')}</SelectItem>
+                  <SelectItem value="red">{t('diary_colorRed')}</SelectItem>
+                  <SelectItem value="blue">{t('diary_colorBlue')}</SelectItem>
+                  <SelectItem value="green">{t('diary_colorGreen')}</SelectItem>
+                  <SelectItem value="orange">{t('diary_colorOrange')}</SelectItem>
+                  <SelectItem value="purple">{t('diary_colorPurple')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -708,8 +704,8 @@ export default function ClassDiaryWritePage() {
             {/* Content Editable Area */}
             <div>
               <Label className="text-sm font-medium mb-2 block">
-                Diary Content
-                <span className="text-xs text-muted-foreground ml-2">(Write about what was taught or achieved in class)</span>
+                {t('diary_contentLabel')}
+                <span className="text-xs text-muted-foreground ml-2">{t('diary_contentHint')}</span>
               </Label>
               <div
                 ref={(el) => {
@@ -731,13 +727,13 @@ export default function ClassDiaryWritePage() {
                   const c = (e.target as HTMLDivElement).innerHTML
                   setContent(c)
                 }}
-                data-placeholder="Click here to start writing your diary entry..."
+                data-placeholder={t('diary_placeholder')}
               />
             </div>
 
             {/* File Attachments */}
             <div className="space-y-3">
-              <Label className="text-sm font-medium">File Attachments</Label>
+              <Label className="text-sm font-medium">{t('diary_attachedFiles')}</Label>
               <div className="flex items-center gap-2">
                 <input
                   ref={fileInputRef}
@@ -752,10 +748,10 @@ export default function ClassDiaryWritePage() {
                   onClick={() => fileInputRef.current?.click()}
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  Attach Files
+                  {t('diary_attachFiles')}
                 </Button>
                 {pendingFiles.length > 0 && (
-                  <Badge variant="secondary">{pendingFiles.length} file(s) selected</Badge>
+                  <Badge variant="secondary">{t('diary_filesSelected', { count: pendingFiles.length })}</Badge>
                 )}
               </div>
               {/* Pending Files List */}
@@ -783,7 +779,7 @@ export default function ClassDiaryWritePage() {
                 onCheckedChange={(checked) => setEnableComments(checked === true)}
               />
               <label htmlFor="enable-comments-write" className="text-sm font-medium cursor-pointer select-none">
-                Enable Comments
+                {t('diary_enableComments')}
               </label>
             </div>
 
@@ -801,11 +797,11 @@ export default function ClassDiaryWritePage() {
                 ) : (
                   <Save className="h-4 w-4 mr-2" />
                 )}
-                {editingEntry ? "Update Entry" : "Save Entry"}
+                {editingEntry ? t('diary_updateEntry') : t('diary_saveEntry')}
               </Button>
               {editingEntry && (
                 <Button variant="outline" onClick={clearEditor}>
-                  Cancel Edit
+                  {t('diary_cancelEdit')}
                 </Button>
               )}
             </div>
@@ -819,7 +815,7 @@ export default function ClassDiaryWritePage() {
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <FileText className="h-4 w-4" />
-              Existing Entries for {formatDate(selectedDate)}
+              {t('diary_existingEntriesFor', { date: formatDate(selectedDate) })}
               {existingEntries.length > 0 && (
                 <Badge variant="secondary">{existingEntries.length}</Badge>
               )}
@@ -833,7 +829,7 @@ export default function ClassDiaryWritePage() {
             ) : existingEntries.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <FileText className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                <p className="text-sm">No entries for this date and section yet.</p>
+                <p className="text-sm">{t('diary_noEntriesForSection')}</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -899,7 +895,7 @@ export default function ClassDiaryWritePage() {
                           {/* Attached Files */}
                           {entry.files && entry.files.length > 0 && (
                             <div className="space-y-1 pt-2 border-t">
-                              <p className="text-xs font-medium text-muted-foreground mb-1">Attached Files</p>
+                              <p className="text-xs font-medium text-muted-foreground mb-1">{t('diary_attachedFiles')}</p>
                               {entry.files.map(file => (
                                 <div key={file.id} className="flex items-center gap-2 text-sm">
                                   <Paperclip className="h-3 w-3 text-muted-foreground" />
@@ -927,8 +923,8 @@ export default function ClassDiaryWritePage() {
 
                           {/* Entry meta */}
                           <p className="text-xs text-muted-foreground">
-                            Created: {formatTimestamp(entry.created_at)}
-                            {entry.enable_comments ? " • Comments enabled" : " • Comments disabled"}
+                            {t('diary_createdAt', { timestamp: formatTimestamp(entry.created_at) })}
+                            {entry.enable_comments ? ` • ${t('diary_commentsEnabled')}` : ` • ${t('diary_commentsDisabled')}`}
                           </p>
                         </div>
                       )}
@@ -947,8 +943,8 @@ export default function ClassDiaryWritePage() {
           <CardContent className="py-16">
             <div className="flex flex-col items-center gap-3 text-center">
               <Pencil className="h-12 w-12 text-muted-foreground/40" />
-              <h3 className="text-lg font-medium text-muted-foreground">Select a Class</h3>
-              <p className="text-sm text-muted-foreground/70">Choose a grade level and section above to start writing diary entries.</p>
+              <h3 className="text-lg font-medium text-muted-foreground">{t('diary_selectClass')}</h3>
+              <p className="text-sm text-muted-foreground/70">{t('diary_chooseGrade')}</p>
             </div>
           </CardContent>
         </Card>
@@ -958,18 +954,18 @@ export default function ClassDiaryWritePage() {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Diary Entry</DialogTitle>
+            <DialogTitle>{t('diary_deleteEntry')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this diary entry? This action cannot be undone. All attached files and comments will also be removed.
+              {t('diary_deleteConfirm')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>
-              Cancel
+              {t('diary_cancel')}
             </Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
               {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
-              Delete
+              {t('diary_delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

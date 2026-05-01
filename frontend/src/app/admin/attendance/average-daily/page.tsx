@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import * as attendanceApi from '@/lib/api/attendance'
@@ -14,6 +15,7 @@ import { IconLoader } from '@tabler/icons-react'
 import { toast } from 'sonner'
 
 export default function AverageDailyAttendancePage() {
+  const t = useTranslations('attendance')
   const { profile } = useAuth()
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
@@ -43,10 +45,9 @@ export default function AverageDailyAttendancePage() {
   const startDaysInMonth = new Date(startYear, startMonth + 1, 0).getDate()
   const endDaysInMonth = new Date(endYear, endMonth + 1, 0).getDate()
 
-  const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ]
+  const months = Array.from({ length: 12 }, (_, i) =>
+    new Intl.DateTimeFormat(undefined, { month: 'long' }).format(new Date(2000, i, 1))
+  )
 
   const handleGo = useCallback(async () => {
     if (!schoolId) return
@@ -78,7 +79,7 @@ export default function AverageDailyAttendancePage() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Average Daily Attendance</CardTitle>
+          <CardTitle>{t('averageDaily')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Controls row */}
@@ -90,7 +91,7 @@ export default function AverageDailyAttendancePage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ada">Average Daily Attendance</SelectItem>
+                  <SelectItem value="ada">{t('averageDaily')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -181,7 +182,7 @@ export default function AverageDailyAttendancePage() {
 
             {/* GO button */}
             <Button onClick={handleGo} disabled={loading || !schoolId} className="min-w-[60px]">
-              {loading ? <IconLoader className="h-4 w-4 animate-spin" /> : 'GO'}
+              {loading ? <IconLoader className="h-4 w-4 animate-spin" /> : t('common.go' as any)}
             </Button>
           </div>
 
@@ -196,21 +197,21 @@ export default function AverageDailyAttendancePage() {
           ) : data !== null ? (
             data.length === 0 ? (
               <p className="text-sm text-muted-foreground py-8 text-center">
-                No attendance data found for this date range.
+                {t('ada_noData')}
               </p>
             ) : (
               <div className="border rounded-md overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="font-semibold min-w-[140px]">GRADE LEVEL</TableHead>
-                      <TableHead className="text-right font-semibold">STUDENTS</TableHead>
-                      <TableHead className="text-right font-semibold">DAYS POSSIBLE</TableHead>
-                      <TableHead className="text-right font-semibold">PRESENT</TableHead>
-                      <TableHead className="text-right font-semibold">ABSENT</TableHead>
-                      <TableHead className="text-right font-semibold">ADA</TableHead>
-                      <TableHead className="text-right font-semibold">AVERAGE ATTENDANCE</TableHead>
-                      <TableHead className="text-right font-semibold">AVERAGE ABSENT</TableHead>
+                      <TableHead className="font-semibold min-w-[140px]">{t('ada_th_gradeLevel')}</TableHead>
+                      <TableHead className="text-right font-semibold">{t('ada_th_students')}</TableHead>
+                      <TableHead className="text-right font-semibold">{t('ada_th_daysPossible')}</TableHead>
+                      <TableHead className="text-right font-semibold">{t('statusPresent')}</TableHead>
+                      <TableHead className="text-right font-semibold">{t('statusAbsent')}</TableHead>
+                      <TableHead className="text-right font-semibold">{t('ada_th_ada')}</TableHead>
+                      <TableHead className="text-right font-semibold">{t('ada_th_averageAttendance')}</TableHead>
+                      <TableHead className="text-right font-semibold">{t('ada_th_averageAbsent')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -238,7 +239,7 @@ export default function AverageDailyAttendancePage() {
             )
           ) : (
             <p className="text-sm text-muted-foreground py-8 text-center">
-              Select a date range and click GO to generate the report.
+              {t('ada_selectRange')}
             </p>
           )}
         </CardContent>

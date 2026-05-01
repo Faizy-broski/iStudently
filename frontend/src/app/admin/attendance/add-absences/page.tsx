@@ -311,7 +311,7 @@ export default function AddAbsencesPage() {
           className="bg-teal-600 hover:bg-teal-700"
         >
           {submitting ? <IconLoader className="mr-2 h-4 w-4 animate-spin" /> : null}
-          ADD ABSENCES TO SELECTED STUDENTS
+          {t('addAbsences_btn')}
         </Button>
       </div>
 
@@ -339,7 +339,7 @@ export default function AddAbsencesPage() {
               ) : periodsLoading ? (
                 <Skeleton className="h-5 w-40" />
               ) : (
-                <span className="text-sm text-muted-foreground">No periods configured</span>
+                <span className="text-sm text-muted-foreground">{t('noPeriods')}</span>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -347,14 +347,14 @@ export default function AddAbsencesPage() {
                 onClick={toggleAllPeriods}
                 className="text-sm text-teal-600 hover:text-teal-700 hover:underline"
               >
-                Add Absence to Periods
+                {t('addAbsences_addToPeriods')}
               </button>
               <label className="flex items-center gap-1.5 text-sm">
                 <Checkbox
                   checked={activePeriods.length > 0 && selectedPeriods.length === activePeriods.length}
                   onCheckedChange={toggleAllPeriods}
                 />
-                Check All
+                {t('addAbsences_checkAll')}
               </label>
             </div>
           </div>
@@ -363,7 +363,7 @@ export default function AddAbsencesPage() {
           <div className="space-y-1">
             <Select value={selectedCodeId} onValueChange={setSelectedCodeId}>
               <SelectTrigger className="w-48">
-                <SelectValue placeholder="Absence Code" />
+                <SelectValue placeholder={t('addAbsences_absenceCode')} />
               </SelectTrigger>
               <SelectContent>
                 {codes.map(code => (
@@ -390,14 +390,14 @@ export default function AddAbsencesPage() {
               placeholder=""
               className="h-16 w-64"
             />
-            <Label className="text-xs text-muted-foreground">Absence Reason</Label>
+            <Label className="text-xs text-muted-foreground">{t('addAbsences_reason')}</Label>
           </div>
 
           {/* Calendar */}
           <div className="space-y-2">
             {/* Off-day selector */}
             <div className="flex items-center gap-3 justify-center flex-wrap">
-              <span className="text-xs text-muted-foreground font-medium">Off days:</span>
+              <span className="text-xs text-muted-foreground font-medium">{t('addAbsences_offDays')}</span>
               {dayNames.map((name, i) => (
                 <label key={i} className="flex items-center gap-1 text-xs cursor-pointer select-none">
                   <Checkbox
@@ -486,10 +486,10 @@ export default function AddAbsencesPage() {
         <div className="flex items-center gap-4 flex-wrap">
           <Select value={gradeFilter} onValueChange={v => { setGradeFilter(v); setSectionFilter('all') }}>
             <SelectTrigger className="w-40">
-              <SelectValue placeholder="All Grades" />
+              <SelectValue placeholder={t('allGrades')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Grades</SelectItem>
+              <SelectItem value="all">{t('allGrades')}</SelectItem>
               {grades.map(g => (
                 <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
               ))}
@@ -499,10 +499,10 @@ export default function AddAbsencesPage() {
           {gradeFilter !== 'all' && sections.length > 0 && (
             <Select value={sectionFilter} onValueChange={setSectionFilter}>
               <SelectTrigger className="w-40">
-                <SelectValue placeholder="All Sections" />
+                <SelectValue placeholder={t('allSections')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Sections</SelectItem>
+                <SelectItem value="all">{t('allSections')}</SelectItem>
                 {sections.map(s => (
                   <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                 ))}
@@ -538,9 +538,9 @@ export default function AddAbsencesPage() {
                       onCheckedChange={toggleAllStudents}
                     />
                   </TableHead>
-                  <TableHead className="text-teal-600 font-semibold">STUDENT</TableHead>
-                  <TableHead className="text-teal-600 font-semibold">STUDENT ID</TableHead>
-                  <TableHead className="text-teal-600 font-semibold">GRADE LEVEL</TableHead>
+                  <TableHead className="text-teal-600 font-semibold">{t('th_student')}</TableHead>
+                  <TableHead className="text-teal-600 font-semibold">{t('th_studentId')}</TableHead>
+                  <TableHead className="text-teal-600 font-semibold">{t('th_gradeLevel')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -556,7 +556,7 @@ export default function AddAbsencesPage() {
                 ) : filteredStudents.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                      No students found.
+                      {t('addAbsences_noStudentsFound')}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -597,7 +597,7 @@ export default function AddAbsencesPage() {
             className="bg-teal-600 hover:bg-teal-700"
           >
             {submitting ? <IconLoader className="mr-2 h-4 w-4 animate-spin" /> : null}
-            ADD ABSENCES TO SELECTED STUDENTS
+            {t('addAbsences_btn')}
           </Button>
         </div>
       </div>

@@ -38,9 +38,11 @@ import { toast } from "sonner";
 import { Lock } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { EditCredentialsModal } from "@/components/admin/EditCredentialsModal";
+import { useTranslations } from "next-intl";
 
 export default function ParentInfoPage() {
   const router = useRouter();
+  const t = useTranslations("parents");
   const { user } = useAuth();
   const schoolId = user?.school_id || '';
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
@@ -101,9 +103,9 @@ export default function ParentInfoPage() {
 
   const getStatusBadge = (isActive: boolean) => {
     return isActive ? (
-      <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Active</Badge>
+      <Badge className="bg-green-100 text-green-800 hover:bg-green-100">{t("active")}</Badge>
     ) : (
-      <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">Inactive</Badge>
+      <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">{t("inactive")}</Badge>
     );
   };
 
@@ -111,7 +113,7 @@ export default function ParentInfoPage() {
     const children = parent.children || [];
 
     if (children.length === 0) {
-      return <span className="text-sm text-muted-foreground">No children</span>;
+      return <span className="text-sm text-muted-foreground">{t("noChildren")}</span>;
     }
 
     if (children.length === 1) {
@@ -119,9 +121,9 @@ export default function ParentInfoPage() {
       const fullName = `${child.profile?.first_name || ''} ${child.profile?.last_name || ''}`.trim();
       return (
         <div className="flex flex-col">
-          <span className="text-sm font-medium">{fullName || 'N/A'}</span>
+          <span className="text-sm font-medium">{fullName || t("na")}</span>
           <span className="text-xs text-muted-foreground">
-            {child.student_number} • {child.grade_level || 'N/A'}
+            {child.student_number} • {child.grade_level || t("na")}
           </span>
         </div>
       );
@@ -131,12 +133,12 @@ export default function ParentInfoPage() {
     const fullName = `${firstChild.profile?.first_name || ''} ${firstChild.profile?.last_name || ''}`.trim();
     return (
       <div className="flex flex-col">
-        <span className="text-sm font-medium">{fullName || 'N/A'}</span>
+        <span className="text-sm font-medium">{fullName || t("na")}</span>
         <button
           onClick={() => handleShowChildren(parent)}
           className="text-xs text-blue-600 hover:text-blue-800 hover:underline text-left"
         >
-          +{children.length - 1} more
+          +{children.length - 1} {t("more")}
         </button>
       </div>
     );
@@ -147,10 +149,10 @@ export default function ParentInfoPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent">
-            Parent Information
+            {t("parentInformationTitle")}
           </h1>
           <p className="text-sm md:text-base text-muted-foreground mt-2">
-            View all parents and their associated children
+            {t("parentInformationSubtitle")}
           </p>
         </div>
         <Button
@@ -158,12 +160,12 @@ export default function ParentInfoPage() {
           size="sm"
           onClick={() => {
             refresh();
-            toast.success("Refreshing parent list...");
+            toast.success(t("toasts.refreshingList"));
           }}
           disabled={loading}
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
+          {t("refresh")}
         </Button>
       </div>
 
@@ -173,7 +175,7 @@ export default function ParentInfoPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by name, email, or phone number..."
+              placeholder={t("searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -188,9 +190,9 @@ export default function ParentInfoPage() {
       {/* Results Summary */}
       <div className="text-sm text-muted-foreground">
         {loading ? (
-          <span>Loading...</span>
+          <span>{t("loading")}</span>
         ) : (
-          <span>Showing {parents.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, total)} of {total} parents</span>
+          <span>{t("showingResults", { from: parents.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0, to: Math.min(currentPage * itemsPerPage, total), total })}</span>
         )}
       </div>
 
@@ -206,19 +208,19 @@ export default function ParentInfoPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10">
-                    <TableHead>Parent Name</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Occupation</TableHead>
-                    <TableHead>Children</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("table.parentName")}</TableHead>
+                    <TableHead>{t("table.contact")}</TableHead>
+                    <TableHead>{t("table.occupation")}</TableHead>
+                    <TableHead>{t("table.children")}</TableHead>
+                    <TableHead>{t("table.status")}</TableHead>
+                    <TableHead className="text-right">{t("table.actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {parents.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                        No parents found matching your search
+                        {t("noParentsFound")}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -235,19 +237,19 @@ export default function ParentInfoPage() {
                           <TableCell>
                             <div className="flex items-center gap-3">
                               <div className="h-10 w-10 rounded-full bg-linear-to-r from-[#57A3CC] to-[#022172] flex items-center justify-center text-white font-semibold">
-                                {initials || 'N/A'}
+                                {initials || t("na")}
                               </div>
-                              <div className="font-medium">{fullName || 'N/A'}</div>
+                              <div className="font-medium">{fullName || t("na")}</div>
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="text-sm">
-                              <div>{parent.profile?.email || 'N/A'}</div>
-                              <div className="text-muted-foreground">{parent.profile?.phone || 'N/A'}</div>
+                              <div>{parent.profile?.email || t("na")}</div>
+                              <div className="text-muted-foreground">{parent.profile?.phone || t("na")}</div>
                             </div>
                           </TableCell>
                           <TableCell>
-                            <span className="text-sm">{parent.occupation || 'N/A'}</span>
+                            <span className="text-sm">{parent.occupation || t("na")}</span>
                           </TableCell>
                           <TableCell>{renderChildren(parent)}</TableCell>
                           <TableCell>{getStatusBadge(parent.profile?.is_active || false)}</TableCell>
@@ -259,11 +261,11 @@ export default function ParentInfoPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuLabel>{t("actions.menu")}</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => handleViewDetails(parent)}>
                                   <Eye className="mr-2 h-4 w-4" />
-                                  View Details
+                                  {t("actions.viewDetails")}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => {
                                   setCredentialsData({
@@ -273,16 +275,16 @@ export default function ParentInfoPage() {
                                   setShowCredentialsModal(true);
                                 }}>
                                   <Lock className="mr-2 h-4 w-4" />
-                                  Edit Credentials
+                                  {t("actions.editCredentials")}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleEditParent(parent)}>
                                   <Edit className="mr-2 h-4 w-4" />
-                                  Edit Parent
+                                  {t("actions.editParent")}
                                 </DropdownMenuItem>
                                 {parent.children && parent.children.length > 0 && (
                                   <DropdownMenuItem onClick={() => handleShowChildren(parent)}>
                                     <Eye className="mr-2 h-4 w-4" />
-                                    View All Children
+                                    {t("actions.viewAllChildren")}
                                   </DropdownMenuItem>
                                 )}
                               </DropdownMenuContent>
@@ -302,7 +304,7 @@ export default function ParentInfoPage() {
       {/* Pagination */}
       <div className="mt-6 flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Showing {parents.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, total)} of {total} parents
+          {t("showingResults", { from: parents.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0, to: Math.min(currentPage * itemsPerPage, total), total })}
         </p>
         {totalPages > 0 && (
           <Pagination>
@@ -316,7 +318,7 @@ export default function ParentInfoPage() {
                   className="gap-1"
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  Previous
+                  {t("previous")}
                 </Button>
               </PaginationItem>
 
@@ -355,7 +357,7 @@ export default function ParentInfoPage() {
                   disabled={currentPage === totalPages || totalPages === 0}
                   className="gap-1"
                 >
-                  Next
+                  {t("next")}
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </PaginationItem>
@@ -369,7 +371,7 @@ export default function ParentInfoPage() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              Children of {selectedParent?.profile?.first_name} {selectedParent?.profile?.last_name}
+              {t("childrenOf", { name: `${selectedParent?.profile?.first_name || ""} ${selectedParent?.profile?.last_name || ""}`.trim() })}
             </DialogTitle>
           </DialogHeader>
           <div className="mt-4">
@@ -386,12 +388,12 @@ export default function ParentInfoPage() {
                     >
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-full bg-linear-to-r from-[#57A3CC] to-[#022172] flex items-center justify-center text-white font-semibold text-sm">
-                          {initials || 'N/A'}
+                          {initials || t("na")}
                         </div>
                         <div>
-                          <p className="font-medium">{fullName || 'N/A'}</p>
+                          <p className="font-medium">{fullName || t("na")}</p>
                           <p className="text-sm text-muted-foreground">
-                            {child.student_number} • {child.grade_level || 'N/A'}
+                            {child.student_number} • {child.grade_level || t("na")}
                           </p>
                           <p className="text-xs text-muted-foreground capitalize">
                             {child.relationship}
@@ -404,7 +406,7 @@ export default function ParentInfoPage() {
                         </Badge>
                         {child.is_emergency_contact && (
                           <Badge variant="outline" className="text-xs">
-                            Emergency Contact
+                            {t("emergencyContact")}
                           </Badge>
                         )}
                       </div>
@@ -413,7 +415,7 @@ export default function ParentInfoPage() {
                 })}
               </div>
             ) : (
-              <p className="text-center text-muted-foreground py-8">No children associated</p>
+              <p className="text-center text-muted-foreground py-8">{t("noChildrenAssociated")}</p>
             )}
           </div>
         </DialogContent>

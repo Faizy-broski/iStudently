@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useTranslations } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import * as attendanceApi from '@/lib/api/attendance'
@@ -14,6 +15,7 @@ import { IconCheck, IconX } from '@tabler/icons-react'
 import useSWR from 'swr'
 
 export default function TeacherCompletionPage() {
+  const t = useTranslations('attendance')
   const { profile } = useAuth()
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
@@ -74,16 +76,15 @@ export default function TeacherCompletionPage() {
     return activePeriods.map(p => ({ id: p.id, name: p.period_name, number: p.period_number }))
   }, [activePeriods, periodFilter])
 
-  const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ]
+  const months = Array.from({ length: 12 }, (_, i) =>
+    new Intl.DateTimeFormat(undefined, { month: 'long' }).format(new Date(2000, i, 1))
+  )
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Teacher Completion</CardTitle>
+          <CardTitle>{t('completion_title')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Date pickers + filters */}
@@ -151,7 +152,7 @@ export default function TeacherCompletionPage() {
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="all">{t('allStatus')}</SelectItem>
                   {activePeriods.map(p => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.period_name}
@@ -168,7 +169,7 @@ export default function TeacherCompletionPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="attendance">Attendance</SelectItem>
+                  <SelectItem value="attendance">{t('title')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -184,7 +185,7 @@ export default function TeacherCompletionPage() {
             </div>
           ) : teachers.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">
-              No teachers who take attendance were found.
+              {t('completion_noTeachers')}
             </p>
           ) : (
             <div className="border rounded-md overflow-x-auto">
@@ -192,7 +193,7 @@ export default function TeacherCompletionPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="font-semibold min-w-[200px]">Teacher</TableHead>
+                    <TableHead className="font-semibold min-w-[200px]">{t('completion_teacher')}</TableHead>
                     {displayPeriods.map(p => (
                       <TableHead key={p.id} className="text-center font-semibold min-w-[80px]">
                         {p.name}

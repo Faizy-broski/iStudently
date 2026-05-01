@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import * as attendanceApi from '@/lib/api/attendance'
@@ -14,6 +15,7 @@ import { IconLoader, IconTrash } from '@tabler/icons-react'
 import { toast } from 'sonner'
 
 export default function DeleteDuplicateAttendancePage() {
+  const t = useTranslations('attendance')
   const { profile } = useAuth()
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
@@ -71,7 +73,7 @@ export default function DeleteDuplicateAttendancePage() {
   // Delete selected duplicates
   const handleDelete = useCallback(async () => {
     if (selectedIndices.size === 0) {
-      toast.error('You must choose at least one record.')
+      toast.error(t('delete_duplicates_choose'))
       return
     }
 
@@ -110,7 +112,7 @@ export default function DeleteDuplicateAttendancePage() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Delete Duplicate Attendance</h1>
+        <h1 className="text-2xl font-bold">{t('delete_duplicates_title')}</h1>
         <Button
           onClick={handleDelete}
           disabled={deleting || selectedIndices.size === 0}
@@ -121,7 +123,7 @@ export default function DeleteDuplicateAttendancePage() {
           ) : (
             <IconTrash className="h-4 w-4" />
           )}
-          DELETE
+          {t('delete_btn')}
         </Button>
       </div>
 
@@ -145,17 +147,17 @@ export default function DeleteDuplicateAttendancePage() {
                         disabled={duplicates.length === 0}
                       />
                     </TableHead>
-                    <TableHead>Student (Studently ID)</TableHead>
-                    <TableHead>Period (Period ID)</TableHead>
-                    <TableHead>Attendance Date</TableHead>
-                    <TableHead className="text-center">Duplicate Count</TableHead>
+                    <TableHead>{t('delete_duplicates_th_student')}</TableHead>
+                    <TableHead>{t('delete_duplicates_th_period')}</TableHead>
+                    <TableHead>{t('delete_attendanceDate')}</TableHead>
+                    <TableHead className="text-center">{t('delete_duplicates_th_duplicateCount')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {duplicates.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="font-semibold text-center py-6">
-                        No Duplicates Found
+                        {t('delete_noFound')}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -208,7 +210,7 @@ export default function DeleteDuplicateAttendancePage() {
                 ) : (
                   <IconTrash className="h-4 w-4" />
                 )}
-                DELETE
+                {t('delete_btn')}
               </Button>
             </div>
           )}
