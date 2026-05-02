@@ -20,7 +20,7 @@ import {
 } from "recharts";
 
 export default function AdminDashboard() {
-  const t = useTranslations('dashboard.admin');
+  const t = useTranslations('admin');
   const tCommon = useTranslations('common');
   // Use SWR hook for efficient data fetching with automatic revalidation
   const {
