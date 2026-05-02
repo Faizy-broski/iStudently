@@ -28,7 +28,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils'
 import { NotificationBell } from '@/components/portal'
 import { useTransition } from 'react'
-import { setUserLocale } from '@/actions/locale'
 import { useLocale } from 'next-intl'
 import { getSidebarConfig } from '@/config/sidebar'
 
@@ -89,7 +88,11 @@ export function Topbar({ className }: TopbarProps) {
   const handleLocaleToggle = () => {
     const next = locale === 'en' ? 'ar' : 'en'
     startLocaleTransition(async () => {
-      await setUserLocale(next as 'en' | 'ar')
+      await fetch('/api/set-locale', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locale: next }),
+      })
       window.location.reload()
     })
   }
