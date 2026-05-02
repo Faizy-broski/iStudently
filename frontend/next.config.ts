@@ -25,6 +25,15 @@ const nextConfig: NextConfig = {
   
   // Production optimizations
   reactStrictMode: true,
+
+  // Turbopack alias for next-intl (required in Next.js 16 where Turbopack is the default bundler)
+  experimental: {
+    turbo: {
+      resolveAlias: {
+        'next-intl/config': './src/i18n/request.ts',
+      },
+    },
+  },
 }
 
 export default withNextIntl(nextConfig)
