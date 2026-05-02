@@ -148,7 +148,7 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={studentGrowthData} margin={{ bottom: 20 }}>
+              <AreaChart data={studentGrowthData} margin={{ bottom: 20, right: 20, left: 0 }}>
                 <defs>
                   <linearGradient id="colorStudents" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8}/>

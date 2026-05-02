@@ -191,6 +191,11 @@ export function CampusProvider({ children }: { children: ReactNode }) {
                     const savedCampusId = localStorage.getItem(SELECTED_CAMPUS_KEY)
                     const savedCampus = savedCampusId ? data.find(c => c.id === savedCampusId) : null
                     setSelectedCampus(savedCampus || data[0])
+                } else {
+                    // Campus is still in the list — always update the reference so consumers
+                    // receive the freshly-fetched object (e.g. after editing campus details).
+                    const freshCampus = data.find(c => c.id === selectedCampus.id)
+                    if (freshCampus) setSelectedCampus(freshCampus)
                 }
             }
         } catch {
