@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -53,7 +54,7 @@ const CHART_COLORS = [
 // Available student fields for breakdown
 // ---------------------------------------------------------------------------
 const STUDENT_FIELDS = [
-  { value: 'grade_level', label: 'Grade Level' },
+  { value: 'grade_level', label: 'gradeLevel' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -62,7 +63,8 @@ const STUDENT_FIELDS = [
 
 function computeByField(
   referrals: DisciplineReferral[],
-  field: string
+  field: string,
+  notSpecifiedLabel: string
 ): Array<{ name: string; value: number }> {
   const counts: Record<string, number> = {};
 
@@ -71,7 +73,7 @@ function computeByField(
     if (field === 'grade_level') {
       val = r.students?.grade_level;
     }
-    const key = val?.trim() || '(Not specified)';
+    const key = val?.trim() || notSpecifiedLabel;
     counts[key] = (counts[key] ?? 0) + 1;
   }
 
@@ -85,6 +87,7 @@ function computeByField(
 // ---------------------------------------------------------------------------
 
 export default function BreakdownStudentFieldPage() {
+  const t = useTranslations('discipline');
   const { user } = useAuth();
   const campusCtx = useCampus();
   const campusId = campusCtx?.selectedCampus?.id;
@@ -113,15 +116,16 @@ export default function BreakdownStudentFieldPage() {
       setReferrals(res.data ?? []);
       setHasLoaded(true);
     } catch {
-      toast.error('Failed to load referrals');
+      toast.error(t('errors.loadReferrals'));
     } finally {
       setLoading(false);
     }
   }
 
-  const chartData = hasLoaded ? computeByField(referrals, selectedField) : [];
+  const chartData = hasLoaded ? computeByField(referrals, selectedField, t('notSpecified')) : [];
   const total = chartData.reduce((s, d) => s + d.value, 0);
-  const fieldLabel = STUDENT_FIELDS.find((f) => f.value === selectedField)?.label ?? selectedField;
+  const fieldLabelKey = STUDENT_FIELDS.find((f) => f.value === selectedField)?.label ?? selectedField;
+  const fieldLabel = t(fieldLabelKey);
 
   return (
     <div className="container mx-auto py-8">
@@ -129,22 +133,22 @@ export default function BreakdownStudentFieldPage() {
 
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <Users className="h-7 w-7 text-primary" />
-          Breakdown by Student Field
+          {t('breakdownByStudentField')}
         </h1>
 
         <Card>
           <CardContent className="pt-5 pb-5 space-y-4">
             {/* Field select */}
             <div className="space-y-1.5">
-              <Label>Student Field</Label>
+              <Label>{t('studentField')}</Label>
               <Select value={selectedField} onValueChange={setSelectedField}>
                 <SelectTrigger className="max-w-xs">
-                  <SelectValue placeholder="Please choose a student field" />
+                  <SelectValue placeholder={t('chooseStudentField')} />
                 </SelectTrigger>
                 <SelectContent>
                   {STUDENT_FIELDS.map((f) => (
                     <SelectItem key={f.value} value={f.value}>
-                      {f.label}
+                      {t(f.label)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -154,7 +158,7 @@ export default function BreakdownStudentFieldPage() {
             {/* Date range + Go */}
             <div className="flex flex-wrap items-end gap-3">
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Report Timeframe: From</Label>
+                <Label className="text-xs text-muted-foreground">{t('reportTimeframeFrom')}</Label>
                 <Input
                   type="date"
                   value={startDate}
@@ -163,7 +167,7 @@ export default function BreakdownStudentFieldPage() {
                 />
               </div>
               <div className="flex items-end gap-1.5">
-                <span className="text-sm text-muted-foreground pb-1.5">to</span>
+                <span className="text-sm text-muted-foreground pb-1.5">{t('to')}</span>
                 <Input
                   type="date"
                   value={endDate}
@@ -178,7 +182,7 @@ export default function BreakdownStudentFieldPage() {
                 className="h-8"
               >
                 {loading && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
-                Go
+                {t('go')}
               </Button>
             </div>
           </CardContent>
@@ -191,21 +195,21 @@ export default function BreakdownStudentFieldPage() {
               <CardTitle className="text-base">
                 {fieldLabel} Breakdown
                 <span className="ml-2 text-sm font-normal text-muted-foreground">
-                  ({total} referral{total !== 1 ? 's' : ''})
+                  ({t('referralsCount', { count: total })})
                 </span>
               </CardTitle>
             </CardHeader>
             <CardContent>
               {chartData.length === 0 ? (
                 <p className="text-center py-10 text-muted-foreground text-sm">
-                  No referrals found for the selected filters.
+                  {t('noReferralsForFilters')}
                 </p>
               ) : (
                 <Tabs defaultValue="column">
                   <TabsList>
-                    <TabsTrigger value="column">Column</TabsTrigger>
-                    <TabsTrigger value="pie">Pie</TabsTrigger>
-                    <TabsTrigger value="list">List</TabsTrigger>
+                    <TabsTrigger value="column">{t('column')}</TabsTrigger>
+                    <TabsTrigger value="pie">{t('pie')}</TabsTrigger>
+                    <TabsTrigger value="list">{t('list')}</TabsTrigger>
                   </TabsList>
 
                   {/* Bar chart */}
@@ -222,7 +226,7 @@ export default function BreakdownStudentFieldPage() {
                         />
                         <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
                         <Tooltip />
-                        <Bar dataKey="value" name="Referrals" radius={[4, 4, 0, 0]}>
+                        <Bar dataKey="value" name={t('referrals')} radius={[4, 4, 0, 0]}>
                           {chartData.map((_, i) => (
                             <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                           ))}
@@ -251,7 +255,7 @@ export default function BreakdownStudentFieldPage() {
                             <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                           ))}
                         </Pie>
-                        <Tooltip formatter={(v) => [`${v} referral(s)`, '']} />
+                        <Tooltip formatter={(v) => [`${v} ${t('referrals')}`, '']} />
                         <Legend />
                       </PieChart>
                     </ResponsiveContainer>
@@ -263,7 +267,7 @@ export default function BreakdownStudentFieldPage() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>{fieldLabel}</TableHead>
-                          <TableHead className="text-right">Number of Referrals</TableHead>
+                          <TableHead className="text-right">{t('numberOfReferrals')}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -274,7 +278,7 @@ export default function BreakdownStudentFieldPage() {
                           </TableRow>
                         ))}
                         <TableRow className="border-t-2 font-semibold">
-                          <TableCell>Total</TableCell>
+                          <TableCell>{t('total')}</TableCell>
                           <TableCell className="text-right">{total}</TableCell>
                         </TableRow>
                       </TableBody>

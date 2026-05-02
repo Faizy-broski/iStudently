@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import * as api from '@/lib/api/staff-absences'
@@ -20,6 +21,7 @@ import { ArrowLeft, Pencil } from 'lucide-react'
 import type { CoursePeriod } from '@/lib/api/staff-absences'
 
 export default function EditAbsencePage() {
+  const t = useTranslations('staffAbsences')
   const { profile } = useAuth()
   const campusCtx = useCampus()
   const router = useRouter()
@@ -45,7 +47,7 @@ export default function EditAbsencePage() {
     if (!id) return
     api.getAbsenceById(id).then(async (res) => {
       if (res.error || !res.data) {
-        toast.error('Absence not found')
+        toast.error(t('toasts.absenceNotFound'))
         router.push('/admin/staff-absences/absences')
         return
       }
@@ -79,8 +81,8 @@ export default function EditAbsencePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.start_date || !form.end_date) return toast.error('Dates are required')
-    if (form.start_date > form.end_date) return toast.error('End date must be after start date')
+    if (!form.start_date || !form.end_date) return toast.error(t('validation.datesRequired'))
+    if (form.start_date > form.end_date) return toast.error(t('validation.endAfterStart'))
 
     setSaving(true)
     const res = await api.updateAbsence(id, {
@@ -96,7 +98,7 @@ export default function EditAbsencePage() {
     if (res.error) {
       toast.error(res.error)
     } else {
-      toast.success('Absence updated')
+      toast.success(t('toasts.absenceUpdated'))
       router.push('/admin/staff-absences/absences')
     }
   }
@@ -121,7 +123,7 @@ export default function EditAbsencePage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <Pencil className="h-5 w-5 text-muted-foreground" />
-        <h1 className="text-2xl font-semibold">Edit Absence</h1>
+        <h1 className="text-2xl font-semibold">{t('editAbsence')}</h1>
         {staffName && (
           <span className="text-muted-foreground text-sm">— {staffName}</span>
         )}
@@ -130,12 +132,12 @@ export default function EditAbsencePage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Absence Details</CardTitle>
+            <CardTitle className="text-base">{t('absenceDetails')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Start Date <span className="text-destructive">*</span></Label>
+                <Label>{t('fields.startDate')} <span className="text-destructive">*</span></Label>
                 <Input
                   type="date"
                   value={form.start_date}
@@ -144,7 +146,7 @@ export default function EditAbsencePage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>End Date <span className="text-destructive">*</span></Label>
+                <Label>{t('fields.endDate')} <span className="text-destructive">*</span></Label>
                 <Input
                   type="date"
                   value={form.end_date}
@@ -155,18 +157,18 @@ export default function EditAbsencePage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Reason</Label>
+              <Label>{t('fields.reason')}</Label>
               <Input
-                placeholder="e.g. Sick leave, vacation…"
+                placeholder={t('placeholders.reason')}
                 value={form.reason}
                 onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label>Notes</Label>
+              <Label>{t('fields.notes')}</Label>
               <Textarea
-                placeholder="Additional notes…"
+                placeholder={t('placeholders.notes')}
                 rows={3}
                 value={form.notes}
                 onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
@@ -174,7 +176,7 @@ export default function EditAbsencePage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Status</Label>
+              <Label>{t('fields.status')}</Label>
               <Select
                 value={form.status}
                 onValueChange={(v) => setForm((f) => ({ ...f, status: v as api.AbsenceStatus }))}
@@ -183,9 +185,9 @@ export default function EditAbsencePage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="pending">{t('statuses.pending')}</SelectItem>
+                  <SelectItem value="approved">{t('statuses.approved')}</SelectItem>
+                  <SelectItem value="rejected">{t('statuses.rejected')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -195,7 +197,7 @@ export default function EditAbsencePage() {
         {coursePeriods.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Cancelled Classes</CardTitle>
+              <CardTitle className="text-base">{t('cancelledClasses.title')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {coursePeriods.map((cp) => (
@@ -218,14 +220,14 @@ export default function EditAbsencePage() {
 
         <div className="flex gap-3">
           <Button type="submit" disabled={saving}>
-            {saving ? 'Saving…' : 'Save Changes'}
+            {saving ? t('saving') : t('saveChanges')}
           </Button>
           <Button
             type="button"
             variant="outline"
             onClick={() => router.push('/admin/staff-absences/absences')}
           >
-            Cancel
+            {t('cancel')}
           </Button>
         </div>
       </form>

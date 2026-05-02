@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { generateMissingAttendanceRange } from '@/lib/api/attendance'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -10,6 +11,7 @@ import { UserCheck, Play, Loader2, Info, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function TakeMissingAttendancePage() {
+  const t = useTranslations('attendance')
   const today = new Date().toISOString().split('T')[0]
   const [fromDate, setFromDate] = useState(today)
   const [toDate, setToDate] = useState(today)
@@ -18,11 +20,11 @@ export default function TakeMissingAttendancePage() {
 
   const handleRun = async () => {
     if (!fromDate || !toDate) {
-      toast.error('Select both a From and To date')
+      toast.error(t('print_selectDateRange'))
       return
     }
     if (fromDate > toDate) {
-      toast.error('From date must be before or equal to To date')
+      toast.error(t('addAbsences_fromDateError'))
       return
     }
     setRunning(true)
@@ -35,10 +37,10 @@ export default function TakeMissingAttendancePage() {
           `Generated ${result.data.total_generated} attendance records across ${result.data.days_processed} day(s)`
         )
       } else {
-        toast.error(result.error || 'Failed to generate attendance')
+        toast.error(result.error || t('recalculate_generateFailed'))
       }
     } catch {
-      toast.error('Failed to generate attendance')
+      toast.error(t('recalculate_generateFailed'))
     }
     setRunning(false)
   }
@@ -52,10 +54,10 @@ export default function TakeMissingAttendancePage() {
         </div>
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-[#022172] dark:text-white">
-            Take Missing Attendance
+            {t('takeMissing')}
           </h1>
           <p className="text-muted-foreground">
-            Fill missing attendance for all classes within a date range
+            {t('takeMissing_subtitle')}
           </p>
         </div>
       </div>
@@ -64,13 +66,8 @@ export default function TakeMissingAttendancePage() {
       <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950/20">
         <Info className="mt-0.5 h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
         <div className="text-sm text-blue-800 dark:text-blue-300">
-          <p className="font-medium">How it works</p>
-          <p className="mt-1">
-            For each day in the selected range, the system marks all enrolled active students as{' '}
-            <strong>Present</strong> for any class where the teacher has not yet taken attendance.
-            Classes with existing records are <strong>never overwritten</strong>. Only days marked
-            as school days in the attendance calendar are processed.
-          </p>
+          <p className="font-medium">{t('takeMissing_howItWorks')}</p>
+          <p className="mt-1">{t('takeMissing_explanation')}</p>
         </div>
       </div>
 
@@ -80,12 +77,12 @@ export default function TakeMissingAttendancePage() {
             <Play className="h-5 w-5 text-[#022172]" />
             Timeframe
           </CardTitle>
-          <CardDescription>Select the date range to fill missing attendance for</CardDescription>
+          <CardDescription>{t('recalculate_subtitle')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="flex flex-wrap gap-6">
             <div className="space-y-1.5">
-              <Label>From</Label>
+              <Label>{t('recalculate_from')}</Label>
               <Input
                 type="date"
                 value={fromDate}
@@ -94,7 +91,7 @@ export default function TakeMissingAttendancePage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>To</Label>
+              <Label>{t('recalculate_to')}</Label>
               <Input
                 type="date"
                 value={toDate}
@@ -104,7 +101,7 @@ export default function TakeMissingAttendancePage() {
             </div>
           </div>
 
-          <p className="text-xs text-muted-foreground">Maximum range: 90 days</p>
+          <p className="text-xs text-muted-foreground">{t('print_maxRange')}</p>
 
           <Button
             onClick={handleRun}
@@ -116,15 +113,14 @@ export default function TakeMissingAttendancePage() {
             ) : (
               <Play className="mr-2 h-4 w-4" />
             )}
-            {running ? 'Processing…' : 'Take Missing Attendance'}
+            {running ? t('takeMissing_processing') : t('takeMissing')}
           </Button>
 
           {lastResult && (
             <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-950/20">
               <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
               <p className="text-sm text-green-800 dark:text-green-300">
-                Generated <strong>{lastResult.total}</strong> attendance records across{' '}
-                <strong>{lastResult.days}</strong> day(s).
+                {t('takeMissing_generated', { total: lastResult.total, days: lastResult.days })}
               </p>
             </div>
           )}

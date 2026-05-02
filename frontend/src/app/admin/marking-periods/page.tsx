@@ -164,13 +164,12 @@ export default function MarkingPeriodsPage() {
       }
     }
 
-    const existingItems = parentId
-      ? grouped[mpType].filter((mp) => mp.parent_id === parentId)
-      : grouped[mpType]
-
+    // Use max sort_order across ALL items of this type to avoid unique_mp_sort constraint violations.
+    // The constraint is scoped globally per type — siblings-only max would collide across parents.
+    const allTypeItems = grouped[mpType]
     const newSortOrder =
-      existingItems.length > 0
-        ? Math.max(...existingItems.map((mp) => mp.sort_order)) + 1
+      allTypeItems.length > 0
+        ? Math.max(...allTypeItems.map((mp) => mp.sort_order)) + 1
         : 1
 
     try {

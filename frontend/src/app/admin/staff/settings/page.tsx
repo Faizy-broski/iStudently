@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,6 +17,7 @@ import { useStaffDesignations } from '@/hooks/useStaffDesignations'
 import { createDesignation, deleteDesignation, seedDefaultDesignations } from '@/lib/api/staff-designations'
 
 export default function StaffSettingsPage() {
+    const t = useTranslations('staff')
     const [newDesignation, setNewDesignation] = useState('')
     const [designationScope, setDesignationScope] = useState<'school-wide' | 'campus-specific'>('school-wide')
     const [saving, setSaving] = useState(false)
@@ -36,7 +38,7 @@ export default function StaffSettingsPage() {
 
     const handleAddDesignation = async () => {
         if (!newDesignation.trim()) {
-            toast.error('Please enter a designation name')
+            toast.error(t('settings.errors.enterDesignationName'))
             return
         }
 
@@ -45,7 +47,7 @@ export default function StaffSettingsPage() {
             d => d.name.toLowerCase() === newDesignation.trim().toLowerCase()
         )
         if (exists) {
-            toast.error('Designation already exists')
+            toast.error(t('settings.errors.designationExists'))
             return
         }
 
@@ -57,15 +59,15 @@ export default function StaffSettingsPage() {
             })
 
             if (!result.success) {
-                throw new Error(result.error || 'Failed to create designation')
+                throw new Error(result.error || t('settings.errors.failedCreateDesignation'))
             }
 
             setNewDesignation('')
             invalidateAll()
             mutate()
-            toast.success('Designation added successfully')
+            toast.success(t('settings.toasts.designationAdded'))
         } catch (error: any) {
-            toast.error(error.message || 'Failed to add designation')
+            toast.error(error.message || t('settings.errors.failedAddDesignation'))
         } finally {
             setSaving(false)
         }
@@ -73,7 +75,7 @@ export default function StaffSettingsPage() {
 
     const handleRemoveDesignation = async (designation: { id: string; name: string; is_system: boolean }) => {
         if (designation.is_system) {
-            toast.error(`Cannot remove system designation "${designation.name}"`)
+            toast.error(t('settings.errors.cannotRemoveSystemDesignation', { name: designation.name }))
             return
         }
 
@@ -81,14 +83,14 @@ export default function StaffSettingsPage() {
             const result = await deleteDesignation(designation.id)
             
             if (!result.success) {
-                throw new Error(result.error || 'Failed to delete designation')
+                throw new Error(result.error || t('settings.errors.failedDeleteDesignation'))
             }
 
             invalidateAll()
             mutate()
-            toast.success('Designation removed')
+            toast.success(t('settings.toasts.designationRemoved'))
         } catch (error: any) {
-            toast.error(error.message || 'Failed to remove designation')
+            toast.error(error.message || t('settings.errors.failedRemoveDesignation'))
         }
     }
 
@@ -98,14 +100,14 @@ export default function StaffSettingsPage() {
             const result = await seedDefaultDesignations()
             
             if (!result.success) {
-                throw new Error(result.error || 'Failed to seed designations')
+                throw new Error(result.error || t('settings.errors.failedSeedDesignations'))
             }
 
             invalidateAll()
             mutate()
-            toast.success('Default designations added')
+            toast.success(t('settings.toasts.defaultsAdded'))
         } catch (error: any) {
-            toast.error(error.message || 'Failed to seed designations')
+            toast.error(error.message || t('settings.errors.failedSeedDesignations'))
         } finally {
             setSeeding(false)
         }
@@ -114,8 +116,8 @@ export default function StaffSettingsPage() {
     return (
         <div className="p-6 max-w-4xl mx-auto space-y-6">
             <div>
-                <h1 className="text-3xl font-bold text-[#022172] dark:text-white">Staff Settings</h1>
-                <p className="text-gray-500 mt-1">Configure staff roles and custom fields</p>
+                <h1 className="text-3xl font-bold text-[#022172] dark:text-white">{t('settings.title')}</h1>
+                <p className="text-gray-500 mt-1">{t('settings.subtitle')}</p>
             </div>
 
             {/* Campus Context Banner */}
@@ -123,18 +125,18 @@ export default function StaffSettingsPage() {
                 <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <Building className="h-4 w-4 text-blue-600" />
                     <span className="text-sm text-blue-800">
-                        Viewing designations for: <strong>{campusContext.selectedCampus.name}</strong>
+                        {t('settings.viewingDesignationsFor', { campus: campusContext.selectedCampus.name })}
                     </span>
                     <Badge variant="outline" className="ml-auto text-xs">
-                        School-wide + Campus-specific
+                        {t('settings.schoolWidePlusCampusSpecific')}
                     </Badge>
                 </div>
             )}
 
             <Tabs defaultValue="designations" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="designations">Staff Designations (Roles)</TabsTrigger>
-                    <TabsTrigger value="fields">Custom Fields Template</TabsTrigger>
+                    <TabsTrigger value="designations">{t('settings.tabs.designations')}</TabsTrigger>
+                    <TabsTrigger value="fields">{t('settings.tabs.customFieldsTemplate')}</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="designations" className="space-y-4 pt-4">
@@ -144,8 +146,7 @@ export default function StaffSettingsPage() {
                                 <div>
                                     <CardTitle>Manage Designations</CardTitle>
                                     <CardDescription>
-                                        Define the job titles available when adding new staff.
-                                        Create school-wide designations or campus-specific ones.
+                                        {t('settings.manageDesignationsDesc')}
                                     </CardDescription>
                                 </div>
                                 {designations.length === 0 && !isLoading && (
@@ -160,7 +161,7 @@ export default function StaffSettingsPage() {
                                         ) : (
                                             <RefreshCw className="mr-2 h-4 w-4" />
                                         )}
-                                        Add Defaults
+                                        {t('settings.addDefaults')}
                                     </Button>
                                 )}
                             </div>
@@ -168,10 +169,10 @@ export default function StaffSettingsPage() {
                         <CardContent className="space-y-6">
                             {/* Add New Designation Form */}
                             <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-                                <Label className="text-sm font-medium">Add New Designation</Label>
+                                <Label className="text-sm font-medium">{t('settings.addNewDesignation')}</Label>
                                 <div className="flex gap-4 flex-wrap">
                                     <Input
-                                        placeholder="Enter designation name (e.g. Bus Conductor)"
+                                        placeholder={t('settings.designationPlaceholder')}
                                         value={newDesignation}
                                         onChange={(e) => setNewDesignation(e.target.value)}
                                         onKeyDown={(e) => e.key === 'Enter' && handleAddDesignation()}
@@ -184,19 +185,19 @@ export default function StaffSettingsPage() {
                                         disabled={saving || !selectedCampusId}
                                     >
                                         <SelectTrigger className="w-[180px]">
-                                            <SelectValue placeholder="Scope" />
+                                            <SelectValue placeholder={t('settings.scope')} />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="school-wide">
                                                 <div className="flex items-center gap-2">
                                                     <Globe className="h-3 w-3" />
-                                                    School-wide
+                                                    {t('settings.schoolWide')}
                                                 </div>
                                             </SelectItem>
                                             <SelectItem value="campus-specific" disabled={!selectedCampusId}>
                                                 <div className="flex items-center gap-2">
                                                     <Building className="h-3 w-3" />
-                                                    Campus Only
+                                                    {t('settings.campusOnly')}
                                                 </div>
                                             </SelectItem>
                                         </SelectContent>
@@ -211,12 +212,12 @@ export default function StaffSettingsPage() {
                                         ) : (
                                             <Plus className="mr-2 h-4 w-4" />
                                         )}
-                                        Add Role
+                                        {t('settings.addRole')}
                                     </Button>
                                 </div>
                                 {!selectedCampusId && (
                                     <p className="text-xs text-gray-500">
-                                        💡 Select a campus from the header to enable campus-specific designations
+                                        {t('settings.selectCampusHint')}
                                     </p>
                                 )}
                             </div>
@@ -224,13 +225,13 @@ export default function StaffSettingsPage() {
                             {isLoading ? (
                                 <div className="flex items-center justify-center py-8">
                                     <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                                    <span className="ml-2 text-gray-500">Loading designations...</span>
+                                    <span className="ml-2 text-gray-500">{t('settings.loadingDesignations')}</span>
                                 </div>
                             ) : designations.length === 0 ? (
                                 <div className="text-center py-8 text-gray-500">
                                     <Info className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                                    <p>No designations found.</p>
-                                    <p className="text-sm">Add your first designation or click "Add Defaults" to get started.</p>
+                                    <p>{t('settings.noDesignations')}</p>
+                                    <p className="text-sm">{t('settings.noDesignationsHint')}</p>
                                 </div>
                             ) : (
                                 <div className="space-y-6">
@@ -254,7 +255,7 @@ export default function StaffSettingsPage() {
                                                         <div className="flex items-center gap-2">
                                                             {designation.is_system ? (
                                                                 <Badge variant="outline" className="text-[10px] border-purple-200 text-purple-700 bg-purple-50">
-                                                                    System
+                                                                    {t('settings.system')}
                                                                 </Badge>
                                                             ) : (
                                                                 <Button
@@ -280,7 +281,7 @@ export default function StaffSettingsPage() {
                                             <div className="flex items-center gap-2 mb-3">
                                                 <Building className="h-4 w-4 text-blue-500" />
                                                 <h3 className="text-sm font-medium text-gray-700">
-                                                    Campus-specific Designations
+                                                    {t('settings.campusSpecificDesignations')}
                                                     {campusContext?.selectedCampus && (
                                                         <span className="font-normal text-gray-500 ml-1">
                                                             ({campusContext.selectedCampus.name})
@@ -320,17 +321,17 @@ export default function StaffSettingsPage() {
                 <TabsContent value="fields" className="pt-4">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Custom Fields</CardTitle>
+                            <CardTitle>{t('settings.customFieldsTitle')}</CardTitle>
                             <CardDescription>
-                                Define additional fields to capture for staff members (e.g., License Number, Shift Time).
+                                {t('settings.customFieldsDesc')}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="flex flex-col items-center justify-center p-8 text-center text-gray-500 border-2 border-dashed rounded-lg">
                                 <Info className="h-8 w-8 mb-2 text-gray-400" />
-                                <p className="font-medium">Custom Fields Manager</p>
-                                <p className="text-sm">To be implemented. Will use the same system as Student Custom Fields.</p>
-                                <Button variant="outline" className="mt-4" disabled>Coming Soon</Button>
+                                <p className="font-medium">{t('settings.customFieldsManager')}</p>
+                                <p className="text-sm">{t('settings.toBeImplemented')}</p>
+                                <Button variant="outline" className="mt-4" disabled>{t('settings.comingSoon')}</Button>
                             </div>
                         </CardContent>
                     </Card>

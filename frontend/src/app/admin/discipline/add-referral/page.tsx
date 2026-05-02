@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -32,6 +33,7 @@ function StudentSearch({
   campusId?: string;
   onSelect: (student: Student) => void;
 }) {
+  const t = useTranslations('discipline');
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Student[]>([]);
   const [searching, setSearching] = useState(false);
@@ -70,8 +72,8 @@ function StudentSearch({
   }
 
   useEffect(() => {
-    const t = setTimeout(() => search(query), 300);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => search(query), 300);
+    return () => clearTimeout(timer);
   }, [query, search]);
 
   function displayName(s: Student) {
@@ -88,7 +90,7 @@ function StudentSearch({
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           className="pl-9"
-          placeholder="Search by name or student number…"
+          placeholder={t('search_placeholder')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -132,6 +134,7 @@ function DynamicFieldInput({
   value: any;
   onChange: (val: any) => void;
 }) {
+  const t = useTranslations('discipline');
   const { field_type, options, name } = field;
 
   // Strip the first option if it's a negative-number penalty marker (not selectable)
@@ -189,7 +192,7 @@ function DynamicFieldInput({
           checked={value === true || value === 'Y'}
           onCheckedChange={(checked) => onChange(checked ? 'Y' : 'N')}
         />
-        <label htmlFor={`chk-${field.id}`} className="text-sm cursor-pointer">Yes</label>
+        <label htmlFor={`chk-${field.id}`} className="text-sm cursor-pointer">{t('yes')}</label>
       </div>
     );
   }
@@ -198,10 +201,10 @@ function DynamicFieldInput({
     return (
       <Select value={value || '__na__'} onValueChange={(v) => onChange(v === '__na__' ? '' : v)}>
         <SelectTrigger>
-          <SelectValue placeholder="Select…" />
+          <SelectValue placeholder={t('select')} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="__na__">N/A</SelectItem>
+          <SelectItem value="__na__">{t('na')}</SelectItem>
           {visibleOptions.map((opt) => (
             <SelectItem key={opt} value={opt}>{opt}</SelectItem>
           ))}
@@ -261,6 +264,7 @@ function DynamicFieldInput({
 // ---------------------------------------------------------------------------
 
 export default function AddReferralPage() {
+  const t = useTranslations('discipline');
   const { user } = useAuth();
   const campusCtx = useCampus();
   const campusId = campusCtx?.selectedCampus?.id;
@@ -305,7 +309,7 @@ export default function AddReferralPage() {
       const res = await getDisciplineFields(schoolId);
       setFields(res.data ?? []);
     } catch {
-      toast.error('Failed to load referral form fields');
+      toast.error(t('errors.loadReferralFields'));
     } finally {
       setLoadingFields(false);
     }
@@ -325,11 +329,11 @@ export default function AddReferralPage() {
 
   async function handleSubmit() {
     if (!selectedStudent) {
-      toast.error('Please select a student');
+      toast.error(t('validation.selectStudent'));
       return;
     }
     if (!schoolId) {
-      toast.error('School not found');
+      toast.error(t('validation.schoolNotFound'));
       return;
     }
 
@@ -340,7 +344,7 @@ export default function AddReferralPage() {
       campusId || selectedStudent.campus_id || null;
 
     if (!campusToUse) {
-      toast.error('Student has no campus assigned; please update their record');
+      toast.error(t('validation.studentNoCampus'));
       return;
     }
 
@@ -361,14 +365,14 @@ export default function AddReferralPage() {
         return;
       }
 
-      toast.success('Referral added successfully');
+      toast.success(t('toasts.referralAdded'));
       setSuccess(true);
       // Reset form
       setSelectedStudent(null);
       setIncidentDate(new Date().toISOString().slice(0, 10));
       setFieldValues({});
     } catch {
-      toast.error('Failed to add referral');
+      toast.error(t('errors.addReferral'));
     } finally {
       setSubmitting(false);
     }
@@ -382,13 +386,13 @@ export default function AddReferralPage() {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <AlertCircle className="h-7 w-7 text-destructive" />
-            Add Referral
+            {t('add')}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Record a new discipline incident for a student.
+            {t('addSubtitle')}
             {campusId && (
               <span className="ml-1 text-xs">
-                (Campus: {campusCtx?.selectedCampus?.name})
+                ({t('campus')}: {campusCtx?.selectedCampus?.name})
               </span>
             )}
           </p>
@@ -398,7 +402,7 @@ export default function AddReferralPage() {
           <Alert className="border-green-200 bg-green-50">
             <CheckCircle2 className="h-4 w-4 text-green-700" />
             <AlertDescription className="text-green-800">
-              Referral submitted successfully. You can add another referral below.
+              {t('successReferralSubmitted')}
             </AlertDescription>
           </Alert>
         )}
@@ -408,21 +412,19 @@ export default function AddReferralPage() {
           <Alert className="border-yellow-200 bg-yellow-50">
             <Info className="h-4 w-4" />
             <AlertDescription className="text-sm">
-              Please select a school in the top navigation before creating a referral.
-              If you're a super‑admin, choosing any campus will also establish the
-              school context.
+              {t('selectSchoolBeforeReferral')}
             </AlertDescription>
           </Alert>
         )}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Referral Details</CardTitle>
+            <CardTitle className="text-base">{t('referralDetails')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
 
             {/* Student selector */}
             <div className="space-y-1.5">
-              <Label>Student <span className="text-destructive">*</span></Label>
+              <Label>{t('student')} <span className="text-destructive">*</span></Label>
               {selectedStudent ? (
                 <div className="space-y-1">
                   <div className="flex items-center gap-3 p-3 rounded-md border bg-muted/40">
@@ -439,16 +441,16 @@ export default function AddReferralPage() {
                       size="sm"
                       onClick={() => setSelectedStudent(null)}
                     >
-                      Change
+                      {t('change')}
                     </Button>
                   </div>
                   {selectedStudent.campus_id && campusId && selectedStudent.campus_id !== campusId ? (
                     <p className="text-sm text-yellow-700">
-                      Student is assigned to a different campus&nbsp;({selectedStudent.campus_id}).
+                      {t('warnings.studentDifferentCampus')} ({selectedStudent.campus_id}).
                     </p>
                   ) : !selectedStudent.campus_id && !campusId ? (
                     <p className="text-sm text-red-700">
-                      No campus selected. Please select a campus before creating a referral.
+                      {t('warnings.noCampusSelected')}
                     </p>
                   ) : null}
                 </div>
@@ -462,7 +464,7 @@ export default function AddReferralPage() {
 
             {/* Incident Date */}
             <div className="space-y-1.5">
-              <Label>Incident Date <span className="text-destructive">*</span></Label>
+              <Label>{t('incidentDate')} <span className="text-destructive">*</span></Label>
               <Input
                 type="date"
                 value={incidentDate}
@@ -475,15 +477,15 @@ export default function AddReferralPage() {
             {loadingFields ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Loading fields…
+                {t('loadingFields')}
               </div>
             ) : fields.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No custom fields configured. Go to{' '}
+                {t('noCustomFields')}{' '}
                 <a href="/admin/discipline/referral-form" className="underline">
-                  Referral Form Setup
+                  {t('referralForm')}
                 </a>{' '}
-                to add fields.
+                {t('toAddFields')}
               </p>
             ) : (
               fields.map((field, idx) => (
@@ -510,12 +512,12 @@ export default function AddReferralPage() {
             {submitting ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Submitting…
+                {t('submitting')}
               </>
             ) : (
               <>
                 <AlertCircle className="h-4 w-4 mr-2" />
-                Add Referral for Selected Student
+                {t('addReferralForSelectedStudent')}
               </>
             )}
           </Button>

@@ -360,6 +360,41 @@ export async function uploadLibraryCoverImage(
 }
 
 /**
+ * Upload a portal note attachment to Supabase Storage.
+ * Path: portal-notes/{schoolId}/{campusId}/{timestamp}-{random}.{ext}
+ */
+export async function uploadPortalNoteFile(
+  file: File,
+  schoolId: string,
+  campusId: string
+): Promise<{ success: boolean; url?: string; path?: string; error?: string }> {
+  try {
+    const timestamp = Date.now()
+    const random = Math.random().toString(36).substring(7)
+    const ext = file.name.split('.').pop()
+    const safeName = `${timestamp}-${random}.${ext}`
+    const filePath = `portal-notes/${schoolId}/${campusId}/${safeName}`
+
+    const { data, error } = await supabase.storage
+      .from('Assignments_uploads')
+      .upload(filePath, file, { cacheControl: '3600', upsert: false })
+
+    if (error) return { success: false, error: error.message }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('Assignments_uploads')
+      .getPublicUrl(data.path)
+
+    return { success: true, url: publicUrl, path: data.path }
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to upload file',
+    }
+  }
+}
+
+/**
  * Delete a library document file from Supabase Storage ('books' bucket)
  */
 export async function deleteLibraryDocument(

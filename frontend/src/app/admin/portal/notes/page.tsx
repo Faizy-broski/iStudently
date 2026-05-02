@@ -1,16 +1,17 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
-import { Loader2, Trash2, FileText } from "lucide-react"
+import { Loader2, Trash2, FileText, X, Paperclip } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useCampus } from "@/context/CampusContext"
 import * as portalApi from "@/lib/api/portal"
+import { uploadPortalNoteFile } from "@/lib/api/storage"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
 import { VisibilityPicker, type VisibilityState, type VisibilityMode } from "@/components/portal/visibility-picker"
 import { useTranslations } from "next-intl"
@@ -51,6 +52,8 @@ export default function PortalNotesPage() {
   const [notes, setNotes] = useState<NoteRow[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null)
+  const fileInputRefs = useRef<(HTMLInputElement | null)[]>([])
 
   const getVisibilityMode = (note: portalApi.PortalNote): VisibilityMode => {
     if ((note.visible_to_user_ids?.length ?? 0) > 0) return 'staff'
@@ -136,6 +139,33 @@ export default function PortalNotesPage() {
       newNotes.push(createEmptyRow(newNotes.length))
     }
     setNotes(newNotes)
+  }
+
+  const handleFileChange = async (index: number, file: File | null) => {
+    if (!file) return
+    if (!profile?.school_id || !selectedCampus?.id) {
+      toast.error(t("err_select_campus"))
+      return
+    }
+    setUploadingIndex(index)
+    try {
+      const result = await uploadPortalNoteFile(file, profile.school_id, selectedCampus.id)
+      if (result.success && result.url) {
+        updateRow(index, { file_url: result.url, file_name: file.name })
+        toast.success(file.name)
+      } else {
+        toast.error(result.error || "Upload failed")
+      }
+    } finally {
+      setUploadingIndex(null)
+    }
+  }
+
+  const clearFile = (index: number) => {
+    updateRow(index, { file_url: '', file_name: '' })
+    if (fileInputRefs.current[index]) {
+      fileInputRefs.current[index]!.value = ''
+    }
   }
 
   const handleSave = async () => {
@@ -312,7 +342,39 @@ export default function PortalNotesPage() {
               <div className="space-y-2 p-3 border border-gray-200 rounded-lg bg-gray-50/50">
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1 block">{t("table_file")}</label>
-                  <Input type="file" className="h-7 text-xs border-gray-300" disabled />
+                  {note.file_url ? (
+                    <div className="flex items-center gap-1 h-7 px-2 border border-gray-300 rounded-md bg-white text-xs">
+                      <Paperclip className="h-3 w-3 text-[#022172] shrink-0" />
+                      <a
+                        href={note.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="truncate text-[#022172] hover:underline flex-1"
+                        title={note.file_name}
+                      >
+                        {note.file_name || t("table_file")}
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => clearFile(index)}
+                        className="text-red-400 hover:text-red-600 shrink-0"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : uploadingIndex === index ? (
+                    <div className="flex items-center gap-1 h-7 px-2 border border-gray-300 rounded-md bg-white text-xs text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <span>{tCommon("loading")}</span>
+                    </div>
+                  ) : (
+                    <input
+                      ref={(el) => { fileInputRefs.current[index] = el }}
+                      type="file"
+                      className="h-7 text-xs border border-gray-300 rounded-md w-full file:border-0 file:bg-transparent file:text-xs file:font-medium cursor-pointer"
+                      onChange={(e) => handleFileChange(index, e.target.files?.[0] ?? null)}
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1 block">{t("label_embed_link")}</label>

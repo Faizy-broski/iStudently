@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { useSchoolSettings } from '@/context/SchoolSettingsContext'
 import { updateSchoolSettings } from '@/lib/api/school-settings'
 import { useCampus } from '@/context/CampusContext'
@@ -10,6 +11,7 @@ import { Loader2, Check, X, Settings } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function PluginsPage() {
+  const t = useTranslations('setup.plugins_page')
   const { settings, loading, isPluginActive, refreshSettings } = useSchoolSettings()
   const campusContext = useCampus()
   const campusId = campusContext?.selectedCampus?.id
@@ -41,20 +43,22 @@ export default function PluginsPage() {
       extraUpdates.auto_attendance_enabled = newState
     }
 
+    const pluginName = PLUGIN_REGISTRY.find((p) => p.id === pluginId)?.name ?? pluginId
+
     try {
       const result = await updateSchoolSettings({ active_plugins: updatedPlugins, ...extraUpdates }, campusId)
       if (result.success) {
         await refreshSettings()
         toast.success(
           newState
-            ? `${PLUGIN_REGISTRY.find((p) => p.id === pluginId)?.name} activated`
-            : `${PLUGIN_REGISTRY.find((p) => p.id === pluginId)?.name} deactivated`
+            ? t('toast_activated', { name: pluginName })
+            : t('toast_deactivated', { name: pluginName })
         )
       } else {
-        toast.error(result.error || 'Failed to update plugin')
+        toast.error(result.error || t('err_update'))
       }
     } catch {
-      toast.error('Failed to update plugin')
+      toast.error(t('err_update'))
     } finally {
       setToggling(null)
     }
@@ -74,11 +78,11 @@ export default function PluginsPage() {
       {/* Top bar */}
       <div className="flex items-center justify-between gap-4">
         <p className="text-sm text-muted-foreground">
-          {filtered.length} plugin{filtered.length !== 1 ? 's' : ''} found.
+          {t('plugins_found', { count: filtered.length })}
         </p>
         <input
           type="search"
-          placeholder="Search"
+          placeholder={t('search_placeholder')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="border rounded px-3 py-1.5 text-sm w-48 focus:outline-none focus:ring-1 focus:ring-[#022172] bg-background"
@@ -91,9 +95,9 @@ export default function PluginsPage() {
           <thead>
             <tr className="border-b bg-muted/40 text-[#022172] uppercase text-xs tracking-wide">
               <th className="px-4 py-2 text-left w-32"></th>
-              <th className="px-4 py-2 text-left">Title</th>
-              <th className="px-4 py-2 text-center w-28">Activated</th>
-              <th className="px-4 py-2 text-center w-32">Configuration</th>
+              <th className="px-4 py-2 text-left">{t('th_title')}</th>
+              <th className="px-4 py-2 text-center w-28">{t('th_activated')}</th>
+              <th className="px-4 py-2 text-center w-32">{t('th_configuration')}</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -123,7 +127,7 @@ export default function PluginsPage() {
                       ) : (
                         <span className="text-base leading-none">+</span>
                       )}
-                      {active ? 'DEACTIVATE' : 'ACTIVATE'}
+                      {active ? t('btn_deactivate') : t('btn_activate')}
                     </button>
                   </td>
 
@@ -149,7 +153,7 @@ export default function PluginsPage() {
                         className="text-xs text-[#022172] hover:underline inline-flex items-center gap-1"
                       >
                         <Settings className="h-3 w-3" />
-                        Configuration
+                        {t('btn_configuration')}
                       </Link>
                     ) : null}
                   </td>
@@ -160,7 +164,7 @@ export default function PluginsPage() {
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={4} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                  No plugins match your search.
+                  {t('no_results')}
                 </td>
               </tr>
             )}

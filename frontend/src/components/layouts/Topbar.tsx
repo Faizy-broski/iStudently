@@ -27,7 +27,6 @@ import { Search, LogOut, Settings, Menu, Moon, Sun, Languages, LayoutDashboard, 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { NotificationBell } from '@/components/portal'
-import { useTransition } from 'react'
 import { useLocale } from 'next-intl'
 import { getSidebarConfig } from '@/config/sidebar'
 
@@ -41,7 +40,6 @@ export function Topbar({ className }: TopbarProps) {
   const router = useRouter()
   const { setIsMobileOpen } = useSidebarContext()
   const locale = useLocale()
-  const [localePending, startLocaleTransition] = useTransition()
   const [searchQuery, setSearchQuery] = React.useState('')
   const [isSearchOpen, setIsSearchOpen] = React.useState(false)
 
@@ -87,14 +85,9 @@ export function Topbar({ className }: TopbarProps) {
 
   const handleLocaleToggle = () => {
     const next = locale === 'en' ? 'ar' : 'en'
-    startLocaleTransition(async () => {
-      await fetch('/api/set-locale', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ locale: next }),
-      })
-      window.location.reload()
-    })
+    const maxAge = 60 * 60 * 24 * 365
+    document.cookie = `studently_language=${next}; path=/; max-age=${maxAge}; SameSite=lax`
+    window.location.reload()
   }
 
   const handleMenuItemClick = (url: string) => {
@@ -234,7 +227,6 @@ export function Topbar({ className }: TopbarProps) {
             variant="ghost"
             size="icon"
             onClick={handleLocaleToggle}
-            disabled={localePending}
             className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 relative"
             title={locale === 'en' ? 'Switch to Arabic' : 'Switch to English'}
           >
