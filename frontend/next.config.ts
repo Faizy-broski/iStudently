@@ -1,5 +1,6 @@
 import type { NextConfig } from "next"
 import createNextIntlPlugin from 'next-intl/plugin'
+import path from 'path'
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
 
@@ -26,11 +27,10 @@ const nextConfig: NextConfig = {
   // Production optimizations
   reactStrictMode: true,
 
-  // Turbopack resolveAlias for next-intl (Next.js 16 uses top-level 'turbopack' key)
-  turbopack: {
-    resolveAlias: {
-      'next-intl/config': './src/i18n/request.ts',
-    },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  webpack: (config: any) => {
+    config.resolve.alias['next-intl/config'] = path.resolve('./src/i18n/request.ts')
+    return config
   },
 }
 
