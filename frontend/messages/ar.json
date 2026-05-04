@@ -432,7 +432,13 @@
     "loan_directory": "دليل الإعارة",
     "staff_payroll": "رواتب الموظفين",
     "human_resources": "الموارد البشرية",
-    "vlaby": "المختبرات الافتراضية"
+    "vlaby": "المختبرات الافتراضية",
+    "embedded_resources": "الموارد المدمجة",
+    "attendance_summary": "ملخص الحضور",
+    "print_attendance_sheets": "طباعة كشوف الحضور",
+    "take_missing_attendance": "تسجيل الحضور الفائت",
+    "send_days_absent": "إرسال أيام الغياب",
+    "pdf_header_footer": "رأس وتذييل PDF"
   },
   "dashboard": {
     "welcome_back": "مرحباً بعودتك، {name}!",
@@ -4051,13 +4057,10 @@
         "active": "نشط",
         "grades_in_scale": "{count} درجة في \"{scale}\"",
         "th_title": "العنوان",
-        "th_letter": "الحرف",
-        "th_gpa": "المعدل",
-        "th_min_pct": "الحد الأدنى %",
-        "th_max_pct": "الحد الأقصى %",
         "th_break_off": "نقطة الفصل",
+        "th_gpa": "قيمة المعدل",
         "th_sort": "الترتيب",
-        "th_pass": "ناجح",
+        "th_comment": "التعليق",
         "generate_scale": "توليد المقياس",
         "generate_min": "الحد الأدنى",
         "generate_max": "الحد الأقصى",
@@ -4091,6 +4094,10 @@
         "scale_title": "عنوان المقياس",
         "scale_sort": "الترتيب",
         "scale_default": "افتراضي",
+        "honor_roll_gpa_min": "الحد الأدنى لمعدل لائحة الشرف",
+        "hhr_gpa_label": "الحد الأدنى للشرف العالي",
+        "hr_gpa_label": "الحد الأدنى للشرف",
+        "hr_subject_gpa_label": "الحد الأدنى للشرف حسب المادة",
         "hr_gpa": "معدل الشرف",
         "hhr_gpa": "معدل الشرف العالي",
         "title_required": "العنوان مطلوب"
@@ -4219,7 +4226,11 @@
         "msg_delete_success": "تم حذف المورد",
         "msg_create_error": "فشل في إنشاء المورد",
         "msg_update_error": "فشل في تحديث المورد",
-        "msg_delete_error": "فشل في حذف المورد"
+        "msg_delete_error": "فشل في حذف المورد",
+        "btn_delete": "حذف",
+        "link_label": "رابط",
+        "msg_no_grades_configured": "لا توجد مستويات دراسية محددة",
+        "msg_all_grades": "جميع المستويات (بدون قيود)"
       },
       "dashboards": {
         "title": "لوحات المعلومات",
