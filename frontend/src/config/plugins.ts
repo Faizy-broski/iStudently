@@ -88,26 +88,22 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     settingsHref: '/admin/settings/automatic-attendance',
     sidebarInjections: [
       {
-        parentTitle: 'Attendance',
+        parentTitle: 'attendance',
         items: [
-          // Reports group
-          { title: 'Reports', href: '#', icon: BarChart3, isLabel: true },
-          { title: 'Teacher Completion', href: '/admin/attendance/teacher-completion', icon: CheckSquare },
-          { title: 'Average Daily Attendance', href: '/admin/attendance/average-daily', icon: TrendingUp },
-          { title: 'Attendance Chart', href: '/admin/attendance/chart', icon: BarChart3 },
-          { title: 'Attendance Summary', href: '/admin/attendance/summary', icon: FileText },
-          { title: 'Print Attendance Sheets', href: '/admin/attendance/print-sheets', icon: ClipboardList },
-          // Utilities group
-          { title: 'Utilities', href: '#', icon: Settings, isLabel: true },
-          { title: 'Take Missing Attendance', href: '/admin/attendance/take-missing', icon: UserCheck },
-          { title: 'Recalculate Daily Attendance', href: '/admin/attendance/recalculate', icon: Calculator },
-          { title: 'Delete Duplicate Attendance', href: '/admin/attendance/delete-duplicates', icon: Award },
-          // Setup group
-          { title: 'Setup', href: '#', icon: Settings, isLabel: true },
-          { title: 'Attendance Codes', href: '/admin/attendance/codes', icon: Settings },
-          // Email parents group
-          { title: 'Email Parents', href: '#', icon: Mail, isLabel: true },
-          { title: 'Send Days Absent', href: '/admin/attendance/email-parents', icon: Mail },
+          { title: 'reports', href: '#', icon: BarChart3, isLabel: true },
+          { title: 'teacher_completion', href: '/admin/attendance/teacher-completion', icon: CheckSquare },
+          { title: 'average_daily_attendance', href: '/admin/attendance/average-daily', icon: TrendingUp },
+          { title: 'attendance_chart', href: '/admin/attendance/chart', icon: BarChart3 },
+          { title: 'attendance_summary', href: '/admin/attendance/summary', icon: FileText },
+          { title: 'print_attendance_sheets', href: '/admin/attendance/print-sheets', icon: ClipboardList },
+          { title: 'utilities', href: '#', icon: Settings, isLabel: true },
+          { title: 'take_missing_attendance', href: '/admin/attendance/take-missing', icon: UserCheck },
+          { title: 'recalculate_daily_attendance', href: '/admin/attendance/recalculate', icon: Calculator },
+          { title: 'delete_duplicate_attendance', href: '/admin/attendance/delete-duplicates', icon: Award },
+          { title: 'setup', href: '#', icon: Settings, isLabel: true },
+          { title: 'attendance_codes', href: '/admin/attendance/codes', icon: Settings },
+          { title: 'email_parents', href: '#', icon: Mail, isLabel: true },
+          { title: 'send_days_absent', href: '/admin/attendance/email-parents', icon: Mail },
         ],
       },
     ],
@@ -172,9 +168,9 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     settingsHref: '/admin/settings/pdf-header-footer',
     sidebarInjections: [
       {
-        parentTitle: 'Settings',
+        parentTitle: 'settings',
         items: [
-          { title: 'PDF Header Footer', href: '/admin/settings/pdf-header-footer', icon: FileImage },
+          { title: 'pdf_header_footer', href: '/admin/settings/pdf-header-footer', icon: FileImage },
         ],
       },
     ],
@@ -420,23 +416,23 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     settingsHref: '/admin/resources/embedded',
     sidebarInjections: [
       {
-        parentTitle: 'Resources',
-        items: [{ title: 'Embedded Resources', href: '/admin/resources/embedded', icon: Globe }],
+        parentTitle: 'resources',
+        items: [{ title: 'embedded_resources', href: '/admin/resources/embedded', icon: Globe }],
         roles: ['admin'],
       },
       {
-        parentTitle: 'Resources',
-        items: [{ title: 'Embedded Resources', href: '/teacher/resources/embedded', icon: Globe }],
+        parentTitle: 'resources',
+        items: [{ title: 'embedded_resources', href: '/teacher/resources/embedded', icon: Globe }],
         roles: ['teacher'],
       },
       {
-        parentTitle: 'Resources',
-        items: [{ title: 'Embedded Resources', href: '/student/resources/embedded', icon: Globe }],
+        parentTitle: 'resources',
+        items: [{ title: 'embedded_resources', href: '/student/resources/embedded', icon: Globe }],
         roles: ['student'],
       },
       {
-        parentTitle: 'Resources',
-        items: [{ title: 'Embedded Resources', href: '/parent/resources/embedded', icon: Globe }],
+        parentTitle: 'resources',
+        items: [{ title: 'embedded_resources', href: '/parent/resources/embedded', icon: Globe }],
         roles: ['parent'],
       },
     ],
@@ -453,23 +449,23 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     settingsHref: '/admin/resources/vlaby',
     sidebarInjections: [
       {
-        parentTitle: 'Resources',
-        items: [{ title: 'VLaby Virtual Labs', href: '/admin/resources/vlaby', icon: FlaskConical }],
+        parentTitle: 'resources',
+        items: [{ title: 'vlaby', href: '/admin/resources/vlaby', icon: FlaskConical }],
         roles: ['admin'],
       },
       {
-        parentTitle: 'Resources',
-        items: [{ title: 'VLaby Virtual Labs', href: '/teacher/resources/vlaby', icon: FlaskConical }],
+        parentTitle: 'resources',
+        items: [{ title: 'vlaby', href: '/teacher/resources/vlaby', icon: FlaskConical }],
         roles: ['teacher'],
       },
       {
-        parentTitle: 'Resources',
-        items: [{ title: 'VLaby Virtual Labs', href: '/student/resources/vlaby', icon: FlaskConical }],
+        parentTitle: 'resources',
+        items: [{ title: 'vlaby', href: '/student/resources/vlaby', icon: FlaskConical }],
         roles: ['student'],
       },
       {
-        parentTitle: 'Resources',
-        items: [{ title: 'VLaby Virtual Labs', href: '/parent/resources/vlaby', icon: FlaskConical }],
+        parentTitle: 'resources',
+        items: [{ title: 'vlaby', href: '/parent/resources/vlaby', icon: FlaskConical }],
         roles: ['parent'],
       },
     ],

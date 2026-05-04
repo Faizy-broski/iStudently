@@ -78,6 +78,12 @@ router.post('/grades/import', requireTeacher, gradebookController.importGradeboo
 // CALCULATIONS & VIEWS
 // ============================================================================
 
+// GET /gradebook/breakdown?course_period_id=&assignment_id=
+router.get('/breakdown', gradebookController.getGradebookBreakdown)
+
+// GET /gradebook/assignment-options?course_period_id=&marking_period_id=
+router.get('/assignment-options', gradebookController.getAssignmentOptionsForBreakdown)
+
 // GET /gradebook/view?course_period_id=&section_id= (full gradebook matrix)
 router.get('/view', gradebookController.getGradebookView)
 

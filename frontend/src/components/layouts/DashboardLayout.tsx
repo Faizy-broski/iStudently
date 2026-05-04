@@ -136,7 +136,7 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
             : ['admin']
           if (!targetRoles.includes(effectiveRole as string)) continue
           items = items.map((item) => {
-            if (item.title === injection.parentTitle && item.subItems) {
+            if (item.title.toLowerCase() === injection.parentTitle.toLowerCase() && item.subItems) {
               const existingHrefs = new Set(item.subItems.map((s) => s.href))
               const newItems = injection.items.filter((ni) => !existingHrefs.has(ni.href))
               if (newItems.length === 0) return item

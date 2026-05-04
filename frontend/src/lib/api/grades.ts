@@ -71,8 +71,9 @@ export interface GradingScale {
   is_active: boolean
   comment?: string | null
   sort_order: number
-  hr_gpa_value?: number | null
   hhr_gpa_value?: number | null
+  hr_gpa_value?: number | null
+  hr_subject_gpa_value?: number | null
   grades?: GradingScaleGrade[]
 }
 
@@ -80,13 +81,11 @@ export interface GradingScaleGrade {
   id: string
   grading_scale_id: string
   title: string
-  letter_grade: string
   gpa_value: number
-  min_percent: number
-  max_percent: number
-  sort_order: number
-  is_passing: boolean
   break_off: number
+  comment?: string | null
+  sort_order: number
+  is_active?: boolean
 }
 
 export interface Course {
@@ -639,7 +638,7 @@ export async function getAssignmentOptions(params: {
   qp.append('course_period_id', params.course_period_id)
   if (params.marking_period_id) qp.append('marking_period_id', params.marking_period_id)
   if (params.campus_id) qp.append('campus_id', params.campus_id)
-  return apiRequest<AssignmentOption[]>(`/gradebook/assignments?${qp}`)
+  return apiRequest<AssignmentOption[]>(`/gradebook/assignment-options?${qp}`)
 }
 
 export async function getCoursePeriods(campusId?: string) {

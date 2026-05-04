@@ -1560,6 +1560,208 @@ class GradebookService {
       },
     }
   }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // GRADEBOOK BREAKDOWN
+  // Mirrors RosarioSIS GradebookBreakdown.php: counts students per letter grade
+  // ──────────────────────────────────────────────────────────────────────────
+
+  async getGradebookBreakdown(params: {
+    coursePeriodId: string
+    assignmentId?: string
+  }): Promise<Array<{ grade_title: string; gpa_value: number; student_count: number }>> {
+    const { coursePeriodId, assignmentId } = params
+
+    // 1. Get course period → grading scale + section
+    const { data: cp } = await supabase
+      .from('course_periods')
+      .select('section_id, grading_scale_id, course:courses(grading_scale_id)')
+      .eq('id', coursePeriodId)
+      .single()
+
+    if (!cp?.section_id) return []
+
+    const scaleId = (cp as any).grading_scale_id || (cp as any).course?.grading_scale_id
+    if (!scaleId) return []
+
+    // 2. Get grading scale grades ordered high→low break_off
+    const { data: scaleGrades } = await supabase
+      .from('grading_scale_grades')
+      .select('title, gpa_value, break_off')
+      .eq('grading_scale_id', scaleId)
+      .eq('is_active', true)
+      .order('break_off', { ascending: false })
+
+    if (!scaleGrades || scaleGrades.length === 0) return []
+
+    // 3. Get active students in section
+    const { data: students } = await supabase
+      .from('students')
+      .select('id')
+      .eq('section_id', (cp as any).section_id)
+      .eq('is_active', true)
+
+    if (!students || students.length === 0) return []
+    const studentIds = students.map((s: any) => s.id)
+
+    // Initialize count map
+    const gradeCount: Record<string, number> = {}
+    for (const g of scaleGrades) gradeCount[g.title] = 0
+
+    const percentToTitle = (pct: number): string | null => {
+      for (const g of scaleGrades) {
+        if (g.break_off != null && pct >= g.break_off) return g.title
+      }
+      return scaleGrades[scaleGrades.length - 1]?.title ?? null
+    }
+
+    if (!assignmentId || assignmentId === 'totals') {
+      // ── Totals: weighted average across all assignment types ──────────────
+      const { data: types } = await supabase
+        .from('gradebook_assignment_types')
+        .select('id, final_grade_percent')
+        .eq('course_period_id', coursePeriodId)
+        .eq('is_active', true)
+
+      if (!types || types.length === 0) return scaleGrades.map(g => ({ grade_title: g.title, gpa_value: g.gpa_value, student_count: 0 }))
+
+      const { data: assignments } = await supabase
+        .from('gradebook_assignments')
+        .select('id, points, assignment_type_id')
+        .eq('course_period_id', coursePeriodId)
+        .eq('is_active', true)
+
+      if (!assignments || assignments.length === 0) return scaleGrades.map(g => ({ grade_title: g.title, gpa_value: g.gpa_value, student_count: 0 }))
+
+      const assignmentIds = assignments.map((a: any) => a.id)
+
+      const { data: allGrades } = await supabase
+        .from('gradebook_grades')
+        .select('assignment_id, student_id, points, is_exempt')
+        .in('assignment_id', assignmentIds)
+        .in('student_id', studentIds)
+
+      // Build lookup: studentId:assignmentId → grade
+      const gradeMap = new Map<string, { points: number | null; is_exempt: boolean }>()
+      for (const g of allGrades || []) {
+        gradeMap.set(`${(g as any).student_id}:${(g as any).assignment_id}`, {
+          points: (g as any).points,
+          is_exempt: (g as any).is_exempt,
+        })
+      }
+
+      // Group assignments by type
+      const assignsByType = new Map<string, Array<{ id: string; points: number }>>()
+      for (const a of assignments) {
+        const tid = (a as any).assignment_type_id
+        if (!assignsByType.has(tid)) assignsByType.set(tid, [])
+        assignsByType.get(tid)!.push({ id: (a as any).id, points: (a as any).points })
+      }
+
+      for (const student of students) {
+        let totalWeighted = 0
+        let totalWeight = 0
+
+        for (const type of types) {
+          const typeAssignments = assignsByType.get((type as any).id) || []
+          let earned = 0
+          let possible = 0
+
+          for (const assignment of typeAssignments) {
+            const key = `${(student as any).id}:${assignment.id}`
+            const grade = gradeMap.get(key)
+            if (grade && !grade.is_exempt && grade.points != null) {
+              earned += grade.points
+              possible += assignment.points
+            }
+          }
+
+          if (possible > 0) {
+            const weight = (type as any).final_grade_percent || 0
+            if (weight > 0) {
+              totalWeighted += (earned / possible) * weight
+              totalWeight += weight
+            }
+          }
+        }
+
+        if (totalWeight === 0) continue
+        const pct = (totalWeighted / totalWeight) * 100
+        const title = percentToTitle(pct)
+        if (title && title in gradeCount) gradeCount[title]++
+      }
+    } else {
+      // ── Specific assignment ───────────────────────────────────────────────
+      const { data: assignment } = await supabase
+        .from('gradebook_assignments')
+        .select('id, points')
+        .eq('id', assignmentId)
+        .single()
+
+      if (!assignment || !(assignment as any).points) {
+        return scaleGrades.map(g => ({ grade_title: g.title, gpa_value: g.gpa_value, student_count: 0 }))
+      }
+
+      const totalPoints = (assignment as any).points
+
+      const { data: grades } = await supabase
+        .from('gradebook_grades')
+        .select('student_id, points, is_exempt')
+        .eq('assignment_id', assignmentId)
+        .in('student_id', studentIds)
+
+      for (const grade of grades || []) {
+        if ((grade as any).is_exempt || (grade as any).points == null) continue
+        const pct = ((grade as any).points / totalPoints) * 100
+        const title = percentToTitle(pct)
+        if (title && title in gradeCount) gradeCount[title]++
+      }
+    }
+
+    return scaleGrades.map(g => ({
+      grade_title: g.title,
+      gpa_value: g.gpa_value,
+      student_count: gradeCount[g.title] || 0,
+    }))
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // ASSIGNMENT OPTIONS (for breakdown filter dropdown)
+  // Returns assignment types + individual assignments as flat AssignmentOption[]
+  // ──────────────────────────────────────────────────────────────────────────
+
+  async getAssignmentOptions(params: {
+    coursePeriodId: string
+    markingPeriodId?: string
+  }): Promise<Array<{ id: string; title: string; type: 'assignment_type' | 'assignment'; points?: number }>> {
+    const { coursePeriodId } = params
+
+    const [typesResult, assignmentsResult] = await Promise.all([
+      supabase
+        .from('gradebook_assignment_types')
+        .select('id, title')
+        .eq('course_period_id', coursePeriodId)
+        .eq('is_active', true)
+        .order('sort_order'),
+      supabase
+        .from('gradebook_assignments')
+        .select('id, title, points')
+        .eq('course_period_id', coursePeriodId)
+        .eq('is_active', true)
+        .order('due_date', { ascending: false }),
+    ])
+
+    const options: Array<{ id: string; title: string; type: 'assignment_type' | 'assignment'; points?: number }> = []
+
+    for (const t of typesResult.data || []) {
+      options.push({ id: (t as any).id, title: (t as any).title, type: 'assignment_type' })
+    }
+    for (const a of assignmentsResult.data || []) {
+      options.push({ id: (a as any).id, title: (a as any).title, type: 'assignment', points: (a as any).points })
+    }
+
+    return options
+  }
 }
 
 export const gradebookService = new GradebookService()

@@ -99,11 +99,10 @@ export default function ResourceLinksPage() {
   )
 
   // Reset initialized flag when campus changes
-  const [lastCampusId, setLastCampusId] = useState<string | undefined>()
-  if (selectedCampus?.id !== lastCampusId) {
-    setLastCampusId(selectedCampus?.id)
+  useEffect(() => {
     setInitialized(false)
-  }
+    setEditableLinks([])
+  }, [selectedCampus?.id])
 
   // Filter by search
   const filteredLinks = useMemo(() => {

@@ -166,9 +166,9 @@ export default function GradebookBreakdownPage() {
   // ── Helpers ───────────────────────────────────────────────────
   const getCoursePeriodLabel = (cp: CoursePeriod) => {
     const course = cp.course?.title || tCommon("course", { defaultValue: "Course" });
-    const teacher = cp.teacher
-      ? `${cp.teacher.first_name} ${cp.teacher.last_name}`
-      : "";
+    const firstName = cp.teacher?.profile?.first_name || (cp.teacher as any)?.first_name || '';
+    const lastName = cp.teacher?.profile?.last_name || (cp.teacher as any)?.last_name || '';
+    const teacher = (firstName || lastName) ? `${firstName} ${lastName}`.trim() : '';
     return teacher ? `${course} — ${teacher}` : course;
   };
 

@@ -184,6 +184,18 @@ class MarkingPeriodsService {
       )
     }
 
+    // Auto-compute a safe sort_order using the school-wide max to avoid unique_mp_sort violations.
+    // The constraint is school-wide across all mp_types, so per-type or client-supplied values can collide.
+    const { data: existingMPs } = await supabase
+      .from('marking_periods')
+      .select('sort_order')
+      .eq('school_id', schoolId)
+      .eq('is_active', true)
+    const maxSortOrder = existingMPs && existingMPs.length > 0
+      ? Math.max(...existingMPs.map((mp) => mp.sort_order ?? 0))
+      : 0
+    const safeSortOrder = maxSortOrder + 1
+
     const { data, error } = await supabase
       .from('marking_periods')
       .insert({
@@ -193,7 +205,7 @@ class MarkingPeriodsService {
         parent_id: dto.parent_id || null,
         title: dto.title,
         short_name: dto.short_name,
-        sort_order: dto.sort_order,
+        sort_order: safeSortOrder,
         does_grades: dto.does_grades ?? true,
         does_comments: dto.does_comments ?? false,
         start_date: dto.start_date || null,

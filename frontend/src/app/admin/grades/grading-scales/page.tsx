@@ -61,13 +61,10 @@ export default function GradingScalesPage() {
 
   // ── New grade row fields ──────────────────────────────────────
   const [newTitle, setNewTitle] = useState("");
-  const [newLetter, setNewLetter] = useState("");
-  const [newGPA, setNewGPA] = useState("");
-  const [newMinPct, setNewMinPct] = useState("");
-  const [newMaxPct, setNewMaxPct] = useState("");
-  const [newSort, setNewSort] = useState("");
   const [newBreakOff, setNewBreakOff] = useState("");
-  const [newIsPassing, setNewIsPassing] = useState(true);
+  const [newGPA, setNewGPA] = useState("");
+  const [newSort, setNewSort] = useState("");
+  const [newComment, setNewComment] = useState("");
 
   // ── Generation (Grading Scale Generation feature) ────────────
   const [genScaleId, setGenScaleId] = useState<string>("");
@@ -82,8 +79,9 @@ export default function GradingScalesPage() {
   const [newScaleTitle, setNewScaleTitle] = useState("");
   const [newScaleSort, setNewScaleSort] = useState("");
   const [newScaleDefault, setNewScaleDefault] = useState(false);
-  const [newScaleHrGpa, setNewScaleHrGpa] = useState("");
   const [newScaleHhrGpa, setNewScaleHhrGpa] = useState("");
+  const [newScaleHrGpa, setNewScaleHrGpa] = useState("");
+  const [newScaleHrSubjectGpa, setNewScaleHrSubjectGpa] = useState("");
   const [savingScales, setSavingScales] = useState(false);
 
   // ── Load scales ───────────────────────────────────────────────
@@ -170,25 +168,19 @@ export default function GradingScalesPage() {
         id: `new-${Date.now()}`,
         grading_scale_id: activeTab,
         title: newTitle.trim(),
-        letter_grade: newLetter.trim(),
-        gpa_value: newGPA ? parseFloat(newGPA) : 0,
-        min_percent: newMinPct ? parseFloat(newMinPct) : 0,
-        max_percent: newMaxPct ? parseFloat(newMaxPct) : 100,
-        sort_order: newSort ? parseInt(newSort) : 0,
         break_off: newBreakOff ? parseFloat(newBreakOff) : 0,
-        is_passing: newIsPassing,
+        gpa_value: newGPA ? parseFloat(newGPA) : 0,
+        sort_order: newSort ? parseInt(newSort) : rows.length + 1,
+        comment: newComment.trim() || null,
         _isNew: true,
         _dirty: true,
       },
     ]);
     setNewTitle("");
-    setNewLetter("");
-    setNewGPA("");
-    setNewMinPct("");
-    setNewMaxPct("");
-    setNewSort("");
     setNewBreakOff("");
-    setNewIsPassing(true);
+    setNewGPA("");
+    setNewSort("");
+    setNewComment("");
   };
 
   const handleSaveGrades = async () => {
@@ -202,13 +194,10 @@ export default function GradingScalesPage() {
       for (const row of rows.filter((r) => r._isNew && !r._deleted)) {
         const res = await gradesApi.createGradingScaleGrade(activeTab, {
           title: row.title,
-          letter_grade: row.letter_grade,
-          gpa_value: row.gpa_value,
-          min_percent: row.min_percent,
-          max_percent: row.max_percent,
-          sort_order: row.sort_order,
           break_off: row.break_off,
-          is_passing: row.is_passing,
+          gpa_value: row.gpa_value,
+          sort_order: row.sort_order,
+          comment: row.comment ?? undefined,
         });
         if (!res.success) errors++;
       }
@@ -217,13 +206,10 @@ export default function GradingScalesPage() {
       )) {
         const res = await gradesApi.updateGradingScaleGrade(activeTab, row.id, {
           title: row.title,
-          letter_grade: row.letter_grade,
-          gpa_value: row.gpa_value,
-          min_percent: row.min_percent,
-          max_percent: row.max_percent,
-          sort_order: row.sort_order,
           break_off: row.break_off,
-          is_passing: row.is_passing,
+          gpa_value: row.gpa_value,
+          sort_order: row.sort_order,
+          comment: row.comment ?? undefined,
         });
         if (!res.success) errors++;
       }
@@ -314,8 +300,9 @@ export default function GradingScalesPage() {
         is_default: newScaleDefault,
         is_active: true,
         sort_order: newScaleSort ? parseInt(newScaleSort) : 0,
-        hr_gpa_value: newScaleHrGpa ? parseFloat(newScaleHrGpa) : null,
         hhr_gpa_value: newScaleHhrGpa ? parseFloat(newScaleHhrGpa) : null,
+        hr_gpa_value: newScaleHrGpa ? parseFloat(newScaleHrGpa) : null,
+        hr_subject_gpa_value: newScaleHrSubjectGpa ? parseFloat(newScaleHrSubjectGpa) : null,
         _isNew: true,
         _dirty: true,
       },
@@ -323,8 +310,9 @@ export default function GradingScalesPage() {
     setNewScaleTitle("");
     setNewScaleSort("");
     setNewScaleDefault(false);
-    setNewScaleHrGpa("");
     setNewScaleHhrGpa("");
+    setNewScaleHrGpa("");
+    setNewScaleHrSubjectGpa("");
   };
 
   const handleSaveScales = async () => {
@@ -341,8 +329,9 @@ export default function GradingScalesPage() {
           is_default: row.is_default,
           is_active: row.is_active,
           sort_order: row.sort_order,
-          hr_gpa_value: row.hr_gpa_value ?? null,
           hhr_gpa_value: row.hhr_gpa_value ?? null,
+          hr_gpa_value: row.hr_gpa_value ?? null,
+          hr_subject_gpa_value: row.hr_subject_gpa_value ?? null,
         });
         if (!res.success) errors++;
       }
@@ -354,8 +343,9 @@ export default function GradingScalesPage() {
           is_default: row.is_default,
           is_active: row.is_active,
           sort_order: row.sort_order,
-          hr_gpa_value: row.hr_gpa_value ?? null,
           hhr_gpa_value: row.hhr_gpa_value ?? null,
+          hr_gpa_value: row.hr_gpa_value ?? null,
+          hr_subject_gpa_value: row.hr_subject_gpa_value ?? null,
         });
         if (!res.success) errors++;
       }
@@ -396,7 +386,7 @@ export default function GradingScalesPage() {
         </p>
       </div>
 
-      {loadingScales ? (
+      {loadingScales && scales.length === 0 ? (
         <Skeleton className="h-10 w-full" />
       ) : scales.length === 0 && activeTab !== "manage" ? (
         <Card>
@@ -473,26 +463,17 @@ export default function GradingScalesPage() {
                             <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2">
                               {t("th_title")}
                             </th>
-                            <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-20">
-                              {t("th_letter")}
-                            </th>
-                            <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-20">
-                              {t("th_gpa")}
-                            </th>
-                            <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-20">
-                              {t("th_min_pct")}
-                            </th>
-                            <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-20">
-                              {t("th_max_pct")}
-                            </th>
-                            <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-20">
+                            <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-28">
                               {t("th_break_off")}
+                            </th>
+                            <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-24">
+                              {t("th_gpa")}
                             </th>
                             <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2 w-16">
                               {t("th_sort")}
                             </th>
-                            <th className="text-center text-xs font-semibold uppercase tracking-wider py-3 px-2 w-16">
-                              {t("th_pass")}
+                            <th className="text-left text-xs font-semibold uppercase tracking-wider py-3 px-2">
+                              {t("th_comment")}
                             </th>
                           </tr>
                         </thead>
@@ -527,70 +508,32 @@ export default function GradingScalesPage() {
                                   />
                                 </td>
                                 <td className="py-2 px-2">
-                                  <Input
-                                    value={row.letter_grade}
-                                    onChange={(e) =>
-                                      updateRow(
-                                        actualIdx,
-                                        "letter_grade",
-                                        e.target.value
-                                      )
-                                    }
-                                    className="h-8 text-sm"
-                                  />
+                                  <div className="flex items-center gap-1">
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      value={row.break_off}
+                                      onChange={(e) =>
+                                        updateRow(
+                                          actualIdx,
+                                          "break_off",
+                                          parseFloat(e.target.value) || 0
+                                        )
+                                      }
+                                      className="h-8 text-sm w-20"
+                                    />
+                                    <span className="text-sm text-muted-foreground">%</span>
+                                  </div>
                                 </td>
                                 <td className="py-2 px-2">
                                   <Input
                                     type="number"
-                                    step="0.1"
+                                    step="0.01"
                                     value={row.gpa_value}
                                     onChange={(e) =>
                                       updateRow(
                                         actualIdx,
                                         "gpa_value",
-                                        parseFloat(e.target.value) || 0
-                                      )
-                                    }
-                                    className="h-8 text-sm"
-                                  />
-                                </td>
-                                <td className="py-2 px-2">
-                                  <Input
-                                    type="number"
-                                    value={row.min_percent}
-                                    onChange={(e) =>
-                                      updateRow(
-                                        actualIdx,
-                                        "min_percent",
-                                        parseFloat(e.target.value) || 0
-                                      )
-                                    }
-                                    className="h-8 text-sm"
-                                  />
-                                </td>
-                                <td className="py-2 px-2">
-                                  <Input
-                                    type="number"
-                                    value={row.max_percent}
-                                    onChange={(e) =>
-                                      updateRow(
-                                        actualIdx,
-                                        "max_percent",
-                                        parseFloat(e.target.value) || 0
-                                      )
-                                    }
-                                    className="h-8 text-sm"
-                                  />
-                                </td>
-                                <td className="py-2 px-2">
-                                  <Input
-                                    type="number"
-                                    step="0.1"
-                                    value={row.break_off}
-                                    onChange={(e) =>
-                                      updateRow(
-                                        actualIdx,
-                                        "break_off",
                                         parseFloat(e.target.value) || 0
                                       )
                                     }
@@ -611,16 +554,18 @@ export default function GradingScalesPage() {
                                     className="h-8 text-sm"
                                   />
                                 </td>
-                                <td className="py-2 px-2 text-center">
-                                  <Checkbox
-                                    checked={row.is_passing}
-                                    onCheckedChange={(c) =>
+                                <td className="py-2 px-2">
+                                  <Input
+                                    value={row.comment ?? ""}
+                                    onChange={(e) =>
                                       updateRow(
                                         actualIdx,
-                                        "is_passing",
-                                        c === true
+                                        "comment",
+                                        e.target.value || null
                                       )
                                     }
+                                    placeholder="—"
+                                    className="h-8 text-sm"
                                   />
                                 </td>
                               </tr>
@@ -648,17 +593,22 @@ export default function GradingScalesPage() {
                               />
                             </td>
                             <td className="py-2 px-2">
-                              <Input
-                                value={newLetter}
-                                onChange={(e) => setNewLetter(e.target.value)}
-                                placeholder={t("placeholder_letter")}
-                                className="h-8 text-sm"
-                              />
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={newBreakOff}
+                                  onChange={(e) => setNewBreakOff(e.target.value)}
+                                  placeholder="0"
+                                  className="h-8 text-sm w-20"
+                                />
+                                <span className="text-sm text-muted-foreground">%</span>
+                              </div>
                             </td>
                             <td className="py-2 px-2">
                               <Input
                                 type="number"
-                                step="0.1"
+                                step="0.01"
                                 value={newGPA}
                                 onChange={(e) => setNewGPA(e.target.value)}
                                 placeholder={t("placeholder_gpa")}
@@ -668,46 +618,18 @@ export default function GradingScalesPage() {
                             <td className="py-2 px-2">
                               <Input
                                 type="number"
-                                value={newMinPct}
-                                onChange={(e) => setNewMinPct(e.target.value)}
-                                placeholder={t("placeholder_min")}
-                                className="h-8 text-sm"
-                              />
-                            </td>
-                            <td className="py-2 px-2">
-                              <Input
-                                type="number"
-                                value={newMaxPct}
-                                onChange={(e) => setNewMaxPct(e.target.value)}
-                                placeholder={t("placeholder_max")}
-                                className="h-8 text-sm"
-                              />
-                            </td>
-                            <td className="py-2 px-2">
-                              <Input
-                                type="number"
-                                step="0.1"
-                                value={newBreakOff}
-                                onChange={(e) =>
-                                  setNewBreakOff(e.target.value)
-                                }
-                                className="h-8 text-sm"
-                              />
-                            </td>
-                            <td className="py-2 px-2">
-                              <Input
-                                type="number"
                                 value={newSort}
                                 onChange={(e) => setNewSort(e.target.value)}
+                                placeholder="#"
                                 className="h-8 text-sm"
                               />
                             </td>
-                            <td className="py-2 px-2 text-center">
-                              <Checkbox
-                                checked={newIsPassing}
-                                onCheckedChange={(c) =>
-                                  setNewIsPassing(c === true)
-                                }
+                            <td className="py-2 px-2">
+                              <Input
+                                value={newComment}
+                                onChange={(e) => setNewComment(e.target.value)}
+                                placeholder="—"
+                                className="h-8 text-sm"
                               />
                             </td>
                           </tr>
@@ -768,11 +690,8 @@ export default function GradingScalesPage() {
                         <th className="text-left text-xs font-semibold uppercase tracking-wider text-[#0369a1] py-3 px-2 w-20">
                           {t("scale_sort")}
                         </th>
-                        <th className="text-left text-xs font-semibold uppercase tracking-wider text-[#0369a1] py-3 px-2 w-24">
-                          {t("hr_gpa")}
-                        </th>
-                        <th className="text-left text-xs font-semibold uppercase tracking-wider text-[#0369a1] py-3 px-2 w-24">
-                          {t("hhr_gpa")}
+                        <th className="text-left text-xs font-semibold uppercase tracking-wider text-[#0369a1] py-3 px-2 w-44">
+                          {t("honor_roll_gpa_min")}
                         </th>
                         <th className="text-center text-xs font-semibold uppercase tracking-wider text-[#0369a1] py-3 px-2 w-20">
                           {t("scale_default")}
@@ -826,40 +745,53 @@ export default function GradingScalesPage() {
                               />
                             </td>
                             <td className="py-2 px-2">
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                max="99"
-                                value={row.hr_gpa_value ?? ""}
-                                onChange={(e) =>
-                                  updateScaleRow(
-                                    actualIdx,
-                                    "hr_gpa_value",
-                                    e.target.value ? parseFloat(e.target.value) : null
-                                  )
-                                }
-                                placeholder="—"
-                                className="h-8 text-sm"
-                              />
-                            </td>
-                            <td className="py-2 px-2">
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                max="99"
-                                value={row.hhr_gpa_value ?? ""}
-                                onChange={(e) =>
-                                  updateScaleRow(
-                                    actualIdx,
-                                    "hhr_gpa_value",
-                                    e.target.value ? parseFloat(e.target.value) : null
-                                  )
-                                }
-                                placeholder="—"
-                                className="h-8 text-sm"
-                              />
+                              <div className="space-y-1.5">
+                                <div>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={row.hhr_gpa_value ?? ""}
+                                    onChange={(e) =>
+                                      updateScaleRow(actualIdx, "hhr_gpa_value",
+                                        e.target.value ? parseFloat(e.target.value) : null)
+                                    }
+                                    placeholder="—"
+                                    className="h-7 text-xs"
+                                  />
+                                  <p className="text-[10px] text-muted-foreground mt-0.5">{t("hhr_gpa_label")}</p>
+                                </div>
+                                <div>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={row.hr_gpa_value ?? ""}
+                                    onChange={(e) =>
+                                      updateScaleRow(actualIdx, "hr_gpa_value",
+                                        e.target.value ? parseFloat(e.target.value) : null)
+                                    }
+                                    placeholder="—"
+                                    className="h-7 text-xs"
+                                  />
+                                  <p className="text-[10px] text-muted-foreground mt-0.5">{t("hr_gpa_label")}</p>
+                                </div>
+                                <div>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={row.hr_subject_gpa_value ?? ""}
+                                    onChange={(e) =>
+                                      updateScaleRow(actualIdx, "hr_subject_gpa_value",
+                                        e.target.value ? parseFloat(e.target.value) : null)
+                                    }
+                                    placeholder="—"
+                                    className="h-7 text-xs"
+                                  />
+                                  <p className="text-[10px] text-muted-foreground mt-0.5">{t("hr_subject_gpa_label")}</p>
+                                </div>
+                              </div>
                             </td>
                             <td className="py-2 px-2 text-center">
                               <Checkbox
@@ -921,28 +853,44 @@ export default function GradingScalesPage() {
                           />
                         </td>
                         <td className="py-2 px-2">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            max="99"
-                            value={newScaleHrGpa}
-                            onChange={(e) => setNewScaleHrGpa(e.target.value)}
-                            placeholder={t("hr_gpa")}
-                            className="h-8 text-sm"
-                          />
-                        </td>
-                        <td className="py-2 px-2">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            max="99"
-                            value={newScaleHhrGpa}
-                            onChange={(e) => setNewScaleHhrGpa(e.target.value)}
-                            placeholder={t("hhr_gpa")}
-                            className="h-8 text-sm"
-                          />
+                          <div className="space-y-1.5">
+                            <div>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={newScaleHhrGpa}
+                                onChange={(e) => setNewScaleHhrGpa(e.target.value)}
+                                placeholder="—"
+                                className="h-7 text-xs"
+                              />
+                              <p className="text-[10px] text-muted-foreground mt-0.5">{t("hhr_gpa_label")}</p>
+                            </div>
+                            <div>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={newScaleHrGpa}
+                                onChange={(e) => setNewScaleHrGpa(e.target.value)}
+                                placeholder="—"
+                                className="h-7 text-xs"
+                              />
+                              <p className="text-[10px] text-muted-foreground mt-0.5">{t("hr_gpa_label")}</p>
+                            </div>
+                            <div>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={newScaleHrSubjectGpa}
+                                onChange={(e) => setNewScaleHrSubjectGpa(e.target.value)}
+                                placeholder="—"
+                                className="h-7 text-xs"
+                              />
+                              <p className="text-[10px] text-muted-foreground mt-0.5">{t("hr_subject_gpa_label")}</p>
+                            </div>
+                          </div>
                         </td>
                         <td className="py-2 px-2 text-center">
                           <Checkbox

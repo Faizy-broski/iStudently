@@ -164,12 +164,11 @@ export default function MarkingPeriodsPage() {
       }
     }
 
-    // Use max sort_order across ALL items of this type to avoid unique_mp_sort constraint violations.
-    // The constraint is scoped globally per type — siblings-only max would collide across parents.
-    const allTypeItems = grouped[mpType]
+    // unique_mp_sort is school-wide across all types — compute global max to avoid collisions.
+    const allItems = (Object.values(grouped) as typeof grouped[keyof typeof grouped][]).flat()
     const newSortOrder =
-      allTypeItems.length > 0
-        ? Math.max(...allTypeItems.map((mp) => mp.sort_order)) + 1
+      allItems.length > 0
+        ? Math.max(...allItems.map((mp) => mp.sort_order)) + 1
         : 1
 
     try {

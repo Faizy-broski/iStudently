@@ -67,9 +67,12 @@ class GradingScalesService {
         campus_id: dto.campus_id || null,
         title: dto.title,
         type: dto.type || 'percentage',
-        comment: dto.comment,
+        comment: dto.comment ?? null,
         is_default: dto.is_default || false,
         sort_order: dto.sort_order || 0,
+        hhr_gpa_value: dto.hhr_gpa_value ?? null,
+        hr_gpa_value: dto.hr_gpa_value ?? null,
+        hr_subject_gpa_value: dto.hr_subject_gpa_value ?? null,
         created_by: createdBy,
       })
       .select()
@@ -99,9 +102,21 @@ class GradingScalesService {
       }
     }
 
+    const safeDto: UpdateGradingScaleDTO = {}
+    if (dto.title !== undefined) safeDto.title = dto.title
+    if (dto.type !== undefined) safeDto.type = dto.type
+    if (dto.comment !== undefined) safeDto.comment = dto.comment
+    if (dto.is_default !== undefined) safeDto.is_default = dto.is_default
+    if (dto.sort_order !== undefined) safeDto.sort_order = dto.sort_order
+    if (dto.is_active !== undefined) safeDto.is_active = dto.is_active
+    if (dto.campus_id !== undefined) safeDto.campus_id = dto.campus_id
+    if (dto.hhr_gpa_value !== undefined) safeDto.hhr_gpa_value = dto.hhr_gpa_value
+    if (dto.hr_gpa_value !== undefined) safeDto.hr_gpa_value = dto.hr_gpa_value
+    if (dto.hr_subject_gpa_value !== undefined) safeDto.hr_subject_gpa_value = dto.hr_subject_gpa_value
+
     const { error } = await supabase
       .from('grading_scales')
-      .update(dto)
+      .update(safeDto)
       .eq('id', id)
 
     if (error) throw new Error(`Failed to update grading scale: ${error.message}`)
@@ -159,10 +174,10 @@ class GradingScalesService {
         grading_scale_id: scaleId,
         school_id: schoolId,
         title: dto.title,
-        gpa_value: dto.gpa_value,
-        break_off: dto.break_off,
-        comment: dto.comment,
-        sort_order: dto.sort_order || 0,
+        gpa_value: dto.gpa_value ?? 0,
+        break_off: dto.break_off ?? 0,
+        comment: dto.comment ?? null,
+        sort_order: dto.sort_order ?? 0,
       })
       .select()
       .single()
@@ -192,9 +207,17 @@ class GradingScalesService {
   }
 
   async updateGrade(id: string, dto: UpdateGradingScaleGradeDTO): Promise<GradingScaleGrade> {
+    const safeDto: UpdateGradingScaleGradeDTO = {}
+    if (dto.title !== undefined) safeDto.title = dto.title
+    if (dto.gpa_value !== undefined) safeDto.gpa_value = dto.gpa_value
+    if (dto.break_off !== undefined) safeDto.break_off = dto.break_off
+    if (dto.comment !== undefined) safeDto.comment = dto.comment
+    if (dto.sort_order !== undefined) safeDto.sort_order = dto.sort_order
+    if (dto.is_active !== undefined) safeDto.is_active = dto.is_active
+
     const { data, error } = await supabase
       .from('grading_scale_grades')
-      .update(dto)
+      .update(safeDto)
       .eq('id', id)
       .select()
       .single()

@@ -91,21 +91,20 @@ export function InputFinalGrades() {
     if (!selectedCp) return;
     const cp = coursePeriods.find((c) => c.id === selectedCp);
     if (!cp) return;
-    
-    // In actual RosarioSIS logic, Grading Scale is on the Course or CP
-    // We'll fetch all grading scales to find defaults if needed
+    const courseScaleId = cp?.course?.grading_scale_id;
+
     gradesApi.getGradingScales(selectedCampus?.id).then(async (res) => {
-      if (res.success && res.data && res.data.length > 0) {
-        // Fallback to first active scale if CP doesn't explicitly link one
-        const scale = res.data.find(s => s.is_active) || res.data[0];
-        const gradesRes = await gradesApi.getGradingScaleGrades(scale.id);
-        if (gradesRes.success && gradesRes.data) {
-          // Sort by max percent desc
-          const sortedGrades = gradesRes.data.sort(
-            (a, b) => b.min_percent - a.min_percent
-          );
-          setGradeScale(sortedGrades);
-        }
+      if (!res.success || !res.data || res.data.length === 0) return;
+      // Prefer the scale linked to the course, fall back to first active scale
+      const scale = (courseScaleId && res.data.find(s => s.id === courseScaleId))
+        || res.data.find(s => s.is_active)
+        || res.data[0];
+      const gradesRes = await gradesApi.getGradingScaleGrades(scale.id);
+      if (gradesRes.success && gradesRes.data) {
+        const sortedGrades = gradesRes.data.sort(
+          (a, b) => b.break_off - a.break_off
+        );
+        setGradeScale(sortedGrades);
       }
     });
   }, [selectedCp, coursePeriods, selectedCampus?.id]);
@@ -155,9 +154,9 @@ export function InputFinalGrades() {
         let newLetter = s.letter_grade;
         if (field === "letter_grade") {
           newLetter = value;
-          const matchedG = gradeScale.find((g) => g.letter_grade === value);
+          const matchedG = gradeScale.find((g) => g.title === value);
           if (matchedG && !s.percent) {
-            newPercent = matchedG.min_percent.toString(); // or middle logic
+            newPercent = (matchedG.break_off ?? "").toString();
           }
         } else if (field === "percent") {
           newPercent = value;
@@ -330,7 +329,7 @@ export function InputFinalGrades() {
                   <TableCell>
                     <div className="flex gap-2 w-[180px]">
                       <Select
-                        value={student.letter_grade}
+                        value={student.letter_grade ?? "N/A"}
                         onValueChange={(val) => handleGradeChange(student.student_id, "letter_grade", val)}
                       >
                         <SelectTrigger className="flex-1 bg-white focus:ring-[#4A90E2] border-slate-300">
@@ -339,8 +338,8 @@ export function InputFinalGrades() {
                         <SelectContent className="max-h-[300px]">
                           <SelectItem value="N/A">N/A</SelectItem>
                           {gradeScale.map((g) => (
-                            <SelectItem key={g.id} value={g.letter_grade}>
-                              {g.letter_grade}
+                            <SelectItem key={g.id} value={g.title}>
+                              {g.title}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -348,7 +347,7 @@ export function InputFinalGrades() {
                       <Input
                         type="number"
                         className="w-[80px] bg-white focus-visible:ring-[#4A90E2] border-slate-300"
-                        value={student.percent}
+                        value={student.percent ?? ""}
                         onChange={(e) => handleGradeChange(student.student_id, "percent", e.target.value)}
                         min="0"
                         max="100"

@@ -20,8 +20,9 @@ export interface GradingScale {
   is_default: boolean
   sort_order: number
   is_active: boolean
-  hr_gpa_value?: number | null
   hhr_gpa_value?: number | null
+  hr_gpa_value?: number | null
+  hr_subject_gpa_value?: number | null
   created_at: string
   updated_at: string
   created_by?: string | null
@@ -50,8 +51,9 @@ export interface CreateGradingScaleDTO {
   is_default?: boolean
   sort_order?: number
   campus_id?: string
-  hr_gpa_value?: number | null
   hhr_gpa_value?: number | null
+  hr_gpa_value?: number | null
+  hr_subject_gpa_value?: number | null
   grades?: CreateGradingScaleGradeDTO[]
 }
 
@@ -63,8 +65,9 @@ export interface UpdateGradingScaleDTO {
   sort_order?: number
   is_active?: boolean
   campus_id?: string
-  hr_gpa_value?: number | null
   hhr_gpa_value?: number | null
+  hr_gpa_value?: number | null
+  hr_subject_gpa_value?: number | null
 }
 
 export interface CreateGradingScaleGradeDTO {

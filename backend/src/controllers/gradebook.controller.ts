@@ -476,6 +476,44 @@ export const setConfigAsTeacher = async (req: Request, res: Response) => {
 }
 
 // ============================================================================
+// GRADEBOOK BREAKDOWN
+// ============================================================================
+
+export const getGradebookBreakdown = async (req: Request, res: Response) => {
+  try {
+    const { course_period_id, assignment_id } = req.query
+    if (!course_period_id) {
+      return res.status(400).json({ success: false, error: 'course_period_id is required' })
+    }
+    const data = await gradebookService.getGradebookBreakdown({
+      coursePeriodId: course_period_id as string,
+      assignmentId: assignment_id as string | undefined,
+    })
+    res.json({ success: true, data })
+  } catch (error: any) {
+    console.error('Error in getGradebookBreakdown:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+}
+
+export const getAssignmentOptionsForBreakdown = async (req: Request, res: Response) => {
+  try {
+    const { course_period_id, marking_period_id } = req.query
+    if (!course_period_id) {
+      return res.status(400).json({ success: false, error: 'course_period_id is required' })
+    }
+    const data = await gradebookService.getAssignmentOptions({
+      coursePeriodId: course_period_id as string,
+      markingPeriodId: marking_period_id as string | undefined,
+    })
+    res.json({ success: true, data })
+  } catch (error: any) {
+    console.error('Error in getAssignmentOptionsForBreakdown:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+}
+
+// ============================================================================
 // PROGRESS REPORTS (batch generation for printing)
 // ============================================================================
 
