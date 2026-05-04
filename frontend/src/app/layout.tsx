@@ -42,6 +42,7 @@ export default async function RootLayout({
       dir={isRTL ? "rtl" : "ltr"}
       className={isRTL ? cairo.variable : inter.variable}
       suppressHydrationWarning
+      translate="no"
     >
       <head>
         <script

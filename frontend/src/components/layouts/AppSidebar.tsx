@@ -928,20 +928,24 @@ function DesktopSidebar({ menuItems, className }: AppSidebarProps) {
         style={{ backgroundImage: 'url(/images/sidebar-bg.svg)' }}
       />
 
-      {/* Collapse Toggle Button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute top-6 end-0 translate-x-1/2 z-50 h-6 w-6 rounded-full bg-white shadow-md hover:bg-gray-100 text-[#022172] border border-gray-100"
-      >
-        {isCollapsed ? (
-          <ChevronRight className="h-3 w-3" />
-        ) : (
-          <ChevronLeft className="h-3 w-3" />
-        )}
-      </Button>
-
+{/* Collapse Toggle Button */}
+<Button
+  variant="ghost"
+  size="icon"
+  onClick={() => setIsCollapsed(!isCollapsed)}
+  className={cn(
+    "absolute z-50 flex items-center justify-center h-6 w-6 rounded-full bg-white shadow-md hover:bg-gray-100 text-[#022172] border border-gray-100 transition-all duration-300",
+    isCollapsed 
+      ? "top-15 inset-x-0 mx-auto" // Pushed down from top-20 to top-28 for clean spacing
+      : "top-6 end-1.5"            // Snug against the edge when open
+  )}
+>
+  {isCollapsed ? (
+    <ChevronRight className="h-3 w-3" />
+  ) : (
+    <ChevronLeft className="h-3 w-3" />
+  )}
+</Button>
       {/* Content Container */}
       <div className="relative z-10 flex flex-col h-full overflow-hidden">
 

@@ -278,7 +278,7 @@ export default function EmbeddedResourcesPage() {
                           className="text-blue-600 hover:underline flex items-center gap-1 shrink-0"
                         >
                           <ExternalLink className="h-3.5 w-3.5" />
-                          Link
+                          {t('link_label')}
                         </a>
                       )}
                       <Input
@@ -296,6 +296,8 @@ export default function EmbeddedResourcesPage() {
                       grades={grades}
                       selected={row.published_grade_ids}
                       onToggle={(gid) => toggleGrade(row.id, gid)}
+                      noGradesLabel={t('msg_no_grades_configured')}
+                      allGradesLabel={t('msg_all_grades')}
                     />
                   </td>
                 </tr>
@@ -349,9 +351,9 @@ export default function EmbeddedResourcesPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('btn_cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
-              Delete
+              {t('btn_delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -366,11 +368,13 @@ interface GradePickerProps {
   grades: academicsApi.GradeLevel[]
   selected: string[]
   onToggle: (id: string) => void
+  noGradesLabel: string
+  allGradesLabel: string
 }
 
-function GradePicker({ grades, selected, onToggle }: GradePickerProps) {
+function GradePicker({ grades, selected, onToggle, noGradesLabel, allGradesLabel }: GradePickerProps) {
   if (grades.length === 0) {
-    return <span className="text-xs text-gray-400">No grades configured</span>
+    return <span className="text-xs text-gray-400">{noGradesLabel}</span>
   }
 
   return (
@@ -395,7 +399,7 @@ function GradePicker({ grades, selected, onToggle }: GradePickerProps) {
         )
       })}
       {selected.length === 0 && (
-        <span className="text-xs text-gray-400 italic">All grades (no restriction)</span>
+        <span className="text-xs text-gray-400 italic">{allGradesLabel}</span>
       )}
     </div>
   )
