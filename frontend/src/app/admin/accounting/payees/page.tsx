@@ -12,14 +12,18 @@ import useSWR from 'swr'
 import Link from 'next/link'
 import * as accountingApi from '@/lib/api/accounting'
 import type { Payee } from '@/lib/api/accounting'
+import { useTranslations } from 'next-intl'
+import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 
 export default function PayeesPage() {
+    const t = useTranslations('admin.accounting.payees')
+    const tCommon = useTranslations('common')
     const { selectedCampus, loading: campusLoading } = useCampus() || {}
     const campusId = selectedCampus?.id
+    const { formatCurrency } = useSchoolSettings()
 
     const [searchQuery, setSearchQuery] = useState('')
 
-    // Fetch payees list
     const { data: payeesResponse, isLoading } = useSWR(
         campusId ? ['payees-list', campusId] : null,
         () => accountingApi.getPayees(campusId!),
@@ -28,23 +32,18 @@ export default function PayeesPage() {
 
     const payees: Payee[] = useMemo(() => payeesResponse?.data || [], [payeesResponse?.data])
 
-    // Filter payees by search
     const filteredPayees = useMemo(() => {
         if (!searchQuery) return payees
         const query = searchQuery.toLowerCase()
-        return payees.filter(p => 
+        return payees.filter(p =>
             p.name.toLowerCase().includes(query) ||
             p.email?.toLowerCase().includes(query) ||
             p.phone?.toLowerCase().includes(query)
         )
     }, [payees, searchQuery])
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
-    }
-
     const handleExportPayments = () => {
-        toast.info('ميزة التصدير ستتوفر قريبًا')
+        toast.info(t('export_coming_soon'))
     }
 
     if (campusLoading) {
@@ -60,7 +59,7 @@ export default function PayeesPage() {
             <div className="container mx-auto py-6">
                 <Card>
                     <CardContent className="pt-6">
-                        <p className="text-muted-foreground text-center">يرجى اختيار فرع لعرض المستفيدين.</p>
+                        <p className="text-muted-foreground text-center">{t('select_campus')}</p>
                     </CardContent>
                 </Card>
             </div>
@@ -69,31 +68,25 @@ export default function PayeesPage() {
 
     return (
         <div className="container mx-auto py-6 space-y-6">
-            {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <IconUsers className="h-8 w-8 text-[#3d8fb5]" />
-                    <h1 className="text-3xl font-bold tracking-tight">المستفيدون</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
                 </div>
-                <Button 
-                    variant="link" 
-                    onClick={handleExportPayments}
-                    className="text-[#3d8fb5]"
-                >
-                    تصدير المدفوعات
+                <Button variant="link" onClick={handleExportPayments} className="text-[#3d8fb5]">
+                    {t('export_payments')}
                 </Button>
             </div>
 
-            {/* Count and Search */}
             <Card>
                 <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
                         <p className="text-sm text-muted-foreground">
-                            تم العثور على {filteredPayees.length} مستفيد.
+                            {t('found_count', { count: filteredPayees.length })}
                         </p>
                         <div className="relative">
                             <Input
-                                placeholder="بحث"
+                                placeholder={tCommon('search')}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-64 pr-8"
@@ -104,7 +97,6 @@ export default function PayeesPage() {
                 </CardContent>
             </Card>
 
-            {/* Payees Table */}
             <Card>
                 <CardContent className="pt-6">
                     {isLoading ? (
@@ -115,18 +107,18 @@ export default function PayeesPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="text-[#3d8fb5]">الاسم</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">البريد الإلكتروني</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">رقم الهاتف</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">البنك</TableHead>
-                                    <TableHead className="text-[#3d8fb5] text-right">المدفوعات</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">{t('col_name')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">{t('col_email')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">{t('col_phone')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">{t('col_bank')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] text-right">{t('col_payments')}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {filteredPayees.map(payee => (
                                     <TableRow key={payee.id}>
                                         <TableCell>
-                                            <Link 
+                                            <Link
                                                 href={`/admin/accounting/payees/${payee.id}`}
                                                 className="text-[#3d8fb5] hover:underline"
                                             >
@@ -141,15 +133,14 @@ export default function PayeesPage() {
                                         </TableCell>
                                     </TableRow>
                                 ))}
-                                {/* Add a Payee Row */}
                                 <TableRow>
                                     <TableCell colSpan={5}>
-                                        <Link 
+                                        <Link
                                             href="/admin/accounting/payees/new"
                                             className="flex items-center gap-2 text-[#3d8fb5] hover:underline"
                                         >
                                             <IconPlus className="h-4 w-4" />
-                                            إضافة مستفيد
+                                            {t('add_payee')}
                                         </Link>
                                     </TableCell>
                                 </TableRow>

@@ -12,6 +12,7 @@ import { IconLoader, IconSearch, IconUsers, IconDownload } from '@tabler/icons-r
 import { Button } from '@/components/ui/button'
 import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
+import { useTranslations } from 'next-intl'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
@@ -73,6 +74,8 @@ async function fetchStudentsWithParents(schoolId: string) {
 type ViewMode = 'original' | 'expanded' | 'family'
 
 export default function StudentBalancesPage() {
+    const t = useTranslations('fees.balances')
+    const tp = useTranslations('fees.payments') // for view modes and common terms
     const { selectedCampus, loading: campusLoading } = useCampus() || {}
     const { currentAcademicYear } = useAcademic()
     const schoolId = selectedCampus?.id
@@ -147,7 +150,7 @@ export default function StudentBalancesPage() {
                 
                 balanceMap.set(fee.student_id, {
                     student_id: fee.student_id,
-                    student_name: `${firstName} ${lastName}`.trim() || 'غير معروف',
+                    student_name: `${firstName} ${lastName}`.trim() || t('familyUnknown'),
                     student_number: studentInfo?.student_number || '-',
                     grade_level: studentInfo?.grade_level || '-',
                     total_fees: Number(fee.final_amount || 0),
@@ -197,7 +200,7 @@ export default function StudentBalancesPage() {
             }
             
             const familyId = parentLinks[0].parent_id
-            const familyName = `${firstParent.profiles?.first_name || ''} ${firstParent.profiles?.last_name || ''}`.trim() || 'عائلة غير معروفة'
+            const familyName = `${firstParent.profiles?.first_name || ''} ${firstParent.profiles?.last_name || ''}`.trim() || t('familyUnknown')
             
             if (familyMap.has(familyId)) {
                 const family = familyMap.get(familyId)!
@@ -250,8 +253,8 @@ export default function StudentBalancesPage() {
         if (!studentBalances.length) return
         
         const headers = viewMode === 'expanded' 
-            ? ['Student', 'Student ID', 'Grade Level', 'Ethnicity', 'Gender', 'Address', 'City', 'State', 'Zip Code', 'Balance']
-            : ['Student', 'Student ID', 'Grade Level', 'Balance']
+            ? [t('th_student'), t('th_studentId'), t('gradeLevel'), t('th_ethnicity'), t('th_gender'), t('th_address'), t('th_city'), t('th_state'), t('th_zip'), t('th_balance')]
+            : [t('th_student'), t('th_studentId'), t('gradeLevel'), t('th_balance')]
         
         const rows = studentBalances.map(sb => {
             const baseRow = [sb.student_name, sb.student_number, sb.grade_level]
@@ -285,7 +288,7 @@ export default function StudentBalancesPage() {
             <div className="container mx-auto py-6">
                 <Card>
                     <CardContent className="pt-6">
-                        <p className="text-muted-foreground text-center">يرجى اختيار فرع لعرض أرصدة الطلاب.</p>
+                        <p className="text-muted-foreground text-center">{t('selectCampus')}</p>
                     </CardContent>
                 </Card>
             </div>
@@ -298,9 +301,9 @@ export default function StudentBalancesPage() {
         <div className="container mx-auto py-6 space-y-6">
             {/* Header */}
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">أرصدة الطلاب</h1>
+                <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
                 <p className="text-muted-foreground">
-                    عرض أرصدة الرسوم لكل طالب • {selectedCampus.name}
+                    {t('subtitle', { campusName: selectedCampus.name })}
                 </p>
             </div>
 
@@ -312,7 +315,7 @@ export default function StudentBalancesPage() {
                     onCheckedChange={(checked) => setCumulativeBalance(checked === true)}
                 />
                 <label htmlFor="cumulative-balance" className="text-sm cursor-pointer select-none">
-                    رصيد تراكمي عبر السنوات الدراسية
+                    {t('cumulativeBalance')}
                 </label>
             </div>
 
@@ -322,21 +325,21 @@ export default function StudentBalancesPage() {
                     onClick={() => setViewMode('original')}
                     className={`hover:underline ${viewMode === 'original' ? 'text-[#3d8fb5] font-semibold' : 'text-gray-600'}`}
                 >
-                    العرض الأصلي
+                    {t('viewOriginal')}
                 </button>
                 <span>|</span>
                 <button
                     onClick={() => setViewMode('expanded')}
                     className={`hover:underline ${viewMode === 'expanded' ? 'text-[#3d8fb5] font-semibold' : 'text-gray-600'}`}
                 >
-                    العرض الموسع
+                    {t('viewExpanded')}
                 </button>
                 <span>|</span>
                 <button
                     onClick={() => setViewMode('family')}
                     className={`hover:underline ${viewMode === 'family' ? 'text-[#3d8fb5] font-semibold' : 'text-gray-600'}`}
                 >
-                    تجميع حسب العائلة
+                    {t('groupByFamily')}
                 </button>
             </div>
 
@@ -347,8 +350,8 @@ export default function StudentBalancesPage() {
                         <div className="flex items-center gap-2">
                             <p className="text-sm text-muted-foreground">
                                 {viewMode === 'family' 
-                                    ? `تم العثور على ${familyGroups.length} عائلة (${studentBalances.length} طالب).`
-                                    : `تم العثور على ${studentBalances.length} طالب.`
+                                    ? t('foundFamilies', { count: familyGroups.length, studentCount: studentBalances.length })
+                                    : t('foundStudentsCount', { count: studentBalances.length })
                                 }
                             </p>
                             <Button 
@@ -363,7 +366,7 @@ export default function StudentBalancesPage() {
                         </div>
                         <div className="relative">
                             <Input
-                                placeholder="بحث"
+                                placeholder={tp('searchStudent')}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-64 pr-8"
@@ -382,7 +385,7 @@ export default function StudentBalancesPage() {
                             <IconLoader className="h-6 w-6 animate-spin text-muted-foreground" />
                         </div>
                     ) : studentBalances.length === 0 ? (
-                        <p className="text-muted-foreground text-center py-8">لم يتم العثور على طلاب.</p>
+                        <p className="text-muted-foreground text-center py-8">{t('noStudents')}</p>
                     ) : viewMode === 'family' ? (
                         // Family View
                         <div className="space-y-4">
@@ -391,19 +394,19 @@ export default function StudentBalancesPage() {
                                     <div className="bg-[#3d8fb5] text-white px-4 py-2 flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <IconUsers className="h-4 w-4" />
-                                            <span className="font-semibold">عائلة {family.familyName}</span>
-                                            <span className="text-sm opacity-80">({family.students.length} طالب)</span>
+                                            <span className="font-semibold">{t('familyPrefix', { name: family.familyName })}</span>
+                                            <span className="text-sm opacity-80">({family.students.length} {tp('student')})</span>
                                         </div>
-                                        <span className="font-semibold">رصيد العائلة: {formatCurrency(family.totalBalance)}</span>
+                                        <span className="font-semibold">{tp('balance')}: {formatCurrency(family.totalBalance)}</span>
                                     </div>
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
-                                                <TableHead className="text-[#3d8fb5]">الطالب</TableHead>
-                                                <TableHead className="text-[#3d8fb5]">رقم الطالب</TableHead>
-                                                <TableHead className="text-[#3d8fb5]">المرحلة الدراسية</TableHead>
-                                                <TableHead className="text-[#3d8fb5]">صلة القرابة</TableHead>
-                                                <TableHead className="text-right text-[#3d8fb5]">الرصيد</TableHead>
+                                                <TableHead className="text-[#3d8fb5]">{t('th_student')}</TableHead>
+                                                <TableHead className="text-[#3d8fb5]">{t('th_studentId')}</TableHead>
+                                                <TableHead className="text-[#3d8fb5]">{tp('gradeLevel')}</TableHead>
+                                                <TableHead className="text-[#3d8fb5]">{t('th_relationship')}</TableHead>
+                                                <TableHead className="text-end text-[#3d8fb5]">{t('th_balance')}</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -415,7 +418,7 @@ export default function StudentBalancesPage() {
                                                     <TableCell className="capitalize">
                                                         {sb.parent_student_links?.[0]?.relationship || '-'}
                                                     </TableCell>
-                                                    <TableCell className={`text-right ${getBalanceColor(sb)}`}>
+                                                    <TableCell className={`text-end ${getBalanceColor(sb)}`}>
                                                         {formatCurrency(sb.balance)}
                                                     </TableCell>
                                                 </TableRow>
@@ -426,31 +429,31 @@ export default function StudentBalancesPage() {
                             ))}
                             {/* Grand Total Row */}
                             <div className="bg-muted/50 px-4 py-3 rounded-lg flex justify-between items-center font-semibold">
-                                <span>الإجمالي العام ({studentBalances.length} طالب)</span>
+                                <span>{t('grandTotal', { count: studentBalances.length })}</span>
                                 <span>{formatCurrency(totalBalance)}</span>
                             </div>
                         </div>
                     ) : (
                         // Original or Expanded View
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="text-[#3d8fb5]">الطالب</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">رقم الطالب</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">المرحلة الدراسية</TableHead>
-                                    {viewMode === 'expanded' && (
-                                        <>
-                                            <TableHead className="text-[#3d8fb5]">العرق</TableHead>
-                                            <TableHead className="text-[#3d8fb5]">الجنس</TableHead>
-                                            <TableHead className="text-[#3d8fb5]">العنوان</TableHead>
-                                            <TableHead className="text-[#3d8fb5]">المدينة</TableHead>
-                                            <TableHead className="text-[#3d8fb5]">الولاية</TableHead>
-                                            <TableHead className="text-[#3d8fb5]">الرمز البريدي</TableHead>
-                                        </>
-                                    )}
-                                    <TableHead className="text-right text-[#3d8fb5]">الرصيد</TableHead>
-                                </TableRow>
-                            </TableHeader>
+                         <Table>
+                             <TableHeader>
+                                 <TableRow>
+                                     <TableHead className="text-[#3d8fb5]">{t('th_student')}</TableHead>
+                                     <TableHead className="text-[#3d8fb5]">{t('th_studentId')}</TableHead>
+                                     <TableHead className="text-[#3d8fb5]">{tp('gradeLevel')}</TableHead>
+                                     {viewMode === 'expanded' && (
+                                         <>
+                                             <TableHead className="text-[#3d8fb5]">{t('th_ethnicity')}</TableHead>
+                                             <TableHead className="text-[#3d8fb5]">{t('th_gender')}</TableHead>
+                                             <TableHead className="text-[#3d8fb5]">{t('th_address')}</TableHead>
+                                             <TableHead className="text-[#3d8fb5]">{t('th_city')}</TableHead>
+                                             <TableHead className="text-[#3d8fb5]">{t('th_state')}</TableHead>
+                                             <TableHead className="text-[#3d8fb5]">{t('th_zip')}</TableHead>
+                                         </>
+                                     )}
+                                     <TableHead className="text-end text-[#3d8fb5]">{t('th_balance')}</TableHead>
+                                 </TableRow>
+                             </TableHeader>
                             <TableBody>
                                 {studentBalances.map(sb => (
                                     <TableRow key={sb.student_id}>
@@ -467,15 +470,15 @@ export default function StudentBalancesPage() {
                                                 <TableCell>{sb.zip_code || '-'}</TableCell>
                                             </>
                                         )}
-                                        <TableCell className={`text-right ${getBalanceColor(sb)}`}>
+                                        <TableCell className={`text-end ${getBalanceColor(sb)}`}>
                                             {formatCurrency(sb.balance)}
                                         </TableCell>
                                     </TableRow>
                                 ))}
                                 {/* Total Row */}
                                 <TableRow className="font-semibold bg-muted/50">
-                                    <TableCell colSpan={viewMode === 'expanded' ? 9 : 3}>الإجمالي</TableCell>
-                                    <TableCell className="text-right">
+                                    <TableCell colSpan={viewMode === 'expanded' ? 9 : 3}>{tp('totalFees')}</TableCell>
+                                    <TableCell className="text-end">
                                         {formatCurrency(totalBalance)}
                                     </TableCell>
                                 </TableRow>

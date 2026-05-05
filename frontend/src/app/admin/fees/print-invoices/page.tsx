@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useCampus } from '@/context/CampusContext'
 import { useSchoolSettings } from '@/context/SchoolSettingsContext'
+import { useSchoolSettings as useSchoolSettingsHook } from '@/hooks/useSchoolSettings'
 import { getPdfHeaderFooter, type PdfHeaderFooterSettings } from '@/lib/api/school-settings'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -15,6 +16,7 @@ import { IconLoader, IconSearch, IconFileText, IconFilter, IconRefresh, IconDown
 import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { openPdfDownload } from '@/lib/utils/printLayout'
+import { useTranslations } from 'next-intl'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
@@ -96,9 +98,12 @@ async function fetchFees(schoolId: string, params: { gradeId?: string; sectionId
 }
 
 export default function PrintInvoicesPage() {
+    const t = useTranslations('fees.printInvoices')
+    const tf = useTranslations('fees.balances')
+    const tp = useTranslations('fees.payments')
     const { selectedCampus, loading: campusLoading } = useCampus() || {}
     const { isPluginActive } = useSchoolSettings()
-    const { formatCurrency: formatDynamicCurrency } = useSchoolSettings()
+    const { formatCurrency: formatDynamicCurrency } = useSchoolSettingsHook()
     const schoolId = selectedCampus?.id
 
     const [pdfSettings, setPdfSettings] = useState<PdfHeaderFooterSettings | null>(null)
@@ -122,27 +127,22 @@ export default function PrintInvoicesPage() {
     
     const printRef = useRef<HTMLDivElement>(null)
 
-    // Fetch grades
     const { data: grades } = useSWR<GradeLevel[]>(
         schoolId ? ['grades', schoolId] : null,
         () => fetchGrades(schoolId!)
     )
 
-    // Fetch sections when grade changes
     const { data: sections } = useSWR<Section[]>(
         gradeId && gradeId !== 'all' ? `sections-invoices-${gradeId}` : null,
         () => fetchSections(gradeId)
     )
 
-    // Fetch fees
     const { data: fees, isLoading } = useSWR<StudentFee[]>(
         schoolId ? ['fees-invoices', schoolId, gradeId, sectionId] : null,
         () => fetchFees(schoolId!, { gradeId, sectionId })
     )
 
-    // Filter fees by search, date range, and balance range
     const filteredFees = fees?.filter(fee => {
-        // Search filter
         if (searchQuery) {
             const student = fee.students
             const name = `${student.profiles.first_name} ${student.profiles.last_name}`.toLowerCase()
@@ -151,17 +151,14 @@ export default function PrintInvoicesPage() {
                 return false
             }
         }
-        // Date range filter (due_date)
         if (dateFrom && fee.due_date < dateFrom) return false
         if (dateTo && fee.due_date > dateTo) return false
-        // Balance range filter
         const balanceValue = fee.balance || 0
         if (minBalance && balanceValue < parseFloat(minBalance)) return false
         if (maxBalance && balanceValue > parseFloat(maxBalance)) return false
         return true
     }) || []
 
-    // Reset filters
     const handleResetFilters = () => {
         setGradeId('all')
         setSectionId('all')
@@ -174,24 +171,19 @@ export default function PrintInvoicesPage() {
         setSelectAll(false)
     }
 
-    // Format currency
-    // Use the dynamic formatter from the hook
     const formatCurrency = (amount: number) => formatDynamicCurrency(amount)
 
-    // Format date
     const formatDate = (dateStr: string) => {
         return new Date(dateStr).toLocaleDateString('en-US', {
             month: 'short', day: 'numeric', year: 'numeric'
         })
     }
 
-    // Format student name
     const formatStudentName = (student: StudentFee['students']) => {
         const { first_name, last_name } = student.profiles
         return `${first_name} ${last_name}`
     }
 
-    // Handle select all
     const handleSelectAll = (checked: boolean) => {
         setSelectAll(checked)
         if (checked) {
@@ -201,7 +193,6 @@ export default function PrintInvoicesPage() {
         }
     }
 
-    // Handle individual select
     const handleSelect = (feeId: string, checked: boolean) => {
         const newSelected = new Set(selectedFees)
         if (checked) {
@@ -213,10 +204,8 @@ export default function PrintInvoicesPage() {
         setSelectAll(newSelected.size === filteredFees.length)
     }
 
-    // Get selected fees for printing
     const feesToPrint = filteredFees.filter(f => selectedFees.has(f.id))
 
-    // Download PDF handler using openPdfDownload
     const handlePrint = useCallback(async () => {
         const printContent = printRef.current
         if (!printContent) return
@@ -248,7 +237,7 @@ export default function PrintInvoicesPage() {
 
         await openPdfDownload(
             {
-                title: 'Fee Invoices',
+                title: t('title'),
                 bodyHtml,
                 bodyStyles,
                 school,
@@ -257,7 +246,7 @@ export default function PrintInvoicesPage() {
             },
             'fee-invoices',
         )
-    }, [pdfSettings, selectedCampus, isPluginActive])
+    }, [pdfSettings, selectedCampus, isPluginActive, t])
 
     if (campusLoading) {
         return (
@@ -272,7 +261,7 @@ export default function PrintInvoicesPage() {
             <div className="container mx-auto py-6">
                 <Card>
                     <CardContent className="pt-6">
-                        <p className="text-muted-foreground text-center">يرجى اختيار فرع.</p>
+                        <p className="text-muted-foreground text-center">{t('selectCampus')}</p>
                     </CardContent>
                 </Card>
             </div>
@@ -281,38 +270,35 @@ export default function PrintInvoicesPage() {
 
     return (
         <div className="container mx-auto py-6 space-y-6">
-            {/* Header */}
             <div className="flex items-center gap-3">
                 <IconFileText className="h-8 w-8 text-[#3d8fb5]" />
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">طباعة الفواتير</h1>
-                    <p className="text-muted-foreground">طباعة قسائم الرسوم للطلاب</p>
+                    <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+                    <p className="text-muted-foreground">{t('subtitle')}</p>
                 </div>
             </div>
 
-            {/* Filters */}
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="text-lg flex items-center gap-2">
                         <IconFilter className="h-5 w-5" />
-                        تصفية الفواتير
+                        {t('filterInvoices')}
                     </CardTitle>
                     <Button variant="ghost" size="sm" onClick={handleResetFilters}>
                         <IconRefresh className="h-4 w-4 mr-1" />
-                        إعادة تعيين
+                        {t('reset')}
                     </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    {/* Row 1: Grade, Section, Search */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="space-y-2">
-                            <Label>المرحلة الدراسية</Label>
+                            <Label>{tf('th_gradeLevel') || 'Grade Level'}</Label>
                             <Select value={gradeId} onValueChange={(v) => { setGradeId(v); setSectionId('all') }}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="كل المراحل" />
+                                    <SelectValue placeholder={t('allGrades')} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">كل المراحل</SelectItem>
+                                    <SelectItem value="all">{t('allGrades')}</SelectItem>
                                     {grades?.map(g => (
                                         <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
                                     ))}
@@ -320,13 +306,13 @@ export default function PrintInvoicesPage() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label>الفصل</Label>
+                            <Label>{tf('section') || 'Section'}</Label>
                             <Select value={sectionId} onValueChange={setSectionId} disabled={gradeId === 'all'}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder={gradeId === 'all' ? 'اختر المرحلة أولاً' : 'كل الفصول'} />
+                                    <SelectValue placeholder={gradeId === 'all' ? t('selectGradeFirst') : t('allSections')} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">كل الفصول</SelectItem>
+                                    <SelectItem value="all">{t('allSections')}</SelectItem>
                                     {sections?.map(s => (
                                         <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                                     ))}
@@ -334,10 +320,10 @@ export default function PrintInvoicesPage() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label>بحث عن طالب</Label>
+                            <Label>{t('searchStudent') || 'Search Student'}</Label>
                             <div className="relative">
                                 <Input
-                                    placeholder="الاسم أو الرقم..."
+                                    placeholder={t('searchPlaceholder')}
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="pr-8"
@@ -352,14 +338,13 @@ export default function PrintInvoicesPage() {
                                 className="bg-[#3d8fb5] hover:bg-[#357a9e] w-full"
                             >
                                 <IconDownload className="h-4 w-4 mr-2" />
-                                تنزيل PDF ({selectedFees.size})
+                                {t('downloadPdf', { count: selectedFees.size })}
                             </Button>
                         </div>
                     </div>
-                    {/* Row 2: Date Range, Balance Range */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="space-y-2">
-                            <Label>تاريخ الاستحقاق من</Label>
+                            <Label>{t('dueDateFrom')}</Label>
                             <Input
                                 type="date"
                                 value={dateFrom}
@@ -367,7 +352,7 @@ export default function PrintInvoicesPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>تاريخ الاستحقاق إلى</Label>
+                            <Label>{t('dueDateTo')}</Label>
                             <Input
                                 type="date"
                                 value={dateTo}
@@ -375,7 +360,7 @@ export default function PrintInvoicesPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>أقل رصيد</Label>
+                            <Label>{t('minBalance')}</Label>
                             <Input
                                 type="number"
                                 placeholder="0"
@@ -384,7 +369,7 @@ export default function PrintInvoicesPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>أعلى رصيد</Label>
+                            <Label>{t('maxBalance')}</Label>
                             <Input
                                 type="number"
                                 placeholder="Any"
@@ -396,7 +381,6 @@ export default function PrintInvoicesPage() {
                 </CardContent>
             </Card>
 
-            {/* Fees Table */}
             <Card>
                 <CardContent className="p-0">
                     {isLoading ? (
@@ -404,7 +388,7 @@ export default function PrintInvoicesPage() {
                             <IconLoader className="h-6 w-6 animate-spin text-muted-foreground" />
                         </div>
                     ) : filteredFees.length === 0 ? (
-                        <p className="text-muted-foreground text-center py-8">لم يتم العثور على رسوم.</p>
+                        <p className="text-muted-foreground text-center py-8">{t('noFees')}</p>
                     ) : (
                         <Table>
                             <TableHeader>
@@ -415,14 +399,14 @@ export default function PrintInvoicesPage() {
                                             onCheckedChange={handleSelectAll}
                                         />
                                     </TableHead>
-                                    <TableHead className="text-[#3d8fb5]">STUDENT</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">ID</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">GRADE</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">FEE MONTH</TableHead>
-                                    <TableHead className="text-[#3d8fb5] text-right">AMOUNT</TableHead>
-                                    <TableHead className="text-[#3d8fb5] text-right">BALANCE</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">DUE DATE</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">STATUS</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">{tf('th_student') || 'STUDENT'}</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">{tf('th_studentId') || 'ID'}</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">{tf('gradeLevel') || 'GRADE'}</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">{t('th_feeMonth')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] text-end">{tp('th_amount') || 'AMOUNT'}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] text-end">{t('th_balance') || 'BALANCE'}</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">{t('th_dueDate')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">{tp('th_status') || 'STATUS'}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -443,8 +427,8 @@ export default function PrintInvoicesPage() {
                                         <TableCell>{fee.students.student_number || '-'}</TableCell>
                                         <TableCell>{fee.students.grade_levels?.name || '-'}</TableCell>
                                         <TableCell>{fee.fee_month || '-'}</TableCell>
-                                        <TableCell className="text-right">{formatCurrency(fee.final_amount)}</TableCell>
-                                        <TableCell className="text-right font-medium text-red-600">
+                                        <TableCell className="text-end">{formatCurrency(fee.final_amount)}</TableCell>
+                                        <TableCell className="text-end font-medium text-red-600">
                                             {formatCurrency(fee.balance)}
                                         </TableCell>
                                         <TableCell>{fee.due_date ? formatDate(fee.due_date) : '-'}</TableCell>
@@ -466,37 +450,33 @@ export default function PrintInvoicesPage() {
                 </CardContent>
             </Card>
 
-            {/* Print Template (Hidden) */}
             <div className="hidden">
                 <div ref={printRef}>
                     {feesToPrint.map((fee) => (
                         <div key={fee.id} className="invoice">
-                            {/* Invoice Header */}
                             <div className="header">
                                 <h1>{selectedCampus?.name || 'School Name'}</h1>
-                                <p>FEE INVOICE / VOUCHER</p>
+                                <p>{t('invoiceVoucher')}</p>
                             </div>
 
-                            {/* Student Info */}
                             <div className="info-grid">
                                 <div>
-                                    <p><strong>Student Name:</strong> {formatStudentName(fee.students)}</p>
-                                    <p><strong>Student ID:</strong> {fee.students.student_number || '-'}</p>
-                                    <p><strong>Grade:</strong> {fee.students.grade_levels?.name || '-'}</p>
+                                    <p><strong>{t('studentName')}:</strong> {formatStudentName(fee.students)}</p>
+                                    <p><strong>{t('studentId')}:</strong> {fee.students.student_number || '-'}</p>
+                                    <p><strong>{t('grade')}:</strong> {fee.students.grade_levels?.name || '-'}</p>
                                 </div>
                                 <div className="right">
-                                    <p><strong>Invoice #:</strong> INV-{fee.id.substring(0, 8).toUpperCase()}</p>
-                                    <p><strong>Fee Month:</strong> {fee.fee_month || '-'}</p>
-                                    <p><strong>Due Date:</strong> {fee.due_date ? formatDate(fee.due_date) : '-'}</p>
+                                    <p><strong>{t('invoiceNum')}:</strong> INV-{fee.id.substring(0, 8).toUpperCase()}</p>
+                                    <p><strong>{t('feeMonth')}:</strong> {fee.fee_month || '-'}</p>
+                                    <p><strong>{t('dueDate')}:</strong> {fee.due_date ? formatDate(fee.due_date) : '-'}</p>
                                 </div>
                             </div>
 
-                            {/* Fee Details */}
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>Description</th>
-                                        <th className="text-right">Amount</th>
+                                        <th>{t('description')}</th>
+                                        <th className="text-right">{tp('th_amount') || 'Amount'}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -507,31 +487,30 @@ export default function PrintInvoicesPage() {
                                         </tr>
                                     )) || (
                                         <tr>
-                                            <td>Tuition Fee</td>
+                                            <td>{t('tuitionFee')}</td>
                                             <td className="text-right">{formatCurrency(fee.final_amount)}</td>
                                         </tr>
                                     )}
                                 </tbody>
                                 <tfoot>
                                     <tr className="font-bold">
-                                        <td>Total Amount</td>
+                                        <td>{t('totalAmount')}</td>
                                         <td className="text-right">{formatCurrency(fee.final_amount)}</td>
                                     </tr>
                                     <tr>
-                                        <td>Amount Paid</td>
+                                        <td>{t('amountPaid')}</td>
                                         <td className="text-right">{formatCurrency(fee.amount_paid)}</td>
                                     </tr>
                                     <tr className="font-bold text-red">
-                                        <td>Balance Due</td>
+                                        <td>{t('balanceDue')}</td>
                                         <td className="text-right">{formatCurrency(fee.balance)}</td>
                                     </tr>
                                 </tfoot>
                             </table>
 
-                            {/* Footer */}
                             <div className="footer">
-                                <p>Please pay by the due date to avoid late fees.</p>
-                                <p>Generated on: {new Date().toLocaleDateString()}</p>
+                                <p>{t('pleasePayBy')}</p>
+                                <p>{t('generatedOn')}: {new Date().toLocaleDateString()}</p>
                             </div>
                         </div>
                     ))}

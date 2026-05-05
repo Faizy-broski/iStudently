@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useMemo } from 'react'
 import { useStudentPaymentHistory } from '@/hooks/useStudentDashboard'
@@ -6,18 +6,20 @@ import { DollarSign, Loader2, AlertCircle, Calendar } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { format, parseISO, isSameDay } from 'date-fns'
-
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
-]
+import { format, parseISO } from 'date-fns'
+import { useTranslations } from 'next-intl'
 
 export default function DailyTransactionsPage() {
   const { payments, isLoading, error } = useStudentPaymentHistory()
+  const t = useTranslations('student_billing.daily_transactions')
   const now = new Date()
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth())
   const [selectedYear, setSelectedYear] = useState(now.getFullYear())
+
+  // Localised month names via Intl
+  const MONTHS = Array.from({ length: 12 }, (_, i) =>
+    new Date(2000, i, 1).toLocaleDateString(undefined, { month: 'long' })
+  )
 
   const filtered = useMemo(() => {
     return payments.filter(p => {
@@ -27,7 +29,6 @@ export default function DailyTransactionsPage() {
     })
   }, [payments, selectedMonth, selectedYear])
 
-  // Group by day
   const byDay = useMemo(() => {
     const map = new Map<string, typeof filtered>()
     for (const p of filtered) {
@@ -48,7 +49,7 @@ export default function DailyTransactionsPage() {
           <CardContent className="p-6 flex items-center gap-4">
             <AlertCircle className="h-8 w-8 text-red-600 shrink-0" />
             <div>
-              <h3 className="font-semibold text-red-900 dark:text-red-200">Error loading transactions</h3>
+              <h3 className="font-semibold text-red-900 dark:text-red-200">{t('error_loading')}</h3>
               <p className="text-red-700 dark:text-red-300 text-sm">{error.message}</p>
             </div>
           </CardContent>
@@ -63,8 +64,8 @@ export default function DailyTransactionsPage() {
     <div className="p-6 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Daily Transactions</h1>
-          <p className="text-muted-foreground mt-1">Payment transactions grouped by day</p>
+          <h1 className="text-3xl font-bold">{t('title')}</h1>
+          <p className="text-muted-foreground mt-1">{t('subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={selectedMonth.toString()} onValueChange={v => setSelectedMonth(parseInt(v))}>
@@ -86,9 +87,9 @@ export default function DailyTransactionsPage() {
         <CardContent className="p-6 flex items-center gap-4">
           <DollarSign className="h-10 w-10 text-green-500 shrink-0" />
           <div>
-            <p className="text-sm text-muted-foreground">{MONTHS[selectedMonth]} {selectedYear} — Total</p>
+            <p className="text-sm text-muted-foreground">{t('monthly_total', { month: MONTHS[selectedMonth], year: selectedYear })}</p>
             <p className="text-3xl font-bold text-green-600">${monthTotal.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground">{filtered.length} transaction(s)</p>
+            <p className="text-xs text-muted-foreground">{t('transactions_count', { count: filtered.length })}</p>
           </div>
         </CardContent>
       </Card>
@@ -96,14 +97,14 @@ export default function DailyTransactionsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" /> Transactions
+            <Calendar className="h-5 w-5" /> {t('transactions_card_title')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {byDay.length === 0 ? (
             <div className="text-center py-12">
               <DollarSign className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-              <p className="text-muted-foreground">No transactions in {MONTHS[selectedMonth]} {selectedYear}</p>
+              <p className="text-muted-foreground">{t('no_transactions', { month: MONTHS[selectedMonth], year: selectedYear })}</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -116,8 +117,8 @@ export default function DailyTransactionsPage() {
                     {items.map(p => (
                       <div key={p.id} className="flex items-center justify-between p-3 rounded-lg border bg-card text-sm">
                         <div className="flex items-center gap-3">
-                          <Badge variant="outline">{p.payment_method || '—'}</Badge>
-                          <span className="text-muted-foreground">{p.payment_reference || 'No reference'}</span>
+                          <Badge variant="outline">{p.payment_method || 'â€”'}</Badge>
+                          <span className="text-muted-foreground">{p.payment_reference || t('no_reference')}</span>
                         </div>
                         <span className="font-semibold text-green-600">${p.amount.toFixed(2)}</span>
                       </div>

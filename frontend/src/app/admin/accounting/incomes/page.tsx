@@ -1,17 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useCampus } from '@/context/CampusContext'
 import { useAcademic } from '@/context/AcademicContext'
 import * as accountingApi from '@/lib/api/accounting'
 import { getSchoolSettings, PAYMENT_METHOD_OPTIONS, type PaymentMethodOption } from '@/lib/api/school-settings'
+import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
-import { IconPlus, IconTrash, IconLoader, IconDeviceFloppy } from '@tabler/icons-react'
+import { IconPlus, IconTrash, IconLoader, IconDeviceFloppy, IconPaperclip, IconExternalLink } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import useSWR from 'swr'
 import { format, parse } from 'date-fns'
@@ -94,6 +95,41 @@ export default function IncomesPage() {
     const [rows, setRows] = useState<IncomeRow[]>([])
     const [saving, setSaving] = useState(false)
     const [deletingId, setDeletingId] = useState<string | null>(null)
+    const [uploadingIndex, setUploadingIndex] = useState<number | null>(null)
+    const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({})
+
+    const handleFileUpload = async (index: number, file: File) => {
+        if (!campusId) return
+        setUploadingIndex(index)
+        try {
+            const supabase = createClient()
+            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+            const filePath = `incomes/${campusId}/${Date.now()}_${safeName}`
+            const { error: uploadError } = await supabase.storage
+                .from('accounting-attachments')
+                .upload(filePath, file, { upsert: true })
+            if (uploadError) throw new Error(uploadError.message)
+            const { data: { publicUrl } } = supabase.storage
+                .from('accounting-attachments')
+                .getPublicUrl(filePath)
+            setRows(prev => {
+                const newRows = [...prev]
+                newRows[index] = { ...newRows[index], file_attached: publicUrl }
+                return newRows
+            })
+            // If it's an existing record, save immediately
+            const row = rows[index]
+            if (row.id) {
+                await accountingApi.updateIncome(row.id, { campus_id: campusId, file_attached: publicUrl })
+                mutate()
+            }
+            toast.success('File attached')
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Upload failed')
+        } finally {
+            setUploadingIndex(null)
+        }
+    }
 
     // Fetch incomes
     const { data: incomes, mutate, isLoading } = useSWR(
@@ -212,7 +248,8 @@ export default function IncomesPage() {
                     amount: parseFloat(row.amount) || 0,
                     income_date: row.income_date,
                     comments: row.comments.trim() || undefined,
-                    payment_method: row.payment_method
+                    payment_method: row.payment_method,
+                    file_attached: row.file_attached || undefined
                 }))
             }
 
@@ -221,13 +258,14 @@ export default function IncomesPage() {
                 const original = incomes?.find(i => i.id === row.id)
                 if (original) {
                     // Check if anything changed
-                    const changed = 
+                    const changed =
                         row.title !== original.title ||
                         row.category_id !== (original.category_id || '') ||
                         row.amount !== String(original.amount) ||
                         row.income_date !== original.income_date ||
                         row.comments !== (original.comments || '') ||
-                        row.payment_method !== ((original.payment_method as PaymentMethodOption) || 'cash')
+                        row.payment_method !== ((original.payment_method as PaymentMethodOption) || 'cash') ||
+                        row.file_attached !== (original.file_attached || undefined)
 
                     if (changed) {
                         promises.push(accountingApi.updateIncome(row.id!, {
@@ -237,7 +275,8 @@ export default function IncomesPage() {
                             amount: parseFloat(row.amount) || 0,
                             income_date: row.income_date,
                             comments: row.comments.trim() || undefined,
-                            payment_method: row.payment_method
+                            payment_method: row.payment_method,
+                            file_attached: row.file_attached || undefined
                         }))
                     }
                 }
@@ -539,9 +578,51 @@ export default function IncomesPage() {
                                                     />
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Button variant="ghost" size="icon">
-                                                        <IconPlus className="h-4 w-4" />
-                                                    </Button>
+                                                    <input
+                                                        type="file"
+                                                        className="hidden"
+                                                        ref={el => { fileInputRefs.current[index] = el }}
+                                                        onChange={e => {
+                                                            const file = e.target.files?.[0]
+                                                            if (file) handleFileUpload(index, file)
+                                                            e.target.value = ''
+                                                        }}
+                                                    />
+                                                    {row.file_attached ? (
+                                                        <div className="flex items-center gap-1">
+                                                            <a href={row.file_attached} target="_blank" rel="noopener noreferrer">
+                                                                <Button variant="ghost" size="icon" type="button">
+                                                                    <IconPaperclip className="h-4 w-4 text-blue-500" />
+                                                                </Button>
+                                                            </a>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                type="button"
+                                                                onClick={() => fileInputRefs.current[index]?.click()}
+                                                            >
+                                                                {uploadingIndex === index ? (
+                                                                    <IconLoader className="h-4 w-4 animate-spin" />
+                                                                ) : (
+                                                                    <IconExternalLink className="h-3 w-3 text-muted-foreground" />
+                                                                )}
+                                                            </Button>
+                                                        </div>
+                                                    ) : (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            type="button"
+                                                            onClick={() => fileInputRefs.current[index]?.click()}
+                                                            disabled={uploadingIndex === index}
+                                                        >
+                                                            {uploadingIndex === index ? (
+                                                                <IconLoader className="h-4 w-4 animate-spin" />
+                                                            ) : (
+                                                                <IconPlus className="h-4 w-4" />
+                                                            )}
+                                                        </Button>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell>
                                                     {!row.isNew && row.id && (

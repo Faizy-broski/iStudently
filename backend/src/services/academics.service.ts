@@ -342,17 +342,21 @@ export const deleteSubject = async (id: string, schoolId: string): Promise<void>
 // ACADEMIC YEAR SERVICE (Global - used across all modules)
 // ============================================================================
 
-export const getAcademicYears = async (schoolId: string): Promise<ApiResponse<AcademicYear[]>> => {
+export const getAcademicYears = async (schoolId: string, includeInactive: boolean = false): Promise<ApiResponse<AcademicYear[]>> => {
   try {
     // Get effective school ID (parent if campus, otherwise the school itself)
     const effectiveSchoolId = await getEffectiveSchoolId(schoolId)
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('academic_years')
       .select('*')
       .eq('school_id', effectiveSchoolId)
-      .eq('is_active', true)
-      .order('start_date', { ascending: false })
+      
+    if (!includeInactive) {
+      query = query.eq('is_active', true)
+    }
+
+    const { data, error } = await query.order('start_date', { ascending: false })
 
     if (error) throw error
 

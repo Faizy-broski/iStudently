@@ -392,7 +392,7 @@ export default function FeesPage() {
                                         <TableHead>{tCommon('balance')}</TableHead>
                                         <TableHead>{t('table.due_date')}</TableHead>
                                         <TableHead>{tCommon('status')}</TableHead>
-                                        <TableHead className="text-right">{tCommon('actions')}</TableHead>
+                                        <TableHead className="text-end">{tCommon('actions')}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -419,7 +419,7 @@ export default function FeesPage() {
                                                     <TableCell className={balance.color}>{formatCurrency(parseFloat(balance.value))}</TableCell>
                                                     <TableCell>{new Date(fee.due_date).toLocaleDateString()}</TableCell>
                                                     <TableCell>{getStatusBadge(fee.status)}</TableCell>
-                                                    <TableCell className="text-right">
+                                                    <TableCell className="text-end">
                                                         <div className="flex gap-1 justify-end">
                                                             <Button
                                                                 variant="ghost"

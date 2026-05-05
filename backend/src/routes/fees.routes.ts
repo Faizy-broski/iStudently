@@ -47,6 +47,7 @@ router.post('/payments', (req, res) => feesController.recordPayment(req, res))
 
 // Student Payments Module
 router.get('/payments/students', (req, res) => feesController.getStudentsForPayments(req, res))
+router.get('/payments/all-with-students', (req, res) => feesController.getAllPaymentsWithStudents(req, res))
 router.get('/payments/student/:studentId', (req, res) => feesController.getStudentPayments(req, res))
 router.post('/payments/record', (req, res) => feesController.recordDirectPayment(req, res))
 router.put('/payments/:paymentId', (req, res) => feesController.updatePayment(req, res))

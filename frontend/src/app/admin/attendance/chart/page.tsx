@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { IconLoader, IconDownload } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import useSWR from 'swr'
+import { useTranslations } from 'next-intl'
 
 // ── RosarioSIS-style attendance code badge (P=green, A=red, H=yellow)
 function AttendanceCodeBadge({ value }: { value: number | null }) {
@@ -53,6 +54,8 @@ const MONTHS = [
 type ReportMode = 'chart' | 'absence'
 
 export default function AttendanceChartPage() {
+  const t = useTranslations('attendance')
+  const t_common = useTranslations('common')
   const { profile } = useAuth()
   const campusCtx = useCampus()
   const campusId = campusCtx?.selectedCampus?.id
@@ -97,7 +100,7 @@ export default function AttendanceChartPage() {
 
   const handleGo = useCallback(async () => {
     if (!schoolId) return
-    if (startDateStr > endDateStr) { toast.error('Start date must be before end date'); return }
+    if (startDateStr > endDateStr) { toast.error(t('print_startBeforeEnd')); return }
     setLoading(true)
     setGridData(null)
     setSummaryData(null)
@@ -105,16 +108,16 @@ export default function AttendanceChartPage() {
       if (report === 'absence') {
         const res = await attendanceApi.getAttendanceSummary(schoolId, startDateStr, endDateStr, campusId)
         if (res.success && res.data) setSummaryData(res.data)
-        else toast.error(res.error || 'Failed to load absence summary')
+        else toast.error(res.error || t('loadAttendanceFailed'))
       } else {
         const res = await attendanceApi.getDailySummaryGrid(
           schoolId, startDateStr, endDateStr, campusId, periodId
         )
         if (res.success && res.data) setGridData(res.data)
-        else toast.error(res.error || 'Failed to load attendance chart')
+        else toast.error(res.error || t('loadAttendanceFailed'))
       }
     } catch (e: any) {
-      toast.error(e.message || 'Error loading data')
+      toast.error(e.message || t_common('error_occurred'))
     } finally {
       setLoading(false)
     }
@@ -130,7 +133,7 @@ export default function AttendanceChartPage() {
       a.click()
       URL.revokeObjectURL(url)
     } catch (e: any) {
-      toast.error(e.message || 'Export failed')
+      toast.error(e.message || t_common('error_occurred'))
     }
   }
 
@@ -159,7 +162,7 @@ export default function AttendanceChartPage() {
     <div className="space-y-4">
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle>Attendance Chart</CardTitle>
+          <CardTitle>{t('chart')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
 
@@ -175,15 +178,15 @@ export default function AttendanceChartPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="chart">Attendance Chart</SelectItem>
-                <SelectItem value="absence">Absence Summary</SelectItem>
+                <SelectItem value="chart">{t('chart')}</SelectItem>
+                <SelectItem value="absence">{t('absenceSummary')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* ── Timeframe + Period filter */}
           <div className="flex flex-wrap items-end gap-2">
-            <span className="text-sm font-medium self-center">Timeframe:</span>
+            <span className="text-sm font-medium self-center">{t('timeframe')}</span>
 
             {/* Start date selects */}
             <div className="flex items-center gap-1">
@@ -204,7 +207,7 @@ export default function AttendanceChartPage() {
               </Select>
             </div>
 
-            <span className="text-sm self-center">to</span>
+            <span className="text-sm self-center">{t_common('to')}</span>
 
             {/* End date selects */}
             <div className="flex items-center gap-1">
@@ -226,7 +229,7 @@ export default function AttendanceChartPage() {
             </div>
 
             <Button onClick={handleGo} disabled={loading || !schoolId} className="min-w-[60px]">
-              {loading ? <IconLoader className="h-4 w-4 animate-spin" /> : 'GO'}
+              {loading ? <IconLoader className="h-4 w-4 animate-spin" /> : t('common.go' as any)}
             </Button>
 
             {/* Period filter — right side (chart mode only) */}
@@ -234,10 +237,10 @@ export default function AttendanceChartPage() {
               <div className="ml-auto">
                 <Select value={periodId} onValueChange={setPeriodId}>
                   <SelectTrigger className="w-[160px]">
-                    <SelectValue placeholder="Daily" />
+                    <SelectValue placeholder={t('daily')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="daily">{t('daily')}</SelectItem>
                     {activePeriods.map(p => (
                       <SelectItem key={p.id} value={p.id}>{p.period_name}</SelectItem>
                     ))}
@@ -251,7 +254,7 @@ export default function AttendanceChartPage() {
           {report === 'chart' && codes.length > 0 && (
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 py-2 border-b">
               <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Attendance Codes
+                {t('codes_title')}
               </span>
               {codes.map(c => (
                 <span key={c.id} className="flex items-center gap-1.5 text-sm">
@@ -276,18 +279,18 @@ export default function AttendanceChartPage() {
           {studentCount !== null && (
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span>{studentCount} student{studentCount !== 1 ? 's' : ''} found.</span>
+                <span>{t_common('found_students', { count: studentCount })}</span>
                 <button
                   onClick={handleExport}
                   className="hover:text-foreground transition-colors"
-                  title="Download report"
+                  title={t_common('download')}
                 >
                   <IconDownload className="h-4 w-4" />
                 </button>
               </div>
               <div className="relative">
                 <Input
-                  placeholder="Search"
+                  placeholder={t_common('search')}
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   className="h-8 w-[180px] pr-2"
@@ -309,9 +312,9 @@ export default function AttendanceChartPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/40">
-                    <TableHead className="font-bold text-primary min-w-[180px]">STUDENT</TableHead>
-                    <TableHead className="font-bold text-primary min-w-[110px]">STUDENT ID</TableHead>
-                    <TableHead className="font-bold text-primary min-w-[110px]">GRADE LEVEL</TableHead>
+                    <TableHead className="font-bold text-primary min-w-[180px]">{t('th_student').toUpperCase()}</TableHead>
+                    <TableHead className="font-bold text-primary min-w-[110px]">{t('th_studentId').toUpperCase()}</TableHead>
+                    <TableHead className="font-bold text-primary min-w-[110px]">{t('th_gradeLevel').toUpperCase()}</TableHead>
                     {gridData.school_dates.map(d => (
                       <TableHead key={d} className="text-center font-bold text-[11px] min-w-[52px] px-1 whitespace-nowrap">
                         {formatDateCol(d)}
@@ -323,7 +326,7 @@ export default function AttendanceChartPage() {
                   {filtered.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={3 + gridData.school_dates.length} className="text-center py-10 text-muted-foreground">
-                        No students found.
+                        {t('noStudentsFound')}
                       </TableCell>
                     </TableRow>
                   ) : (filtered as DailySummaryGridStudent[]).map(s => (
@@ -349,13 +352,13 @@ export default function AttendanceChartPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/40">
-                    <TableHead className="font-bold text-primary min-w-[180px]">STUDENT</TableHead>
-                    <TableHead className="font-bold text-primary min-w-[110px]">STUDENT ID</TableHead>
-                    <TableHead className="font-bold text-primary min-w-[110px]">GRADE LEVEL</TableHead>
-                    <TableHead className="font-bold text-right">STATE ABS</TableHead>
-                    <TableHead className="font-bold text-right">ABSENT</TableHead>
-                    <TableHead className="font-bold text-right">TARDY</TableHead>
-                    <TableHead className="font-bold text-right">EXCUSED ABSENCE</TableHead>
+                    <TableHead className="font-bold text-primary min-w-[180px]">{t('th_student').toUpperCase()}</TableHead>
+                    <TableHead className="font-bold text-primary min-w-[110px]">{t('th_studentId').toUpperCase()}</TableHead>
+                    <TableHead className="font-bold text-primary min-w-[110px]">{t('th_gradeLevel').toUpperCase()}</TableHead>
+                    <TableHead className="font-bold text-right">{t('ada_th_stateAbs').toUpperCase()}</TableHead>
+                    <TableHead className="font-bold text-right">{t('statusAbsent').toUpperCase()}</TableHead>
+                    <TableHead className="font-bold text-right">{t('ada_th_tardy').toUpperCase()}</TableHead>
+                    <TableHead className="font-bold text-right">{t('ada_th_excusedAbsence').toUpperCase()}</TableHead>
                     {extraCols
                       .filter(k => !['Late', 'Tardy', 'Excused Absence', 'Excused', 'Present', 'Absent'].includes(k))
                       .map(k => (
@@ -367,7 +370,7 @@ export default function AttendanceChartPage() {
                   {filtered.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7 + extraCols.length} className="text-center py-10 text-muted-foreground">
-                        No students found.
+                        {t('noStudentsFound')}
                       </TableCell>
                     </TableRow>
                   ) : (filtered as AttendanceSummaryRow[]).map(s => {
@@ -400,7 +403,7 @@ export default function AttendanceChartPage() {
           {/* ── Empty state */}
           {!loading && !gridData && !summaryData && (
             <p className="text-sm text-muted-foreground py-10 text-center">
-              Select a timeframe and click GO to view attendance data.
+              {t('ada_selectRange')}
             </p>
           )}
 

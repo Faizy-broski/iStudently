@@ -56,7 +56,7 @@ export default function AcademicYearsPage() {
   const loadAcademicYears = async () => {
     try {
       setLoading(true)
-      const data = await academicsApi.getAcademicYears()
+      const data = await academicsApi.getAcademicYears(true) // include inactive years
       setAcademicYears(data)
     } catch (error: any) {
       toast.error(t('fetch_error'))

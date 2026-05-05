@@ -467,17 +467,18 @@ export const getStaffList = async (
   campusId?: string
 ): Promise<ApiResponse<{ id: string; name: string; role: string }[]>> => {
   try {
-    let q = supabase
+    // Staff profiles store school_id = campus_id (the campus they belong to).
+    // When campusId is provided, query profiles by that campus directly;
+    // otherwise fall back to the parent school_id.
+    const effectiveId = campusId || schoolId
+
+    const { data, error } = await supabase
       .from('profiles')
       .select('id, first_name, last_name, role')
-      .eq('school_id', schoolId)
-      .in('role', ['admin', 'teacher', 'staff'])
-      .eq('is_active', true)
+      .eq('school_id', effectiveId)
+      .in('role', ['admin', 'teacher', 'staff', 'librarian'])
       .order('first_name', { ascending: true })
 
-    if (campusId) q = q.eq('campus_id', campusId)
-
-    const { data, error } = await q
     if (error) return { data: null, error: error.message }
 
     const staff = (data || []).map((p: any) => ({
@@ -502,15 +503,15 @@ export const getStaffCoursePeriods = async (
   campusId?: string
 ): Promise<ApiResponse<{ id: string; title: string; short_name: string }[]>> => {
   try {
-    let q = supabase
+    // course_periods.school_id stores the campus ID when campus is selected
+    const effectiveId = campusId || schoolId
+
+    const { data, error } = await supabase
       .from('course_periods')
       .select('id, title, short_name')
-      .eq('school_id', schoolId)
+      .eq('school_id', effectiveId)
       .eq('teacher_id', staffId)
 
-    if (campusId) q = q.eq('campus_id', campusId)
-
-    const { data, error } = await q
     if (error) return { data: null, error: error.message }
     return { data: data || [], error: null }
   } catch (err: any) {

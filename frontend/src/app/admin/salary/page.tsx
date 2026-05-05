@@ -15,6 +15,7 @@ import { IconCash, IconCheck, IconClock, IconSettings, IconUsers, IconArrowUp, I
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
+import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 
 export default function SalaryPage() {
     const t = useTranslations('admin.salary.page')
@@ -41,6 +42,7 @@ export default function SalaryPage() {
         campus_id: campusId
     })
     const { data: pendingAdvances, mutate: mutateAdvances } = usePendingAdvances(schoolId, campusId)
+    const { formatCurrency } = useSchoolSettings()
 
     const handleRefresh = async () => {
         setRefreshing(true)
@@ -57,10 +59,6 @@ export default function SalaryPage() {
         } finally {
             setRefreshing(false)
         }
-    }
-
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
     }
 
     const getStatusBadge = (status: string) => {
@@ -262,10 +260,10 @@ export default function SalaryPage() {
                                         salaryData?.data?.map((record) => (
                                             <TableRow key={record.id}>
                                                 <TableCell className="font-medium">
-                                                    {record.staff?.profiles?.first_name} {record.staff?.profiles?.last_name}
+                                                    {(record.staff as any)?.profile?.first_name} {(record.staff as any)?.profile?.last_name}
                                                 </TableCell>
                                                 <TableCell>{(record.staff as any)?.employee_number || tCommon('na')}</TableCell>
-                                                <TableCell>{record.staff?.designation || tCommon('na')}</TableCell>
+                                                <TableCell>{(record.staff as any)?.title || tCommon('na')}</TableCell>
                                                 <TableCell>{formatCurrency(record.base_salary)}</TableCell>
                                                 <TableCell className="text-green-600">
                                                     +{formatCurrency(record.total_allowances + record.attendance_bonus)}

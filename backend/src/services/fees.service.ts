@@ -663,6 +663,81 @@ class FeesService {
         }
     }
 
+    async getAllPaymentsWithStudents(
+        schoolId: string,
+        gradeId?: string,
+        sectionId?: string
+    ): Promise<any[]> {
+        // Build students query
+        let studentsQuery = supabase
+            .from('students')
+            .select(`
+                id,
+                student_number,
+                profiles(first_name, last_name),
+                grade_levels(id, name),
+                sections(name)
+            `)
+            .eq('school_id', schoolId)
+            .order('student_number')
+
+        if (gradeId && gradeId !== 'all') {
+            studentsQuery = studentsQuery.eq('grade_level', gradeId) as any
+        }
+        if (sectionId && sectionId !== 'all') {
+            studentsQuery = studentsQuery.eq('section_id', sectionId) as any
+        }
+
+        const { data: students } = await studentsQuery
+        if (!students || students.length === 0) return []
+
+        const studentIds = students.map((s: any) => s.id)
+
+        const { data: fees } = await supabase
+            .from('student_fees')
+            .select('id, student_id')
+            .eq('school_id', schoolId)
+            .in('student_id', studentIds)
+
+        if (!fees || fees.length === 0) {
+            return students.map((s: any) => ({ ...s, payments: [] }))
+        }
+
+        const feeIds = fees.map((f: any) => f.id)
+        const feeToStudent = new Map(fees.map((f: any) => [f.id, f.student_id]))
+
+        const { data: payments } = await supabase
+            .from('fee_payments')
+            .select(`
+                id,
+                student_fee_id,
+                amount,
+                payment_date,
+                payment_method,
+                comment,
+                is_lunch_payment,
+                receipt_number,
+                created_at,
+                created_by_profile:created_by(first_name, last_name)
+            `)
+            .in('student_fee_id', feeIds)
+            .order('payment_date', { ascending: false })
+
+        const studentPayments = new Map<string, any[]>()
+        payments?.forEach((p: any) => {
+            const studentId = feeToStudent.get(p.student_fee_id)
+            if (studentId) {
+                if (!studentPayments.has(studentId)) studentPayments.set(studentId, [])
+                studentPayments.get(studentId)!.push(p)
+            }
+        })
+
+        return students.map((s: any) => ({
+            ...s,
+            payments: studentPayments.get(s.id) || []
+        }))
+    }
+
     async getStudentPayments(
         studentId: string,
         schoolId: string
@@ -833,14 +908,12 @@ class FeesService {
             is_lunch_payment?: boolean
             file_url?: string
             receipt_number?: string
+            payment_method?: string
         }
     ): Promise<any> {
         const { data, error } = await supabase
             .from('fee_payments')
-            .update({
-                ...updates,
-                receipt_number: (updates as any).receipt_number
-            })
+            .update({ ...updates })
             .eq('id', paymentId)
             .eq('school_id', schoolId)
             .select(`

@@ -831,6 +831,28 @@ export class FeesController {
     }
 
     /**
+     * Get all payments with student info (for print receipts)
+     * GET /api/fees/payments/all-with-students
+     */
+    async getAllPaymentsWithStudents(req: AuthRequest, res: Response) {
+        try {
+            const schoolId = (req.query.school_id as string) || req.profile?.school_id
+            const gradeId = req.query.grade_id as string | undefined
+            const sectionId = req.query.section_id as string | undefined
+
+            if (!schoolId) {
+                return res.status(403).json({ success: false, error: 'Not authenticated' })
+            }
+
+            const data = await feesService.getAllPaymentsWithStudents(schoolId, gradeId, sectionId)
+            return res.json({ success: true, data })
+        } catch (error: any) {
+            console.error('Error fetching all payments with students:', error)
+            return res.status(500).json({ success: false, error: error.message })
+        }
+    }
+
+    /**
      * Get payments for a specific student
      * GET /api/fees/payments/student/:studentId
      */
@@ -948,7 +970,7 @@ export class FeesController {
                 return res.status(400).json({ success: false, error: 'paymentId is required' })
             }
 
-            const { amount, payment_date, comment, is_lunch_payment, file_url, receipt_number } = req.body
+            const { amount, payment_date, comment, is_lunch_payment, file_url, receipt_number, payment_method } = req.body
 
             const payment = await feesService.updatePayment(paymentId, schoolId, {
                 amount: amount !== undefined ? parseFloat(amount) : undefined,
@@ -956,7 +978,8 @@ export class FeesController {
                 comment,
                 is_lunch_payment,
                 file_url,
-                receipt_number
+                receipt_number,
+                payment_method,
             })
 
             return res.json({ success: true, data: payment })

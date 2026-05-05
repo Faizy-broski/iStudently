@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useCampus } from '@/context/CampusContext'
 import { useSchoolSettings } from '@/context/SchoolSettingsContext'
+import { useSchoolSettings as useSchoolSettingsHook } from '@/hooks/useSchoolSettings'
 import { getPdfHeaderFooter, type PdfHeaderFooterSettings } from '@/lib/api/school-settings'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -15,6 +16,7 @@ import { IconLoader, IconSearch, IconReceipt, IconFilter, IconRefresh, IconDownl
 import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { openPdfDownload } from '@/lib/utils/printLayout'
+import { useTranslations } from 'next-intl'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
@@ -87,86 +89,27 @@ async function fetchSections(gradeId: string): Promise<Section[]> {
 
 async function fetchStudentsWithPayments(schoolId: string, gradeId?: string, sectionId?: string): Promise<StudentWithPayments[]> {
     const supabase = createClient()
-    
-    // First get students
-    let studentsQuery = supabase
-        .from('students')
-        .select(`
-            id,
-            student_number,
-            profiles!inner(first_name, last_name),
-            grade_levels(id, name),
-            sections(name)
-        `)
-        .eq('school_id', schoolId)
-        .order('student_number')
-    
-    if (gradeId && gradeId !== 'all') {
-        studentsQuery = studentsQuery.eq('grade_level', gradeId)
-    }
-    if (sectionId && sectionId !== 'all') {
-        studentsQuery = studentsQuery.eq('section', sectionId)
-    }
+    const { data: { session } } = await supabase.auth.getSession()
 
-    const { data: students, error: studentsError } = await studentsQuery
+    const params = new URLSearchParams({ school_id: schoolId })
+    if (gradeId && gradeId !== 'all') params.set('grade_id', gradeId)
+    if (sectionId && sectionId !== 'all') params.set('section_id', sectionId)
 
-    if (studentsError || !students) return []
-
-    // Get student fees for these students
-    const studentIds = students.map(s => s.id)
-    
-    const { data: fees } = await supabase
-        .from('student_fees')
-        .select('id, student_id')
-        .eq('school_id', schoolId)
-        .in('student_id', studentIds)
-    
-    if (!fees || fees.length === 0) {
-        return students.map(s => ({ ...s, payments: [] })) as unknown as StudentWithPayments[]
-    }
-
-    const feeIds = fees.map(f => f.id)
-    const feeToStudent = new Map(fees.map(f => [f.id, f.student_id]))
-
-    // Get payments for these fees
-    const { data: payments } = await supabase
-        .from('fee_payments')
-        .select(`
-            id,
-            student_fee_id,
-            amount,
-            payment_date,
-            payment_method,
-            comment,
-            is_lunch_payment,
-            receipt_number,
-            created_at,
-            created_by_profile:created_by(first_name, last_name)
-        `)
-        .in('student_fee_id', feeIds)
-        .order('payment_date', { ascending: false })
-
-    // Map payments to students
-    const studentPayments = new Map<string, Payment[]>()
-    payments?.forEach(p => {
-        const studentId = feeToStudent.get(p.student_fee_id)
-        if (studentId) {
-            if (!studentPayments.has(studentId)) {
-                studentPayments.set(studentId, [])
-            }
-            studentPayments.get(studentId)!.push(p as unknown as Payment)
-        }
+    const res = await fetch(`${API_BASE}/api/fees/payments/all-with-students?${params}`, {
+        headers: { 'Authorization': `Bearer ${session?.access_token}` }
     })
-
-    return students.map(s => ({
-        ...s,
-        payments: studentPayments.get(s.id) || []
-    })) as unknown as StudentWithPayments[]
+    const json = await res.json()
+    if (!json.success) return []
+    return json.data as StudentWithPayments[]
 }
 
 export default function PrintReceiptsPage() {
+    const t = useTranslations('fees.printReceipts')
+    const tf = useTranslations('fees.balances')
+    const tp = useTranslations('fees.payments')
     const { selectedCampus, loading: campusLoading } = useCampus() || {}
     const { isPluginActive } = useSchoolSettings()
+    const { formatCurrency } = useSchoolSettingsHook()
     const schoolId = selectedCampus?.id
 
     const [pdfSettings, setPdfSettings] = useState<PdfHeaderFooterSettings | null>(null)
@@ -252,14 +195,6 @@ export default function PrintReceiptsPage() {
         setSelectAll(false)
     }
 
-    // Format currency
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD'
-        }).format(amount)
-    }
-
     // Format date
     const formatDate = (dateStr: string) => {
         return new Date(dateStr).toLocaleDateString('en-US', {
@@ -333,7 +268,7 @@ export default function PrintReceiptsPage() {
 
         await openPdfDownload(
             {
-                title: 'Payment Receipts',
+                title: t('title'),
                 bodyHtml,
                 bodyStyles,
                 school,
@@ -357,7 +292,7 @@ export default function PrintReceiptsPage() {
             <div className="container mx-auto py-6">
                 <Card>
                     <CardContent className="pt-6">
-                        <p className="text-muted-foreground text-center">يرجى اختيار فرع.</p>
+                        <p className="text-muted-foreground text-center">{t('selectCampus')}</p>
                     </CardContent>
                 </Card>
             </div>
@@ -370,8 +305,8 @@ export default function PrintReceiptsPage() {
             <div className="flex items-center gap-3">
                 <IconReceipt className="h-8 w-8 text-[#3d8fb5]" />
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">طباعة الإيصالات</h1>
-                    <p className="text-muted-foreground">طباعة إيصالات المدفوعات للطلاب</p>
+                    <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+                    <p className="text-muted-foreground">{t('subtitle')}</p>
                 </div>
             </div>
 
@@ -380,24 +315,24 @@ export default function PrintReceiptsPage() {
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="text-lg flex items-center gap-2">
                         <IconFilter className="h-5 w-5" />
-                        تصفية المدفوعات
+                        {t('filterPayments')}
                     </CardTitle>
                     <Button variant="ghost" size="sm" onClick={handleResetFilters}>
                         <IconRefresh className="h-4 w-4 mr-1" />
-                        إعادة تعيين
+                        {t('reset')}
                     </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     {/* Row 1: Grade, Section, Search */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="space-y-2">
-                            <Label>المرحلة الدراسية</Label>
+                            <Label>{tf('th_gradeLevel') || 'Grade Level'}</Label>
                             <Select value={gradeId} onValueChange={(v) => { setGradeId(v); setSectionId('all') }}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="كل المراحل" />
+                                    <SelectValue placeholder={t('allGrades')} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">كل المراحل</SelectItem>
+                                    <SelectItem value="all">{t('allGrades')}</SelectItem>
                                     {grades?.map(g => (
                                         <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
                                     ))}
@@ -405,13 +340,13 @@ export default function PrintReceiptsPage() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label>الفصل</Label>
+                            <Label>{tf('section') || 'Section'}</Label>
                             <Select value={sectionId} onValueChange={setSectionId} disabled={gradeId === 'all'}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder={gradeId === 'all' ? 'اختر المرحلة أولاً' : 'كل الفصول'} />
+                                    <SelectValue placeholder={gradeId === 'all' ? t('selectGradeFirst') : t('allSections')} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">كل الفصول</SelectItem>
+                                    <SelectItem value="all">{t('allSections')}</SelectItem>
                                     {sections?.map(s => (
                                         <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                                     ))}
@@ -419,10 +354,10 @@ export default function PrintReceiptsPage() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label>بحث عن طالب</Label>
+                            <Label>{t('searchStudent') || 'Search Student'}</Label>
                             <div className="relative">
                                 <Input
-                                    placeholder="الاسم أو الرقم..."
+                                    placeholder={t('searchPlaceholder')}
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="pr-8"
@@ -437,14 +372,14 @@ export default function PrintReceiptsPage() {
                                 className="bg-[#3d8fb5] hover:bg-[#357a9e] w-full"
                             >
                                 <IconDownload className="h-4 w-4 mr-2" />
-                                تنزيل PDF ({selectedPayments.size})
+                                {t('downloadPdf', { count: selectedPayments.size })}
                             </Button>
                         </div>
                     </div>
                     {/* Row 2: Date Range, Amount Range */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="space-y-2">
-                            <Label>تاريخ الدفع من</Label>
+                            <Label>{t('paymentDateFrom')}</Label>
                             <Input
                                 type="date"
                                 value={dateFrom}
@@ -452,7 +387,7 @@ export default function PrintReceiptsPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>تاريخ الدفع إلى</Label>
+                            <Label>{t('paymentDateTo')}</Label>
                             <Input
                                 type="date"
                                 value={dateTo}
@@ -460,7 +395,7 @@ export default function PrintReceiptsPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>أقل مبلغ</Label>
+                            <Label>{t('minAmount')}</Label>
                             <Input
                                 type="number"
                                 placeholder="0"
@@ -469,7 +404,7 @@ export default function PrintReceiptsPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>أعلى مبلغ</Label>
+                            <Label>{t('maxAmount')}</Label>
                             <Input
                                 type="number"
                                 placeholder="Any"
@@ -489,7 +424,7 @@ export default function PrintReceiptsPage() {
                             <IconLoader className="h-6 w-6 animate-spin text-muted-foreground" />
                         </div>
                     ) : filteredPayments.length === 0 ? (
-                        <p className="text-muted-foreground text-center py-8">لم يتم العثور على مدفوعات.</p>
+                        <p className="text-muted-foreground text-center py-8">{t('noPayments')}</p>
                     ) : (
                         <Table>
                             <TableHeader>
@@ -500,14 +435,14 @@ export default function PrintReceiptsPage() {
                                             onCheckedChange={handleSelectAll}
                                         />
                                     </TableHead>
-                                    <TableHead className="text-[#3d8fb5]">STUDENT</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">{t('student') || 'STUDENT'}</TableHead>
                                     <TableHead className="text-[#3d8fb5]">ID</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">GRADE</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">PAYMENT DATE</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">RECEIPT #</TableHead>
-                                    <TableHead className="text-[#3d8fb5] text-right">AMOUNT</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">METHOD</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">COMMENT</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">{t('th_gradeLevel') || 'GRADE'}</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">{t('th_paymentDate')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">{t('th_receipt')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] text-right">{t('amountPaid')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">{t('th_method')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">{t('th_comment')}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -529,10 +464,10 @@ export default function PrintReceiptsPage() {
                                         <TableCell>{payment.student.grade_levels?.name || '-'}</TableCell>
                                         <TableCell>{formatDate(payment.payment_date)}</TableCell>
                                         <TableCell>{payment.receipt_number || '-'}</TableCell>
-                                        <TableCell className="text-right font-medium text-green-600">
+                                        <TableCell className="text-end font-medium text-green-600">
                                             {formatCurrency(payment.amount)}
                                         </TableCell>
-                                        <TableCell>{payment.payment_method || 'نقداً'}</TableCell>
+                                        <TableCell>{payment.payment_method || t('cash') || 'Cash'}</TableCell>
                                         <TableCell className="max-w-50 truncate">{payment.comment || '-'}</TableCell>
                                     </TableRow>
                                 ))}
@@ -561,15 +496,15 @@ export default function PrintReceiptsPage() {
                                     <p><strong>Grade:</strong> {payment.student.grade_levels?.name || '-'}</p>
                                 </div>
                                 <div className="right">
-                                    <p><strong>Receipt #:</strong> {payment.receipt_number || `RCP-${payment.id.substring(0, 8).toUpperCase()}`}</p>
-                                    <p><strong>Payment Date:</strong> {formatDate(payment.payment_date)}</p>
-                                    <p><strong>Method:</strong> {payment.payment_method || 'Cash'}</p>
+                                    <p><strong>{t('receiptNo')}:</strong> {payment.receipt_number || `RCP-${payment.id.substring(0, 8).toUpperCase()}`}</p>
+                                    <p><strong>{t('th_paymentDate')}:</strong> {formatDate(payment.payment_date)}</p>
+                                    <p><strong>{t('th_method')}:</strong> {payment.payment_method || 'Cash'}</p>
                                 </div>
                             </div>
 
                             {/* Payment Amount */}
                             <div className="amount-box">
-                                <p className="label">Amount Paid</p>
+                                <p className="label">{t('amountPaid')}</p>
                                 <p className="amount">{formatCurrency(payment.amount)}</p>
                             </div>
 
@@ -598,11 +533,11 @@ export default function PrintReceiptsPage() {
                             {/* Footer */}
                             <div className="footer">
                                 <div className="date">
-                                    <p>Generated on: {new Date().toLocaleDateString()}</p>
+                                    <p>{t('generatedOn')}: {new Date().toLocaleDateString()}</p>
                                 </div>
                                 <div className="signature">
                                     <div className="signature-line">
-                                        <p>Authorized Signature</p>
+                                        <p>{t('authorizedSignature')}</p>
                                     </div>
                                 </div>
                             </div>

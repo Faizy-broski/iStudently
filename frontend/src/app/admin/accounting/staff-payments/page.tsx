@@ -19,20 +19,21 @@ import useSWR from 'swr'
 import { format, parse } from 'date-fns'
 import { getAllStaff, Staff } from '@/lib/api/staff'
 import { getSchoolSettings, PAYMENT_METHOD_OPTIONS, type PaymentMethodOption } from '@/lib/api/school-settings'
+import { useTranslations } from 'next-intl'
 
 const MONTHS = [
-    { value: '01', label: 'يناير' },
-    { value: '02', label: 'فبراير' },
-    { value: '03', label: 'مارس' },
-    { value: '04', label: 'أبريل' },
-    { value: '05', label: 'مايو' },
-    { value: '06', label: 'يونيو' },
-    { value: '07', label: 'يوليو' },
-    { value: '08', label: 'أغسطس' },
-    { value: '09', label: 'سبتمبر' },
-    { value: '10', label: 'أكتوبر' },
-    { value: '11', label: 'نوفمبر' },
-    { value: '12', label: 'ديسمبر' },
+    { value: '01', monthKey: '0' },
+    { value: '02', monthKey: '1' },
+    { value: '03', monthKey: '2' },
+    { value: '04', monthKey: '3' },
+    { value: '05', monthKey: '4' },
+    { value: '06', monthKey: '5' },
+    { value: '07', monthKey: '6' },
+    { value: '08', monthKey: '7' },
+    { value: '09', monthKey: '8' },
+    { value: '10', monthKey: '9' },
+    { value: '11', monthKey: '10' },
+    { value: '12', monthKey: '11' },
 ]
 
 const getDaysInMonth = (month: string, year: string) => {
@@ -62,18 +63,18 @@ interface StaffPaymentRow {
 }
 
 export default function StaffPaymentsPage() {
+    const t = useTranslations('admin.accounting.staff_payments')
+    const tCommon = useTranslations('common')
     const { selectedCampus, loading: campusLoading } = useCampus() || {}
     const { currentAcademicYear } = useAcademic()
     const campusId = selectedCampus?.id
     const schoolId = selectedCampus?.parent_school_id || campusId
     const academicYear = currentAcademicYear?.name || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`
 
-    // Selected staff state
     const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null)
     const [searchQuery, setSearchQuery] = useState('')
     const [activeTab, setActiveTab] = useState<'payments' | 'salaries'>('salaries')
 
-    // Campus-specific default payment method from school settings
     const [defaultPaymentMethod, setDefaultPaymentMethod] = useState<PaymentMethodOption>('cash')
     useEffect(() => {
         getSchoolSettings(campusId ?? null).then((res) => {
@@ -83,7 +84,6 @@ export default function StaffPaymentsPage() {
         }).catch(() => {})
     }, [campusId])
 
-    // Payment rows state for the selected staff
     const [rows, setRows] = useState<StaffPaymentRow[]>([])
     const [saving, setSaving] = useState(false)
     const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -91,31 +91,22 @@ export default function StaffPaymentsPage() {
 
     const today = new Date()
 
-    // Extended type for staff with role and salary from backend
     type StaffWithExtras = Staff & { role?: string; salary?: number }
 
-    // Fetch all employees (staff, teachers, admins) for payments
     const { data: staffResponse, isLoading: staffLoading } = useSWR(
         campusId ? ['staff-list-employees', campusId] : null,
-        async () => {
-            // Use 'employees' role to include teachers, staff, admin, etc.
-            const result = await getAllStaff(1, 1000, undefined, 'employees', campusId!)
-            return result
-        },
+        async () => getAllStaff(1, 1000, undefined, 'employees', campusId!),
         { revalidateOnFocus: false }
     )
-    // Backend returns { success, data: { data: Staff[], total, ... } }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const staffList: StaffWithExtras[] = Array.isArray((staffResponse as any)?.data?.data) ? (staffResponse as any).data.data : []
 
-    // Fetch payments for selected staff
     const { data: staffPayments, mutate, isLoading: paymentsLoading } = useSWR(
         campusId && selectedStaff ? ['accounting-staff-payments', campusId, selectedStaff.id, academicYear] : null,
         () => accountingApi.getStaffPaymentsByStaff(campusId!, selectedStaff!.id, academicYear),
         { revalidateOnFocus: false }
     )
 
-    // Fetch salary records for selected staff from the main Salary module
     const { data: salaryRecordsData, mutate: mutateSalaries, isLoading: salariesLoading } = useSWR(
         schoolId && campusId && selectedStaff ? ['salary-records', campusId, selectedStaff.id] : null,
         () => salaryApi.getSalaryRecords(schoolId!, { campus_id: campusId!, staff_id: selectedStaff!.id, limit: 100 }),
@@ -123,7 +114,6 @@ export default function StaffPaymentsPage() {
     )
     const salaryRecords = salaryRecordsData?.data || []
 
-    // Filter staff by search
     const filteredStaff = staffList.filter((staff: StaffWithExtras) => {
         const fullName = `${staff.profile?.first_name || ''} ${staff.profile?.last_name || ''}`.toLowerCase()
         return fullName.includes(searchQuery.toLowerCase())
@@ -137,7 +127,6 @@ export default function StaffPaymentsPage() {
         isNew: true
     })
 
-    // Initialize rows when staff payments change
     useEffect(() => {
         if (selectedStaff && staffPayments) {
             const existingRows: StaffPaymentRow[] = staffPayments.map(payment => ({
@@ -166,15 +155,9 @@ export default function StaffPaymentsPage() {
         setRows(prev => {
             const currentDate = prev[index].payment_date ? parse(prev[index].payment_date, 'yyyy-MM-dd', new Date()) : new Date()
             const newDate = new Date(currentDate)
-
-            if (field === 'month') {
-                newDate.setMonth(parseInt(value) - 1)
-            } else if (field === 'day') {
-                newDate.setDate(parseInt(value))
-            } else if (field === 'year') {
-                newDate.setFullYear(parseInt(value))
-            }
-
+            if (field === 'month') newDate.setMonth(parseInt(value) - 1)
+            else if (field === 'day') newDate.setDate(parseInt(value))
+            else if (field === 'year') newDate.setFullYear(parseInt(value))
             const newRows = [...prev]
             newRows[index] = { ...newRows[index], payment_date: format(newDate, 'yyyy-MM-dd') }
             return newRows
@@ -183,15 +166,12 @@ export default function StaffPaymentsPage() {
 
     const handleSave = async () => {
         if (!campusId || !selectedStaff) return
-
         setSaving(true)
         try {
             const newRows = rows.filter(r => r.isNew && r.amount.trim())
             const existingRows = rows.filter(r => !r.isNew && r.id)
-
             const promises: Promise<unknown>[] = []
 
-            // Create new payments
             for (const row of newRows) {
                 promises.push(accountingApi.createStaffPayment({
                     campus_id: campusId,
@@ -205,7 +185,6 @@ export default function StaffPaymentsPage() {
                 }))
             }
 
-            // Update existing payments
             for (const row of existingRows) {
                 const original = staffPayments?.find(p => p.id === row.id)
                 if (original) {
@@ -230,13 +209,13 @@ export default function StaffPaymentsPage() {
 
             if (promises.length > 0) {
                 await Promise.all(promises)
-            toast.success(`تم حفظ ${promises.length} من المدفوعات`)
+                toast.success(t('toast.saved_count', { count: promises.length }))
                 mutate()
             } else {
-                toast.info('لا توجد تغييرات للحفظ')
+                toast.info(t('toast.no_changes'))
             }
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'حدث خطأ')
+            toast.error(error instanceof Error ? error.message : tCommon('error'))
         } finally {
             setSaving(false)
         }
@@ -247,28 +226,26 @@ export default function StaffPaymentsPage() {
         setDeletingId(id)
         try {
             await accountingApi.deleteStaffPayment(id, campusId)
-            toast.success('تم حذف الدفعة')
+            toast.success(t('toast.deleted'))
             mutate()
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'حدث خطأ')
+            toast.error(error instanceof Error ? error.message : tCommon('error'))
         } finally {
             setDeletingId(null)
         }
     }
 
-    const handleAddRow = () => {
-        setRows(prev => [...prev, createEmptyRow()])
-    }
+    const handleAddRow = () => setRows(prev => [...prev, createEmptyRow()])
 
     const handleApproveSalary = async (salaryRecordId: string) => {
         if (!schoolId) return
         setMarkingPaidId(salaryRecordId)
         try {
             await salaryApi.approveSalary(salaryRecordId, schoolId)
-            toast.success('تم اعتماد الراتب')
+            toast.success(t('toast.salary_approved'))
             mutateSalaries()
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'فشل اعتماد الراتب')
+            toast.error(error instanceof Error ? error.message : t('toast.salary_approve_failed'))
         } finally {
             setMarkingPaidId(null)
         }
@@ -279,10 +256,10 @@ export default function StaffPaymentsPage() {
         setMarkingPaidId(salaryRecordId)
         try {
             await salaryApi.markSalaryPaid(salaryRecordId, { school_id: schoolId, payment_method: defaultPaymentMethod })
-            toast.success('تم تعليم الراتب كمدفوع')
+            toast.success(t('toast.salary_marked_paid'))
             mutateSalaries()
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'فشل تعليم الراتب كمدفوع')
+            toast.error(error instanceof Error ? error.message : t('toast.salary_mark_paid_failed'))
         } finally {
             setMarkingPaidId(null)
         }
@@ -298,44 +275,38 @@ export default function StaffPaymentsPage() {
         }
     }
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD'
-        }).format(amount)
-    }
-
-    const getMonthName = (month: number) => {
-        return new Date(2000, month - 1).toLocaleString('default', { month: 'long' })
-    }
+    const getMonthName = (month: number) => new Date(2000, month - 1).toLocaleString('default', { month: 'long' })
 
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'pending':
-                return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200"><IconClock className="h-3 w-3 mr-1" />قيد الانتظار</Badge>
+                return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200"><IconClock className="h-3 w-3 mr-1" />{tCommon('pending')}</Badge>
             case 'approved':
-                return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200"><IconCheck className="h-3 w-3 mr-1" />معتمد</Badge>
+                return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200"><IconCheck className="h-3 w-3 mr-1" />{tCommon('approved')}</Badge>
             case 'paid':
-                return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200"><IconCircleCheck className="h-3 w-3 mr-1" />مدفوع</Badge>
+                return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200"><IconCircleCheck className="h-3 w-3 mr-1" />{tCommon('paid')}</Badge>
             default:
                 return <Badge variant="outline">{status}</Badge>
         }
     }
 
-    // Calculate totals for selected staff
+    const getRoleLabel = (role?: string) => {
+        if (!role) return t('roles.staff')
+        const key = role as 'teacher' | 'admin' | 'librarian' | 'counselor' | 'staff'
+        return t(`roles.${key}`, { defaultMessage: role })
+    }
+
     const totalPayments = rows
         .filter(r => !r.isNew || r.amount.trim())
         .reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0)
-    
-    // Calculate salary totals from salary_records
+
     const totalSalaryDue = salaryRecords
         .filter(r => r.status !== 'paid')
         .reduce((sum, r) => sum + Number(r.net_salary || 0), 0)
     const totalSalaryPaid = salaryRecords
         .filter(r => r.status === 'paid')
         .reduce((sum, r) => sum + Number(r.net_salary || 0), 0)
-    
-    // Legacy balance from staff.salary (for ad-hoc payments)
+
     const legacySalary = (selectedStaff as StaffWithExtras)?.salary || 0
     const balance = legacySalary - totalPayments
 
@@ -352,41 +323,37 @@ export default function StaffPaymentsPage() {
             <div className="container mx-auto py-6">
                 <Card>
                     <CardContent className="pt-6">
-                        <p className="text-muted-foreground text-center">يرجى اختيار فرع لإدارة مدفوعات الموظفين.</p>
+                        <p className="text-muted-foreground text-center">{t('select_campus')}</p>
                     </CardContent>
                 </Card>
             </div>
         )
     }
 
-    // Staff Selection View
     if (!selectedStaff) {
         return (
             <div className="container mx-auto py-6 space-y-6">
-                {/* Header */}
                 <div className="flex items-center gap-3">
                     <IconUsers className="h-8 w-8 text-[#3d8fb5]" />
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight">مدفوعات الموظفين</h1>
-                        <p className="text-muted-foreground">اختر موظفًا لإدارة مدفوعاته</p>
+                        <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+                        <p className="text-muted-foreground">{t('subtitle_select')}</p>
                     </div>
                 </div>
 
-                {/* Expanded View Link */}
                 <div className="text-[#3d8fb5] cursor-pointer hover:underline text-sm">
-                    عرض موسع
+                    {tCommon('view_expanded')}
                 </div>
 
-                {/* Staff List */}
                 <Card>
                     <CardContent className="pt-6">
                         <div className="flex items-center justify-between mb-4">
                             <p className="text-sm text-muted-foreground">
-                                تم العثور على {filteredStaff.length} مستخدم.
+                                {t('found_count', { count: filteredStaff.length })}
                             </p>
                             <div className="relative">
                                 <Input
-                                    placeholder="بحث"
+                                    placeholder={tCommon('search')}
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="w-48 pr-8"
@@ -403,9 +370,9 @@ export default function StaffPaymentsPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>المستخدم</TableHead>
-                                        <TableHead>الملف الشخصي</TableHead>
-                                        <TableHead>المسمى الوظيفي</TableHead>
+                                        <TableHead>{t('col_user')}</TableHead>
+                                        <TableHead>{t('col_role')}</TableHead>
+                                        <TableHead>{t('col_title')}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -419,19 +386,14 @@ export default function StaffPaymentsPage() {
                                                     {staff.profile?.first_name} {staff.profile?.last_name}
                                                 </span>
                                             </TableCell>
-                                            <TableCell>
-                                                {staff.role === 'teacher' ? 'معلم' :
-                                                 staff.role === 'admin' ? 'مسؤول' :
-                                                 staff.role === 'librarian' ? 'أمين مكتبة' :
-                                                 staff.role === 'counselor' ? 'مرشد' : 'موظف'}
-                                            </TableCell>
+                                            <TableCell>{getRoleLabel(staff.role)}</TableCell>
                                             <TableCell>{staff.title || '-'}</TableCell>
                                         </TableRow>
                                     ))}
                                     {filteredStaff.length === 0 && (
                                         <TableRow>
                                             <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
-                                                لم يتم العثور على موظفين.
+                                                {t('empty')}
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -444,10 +406,8 @@ export default function StaffPaymentsPage() {
         )
     }
 
-    // Staff Payment Detail View
     return (
         <div className="container mx-auto py-6 space-y-6">
-            {/* Header with Back Button */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <Button variant="ghost" size="icon" onClick={() => setSelectedStaff(null)}>
@@ -455,7 +415,7 @@ export default function StaffPaymentsPage() {
                     </Button>
                     <IconUsers className="h-8 w-8 text-[#3d8fb5]" />
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight">مدفوعات الموظفين</h1>
+                        <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
                         <p className="text-muted-foreground">
                             {selectedStaff.profile?.first_name} {selectedStaff.profile?.last_name}
                             {selectedStaff.title && <span className="ml-2 text-sm">({selectedStaff.title})</span>}
@@ -465,19 +425,17 @@ export default function StaffPaymentsPage() {
                 {activeTab === 'payments' && (
                     <Button onClick={handleSave} disabled={saving} className="bg-[#3d8fb5] hover:bg-[#357ea0]">
                         {saving ? <IconLoader className="h-4 w-4 mr-2 animate-spin" /> : <IconDeviceFloppy className="h-4 w-4 mr-2" />}
-                        حفظ
+                        {tCommon('save')}
                     </Button>
                 )}
             </div>
 
-            {/* Tabs for Salary Records and Manual Payments */}
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'payments' | 'salaries')}>
                 <TabsList className="grid w-full grid-cols-2 max-w-md">
-                    <TabsTrigger value="salaries">سجلات الرواتب</TabsTrigger>
-                    <TabsTrigger value="payments">مدفوعات يدوية</TabsTrigger>
+                    <TabsTrigger value="salaries">{t('tab_salary_records')}</TabsTrigger>
+                    <TabsTrigger value="payments">{t('tab_manual_payments')}</TabsTrigger>
                 </TabsList>
 
-                {/* Salary Records Tab */}
                 <TabsContent value="salaries" className="space-y-4">
                     <Card>
                         <CardContent className="pt-6">
@@ -486,20 +444,18 @@ export default function StaffPaymentsPage() {
                                     <IconLoader className="h-6 w-6 animate-spin text-muted-foreground" />
                                 </div>
                             ) : salaryRecords.length === 0 ? (
-                                <p className="text-muted-foreground text-center py-8">
-                                    لا توجد سجلات رواتب. يتم إنشاء الرواتب تلقائيًا في اليوم الأول من كل شهر عبر وحدة الرواتب.
-                                </p>
+                                <p className="text-muted-foreground text-center py-8">{t('no_salary_records')}</p>
                             ) : (
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>الفترة</TableHead>
-                                            <TableHead>الراتب الأساسي</TableHead>
-                                            <TableHead>البدلات</TableHead>
-                                            <TableHead>الخصومات</TableHead>
-                                            <TableHead>صافي الراتب</TableHead>
-                                            <TableHead>الحالة</TableHead>
-                                            <TableHead className="text-right">الإجراءات</TableHead>
+                                            <TableHead>{t('salary_col_period')}</TableHead>
+                                            <TableHead>{t('salary_col_base')}</TableHead>
+                                            <TableHead>{t('salary_col_allowances')}</TableHead>
+                                            <TableHead>{t('salary_col_deductions')}</TableHead>
+                                            <TableHead>{t('salary_col_net')}</TableHead>
+                                            <TableHead>{tCommon('status')}</TableHead>
+                                            <TableHead className="text-right">{tCommon('actions')}</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -508,10 +464,10 @@ export default function StaffPaymentsPage() {
                                                 <TableCell className="font-medium">
                                                     {getMonthName(record.month)} {record.year}
                                                 </TableCell>
-                                                <TableCell>{formatCurrency(record.base_salary)}</TableCell>
-                                                <TableCell className="text-green-600">+{formatCurrency(record.total_allowances + record.attendance_bonus)}</TableCell>
-                                                <TableCell className="text-red-600">-{formatCurrency(record.total_deductions + record.advance_deduction)}</TableCell>
-                                                <TableCell className="font-semibold">{formatCurrency(record.net_salary)}</TableCell>
+                                                <TableCell>{record.base_salary}</TableCell>
+                                                <TableCell className="text-green-600">+{record.total_allowances + record.attendance_bonus}</TableCell>
+                                                <TableCell className="text-red-600">-{record.total_deductions + record.advance_deduction}</TableCell>
+                                                <TableCell className="font-semibold">{record.net_salary}</TableCell>
                                                 <TableCell>{getStatusBadge(record.status)}</TableCell>
                                                 <TableCell className="text-right">
                                                     {record.status === 'pending' && (
@@ -524,10 +480,7 @@ export default function StaffPaymentsPage() {
                                                             {markingPaidId === record.id ? (
                                                                 <IconLoader className="h-4 w-4 animate-spin" />
                                                             ) : (
-                                                                <>
-                                                                    <IconCheck className="h-4 w-4 mr-1" />
-                                                                    اعتماد
-                                                                </>
+                                                                <><IconCheck className="h-4 w-4 mr-1" />{t('approve')}</>
                                                             )}
                                                         </Button>
                                                     )}
@@ -541,16 +494,13 @@ export default function StaffPaymentsPage() {
                                                             {markingPaidId === record.id ? (
                                                                 <IconLoader className="h-4 w-4 animate-spin" />
                                                             ) : (
-                                                                <>
-                                                                    <IconCircleCheck className="h-4 w-4 mr-1" />
-                                                                    تعليم كمدفوع
-                                                                </>
+                                                                <><IconCircleCheck className="h-4 w-4 mr-1" />{t('mark_paid')}</>
                                                             )}
                                                         </Button>
                                                     )}
                                                     {record.status === 'paid' && record.payment_date && (
                                                         <span className="text-sm text-muted-foreground">
-                                                            مدفوع {format(new Date(record.payment_date), 'MMM d, yyyy')}
+                                                            {t('paid_on', { date: format(new Date(record.payment_date), 'MMM d, yyyy') })}
                                                         </span>
                                                     )}
                                                 </TableCell>
@@ -562,28 +512,26 @@ export default function StaffPaymentsPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Salary Summary */}
                     <Card>
                         <CardContent className="pt-6">
                             <div className="space-y-2 max-w-sm">
                                 <div className="flex justify-between text-sm">
-                                    <span>إجمالي الرواتب المدفوعة:</span>
-                                    <span className="text-green-600">{formatCurrency(totalSalaryPaid)}</span>
+                                    <span>{t('salary_total_paid')}</span>
+                                    <span className="text-green-600">{totalSalaryPaid}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
-                                    <span>الرواتب المعلقة/المعتمدة:</span>
-                                    <span className="text-yellow-600">{formatCurrency(totalSalaryDue)}</span>
+                                    <span>{t('salary_total_pending')}</span>
+                                    <span className="text-yellow-600">{totalSalaryDue}</span>
                                 </div>
                                 <div className="flex justify-between font-bold border-t pt-2">
-                                    <span>الإجمالي:</span>
-                                    <span>{formatCurrency(totalSalaryPaid + totalSalaryDue)}</span>
+                                    <span>{t('salary_grand_total')}</span>
+                                    <span>{totalSalaryPaid + totalSalaryDue}</span>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
                 </TabsContent>
 
-                {/* Manual Payments Tab */}
                 <TabsContent value="payments" className="space-y-4">
                     <Card>
                         <CardContent className="pt-6">
@@ -594,17 +542,17 @@ export default function StaffPaymentsPage() {
                             ) : (
                                 <>
                                     {rows.length === 1 && rows[0].isNew && !rows[0].amount && (
-                                        <p className="text-muted-foreground mb-4">لم يتم العثور على مدفوعات يدوية. استخدم هذا للمدفوعات الاستثنائية خارج نظام الرواتب.</p>
+                                        <p className="text-muted-foreground mb-4">{t('no_manual_payments')}</p>
                                     )}
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
                                                 <TableHead className="w-8"></TableHead>
-                                                <TableHead>رقم الإيصال</TableHead>
-                                                <TableHead>المبلغ</TableHead>
-                                                <TableHead>التاريخ</TableHead>
-                                                <TableHead>ملاحظة</TableHead>
-                                                <TableHead>ملف مرفق</TableHead>
+                                                <TableHead>{t('col_receipt')}</TableHead>
+                                                <TableHead>{tCommon('amount')}</TableHead>
+                                                <TableHead>{tCommon('date')}</TableHead>
+                                                <TableHead>{t('col_note')}</TableHead>
+                                                <TableHead>{t('col_attachment')}</TableHead>
                                                 <TableHead className="w-12"></TableHead>
                                             </TableRow>
                                         </TableHeader>
@@ -622,9 +570,9 @@ export default function StaffPaymentsPage() {
                                                         </TableCell>
                                                         <TableCell>
                                                             <Input
-                                                                value={row.receipt_number}
+                                                                value={row.receipt_number ?? ''}
                                                                 onChange={(e) => handleRowChange(index, 'receipt_number', e.target.value)}
-                                                                placeholder="تلقائي"
+                                                                placeholder={t('auto_receipt')}
                                                                 className="w-32"
                                                                 disabled={!row.isNew}
                                                             />
@@ -647,7 +595,7 @@ export default function StaffPaymentsPage() {
                                                                     </SelectTrigger>
                                                                     <SelectContent>
                                                                         {MONTHS.map(m => (
-                                                                            <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                                                                            <SelectItem key={m.value} value={m.value}>{tCommon(`months.${m.monthKey}`)}</SelectItem>
                                                                         ))}
                                                                     </SelectContent>
                                                                 </Select>
@@ -700,18 +648,16 @@ export default function StaffPaymentsPage() {
                                                                     </AlertDialogTrigger>
                                                                     <AlertDialogContent>
                                                                         <AlertDialogHeader>
-                                                                        <AlertDialogTitle>حذف الدفعة</AlertDialogTitle>
-                                                                            <AlertDialogDescription>
-                                                                                هل أنت متأكد من حذف سجل الدفعة هذا؟
-                                                                            </AlertDialogDescription>
+                                                                            <AlertDialogTitle>{t('delete_title')}</AlertDialogTitle>
+                                                                            <AlertDialogDescription>{t('delete_confirm')}</AlertDialogDescription>
                                                                         </AlertDialogHeader>
                                                                         <AlertDialogFooter>
-                                                                            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                                                                            <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
                                                                             <AlertDialogAction
                                                                                 onClick={() => handleDelete(row.id!)}
                                                                                 className="bg-destructive text-destructive-foreground"
                                                                             >
-                                                                                حذف
+                                                                                {tCommon('delete')}
                                                                             </AlertDialogAction>
                                                                         </AlertDialogFooter>
                                                                     </AlertDialogContent>
@@ -726,7 +672,7 @@ export default function StaffPaymentsPage() {
                                     <div className="flex justify-center mt-4">
                                         <Button onClick={handleSave} disabled={saving} className="bg-[#3d8fb5] hover:bg-[#357ea0]">
                                             {saving ? <IconLoader className="h-4 w-4 mr-2 animate-spin" /> : null}
-                                            حفظ
+                                            {tCommon('save')}
                                         </Button>
                                     </div>
                                 </>
@@ -734,21 +680,20 @@ export default function StaffPaymentsPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Manual Payments Summary */}
                     <Card>
                         <CardContent className="pt-6">
                             <div className="space-y-2 max-w-xs">
                                 <div className="flex justify-between text-sm">
-                                    <span>إجمالي الراتب الأساسي:</span>
-                                    <span>{formatCurrency(legacySalary)}</span>
+                                    <span>{t('payment_total_base')}</span>
+                                    <span>{legacySalary}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
-                                    <span>ناقص: المدفوعات اليدوية:</span>
-                                    <span>{formatCurrency(totalPayments)}</span>
+                                    <span>{t('payment_less_manual')}</span>
+                                    <span>{totalPayments}</span>
                                 </div>
                                 <div className="flex justify-between font-bold border-t pt-2">
-                                    <span>الرصيد:</span>
-                                    <span>{formatCurrency(balance)}</span>
+                                    <span>{tCommon('balance')}</span>
+                                    <span>{balance}</span>
                                 </div>
                             </div>
                         </CardContent>

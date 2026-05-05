@@ -11,20 +11,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { IconLoader, IconPrinter } from '@tabler/icons-react'
 import useSWR from 'swr'
 import { format, parse } from 'date-fns'
+import { useTranslations } from 'next-intl'
+import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 
 const MONTHS = [
-    { value: '01', label: 'يناير' },
-    { value: '02', label: 'فبراير' },
-    { value: '03', label: 'مارس' },
-    { value: '04', label: 'أبريل' },
-    { value: '05', label: 'مايو' },
-    { value: '06', label: 'يونيو' },
-    { value: '07', label: 'يوليو' },
-    { value: '08', label: 'أغسطس' },
-    { value: '09', label: 'سبتمبر' },
-    { value: '10', label: 'أكتوبر' },
-    { value: '11', label: 'نوفمبر' },
-    { value: '12', label: 'ديسمبر' },
+    { value: '01', monthKey: '0' },
+    { value: '02', monthKey: '1' },
+    { value: '03', monthKey: '2' },
+    { value: '04', monthKey: '3' },
+    { value: '05', monthKey: '4' },
+    { value: '06', monthKey: '5' },
+    { value: '07', monthKey: '6' },
+    { value: '08', monthKey: '7' },
+    { value: '09', monthKey: '8' },
+    { value: '10', monthKey: '9' },
+    { value: '11', monthKey: '10' },
+    { value: '12', monthKey: '11' },
 ]
 
 const getDaysInMonth = (month: string, year: string) => {
@@ -54,12 +56,14 @@ interface Transaction {
 }
 
 export default function DailyTransactionsPage() {
+    const t = useTranslations('admin.accounting.daily_transactions')
+    const tCommon = useTranslations('common')
     const { selectedCampus, loading: campusLoading } = useCampus() || {}
     const { currentAcademicYear } = useAcademic()
     const campusId = selectedCampus?.id
     const academicYear = currentAcademicYear?.name || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`
+    const { formatCurrency } = useSchoolSettings()
 
-    // Date filter state
     const today = new Date()
     const [startMonth, setStartMonth] = useState('N/A')
     const [startDay, setStartDay] = useState('N/A')
@@ -71,7 +75,6 @@ export default function DailyTransactionsPage() {
         endDate: format(today, 'yyyy-MM-dd')
     })
 
-    // Fetch all data
     const { data: incomes, isLoading: loadingIncomes } = useSWR(
         campusId ? ['accounting-incomes-report', campusId, academicYear, appliedFilters.startDate, appliedFilters.endDate] : null,
         () => accountingApi.getIncomes(campusId!, academicYear, appliedFilters.startDate, appliedFilters.endDate),
@@ -98,7 +101,6 @@ export default function DailyTransactionsPage() {
 
     const isLoading = loadingIncomes || loadingExpenses || loadingStaffPayments
 
-    // Combine and group transactions by date
     const transactionsByDate = useMemo(() => {
         const allTransactions: Transaction[] = []
 
@@ -135,15 +137,12 @@ export default function DailyTransactionsPage() {
             })
         })
 
-        // Sort by date descending
         allTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
-        // Group by date
         const grouped: Record<string, Transaction[]> = {}
         allTransactions.forEach(tx => {
-            const dateKey = tx.date
-            if (!grouped[dateKey]) grouped[dateKey] = []
-            grouped[dateKey].push(tx)
+            if (!grouped[tx.date]) grouped[tx.date] = []
+            grouped[tx.date].push(tx)
         })
 
         return grouped
@@ -152,23 +151,13 @@ export default function DailyTransactionsPage() {
     const handleApplyFilters = () => {
         let startDate: string | undefined
         let endDate: string | undefined
-
         if (startYear !== 'N/A' && startMonth !== 'N/A' && startDay !== 'N/A') {
             startDate = `${startYear}-${startMonth}-${startDay}`
         }
-
         if (endYear !== 'N/A' && endMonth !== 'N/A' && endDay !== 'N/A') {
             endDate = `${endYear}-${endMonth}-${endDay}`
         }
-
         setAppliedFilters({ startDate, endDate })
-    }
-
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD'
-        }).format(amount)
     }
 
     const formatDateDisplay = (dateStr: string) => {
@@ -177,25 +166,17 @@ export default function DailyTransactionsPage() {
     }
 
     const getTypeLabel = (type: string) => {
-        switch (type) {
-            case 'income': return 'إيراد'
-            case 'expense': return 'مصروف'
-            case 'staff_payment': return 'دفعة موظف'
-            default: return type
-        }
+        if (type === 'income') return t('type_income')
+        if (type === 'expense') return t('type_expense')
+        if (type === 'staff_payment') return t('type_staff_payment')
+        return type
     }
 
     const getTypeColor = (type: string) => {
-        switch (type) {
-            case 'income': return 'text-green-600'
-            case 'expense': return 'text-red-600'
-            case 'staff_payment': return 'text-orange-600'
-            default: return ''
-        }
-    }
-
-    const handlePrint = () => {
-        window.print()
+        if (type === 'income') return 'text-green-600'
+        if (type === 'expense') return 'text-red-600'
+        if (type === 'staff_payment') return 'text-orange-600'
+        return ''
     }
 
     if (campusLoading) {
@@ -211,7 +192,7 @@ export default function DailyTransactionsPage() {
             <div className="container mx-auto py-6">
                 <Card>
                     <CardContent className="pt-6">
-                        <p className="text-muted-foreground text-center">يرجى اختيار فرع لعرض المعاملات اليومية.</p>
+                        <p className="text-muted-foreground text-center">{t('select_campus')}</p>
                     </CardContent>
                 </Card>
             </div>
@@ -222,40 +203,36 @@ export default function DailyTransactionsPage() {
 
     return (
         <div className="container mx-auto py-6 space-y-6">
-            {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">المعاملات اليومية</h1>
-                    <p className="text-muted-foreground">
-                        عرض كل المعاملات المالية مجمعة حسب اليوم • {selectedCampus.name}
-                    </p>
+                    <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+                    <p className="text-muted-foreground">{t('subtitle', { campus: selectedCampus.name })}</p>
                 </div>
-                <Button onClick={handlePrint} variant="outline">
+                <Button onClick={() => window.print()} variant="outline">
                     <IconPrinter className="h-4 w-4 mr-2" />
-                    طباعة
+                    {tCommon('print')}
                 </Button>
             </div>
 
-            {/* Date Filter */}
             <Card>
                 <CardContent className="pt-6">
                     <div className="flex items-center gap-4 flex-wrap">
-                        <span className="font-medium">الفترة الزمنية:</span>
+                        <span className="font-medium">{t('period')}</span>
                         <div className="flex items-center gap-2">
                             <Select value={startMonth} onValueChange={setStartMonth}>
                                 <SelectTrigger className="w-28">
-                                    <SelectValue placeholder="الشهر" />
+                                    <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="N/A">N/A</SelectItem>
                                     {MONTHS.map(m => (
-                                        <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                                        <SelectItem key={m.value} value={m.value}>{tCommon(`months.${m.monthKey}`)}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                             <Select value={startDay} onValueChange={setStartDay}>
                                 <SelectTrigger className="w-20">
-                                    <SelectValue placeholder="اليوم" />
+                                    <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="N/A">N/A</SelectItem>
@@ -266,7 +243,7 @@ export default function DailyTransactionsPage() {
                             </Select>
                             <Select value={startYear} onValueChange={setStartYear}>
                                 <SelectTrigger className="w-24">
-                                    <SelectValue placeholder="السنة" />
+                                    <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="N/A">N/A</SelectItem>
@@ -276,21 +253,21 @@ export default function DailyTransactionsPage() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <span>إلى</span>
+                        <span>{tCommon('to')}</span>
                         <div className="flex items-center gap-2">
                             <Select value={endMonth} onValueChange={setEndMonth}>
                                 <SelectTrigger className="w-28">
-                                    <SelectValue placeholder="الشهر" />
+                                    <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {MONTHS.map(m => (
-                                        <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                                        <SelectItem key={m.value} value={m.value}>{tCommon(`months.${m.monthKey}`)}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                             <Select value={endDay} onValueChange={setEndDay}>
                                 <SelectTrigger className="w-20">
-                                    <SelectValue placeholder="اليوم" />
+                                    <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {getDaysInMonth(endMonth, endYear).map(d => (
@@ -300,7 +277,7 @@ export default function DailyTransactionsPage() {
                             </Select>
                             <Select value={endYear} onValueChange={setEndYear}>
                                 <SelectTrigger className="w-24">
-                                    <SelectValue placeholder="السنة" />
+                                    <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {getYears().map(y => (
@@ -310,13 +287,12 @@ export default function DailyTransactionsPage() {
                             </Select>
                         </div>
                         <Button onClick={handleApplyFilters} variant="default" className="bg-[#3d8fb5] hover:bg-[#357ea0]">
-                            عرض
+                            {tCommon('view')}
                         </Button>
                     </div>
                 </CardContent>
             </Card>
 
-            {/* Transactions by Day */}
             <Card>
                 <CardContent className="pt-6">
                     {isLoading ? (
@@ -324,14 +300,14 @@ export default function DailyTransactionsPage() {
                             <IconLoader className="h-6 w-6 animate-spin text-muted-foreground" />
                         </div>
                     ) : dateKeys.length === 0 ? (
-                        <p className="text-muted-foreground text-center py-8">لم يتم العثور على معاملات للفترة المحددة.</p>
+                        <p className="text-muted-foreground text-center py-8">{t('empty')}</p>
                     ) : (
                         <div className="space-y-6">
                             {dateKeys.map(dateKey => {
                                 const transactions = transactionsByDate[dateKey]
-                                const dayIncomes = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0)
-                                const dayExpenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0)
-                                const dayStaffPayments = transactions.filter(t => t.type === 'staff_payment').reduce((sum, t) => sum + t.amount, 0)
+                                const dayIncomes = transactions.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + tx.amount, 0)
+                                const dayExpenses = transactions.filter(tx => tx.type === 'expense').reduce((sum, tx) => sum + tx.amount, 0)
+                                const dayStaffPayments = transactions.filter(tx => tx.type === 'staff_payment').reduce((sum, tx) => sum + tx.amount, 0)
                                 const dayBalance = dayIncomes - dayExpenses - dayStaffPayments
 
                                 return (
@@ -345,19 +321,17 @@ export default function DailyTransactionsPage() {
                                         <Table>
                                             <TableHeader>
                                                 <TableRow>
-                                                    <TableHead>النوع</TableHead>
-                                                    <TableHead>الوصف</TableHead>
-                                                    <TableHead>الفئة / الموظف</TableHead>
-                                                    <TableHead className="text-right">المبلغ</TableHead>
+                                                    <TableHead>{t('col_type')}</TableHead>
+                                                    <TableHead>{t('col_description')}</TableHead>
+                                                    <TableHead>{t('col_category_staff')}</TableHead>
+                                                    <TableHead className="text-right">{t('col_amount')}</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
                                                 {transactions.map(tx => (
                                                     <TableRow key={`${tx.type}-${tx.id}`}>
                                                         <TableCell>
-                                                            <span className={getTypeColor(tx.type)}>
-                                                                {getTypeLabel(tx.type)}
-                                                            </span>
+                                                            <span className={getTypeColor(tx.type)}>{getTypeLabel(tx.type)}</span>
                                                         </TableCell>
                                                         <TableCell>{tx.title}</TableCell>
                                                         <TableCell>{tx.category || tx.staff_name || '-'}</TableCell>
@@ -370,9 +344,9 @@ export default function DailyTransactionsPage() {
                                         </Table>
                                         <div className="bg-muted/50 px-4 py-2 text-sm flex justify-between">
                                             <span>
-                                                الإيرادات: {formatCurrency(dayIncomes)} |
-                                                المصروفات: {formatCurrency(dayExpenses)} |
-                                                مدفوعات الموظفين: {formatCurrency(dayStaffPayments)}
+                                                {t('day_income')}: {formatCurrency(dayIncomes)} |{' '}
+                                                {t('day_expenses')}: {formatCurrency(dayExpenses)} |{' '}
+                                                {t('day_staff')}: {formatCurrency(dayStaffPayments)}
                                             </span>
                                         </div>
                                     </div>
@@ -383,25 +357,24 @@ export default function DailyTransactionsPage() {
                 </CardContent>
             </Card>
 
-            {/* Totals Summary */}
             <Card>
                 <CardHeader>
-                    <CardTitle>ملخص الفترة</CardTitle>
-                    <CardDescription>إجماليات نطاق التاريخ المحدد</CardDescription>
+                    <CardTitle>{t('summary_title')}</CardTitle>
+                    <CardDescription>{t('summary_desc')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
                         <div className="border-b pb-4">
                             <div className="flex justify-between text-sm">
-                                <span>إجمالي الإيرادات:</span>
+                                <span>{t('total_incomes')}</span>
                                 <span className="text-green-600">{formatCurrency(totals?.total_incomes || 0)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span>ناقص: إجمالي المصروفات:</span>
+                                <span>{t('less_expenses')}</span>
                                 <span className="text-red-600">{formatCurrency(totals?.total_expenses || 0)}</span>
                             </div>
                             <div className="flex justify-between font-bold">
-                                <span>الرصيد:</span>
+                                <span>{t('balance')}</span>
                                 <span className={(totals?.balance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}>
                                     {formatCurrency(totals?.balance || 0)}
                                 </span>
@@ -409,23 +382,23 @@ export default function DailyTransactionsPage() {
                         </div>
                         <div>
                             <div className="flex justify-between text-sm">
-                                <span>إجمالي الإيرادات:</span>
+                                <span>{t('total_incomes')}</span>
                                 <span className="text-green-600">{formatCurrency(totals?.total_incomes || 0)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span>+ إجمالي مدفوعات الطلاب:</span>
+                                <span>{t('plus_student_payments')}</span>
                                 <span className="text-green-600">{formatCurrency(totals?.total_student_payments || 0)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span>ناقص: إجمالي المصروفات:</span>
+                                <span>{t('less_expenses')}</span>
                                 <span className="text-red-600">{formatCurrency(totals?.total_expenses || 0)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span>+ إجمالي مدفوعات الموظفين:</span>
+                                <span>{t('plus_staff_payments')}</span>
                                 <span className="text-red-600">{formatCurrency(totals?.total_staff_payments || 0)}</span>
                             </div>
                             <div className="flex justify-between font-bold">
-                                <span>الرصيد العام:</span>
+                                <span>{t('general_balance')}</span>
                                 <span className={(totals?.general_balance || 0) >= 0 ? 'text-green-600' : 'text-red-600'}>
                                     {formatCurrency(totals?.general_balance || 0)}
                                 </span>

@@ -1184,7 +1184,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
         .forEach((field) => {
           const value = customFieldValues[field.field_key];
           if (!value || (Array.isArray(value) && value.length === 0) || value === '') {
-            errors[field.field_key] = `${field.label} is required`;
+            errors[`custom_${field.field_key}`] = t('validation.field_required', { field: field.label });
           }
         });
     } else if (activeTab === 'academic') {
@@ -1203,7 +1203,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
         .forEach((field) => {
           const value = customFieldValues[field.field_key];
           if (!value || (Array.isArray(value) && value.length === 0) || value === '') {
-            errors[field.field_key] = `${field.label} is required`;
+            errors[`custom_${field.field_key}`] = t('validation.field_required', { field: field.label });
           }
         });
     } else if (activeTab === 'medical') {
@@ -1219,7 +1219,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
         .forEach((field) => {
           const value = customFieldValues[field.field_key];
           if (!value || (Array.isArray(value) && value.length === 0) || value === '') {
-            errors[field.field_key] = `${field.label} is required`;
+            errors[`custom_${field.field_key}`] = t('validation.field_required', { field: field.label });
           }
         });
     } else if (activeTab === 'family') {
@@ -1229,7 +1229,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
         .forEach((field) => {
           const value = customFieldValues[field.field_key];
           if (!value || (Array.isArray(value) && value.length === 0) || value === '') {
-            errors[field.field_key] = `${field.label} is required`;
+            errors[field.field_key] = t('validation.field_required', { field: field.label });
           }
         });
     } else if (activeTab === 'system') {
@@ -1239,7 +1239,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
         .forEach((field) => {
           const value = customFieldValues[field.field_key];
           if (!value || (Array.isArray(value) && value.length === 0) || value === '') {
-            errors[field.field_key] = `${field.label} is required`;
+            errors[field.field_key] = t('validation.field_required', { field: field.label });
           }
         });
     } else if (activeTab === 'custom') {
@@ -1252,7 +1252,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
         .forEach((field) => {
           const value = customFieldValues[field.field_key];
           if (!value || (Array.isArray(value) && value.length === 0) || value === '') {
-            errors[field.field_key] = `${field.label} is required`;
+            errors[field.field_key] = t('validation.field_required', { field: field.label });
           }
         });
     }

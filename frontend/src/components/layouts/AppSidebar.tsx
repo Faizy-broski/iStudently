@@ -794,7 +794,7 @@ function SidebarItem({
         <button
           onClick={handleToggle}
           className={cn(
-            'sidebar-link group relative flex items-center gap-3 px-4 py-3 transition-all duration-200 w-full text-left',
+            'sidebar-link group relative flex items-center gap-3 px-4 py-3 transition-all duration-200 w-full text-start',
             isActive || hasActiveSubItem ? 'active' : 'text-white/90 hover:bg-white/10 hover:text-white rounded-s-full'
           )}
         >
@@ -821,7 +821,7 @@ function SidebarItem({
 
         {/* Submenu Items */}
         {isExpanded && item.subItems && (
-          <div className="ml-8 mt-1 space-y-1">
+          <div className="ms-8 mt-1 space-y-1">
             {item.subItems.map((subItem) => {
               const subItemActive = pathname === subItem.href || pathname.startsWith(subItem.href + '/')
               const SubIcon = subItem.icon

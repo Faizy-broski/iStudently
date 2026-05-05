@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
+import { useTranslations } from 'next-intl'
 
 interface FeeCategory {
     id: string
@@ -24,6 +25,7 @@ interface FeeCategory {
 }
 
 export default function FeeCategoriesPage() {
+    const t = useTranslations('fees.feeCategories')
     const { profile } = useAuth()
     const campusContext = useCampus()
     const selectedCampus = campusContext?.selectedCampus
@@ -48,7 +50,7 @@ export default function FeeCategoriesPage() {
 
     const handleAddCategory = async () => {
         if (!schoolId || !newCategoryName || !newCategoryCode) {
-            toast.error('يرجى تعبئة جميع الحقول')
+            toast.error(t('fillRequired'))
             return
         }
         setAdding(true)
@@ -63,7 +65,7 @@ export default function FeeCategoriesPage() {
             setNewCategoryName('')
             setNewCategoryCode('')
             setNewCategoryDiscountable(true)
-            toast.success('تمت إضافة الفئة بنجاح')
+            toast.success(t('addSuccess'))
         } catch (error: any) {
             toast.error(error.message)
         }
@@ -88,7 +90,7 @@ export default function FeeCategoriesPage() {
 
     const handleSaveEdit = async () => {
         if (!editingId || !editName || !editCode || !schoolId) {
-            toast.error('يرجى تعبئة جميع الحقول')
+            toast.error(t('fillRequired'))
             return
         }
         setSaving(true)
@@ -102,7 +104,7 @@ export default function FeeCategoriesPage() {
             })
             mutateCategories()
             cancelEdit()
-            toast.success('تم تحديث الفئة بنجاح')
+            toast.success(t('updateSuccess'))
         } catch (error: any) {
             toast.error(error.message)
         }
@@ -111,14 +113,14 @@ export default function FeeCategoriesPage() {
 
     const handleDelete = async (categoryId: string) => {
         if (!schoolId) return
-        if (!confirm('هل أنت متأكد من حذف هذه الفئة؟ لا يمكن التراجع عن هذا الإجراء.')) {
+        if (!confirm(t('deleteConfirm'))) {
             return
         }
         setDeleting(categoryId)
         try {
             await deleteFeeCategory(categoryId, schoolId)
             mutateCategories()
-            toast.success('تم حذف الفئة بنجاح')
+            toast.success(t('deleteSuccess'))
         } catch (error: any) {
             toast.error(error.message || 'فشل حذف الفئة')
         }
@@ -134,8 +136,8 @@ export default function FeeCategoriesPage() {
                 <div className="flex items-center gap-3 flex-1">
                     <IconFolderOpen className="h-8 w-8 text-[#3d8fb5]" />
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight">فئات الرسوم</h1>
-                        <p className="text-muted-foreground">إدارة أنواع الرسوم (دراسة، نقل، كتب، إلخ)</p>
+                        <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+                        <p className="text-muted-foreground">{t('subtitle')}</p>
                     </div>
                 </div>
             </div>
@@ -143,23 +145,23 @@ export default function FeeCategoriesPage() {
             {/* Add New Category */}
             <Card>
                 <CardHeader>
-                    <CardTitle>إضافة فئة جديدة</CardTitle>
-                    <CardDescription>إنشاء فئة رسوم جديدة للمدرسة</CardDescription>
+                    <CardTitle>{t('addNew')}</CardTitle>
+                    <CardDescription>{t('addCategoryDesc') || t('subtitle')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="flex flex-wrap gap-4 items-end">
                         <div className="flex-1 min-w-[200px]">
-                            <Label>اسم الفئة</Label>
+                            <Label>{t('categoryName')}</Label>
                             <Input 
-                                placeholder="مثال: رسوم دراسية"
+                                placeholder={t('categoryNamePlaceholder')}
                                 value={newCategoryName} 
                                 onChange={(e) => setNewCategoryName(e.target.value)} 
                             />
                         </div>
                         <div className="w-32">
-                            <Label>الرمز</Label>
+                            <Label>{t('categoryCode')}</Label>
                             <Input 
-                                placeholder="مثال: TUI"
+                                placeholder={t('categoryCodePlaceholder')}
                                 value={newCategoryCode} 
                                 onChange={(e) => setNewCategoryCode(e.target.value.toUpperCase())} 
                             />
@@ -169,11 +171,11 @@ export default function FeeCategoriesPage() {
                                 checked={newCategoryDiscountable} 
                                 onCheckedChange={setNewCategoryDiscountable} 
                             />
-                            <Label className="text-sm">قابل للخصم</Label>
+                            <Label className="text-sm">{t('discountable')}</Label>
                         </div>
                         <Button onClick={handleAddCategory} disabled={adding}>
                             <IconPlus className="mr-2 h-4 w-4" />
-                            {adding ? 'جارٍ الإضافة...' : 'إضافة فئة'}
+                            {adding ? t('adding') : t('addCategory')}
                         </Button>
                     </div>
                 </CardContent>
@@ -182,27 +184,27 @@ export default function FeeCategoriesPage() {
             {/* Categories List */}
             <Card>
                 <CardHeader>
-                    <CardTitle>الفئات الحالية</CardTitle>
+                    <CardTitle>{t('currentCategories')}</CardTitle>
                     <CardDescription>
-                        {categories?.length || 0} فئة مُعدّة
+                        {t('categoriesCount', { count: categories?.length || 0 })}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (
-                        <div className="text-center py-8 text-muted-foreground">جارٍ تحميل الفئات...</div>
+                        <div className="text-center py-8 text-muted-foreground">{t('loading')}</div>
                     ) : !categories || categories.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
-                            لا توجد فئات رسوم. أضف أول فئة أعلاه.
+                            {t('noCategories')}
                         </div>
                     ) : (
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="text-[#3d8fb5]">الاسم</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">الرمز</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">قابل للخصم</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">الحالة</TableHead>
-                                    <TableHead className="text-[#3d8fb5] text-right">الإجراءات</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">{t('th_name')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">{t('th_code')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">{t('th_discountable')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">{t('th_status')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] text-end">{t('th_actions')}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -236,7 +238,7 @@ export default function FeeCategoriesPage() {
                                                         onCheckedChange={setEditActive}
                                                     />
                                                 </TableCell>
-                                                <TableCell className="text-right">
+                                                <TableCell className="text-end">
                                                     <div className="flex justify-end gap-1">
                                                         <Button 
                                                             size="sm" 
@@ -269,7 +271,7 @@ export default function FeeCategoriesPage() {
                                                             ? 'bg-green-100 text-green-800' 
                                                             : 'bg-gray-100 text-gray-800'
                                                     }`}>
-                                                        {cat.is_discountable ? 'نعم' : 'لا'}
+                                                        {cat.is_discountable ? t('yes') : t('no')}
                                                     </span>
                                                 </TableCell>
                                                 <TableCell>
@@ -278,10 +280,10 @@ export default function FeeCategoriesPage() {
                                                             ? 'bg-green-100 text-green-800' 
                                                             : 'bg-red-100 text-red-800'
                                                     }`}>
-                                                        {cat.is_active ? 'نشط' : 'غير نشط'}
+                                                        {cat.is_active ? t('active') : t('inactive')}
                                                     </span>
                                                 </TableCell>
-                                                <TableCell className="text-right">
+                                                <TableCell className="text-end">
                                                     <div className="flex justify-end gap-1">
                                                         <Button 
                                                             size="sm" 

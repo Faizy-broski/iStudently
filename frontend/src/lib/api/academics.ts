@@ -326,8 +326,9 @@ export interface UpdateAcademicYearDTO {
   is_active?: boolean
 }
 
-export async function getAcademicYears(): Promise<AcademicYear[]> {
-  const result = await apiRequest<AcademicYear[]>('/academics/academic-years')
+export async function getAcademicYears(includeInactive: boolean = false): Promise<AcademicYear[]> {
+  const url = includeInactive ? '/academics/academic-years?all=true' : '/academics/academic-years'
+  const result = await apiRequest<AcademicYear[]>(url)
 
   if (!result.success) {
     throw new Error(result.error || 'Failed to fetch academic years')

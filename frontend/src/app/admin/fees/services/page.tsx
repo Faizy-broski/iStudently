@@ -343,7 +343,7 @@ export default function ServicesPage() {
                                         <TableHead>التكرار</TableHead>
                                         <TableHead>الرسوم</TableHead>
                                         <TableHead>الحالة</TableHead>
-                                        <TableHead className="text-right">الإجراءات</TableHead>
+                                        <TableHead className="text-end">الإجراءات</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -376,7 +376,7 @@ export default function ServicesPage() {
                                                         {service.is_mandatory && <Badge variant="secondary">إلزامي</Badge>}
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="text-right">
+                                                <TableCell className="text-end">
                                                     <div className="flex gap-1 justify-end">
                                                         <Button
                                                             variant="ghost"

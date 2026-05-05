@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
+import { useTranslations } from 'next-intl'
 import { Combobox, ComboboxOption } from '@/components/ui/combobox'
 import { getStudentFeeById } from '@/lib/api/fees'
 
@@ -48,7 +49,14 @@ interface Student {
     }
 }
 
+const MONTH_KEYS = [
+    'january', 'february', 'march', 'april', 'may', 'june',
+    'july', 'august', 'september', 'october', 'november', 'december'
+] as const
+
 export default function GenerateFeesPage() {
+    const t = useTranslations('fees.generate')
+    const tm = useTranslations('fees.months')
     const { profile } = useAuth()
     const campusContext = useCampus()
     const selectedCampus = campusContext?.selectedCampus
@@ -193,7 +201,7 @@ export default function GenerateFeesPage() {
     // Bulk generation
     const handleBulkGenerate = async () => {
         if (!schoolId) {
-            toast.error('معلومات المدرسة مفقودة')
+            toast.error(t('missingInfo'))
             return
         }
 
@@ -232,14 +240,14 @@ export default function GenerateFeesPage() {
 
             if (result.success) {
                 const message = isAllCategoriesSelected 
-                    ? `Successfully generated ${result.data?.feesCreated || 0} comprehensive fee records for ${result.data?.studentsProcessed || 0} students`
-                    : `Successfully generated ${result.data?.feesCreated || 0} fee records for ${result.data?.studentsProcessed || 0} students`
+                    ? t('bulkSuccessComprehensive', { count: result.data?.feesCreated || 0, studentCount: result.data?.studentsProcessed || 0 })
+                    : t('bulkSuccess', { count: result.data?.feesCreated || 0, studentCount: result.data?.studentsProcessed || 0 })
                 toast.success(message)
             } else {
-                toast.error(result.error || 'فشل إنشاء الرسوم')
+                toast.error(result.error || t('generateFailed'))
             }
         } catch (error: any) {
-            toast.error(error.message || 'فشل إنشاء الرسوم')
+            toast.error(error.message || t('generateFailed'))
         } finally {
             setGenerating(false)
         }
@@ -251,7 +259,7 @@ export default function GenerateFeesPage() {
             const actualSchoolId = profile?.school_id
             
             if (!actualSchoolId) {
-                toast.error('معلومات المدرسة مفقودة')
+                toast.error(t('missingInfo'))
                 return
             }
 
@@ -296,7 +304,7 @@ export default function GenerateFeesPage() {
 
             const printWindow = window.open('', '_blank')
             if (!printWindow) {
-                toast.error('يرجى السماح بالنوافذ المنبثقة لطباعة إيصال الرسوم')
+                toast.error(t('allowPopups'))
                 return
             }
 
@@ -422,27 +430,27 @@ export default function GenerateFeesPage() {
                 printWindow.print()
             }, 500)
         } catch (error) {
-            toast.error('فشل طباعة إيصال الرسوم')
+            toast.error(t('failedPrintChallan'))
         }
     }
     // Individual student generation
     const handleIndividualGenerate = async () => {
         if (!schoolId) {
-            toast.error('معلومات المدرسة مفقودة')
+            toast.error(t('missingInfo'))
             return
         }
 
         if (!selectedStudent) {
-            toast.error('يرجى اختيار طالب')
+            toast.error(t('selectStudentFirst'))
             return
         }
 
         if (!selectedStudent.grade_level_id) {
-            toast.error('الطالب المحدد لا يملك مرحلة دراسية')
+            toast.error(t('noGradeAssigned'))
             return
         }
         if (selectedCategories.length === 0) {
-            toast.error('يرجى اختيار فئة رسوم واحدة على الأقل')
+            toast.error(t('selectCategoryRequired'))
             return
         }
 
@@ -476,7 +484,7 @@ export default function GenerateFeesPage() {
             const result = await response.json()
 
             if (result.success && result.data?.id) {
-                toast.success(`Fee generated! Opening print dialog...`)
+                toast.success(t('generated'))
                 
                 // Clear form
                 setSelectedStudent(null)
@@ -485,10 +493,10 @@ export default function GenerateFeesPage() {
                 // Auto-print the fee challan
                 await printFeeChallan(result.data.id)
             } else {
-                toast.error(result.error || 'فشل إنشاء الرسوم')
+                toast.error(result.error || t('generateFailed'))
             }
         } catch (error: any) {
-            toast.error(error.message || 'فشل إنشاء الرسوم')
+            toast.error(error.message || t('generateFailed'))
         } finally {
             setGenerating(false)
         }
@@ -498,7 +506,7 @@ export default function GenerateFeesPage() {
     const FeeCategoriesSelector = () => (
         <div>
             <div className="flex items-center justify-between mb-3">
-                <Label>فئات الرسوم *</Label>
+                <Label>{t('selectCategory')}</Label>
                 <Button
                     variant="outline"
                     size="sm"
@@ -507,8 +515,8 @@ export default function GenerateFeesPage() {
                     className="text-xs"
                 >
                     {categories && selectedCategories.length === categories.length 
-                        ? 'إلغاء تحديد الكل'
-                        : 'تحديد الكل'
+                        ? t('deselectAll')
+                        : t('selectAll')
                     }
                 </Button>
             </div>
@@ -531,7 +539,7 @@ export default function GenerateFeesPage() {
                     ))
                 ) : (
                     <p className="text-sm text-muted-foreground">
-                        لم يتم العثور على فئات رسوم. يرجى إنشاء فئات رسوم أولاً.
+                        {t('noCategoriesHint')}
                     </p>
                 )}
             </div>
@@ -542,27 +550,18 @@ export default function GenerateFeesPage() {
     const MonthYearSelector = () => (
         <div className="grid grid-cols-2 gap-4">
             <div>
-                <Label>الشهر *</Label>
+                <Label>{t('month')}</Label>
                 <Select value={month.toString()} onValueChange={(v) => setMonth(parseInt(v))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="1">يناير</SelectItem>
-                        <SelectItem value="2">فبراير</SelectItem>
-                        <SelectItem value="3">مارس</SelectItem>
-                        <SelectItem value="4">أبريل</SelectItem>
-                        <SelectItem value="5">مايو</SelectItem>
-                        <SelectItem value="6">يونيو</SelectItem>
-                        <SelectItem value="7">يوليو</SelectItem>
-                        <SelectItem value="8">أغسطس</SelectItem>
-                        <SelectItem value="9">سبتمبر</SelectItem>
-                        <SelectItem value="10">أكتوبر</SelectItem>
-                        <SelectItem value="11">نوفمبر</SelectItem>
-                        <SelectItem value="12">ديسمبر</SelectItem>
+                        {MONTH_KEYS.map((m, idx) => (
+                            <SelectItem key={m} value={(idx + 1).toString()}>{tm(m)}</SelectItem>
+                        ))}
                     </SelectContent>
                 </Select>
             </div>
             <div>
-                <Label>السنة *</Label>
+                <Label>{t('yearRequired')}</Label>
                 <Select value={year.toString()} onValueChange={(v) => setYear(parseInt(v))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -583,8 +582,8 @@ export default function GenerateFeesPage() {
                     <Link href="/admin/fees"><IconArrowLeft className="h-4 w-4" /></Link>
                 </Button>
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">إنشاء الرسوم</h1>
-                    <p className="text-muted-foreground">إنشاء سجلات رسوم للطلاب</p>
+                    <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+                    <p className="text-muted-foreground">{t('subtitle')}</p>
                 </div>
             </div>
 
@@ -592,11 +591,11 @@ export default function GenerateFeesPage() {
                 <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="bulk" className="flex items-center gap-2">
                         <IconUsers className="h-4 w-4" />
-                        إنشاء جماعي
+                        {t('bulkGeneration')}
                     </TabsTrigger>
                     <TabsTrigger value="individual" className="flex items-center gap-2">
                         <IconUser className="h-4 w-4" />
-                        طالب فردي
+                        {t('individualStudent')}
                     </TabsTrigger>
                 </TabsList>
 
@@ -604,35 +603,35 @@ export default function GenerateFeesPage() {
                 <TabsContent value="bulk">
                     <Card>
                         <CardHeader>
-                            <CardTitle>إنشاء الرسوم بالجملة</CardTitle>
-                            <CardDescription>إنشاء رسوم لعدة طلاب دفعة واحدة حسب المرحلة أو الفصل</CardDescription>
+                            <CardTitle>{t('bulkGenerationTitle')}</CardTitle>
+                            <CardDescription>{t('bulkGenerationDesc')}</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <MonthYearSelector />
 
                             <div>
-                                <Label>المرحلة الدراسية</Label>
+                                <Label>{t('selectGrade')}</Label>
                                 <Select value={gradeLevel} onValueChange={(v) => { setGradeLevel(v); setSection('all') }}>
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">كل المراحل</SelectItem>
+                                        <SelectItem value="all">{t('selectGradeAll')}</SelectItem>
                                         {gradeLevels?.map((grade) => (
                                             <SelectItem key={grade.id} value={grade.id}>{grade.name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    اختر مرحلة محددة أو أنشئ لكل المراحل
+                                    {t('selectGradeHint')}
                                 </p>
                             </div>
 
                             {gradeLevel !== 'all' && sections && sections.length > 0 && (
                                 <div>
-                                    <Label>الفصل</Label>
+                                    <Label>{t('section')}</Label>
                                     <Select value={section} onValueChange={setSection}>
                                         <SelectTrigger><SelectValue /></SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="all">كل الفصول</SelectItem>
+                                            <SelectItem value="all">{t('selectSectionAll')}</SelectItem>
                                             {sections.map((sec) => (
                                                 <SelectItem key={sec.id} value={sec.id}>{sec.name}</SelectItem>
                                             ))}
@@ -653,12 +652,12 @@ export default function GenerateFeesPage() {
                                     {generating ? (
                                         <>
                                             <IconLoader2 className="mr-2 h-5 w-5 animate-spin" />
-                                            جارٍ إنشاء الرسوم...
+                                            {t('generating')}
                                         </>
                                     ) : (
                                         <>
                                             <IconFileInvoice className="mr-2 h-5 w-5" />
-                                            إنشاء الرسوم لكل الطلاب
+                                            {t('generateForAll')}
                                         </>
                                     )}
                                 </Button>
@@ -674,8 +673,8 @@ export default function GenerateFeesPage() {
                 <TabsContent value="individual">
                     <Card>
                         <CardHeader>
-                            <CardTitle>رسوم طالب فردي</CardTitle>
-                            <CardDescription>إنشاء سجل رسوم لطالب محدد</CardDescription>
+                            <CardTitle>{t('individualStudentTitle')}</CardTitle>
+                            <CardDescription>{t('individualStudentDesc')}</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
                             {/* Student Search */}
@@ -688,7 +687,7 @@ export default function GenerateFeesPage() {
                                                 {selectedStudent.profile?.first_name} {selectedStudent.profile?.last_name}
                                             </p>
                                             <p className="text-sm text-muted-foreground">
-                                                المعرّف: {selectedStudent.student_number} • {selectedStudent.grade_levels?.name || selectedStudent.grade_level || 'بدون مرحلة'}
+                                                {t('istudentlyId')}: {selectedStudent.student_number} • {selectedStudent.grade_levels?.name || selectedStudent.grade_level || t('takeAttendance_none')}
                                             </p>
                                         </div>
                                         <Button
@@ -705,9 +704,9 @@ export default function GenerateFeesPage() {
                                         value={selectedStudent?.id || ''}
                                         onValueChange={handleStudentSelect}
                                         onSearchChange={setStudentSearch}
-                                        placeholder="ابحث بالاسم أو رقم الطالب..."
-                                        searchPlaceholder="اكتب للبحث عن الطلاب..."
-                                        emptyMessage={searchLoading ? "جارٍ البحث..." : studentSearch.length < 2 ? "اكتب حرفين على الأقل" : "لم يتم العثور على طلاب"}
+                                        placeholder={t('typeToSearch')}
+                                        searchPlaceholder={t('searching')}
+                                        emptyMessage={searchLoading ? t('searching') : studentSearch.length < 2 ? t('atLeastTwoChars') : t('noStudentsFound')}
                                     />
                                 )}
                             </div>
@@ -715,14 +714,14 @@ export default function GenerateFeesPage() {
                             <MonthYearSelector />
 
                             <div>
-                                <Label>تاريخ الاستحقاق</Label>
+                                <Label>{t('dueDate')}</Label>
                                 <Input
                                     type="date"
                                     value={dueDate || defaultDueDate}
                                     onChange={(e) => setDueDate(e.target.value)}
                                 />
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    الافتراضي هو اليوم العاشر من الشهر المحدد
+                                    {t('dueDateHint')}
                                 </p>
                             </div>
 
@@ -738,12 +737,12 @@ export default function GenerateFeesPage() {
                                     {generating ? (
                                         <>
                                             <IconLoader2 className="mr-2 h-5 w-5 animate-spin" />
-                                            جارٍ إنشاء الرسوم...
+                                            {t('generating')}
                                         </>
                                     ) : (
                                         <>
                                             <IconFileInvoice className="mr-2 h-5 w-5" />
-                                            إنشاء الرسوم للطالب
+                                            {t('generateForStudent')}
                                         </>
                                     )}
                                 </Button>
@@ -755,21 +754,21 @@ export default function GenerateFeesPage() {
 
             <Card className="max-w-2xl bg-blue-50 border-blue-200">
                 <CardHeader>
-                    <CardTitle className="text-blue-900">💡 كيف تعمل</CardTitle>
+                    <CardTitle className="text-blue-900">💡 {t('howItWorks')}</CardTitle>
                 </CardHeader>
                 <CardContent className="text-sm text-blue-900 space-y-2">
-                    <p>• يتم إنشاء الرسوم بناءً على هياكل الرسوم المضبوطة في الإعدادات</p>
-                    <p>• يتم تطبيق خصومات الإخوة تلقائيًا إذا كانت مفعلة</p>
-                    <p>• إذا كان هناك رسم موجود لنفس الطالب في نفس الشهر فسيتم تخطيه</p>
-                    <p>• استخدم <strong>الإنشاء الجماعي</strong> لمعالجة الرسوم الشهرية</p>
-                    <p>• استخدم <strong>طالب فردي</strong> لحالات القبول المتأخر أو الحالات الخاصة</p>
+                    <p>• {t('howItWorksDesc1')}</p>
+                    <p>• {t('howItWorksDesc2')}</p>
+                    <p>• {t('howItWorksDesc3')}</p>
+                    <p>• {t('howItWorksDesc4')}</p>
+                    <p>• {t('howItWorksDesc5')}</p>
                 </CardContent>
             </Card>
 
             <div className="max-w-2xl">
                 <Button variant="outline" asChild>
                     <Link href="/admin/fees/structures">
-                        إدارة هياكل الرسوم ←
+                        {t('manageStructures')} ←
                     </Link>
                 </Button>
             </div>

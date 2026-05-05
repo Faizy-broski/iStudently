@@ -490,7 +490,8 @@ export const getAcademicYears = async (req: Request, res: Response) => {
       } as ApiResponse)
     }
 
-    const result = await academicsService.getAcademicYears(schoolId)
+    const includeInactive = req.query.all === 'true'
+    const result = await academicsService.getAcademicYears(schoolId, includeInactive)
     res.json(result)
   } catch (error: any) {
     console.error('Error fetching academic years:', error)

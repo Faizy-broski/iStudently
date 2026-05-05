@@ -27,7 +27,7 @@ import { Search, LogOut, Settings, Menu, Moon, Sun, Languages, LayoutDashboard, 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { NotificationBell } from '@/components/portal'
-import { useLocale } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { getSidebarConfig } from '@/config/sidebar'
 
 interface TopbarProps {
@@ -40,6 +40,7 @@ export function Topbar({ className }: TopbarProps) {
   const router = useRouter()
   const { setIsMobileOpen } = useSidebarContext()
   const locale = useLocale()
+  const t = useTranslations('topbar')
   const [searchQuery, setSearchQuery] = React.useState('')
   const [isSearchOpen, setIsSearchOpen] = React.useState(false)
 
@@ -113,7 +114,10 @@ export function Topbar({ className }: TopbarProps) {
 
   const getRoleDisplayName = () => {
     if (!profile?.role) return ''
-    return profile.role.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())
+    const roleKey = profile.role as string
+    const knownRoles = ['admin', 'teacher', 'superadmin', 'librarian', 'student', 'parent']
+    if (knownRoles.includes(roleKey)) return t(`roles.${roleKey}`)
+    return roleKey.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())
   }
 
   return (
@@ -145,7 +149,7 @@ export function Topbar({ className }: TopbarProps) {
                   <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500 pointer-events-none z-10" />
                   <input
                     type="text"
-                    placeholder="Search pages..."
+                    placeholder={t('searchPlaceholder')}
                     value={searchQuery}
                     onChange={(e) => {
                       setSearchQuery(e.target.value)
@@ -176,12 +180,12 @@ export function Topbar({ className }: TopbarProps) {
                   </div>
                 ) : searchQuery ? (
                   <div className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-                    No pages found for "{searchQuery}"
+                    {t('noResults', { query: searchQuery })}
                   </div>
                 ) : (
                   <div className="py-1">
                     {allMenuItems.length === 0 ? (
-                      <div className="px-4 py-4 text-center text-sm text-gray-500">Loading...</div>
+                      <div className="px-4 py-4 text-center text-sm text-gray-500">{t('loading')}</div>
                     ) : (
                       allMenuItems.map((item) => {
                         const IconComponent = item.icon
@@ -212,7 +216,7 @@ export function Topbar({ className }: TopbarProps) {
             size="icon"
             onClick={toggleTheme}
             className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
-            title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+            title={theme === 'light' ? t('switchToDark') : t('switchToLight')}
           >
             {theme === 'light' ? (
               <Moon className="h-5 w-5" />
@@ -228,7 +232,7 @@ export function Topbar({ className }: TopbarProps) {
             size="icon"
             onClick={handleLocaleToggle}
             className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 relative"
-            title={locale === 'en' ? 'Switch to Arabic' : 'Switch to English'}
+            title={locale === 'en' ? t('switchToArabic') : t('switchToEnglish')}
           >
             <Languages className="h-5 w-5" />
             <span className="absolute -bottom-0.5 -end-0.5 text-[9px] font-bold leading-none bg-[#022172] text-white rounded px-0.5">
@@ -276,9 +280,21 @@ export function Topbar({ className }: TopbarProps) {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="cursor-pointer">
+              <DropdownMenuItem
+                className="cursor-pointer"
+                onClick={() => {
+                  const role = profile?.role
+                  const settingsRoutes: Record<string, string> = {
+                    admin: '/admin/settings',
+                    teacher: '/teacher/settings',
+                    superadmin: '/superadmin/settings',
+                    librarian: '/librarian/settings',
+                  }
+                  router.push(settingsRoutes[role as string] ?? '/profile')
+                }}
+              >
                 <Settings className="h-4 w-4 me-2" />
-                Settings
+                {t('settings')}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -286,7 +302,7 @@ export function Topbar({ className }: TopbarProps) {
                 className="cursor-pointer text-red-600 focus:text-red-600"
               >
                 <LogOut className="h-4 w-4 me-2" />
-                Sign Out
+                {t('signOut')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

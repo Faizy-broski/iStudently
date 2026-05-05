@@ -248,7 +248,7 @@ export default function BrowseFeesByGradePage() {
                                         <TableHead>الرصيد</TableHead>
                                         <TableHead>تاريخ الاستحقاق</TableHead>
                                         <TableHead>الحالة</TableHead>
-                                        <TableHead className="text-right">الإجراءات</TableHead>
+                                        <TableHead className="text-end">الإجراءات</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -275,7 +275,7 @@ export default function BrowseFeesByGradePage() {
                                                 </TableCell>
                                                 <TableCell>{new Date(fee.due_date).toLocaleDateString()}</TableCell>
                                                 <TableCell>{getStatusBadge(fee.status)}</TableCell>
-                                                <TableCell className="text-right">
+                                                <TableCell className="text-end">
                                                     <div className="flex gap-1 justify-end">
                                                         <Button
                                                             variant="ghost"

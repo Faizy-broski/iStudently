@@ -128,7 +128,13 @@ function QuestionDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label>{t('question')} *</Label>
-              <Input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('placeholders.questionText')} />
+              <Input
+                value={title}
+                onChange={e => { setTitle(e.target.value); if (error) setError('') }}
+                placeholder={t('placeholders.questionText')}
+                className={error ? 'border-destructive focus-visible:ring-destructive' : ''}
+              />
+              {error && <p className="text-sm text-destructive">{error}</p>}
             </div>
             <div className="space-y-1">
               <Label>{t('type')}</Label>
@@ -180,7 +186,6 @@ function QuestionDialog({
             </div>
           )}
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={saving}>{t('cancel')}</Button>

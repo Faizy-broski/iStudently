@@ -16,19 +16,20 @@ import { IconArrowLeft, IconPlus, IconPencil, IconTrash, IconLoader } from '@tab
 import { toast } from 'sonner'
 import Link from 'next/link'
 import useSWR from 'swr'
+import { useTranslations } from 'next-intl'
 
 export default function AccountingCategoriesPage() {
+    const t = useTranslations('admin.accounting.categories')
+    const tCommon = useTranslations('common')
     const { selectedCampus, loading: campusLoading } = useCampus() || {}
     const campusId = selectedCampus?.id
 
-    // Fetch categories
     const { data: categories, mutate, isLoading } = useSWR(
         campusId ? ['accounting-categories', campusId] : null,
-        () => accountingApi.getCategories(campusId!, undefined, false), // Include inactive
+        () => accountingApi.getCategories(campusId!, undefined, false),
         { revalidateOnFocus: false }
     )
 
-    // Form states
     const [dialogOpen, setDialogOpen] = useState(false)
     const [editingCategory, setEditingCategory] = useState<accountingApi.AccountingCategory | null>(null)
     const [formName, setFormName] = useState('')
@@ -37,7 +38,6 @@ export default function AccountingCategoriesPage() {
     const [formOrder, setFormOrder] = useState(0)
     const [saving, setSaving] = useState(false)
 
-    // Reset form when dialog closes
     useEffect(() => {
         if (!dialogOpen) {
             setEditingCategory(null)
@@ -48,7 +48,6 @@ export default function AccountingCategoriesPage() {
         }
     }, [dialogOpen])
 
-    // Populate form when editing
     useEffect(() => {
         if (editingCategory) {
             setFormName(editingCategory.name)
@@ -60,7 +59,7 @@ export default function AccountingCategoriesPage() {
 
     const handleSave = async () => {
         if (!campusId || !formName.trim()) {
-            toast.error('اسم الفئة مطلوب')
+            toast.error(t('toast.name_required'))
             return
         }
 
@@ -74,7 +73,7 @@ export default function AccountingCategoriesPage() {
                     description: formDescription.trim() || undefined,
                     display_order: formOrder
                 })
-                toast.success('تم تحديث الفئة')
+                toast.success(t('toast.updated'))
             } else {
                 await accountingApi.createCategory({
                     campus_id: campusId,
@@ -83,12 +82,12 @@ export default function AccountingCategoriesPage() {
                     description: formDescription.trim() || undefined,
                     display_order: formOrder
                 })
-                toast.success('تم إنشاء الفئة')
+                toast.success(t('toast.created'))
             }
             mutate()
             setDialogOpen(false)
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'حدث خطأ')
+            toast.error(error instanceof Error ? error.message : tCommon('error'))
         } finally {
             setSaving(false)
         }
@@ -101,10 +100,10 @@ export default function AccountingCategoriesPage() {
                 campus_id: campusId,
                 is_active: !category.is_active
             })
-            toast.success(category.is_active ? 'تم تعطيل الفئة' : 'تم تفعيل الفئة')
+            toast.success(category.is_active ? t('toast.disabled') : t('toast.enabled'))
             mutate()
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'حدث خطأ')
+            toast.error(error instanceof Error ? error.message : tCommon('error'))
         }
     }
 
@@ -112,21 +111,21 @@ export default function AccountingCategoriesPage() {
         if (!campusId) return
         try {
             await accountingApi.deleteCategory(category.id, campusId)
-            toast.success('تم حذف الفئة')
+            toast.success(t('toast.deleted'))
             mutate()
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'حدث خطأ')
+            toast.error(error instanceof Error ? error.message : tCommon('error'))
         }
     }
 
     const getCategoryTypeBadge = (type: accountingApi.CategoryType) => {
         switch (type) {
             case 'incomes':
-                return <Badge variant="default" className="bg-green-500">إيرادات</Badge>
+                return <Badge variant="default" className="bg-green-500">{t('type_incomes')}</Badge>
             case 'expenses':
-                return <Badge variant="default" className="bg-red-500">مصروفات</Badge>
+                return <Badge variant="default" className="bg-red-500">{t('type_expenses')}</Badge>
             case 'common':
-                return <Badge variant="secondary">كلاهما</Badge>
+                return <Badge variant="secondary">{t('type_common')}</Badge>
         }
     }
 
@@ -143,7 +142,7 @@ export default function AccountingCategoriesPage() {
             <div className="container mx-auto py-6">
                 <Card>
                     <CardContent className="pt-6">
-                        <p className="text-muted-foreground text-center">يرجى اختيار فرع لإدارة فئات المحاسبة.</p>
+                        <p className="text-muted-foreground text-center">{t('select_campus')}</p>
                     </CardContent>
                 </Card>
             </div>
@@ -152,70 +151,63 @@ export default function AccountingCategoriesPage() {
 
     return (
         <div className="container mx-auto py-6 space-y-6">
-            {/* Header */}
             <div className="flex items-center gap-4">
                 <Button variant="ghost" size="icon" asChild>
                     <Link href="/admin/accounting/incomes"><IconArrowLeft className="h-4 w-4" /></Link>
                 </Button>
                 <div className="flex-1">
-                    <h1 className="text-3xl font-bold tracking-tight">فئات المحاسبة</h1>
-                    <p className="text-muted-foreground">
-                        إدارة فئات الإيرادات والمصروفات • {selectedCampus.name}
-                    </p>
+                    <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
+                    <p className="text-muted-foreground">{t('subtitle', { campus: selectedCampus.name })}</p>
                 </div>
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                     <DialogTrigger asChild>
                         <Button>
                             <IconPlus className="h-4 w-4 mr-2" />
-                            إضافة فئة
+                            {t('add_category')}
                         </Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>{editingCategory ? 'تعديل الفئة' : 'فئة جديدة'}</DialogTitle>
+                            <DialogTitle>{editingCategory ? t('dialog_edit_title') : t('dialog_new_title')}</DialogTitle>
                             <DialogDescription>
-                                {editingCategory 
-                                    ? 'حدّث تفاصيل الفئة أدناه.'
-                                    : 'أنشئ فئة جديدة لتتبع الإيرادات أو المصروفات.'}
+                                {editingCategory ? t('dialog_edit_desc') : t('dialog_new_desc')}
                             </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
                             <div className="space-y-2">
-                                <Label htmlFor="name">الاسم</Label>
+                                <Label htmlFor="name">{t('form_name')}</Label>
                                 <Input
                                     id="name"
                                     value={formName}
                                     onChange={(e) => setFormName(e.target.value)}
-                                    placeholder="مثال: خدمات، رسوم دراسية"
+                                    placeholder={t('form_name_placeholder')}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="type">نوع الفئة</Label>
+                                <Label htmlFor="type">{t('form_type')}</Label>
                                 <Select value={formType} onValueChange={(v) => setFormType(v as accountingApi.CategoryType)}>
                                     <SelectTrigger>
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="incomes">إيرادات فقط</SelectItem>
-                                        <SelectItem value="expenses">مصروفات فقط</SelectItem>
-                                        <SelectItem value="common">كلاهما (مشتركة)</SelectItem>
+                                        <SelectItem value="incomes">{t('form_type_incomes')}</SelectItem>
+                                        <SelectItem value="expenses">{t('form_type_expenses')}</SelectItem>
+                                        <SelectItem value="common">{t('form_type_common')}</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                <p className="text-xs text-muted-foreground">
-                                    تظهر الفئات &quot;المشتركة&quot; في قوائم الإيرادات والمصروفات
-                                </p>
+                                <p className="text-xs text-muted-foreground">{t('form_type_hint')}</p>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="description">الوصف (اختياري)</Label>
+                                <Label htmlFor="description">{t('form_desc')}</Label>
                                 <Input
                                     id="description"
                                     value={formDescription}
                                     onChange={(e) => setFormDescription(e.target.value)}
-                                    placeholder="وصف مختصر لهذه الفئة"
+                                    placeholder={t('form_desc_placeholder')}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="order">ترتيب العرض</Label>
+                                <Label htmlFor="order">{t('form_order')}</Label>
                                 <Input
                                     id="order"
                                     type="number"
@@ -223,29 +215,24 @@ export default function AccountingCategoriesPage() {
                                     onChange={(e) => setFormOrder(parseInt(e.target.value) || 0)}
                                     placeholder="0"
                                 />
-                                <p className="text-xs text-muted-foreground">
-                                    الأرقام الأصغر تظهر أولاً في القوائم
-                                </p>
+                                <p className="text-xs text-muted-foreground">{t('form_order_hint')}</p>
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button variant="outline" onClick={() => setDialogOpen(false)}>إلغاء</Button>
+                            <Button variant="outline" onClick={() => setDialogOpen(false)}>{tCommon('cancel')}</Button>
                             <Button onClick={handleSave} disabled={saving || !formName.trim()}>
                                 {saving && <IconLoader className="h-4 w-4 mr-2 animate-spin" />}
-                                {editingCategory ? 'تحديث' : 'إنشاء'}
+                                {editingCategory ? tCommon('update') : tCommon('create')}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
             </div>
 
-            {/* Categories Table */}
             <Card>
                 <CardHeader>
-                    <CardTitle>الفئات</CardTitle>
-                    <CardDescription>
-                        تُستخدم الفئات لتنظيم وتصفية الإيرادات والمصروفات
-                    </CardDescription>
+                    <CardTitle>{t('table_title')}</CardTitle>
+                    <CardDescription>{t('table_desc')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {isLoading ? (
@@ -253,19 +240,17 @@ export default function AccountingCategoriesPage() {
                             <IconLoader className="h-6 w-6 animate-spin text-muted-foreground" />
                         </div>
                     ) : !categories?.length ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                            لم يتم العثور على فئات. أنشئ أول فئة للبدء.
-                        </div>
+                        <div className="text-center py-8 text-muted-foreground">{t('empty')}</div>
                     ) : (
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>الترتيب</TableHead>
-                                    <TableHead>الاسم</TableHead>
-                                    <TableHead>النوع</TableHead>
-                                    <TableHead>الوصف</TableHead>
-                                    <TableHead>الحالة</TableHead>
-                                    <TableHead className="text-right">الإجراءات</TableHead>
+                                    <TableHead>{t('col_order')}</TableHead>
+                                    <TableHead>{t('col_name')}</TableHead>
+                                    <TableHead>{t('col_type')}</TableHead>
+                                    <TableHead>{t('col_description')}</TableHead>
+                                    <TableHead>{t('col_status')}</TableHead>
+                                    <TableHead className="text-right">{tCommon('actions')}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -274,12 +259,10 @@ export default function AccountingCategoriesPage() {
                                         <TableCell className="font-mono text-sm">{category.display_order}</TableCell>
                                         <TableCell className="font-medium">{category.name}</TableCell>
                                         <TableCell>{getCategoryTypeBadge(category.category_type)}</TableCell>
-                                        <TableCell className="text-muted-foreground">
-                                            {category.description || '-'}
-                                        </TableCell>
+                                        <TableCell className="text-muted-foreground">{category.description || '-'}</TableCell>
                                         <TableCell>
                                             <Badge variant={category.is_active ? 'default' : 'outline'}>
-                                                {category.is_active ? 'نشط' : 'غير نشط'}
+                                                {category.is_active ? tCommon('active') : tCommon('inactive')}
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-right">
@@ -299,7 +282,7 @@ export default function AccountingCategoriesPage() {
                                                     size="sm"
                                                     onClick={() => handleToggleActive(category)}
                                                 >
-                                                    {category.is_active ? 'تعطيل' : 'تفعيل'}
+                                                    {category.is_active ? t('btn_disable') : t('btn_enable')}
                                                 </Button>
                                                 <AlertDialog>
                                                     <AlertDialogTrigger asChild>
@@ -309,19 +292,18 @@ export default function AccountingCategoriesPage() {
                                                     </AlertDialogTrigger>
                                                     <AlertDialogContent>
                                                         <AlertDialogHeader>
-                                                            <AlertDialogTitle>حذف الفئة</AlertDialogTitle>
+                                                            <AlertDialogTitle>{t('delete_title')}</AlertDialogTitle>
                                                             <AlertDialogDescription>
-                                                                هل أنت متأكد من حذف &quot;{category.name}&quot;؟
-                                                                سيؤدي ذلك إلى إزالة الفئة من جميع الإيرادات والمصروفات الحالية.
+                                                                {t('delete_confirm', { name: category.name })}
                                                             </AlertDialogDescription>
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>
-                                                            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                                                            <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
                                                             <AlertDialogAction
                                                                 onClick={() => handleDelete(category)}
                                                                 className="bg-destructive text-destructive-foreground"
                                                             >
-                                                                حذف
+                                                                {tCommon('delete')}
                                                             </AlertDialogAction>
                                                         </AlertDialogFooter>
                                                     </AlertDialogContent>

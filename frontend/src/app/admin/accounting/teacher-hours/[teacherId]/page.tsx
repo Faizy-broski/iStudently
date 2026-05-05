@@ -16,20 +16,22 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import * as accountingApi from '@/lib/api/accounting'
 import type { TeacherHoursEntry } from '@/lib/api/accounting'
+import { useTranslations } from 'next-intl'
+import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 
 const MONTHS = [
-    { value: '01', label: 'يناير' },
-    { value: '02', label: 'فبراير' },
-    { value: '03', label: 'مارس' },
-    { value: '04', label: 'أبريل' },
-    { value: '05', label: 'مايو' },
-    { value: '06', label: 'يونيو' },
-    { value: '07', label: 'يوليو' },
-    { value: '08', label: 'أغسطس' },
-    { value: '09', label: 'سبتمبر' },
-    { value: '10', label: 'أكتوبر' },
-    { value: '11', label: 'نوفمبر' },
-    { value: '12', label: 'ديسمبر' },
+    { value: '01', monthKey: '0' },
+    { value: '02', monthKey: '1' },
+    { value: '03', monthKey: '2' },
+    { value: '04', monthKey: '3' },
+    { value: '05', monthKey: '4' },
+    { value: '06', monthKey: '5' },
+    { value: '07', monthKey: '6' },
+    { value: '08', monthKey: '7' },
+    { value: '09', monthKey: '8' },
+    { value: '10', monthKey: '9' },
+    { value: '11', monthKey: '10' },
+    { value: '12', monthKey: '11' },
 ]
 
 const getDaysInMonth = (month: string, year: string) => {
@@ -49,15 +51,17 @@ const getYears = () => {
 }
 
 export default function TeacherHoursDetailPage() {
+    const t = useTranslations('admin.accounting.teacher_hours_detail')
+    const tCommon = useTranslations('common')
     const params = useParams()
     const teacherId = params.teacherId as string
-    
+
     const { selectedCampus, loading: campusLoading } = useCampus() || {}
     const { currentAcademicYear } = useAcademic()
     const campusId = selectedCampus?.id
     const academicYearId = currentAcademicYear?.id
+    const { formatCurrency } = useSchoolSettings()
 
-    // Date filter state - default to current month
     const today = new Date()
     const [startMonth, setStartMonth] = useState(String(today.getMonth() + 1).padStart(2, '0'))
     const [startDay, setStartDay] = useState('01')
@@ -72,11 +76,9 @@ export default function TeacherHoursDetailPage() {
     const [rates, setRates] = useState<Record<string, number>>({})
     const [saving, setSaving] = useState(false)
 
-    // Build date strings
     const startDate = `${startYear}-${startMonth}-${startDay}`
     const endDate = `${endYear}-${endMonth}-${endDay}`
 
-    // Fetch teacher hours detail
     const { data: hoursResponse, isLoading, mutate } = useSWR(
         campusId && academicYearId && teacherId ? ['teacher-hours-detail', campusId, teacherId, startDate, endDate] : null,
         () => accountingApi.getTeacherHoursDetail(campusId!, teacherId, startDate, endDate, academicYearId!),
@@ -85,7 +87,6 @@ export default function TeacherHoursDetailPage() {
 
     const entries: TeacherHoursEntry[] = useMemo(() => hoursResponse?.data || [], [hoursResponse?.data])
 
-    // Initialize rates from API data
     useEffect(() => {
         if (entries.length > 0) {
             const initialRates: Record<string, number> = {}
@@ -96,17 +97,15 @@ export default function TeacherHoursDetailPage() {
         }
     }, [entries])
 
-    // Filter by search
     const filteredEntries = useMemo(() => {
         if (!searchQuery) return entries
         const query = searchQuery.toLowerCase()
-        return entries.filter(e => 
+        return entries.filter(e =>
             e.subject_name.toLowerCase().includes(query) ||
             e.period_name.toLowerCase().includes(query)
         )
     }, [entries, searchQuery])
 
-    // Calculate with updated rates
     const calculatedEntries = useMemo(() => {
         return filteredEntries.map(e => {
             const rate = rates[e.timetable_entry_id] ?? e.hourly_rate
@@ -118,15 +117,8 @@ export default function TeacherHoursDetailPage() {
         })
     }, [filteredEntries, rates])
 
-    // Calculate totals
-    const totalHours = useMemo(() => 
-        calculatedEntries.reduce((sum, e) => sum + e.total_hours, 0), 
-        [calculatedEntries]
-    )
-    const totalAmount = useMemo(() => 
-        calculatedEntries.reduce((sum, e) => sum + e.total_amount, 0), 
-        [calculatedEntries]
-    )
+    const totalHours = useMemo(() => calculatedEntries.reduce((sum, e) => sum + e.total_hours, 0), [calculatedEntries])
+    const totalAmount = useMemo(() => calculatedEntries.reduce((sum, e) => sum + e.total_amount, 0), [calculatedEntries])
 
     const handleRateChange = (entryId: string, value: string) => {
         const numValue = parseFloat(value) || 0
@@ -142,18 +134,13 @@ export default function TeacherHoursDetailPage() {
                 hourly_rate
             }))
             await accountingApi.updateTeacherHourlyRates(campusId, teacherId, ratesArray)
-            toast.success('تم حفظ أسعار الساعة بنجاح')
+            toast.success(t('toast.saved'))
             mutate()
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : 'فشل حفظ الأسعار'
-            toast.error(errorMessage)
+            toast.error(error instanceof Error ? error.message : t('toast.save_failed'))
         } finally {
             setSaving(false)
         }
-    }
-
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
     }
 
     if (campusLoading) {
@@ -169,7 +156,7 @@ export default function TeacherHoursDetailPage() {
             <div className="container mx-auto py-6">
                 <Card>
                     <CardContent className="pt-6">
-                        <p className="text-muted-foreground text-center">يرجى اختيار فرع لعرض ساعات المعلمين.</p>
+                        <p className="text-muted-foreground text-center">{t('select_campus')}</p>
                     </CardContent>
                 </Card>
             </div>
@@ -178,50 +165,43 @@ export default function TeacherHoursDetailPage() {
 
     return (
         <div className="container mx-auto py-6 space-y-6">
-            {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <IconClock className="h-8 w-8 text-[#3d8fb5]" />
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight">ساعات المعلمين</h1>
+                        <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
                     </div>
                 </div>
                 <Link href="/admin/accounting/teacher-hours" className="text-[#3d8fb5] hover:underline text-sm">
-                    جميع المعلمين
+                    {t('all_teachers')}
                 </Link>
             </div>
 
-            {/* Options */}
             <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                    <Checkbox 
-                        id="manualMode" 
+                    <Checkbox
+                        id="manualMode"
                         checked={manualMode}
                         onCheckedChange={(checked) => setManualMode(checked === true)}
                     />
                     <label htmlFor="manualMode" className="text-sm cursor-pointer">
-                        الوضع اليدوي
+                        {t('manual_mode')}
                     </label>
                 </div>
 
-                {/* Timeframe */}
                 <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className="font-medium">الفترة الزمنية:</span>
+                    <span className="font-medium">{t('period')}</span>
                     <div className="flex items-center gap-1">
                         <Select value={startMonth} onValueChange={setStartMonth}>
-                            <SelectTrigger className="w-28 h-8">
-                                <SelectValue />
-                            </SelectTrigger>
+                            <SelectTrigger className="w-28 h-8"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 {MONTHS.map(m => (
-                                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                                    <SelectItem key={m.value} value={m.value}>{tCommon(`months.${m.monthKey}`)}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
                         <Select value={startDay} onValueChange={setStartDay}>
-                            <SelectTrigger className="w-16 h-8">
-                                <SelectValue />
-                            </SelectTrigger>
+                            <SelectTrigger className="w-16 h-8"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 {getDaysInMonth(startMonth, startYear).map(d => (
                                     <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
@@ -229,9 +209,7 @@ export default function TeacherHoursDetailPage() {
                             </SelectContent>
                         </Select>
                         <Select value={startYear} onValueChange={setStartYear}>
-                            <SelectTrigger className="w-20 h-8">
-                                <SelectValue />
-                            </SelectTrigger>
+                            <SelectTrigger className="w-20 h-8"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 {getYears().map(y => (
                                     <SelectItem key={y.value} value={y.value}>{y.label}</SelectItem>
@@ -240,22 +218,18 @@ export default function TeacherHoursDetailPage() {
                         </Select>
                         <IconCalendar className="h-4 w-4 text-muted-foreground" />
                     </div>
-                    <span>إلى</span>
+                    <span>{tCommon('to')}</span>
                     <div className="flex items-center gap-1">
                         <Select value={endMonth} onValueChange={setEndMonth}>
-                            <SelectTrigger className="w-28 h-8">
-                                <SelectValue />
-                            </SelectTrigger>
+                            <SelectTrigger className="w-28 h-8"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 {MONTHS.map(m => (
-                                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                                    <SelectItem key={m.value} value={m.value}>{tCommon(`months.${m.monthKey}`)}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
                         <Select value={endDay} onValueChange={setEndDay}>
-                            <SelectTrigger className="w-16 h-8">
-                                <SelectValue />
-                            </SelectTrigger>
+                            <SelectTrigger className="w-16 h-8"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 {getDaysInMonth(endMonth, endYear).map(d => (
                                     <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
@@ -263,9 +237,7 @@ export default function TeacherHoursDetailPage() {
                             </SelectContent>
                         </Select>
                         <Select value={endYear} onValueChange={setEndYear}>
-                            <SelectTrigger className="w-20 h-8">
-                                <SelectValue />
-                            </SelectTrigger>
+                            <SelectTrigger className="w-20 h-8"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 {getYears().map(y => (
                                     <SelectItem key={y.value} value={y.value}>{y.label}</SelectItem>
@@ -275,33 +247,32 @@ export default function TeacherHoursDetailPage() {
                         <IconCalendar className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <Button size="sm" onClick={() => mutate()} className="bg-[#3d8fb5] hover:bg-[#357ea0]">
-                        عرض
+                        {tCommon('view')}
                     </Button>
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <Checkbox 
-                        id="deduceAbsences" 
+                    <Checkbox
+                        id="deduceAbsences"
                         checked={deduceAbsences}
                         onCheckedChange={(checked) => setDeduceAbsences(checked === true)}
                     />
                     <label htmlFor="deduceAbsences" className="text-sm cursor-pointer">
-                        خصم الغيابات
+                        {t('deduce_absences')}
                     </label>
                     <span className="text-xs text-muted-foreground">(ⓘ)</span>
                 </div>
             </div>
 
-            {/* Count and Search */}
             <Card>
                 <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
                         <p className="text-sm text-muted-foreground">
-                            تم العثور على {calculatedEntries.length} حصة دراسية.
+                            {t('found_count', { count: calculatedEntries.length })}
                         </p>
                         <div className="relative">
                             <Input
-                                placeholder="بحث"
+                                placeholder={tCommon('search')}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-64 pr-8"
@@ -312,7 +283,6 @@ export default function TeacherHoursDetailPage() {
                 </CardContent>
             </Card>
 
-            {/* Hours Table */}
             <Card>
                 <CardContent className="pt-6">
                     {isLoading ? (
@@ -320,27 +290,27 @@ export default function TeacherHoursDetailPage() {
                             <IconLoader className="h-6 w-6 animate-spin text-muted-foreground" />
                         </div>
                     ) : calculatedEntries.length === 0 ? (
-                        <p className="text-muted-foreground text-center py-8">لم يتم العثور على حصص دراسية لهذا المعلم.</p>
+                        <p className="text-muted-foreground text-center py-8">{t('empty')}</p>
                     ) : (
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="text-[#3d8fb5]">المادة</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">أيام الحصة - الاسم المختصر</TableHead>
-                                    <TableHead className="text-[#3d8fb5] text-right">الساعات</TableHead>
-                                    <TableHead className="text-[#3d8fb5] text-right">سعر الساعة</TableHead>
-                                    <TableHead className="text-[#3d8fb5] text-right">الإجمالي</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">{t('col_subject')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5]">{t('col_period')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] text-right">{t('col_hours')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] text-right">{t('col_rate')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] text-right">{t('col_total')}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {calculatedEntries.map(entry => {
-                                    const dayNames = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
                                     const dayIndex = entry.day_of_week === 7 ? 0 : entry.day_of_week
-                                    
+                                    const dayName = tCommon(`days.${dayIndex}`)
+
                                     return (
                                         <TableRow key={entry.timetable_entry_id}>
                                             <TableCell>{entry.subject_name}</TableCell>
-                                            <TableCell>{dayNames[dayIndex]} - {entry.period_name}</TableCell>
+                                            <TableCell>{dayName} - {entry.period_name}</TableCell>
                                             <TableCell className="text-right">{entry.total_hours}</TableCell>
                                             <TableCell className="text-right">
                                                 <Input
@@ -358,9 +328,8 @@ export default function TeacherHoursDetailPage() {
                                         </TableRow>
                                     )
                                 })}
-                                {/* Total Row */}
                                 <TableRow className="font-semibold bg-muted/50">
-                                    <TableCell colSpan={2}>الإجمالي</TableCell>
+                                    <TableCell colSpan={2}>{tCommon('total')}</TableCell>
                                     <TableCell className="text-right">{totalHours}</TableCell>
                                     <TableCell></TableCell>
                                     <TableCell className="text-right">{formatCurrency(totalAmount)}</TableCell>
@@ -371,15 +340,14 @@ export default function TeacherHoursDetailPage() {
                 </CardContent>
             </Card>
 
-            {/* Save Button */}
             {calculatedEntries.length > 0 && (
                 <div className="flex justify-center">
-                    <Button 
-                        onClick={handleSave} 
+                    <Button
+                        onClick={handleSave}
                         disabled={saving}
                         className="bg-[#3d8fb5] hover:bg-[#357ea0] px-8"
                     >
-                        {saving ? 'جارٍ الحفظ...' : 'حفظ'}
+                        {saving ? t('saving') : tCommon('save')}
                     </Button>
                 </div>
             )}

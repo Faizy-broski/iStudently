@@ -11,11 +11,12 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { IconLoader, IconPlus, IconTrash, IconCalendar } from '@tabler/icons-react'
-import useSWR, { mutate } from 'swr'
+import { IconLoader, IconPlus, IconTrash, IconCalendar, IconUpload, IconPencil, IconCheck, IconX } from '@tabler/icons-react'
+import useSWR from 'swr'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 import { getSchoolSettings, PAYMENT_METHOD_OPTIONS, type PaymentMethodOption } from '@/lib/api/school-settings'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
@@ -27,6 +28,7 @@ interface Payment {
     payment_date: string
     comment?: string
     is_lunch_payment: boolean
+    payment_method?: string
     file_url?: string
     created_at: string
     created_by_profile?: {
@@ -77,18 +79,20 @@ async function fetchStudentPayments(studentId: string, schoolId: string): Promis
 }
 
 
-const MONTHS = [
-    'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-    'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+const MONTH_KEYS = [
+    'january', 'february', 'march', 'april', 'may', 'june',
+    'july', 'august', 'september', 'october', 'november', 'december'
 ]
 
-const getDaysInMonth = (month: string, year: string) => {
-    const monthIndex = MONTHS.indexOf(month) + 1 // 1-based
+const getDaysInMonth = (monthKey: string, year: string) => {
+    const monthIndex = MONTH_KEYS.indexOf(monthKey) + 1 // 1-based
     const daysInMonth = new Date(parseInt(year), monthIndex, 0).getDate()
     return Array.from({ length: daysInMonth }, (_, i) => (i + 1).toString())
 }
 
 export default function StudentPaymentsPage({ params }: { params: Promise<{ studentId: string }> }) {
+    const t = useTranslations('fees.payments')
+    const tm = useTranslations('fees.months')
     const resolvedParams = use(params)
     const studentId = resolvedParams.studentId
     
@@ -121,7 +125,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
             <!DOCTYPE html>
             <html>
             <head>
-                <title>إيصالات المدفوعات</title>
+                <title>${t('paymentReceipts')}</title>
                 <style>
                     * { margin: 0; padding: 0; box-sizing: border-box; }
                     body { font-family: Arial, sans-serif; padding: 20px; }
@@ -155,14 +159,25 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
         }, 250)
     }, [])
     const [saving, setSaving] = useState(false)
+    const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null)
+    const [editingValues, setEditingValues] = useState<{
+        amount: string
+        payment_date: string
+        comment: string
+        payment_method: string
+        is_lunch_payment: boolean
+    }>({ amount: '', payment_date: '', comment: '', payment_method: 'cash', is_lunch_payment: false })
     const [openCalendarIndex, setOpenCalendarIndex] = useState<number | null>(null)
+    const [uploadingFileForId, setUploadingFileForId] = useState<string | null>(null)
+    const fileUploadRef = useRef<HTMLInputElement>(null)
+    const uploadTargetPaymentId = useRef<string | null>(null)
 
     const handleCalendarSelect = (index: number, date: Date | undefined) => {
         if (!date) return
         const updated = [...newPayments]
         updated[index] = {
             ...updated[index],
-            month: MONTHS[date.getMonth()],
+            month: MONTH_KEYS[date.getMonth()],
             day: date.getDate().toString(),
             year: date.getFullYear().toString(),
         }
@@ -172,7 +187,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
     const [newPayments, setNewPayments] = useState<NewPayment[]>([{
         receipt_number: '',
         amount: '',
-        month: MONTHS[new Date().getMonth()],
+        month: MONTH_KEYS[new Date().getMonth()],
         day: new Date().getDate().toString(),
         year: new Date().getFullYear().toString(),
         comment: '',
@@ -182,7 +197,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
     }])
 
     // Fetch payments (includes studentInfo)
-    const { data: paymentData, isLoading: paymentsLoading } = useSWR<PaymentResponse>(
+    const { data: paymentData, isLoading: paymentsLoading, mutate: mutatePayments } = useSWR<PaymentResponse>(
         schoolId && studentId ? ['student-payments', studentId, schoolId] : null,
         () => fetchStudentPayments(studentId, schoolId!)
     )
@@ -210,8 +225,9 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
     // Add new payment row
     const addPaymentRow = () => {
         setNewPayments([...newPayments, {
+            receipt_number: '',
             amount: '',
-            month: MONTHS[new Date().getMonth()],
+            month: MONTH_KEYS[new Date().getMonth()],
             day: new Date().getDate().toString(),
             year: new Date().getFullYear().toString(),
             comment: '',
@@ -248,12 +264,60 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
         }
     }
 
+    // Inline edit existing payments
+    const startEdit = (payment: Payment) => {
+        setEditingPaymentId(payment.id)
+        setEditingValues({
+            amount: payment.amount.toString(),
+            payment_date: payment.payment_date.slice(0, 10),
+            comment: payment.comment || '',
+            payment_method: payment.payment_method || 'cash',
+            is_lunch_payment: payment.is_lunch_payment,
+        })
+    }
+
+    const cancelEdit = () => setEditingPaymentId(null)
+
+    const saveEdit = async (paymentId: string) => {
+        if (!editingValues.amount || parseFloat(editingValues.amount) <= 0) {
+            toast.error(t('enterAtLeastOne'))
+            return
+        }
+        try {
+            const supabase = createClient()
+            const { data: { session } } = await supabase.auth.getSession()
+            const res = await fetch(`${API_BASE}/api/fees/payments/${paymentId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token}`
+                },
+                body: JSON.stringify({
+                    school_id: schoolId,
+                    amount: parseFloat(editingValues.amount),
+                    payment_date: new Date(editingValues.payment_date).toISOString(),
+                    comment: editingValues.comment || null,
+                    is_lunch_payment: editingValues.is_lunch_payment,
+                    payment_method: editingValues.payment_method,
+                })
+            })
+            const json = await res.json()
+            if (!json.success) throw new Error(json.error)
+            toast.success(t('paymentSaved'))
+            setEditingPaymentId(null)
+            mutatePayments()
+        } catch (error: unknown) {
+            const err = error as Error
+            toast.error(err.message || t('saveFailed'))
+        }
+    }
+
     // Save payments
     const handleSave = async () => {
         const validPayments = newPayments.filter(p => p.amount && parseFloat(p.amount) > 0)
         
         if (validPayments.length === 0) {
-            toast.error('يرجى إدخال مبلغ دفعة واحد على الأقل')
+            toast.error(t('enterAtLeastOne'))
             return
         }
 
@@ -263,25 +327,24 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
 
         try {
             for (const payment of validPayments) {
-                const monthIndex = MONTHS.indexOf(payment.month)
+                const monthIndex = MONTH_KEYS.indexOf(payment.month)
                 const paymentDate = new Date(
                     parseInt(payment.year),
                     monthIndex,
                     parseInt(payment.day)
                 ).toISOString()
 
-                // TODO: Handle file upload if needed
                 let fileUrl = undefined
                 if (payment.file) {
-                    // Upload file to storage
-                    const fileName = `payments/${studentId}/${Date.now()}_${payment.file.name}`
+                    const safeName = payment.file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+                    const fileName = `payments/${studentId}/${Date.now()}_${safeName}`
                     const { data: uploadData, error: uploadError } = await supabase.storage
-                        .from('attachments')
-                        .upload(fileName, payment.file)
-                    
+                        .from('fee-attachments')
+                        .upload(fileName, payment.file, { upsert: true })
+
                     if (!uploadError && uploadData) {
                         const { data: urlData } = supabase.storage
-                            .from('attachments')
+                            .from('fee-attachments')
                             .getPublicUrl(fileName)
                         fileUrl = urlData.publicUrl
                     }
@@ -310,12 +373,12 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                 if (!json.success) throw new Error(json.error)
             }
 
-            toast.success('تم حفظ المدفوعات بنجاح')
+            toast.success(t('paymentSaved'))
             
             // Reset form and refresh data
             setNewPayments([{
                 amount: '',
-                month: MONTHS[new Date().getMonth()],
+                month: MONTH_KEYS[new Date().getMonth()],
                 day: new Date().getDate().toString(),
                 year: new Date().getFullYear().toString(),
                 comment: '',
@@ -324,18 +387,66 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                 file: null
             }])
             
-            mutate(['student-payments', studentId, schoolId])
+            mutatePayments()
         } catch (error: unknown) {
             const err = error as Error
-            toast.error(err.message || 'فشل حفظ المدفوعات')
+            toast.error(err.message || t('saveFailed'))
         } finally {
             setSaving(false)
         }
     }
 
+    // Upload file for an existing payment
+    const handleUploadFileForPayment = async (paymentId: string, file: File) => {
+        setUploadingFileForId(paymentId)
+        try {
+            const supabase = createClient()
+            const { data: { session } } = await supabase.auth.getSession()
+
+            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+            const fileName = `payments/${studentId}/${Date.now()}_${safeName}`
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('fee-attachments')
+                .upload(fileName, file, { upsert: true })
+
+            if (uploadError || !uploadData) {
+                toast.error(uploadError?.message || t('uploadFailed'))
+                return
+            }
+
+            const { data: urlData } = supabase.storage
+                .from('fee-attachments')
+                .getPublicUrl(fileName)
+
+            const res = await fetch(`${API_BASE}/api/fees/payments/${paymentId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token}`
+                },
+                body: JSON.stringify({
+                    school_id: schoolId,
+                    file_url: urlData.publicUrl
+                })
+            })
+
+            const json = await res.json()
+            if (!json.success) throw new Error(json.error)
+
+            toast.success(t('uploadSuccess'))
+            mutatePayments()
+        } catch (error: unknown) {
+            const err = error as Error
+            toast.error(err.message || t('uploadFailed'))
+        } finally {
+            setUploadingFileForId(null)
+            uploadTargetPaymentId.current = null
+        }
+    }
+
     // Delete existing payment
     const handleDeletePayment = async (paymentId: string) => {
-        if (!confirm('هل أنت متأكد من حذف هذه الدفعة؟')) return
+        if (!confirm(t('deleteConfirm'))) return
 
         const supabase = createClient()
         const { data: { session } } = await supabase.auth.getSession()
@@ -349,11 +460,11 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
             const json = await res.json()
             if (!json.success) throw new Error(json.error)
 
-            toast.success('تم حذف الدفعة')
-            mutate(['student-payments', studentId, schoolId])
+            toast.success(t('paymentDeleted'))
+            mutatePayments()
         } catch (error: unknown) {
             const err = error as Error
-            toast.error(err.message || 'فشل حذف الدفعة')
+            toast.error(err.message || t('deleteFailed'))
         }
     }
 
@@ -374,7 +485,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
             <div className="container mx-auto py-6">
                 <Card>
                     <CardContent className="pt-6">
-                        <p className="text-muted-foreground text-center">يرجى اختيار فرع.</p>
+                        <p className="text-muted-foreground text-center">{t('pleaseSelectCampus')}</p>
                     </CardContent>
                 </Card>
             </div>
@@ -382,11 +493,12 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
     }
 
     return (
+        <>
         <div className="container mx-auto py-6 space-y-4">
             {/* Header */}
             <div className="flex items-center gap-3">
                 <span className="text-3xl">🔔</span>
-                <h1 className="text-3xl font-bold tracking-tight">المدفوعات</h1>
+                <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
             </div>
 
             {/* Print Receipt Link */}
@@ -399,7 +511,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                         if (payments.length > 0) handlePrint()
                     }}
                 >
-                    طباعة الإيصال{payments.length > 1 ? 'ات' : ''}
+                    {t('printReceipt')}{payments.length > 1 ? 's' : ''}
                 </Link>
             </div>
 
@@ -413,7 +525,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                         setViewMode(viewMode === 'original' ? 'expanded' : 'original')
                     }}
                 >
-                    {viewMode === 'original' ? 'العرض الموسع' : 'العرض الأصلي'}
+                    {viewMode === 'original' ? t('expandedView') : t('originalView')}
                 </Link>
                 <Button 
                     className="bg-[#3d8fb5] hover:bg-[#357a9e]"
@@ -421,7 +533,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                     disabled={saving}
                 >
                     {saving ? <IconLoader className="h-4 w-4 animate-spin mr-2" /> : null}
-                    حفظ
+                    {t('codes_save')}
                 </Button>
             </div>
 
@@ -437,7 +549,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
 
             {/* No Payments Message */}
             {payments.length === 0 && (
-                <p className="text-sm font-medium text-gray-700">لم يتم العثور على مدفوعات.</p>
+                <p className="text-sm font-medium text-gray-700">{t('noPayments')}</p>
             )}
 
             {/* Payments Table */}
@@ -452,17 +564,17 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                             <TableHeader>
                                 <TableRow className="bg-gray-100">
                                     <TableHead className="w-10"></TableHead>
-                                    <TableHead className="text-[#3d8fb5] font-semibold">رقم الإيصال</TableHead>
-                                    <TableHead className="text-[#3d8fb5] font-semibold">المبلغ</TableHead>
-                                    <TableHead className="text-[#3d8fb5] font-semibold">التاريخ</TableHead>
-                                    <TableHead className="text-[#3d8fb5] font-semibold">ملاحظة</TableHead>
-                                    <TableHead className="text-[#3d8fb5] font-semibold">الطريقة</TableHead>
-                                    <TableHead className="text-[#3d8fb5] font-semibold text-center">دفعة وجبة</TableHead>
-                                    <TableHead className="text-[#3d8fb5] font-semibold text-center">ملف مرفق</TableHead>
+                                    <TableHead className="text-[#3d8fb5] font-semibold text-center">{t('th_receipt')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] font-semibold text-center">{t('th_amount')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] font-semibold text-center">{t('paymentDate')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] font-semibold text-center">{t('th_comment')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] font-semibold text-center">{t('th_method')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] font-semibold text-center">{t('th_lunchPayment')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] font-semibold text-center">{t('th_attachment')}</TableHead>
                                     {viewMode === 'expanded' && (
                                         <>
-                                            <TableHead className="text-[#3d8fb5] font-semibold">أُنشئ بواسطة</TableHead>
-                                            <TableHead className="text-[#3d8fb5] font-semibold">تاريخ الإنشاء</TableHead>
+                                            <TableHead className="text-[#3d8fb5] font-semibold text-center">{t('th_createdBy')}</TableHead>
+                                            <TableHead className="text-[#3d8fb5] font-semibold text-center">{t('th_createdAt')}</TableHead>
                                         </>
                                     )}
                                     <TableHead className="w-10"></TableHead>
@@ -470,36 +582,119 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                             </TableHeader>
                             <TableBody>
                                 {/* Existing Payments */}
-                                {payments.map((payment, index) => (
-                                    <TableRow 
+                                {payments.map((payment, index) => {
+                                    const isEditing = editingPaymentId === payment.id
+                                    return (
+                                    <TableRow
                                         key={payment.id}
                                         className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
                                     >
                                         <TableCell></TableCell>
                                         <TableCell>{payment.receipt_number || '-'}</TableCell>
-                                        <TableCell>{formatCurrency(payment.amount)}</TableCell>
-                                        <TableCell>{formatDate(payment.payment_date)}</TableCell>
-                                        <TableCell>{payment.comment || '-'}</TableCell>
-                                        <TableCell className="capitalize">{(payment as any).payment_method?.replace('_', ' ') || 'نقداً'}</TableCell>
-                                        <TableCell className="text-center">
-                                            <Checkbox checked={payment.is_lunch_payment} disabled />
+
+                                        {/* Amount */}
+                                        <TableCell>
+                                            {isEditing ? (
+                                                <Input
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={editingValues.amount}
+                                                    onChange={e => setEditingValues(v => ({ ...v, amount: e.target.value }))}
+                                                    className="w-24 h-8"
+                                                />
+                                            ) : formatCurrency(payment.amount)}
                                         </TableCell>
-                                        <TableCell className="text-center">
-                                            {payment.file_url ? (
-                                                <a 
-                                                    href={payment.file_url} 
-                                                    target="_blank" 
-                                                    rel="noopener noreferrer"
-                                                    className="text-[#3d8fb5] hover:underline"
+
+                                        {/* Payment Date */}
+                                        <TableCell>
+                                            {isEditing ? (
+                                                <input
+                                                    type="date"
+                                                    value={editingValues.payment_date}
+                                                    onChange={e => setEditingValues(v => ({ ...v, payment_date: e.target.value }))}
+                                                    className="h-8 rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                                                />
+                                            ) : formatDate(payment.payment_date)}
+                                        </TableCell>
+
+                                        {/* Comment */}
+                                        <TableCell>
+                                            {isEditing ? (
+                                                <Input
+                                                    value={editingValues.comment}
+                                                    onChange={e => setEditingValues(v => ({ ...v, comment: e.target.value }))}
+                                                    className="w-full h-8"
+                                                />
+                                            ) : (payment.comment || '-')}
+                                        </TableCell>
+
+                                        {/* Method */}
+                                        <TableCell>
+                                            {isEditing ? (
+                                                <Select
+                                                    value={editingValues.payment_method}
+                                                    onValueChange={v => setEditingValues(ev => ({ ...ev, payment_method: v }))}
                                                 >
-                                                    عرض
-                                                </a>
-                                            ) : '-'}
+                                                    <SelectTrigger className="w-32 h-8">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {PAYMENT_METHOD_OPTIONS.map(opt => (
+                                                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            ) : (
+                                                <span className="capitalize">{payment.payment_method?.replace('_', ' ') || t('cash')}</span>
+                                            )}
                                         </TableCell>
+
+                                        {/* Lunch Payment */}
+                                        <TableCell className="text-center">
+                                            <Checkbox
+                                                checked={isEditing ? editingValues.is_lunch_payment : payment.is_lunch_payment}
+                                                disabled={!isEditing}
+                                                onCheckedChange={isEditing ? (checked) => setEditingValues(v => ({ ...v, is_lunch_payment: !!checked })) : undefined}
+                                            />
+                                        </TableCell>
+
+                                        {/* Attachment */}
+                                        <TableCell className="text-center">
+                                            <div className="flex items-center justify-center gap-1">
+                                                {payment.file_url ? (
+                                                    <a
+                                                        href={payment.file_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-[#3d8fb5] hover:underline text-sm"
+                                                    >
+                                                        {t('view')}
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-gray-400 text-sm">-</span>
+                                                )}
+                                                {uploadingFileForId === payment.id ? (
+                                                    <IconLoader className="h-4 w-4 animate-spin text-gray-400" />
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        title={payment.file_url ? t('replaceFile') : t('attachFile')}
+                                                        className="text-gray-400 hover:text-[#3d8fb5] transition-colors"
+                                                        onClick={() => {
+                                                            uploadTargetPaymentId.current = payment.id
+                                                            fileUploadRef.current?.click()
+                                                        }}
+                                                    >
+                                                        <IconUpload className="h-4 w-4" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </TableCell>
+
                                         {viewMode === 'expanded' && (
                                             <>
                                                 <TableCell>
-                                                    {payment.created_by_profile 
+                                                    {payment.created_by_profile
                                                         ? `${payment.created_by_profile.first_name} ${payment.created_by_profile.last_name}`
                                                         : '-'
                                                     }
@@ -507,18 +702,52 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                                 <TableCell>{formatDate(payment.created_at)}</TableCell>
                                             </>
                                         )}
+
+                                        {/* Actions */}
                                         <TableCell>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                onClick={() => handleDeletePayment(payment.id)}
-                                            >
-                                                <IconTrash className="h-4 w-4" />
-                                            </Button>
+                                            {isEditing ? (
+                                                <div className="flex items-center gap-1">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                                        onClick={() => saveEdit(payment.id)}
+                                                    >
+                                                        <IconCheck className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                                                        onClick={cancelEdit}
+                                                    >
+                                                        <IconX className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-1">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                                                        onClick={() => startEdit(payment)}
+                                                    >
+                                                        <IconPencil className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                        onClick={() => handleDeletePayment(payment.id)}
+                                                    >
+                                                        <IconTrash className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            )}
                                         </TableCell>
                                     </TableRow>
-                                ))}
+                                    )
+                                })}
 
                                 {/* New Payment Rows */}
                                 {newPayments.map((payment, index) => (
@@ -535,11 +764,11 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                         </TableCell>
                                         <TableCell>
                                             <Input
-                                                value={payment.receipt_number}
+                                                value={payment.receipt_number ?? ''}
                                                 readOnly
-                                                placeholder="تلقائي"
+                                                placeholder={t('auto')}
                                                 className="w-24 h-8 bg-muted cursor-not-allowed select-none"
-                                                title="رقم الإيصال يُنشأ تلقائيًا"
+                                                title={t('receiptAutoGenerated')}
                                             />
                                         </TableCell>
                                         <TableCell>
@@ -562,8 +791,8 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        {MONTHS.map(m => (
-                                                            <SelectItem key={m} value={m}>{m}</SelectItem>
+                                                        {MONTH_KEYS.map(m => (
+                                                            <SelectItem key={m} value={m}>{tm(m)}</SelectItem>
                                                         ))}
                                                     </SelectContent>
                                                 </Select>
@@ -606,7 +835,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                                         <input
                                                             type="date"
                                                             className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                                                            value={`${payment.year}-${String(MONTHS.indexOf(payment.month) + 1).padStart(2, '0')}-${String(payment.day).padStart(2, '0')}`}
+                                                            value={`${payment.year}-${String(MONTH_KEYS.indexOf(payment.month) + 1).padStart(2, '0')}-${String(payment.day).padStart(2, '0')}`}
                                                             onChange={(e) => {
                                                                 if (!e.target.value) return
                                                                 const [y, m, d] = e.target.value.split('-')
@@ -700,24 +929,24 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                     disabled={saving}
                 >
                     {saving ? <IconLoader className="h-4 w-4 animate-spin mr-2" /> : null}
-                    حفظ
+                    {t('codes_save')}
                 </Button>
             </div>
 
             {/* Summary */}
             <Card className="border shadow-sm">
                 <CardContent className="p-4">
-                    <div className="space-y-1 text-right">
+                    <div className="space-y-1 text-end">
                         <div className="flex justify-end gap-4">
-                            <span className="text-sm font-medium">إجمالي الرسوم:</span>
+                            <span className="text-sm font-medium">{t('totalFees')}:</span>
                             <span className="text-sm w-24">{formatCurrency(summary.totalFees)}</span>
                         </div>
                         <div className="flex justify-end gap-4">
-                            <span className="text-sm font-medium">ناقص: إجمالي المدفوعات:</span>
+                            <span className="text-sm font-medium">{t('lessTotalPayments')}:</span>
                             <span className="text-sm w-24">{formatCurrency(summary.totalPayments)}</span>
                         </div>
                         <div className="flex justify-end gap-4">
-                            <span className="text-sm font-bold">الرصيد:</span>
+                            <span className="text-sm font-bold">{t('balance')}:</span>
                             <span className="text-sm font-bold w-24">{formatCurrency(summary.balance)}</span>
                         </div>
                     </div>
@@ -727,7 +956,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
             {/* Back Link */}
             <div>
                 <Link href="/admin/fees/payments" className="text-[#3d8fb5] hover:underline text-sm">
-                    ← العودة إلى الطلاب
+                    ← {t('backToStudents')}
                 </Link>
             </div>
 
@@ -738,37 +967,37 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                         <div key={payment.id} className="receipt">
                             <div className="header">
                                 <h1>{selectedCampus?.name || 'School Name'}</h1>
-                                                        <p>إيصال دفع</p>
+                                                        <p>{t('feeChallan')}</p>
                             </div>
                             <div className="info-grid">
                                 <div>
-                                    <p><strong>اسم الطالب:</strong> {student ? `${student.first_name} ${student.last_name}` : '-'}</p>
-                                    <p><strong>رقم الطالب:</strong> {student?.student_number || '-'}</p>
+                                    <p><strong>{t('student')}:</strong> {student ? `${student.first_name} ${student.last_name}` : '-'}</p>
+                                    <p><strong>{t('istudentlyId')}:</strong> {student?.student_number || '-'}</p>
                                 </div>
                                 <div className="right">
-                                    <p><strong>رقم الإيصال:</strong> {payment.receipt_number || `RCP-${payment.id.substring(0,8).toUpperCase()}`}</p>
-                                    <p><strong>تاريخ الدفع:</strong> {formatDate(payment.payment_date)}</p>
+                                    <p><strong>{t('th_receipt')}:</strong> {payment.receipt_number || `RCP-${payment.id.substring(0,8).toUpperCase()}`}</p>
+                                    <p><strong>{t('paymentDate')}:</strong> {formatDate(payment.payment_date)}</p>
                                 </div>
                             </div>
                             <div className="amount-box">
-                                <p className="label">المبلغ المدفوع</p>
+                                <p className="label">{t('amountPaid')}</p>
                                 <p className="amount">{formatCurrency(payment.amount)}</p>
                             </div>
                             <table>
                                 <tbody>
                                     <tr>
-                                        <th>ملاحظة</th>
+                                        <th>{t('th_comment')}</th>
                                         <td>{payment.comment || '-'}</td>
                                     </tr>
                                 </tbody>
                             </table>
                             <div className="footer">
                                 <div className="date">
-                                    <p>تم الإنشاء بتاريخ: {new Date().toLocaleDateString()}</p>
+                                    <p>{t('th_createdAt')}: {new Date().toLocaleDateString()}</p>
                                 </div>
                                 <div className="signature">
                                     <div className="signature-line">
-                                        <p>توقيع معتمد</p>
+                                        <p>{t('authorizedSignature')}</p>
                                     </div>
                                 </div>
                             </div>
@@ -776,6 +1005,21 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                     ))}
                 </div>
             </div>
+
+            {/* Hidden file input for uploading to existing payments */}
+            <input
+                ref={fileUploadRef}
+                type="file"
+                className="hidden"
+                onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file && uploadTargetPaymentId.current) {
+                        handleUploadFileForPayment(uploadTargetPaymentId.current, file)
+                    }
+                    e.target.value = ''
+                }}
+            />
         </div>
+        </>
     )
 }

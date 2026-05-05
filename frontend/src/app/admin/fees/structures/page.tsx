@@ -14,6 +14,7 @@ import { IconArrowLeft, IconPlus, IconTrash, IconEdit, IconDeviceFloppy } from '
 import { toast } from 'sonner'
 import Link from 'next/link'
 import useSWR from 'swr'
+import { useTranslations } from 'next-intl'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
@@ -42,6 +43,7 @@ interface FeeStructure {
 }
 
 export default function FeeStructuresPage() {
+    const t = useTranslations('fees.structures')
     const { profile } = useAuth()
     const { selectedCampus } = useCampus()
     const schoolId = selectedCampus?.id || profile?.school_id || ''
@@ -103,7 +105,7 @@ export default function FeeStructuresPage() {
 
     const handleSave = async () => {
         if (!formData.grade_level_id || !formData.fee_category_id || !formData.amount || !formData.due_date) {
-            toast.error('يرجى تعبئة جميع الحقول المطلوبة')
+            toast.error(t('fillRequired'))
             return
         }
 
@@ -134,19 +136,19 @@ export default function FeeStructuresPage() {
             const result = await response.json()
 
             if (result.success) {
-                toast.success(editingStructure ? 'تم التحديث بنجاح' : 'تم الإنشاء بنجاح')
+                toast.success(editingStructure ? t('updateSuccess') : t('createSuccess'))
                 mutateStructures()
                 resetForm()
             } else {
-                toast.error(result.error || 'فشلت العملية')
+                toast.error(result.error || t('failed'))
             }
         } catch (error: any) {
-            toast.error(error.message || 'فشل الحفظ')
+            toast.error(error.message || t('failed'))
         }
     }
 
     const handleDelete = async (id: string) => {
-        if (!confirm('هل أنت متأكد من حذف هيكل الرسوم هذا؟')) return
+        if (!confirm(t('deleteConfirm'))) return
 
         try {
             const { createClient } = await import('@/lib/supabase/client')
@@ -160,13 +162,13 @@ export default function FeeStructuresPage() {
             const result = await response.json()
 
             if (result.success) {
-                toast.success('تم الحذف بنجاح')
+                toast.success(t('deleteSuccess'))
                 mutateStructures()
             } else {
-                toast.error(result.error || 'فشل الحذف')
+                toast.error(result.error || t('failed'))
             }
         } catch (error: any) {
-            toast.error(error.message || 'فشل الحذف')
+            toast.error(error.message || t('failed'))
         }
     }
 
@@ -208,19 +210,19 @@ export default function FeeStructuresPage() {
                     </Link>
                 </Button>
                 <div className="flex-1">
-                    <h1 className="text-2xl font-bold">هياكل الرسوم</h1>
-                    <p className="text-muted-foreground">تحديد مبالغ الرسوم لكل مرحلة وفئة</p>
+                    <h1 className="text-2xl font-bold">{t('title')}</h1>
+                    <p className="text-muted-foreground">{t('subtitle')}</p>
                 </div>
                 <Button onClick={() => setIsAddingNew(true)}>
                     <IconPlus className="h-4 w-4 mr-2" />
-                    إضافة هيكل جديد
+                    {t('addNew')}
                 </Button>
             </div>
 
             {/* Academic Year Filter */}
             <Card>
                 <CardHeader>
-                    <CardTitle>السنة الدراسية</CardTitle>
+                    <CardTitle>{t('academicYear')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <Select value={academicYear} onValueChange={setAcademicYear}>
@@ -240,19 +242,19 @@ export default function FeeStructuresPage() {
             {isAddingNew && (
                 <Card>
                     <CardHeader>
-                        <CardTitle>{editingStructure ? 'تعديل' : 'إضافة'} هيكل رسوم</CardTitle>
-                        <CardDescription>تحديد مبلغ الرسوم لمرحلة وفئة محددتين</CardDescription>
+                        <CardTitle>{editingStructure ? t('editStructure') : t('addStructure')}</CardTitle>
+                        <CardDescription>{t('structureDetails')}</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <Label>المرحلة الدراسية *</Label>
+                                <Label>{t('selectGrade')} *</Label>
                                 <Select
                                     value={formData.grade_level_id}
                                     onValueChange={(v) => setFormData({ ...formData, grade_level_id: v })}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="اختر المرحلة" />
+                                        <SelectValue placeholder={t('selectGrade')} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {gradeLevels?.map((grade) => (
@@ -263,13 +265,13 @@ export default function FeeStructuresPage() {
                             </div>
 
                             <div>
-                                <Label>فئة الرسوم *</Label>
+                                <Label>{t('selectCategory')} *</Label>
                                 <Select
                                     value={formData.fee_category_id}
                                     onValueChange={(v) => setFormData({ ...formData, fee_category_id: v })}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="اختر الفئة" />
+                                        <SelectValue placeholder={t('selectCategory')} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {categories?.map((cat) => (
@@ -280,7 +282,7 @@ export default function FeeStructuresPage() {
                             </div>
 
                             <div>
-                                <Label>نوع الفترة *</Label>
+                                <Label>{t('periodType')} *</Label>
                                 <Select
                                     value={formData.period_type}
                                     onValueChange={(v) => setFormData({ ...formData, period_type: v })}
@@ -289,16 +291,16 @@ export default function FeeStructuresPage() {
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="monthly">شهري</SelectItem>
-                                        <SelectItem value="semester">فصلي</SelectItem>
-                                        <SelectItem value="annual">سنوي</SelectItem>
-                                        <SelectItem value="one_time">مرة واحدة</SelectItem>
+                                        <SelectItem value="monthly">{t('monthly')}</SelectItem>
+                                        <SelectItem value="semester">{t('semester')}</SelectItem>
+                                        <SelectItem value="annual">{t('annual')}</SelectItem>
+                                        <SelectItem value="one_time">{t('oneTime')}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div>
-                                <Label>المبلغ *</Label>
+                                <Label>{t('amount')} *</Label>
                                 <Input
                                     type="number"
                                     min="0"
@@ -310,7 +312,7 @@ export default function FeeStructuresPage() {
                             </div>
 
                             <div>
-                                <Label>تاريخ الاستحقاق *</Label>
+                                <Label>{t('dueDate')} *</Label>
                                 <Input
                                     type="date"
                                     value={formData.due_date}
@@ -322,10 +324,10 @@ export default function FeeStructuresPage() {
                         <div className="flex gap-2">
                             <Button onClick={handleSave}>
                                 <IconDeviceFloppy className="h-4 w-4 mr-2" />
-                                {editingStructure ? 'تحديث' : 'حفظ'}
+                                {editingStructure ? t('update') || 'Update' : t('save') || 'Save'}
                             </Button>
                             <Button variant="outline" onClick={resetForm}>
-                                إلغاء
+                                {t('cancel') || 'Cancel'}
                             </Button>
                         </div>
                     </CardContent>
@@ -335,9 +337,9 @@ export default function FeeStructuresPage() {
             {/* Fee Structures Table */}
             <Card>
                 <CardHeader>
-                    <CardTitle>هياكل الرسوم الحالية</CardTitle>
+                    <CardTitle>{t('currentStructures')}</CardTitle>
                     <CardDescription>
-                        {structures?.length || 0} هيكل محدد لسنة {academicYear}
+                        {t('structuresCount', { count: structures?.length || 0, year: academicYear })}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -352,32 +354,32 @@ export default function FeeStructuresPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>المرحلة</TableHead>
-                                        <TableHead>الفئة</TableHead>
-                                        <TableHead>الفترة</TableHead>
-                                        <TableHead>المبلغ</TableHead>
-                                        <TableHead>تاريخ الاستحقاق</TableHead>
-                                        <TableHead className="text-right">الإجراءات</TableHead>
+                                        <TableHead>{t('gradeLevel') || 'Grade'}</TableHead>
+                                        <TableHead>{t('category') || 'Category'}</TableHead>
+                                        <TableHead>{t('period') || 'Period'}</TableHead>
+                                        <TableHead>{t('amount')}</TableHead>
+                                        <TableHead>{t('dueDate')}</TableHead>
+                                        <TableHead className="text-end">{t('actions') || 'Actions'}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {structures && structures.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                                                لا توجد هياكل رسوم. اضغط "إضافة هيكل جديد" لإنشاء واحد.
+                                                {t('noStructures')}
                                             </TableCell>
                                         </TableRow>
                                     ) : (
                                         structures?.map((structure) => (
                                             <TableRow key={structure.id}>
                                                 <TableCell className="font-medium">
-                                                    {structure.grade_level?.name || 'غير متاح'}
+                                                    {structure.grade_level?.name || t('notAvailable')}
                                                 </TableCell>
-                                                <TableCell>{structure.fee_category?.name || 'غير متاح'}</TableCell>
-                                                <TableCell className="capitalize">{structure.period_type}</TableCell>
+                                                <TableCell>{structure.fee_category?.name || t('notAvailable')}</TableCell>
+                                                <TableCell className="capitalize">{t(structure.period_type) || structure.period_type}</TableCell>
                                                 <TableCell>{formatCurrency(structure.amount)}</TableCell>
                                                 <TableCell>{new Date(structure.due_date).toLocaleDateString()}</TableCell>
-                                                <TableCell className="text-right">
+                                                <TableCell className="text-end">
                                                     <div className="flex gap-1 justify-end">
                                                         <Button
                                                             variant="ghost"

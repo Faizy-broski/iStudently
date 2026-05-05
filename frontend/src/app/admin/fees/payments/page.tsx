@@ -10,6 +10,7 @@ import { IconLoader, IconSearch, IconDownload, IconUsers } from '@tabler/icons-r
 import useSWR from 'swr'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { useTranslations } from 'next-intl'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
@@ -77,6 +78,7 @@ async function fetchStudentsForPayments(schoolId: string) {
 type ViewMode = 'original' | 'expanded' | 'family'
 
 export default function PaymentsPage() {
+    const t = useTranslations('fees.payments')
     const { selectedCampus, loading: campusLoading } = useCampus() || {}
     const schoolId = selectedCampus?.id
 
@@ -231,7 +233,7 @@ export default function PaymentsPage() {
             <div className="container mx-auto py-6">
                 <Card>
                     <CardContent className="pt-6">
-                        <p className="text-muted-foreground text-center">يرجى اختيار فرع لعرض المدفوعات.</p>
+                        <p className="text-muted-foreground text-center">{t('selectCampus')}</p>
                     </CardContent>
                 </Card>
             </div>
@@ -243,7 +245,7 @@ export default function PaymentsPage() {
             {/* Header */}
             <div className="flex items-center gap-3">
                 <span className="text-3xl">🔔</span>
-                <h1 className="text-3xl font-bold tracking-tight">المدفوعات</h1>
+                <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
             </div>
 
             {/* View Toggle */}
@@ -252,21 +254,21 @@ export default function PaymentsPage() {
                     onClick={() => setViewMode('original')}
                     className={`hover:underline ${viewMode === 'original' ? 'text-[#3d8fb5] font-semibold' : 'text-gray-600'}`}
                 >
-                    العرض الأصلي
+                    {t('originalView')}
                 </button>
                 <span>|</span>
                 <button
                     onClick={() => setViewMode('expanded')}
                     className={`hover:underline ${viewMode === 'expanded' ? 'text-[#3d8fb5] font-semibold' : 'text-gray-600'}`}
                 >
-                    العرض الموسع
+                    {t('expandedView')}
                 </button>
                 <span>|</span>
                 <button
                     onClick={() => setViewMode('family')}
                     className={`hover:underline ${viewMode === 'family' ? 'text-[#3d8fb5] font-semibold' : 'text-gray-600'}`}
                 >
-                    تجميع حسب العائلة
+                    {t('groupByFamily')}
                 </button>
             </div>
 
@@ -278,8 +280,10 @@ export default function PaymentsPage() {
                 <div className="flex items-center gap-2">
                     <p className="text-sm text-gray-700">
                         {viewMode === 'family' 
-                            ? `تم العثور على ${familyGroups.length} عائلة (${filteredStudents.length} طالب).`
-                            : `تم العثور على ${filteredStudents.length} ${viewMode === 'expanded' ? 'عنوان طالب' : 'طالب'}.`
+                            ? t('foundFamilies', { count: familyGroups.length, studentCount: filteredStudents.length })
+                            : viewMode === 'expanded' 
+                                ? t('foundStudentAddresses', { count: filteredStudents.length })
+                                : t('foundStudents', { count: filteredStudents.length })
                         }
                     </p>
                     <Button 
@@ -287,14 +291,14 @@ export default function PaymentsPage() {
                         size="sm" 
                         className="p-1 h-auto"
                         onClick={handleExport}
-                        title="تصدير إلى CSV"
+                        title={t('exportCSV')}
                     >
                         <IconDownload className="h-5 w-5 text-gray-700" />
                     </Button>
                 </div>
                 <div className="relative">
                     <Input
-                        placeholder="بحث"
+                        placeholder={t('toolbar_search') || 'Search'}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-64 pr-8"
@@ -311,7 +315,7 @@ export default function PaymentsPage() {
                             <IconLoader className="h-6 w-6 animate-spin text-muted-foreground" />
                         </div>
                     ) : filteredStudents.length === 0 ? (
-                        <p className="text-muted-foreground text-center py-8">لم يتم العثور على طلاب.</p>
+                        <p className="text-muted-foreground text-center py-8">{t('noStudentsFound')}</p>
                     ) : viewMode === 'family' ? (
                         // Family View
                         <div className="space-y-4">
@@ -319,16 +323,16 @@ export default function PaymentsPage() {
                                 <div key={family.familyId} className="border rounded-lg overflow-hidden">
                                     <div className="bg-[#3d8fb5] text-white px-4 py-2 flex items-center gap-2">
                                         <IconUsers className="h-4 w-4" />
-                                        <span className="font-semibold">عائلة {family.familyName}</span>
-                                        <span className="text-sm opacity-80">({family.students.length} طالب)</span>
+                                        <span className="font-semibold">{t('familyOf', { name: family.familyName })}</span>
+                                        <span className="text-sm opacity-80">({family.students.length} {t('student')})</span>
                                     </div>
                                     <Table>
                                         <TableHeader>
                                             <TableRow className="bg-gray-100">
-                                                <TableHead className="text-[#3d8fb5] font-semibold">الطالب</TableHead>
-                                                <TableHead className="text-[#3d8fb5] font-semibold">معرّف iStudently</TableHead>
-                                                <TableHead className="text-[#3d8fb5] font-semibold">المرحلة الدراسية</TableHead>
-                                                <TableHead className="text-[#3d8fb5] font-semibold">صلة القرابة</TableHead>
+                                                <TableHead className="text-[#3d8fb5] font-semibold">{t('student')}</TableHead>
+                                                <TableHead className="text-[#3d8fb5] font-semibold">{t('istudentlyId')}</TableHead>
+                                                <TableHead className="text-[#3d8fb5] font-semibold">{t('gradeLevel')}</TableHead>
+                                                <TableHead className="text-[#3d8fb5] font-semibold">{t('relationship')}</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -362,17 +366,17 @@ export default function PaymentsPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow className="bg-gray-100">
-                                    <TableHead className="text-[#3d8fb5] font-semibold">الطالب</TableHead>
-                                    <TableHead className="text-[#3d8fb5] font-semibold">معرّف iStudently</TableHead>
-                                    <TableHead className="text-[#3d8fb5] font-semibold">المرحلة الدراسية</TableHead>
+                                    <TableHead className="text-[#3d8fb5] font-semibold">{t('student')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] font-semibold">{t('istudentlyId')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] font-semibold">{t('gradeLevel')}</TableHead>
                                     {viewMode === 'expanded' && (
                                         <>
-                                            <TableHead className="text-[#3d8fb5] font-semibold">العرق</TableHead>
-                                            <TableHead className="text-[#3d8fb5] font-semibold">الجنس</TableHead>
-                                            <TableHead className="text-[#3d8fb5] font-semibold">عنوان المراسلة</TableHead>
-                                            <TableHead className="text-[#3d8fb5] font-semibold">المدينة</TableHead>
-                                            <TableHead className="text-[#3d8fb5] font-semibold">الولاية</TableHead>
-                                            <TableHead className="text-[#3d8fb5] font-semibold">الرمز البريدي</TableHead>
+                                            <TableHead className="text-[#3d8fb5] font-semibold">{t('ethnicity')}</TableHead>
+                                            <TableHead className="text-[#3d8fb5] font-semibold">{t('gender')}</TableHead>
+                                            <TableHead className="text-[#3d8fb5] font-semibold">{t('mailingAddress')}</TableHead>
+                                            <TableHead className="text-[#3d8fb5] font-semibold">{t('city')}</TableHead>
+                                            <TableHead className="text-[#3d8fb5] font-semibold">{t('state')}</TableHead>
+                                            <TableHead className="text-[#3d8fb5] font-semibold">{t('zipCode')}</TableHead>
                                         </>
                                     )}
                                 </TableRow>
