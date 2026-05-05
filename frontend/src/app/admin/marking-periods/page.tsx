@@ -218,9 +218,9 @@ export default function MarkingPeriodsPage() {
   }
 
   const handleDelete = async () => {
-    if (!selectedId) return
+    if (!selectedId || !selectedMP) return
 
-    const childType = selectedMP ? CHILD_TYPE[selectedMP.mp_type as MarkingPeriodType] : null
+    const childType = CHILD_TYPE[selectedMP.mp_type as MarkingPeriodType]
     const hasChildren = childType
       ? grouped[childType].some((mp) => mp.parent_id === selectedId)
       : false
@@ -229,16 +229,44 @@ export default function MarkingPeriodsPage() {
       ? t('delete_confirm_children')
       : t('delete_confirm_single')
 
-    if (!confirm(message)) return
-
-    try {
-      await deleteMarkingPeriod(selectedId)
-      toast.success(t('delete_success'))
-      setSelectedId(null)
-      await fetchData()
-    } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : t('delete_error'))
-    }
+    toast(message, {
+      duration: 10000,
+      position: 'top-center',
+      action: {
+        label: t('delete_btn'),
+        onClick: async () => {
+          try {
+            await deleteMarkingPeriod(selectedId)
+            toast.success(t('delete_success'))
+            setSelectedId(null)
+            await fetchData()
+          } catch (error: unknown) {
+            toast.error(error instanceof Error ? error.message : t('delete_error'))
+          }
+        },
+      },
+      cancel: {
+        label: t('cancel_btn'),
+        onClick: () => {},
+      },
+      actionButtonStyle: {
+        backgroundColor: '#dc2626',
+        color: '#fff',
+        padding: '8px 20px',
+        fontSize: '13px',
+        fontWeight: 600,
+        borderRadius: '6px',
+      },
+      cancelButtonStyle: {
+        backgroundColor: '#f3f4f6',
+        color: '#374151',
+        padding: '8px 20px',
+        fontSize: '13px',
+        fontWeight: 500,
+        borderRadius: '6px',
+        border: '1px solid #d1d5db',
+      },
+    })
   }
 
   // ========================================================================

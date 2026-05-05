@@ -2417,7 +2417,8 @@
       "active_tooltip": "نشط حالياً",
       "graded_tooltip": "خاضع للتقييم",
       "comments_tooltip": "تعليقات",
-      "new_placeholder": "{type} جديد"
+      "new_placeholder": "{type} جديد",
+      "cancel_btn": "إلغاء"
     },
     "timetable": {
       "title": "منشئ الجدول الزمني",

@@ -185,12 +185,11 @@ class MarkingPeriodsService {
     }
 
     // Auto-compute a safe sort_order using the school-wide max to avoid unique_mp_sort violations.
-    // The constraint is school-wide across all mp_types, so per-type or client-supplied values can collide.
+    // The DB constraint covers ALL rows (including soft-deleted), so we must check all of them.
     const { data: existingMPs } = await supabase
       .from('marking_periods')
       .select('sort_order')
       .eq('school_id', schoolId)
-      .eq('is_active', true)
     const maxSortOrder = existingMPs && existingMPs.length > 0
       ? Math.max(...existingMPs.map((mp) => mp.sort_order ?? 0))
       : 0

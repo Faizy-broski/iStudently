@@ -2417,7 +2417,8 @@
       "active_tooltip": "Currently active",
       "graded_tooltip": "Graded",
       "comments_tooltip": "Comments",
-      "new_placeholder": "New {type}"
+      "new_placeholder": "New {type}",
+      "cancel_btn": "Cancel"
     },
     "timetable": {
       "title": "Timetable Builder",
