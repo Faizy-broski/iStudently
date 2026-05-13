@@ -349,9 +349,16 @@ export const createSubject = async (req: Request, res: Response) => {
     } as ApiResponse)
   } catch (error: any) {
     console.error('Error creating subject:', error)
-    res.status(500).json({
+    const msg: string = error.message || ''
+    let friendlyError = 'Failed to create subject'
+    if (msg.includes('unique_subject_code_per_campus')) {
+      friendlyError = 'A subject with this code already exists for this grade level. Please use a different subject code.'
+    } else if (msg.includes('unique_subject_per_grade_campus')) {
+      friendlyError = 'A subject with this name already exists for the selected grade level. Please use a different name.'
+    }
+    res.status(400).json({
       success: false,
-      error: error.message || 'Failed to create subject',
+      error: friendlyError,
     } as ApiResponse)
   }
 }
@@ -439,9 +446,16 @@ export const updateSubject = async (req: Request, res: Response) => {
     } as ApiResponse)
   } catch (error: any) {
     console.error('Error updating subject:', error)
-    res.status(500).json({
+    const msg: string = error.message || ''
+    let friendlyError = 'Failed to update subject'
+    if (msg.includes('unique_subject_code_per_campus')) {
+      friendlyError = 'A subject with this code already exists for this grade level. Please use a different subject code.'
+    } else if (msg.includes('unique_subject_per_grade_campus')) {
+      friendlyError = 'A subject with this name already exists for the selected grade level. Please use a different name.'
+    }
+    res.status(400).json({
       success: false,
-      error: error.message || 'Failed to update subject',
+      error: friendlyError,
     } as ApiResponse)
   }
 }

@@ -496,7 +496,7 @@ export default function StudentInfoPage() {
                     </p>
                     <Button
                       variant="outline"
-                      onClick={() => window.open(`/admin/parents/parent-info?id=${selectedParentId}`, '_blank')}
+                      onClick={() => window.open(`/admin/parents/${selectedParentId}`, '_blank')}
                     >
                       {t("open_parent_profile")}
                     </Button>

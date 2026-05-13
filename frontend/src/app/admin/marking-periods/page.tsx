@@ -194,6 +194,16 @@ export default function MarkingPeriodsPage() {
   const handleSave = async () => {
     if (!selectedId || !selectedMP) return
 
+    // Validate date ranges before submitting
+    if (editForm.start_date && editForm.end_date && editForm.end_date < editForm.start_date) {
+      toast.error(t('invalid_dates'))
+      return
+    }
+    if (editForm.post_start_date && editForm.post_end_date && editForm.post_end_date < editForm.post_start_date) {
+      toast.error(t('invalid_post_dates'))
+      return
+    }
+
     setSaving(true)
     try {
       await updateMarkingPeriod(selectedId, {

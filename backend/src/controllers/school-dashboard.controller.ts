@@ -13,6 +13,7 @@ export class SchoolDashboardController {
     try {
       const schoolId = req.profile?.school_id
       const campus_id = req.query.campus_id as string
+      const academic_year_id = req.query.academic_year_id as string | undefined
 
       if (!schoolId) {
         return res.status(400).json({
@@ -24,7 +25,7 @@ export class SchoolDashboardController {
       // Use campus_id if provided, otherwise use admin's school_id
       const effectiveSchoolId = campus_id || schoolId
 
-      const stats = await schoolDashboardService.getSchoolStats(effectiveSchoolId)
+      const stats = await schoolDashboardService.getSchoolStats(effectiveSchoolId, academic_year_id)
 
       return res.json({
         success: true,
@@ -80,6 +81,7 @@ export class SchoolDashboardController {
     try {
       const schoolId = req.profile?.school_id
       const campus_id = req.query.campus_id as string
+      const academic_year_id = req.query.academic_year_id as string | undefined
 
       if (!schoolId) {
         return res.status(400).json({
@@ -90,7 +92,7 @@ export class SchoolDashboardController {
 
       const effectiveSchoolId = campus_id || schoolId
       const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear()
-      const data = await schoolDashboardService.getStudentGrowth(effectiveSchoolId, year)
+      const data = await schoolDashboardService.getStudentGrowth(effectiveSchoolId, year, academic_year_id)
 
       return res.json({
         success: true,
@@ -113,6 +115,7 @@ export class SchoolDashboardController {
     try {
       const schoolId = req.profile?.school_id
       const campus_id = req.query.campus_id as string
+      const academic_year_id = req.query.academic_year_id as string | undefined
 
       if (!schoolId) {
         return res.status(400).json({
@@ -123,7 +126,7 @@ export class SchoolDashboardController {
 
       const effectiveSchoolId = campus_id || schoolId
 
-      const data = await schoolDashboardService.getGradeDistribution(effectiveSchoolId)
+      const data = await schoolDashboardService.getGradeDistribution(effectiveSchoolId, academic_year_id)
 
       return res.json({
         success: true,
