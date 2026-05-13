@@ -27,27 +27,13 @@ export class SchoolDashboardService {
   /**
    * Get dashboard statistics for a specific school
    */
-  async getSchoolStats(schoolId: string, academicYearId?: string): Promise<SchoolDashboardStats> {
+  async getSchoolStats(schoolId: string): Promise<SchoolDashboardStats> {
     try {
-      // Get student count - use enrollment for year-specific counts
-      let totalStudents: number | null = null
-      let studentsError: any = null
-      if (academicYearId) {
-        const result = await supabase
-          .from('student_enrollment')
-          .select('*', { count: 'exact', head: true })
-          .eq('school_id', schoolId)
-          .eq('academic_year_id', academicYearId)
-        totalStudents = result.count
-        studentsError = result.error
-      } else {
-        const result = await supabase
-          .from('students')
-          .select('*', { count: 'exact', head: true })
-          .eq('school_id', schoolId)
-        totalStudents = result.count
-        studentsError = result.error
-      }
+      // Get student count
+      const { count: totalStudents, error: studentsError } = await supabase
+        .from('students')
+        .select('*', { count: 'exact', head: true })
+        .eq('school_id', schoolId)
 
       if (studentsError) {
         console.error('Students query error:', studentsError)
@@ -81,30 +67,14 @@ export class SchoolDashboardService {
         staff.profile?.role === 'teacher'
       ).length || 0
 
-      // Get active courses - use course_periods for year-specific counts
-      let activeCourses: number | null = null
-      let coursesError: any = null
-      if (academicYearId) {
-        const result = await supabase
-          .from('course_periods')
-          .select('*', { count: 'exact', head: true })
-          .eq('school_id', schoolId)
-          .eq('academic_year_id', academicYearId)
-          .eq('is_active', true)
-        activeCourses = result.count
-        coursesError = result.error
-      } else {
-        const result = await supabase
-          .from('course_periods')
-          .select('*', { count: 'exact', head: true })
-          .eq('school_id', schoolId)
-          .eq('is_active', true)
-        activeCourses = result.count
-        coursesError = result.error
-      }
+      // Get active courses/sections
+      const { count: activeCourses, error: coursesError } = await supabase
+        .from('sections')
+        .select('*', { count: 'exact', head: true })
+        .eq('school_id', schoolId)
 
       if (coursesError) {
-        console.error('Courses query error:', coursesError)
+        console.error('Sections query error:', coursesError)
       }
 
       // Get active events
@@ -234,40 +204,11 @@ export class SchoolDashboardService {
   /**
    * Get student enrollment growth for the current year
    */
-  async getStudentGrowth(schoolId: string, year?: number, academicYearId?: string): Promise<StudentGrowth[]> {
+  async getStudentGrowth(schoolId: string, year?: number): Promise<StudentGrowth[]> {
     const currentYear = year || new Date().getFullYear()
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-    if (academicYearId) {
-      // Use enrollment records for year-specific growth
-      const { data: enrollments } = await supabase
-        .from('student_enrollment')
-        .select('start_date')
-        .eq('school_id', schoolId)
-        .eq('academic_year_id', academicYearId)
-        .order('start_date', { ascending: true })
-
-      if (!enrollments || enrollments.length === 0) {
-        return monthNames.map(month => ({ month, students: 0 }))
-      }
-
-      // Group enrollments by month
-      const enrollmentsByMonth: Record<number, number> = {}
-      enrollments.forEach(enrollment => {
-        const date = new Date(enrollment.start_date)
-        const month = date.getMonth()
-        enrollmentsByMonth[month] = (enrollmentsByMonth[month] || 0) + 1
-      })
-
-      // Build cumulative data
-      let cumulative = 0
-      return monthNames.map((month, index) => {
-        cumulative += enrollmentsByMonth[index] || 0
-        return { month, students: cumulative }
-      })
-    }
-
-    // Fall back to all-time student creation dates
+    // Get all students for this school
     const { data: students } = await supabase
       .from('students')
       .select('created_at')
@@ -304,31 +245,7 @@ export class SchoolDashboardService {
   /**
    * Get grade-wise student distribution
    */
-  async getGradeDistribution(schoolId: string, academicYearId?: string) {
-    if (academicYearId) {
-      // Use enrollment records for year-specific grade distribution
-      const { data: enrollments } = await supabase
-        .from('student_enrollment')
-        .select('grade_level_id, grade_levels(name)')
-        .eq('school_id', schoolId)
-        .eq('academic_year_id', academicYearId)
-
-      const distribution: Record<string, number> = {}
-      enrollments?.forEach((enrollment: any) => {
-        const grade = enrollment.grade_levels?.name || 'Unassigned'
-        distribution[grade] = (distribution[grade] || 0) + 1
-      })
-
-      return Object.entries(distribution)
-        .map(([grade, count]) => ({ grade, count }))
-        .sort((a, b) => {
-          const aNum = parseInt(a.grade)
-          const bNum = parseInt(b.grade)
-          if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum
-          return a.grade.localeCompare(b.grade)
-        })
-    }
-
+  async getGradeDistribution(schoolId: string) {
     const { data: students } = await supabase
       .from('students')
       .select('grade_level')

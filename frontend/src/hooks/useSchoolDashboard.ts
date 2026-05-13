@@ -15,7 +15,6 @@ import {
 } from '@/lib/api/school-dashboard'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
-import { useAcademic } from '@/context/AcademicContext'
 
 interface SchoolDashboardData {
   stats: SchoolDashboardStats | null
@@ -25,17 +24,17 @@ interface SchoolDashboardData {
 }
 
 // Combined fetcher for all school dashboard data
-const fetchSchoolDashboardData = async (campus_id?: string, academic_year_id?: string): Promise<SchoolDashboardData> => {
-  console.log('📊 Fetching school dashboard data with SWR...', { campus_id, academic_year_id })
+const fetchSchoolDashboardData = async (campus_id?: string): Promise<SchoolDashboardData> => {
+  console.log('📊 Fetching school dashboard data with SWR...', { campus_id })
   
   const currentYear = new Date().getFullYear()
   
-  // Fetch all data in parallel with campus_id and academic_year_id
+  // Fetch all data in parallel with campus_id
   const [statsRes, growthRes, attendanceRes, gradeRes] = await Promise.all([
-    schoolDashboardApi.getStats(campus_id, academic_year_id),
-    schoolDashboardApi.getStudentGrowth(currentYear, campus_id, academic_year_id),
+    schoolDashboardApi.getStats(campus_id),
+    schoolDashboardApi.getStudentGrowth(currentYear, campus_id),
     schoolDashboardApi.getAttendanceData(campus_id),
-    schoolDashboardApi.getGradeDistribution(campus_id, academic_year_id)
+    schoolDashboardApi.getGradeDistribution(campus_id)
   ])
   
   console.log('📊 School Dashboard API responses:', {
@@ -56,26 +55,25 @@ const fetchSchoolDashboardData = async (campus_id?: string, academic_year_id?: s
 export const useSchoolDashboard = () => {
   const { user, loading: authLoading } = useAuth()
   const campusContext = useCampus()
-  const { selectedAcademicYear } = useAcademic()
 
   // Memoize campus ID to prevent unnecessary refetches
   const campusId = useMemo(() => campusContext?.selectedCampus?.id, [campusContext?.selectedCampus?.id])
 
-  // SWR key - includes campus AND academic year for auto-refresh on switch
+  // SWR key - only fetch when authenticated, INCLUDES campus for auto-refresh on switch
   const swrKey = user && !authLoading 
-    ? ['school-dashboard', user.id, campusId, selectedAcademicYear] 
+    ? ['school-dashboard', user.id, campusId] 
     : null
 
   // Memoize the fetcher to prevent recreation
   const fetcher = useCallback(async () => {
     try {
-      console.log('📊 Fetching dashboard for campus:', campusId, 'year:', selectedAcademicYear)
-      return await fetchSchoolDashboardData(campusId, selectedAcademicYear ?? undefined)
+      console.log('📊 Fetching dashboard for campus:', campusId)
+      return await fetchSchoolDashboardData(campusId)
     } catch (err) {
       console.error('📊 Dashboard fetch error:', err)
       throw err
     }
-  }, [campusId, selectedAcademicYear])
+  }, [campusId])
 
   // Use SWR with automatic revalidation and caching
   const { data, error, isLoading, isValidating, mutate } = useSWR(
