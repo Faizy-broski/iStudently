@@ -1,0 +1,1082 @@
+'use client'
+
+import * as React from 'react'
+import Link from 'next/link'
+import Image from 'next/image'
+import { usePathname, useRouter } from 'next/navigation'
+import { Menu, X, ChevronLeft, ChevronRight, ChevronDown, Calendar, GraduationCap, User, BookOpen } from 'lucide-react'
+import { useTranslations } from 'next-intl'
+import { cn } from '@/lib/utils'
+import { SidebarMenuItem } from '@/config/sidebar'
+import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
+import { useAuth } from '@/context/AuthContext'
+import { useAcademic, getStoredSelectedQuarterId, type SelectedCoursePeriod } from '@/context/AcademicContext'
+import { getMarkingPeriods, type MarkingPeriod } from '@/lib/api/marking-periods'
+import { getMyCoursePeriods, type CoursePeriod } from '@/lib/api/courses'
+import { useCampus } from '@/context/CampusContext'
+import { ProfileViewContext } from '@/context/ProfileViewContext'
+import { useParentDashboardSafe } from '@/context/ParentDashboardContext'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Building2 } from 'lucide-react'
+import { toast } from 'sonner'
+
+// --- Context & Provider (Same as before) ---
+interface AppSidebarProps {
+  menuItems: SidebarMenuItem[]
+  className?: string
+}
+
+interface SidebarContextType {
+  isCollapsed: boolean
+  setIsCollapsed: (collapsed: boolean) => void
+  isMobileOpen: boolean
+  setIsMobileOpen: (open: boolean) => void
+}
+
+const SidebarContext = React.createContext<SidebarContextType | undefined>(undefined)
+
+export function useSidebarContext() {
+  const context = React.useContext(SidebarContext)
+  if (!context) {
+    throw new Error('useSidebarContext must be used within SidebarProvider')
+  }
+  return context
+}
+
+// --- Hijri date conversion (Kuwaiti algorithm) ---
+function toHijri(date: Date) {
+  const jd = Math.floor(date.getTime() / 86400000) + 2440588
+  let l = jd - 1948440 + 10632
+  const n = Math.floor((l - 1) / 10631)
+  l = l - 10631 * n + 354
+  const j =
+    Math.floor((10985 - l) / 5316) * Math.floor((50 * l) / 17719) +
+    Math.floor(l / 5670) * Math.floor((43 * l) / 15238)
+  l =
+    l -
+    Math.floor((30 - j) / 15) * Math.floor((17719 * j) / 50) -
+    Math.floor(j / 16) * Math.floor((15238 * j) / 43) +
+    29
+  const month = Math.floor((24 * l) / 709)
+  const day = l - Math.floor((709 * month) / 24)
+  const year = 30 * n + j - 30
+  return { day, month, year }
+}
+
+const HIJRI_MONTHS = [
+  'Muharram','Safar','Rabi al-Awwal','Rabi al-Thani',
+  'Jumada al-Awwal','Jumada al-Thani','Rajab','Shaban',
+  'Ramadan','Shawwal','Dhu al-Qidah','Dhu al-Hijjah',
+]
+
+function getISOWeek(date: Date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  const day = d.getUTCDay() || 7
+  d.setUTCDate(d.getUTCDate() + 4 - day)
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
+}
+
+// --- Sidebar Header: campus logo + admin name + live date/time ---
+function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
+  const { profile } = useAuth()
+  const campusContext = useCampus()
+  const selectedCampus = campusContext?.selectedCampus
+
+  const [now, setNow] = React.useState(() => new Date())
+  React.useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  // Campus initials fallback
+  const initials = selectedCampus
+    ? (selectedCampus.short_name ||
+        selectedCampus.name.split(' ').map((w) => w[0]).join('').slice(0, 2)
+      ).toUpperCase()
+    : '?'
+
+  const adminName = profile
+    ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
+    : ''
+
+  // Gregorian
+  const dayName = now.toLocaleDateString('en-US', { weekday: 'long' })
+  const dayNum = now.getDate()
+  const monthShort = now.toLocaleDateString('en-US', { month: 'short' })
+  const year = now.getFullYear()
+  const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+  const weekNum = getISOWeek(now)
+
+  // Hijri
+  const h = toHijri(now)
+  const hijriStr = `${h.day} ${HIJRI_MONTHS[h.month - 1]} ${h.year}`
+
+  if (isCollapsed) {
+    return (
+      <div className="flex flex-col items-center py-4 mb-2">
+        <div className="w-12 h-10 rounded-lg overflow-hidden ring-2 ring-white/20">
+          {selectedCampus?.logo_url ? (
+            <Image src={selectedCampus.logo_url} alt={selectedCampus.name} width={48} height={40} className="object-contain w-full h-full" />
+          ) : (
+            <div className="w-full h-full bg-[#EEA831] flex items-center justify-center">
+              <span className="text-[#022172] font-bold text-xs">{initials}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="px-4 pt-6 pb-5 mb-1 border-b border-white/10 flex flex-col items-center text-center">
+      {/* Campus logo — centered, square/rectangle */}
+      <div className="w-28 h-20 rounded-xl overflow-hidden ring-2 ring-white/30 shadow-lg mb-3 bg-white">
+        {selectedCampus?.logo_url ? (
+          <Image src={selectedCampus.logo_url} alt={selectedCampus.name} width={112} height={80} className="object-contain w-full h-full" />
+        ) : (
+          <div className="w-full h-full bg-[#EEA831] flex items-center justify-center">
+            <span className="text-[#022172] font-bold text-2xl">{initials}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Admin name */}
+      <p className="text-white font-semibold text-sm leading-tight truncate w-full">{adminName}</p>
+      <p className="text-white/50 text-xs mt-0.5 truncate w-full">{selectedCampus?.name || 'No Campus'}</p>
+
+      {/* Date / time */}
+      <div className="mt-3 w-full bg-white/10 rounded-lg px-3 py-2.5 space-y-1.5">
+        <p className="text-white font-semibold text-sm">
+          {dayName}, {dayNum} {monthShort} {year}
+        </p>
+        <p className="text-white/65 text-xs">{hijriStr}</p>
+        <div className="flex items-center justify-center gap-2 text-xs text-white/65">
+          <span className="font-medium">{timeStr}</span>
+          <span className="text-white/30">|</span>
+          <span>Week {weekNum}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Academic Year, Quarter & (for teachers) Course Period Selectors
+function AcademicSelectors() {
+  const { profile } = useAuth()
+  const {
+    academicYears,
+    selectedAcademicYear,
+    selectedQuarter,
+    selectedCoursePeriod,
+    setSelectedAcademicYear,
+    setSelectedQuarter,
+    setSelectedCoursePeriod,
+    currentAcademicYear,
+    loading
+  } = useAcademic()
+  const campusContext = useCampus()
+  // Admins/Librarians can switch campuses via the dropdown.
+  // Students/Teachers/Parents are bound to their assigned campus (or the main school if null).
+  const campusId = (profile?.role === 'admin' || profile?.role === 'librarian')
+    ? (campusContext?.selectedCampus?.id || profile?.campus_id)
+    : profile?.campus_id
+
+  const isTeacher = profile?.role === 'teacher'
+  const isVisible =
+    profile?.role === 'admin' ||
+    profile?.role === 'librarian' ||
+    profile?.role === 'student' ||
+    isTeacher
+
+  // ── Quarters (QTR marking periods) ──
+  const [quarters, setQuarters] = React.useState<MarkingPeriod[]>([])
+  const [loadingQ, setLoadingQ] = React.useState(false)
+
+  // ── Course Periods (teacher only) ──
+  const [coursePeriods, setCoursePeriods] = React.useState<CoursePeriod[]>([])
+  const [loadingCp, setLoadingCp] = React.useState(false)
+  // Ref so the load effect can read the current selection without being a dep
+  const selectedCoursePeriodRef = React.useRef(selectedCoursePeriod)
+  React.useEffect(() => { selectedCoursePeriodRef.current = selectedCoursePeriod }, [selectedCoursePeriod])
+
+  React.useEffect(() => {
+    if (!isVisible) return
+    let active = true
+    async function load() {
+      setLoadingQ(true)
+      try {
+        const all = await getMarkingPeriods(campusId || undefined)
+        
+        if (!active) return
+        
+        const qtrs = (all || [])
+          .filter(mp => mp.mp_type === 'QTR')
+          .filter(mp => {
+            if (!currentAcademicYear || !mp.start_date) return true
+            return mp.start_date >= currentAcademicYear.start_date && mp.start_date <= currentAcademicYear.end_date
+          })
+          .sort((a, b) => a.sort_order - b.sort_order)
+        
+        setQuarters(qtrs)
+        if (qtrs.length === 0) {
+          setSelectedQuarter(null)
+          return
+        }
+
+        const today = new Date().toISOString().split('T')[0]
+        const storedId = getStoredSelectedQuarterId()
+        if (storedId) {
+          const match = qtrs.find(q => q.id === storedId)
+          if (match) { setSelectedQuarter(match); return }
+        }
+        
+        const activeMp = qtrs.find(
+          q => q.start_date && q.end_date && q.start_date <= today && today <= q.end_date
+        )
+        setSelectedQuarter(activeMp ?? qtrs[0])
+      } catch (err: any) {
+        if (active) setQuarters([])
+      } finally {
+        if (active) setLoadingQ(false)
+      }
+    }
+    load()
+    return () => { active = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campusId, isVisible, selectedAcademicYear])
+
+  React.useEffect(() => {
+    if (!isTeacher || !selectedAcademicYear) {
+      setCoursePeriods([])
+      return
+    }
+    let active = true
+    async function loadCp() {
+      setLoadingCp(true)
+      try {
+        // Filter by academic year only — courses may span Full Year or
+        // different marking period types, so never filter by QTR id here.
+        const cps = await getMyCoursePeriods({
+          academic_year_id: selectedAcademicYear!,
+        })
+        if (!active) return
+        setCoursePeriods(cps)
+
+        // Auto-select: restore stored if still valid, else pick first
+        if (cps.length === 0) { setSelectedCoursePeriod(null); return }
+        const current = selectedCoursePeriodRef.current
+        if (current && cps.some(cp => cp.id === current.id)) return
+        const first = cps[0]
+        setSelectedCoursePeriod({
+          id: first.id,
+          title: first.title ?? null,
+          short_name: first.short_name ?? null,
+          section_name: first.section?.name ?? null,
+          grade_name: first.section?.grade_level?.name ?? null,
+          course_title: first.course?.title ?? null,
+        })
+      } catch {
+        if (active) setCoursePeriods([])
+      } finally {
+        if (active) setLoadingCp(false)
+      }
+    }
+    loadCp()
+    return () => { active = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTeacher, selectedAcademicYear])
+
+  // Reset course period when year/quarter changes
+  React.useEffect(() => {
+    if (isTeacher) setSelectedCoursePeriod(null)
+  }, [selectedAcademicYear, selectedQuarter?.id])
+
+  if (!isVisible) return null
+
+  return (
+    <div className="px-3 mb-4 space-y-2">
+      {/* Academic Year */}
+      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+        <GraduationCap className="h-4 w-4 text-white/80 shrink-0" />
+        <Select
+          value={selectedAcademicYear || ''}
+          onValueChange={setSelectedAcademicYear}
+          disabled={loading || academicYears.length === 0}
+        >
+          <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 disabled:opacity-50">
+            <SelectValue placeholder={loading ? 'Loading...' : 'Select Year'}>
+              {loading ? 'Loading...' : (currentAcademicYear?.name || 'Select Year')}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {academicYears.length === 0 ? (
+              <div className="px-2 py-6 text-center text-sm text-gray-500">
+                <p className="mb-2">No academic years found.</p>
+                <p className="text-xs">Go to Settings → Academic Years to create one.</p>
+              </div>
+            ) : (
+              academicYears.map((year) => (
+                <SelectItem key={year.id} value={year.id}>
+                  <div className="flex items-center gap-2">
+                    <span>{year.name}</span>
+                    {year.is_current && (
+                      <span className="text-xs text-green-600 font-medium">Current</span>
+                    )}
+                  </div>
+                </SelectItem>
+              ))
+            )}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Quarter */}
+      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+        <Calendar className="h-4 w-4 text-white/80 shrink-0" />
+        <Select
+          value={selectedQuarter?.id ?? ''}
+          onValueChange={(id) => setSelectedQuarter(quarters.find(q => q.id === id) ?? null)}
+          disabled={loadingQ}
+        >
+          <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 disabled:opacity-50">
+            <SelectValue placeholder={loadingQ ? 'Loading…' : 'No quarters'}>
+              {loadingQ ? 'Loading…' : (selectedQuarter?.title ?? (quarters.length === 0 ? 'No quarters' : 'Select Quarter'))}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {quarters.length === 0 ? (
+              <div className="px-2 py-4 text-center text-sm text-gray-500">
+                <p>No quarters defined.</p>
+                <p className="text-xs mt-1">Add QTR periods in Marking Periods.</p>
+              </div>
+            ) : (
+              quarters.map((q) => (
+                <SelectItem key={q.id} value={q.id}>
+                  <div className="flex items-center gap-2">
+                    <span>{q.title}</span>
+                    {q.start_date && q.end_date &&
+                      new Date().toISOString().split('T')[0] >= q.start_date &&
+                      new Date().toISOString().split('T')[0] <= q.end_date && (
+                        <span className="text-xs text-green-500 font-medium">Active</span>
+                      )}
+                  </div>
+                </SelectItem>
+              ))
+            )}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Course Period — teacher only */}
+      {isTeacher && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+          <BookOpen className="h-4 w-4 text-white/80 shrink-0" />
+          <Select
+            value={selectedCoursePeriod?.id ?? ''}
+            onValueChange={(id) => {
+              const cp = coursePeriods.find(c => c.id === id)
+              if (!cp) return
+              setSelectedCoursePeriod({
+                id: cp.id,
+                title: cp.title ?? null,
+                short_name: cp.short_name ?? null,
+                section_name: cp.section?.name ?? null,
+                grade_name: cp.section?.grade_level?.name ?? null,
+                course_title: cp.course?.title ?? null,
+              })
+            }}
+            disabled={loadingCp || !selectedAcademicYear}
+          >
+            <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 disabled:opacity-50">
+              <SelectValue placeholder={loadingCp ? 'Loading…' : 'Select Course'}>
+                {loadingCp
+                  ? 'Loading…'
+                  : (selectedCoursePeriod?.short_name || selectedCoursePeriod?.title || (coursePeriods.length === 0 ? 'No courses' : 'Select Course'))}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {coursePeriods.length === 0 ? (
+                <div className="px-2 py-4 text-center text-sm text-gray-500">
+                  <p>No course periods found.</p>
+                </div>
+              ) : (
+                coursePeriods.map((cp) => (
+                  <SelectItem key={cp.id} value={cp.id}>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{cp.short_name || cp.title}</span>
+                      {cp.course?.title && cp.course.title !== (cp.short_name || cp.title) && (
+                        <span className="text-xs text-muted-foreground">{cp.course.title}</span>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Parent: Child + Academic Year + Quarter selectors (parent role only)
+function ParentSelectors() {
+  const { profile } = useAuth()
+  const parentCtx = useParentDashboardSafe()
+  const {
+    academicYears,
+    selectedAcademicYear,
+    setSelectedAcademicYear,
+    selectedQuarter,
+    setSelectedQuarter,
+    currentAcademicYear,
+    loading: academicLoading,
+  } = useAcademic()
+
+  const isParent = profile?.role === 'parent'
+
+  const students = parentCtx?.students ?? []
+  const selectedStudent = parentCtx?.selectedStudent ?? null
+  const selectedStudentData = parentCtx?.selectedStudentData ?? null
+  const setSelectedStudent = parentCtx?.setSelectedStudent ?? (() => {})
+  const isLoadingStudents = parentCtx?.isLoading ?? false
+
+  // Use the selected child's campus_id — that's where marking periods live.
+  // Parents don't have a campus_id in their profile so we derive it from the child.
+  const childCampusId = selectedStudentData?.campus_id ?? undefined
+
+  const [quarters, setQuarters] = React.useState<MarkingPeriod[]>([])
+  const [loadingQ, setLoadingQ] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!isParent) return
+    // Note: We allow load even if childCampusId is null to support school-wide quarters for the child
+    let active = true
+    async function load() {
+      setLoadingQ(true)
+      try {
+        const all = await getMarkingPeriods(childCampusId || undefined)
+        
+        if (!active) return
+        
+        const qtrs = (all || [])
+          .filter(mp => mp.mp_type === 'QTR')
+          .filter(mp => {
+            if (!currentAcademicYear || !mp.start_date) return true
+            return mp.start_date >= currentAcademicYear.start_date && mp.start_date <= currentAcademicYear.end_date
+          })
+          .sort((a, b) => a.sort_order - b.sort_order)
+        
+        setQuarters(qtrs)
+        if (qtrs.length === 0) {
+          setSelectedQuarter(null)
+          return
+        }
+        
+        const today = new Date().toISOString().split('T')[0]
+        const storedId = getStoredSelectedQuarterId()
+        if (storedId) {
+          const match = qtrs.find(q => q.id === storedId)
+          if (match) { setSelectedQuarter(match); return }
+        }
+        
+        const activeMp = qtrs.find(
+          q => q.start_date && q.end_date && q.start_date <= today && today <= q.end_date
+        )
+        setSelectedQuarter(activeMp ?? qtrs[0])
+      } catch {
+        if (active) setQuarters([])
+      } finally {
+        if (active) setLoadingQ(false)
+      }
+    }
+    load()
+    return () => { active = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [childCampusId, isParent, selectedAcademicYear])
+
+  if (!isParent) return null
+
+  return (
+    <div className="px-3 mb-4 space-y-2">
+      {/* Child selector */}
+      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+        <User className="h-4 w-4 text-white/80 shrink-0" />
+        <Select
+          value={selectedStudent || ''}
+          onValueChange={(id) => setSelectedStudent(id)}
+          disabled={isLoadingStudents || students.length === 0}
+        >
+          <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 disabled:opacity-50">
+            <SelectValue placeholder={isLoadingStudents ? 'Loading...' : 'Select Child'}>
+              {isLoadingStudents
+                ? 'Loading...'
+                : selectedStudentData
+                  ? `${selectedStudentData.first_name} ${selectedStudentData.last_name}`
+                  : students.length === 0
+                    ? 'No children'
+                    : 'Select Child'}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {students.length === 0 ? (
+              <div className="px-2 py-4 text-center text-sm text-gray-500">
+                <p>No students linked.</p>
+              </div>
+            ) : (
+              students.map((student) => (
+                <SelectItem key={student.id} value={student.id}>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{student.first_name} {student.last_name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {student.grade_level}{student.section ? ` • ${student.section}` : ''}
+                    </span>
+                  </div>
+                </SelectItem>
+              ))
+            )}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Academic Year */}
+      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+        <GraduationCap className="h-4 w-4 text-white/80 shrink-0" />
+        <Select
+          value={selectedAcademicYear || ''}
+          onValueChange={setSelectedAcademicYear}
+          disabled={academicLoading}
+        >
+          <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 disabled:opacity-50">
+            <SelectValue placeholder={academicLoading ? 'Loading...' : 'No year'}>
+              {academicLoading ? 'Loading...' : (currentAcademicYear?.name || 'Select Year')}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {academicYears.map((year) => (
+              <SelectItem key={year.id} value={year.id}>
+                <div className="flex items-center gap-2">
+                  <span>{year.name}</span>
+                  {year.is_current && (
+                    <span className="text-xs text-green-600 font-medium">Current</span>
+                  )}
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Quarter */}
+      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+        <Calendar className="h-4 w-4 text-white/80 shrink-0" />
+        <Select
+          value={selectedQuarter?.id ?? ''}
+          onValueChange={(id) => setSelectedQuarter(quarters.find(q => q.id === id) ?? null)}
+          disabled={loadingQ}
+        >
+          <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 disabled:opacity-50">
+            <SelectValue placeholder={loadingQ ? 'Loading…' : 'No quarters'}>
+              {loadingQ ? 'Loading…' : (selectedQuarter?.title ?? (quarters.length === 0 ? 'No quarters' : 'Select Quarter'))}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {quarters.length === 0 ? (
+              <div className="px-2 py-4 text-center text-sm text-gray-500">
+                <p>No quarters defined.</p>
+              </div>
+            ) : (
+              quarters.map((q) => (
+                <SelectItem key={q.id} value={q.id}>
+                  <div className="flex items-center gap-2">
+                    <span>{q.title}</span>
+                    {q.start_date && q.end_date &&
+                      new Date().toISOString().split('T')[0] >= q.start_date &&
+                      new Date().toISOString().split('T')[0] <= q.end_date && (
+                        <span className="text-xs text-green-500 font-medium">Active</span>
+                      )}
+                  </div>
+                </SelectItem>
+              ))
+            )}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  )
+}
+
+// Campus Switcher Component (replaces school switcher)
+function CampusSelector() {
+  const { profile } = useAuth()
+  const campusContext = useCampus()
+
+  // Only show for admin
+  if (profile?.role !== 'admin' || !campusContext) return null
+
+  const { campuses, selectedCampus, setSelectedCampus, loading } = campusContext
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="px-3 mb-2">
+        <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+          <Building2 className="h-4 w-4 text-white/80 shrink-0 animate-pulse" />
+          <span className="text-white/60 text-sm">Loading...</span>
+        </div>
+      </div>
+    )
+  }
+
+  // No campuses
+  if (campuses.length === 0) {
+    return (
+      <div className="px-3 mb-2">
+        <div className="flex items-center gap-2 px-3 py-2 bg-orange-500/20 rounded-lg border border-orange-500/30">
+          <Building2 className="h-4 w-4 text-orange-300 shrink-0" />
+          <span className="text-orange-200 text-sm">No campuses</span>
+        </div>
+      </div>
+    )
+  }
+
+  const handleCampusChange = (campusId: string) => {
+    const campus = campuses.find((c) => c.id === campusId)
+    if (campus && campus.id !== selectedCampus?.id) {
+      setSelectedCampus(campus)
+      toast.success(`Switched to ${campus.name}`)
+    }
+  }
+
+  return (
+    <div className="px-3 mb-2">
+      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+        <Building2 className="h-4 w-4 text-white/80 shrink-0" />
+        <Select
+          value={selectedCampus?.id || ''}
+          onValueChange={handleCampusChange}
+        >
+          <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 truncate">
+            <SelectValue placeholder="Select Campus">
+              {selectedCampus?.name || 'Select Campus'}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {campuses.map((campus: any) => (
+              <SelectItem key={campus.id} value={campus.id}>
+                {campus.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  )
+}
+
+// Viewed Profile Indicator Component
+function ViewedProfileIndicator() {
+  const router = useRouter()
+  
+  const context = React.useContext(ProfileViewContext);
+  const viewedProfile = context?.viewedProfile ?? null;
+  const clearViewedProfile = context?.clearViewedProfile ?? (() => {});
+  
+  if (!viewedProfile) return null
+  
+  const handleClose = () => {
+    clearViewedProfile();
+    router.push(viewedProfile.backUrl)
+  }
+  
+  const getIcon = () => {
+    switch (viewedProfile.type) {
+      case 'student': return <GraduationCap className="h-4 w-4 text-[#EEA831] shrink-0" />
+      case 'teacher': return <User className="h-4 w-4 text-[#EEA831] shrink-0" />
+      case 'staff': return <User className="h-4 w-4 text-[#EEA831] shrink-0" />
+      case 'parent': return <User className="h-4 w-4 text-[#EEA831] shrink-0" />
+      default: return <User className="h-4 w-4 text-[#EEA831] shrink-0" />
+    }
+  }
+  
+  const getLabel = () => {
+    switch (viewedProfile.type) {
+      case 'student': return 'Viewing Student'
+      case 'teacher': return 'Viewing Teacher'
+      case 'staff': return 'Viewing Staff'
+      case 'parent': return 'Viewing Parent'
+      default: return 'Viewing Profile'
+    }
+  }
+  
+  return (
+    <div className="px-3 mb-2">
+      <div className="flex items-center gap-2 px-3 py-2.5 bg-linear-to-r from-[#EEA831]/30 to-[#F59E0B]/20 rounded-lg border-2 border-[#EEA831] shadow-lg shadow-[#EEA831]/20">
+        {getIcon()}
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] uppercase tracking-wider text-[#EEA831] font-semibold">{getLabel()}</p>
+          <p className="text-white text-sm font-bold truncate">{viewedProfile.name}</p>
+        </div>
+        <button
+          onClick={handleClose}
+          className="p-1.5 bg-red-500 hover:bg-red-600 rounded-full transition-colors shadow-md"
+          title="Close profile view"
+        >
+          <X className="h-4 w-4 text-white" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export function SidebarProvider({ children }: { children: React.ReactNode }) {
+  const [isCollapsed, setIsCollapsed] = React.useState(false)
+  const [isMobileOpen, setIsMobileOpen] = React.useState(false)
+
+  return (
+    <SidebarContext.Provider
+      value={{
+        isCollapsed,
+        setIsCollapsed,
+        isMobileOpen,
+        setIsMobileOpen,
+      }}
+    >
+      {children}
+    </SidebarContext.Provider>
+  )
+}
+
+// --- Updated Sidebar Item Component ---
+function SidebarItem({
+  item,
+  isActive,
+  isCollapsed,
+  expandedItemKey,
+  setExpandedItemKey,
+}: {
+  item: SidebarMenuItem
+  isActive: boolean
+  isCollapsed: boolean
+  expandedItemKey: string | null
+  setExpandedItemKey: (key: string | null) => void
+}) {
+  const pathname = usePathname()
+  const t = useTranslations('sidebar')
+
+  const Icon = item.icon
+  const hasSubItems = item.subItems && item.subItems.length > 0
+  
+  // Check if this item is currently expanded
+  const isExpanded = expandedItemKey === item.href
+
+  // Check if any subitem is active
+  const hasActiveSubItem = item.subItems?.some(subItem =>
+    !subItem.isLabel && (pathname === subItem.href || pathname.startsWith(subItem.href + '/'))
+  )
+
+  const handleToggle = () => {
+    // If clicking the same item, close it; otherwise open the new one
+    setExpandedItemKey(isExpanded ? null : item.href)
+  }
+
+  if (hasSubItems && !isCollapsed) {
+    return (
+      <div>
+        <button
+          onClick={handleToggle}
+          className={cn(
+            'sidebar-link group relative flex items-center gap-3 px-4 py-3 transition-all duration-200 w-full text-start',
+            isActive || hasActiveSubItem ? 'active' : 'text-white/90 hover:bg-white/10 hover:text-white rounded-s-full'
+          )}
+        >
+          <Icon
+            className={cn(
+              'h-5 w-5 shrink-0 transition-colors z-20 relative',
+              isActive || hasActiveSubItem ? 'text-[#022172]' : 'text-white/80 group-hover:text-white'
+            )}
+          />
+          <span className="text-sm truncate z-20 relative font-medium flex-1">
+            {t(item.title)}
+          </span>
+          <ChevronDown
+            className={cn(
+              'h-4 w-4 shrink-0 transition-transform z-20 relative',
+              isActive || hasActiveSubItem ? 'text-[#022172]' : 'text-white/80',
+              isExpanded ? 'rotate-180' : ''
+            )}
+          />
+          {(isActive || hasActiveSubItem) && (
+            <div className="ms-auto w-2 h-2 bg-[#EEA831] rounded-full z-20 relative" />
+          )}
+        </button>
+
+        {/* Submenu Items */}
+        {isExpanded && item.subItems && (
+          <div className="ms-8 mt-1 space-y-1">
+            {item.subItems.map((subItem) => {
+              const subItemActive = pathname === subItem.href || pathname.startsWith(subItem.href + '/')
+              const SubIcon = subItem.icon
+
+              // Render label (non-clickable separator)
+              if (subItem.isLabel) {
+                return (
+                  <div
+                    key={subItem.title}
+                    className="mt-4 mb-2 px-4"
+                  >
+                    <div className="flex items-center gap-2 pb-1 border-b border-[#EEA831]/50">
+                      <SubIcon className="h-3.5 w-3.5 shrink-0 text-[#EEA831]" />
+                      <span className="text-xs font-semibold text-[#EEA831] uppercase tracking-wider">
+                        {t(subItem.title)}
+                      </span>
+                    </div>
+                  </div>
+                )
+              }
+
+              return (
+                <Link
+                  key={subItem.href}
+                  href={subItem.href}
+                  className={cn(
+                    'flex items-center gap-3 px-4 py-2 text-sm transition-all duration-200 rounded-s-full',
+                    subItemActive
+                      ? 'bg-white/20 text-white font-medium'
+                      : 'text-white/70 hover:bg-white/10 hover:text-white'
+                  )}
+                >
+                  <SubIcon className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{t(subItem.title)}</span>
+                  {subItemActive && (
+                    <div className="ms-auto w-1.5 h-1.5 bg-[#EEA831] rounded-full" />
+                  )}
+                </Link>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <Link
+      href={item.href}
+      className={cn(
+        'sidebar-link group relative flex items-center gap-3 px-4 py-3 transition-all duration-200',
+        isActive ? 'active' : 'text-white/90 hover:bg-white/10 hover:text-white rounded-s-full',
+        isCollapsed ? 'justify-center px-2' : ''
+      )}
+    >
+      <Icon
+        className={cn(
+          'h-5 w-5 shrink-0 transition-colors z-20 relative',
+          isActive ? 'text-[#022172]' : 'text-white/80 group-hover:text-white'
+        )}
+      />
+
+      {!isCollapsed && (
+        <span className="text-sm truncate z-20 relative font-medium">
+          {t(item.title)}
+        </span>
+      )}
+
+      {/* Orange Dot Indicator */}
+      {isActive && !isCollapsed && (
+        <div className="ms-auto w-2 h-2 bg-[#EEA831] rounded-full z-20 relative" />
+      )}
+    </Link>
+  )
+}
+
+// --- Updated Desktop Sidebar ---
+function DesktopSidebar({ menuItems, className }: AppSidebarProps) {
+  const pathname = usePathname()
+  const { isCollapsed, setIsCollapsed } = useSidebarContext()
+  const [expandedItemKey, setExpandedItemKey] = React.useState<string | null>(() => {
+    // Auto-expand the item that contains the current path
+    const activeItem = menuItems.find(item => 
+      item.subItems?.some(subItem => 
+        !subItem.isLabel && pathname.startsWith(subItem.href)
+      )
+    )
+    return activeItem?.href || null
+  })
+
+  return (
+    <aside
+      className={cn(
+        // CHANGED: h-screen -> min-h-screen
+        'hidden lg:flex flex-col min-h-screen sticky top-0 transition-all duration-300 ease-in-out pb-10',
+        'sidebar-gradient relative z-40',
+        isCollapsed ? 'w-20' : 'w-72',
+        className
+      )}
+    >
+      {/* Background Image Overlay */}
+      <div
+        className="absolute inset-0 opacity-10 bg-cover bg-center bg-no-repeat pointer-events-none"
+        style={{ backgroundImage: 'url(/images/sidebar-bg.svg)' }}
+      />
+
+{/* Collapse Toggle Button */}
+<Button
+  variant="ghost"
+  size="icon"
+  onClick={() => setIsCollapsed(!isCollapsed)}
+  className={cn(
+    "absolute z-50 flex items-center justify-center h-6 w-6 rounded-full bg-white shadow-md hover:bg-gray-100 text-[#022172] border border-gray-100 transition-all duration-300",
+    isCollapsed 
+      ? "top-15 inset-x-0 mx-auto" // Pushed down from top-20 to top-28 for clean spacing
+      : "top-6 end-1.5"            // Snug against the edge when open
+  )}
+>
+  {isCollapsed ? (
+    <ChevronRight className="h-3 w-3" />
+  ) : (
+    <ChevronLeft className="h-3 w-3" />
+  )}
+</Button>
+      {/* Content Container */}
+      <div className="relative z-10 flex flex-col h-full overflow-hidden">
+
+        {/* Sidebar Header: campus logo + admin + date/time */}
+        <SidebarHeader isCollapsed={isCollapsed} />
+
+        {/* Campus Switcher */}
+        {!isCollapsed && <CampusSelector />}
+
+        {/* Academic Year & Quarter Selectors (admin/teacher/librarian) */}
+        {!isCollapsed && <AcademicSelectors />}
+
+        {/* Child + Academic Year + Quarter (parent role) */}
+        {!isCollapsed && <ParentSelectors />}
+
+        {/* Currently Viewed Profile Indicator */}
+        {!isCollapsed && <ViewedProfileIndicator />}
+
+        {/* Navigation Menu - pe-0 allows active item to touch the inner edge */}
+        <nav className="flex-1 overflow-y-auto overflow-x-visible py-2 ps-3 pe-0 space-y-2 scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-transparent">
+          {menuItems.map((item) => (
+            <SidebarItem
+              key={item.href}
+              item={item}
+              isActive={pathname === item.href || pathname.startsWith(item.href + '/')}
+              isCollapsed={isCollapsed}
+              expandedItemKey={expandedItemKey}
+              setExpandedItemKey={setExpandedItemKey}
+            />
+          ))}
+        </nav>
+
+        {/* Footer */}
+        <div className={cn(
+          'p-4 border-t border-white/10 text-center mx-4',
+          isCollapsed ? 'px-2 mx-2' : ''
+        )}>
+          {!isCollapsed && (
+            <p className="text-white/40 text-[10px]">
+              © 2026 istudents.ly
+            </p>
+          )}
+        </div>
+      </div>
+    </aside>
+  )
+}
+
+// --- Mobile Sidebar (Simplified to match) ---
+function MobileSidebar({ menuItems }: AppSidebarProps) {
+  const pathname = usePathname()
+  const { isMobileOpen, setIsMobileOpen } = useSidebarContext()
+  const [expandedItemKey, setExpandedItemKey] = React.useState<string | null>(() => {
+    // Auto-expand the item that contains the current path
+    const activeItem = menuItems.find(item => 
+      item.subItems?.some(subItem => 
+        !subItem.isLabel && pathname.startsWith(subItem.href)
+      )
+    )
+    return activeItem?.href || null
+  })
+
+  return (
+    <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
+      <SheetTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="lg:hidden fixed top-4 start-4 z-50 bg-white shadow-md hover:bg-gray-100 rounded-full"
+        >
+          <Menu className="h-5 w-5 text-[#022172]" />
+          <span className="sr-only">Toggle Menu</span>
+        </Button>
+      </SheetTrigger>
+      <SheetContent
+        side="left"
+        className="w-72 p-0 sidebar-gradient border-r-0"
+      >
+        <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+
+        {/* Background Overlay */}
+        <div
+          className="absolute inset-0 opacity-10 bg-cover bg-center bg-no-repeat pointer-events-none"
+          style={{ backgroundImage: 'url(/images/sidebar-bg.svg)' }}
+        />
+
+        <div className="relative z-10 flex flex-col h-full overflow-y-auto scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-transparent">
+          <div className="flex items-center justify-end px-4 pt-3 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsMobileOpen(false)}
+              className="text-white/70 hover:bg-white/10 hover:text-white"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+          <SidebarHeader isCollapsed={false} />
+
+          {/* Campus Switcher */}
+          <CampusSelector />
+
+          {/* Academic Year & Quarter Selectors (admin/teacher/librarian) */}
+          <AcademicSelectors />
+
+          {/* Child + Academic Year + Quarter (parent role) */}
+          <ParentSelectors />
+
+          <nav className="ps-3 pe-0 space-y-2 pb-6">
+            {menuItems.map((item) => (
+              <SidebarItem
+                key={item.href}
+                item={item}
+                isActive={pathname === item.href || pathname.startsWith(item.href + '/')}
+                isCollapsed={false}
+                expandedItemKey={expandedItemKey}
+                setExpandedItemKey={setExpandedItemKey}
+              />
+            ))}
+          </nav>
+        </div>
+      </SheetContent>
+    </Sheet>
+  )
+}
+
+export function AppSidebar({ menuItems, className }: AppSidebarProps) {
+  return (
+    <>
+      <DesktopSidebar menuItems={menuItems} className={className} />
+      <MobileSidebar menuItems={menuItems} />
+    </>
+  )
+}
