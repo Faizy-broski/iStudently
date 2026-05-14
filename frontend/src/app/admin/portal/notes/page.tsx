@@ -243,7 +243,7 @@ export default function PortalNotesPage() {
       </div>
 
       {/* Top Save Button */}
-      {/* <div className="flex justify-end">
+      <div className="flex justify-end">
         <Button
           onClick={handleSave}
           disabled={saving}
@@ -251,7 +251,7 @@ export default function PortalNotesPage() {
         >
           {saving ? t("btn_saving") : t("btn_save")}
         </Button>
-      </div> */}
+      </div>
 
       {/* Notes Table */}
       <Card className="border-0 shadow-sm">

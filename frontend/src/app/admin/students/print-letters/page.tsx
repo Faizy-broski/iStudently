@@ -604,17 +604,17 @@ export default function PrintLettersPage() {
                   {t("available_placeholders", { defaultValue: "Available Placeholders (click to copy):" })}
                 </p>
                 <div className="flex flex-wrap gap-2">
-  {Object.values(groupedFields).flat().map((field) => (
-    <Badge
-      key={field.id}
-      variant="secondary"
-      className="cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900"
-      onClick={() => copyPlaceholder(field.id)}
-    >
-      {field.id}
-    </Badge>
-  ))}
-</div>
+                  {PLACEHOLDER_FIELDS.map((field) => (
+                    <Badge
+                      key={field.id}
+                      variant="secondary"
+                      className="cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900"
+                      onClick={() => copyPlaceholder(field.id)}
+                    >
+                      {field.id}
+                    </Badge>
+                  ))}
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -341,9 +341,9 @@ export default function PrintStudentInfoPage() {
         <Card className="lg:col-span-1">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-  <FileText className="h-5 w-5 shrink-0" />
-  <span className="truncate">{t("select_categories")}</span>
-</CardTitle>
+              <FileText className="h-5 w-5" />
+              {t("select_categories")}
+            </CardTitle>
             <CardDescription>
               {t("select_categories_desc")}
             </CardDescription>

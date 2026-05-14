@@ -167,13 +167,6 @@ export async function handleSessionExpiry() {
     // Sign out from Supabase (local only — does not revoke other devices' sessions)
     await supabase.auth.signOut({ scope: 'local' })
 
-    // ✅ FIX 1: Tab close hone par session clear karo
-    try {
-      sessionStorage.removeItem('session_active')
-    } catch {
-      // Ignore if sessionStorage not available
-    }
-
     // Redirect to login with session expired message
     if (typeof window !== 'undefined') {
       window.location.href = '/auth/login?error=session_expired'
@@ -378,19 +371,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
-    // ✅ FIX 2: Tab close check — agar sessionStorage mein flag nahi hai toh session clear karo
-    try {
-      const sessionActive = sessionStorage.getItem('session_active')
-      if (!sessionActive) {
-        // Tab band hua tha — Supabase session clear karo
-        supabase.auth.signOut({ scope: 'local' }).then(() => {
-          profileCache = null
-        })
-      }
-    } catch {
-      // Ignore if sessionStorage not available
-    }
-
     // Track retry count for timeout handling
     let retryCount = 0
     let loadingTimeoutId: NodeJS.Timeout | null = null
@@ -814,6 +794,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 .eq('id', session.user.id)
                 .single()
 
+                .single()
+
               // Check for error OR missing profile
               if (profileError || !profile) {
 
@@ -1098,20 +1080,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setMustChangePassword(profile?.force_password_change === true)
   }, [profile])
 
-  // ✅ FIX 3: signIn mein session_active flag set karo
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
     if (error) throw error
-    // Tab close hone par session expire karne ke liye sessionStorage flag set karo
-    // sessionStorage automatically clear hoti hai jab browser tab band hoti hai
-    try {
-      sessionStorage.setItem('session_active', 'true')
-    } catch {
-      // Ignore if sessionStorage not available
-    }
   }
 
   const signOut = async () => {
@@ -1120,13 +1094,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null)
     setAccessToken(null)
     profileCache = null
-
-    // ✅ FIX 3 continued: signOut mein session_active flag clear karo
-    try {
-      sessionStorage.removeItem('session_active')
-    } catch {
-      // Ignore if sessionStorage not available
-    }
 
     // Clear session check interval
     if (sessionIntervalRef.current) {

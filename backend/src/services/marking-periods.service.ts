@@ -171,6 +171,16 @@ class MarkingPeriodsService {
     // Validate parent relationship
     await this.validateParent(dto.mp_type, dto.parent_id || null)
 
+    // Validate date range: end must be on or after start
+    if (dto.start_date && dto.end_date && dto.end_date < dto.start_date) {
+      throw new Error('End date must be on or after the start date')
+    }
+
+    // Validate grade posting window
+    if (dto.post_start_date && dto.post_end_date && dto.post_end_date < dto.post_start_date) {
+      throw new Error('Grade Posting End date must be on or after Grade Posting Begin date')
+    }
+
     // Validate date ranges don't overlap with siblings of same type under same parent
     if (dto.start_date && dto.end_date) {
       await this.validateDateOverlap(
@@ -236,6 +246,18 @@ class MarkingPeriodsService {
     const startDate = dto.start_date !== undefined ? dto.start_date : existing.start_date
     const endDate = dto.end_date !== undefined ? dto.end_date : existing.end_date
 
+    // Validate date range: end must be on or after start
+    if (startDate && endDate && endDate < startDate) {
+      throw new Error('End date must be on or after the start date')
+    }
+
+    // Validate grade posting window
+    const postStart = dto.post_start_date !== undefined ? dto.post_start_date : existing.post_start_date
+    const postEnd = dto.post_end_date !== undefined ? dto.post_end_date : existing.post_end_date
+    if (postStart && postEnd && postEnd < postStart) {
+      throw new Error('Grade Posting End date must be on or after Grade Posting Begin date')
+    }
+
     if (startDate && endDate) {
       await this.validateDateOverlap(
         existing.school_id,
@@ -268,7 +290,7 @@ class MarkingPeriodsService {
 
     if (error) {
       console.error('Error updating marking period:', error)
-      throw new Error('Failed to update marking period')
+      throw new Error(error.message || 'Failed to update marking period')
     }
 
     return data

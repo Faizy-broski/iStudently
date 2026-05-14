@@ -219,13 +219,9 @@ function FilterPanel({ filters, onChange, onReset }: FilterPanelProps) {
           <SelectValue placeholder={l ? 'Loading…' : placeholder} />
         </SelectTrigger>
         <SelectContent className="max-h-60 overflow-y-auto">
-  <SelectItem value="_all">All</SelectItem>
-  {Array.isArray(items) && items.map(i => (
-    <SelectItem key={i.id} value={String(i.id)}>
-      {i.locale_name ?? i.name ?? String(i.id)}
-    </SelectItem>
-  ))}
-</SelectContent>
+          <SelectItem value="_all">All</SelectItem>
+          {Array.isArray(items) && items.map(i => <SelectItem key={i.id} value={String(i.id)}>{i.locale_name ?? i.name ?? String(i.id)}</SelectItem>)}
+        </SelectContent>
       </Select>
     </div>
   )

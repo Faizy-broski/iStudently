@@ -17,7 +17,6 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "sonner"
 import { 
-  Megaphone,
   Bell, 
   FileText, 
   BarChart3, 
@@ -217,22 +216,22 @@ export function NotificationBell({ className }: NotificationBellProps) {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
-  variant="ghost"
-  size="icon"
-  className={cn("relative", className)}
->
-  <Megaphone className={cn("h-5 w-5", hasNewContent && "animate-pulse text-primary")} />
-  {showBadge && (
-    <Badge 
-      className={cn(
-        "absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs",
-        hasNewContent ? "bg-primary animate-bounce" : "bg-red-500"
-      )}
-    >
-      {hasNewContent ? "!" : totalUnread > 99 ? '99+' : totalUnread}
-    </Badge>
-  )}
-</Button>
+          variant="ghost"
+          size="icon"
+          className={cn("relative", className)}
+        >
+          <Bell className={cn("h-5 w-5", hasNewContent && "animate-pulse text-primary")} />
+          {showBadge && (
+            <Badge 
+              className={cn(
+                "absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs",
+                hasNewContent ? "bg-primary animate-bounce" : "bg-red-500"
+              )}
+            >
+              {hasNewContent ? "!" : totalUnread > 99 ? '99+' : totalUnread}
+            </Badge>
+          )}
+        </Button>
       </PopoverTrigger>
       <PopoverContent className="w-96 p-0" align="end">
         <div className="p-4 border-b flex items-center justify-between">
