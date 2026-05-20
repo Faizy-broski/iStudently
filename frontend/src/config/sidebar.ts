@@ -103,7 +103,7 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "year_end_rollover", href: "/admin/rollover", icon: RefreshCw },
       { title: "semester_rollover", href: "/admin/rollover/semester", icon: RefreshCw },
       { title: "configuration", href: "#", icon: Settings, isLabel: true },
-      { title: "virtual_labs", href: "/admin/settings/plugins", icon: Puzzle },
+      { title: "plugins", href: "/admin/settings/plugins", icon: Puzzle },
     ],
   },
   {

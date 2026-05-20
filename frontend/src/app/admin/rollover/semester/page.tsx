@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -26,12 +26,12 @@ import { useAuth } from '@/context/AuthContext';
 import { useTranslations } from 'next-intl';
 import { useCampus } from '@/context/CampusContext';
 import { getAcademicYears, type AcademicYear } from '@/lib/api/academics';
+import { getMarkingPeriods, type MarkingPeriod } from '@/lib/api/marking-periods';
 import {
   previewSemesterRollover,
   executeSemesterRollover,
   type SemesterRolloverPreview,
   type SemesterRolloverResult,
-  type SemesterInfo,
 } from '@/lib/api/rollover';
 
 // ---------------------------------------------------------------------------
@@ -46,15 +46,22 @@ const STATUS_COLORS: Record<string, string> = {
   transferred: 'bg-purple-100 text-purple-800',
 };
 
-// What will happen to each status during semester rollover
-const STATUS_ACTION: Record<string, string> = {
-  pending:     'promoted to next grade (or graduated if no next grade)',
-  promoted:    'promoted to next grade (or graduated if no next grade)',
-  retained:    'no change — stays in same grade',
-  dropped:     'enrollment closed at semester end date',
-  graduated:   'enrollment closed at semester end date',
-  transferred: 'enrollment closed at semester end date',
-};
+// ---------------------------------------------------------------------------
+/** Find the academic year whose date range best overlaps the FY marking period */
+function matchAcademicYear(fy: MarkingPeriod, years: AcademicYear[]): AcademicYear | undefined {
+  if (!fy.start_date || !fy.end_date) return undefined;
+  const fyStart = new Date(fy.start_date).getTime();
+  const fyEnd   = new Date(fy.end_date).getTime();
+  // Prefer exact start_date match, then any overlap
+  return (
+    years.find((y) => new Date(y.start_date).getTime() === fyStart) ??
+    years.find((y) => {
+      const yStart = new Date(y.start_date).getTime();
+      const yEnd   = new Date(y.end_date).getTime();
+      return yStart < fyEnd && yEnd > fyStart; // overlap
+    })
+  );
+}
 
 // ---------------------------------------------------------------------------
 export default function SemesterRolloverPage() {
@@ -63,68 +70,124 @@ export default function SemesterRolloverPage() {
   const tCommon = useTranslations("common");
   const campusCtx = useCampus();
   const campusId = campusCtx?.selectedCampus?.id;
+  // Use parent_school_id when a campus is selected; fall back to user.school_id
+  const schoolId = campusCtx?.selectedCampus?.parent_school_id ?? user?.school_id;
 
+  // Raw data
+  const [allMPs, setAllMPs]     = useState<MarkingPeriod[]>([]);
   const [allYears, setAllYears] = useState<AcademicYear[]>([]);
-  const [selectedYearId, setSelectedYearId] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [previewing, setPreviewing] = useState(false);
-  const [executing, setExecuting] = useState(false);
+  const [loading, setLoading]   = useState(true);
 
-  const [preview, setPreview] = useState<SemesterRolloverPreview | null>(null);
+  // Selections
+  const [selectedFYId, setSelectedFYId]         = useState('');
   const [selectedSemesterId, setSelectedSemesterId] = useState('');
-  const [semesterEndDate, setSemesterEndDate] = useState('');
-  const [result, setResult] = useState<SemesterRolloverResult | null>(null);
+  const [semesterEndDate, setSemesterEndDate]    = useState('');
+
+  // Async states
+  const [previewing, setPreviewing] = useState(false);
+  const [executing, setExecuting]   = useState(false);
+
+  // Results
+  const [preview, setPreview]   = useState<SemesterRolloverPreview | null>(null);
+  const [result, setResult]     = useState<SemesterRolloverResult | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  // Derived: selected semester object
-  const selectedSemester: SemesterInfo | undefined =
-    preview?.semesters.find((s) => s.id === selectedSemesterId);
+  // ---------------------------------------------------------------------------
+  // Derived data from marking periods
+  // ---------------------------------------------------------------------------
+  const fyYears: MarkingPeriod[] = useMemo(
+    () => [...allMPs.filter((mp) => mp.mp_type === 'FY')]
+            .sort((a, b) => (a.start_date ?? '').localeCompare(b.start_date ?? '')),
+    [allMPs]
+  );
 
-  // Sync end date when semester is selected
+  const semestersForYear: MarkingPeriod[] = useMemo(
+    () => allMPs
+            .filter((mp) => mp.mp_type === 'SEM' && mp.parent_id === selectedFYId)
+            .sort((a, b) => a.sort_order - b.sort_order),
+    [allMPs, selectedFYId]
+  );
+
+  // The academic_year record that corresponds to the selected FY
+  const matchedYear: AcademicYear | undefined = useMemo(() => {
+    const fy = fyYears.find((f) => f.id === selectedFYId);
+    if (!fy) return undefined;
+    return matchAcademicYear(fy, allYears);
+  }, [fyYears, selectedFYId, allYears]);
+
+  // Selected semester MP object
+  const selectedSemester: MarkingPeriod | undefined = useMemo(
+    () => semestersForYear.find((s) => s.id === selectedSemesterId),
+    [semestersForYear, selectedSemesterId]
+  );
+
+  // Sync end date when semester changes
   useEffect(() => {
-    if (selectedSemester) {
+    if (selectedSemester?.end_date) {
       setSemesterEndDate(selectedSemester.end_date);
     }
   }, [selectedSemesterId, selectedSemester]);
 
+  // ---------------------------------------------------------------------------
+  // Initial load
+  // ---------------------------------------------------------------------------
   useEffect(() => {
-    if (user) fetchYears();
+    if (user) init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  async function fetchYears() {
+  async function init() {
     setLoading(true);
     try {
-      const years = await getAcademicYears();
-      const sorted = [...years].sort(
+      const [mps, years] = await Promise.all([
+        getMarkingPeriods(campusId),
+        getAcademicYears(),
+      ]);
+      const sortedYears = [...years].sort(
         (a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
       );
-      setAllYears(sorted);
-      const current = sorted.find((y) => y.is_current);
-      if (current) {
-        setSelectedYearId(current.id);
-        await loadPreview(current.id);
+      setAllMPs(mps);
+      setAllYears(sortedYears);
+
+      // Auto-select: prefer FY that matches the current academic year
+      const currentYear = sortedYears.find((y) => y.is_current) ?? sortedYears[sortedYears.length - 1];
+      const fyList = mps
+        .filter((mp) => mp.mp_type === 'FY')
+        .sort((a, b) => (a.start_date ?? '').localeCompare(b.start_date ?? ''));
+
+      const autoFY = currentYear
+        ? fyList.find((fy) => fy.start_date && new Date(fy.start_date).getTime() === new Date(currentYear.start_date).getTime())
+          ?? fyList.find((fy) => {
+            if (!fy.start_date || !fy.end_date) return false;
+            return new Date(fy.start_date) < new Date(currentYear.end_date)
+                && new Date(fy.end_date)   > new Date(currentYear.start_date);
+          })
+        : fyList[fyList.length - 1];
+
+      if (autoFY) {
+        setSelectedFYId(autoFY.id);
+        const matched = matchAcademicYear(autoFY, sortedYears);
+        if (matched) await loadPreview(matched.id);
       }
     } catch {
-      toast.error(tCommon("err_load_years") || 'Failed to load academic years');
+      toast.error('Failed to load data');
     } finally {
       setLoading(false);
     }
   }
 
-  async function loadPreview(yearId: string) {
-    if (!user?.school_id || !yearId) return;
+  // ---------------------------------------------------------------------------
+  // Load preview
+  // ---------------------------------------------------------------------------
+  async function loadPreview(academicYearId: string) {
+    if (!schoolId || !academicYearId) return;
     setPreviewing(true);
     setPreview(null);
     setSelectedSemesterId('');
     setSemesterEndDate('');
     try {
-      const data = await previewSemesterRollover(yearId, user.school_id, campusId);
+      const data = await previewSemesterRollover(academicYearId, schoolId, campusId);
       setPreview(data);
-      // Auto-select first semester
-      if (data.semesters.length > 0) {
-        setSelectedSemesterId(data.semesters[0].id);
-      }
     } catch {
       toast.error(t("rollover_failed"));
     } finally {
@@ -132,21 +195,53 @@ export default function SemesterRolloverPage() {
     }
   }
 
+  // Called when user picks a different FY year
+  async function handleYearChange(fyId: string) {
+    setSelectedFYId(fyId);
+    setSelectedSemesterId('');
+    setSemesterEndDate('');
+    setResult(null);
+    setPreview(null);
+
+    const fy = allMPs.find((mp) => mp.id === fyId);
+    if (!fy) return;
+    const matched = matchAcademicYear(fy, allYears);
+    if (matched) {
+      await loadPreview(matched.id);
+    } else {
+      toast.warning('No matching academic year found for this period. Student preview unavailable.');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Execute rollover
+  // ---------------------------------------------------------------------------
   async function handleExecute() {
-    if (!user?.school_id || !selectedYearId || !semesterEndDate) return;
+    if (!schoolId) {
+      toast.error('School not found. Please reload.');
+      return;
+    }
+    if (!matchedYear) {
+      toast.error('No matching academic year for this period.');
+      return;
+    }
+    if (!semesterEndDate) {
+      toast.error('Please set a semester end date.');
+      return;
+    }
     setExecuting(true);
     setShowConfirm(false);
     try {
       const res = await executeSemesterRollover({
-        academic_year_id: selectedYearId,
+        academic_year_id: matchedYear.id,
         semester_end_date: semesterEndDate,
-        school_id: user.school_id,
+        school_id: schoolId,
         campus_id: campusId,
       });
       setResult(res);
       if (res.success) {
         toast.success(t("rollover_complete"));
-        await loadPreview(selectedYearId);
+        if (matchedYear) await loadPreview(matchedYear.id);
       } else {
         toast.error(t("rollover_failed"));
       }
@@ -170,7 +265,7 @@ export default function SemesterRolloverPage() {
 
   const students = preview?.students;
   const totalActive = students?.total_active ?? 0;
-  const canExecute = !!selectedYearId && !!semesterEndDate && totalActive > 0 && !executing;
+  const canExecute = !!matchedYear && !!semesterEndDate && !executing;
 
   // ---------------------------------------------------------------------------
   // Render
@@ -200,9 +295,7 @@ export default function SemesterRolloverPage() {
           <Info className="h-4 w-4" />
           <AlertTitle>{t("how_it_works_title")}</AlertTitle>
           <AlertDescription className="text-sm space-y-1 mt-1">
-            <p>
-              {t("how_it_works_desc")}
-            </p>
+            <p>{t("how_it_works_desc")}</p>
             <ul className="list-disc list-inside space-y-0.5 text-muted-foreground mt-1">
               <li>{t("item_pending_promoted")}</li>
               <li>{t("item_retained")}</li>
@@ -214,6 +307,18 @@ export default function SemesterRolloverPage() {
           </AlertDescription>
         </Alert>
 
+        {/* No FY periods warning */}
+        {fyYears.length === 0 && (
+          <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-500" />
+            <span>
+              No Full Year (FY) marking periods found. Create them in{' '}
+              <Link href="/admin/marking-periods" className="underline font-medium">Marking Periods</Link>{' '}
+              first.
+            </span>
+          </div>
+        )}
+
         {/* Configuration */}
         <Card>
           <CardHeader>
@@ -224,62 +329,72 @@ export default function SemesterRolloverPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* Academic year */}
+
+              {/* Academic year (FY marking periods) */}
               <div className="space-y-1.5">
                 <Label>{t("label_academic_year")}</Label>
                 <Select
-                  value={selectedYearId}
-                  onValueChange={(id) => {
-                    setSelectedYearId(id);
-                    setResult(null);
-                    loadPreview(id);
-                  }}
+                  value={selectedFYId}
+                  onValueChange={handleYearChange}
+                  disabled={previewing || fyYears.length === 0}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={tCommon("placeholder_select_year") || "Select year"} />
+                    <SelectValue placeholder="Select year" />
                   </SelectTrigger>
                   <SelectContent>
-                    {allYears.map((y) => (
-                      <SelectItem key={y.id} value={y.id}>
-                        {y.name}{y.is_current ? ` (${tCommon("current") || 'current'})` : ''}
+                    {fyYears.map((fy) => (
+                      <SelectItem key={fy.id} value={fy.id}>
+                        {fy.title}
+                        {matchAcademicYear(fy, allYears)?.is_current ? ' (Current)' : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {selectedFYId && !matchedYear && (
+                  <p className="text-xs text-amber-600">
+                    No matching academic year — student preview unavailable.
+                  </p>
+                )}
               </div>
 
-              {/* Semester selector */}
+              {/* Semester selector (children of selected FY) */}
               <div className="space-y-1.5">
                 <Label>{t("label_semester")}</Label>
                 <Select
                   value={selectedSemesterId}
-                  disabled={!preview || preview.semesters.length === 0}
+                  disabled={previewing || !selectedFYId}
                   onValueChange={setSelectedSemesterId}
                 >
                   <SelectTrigger>
                     <SelectValue
                       placeholder={
-                        previewing
+                        !selectedFYId
+                          ? 'Select a year first'
+                          : previewing
                           ? t("placeholder_loading")
-                          : preview?.semesters.length === 0
-                          ? t("placeholder_no_semesters")
+                          : semestersForYear.length === 0
+                          ? 'No semesters — enter end date manually'
                           : t("placeholder_select_semester")
                       }
                     />
                   </SelectTrigger>
                   <SelectContent>
-                    {(preview?.semesters ?? []).map((s) => (
+                    {semestersForYear.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.title}
                       </SelectItem>
                     ))}
+                    {semestersForYear.length === 0 && selectedFYId && (
+                      <div className="px-3 py-4 text-xs text-muted-foreground text-center">
+                        No SEM periods under this year.
+                        <br />
+                        Create them in{' '}
+                        <strong>Marking Periods</strong> first,
+                        or enter the end date manually.
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
-                {preview?.semesters.length === 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    {t("no_marking_periods_desc")}
-                  </p>
-                )}
               </div>
 
               {/* End date */}
@@ -298,7 +413,7 @@ export default function SemesterRolloverPage() {
           </CardContent>
         </Card>
 
-        {/* Preview */}
+        {/* Preview loading */}
         {previewing && (
           <div className="flex items-center gap-2 text-muted-foreground text-sm py-4">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -306,6 +421,7 @@ export default function SemesterRolloverPage() {
           </div>
         )}
 
+        {/* Preview results */}
         {preview && !previewing && (
           <Card>
             <CardHeader>
@@ -388,8 +504,8 @@ export default function SemesterRolloverPage() {
         <div className="flex justify-end gap-3">
           <Button
             variant="outline"
-            onClick={() => loadPreview(selectedYearId)}
-            disabled={!selectedYearId || previewing || executing}
+            onClick={() => matchedYear && loadPreview(matchedYear.id)}
+            disabled={!matchedYear || previewing || executing}
           >
             <RotateCcw className="h-4 w-4 mr-2" />
             {t("btn_refresh_preview")}
@@ -453,10 +569,11 @@ export default function SemesterRolloverPage() {
             <div className="border-t px-6 py-4 flex justify-center gap-3">
               <Button
                 onClick={handleExecute}
+                disabled={executing}
                 variant="outline"
                 className="min-w-20 font-semibold"
               >
-                {tCommon("btn_ok") || "OK"}
+                {executing ? <Loader2 className="h-4 w-4 animate-spin" /> : (tCommon("btn_ok") || "OK")}
               </Button>
               <Button
                 onClick={() => setShowConfirm(false)}

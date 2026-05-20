@@ -113,11 +113,11 @@ export default function AdminDashboard() {
         <button
           onClick={refreshDashboard}
           disabled={isValidating}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:hover:bg-gray-700"
           title={t('refresh_tooltip')}
         >
-          <RefreshCw className={`h-4 w-4 ${isValidating ? 'animate-spin' : ''}`} />
-          <span className="text-sm font-medium">{t('refresh')}</span>
+          <RefreshCw className={`h-4 w-4 text-gray-700 dark:text-white ${isValidating ? 'animate-spin' : ''}`} />
+          <span className="text-sm font-medium text-gray-700 dark:text-white">{t('refresh')}</span>
         </button>
       </div>
 

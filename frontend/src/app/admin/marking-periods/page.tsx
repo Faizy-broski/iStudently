@@ -611,10 +611,9 @@ export default function MarkingPeriodsPage() {
 
       {/* Help text */}
       <div className="text-xs text-gray-400 space-y-1">
-        <p>
-          {t.rich('help_hierarchy', {
-            icon: () => <Plus className="inline h-3 w-3" />
-          })}
+        <p className="flex items-center gap-1 flex-wrap">
+          <Plus className="inline h-3 w-3 shrink-0" />
+          <span>{t('help_hierarchy')}</span>
         </p>
         <p>
           <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1" />

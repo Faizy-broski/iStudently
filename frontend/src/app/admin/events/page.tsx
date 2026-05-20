@@ -393,6 +393,7 @@ export default function EventsPage() {
     mutateEvents();
     mutateCategoryCounts();
     setSelectedDate(null);
+    setSelectedEvent(null);
   };
 
   const handleMonthChange = (date: Date) => {

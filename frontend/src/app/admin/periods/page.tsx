@@ -230,28 +230,28 @@ export default function PeriodsPage() {
           <thead>
             <tr className="border-b bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10">
               <th className="w-10 px-2 py-3"></th>
-              <th className="min-w-50 px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
+              <th className="min-w-50 px-4 py-3 text-center text-xs font-semibold text-[#022172] dark:text-[#57A3CC] uppercase tracking-wider">
                 {t('table_title')}
               </th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
+              <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] dark:text-[#57A3CC] uppercase tracking-wider">
                 {t('table_short')}
               </th>
-              <th className="w-20 px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
+              <th className="w-20 px-4 py-3 text-center text-xs font-semibold text-[#022172] dark:text-[#57A3CC] uppercase tracking-wider">
                 {t('table_order')}
               </th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
+              <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] dark:text-[#57A3CC] uppercase tracking-wider">
                 {t('table_start')}
               </th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
+              <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] dark:text-[#57A3CC] uppercase tracking-wider">
                 {t('table_end')}
               </th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
+              <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] dark:text-[#57A3CC] uppercase tracking-wider">
                 {t('table_length')}
               </th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
+              <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] dark:text-[#57A3CC] uppercase tracking-wider">
                 {t('table_block')}
               </th>
-              <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
+              <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] dark:text-[#57A3CC] uppercase tracking-wider">
                 {t('table_courses')}
               </th>
             </tr>

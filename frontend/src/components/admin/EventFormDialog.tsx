@@ -126,8 +126,11 @@ export function EventFormDialog({ open, onOpenChange, event, onSuccess, initialD
     fetchGrades();
   }, []);
 
-  // Update form when event changes
+  // Update form when event changes or dialog opens
   useEffect(() => {
+    // Only reset when dialog is opening, not when it closes
+    if (!open) return;
+
     if (event) {
       // Convert ISO string to datetime-local format
       const formatDateTimeLocal = (isoString: string) => {
@@ -154,8 +157,10 @@ export function EventFormDialog({ open, onOpenChange, event, onSuccess, initialD
         reminder_days_before: 1,
       });
       // Check if all grades are selected
-      if (event.target_grades && event.target_grades.length === gradeLevels.length) {
-        setSelectAllGrades(true);
+      if (event.target_grades && gradeLevels.length > 0) {
+        setSelectAllGrades(event.target_grades.length === gradeLevels.length);
+      } else {
+        setSelectAllGrades(false);
       }
     } else if (initialDate) {
       // If no event but initial date provided, prefill the date
@@ -177,6 +182,7 @@ export function EventFormDialog({ open, onOpenChange, event, onSuccess, initialD
         send_reminder: false,
         reminder_days_before: 1,
       });
+      setSelectAllGrades(false);
     } else {
       form.reset({
         title: "",
@@ -191,8 +197,10 @@ export function EventFormDialog({ open, onOpenChange, event, onSuccess, initialD
         send_reminder: false,
         reminder_days_before: 1,
       });
+      setSelectAllGrades(false);
     }
-  }, [event, initialDate, form, gradeLevels]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, event, initialDate]);
 
   const onSubmit = async (values: EventFormValues) => {
     setIsSubmitting(true);

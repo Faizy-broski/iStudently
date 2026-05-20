@@ -458,12 +458,12 @@ export function CalendarGrid({
                     day.isCurrentMonth
                       ? isSchoolDay
                         ? isPartialDay
-                          ? "bg-[#D4D4FF] border-[#B8B8FF]"
-                          : "bg-[#D4FFD4] border-[#B8FFB8]"
+                          ? "bg-[#D4D4FF] border-[#B8B8FF] dark:bg-indigo-900/30 dark:border-indigo-800/50"
+                          : "bg-[#D4FFD4] border-[#B8FFB8] dark:bg-green-900/30 dark:border-green-800/50"
                         : isHoliday
-                        ? "bg-[#FFD4D4] border-[#FFB8B8]"
+                        ? "bg-[#FFD4D4] border-[#FFB8B8] dark:bg-red-900/30 dark:border-red-800/50"
                         : "bg-background hover:bg-muted/50"
-                      : "bg-muted/30 opacity-40",
+                      : "bg-muted/30 opacity-50 dark:opacity-70 text-gray-500",
                     day.isToday && "ring-2 ring-[#022172] bg-[#022172]/15 dark:ring-[#57A3CC] dark:bg-[#57A3CC]/25",
                     hoveredDate === day.dateKey && "shadow-md brightness-95"
                   )}
@@ -478,6 +478,8 @@ export function CalendarGrid({
                         "text-xs md:text-sm font-semibold",
                         day.isToday
                           ? "h-5 w-5 md:h-6 md:w-6 flex items-center justify-center rounded-full bg-[#022172] text-white dark:bg-[#57A3CC]"
+                          : day.isCurrentMonth && (isSchoolDay || isHoliday)
+                          ? "text-gray-900 dark:text-gray-200"
                           : "text-foreground"
                       )}
                     >
@@ -491,7 +493,11 @@ export function CalendarGrid({
                   </div>
 
                   {/* Alternate calendar date */}
-                  <div className="text-[8px] md:text-[10px] opacity-60 mb-0.5 md:mb-1 truncate">
+                  <div className={cn(
+                    "text-[8px] md:text-[10px] mb-0.5 md:mb-1 truncate",
+                    !day.isCurrentMonth && "opacity-80",
+                    day.isCurrentMonth && (isSchoolDay || isHoliday) && !day.isToday ? "text-gray-600 dark:text-gray-300" : "text-muted-foreground opacity-80"
+                  )}>
                     {calendarType === "gregorian" ? day.hijriDate : day.gregorianDate}
                   </div>
 
@@ -499,9 +505,9 @@ export function CalendarGrid({
                   {calDay && (
                     <div className="mb-1 hidden md:block">
                       {isSchoolDay ? (
-                        <span className="text-[10px] text-green-700 font-bold uppercase">School</span>
+                        <span className="text-[10px] text-green-700 dark:text-green-400 font-bold uppercase">School</span>
                       ) : (
-                        <span className="text-[10px] text-red-700 font-bold uppercase">Holiday</span>
+                        <span className="text-[10px] text-red-700 dark:text-red-400 font-bold uppercase">Holiday</span>
                       )}
                     </div>
                   )}
@@ -520,14 +526,13 @@ export function CalendarGrid({
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <div
-                                    className="text-[10px] leading-tight px-1 py-0.5 rounded-sm truncate cursor-default"
+                                    className="text-[10px] leading-tight px-1.5 py-0.5 rounded-sm truncate cursor-default bg-white/60 dark:bg-gray-950/40 shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
                                     style={{
                                       borderLeft: `3px solid ${color}`,
-                                      background: `${color}18`,
                                     }}
                                   >
-                                    <span className="font-semibold" style={{ color }}>{label}</span>
-                                    <span className="text-muted-foreground ml-1">{period}</span>
+                                    <span className="font-semibold text-gray-900 dark:text-gray-100">{label}</span>
+                                    <span className="text-gray-600 dark:text-gray-400 ml-1">{period}</span>
                                   </div>
                                 </TooltipTrigger>
                                 <TooltipContent side="right" className="max-w-[200px] space-y-1 text-xs">
@@ -551,14 +556,13 @@ export function CalendarGrid({
                       ))}
                     </div>
                     
-                    <div className="hidden md:block space-y-1">
+                    <div className="hidden md:block space-y-1.5">
                       {dayEvents.slice(0, 2).map((event) => (
                         <div
                           key={event.id}
-                          className="text-[10px] p-0.5 rounded truncate cursor-pointer hover:opacity-80"
+                          className="text-[10px] px-1.5 py-0.5 rounded-sm truncate cursor-pointer hover:opacity-80 font-medium text-gray-800 dark:text-gray-100 bg-white/60 dark:bg-gray-950/40 shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
                           style={{
-                            backgroundColor: event.color_code + "20",
-                            borderLeft: `2px solid ${event.color_code}`,
+                            borderLeft: `3px solid ${event.color_code}`,
                           }}
                           onClick={(e) => {
                             e.stopPropagation();

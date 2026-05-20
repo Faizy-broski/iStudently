@@ -55,7 +55,8 @@ async function rolloverFetch<T>(
 export async function previewRollover(
   currentYearId: string,
   nextYearId: string,
-  schoolId: string
+  schoolId: string,
+  campusId?: string | null
 ): Promise<RolloverPreview> {
   return rolloverFetch('/rollover/preview', {
     method: 'POST',
@@ -63,6 +64,7 @@ export async function previewRollover(
       current_year_id: currentYearId,
       next_year_id: nextYearId,
       school_id: schoolId,
+      campus_id: campusId || null,
     }),
   });
 }
@@ -85,7 +87,8 @@ export async function executeRollover(
 export async function checkRolloverPrerequisites(
   currentYearId: string,
   nextYearId: string,
-  schoolId: string
+  schoolId: string,
+  campusId?: string | null
 ): Promise<RolloverPrerequisiteCheck> {
   return rolloverFetch('/rollover/check', {
     method: 'POST',
@@ -93,6 +96,7 @@ export async function checkRolloverPrerequisites(
       current_year_id: currentYearId,
       next_year_id: nextYearId,
       school_id: schoolId,
+      campus_id: campusId || null,
     }),
   });
 }

@@ -239,7 +239,7 @@ export default function PortalNotesPage() {
         <div className="h-8 w-8 rounded-full bg-[#022172] flex items-center justify-center">
           <FileText className="h-4 w-4 text-white" />
         </div>
-        <h1 className="text-2xl font-semibold text-gray-700">{t("title")}</h1>
+        <h1 className="text-2xl font-semibold text-gray-700 dark:text-gray-200">{t("title")}</h1>
       </div>
 
       {/* Top Save Button */}
@@ -256,14 +256,14 @@ export default function PortalNotesPage() {
       {/* Notes Table */}
       <Card className="border-0 shadow-sm">
         <CardContent className="p-0">
-          <p className="px-4 py-2 text-sm text-gray-500 italic">
+          <p className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400 italic">
             {notes.filter((n) => n.id).length === 0
               ? t("no_notes")
               : t("notes_found", { count: notes.filter((n) => n.id).length })}
           </p>
 
           {/* Table Header */}
-          <div className="grid grid-cols-[40px_120px_1fr_80px_180px_180px_140px] gap-2 px-4 py-2 bg-gray-50 border-y text-xs font-medium text-gray-600 uppercase tracking-wide">
+          <div className="grid grid-cols-[40px_120px_1fr_80px_180px_180px_140px] gap-2 px-4 py-2 bg-gray-50 dark:bg-gray-800 border-y text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wide">
             <div></div>
             <div>{t("table_title")}</div>
             <div>{t("table_note")}</div>
@@ -309,8 +309,8 @@ export default function PortalNotesPage() {
                 <label className="text-xs font-medium text-gray-600 mb-2 block">{t("label_note_content")}</label>
                 <Tabs defaultValue="write" className="w-full">
                   <TabsList className="h-7 p-0.5">
-                    <TabsTrigger value="write" className="text-xs px-2 h-5 data-[state=active]:bg-white">{t("tab_write")}</TabsTrigger>
-                    <TabsTrigger value="preview" className="text-xs px-2 h-5 data-[state=active]:bg-white">{t("tab_preview")}</TabsTrigger>
+                    <TabsTrigger value="write" className="text-xs px-2 h-5 data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-white">{t("tab_write")}</TabsTrigger>
+                    <TabsTrigger value="preview" className="text-xs px-2 h-5 data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-white">{t("tab_preview")}</TabsTrigger>
                     <span className="ml-2 px-1 bg-gray-200 rounded text-xs text-gray-500">M↓</span>
                   </TabsList>
                   <TabsContent value="write" className="mt-1">
@@ -321,7 +321,7 @@ export default function PortalNotesPage() {
                     />
                   </TabsContent>
                   <TabsContent value="preview" className="mt-1">
-                    <div className="min-h-20 p-2 border rounded-md bg-white text-sm whitespace-pre-wrap">
+                    <div className="min-h-20 p-2 border rounded-md bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 text-sm whitespace-pre-wrap">
                       {note.content || <span className="text-gray-400 italic">{t("placeholder_no_content")}</span>}
                     </div>
                   </TabsContent>
@@ -343,8 +343,8 @@ export default function PortalNotesPage() {
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1 block">{t("table_file")}</label>
                   {note.file_url ? (
-                    <div className="flex items-center gap-1 h-7 px-2 border border-gray-300 rounded-md bg-white text-xs">
-                      <Paperclip className="h-3 w-3 text-[#022172] shrink-0" />
+                    <div className="flex items-center gap-1 h-7 px-2 border border-gray-300 rounded-md bg-white dark:bg-gray-800 dark:border-gray-600 text-xs">
+                      <Paperclip className="h-3 w-3 text-[#022172] dark:text-[#57A3CC] shrink-0" />
                       <a
                         href={note.file_url}
                         target="_blank"
@@ -363,7 +363,7 @@ export default function PortalNotesPage() {
                       </button>
                     </div>
                   ) : uploadingIndex === index ? (
-                    <div className="flex items-center gap-1 h-7 px-2 border border-gray-300 rounded-md bg-white text-xs text-muted-foreground">
+                    <div className="flex items-center gap-1 h-7 px-2 border border-gray-300 rounded-md bg-white dark:bg-gray-800 dark:border-gray-600 text-xs text-muted-foreground">
                       <Loader2 className="h-3 w-3 animate-spin" />
                       <span>{tCommon("loading")}</span>
                     </div>

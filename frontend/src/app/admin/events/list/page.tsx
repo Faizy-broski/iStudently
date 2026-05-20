@@ -309,7 +309,7 @@ export default function AllEventsPage() {
         open={showEventForm}
         onOpenChange={setShowEventForm}
         event={selectedEvent}
-        onSuccess={() => mutate()}
+        onSuccess={() => { mutate(); setSelectedEvent(null); }}
       />
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

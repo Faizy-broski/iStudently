@@ -415,6 +415,12 @@ body {
     margin-inline-end: 0;
   }
 
+  /* Dark mode: use dark page background for active item so cutouts match */
+  .dark .sidebar-link.active {
+    background-color: oklch(0.141 0.005 285.823) !important;
+    @apply text-white shadow-md;
+  }
+
   /* Pseudo-elements anchored to the inner edge (logical end) */
   .sidebar-link.active::before {
     content: "";
@@ -438,6 +444,15 @@ body {
     box-shadow: -20px 20px 0 0 rgb(249, 250, 251);
   }
 
+  /* Dark mode cutout corners – LTR */
+  .dark html:not([dir="rtl"]) .sidebar-link.active::before {
+    box-shadow: 20px 20px 0 0 oklch(0.141 0.005 285.823);
+  }
+  /* Dark mode cutout corners – RTL */
+  .dark html[dir="rtl"] .sidebar-link.active::before {
+    box-shadow: -20px 20px 0 0 oklch(0.141 0.005 285.823);
+  }
+
   .sidebar-link.active::after {
     content: "";
     position: absolute;
@@ -458,5 +473,14 @@ body {
   /* RTL: cutout curves on the left */
   html[dir="rtl"] .sidebar-link.active::after {
     box-shadow: -20px -20px 0 0 rgb(249, 250, 251);
+  }
+
+  /* Dark mode cutout corners – LTR */
+  .dark html:not([dir="rtl"]) .sidebar-link.active::after {
+    box-shadow: 20px -20px 0 0 oklch(0.141 0.005 285.823);
+  }
+  /* Dark mode cutout corners – RTL */
+  .dark html[dir="rtl"] .sidebar-link.active::after {
+    box-shadow: -20px -20px 0 0 oklch(0.141 0.005 285.823);
   }
 }

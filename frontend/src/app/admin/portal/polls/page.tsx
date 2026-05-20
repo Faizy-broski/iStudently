@@ -317,7 +317,7 @@ export default function PortalPollsPage() {
         <div className="h-8 w-8 rounded-full bg-[#022172] flex items-center justify-center">
           <BarChart3 className="h-4 w-4 text-white" />
         </div>
-        <h1 className="text-2xl font-semibold text-gray-700">{t("title")}</h1>
+        <h1 className="text-2xl font-semibold text-gray-700 dark:text-gray-200">{t("title")}</h1>
       </div>
 
       {/* Top Buttons */}
@@ -334,14 +334,14 @@ export default function PortalPollsPage() {
       {/* Polls Table */}
       <Card className="border-0 shadow-sm">
         <CardContent className="p-0">
-          <p className="px-4 py-2 text-sm text-gray-500 italic">
+          <p className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400 italic">
             {polls.filter((p) => p.id).length === 0
               ? t("no_polls")
               : t("polls_found", { count: polls.filter((p) => p.id).length })}
           </p>
 
           {/* Table Header */}
-          <div className="grid grid-cols-[40px_100px_1fr_100px_80px_180px_140px] gap-2 px-4 py-2 bg-gray-50 border-y text-xs font-medium text-gray-600 uppercase tracking-wide">
+          <div className="grid grid-cols-[40px_100px_1fr_100px_80px_180px_140px] gap-2 px-4 py-2 bg-gray-50 dark:bg-gray-800 border-y text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wide">
             <div></div>
             <div>{t("table_title")}</div>
             <div>{t("table_poll")}</div>
@@ -385,10 +385,10 @@ export default function PortalPollsPage() {
               {/* Poll Questions */}
               <div className="space-y-3">
                 {poll.questions.map((question, qIndex) => (
-                  <div key={qIndex} className="space-y-2 p-3 border border-gray-200 rounded-lg bg-gray-50/50">
+                  <div key={qIndex} className="space-y-2 p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50/50 dark:bg-gray-800/50">
                     <div className="flex items-start gap-2">
                       <div className="flex-1">
-                        <label className="text-xs font-medium text-gray-600 mb-1 block">{t("label_question_title")}</label>
+                        <label className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-1 block">{t("label_question_title")}</label>
                         <Input
                           value={question.question_text}
                           onChange={(e) => updateQuestion(pollIndex, qIndex, 'question_text', e.target.value)}
@@ -409,7 +409,7 @@ export default function PortalPollsPage() {
                     </div>
 
                     <div>
-                      <label className="text-xs font-medium text-gray-600 mb-1 block">{t("label_options_help")}</label>
+                      <label className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-1 block">{t("label_options_help")}</label>
                       <Textarea
                         value={question.options}
                         onChange={(e) => updateQuestion(pollIndex, qIndex, 'options', e.target.value)}
@@ -419,7 +419,7 @@ export default function PortalPollsPage() {
                     </div>
 
                     <div>
-                      <label className="text-xs font-medium text-gray-600 mb-1 block">{t("label_data_type")}</label>
+                      <label className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-1 block">{t("label_data_type")}</label>
                       <Select
                         value={question.question_type}
                         onValueChange={(v) => updateQuestion(pollIndex, qIndex, 'question_type', v)}
@@ -442,7 +442,7 @@ export default function PortalPollsPage() {
                 <button
                   type="button"
                   onClick={() => addQuestion(pollIndex)}
-                  className="text-[#022172] text-sm hover:text-[#022172]/80 flex items-center gap-1 font-medium"
+                  className="text-[#022172] dark:text-[#57A3CC] text-sm hover:text-[#022172]/80 dark:hover:text-[#57A3CC]/80 flex items-center gap-1 font-medium"
                 >
                   <Plus className="h-3 w-3" />
                   {t("btn_new_question")}
@@ -457,7 +457,7 @@ export default function PortalPollsPage() {
                     onCheckedChange={(checked) => updateRow(pollIndex, { show_results: !!checked })}
                     className="h-4 w-4"
                   />
-                  <span className="text-xs text-gray-600">{t("label_show_to_users")}</span>
+                  <span className="text-xs text-gray-600 dark:text-gray-300">{t("label_show_to_users")}</span>
                 </label>
                 {poll.id && (
                   <Button

@@ -93,7 +93,7 @@ export default function PluginsPage() {
       <div className="border rounded-md overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b bg-muted/40 text-[#022172] uppercase text-xs tracking-wide">
+            <tr className="border-b bg-muted/40 text-[#022172] dark:text-[#57A3CC] uppercase text-xs tracking-wide">
               <th className="px-4 py-2 text-left w-32"></th>
               <th className="px-4 py-2 text-left">{t('th_title')}</th>
               <th className="px-4 py-2 text-center w-28">{t('th_activated')}</th>
@@ -115,8 +115,8 @@ export default function PluginsPage() {
                       className={[
                         'flex items-center gap-1 text-xs font-semibold tracking-wide',
                         active
-                          ? 'text-[#022172] hover:text-red-600'
-                          : 'text-[#022172] hover:text-green-700',
+                          ? 'text-[#022172] dark:text-[#57A3CC] hover:text-red-600 dark:hover:text-red-400'
+                          : 'text-[#022172] dark:text-[#57A3CC] hover:text-green-700 dark:hover:text-green-400',
                         isToggling ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
                       ].join(' ')}
                     >
@@ -133,8 +133,8 @@ export default function PluginsPage() {
 
                   {/* Title + description */}
                   <td className="px-4 py-3">
-                    <p className="font-medium text-[#022172]">{plugin.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{plugin.description}</p>
+                    <p className="font-medium text-[#022172] dark:text-[#57A3CC]">{t(`${plugin.id}_name` as Parameters<typeof t>[0])}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{t(`${plugin.id}_desc` as Parameters<typeof t>[0])}</p>
                   </td>
 
                   {/* Activated status */}
@@ -150,7 +150,7 @@ export default function PluginsPage() {
                     {active && plugin.settingsHref ? (
                       <Link
                         href={plugin.settingsHref}
-                        className="text-xs text-[#022172] hover:underline inline-flex items-center gap-1"
+                        className="text-xs text-[#022172] dark:text-[#57A3CC] hover:underline inline-flex items-center gap-1"
                       >
                         <Settings className="h-3 w-3" />
                         {t('btn_configuration')}

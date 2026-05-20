@@ -934,10 +934,15 @@ function DesktopSidebar({ menuItems, className }: AppSidebarProps) {
   size="icon"
   onClick={() => setIsCollapsed(!isCollapsed)}
   className={cn(
-    "absolute z-50 flex items-center justify-center h-6 w-6 rounded-full bg-white shadow-md hover:bg-gray-100 text-[#022172] border border-gray-100 transition-all duration-300",
-    isCollapsed 
-      ? "top-15 inset-x-0 mx-auto" // Pushed down from top-20 to top-28 for clean spacing
-      : "top-6 end-1.5"            // Snug against the edge when open
+    "absolute z-50 flex items-center justify-center h-6 w-6 rounded-full",
+    "bg-white dark:bg-[#1e2a3a] shadow-md",
+    "text-[#022172] dark:text-white",
+    "border border-gray-200 dark:border-white/30",
+    "hover:bg-gray-100 dark:hover:bg-white/20",
+    "transition-all duration-300",
+    isCollapsed
+      ? "top-15 inset-x-0 mx-auto"
+      : "top-6 end-1.5"
   )}
 >
   {isCollapsed ? (

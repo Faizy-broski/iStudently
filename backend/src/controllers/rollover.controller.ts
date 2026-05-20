@@ -56,7 +56,7 @@ function resolveSchoolId(req: Request): string | undefined {
  */
 export async function previewRollover(req: Request, res: Response): Promise<void> {
   try {
-    const { current_year_id, next_year_id } = req.body;
+    const { current_year_id, next_year_id, campus_id } = req.body;
     const school_id = resolveSchoolId(req);
 
     if (!current_year_id || !next_year_id || !school_id) {
@@ -71,6 +71,7 @@ export async function previewRollover(req: Request, res: Response): Promise<void
       p_current_year_id: current_year_id,
       p_next_year_id: next_year_id,
       p_school_id: school_id,
+      p_campus_id: campus_id || null,
     });
 
     if (error) {
@@ -92,7 +93,7 @@ export async function previewRollover(req: Request, res: Response): Promise<void
  */
 export async function checkPrerequisites(req: Request, res: Response): Promise<void> {
   try {
-    const { current_year_id, next_year_id } = req.body;
+    const { current_year_id, next_year_id, campus_id } = req.body;
     const school_id = resolveSchoolId(req);
 
     if (!current_year_id || !next_year_id || !school_id) {
@@ -107,6 +108,7 @@ export async function checkPrerequisites(req: Request, res: Response): Promise<v
       p_current_year_id: current_year_id,
       p_next_year_id: next_year_id,
       p_school_id: school_id,
+      p_campus_id: campus_id || null,
     });
 
     if (error) {
@@ -202,7 +204,7 @@ export async function executeSemesterRollover(req: Request, res: Response): Prom
  */
 export async function executeRollover(req: Request, res: Response): Promise<void> {
   try {
-    const { current_year_id, next_year_id, options } = req.body as RolloverRequest;
+    const { current_year_id, next_year_id, options, campus_id } = req.body as RolloverRequest;
     const school_id = resolveSchoolId(req);
 
     if (!current_year_id || !next_year_id || !school_id) {
@@ -219,6 +221,7 @@ export async function executeRollover(req: Request, res: Response): Promise<void
         p_current_year_id: current_year_id,
         p_next_year_id: next_year_id,
         p_school_id: school_id,
+        p_campus_id: campus_id || null,
       }
     );
 
@@ -243,6 +246,7 @@ export async function executeRollover(req: Request, res: Response): Promise<void
       p_current_year_id: current_year_id,
       p_next_year_id: next_year_id,
       p_school_id: school_id,
+      p_campus_id: campus_id || null,
       p_rollover_options: options || {
         students: true,
         marking_periods: true,

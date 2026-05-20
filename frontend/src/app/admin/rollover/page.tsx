@@ -21,10 +21,12 @@ import {
   CheckCircle2,
   Loader2,
   ArrowRight,
+  Building2,
   Info,
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/context/AuthContext';
+import { useCampus } from '@/context/CampusContext';
 import { useTranslations } from 'next-intl';
 import {
   previewRollover,
@@ -117,6 +119,9 @@ function RolloverItemList({
 
 export default function RolloverPage() {
   const { user } = useAuth();
+  const campusContext = useCampus();
+  // Use parent_school_id when a campus is selected; fall back to user.school_id
+  const schoolId = campusContext?.selectedCampus?.parent_school_id ?? user?.school_id ?? '';
   const t = useTranslations("school.rollover");
   const tCommon = useTranslations("common");
 
@@ -149,6 +154,8 @@ export default function RolloverPage() {
   const [executing, setExecuting] = useState(false);
   const [result, setResult] = useState<RolloverResult | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  // 'all' means no campus filter (school-wide); any other value is a specific campus id
+  const [selectedCampusId, setSelectedCampusId] = useState<string>('all');
   
   // Rollover options
   const [options, setOptions] = useState<LocalRolloverOptions>(() => {
@@ -185,7 +192,7 @@ export default function RolloverPage() {
 
       // Auto-fetch preview and prerequisites if both years exist
       if (current && next) {
-        await loadPreviewAndCheck(current.id, next.id);
+        await loadPreviewAndCheck(current.id, next.id, selectedCampusId !== 'all' ? selectedCampusId : null);
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : tCommon("error");
@@ -195,17 +202,17 @@ export default function RolloverPage() {
     }
   }
 
-  async function loadPreviewAndCheck(currentYearId: string, nextYearId: string) {
+  async function loadPreviewAndCheck(currentYearId: string, nextYearId: string, campusId?: string | null) {
     if (!user) return;
     try {
       setPreviewing(true);
       
       // Check prerequisites
-      const checkResult = await checkRolloverPrerequisites(currentYearId, nextYearId, user.school_id);
+      const checkResult = await checkRolloverPrerequisites(currentYearId, nextYearId, schoolId, campusId);
       setPrerequisiteCheck(checkResult);
 
       // Load preview
-      const previewData = await previewRollover(currentYearId, nextYearId, user.school_id);
+      const previewData = await previewRollover(currentYearId, nextYearId, schoolId, campusId);
       setPreview(previewData);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : tCommon("error");
@@ -232,7 +239,8 @@ export default function RolloverPage() {
       const result = await executeRollover({
         current_year_id: currentYear.id,
         next_year_id: nextYear.id,
-        school_id: user?.school_id ?? '',
+        school_id: schoolId,
+        campus_id: selectedCampusId !== 'all' ? selectedCampusId : undefined,
         options: backendOptions,
       });
 
@@ -241,7 +249,7 @@ export default function RolloverPage() {
       if (result.success) {
         toast.success(t("rollover_complete"));
         // Reload preview to show updated data
-        await loadPreviewAndCheck(currentYear.id, nextYear.id);
+        await loadPreviewAndCheck(currentYear.id, nextYear.id, selectedCampusId !== 'all' ? selectedCampusId : null);
       } else {
         toast.error(result.error || tCommon("error"));
       }
@@ -428,6 +436,44 @@ export default function RolloverPage() {
           </CardContent>
         </Card>
 
+        {/* Campus Scope Selector */}
+        {campusContext && campusContext.campuses.length > 0 && (
+          <Card>
+            <CardContent className="pt-5 pb-4">
+              <div className="flex items-center gap-3">
+                <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="text-sm font-medium shrink-0">{t("label_campus_scope") || "Campus Scope"}</span>
+                <Select
+                  value={selectedCampusId}
+                  onValueChange={(val) => {
+                    setSelectedCampusId(val);
+                    if (currentYear && nextYear) {
+                      loadPreviewAndCheck(currentYear.id, nextYear.id, val !== 'all' ? val : null);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-60">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t("campus_all") || "All Campuses (School-wide)"}</SelectItem>
+                    {campusContext.campuses.map((campus) => (
+                      <SelectItem key={campus.id} value={campus.id}>
+                        {campus.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedCampusId !== 'all' && (
+                  <span className="text-xs text-amber-600 font-medium">
+                    {t("campus_scope_warning") || "Rollover will only affect this campus"}
+                  </span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Preview Data */}
         {preview && (
           <div className="grid gap-4 md:grid-cols-2">
@@ -465,12 +511,10 @@ export default function RolloverPage() {
                 <div className="text-2xl font-bold">{preview.marking_periods.current_year_total}</div>
                 <p className="text-xs text-muted-foreground">{t("to_be_rolled_over")}</p>
                 {preview.marking_periods.next_year_existing > 0 && (
-                  <Alert variant="destructive" className="mt-4">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription className="text-xs">
-                      {t("marking_periods_exist_warning", { count: preview.marking_periods.next_year_existing, nextYear: nextYear.name })}
-                    </AlertDescription>
-                  </Alert>
+                  <div className="mt-4 flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+                    <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-500" />
+                    <span>{t("marking_periods_exist_warning", { count: preview.marking_periods.next_year_existing, nextYear: nextYear.name })}</span>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -657,13 +701,13 @@ export default function RolloverPage() {
                 variant="outline"
                 className="min-w-20 font-semibold"
               >
-                {tCommon("btn_ok") || "OK"}
+                {tCommon("confirm")}
               </Button>
               <Button
                 onClick={() => setShowConfirmDialog(false)}
                 className="min-w-20 font-semibold bg-teal-700 hover:bg-teal-800 text-white"
               >
-                {tCommon("btn_cancel") || "CANCEL"}
+                {tCommon("cancel")}
               </Button>
             </div>
           </DialogContent>

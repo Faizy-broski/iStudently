@@ -194,6 +194,7 @@ export interface RolloverRequest {
   current_year_id: string;
   next_year_id: string;
   school_id: string;
+  campus_id?: string; // Optional: restrict rollover to a specific campus
   options?: RolloverOptions;
 }
 

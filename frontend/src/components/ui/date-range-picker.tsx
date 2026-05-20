@@ -27,7 +27,7 @@ export function DateRangePicker({
           type="date"
           value={from || ''}
           onChange={(e) => onFromChange(e.target.value || undefined)}
-          className="flex-1 h-7 px-2 text-xs border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-[#022172] focus:border-[#022172]"
+          className="flex-1 h-7 px-2 text-xs border border-gray-300 rounded-md bg-white text-gray-900 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 [color-scheme:light] dark:[color-scheme:dark] focus:outline-none focus:ring-1 focus:ring-[#022172] focus:border-[#022172]"
         />
       </div>
       <div className="flex items-center gap-2">
@@ -37,7 +37,7 @@ export function DateRangePicker({
           value={to || ''}
           min={from || undefined}
           onChange={(e) => onToChange(e.target.value || undefined)}
-          className="flex-1 h-7 px-2 text-xs border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-[#022172] focus:border-[#022172]"
+          className="flex-1 h-7 px-2 text-xs border border-gray-300 rounded-md bg-white text-gray-900 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 [color-scheme:light] dark:[color-scheme:dark] focus:outline-none focus:ring-1 focus:ring-[#022172] focus:border-[#022172]"
         />
       </div>
     </div>
