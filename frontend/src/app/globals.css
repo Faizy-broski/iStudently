@@ -415,10 +415,9 @@ body {
     margin-inline-end: 0;
   }
 
-  /* Dark mode: use dark page background for active item so cutouts match */
+  /* Dark mode: keep white pill (sidebar gradient never changes), only text adjusts */
   .dark .sidebar-link.active {
-    background-color: oklch(0.141 0.005 285.823) !important;
-    @apply text-white shadow-md;
+    @apply bg-white text-[#022172] shadow-md;
   }
 
   /* Pseudo-elements anchored to the inner edge (logical end) */
