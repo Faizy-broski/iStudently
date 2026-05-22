@@ -24,7 +24,6 @@ interface SocialLoginConfig {
 // ---------------------------------------------------------------------------
 function LanguageToggle() {
   const locale = useLocale()
-  const router = useRouter()
   const [switching, setSwitching] = useState(false)
 
   async function toggle() {
