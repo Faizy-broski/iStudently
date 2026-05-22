@@ -15,6 +15,15 @@ interface UserQRCodeProps {
 export function UserQRCode({ value, size = 128, label, showDownload = true }: UserQRCodeProps) {
   const svgRef = React.useRef<HTMLDivElement>(null)
 
+  // If value is a bare UUID, turn it into a scannable verification URL
+  const qrValue = React.useMemo(() => {
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (uuidPattern.test(value)) {
+      return `${window.location.origin}/verify/${value}`
+    }
+    return value
+  }, [value])
+
   const handleDownload = () => {
     const svg = svgRef.current?.querySelector('svg')
     if (!svg) return
@@ -38,7 +47,7 @@ export function UserQRCode({ value, size = 128, label, showDownload = true }: Us
       ctx.drawImage(img, padding, padding, size, size)
       URL.revokeObjectURL(url)
       const link = document.createElement('a')
-      link.download = `qr-${value.slice(0, 8)}.png`
+      link.download = `qr-${value.slice(0, 8)}.png`  // use raw value for filename
       link.href = canvas.toDataURL('image/png')
       link.click()
     }
@@ -51,7 +60,7 @@ export function UserQRCode({ value, size = 128, label, showDownload = true }: Us
         ref={svgRef}
         className="p-3 bg-white rounded-lg border border-gray-200 shadow-sm"
       >
-        <QRCode value={value} size={size} />
+        <QRCode value={qrValue} size={size} />
       </div>
       {label && (
         <p className="text-xs text-gray-500 text-center max-w-[160px] truncate">{label}</p>
