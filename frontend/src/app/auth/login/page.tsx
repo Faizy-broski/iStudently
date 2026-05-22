@@ -20,25 +20,19 @@ interface SocialLoginConfig {
 }
 
 // ---------------------------------------------------------------------------
-// Language toggle button — sets cookie via API route then reloads
+// Language toggle button — writes cookie directly then hard-reloads
 // ---------------------------------------------------------------------------
 function LanguageToggle() {
   const locale = useLocale()
   const [switching, setSwitching] = useState(false)
 
-  async function toggle() {
+  function toggle() {
     const next = locale === 'en' ? 'ar' : 'en'
     setSwitching(true)
-    try {
-      await fetch('/api/set-locale', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ locale: next }),
-      })
-      window.location.reload()
-    } finally {
-      setSwitching(false)
-    }
+    // Set cookie client-side — no server round-trip, no auth required
+    const maxAge = 60 * 60 * 24 * 365
+    document.cookie = `studently_language=${next}; path=/; max-age=${maxAge}; samesite=lax`
+    window.location.reload()
   }
 
   return (
