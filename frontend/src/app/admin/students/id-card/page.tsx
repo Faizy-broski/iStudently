@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import QRCode from "react-qr-code";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -79,6 +81,32 @@ function debounce(
   return debounced;
 }
 
+// Module-level cache so we never generate the same QR code twice
+const _qrUrlCache: Record<string, string> = {};
+
+// Build the URL encoded in the QR code — points to the student's profile page
+function getStudentQRValue(student: { id: string; student_number: string }): string {
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  return `${origin}/admin/students/${student.student_number}`
+}
+
+// Generate a QR code as SVG data URL using renderToStaticMarkup (safe to call anywhere)
+function generateQRSVGDataUrl(value: string, size = 72): string {
+  if (!value) return ''
+  if (_qrUrlCache[value]) return _qrUrlCache[value]
+  try {
+    const svgStr = renderToStaticMarkup(
+      createElement(QRCode, { value, size, bgColor: '#ffffff', fgColor: '#000000' })
+    )
+    const b64 = btoa(unescape(encodeURIComponent(svgStr)))
+    const result = `data:image/svg+xml;base64,${b64}`
+    _qrUrlCache[value] = result
+    return result
+  } catch {
+    return ''
+  }
+}
+
 // Group fields by category
 const GROUPED_FIELDS = (t: any) => {
   const fields = [
@@ -120,6 +148,7 @@ const GROUPED_FIELDS = (t: any) => {
     // System
     { id: '__PHOTO__', label: t('photo'), category: 'media' },
     { id: '__SCHOOL_LOGO__', label: t('school_logo'), category: 'media' },
+    { id: '__QR_CODE__', label: 'QR Code', category: 'media' },
     { id: '__DATE__', label: t('current_date'), category: 'system' },
     { id: '__VALID_UNTIL__', label: t('valid_until'), category: 'system' },
   ];
@@ -182,6 +211,9 @@ export default function StudentIdCardPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showGeneratedCards, setShowGeneratedCards] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+
+  // QR data URLs keyed by student id (generated once when cards are shown)
+  const [studentQRUrls, setStudentQRUrls] = useState<Record<string, string>>({});
   
   // Design settings
   const [designSettings, setDesignSettings] = useState({
@@ -229,7 +261,7 @@ export default function StudentIdCardPage() {
       debouncedUpdateContent.cancel?.();
     };
   }, [debouncedUpdateContent]);
-  
+
   // Filter sections by selected grade level
   const filteredSections = useMemo(() => {
     if (!selectedGradeLevel || selectedGradeLevel === 'all') return sections;
@@ -653,7 +685,7 @@ export default function StudentIdCardPage() {
   };
   
   // Replace placeholders with student data
-  const replacePlaceholders = (content: string, student: Student): string => {
+  const replacePlaceholders = (content: string, student: Student, qrDataUrl?: string): string => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const profile: any = student.profile || {};
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -711,8 +743,11 @@ export default function StudentIdCardPage() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const campusAny = selectedCampus as any;
         return campusAny?.logo_url ? `<img src="${campusAny.logo_url}" alt="${selectedCampus?.name}" style="max-width:100%;height:auto;"/>` : '';
-      })());
-    
+      })())
+      .replace(/__QR_CODE__/g, qrDataUrl
+        ? `<img src="${qrDataUrl}" alt="QR Code" style="width:72px;height:72px;display:inline-block;vertical-align:middle;"/>`
+        : '');
+
     return replacedContent;
   };
   
@@ -754,7 +789,22 @@ export default function StudentIdCardPage() {
   const selectedStudents = useMemo(() => {
     return students.filter(s => selectedStudentIds.includes(s.id));
   }, [students, selectedStudentIds]);
-  
+
+  // Generate QR data URLs when cards become visible
+  useEffect(() => {
+    if (!showGeneratedCards || selectedStudents.length === 0) return;
+    const urls: Record<string, string> = {};
+    selectedStudents.forEach((s) => {
+      if (!studentQRUrls[s.id]) {
+        urls[s.id] = generateQRSVGDataUrl(getStudentQRValue(s));
+      }
+    });
+    if (Object.keys(urls).length > 0) {
+      setStudentQRUrls((prev) => ({ ...prev, ...urls }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showGeneratedCards, selectedStudents.map((s) => s.id).join(',')]);
+
   // Helper to inline all styles to avoid CSS custom property issues with html2canvas
   const inlineAllStyles = (element: HTMLElement) => {
     const allElements = element.querySelectorAll('*');
@@ -823,8 +873,9 @@ export default function StudentIdCardPage() {
       
       for (let i = 0; i < selectedStudents.length; i++) {
         const student = selectedStudents[i];
-        const processedContent = replacePlaceholders(templateContent, student);
-        
+        const qrUrl = studentQRUrls[student.id] || generateQRSVGDataUrl(getStudentQRValue(student));
+        const processedContent = replacePlaceholders(templateContent, student, qrUrl);
+
         try {
           // Get dimensions for the card
           const actualWidth = 600; // Fixed width for consistency
@@ -1049,7 +1100,8 @@ export default function StudentIdCardPage() {
     const studentAny: any = student;
     
     // Check multiple possible photo fields from various sources
-    const photoUrl = profile?.profile_photo_url || 
+    // profile_photo_url is the primary storage field (newer); avatar_url is the legacy field
+    const photoUrl = profile?.profile_photo_url ||
            profile?.avatar_url || 
            profile?.photo_url ||
            profile?.image_url ||
@@ -1057,6 +1109,8 @@ export default function StudentIdCardPage() {
            studentAny?.avatar_url ||
            studentAny?.photo_url ||
            studentAny?.image_url ||
+           studentAny?.medical_info?.profile_photo_url ||
+           studentAny?.medical_info?.avatar_url ||
            null;
     
     // Validate URL format and return photo URL or default
@@ -1081,11 +1135,12 @@ export default function StudentIdCardPage() {
         >
           <div className="space-y-8">
             {selectedStudents.map((student) => {
-              const processedContent = replacePlaceholders(templateContent, student);
-              
+              const qrUrl = studentQRUrls[student.id] || generateQRSVGDataUrl(getStudentQRValue(student));
+              const processedContent = replacePlaceholders(templateContent, student, qrUrl);
+
               return (
-                <div 
-                  key={student.id} 
+                <div
+                  key={student.id}
                   className="id-card-item"
                   style={{
                     paddingTop: `${designSettings.cardPaddingTop}px`,
@@ -1844,11 +1899,12 @@ export default function StudentIdCardPage() {
                 </div>
               ) : (
                 selectedStudents.map((student) => {
-                  const processedContent = replacePlaceholders(templateContent, student);
-                  
+                  const qrUrl = studentQRUrls[student.id] || generateQRSVGDataUrl(getStudentQRValue(student));
+                  const processedContent = replacePlaceholders(templateContent, student, qrUrl);
+
                   return (
-                    <div 
-                      key={student.id} 
+                    <div
+                      key={student.id}
                       className={`id-card-item flex gap-6 py-6 ${designSettings.photoPosition === 'center' ? 'flex-col items-center' : ''}`}
                       style={{
                         paddingTop: `${designSettings.cardPaddingTop}px`,

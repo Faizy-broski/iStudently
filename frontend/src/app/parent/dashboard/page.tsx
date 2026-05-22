@@ -2,23 +2,26 @@
 
 import { SetupAssistantPanel } from '@/components/setup-assistant/SetupAssistantPanel'
 import { useParentDashboard } from '@/context/ParentDashboardContext'
+import { usePaymentHistory } from '@/hooks/useParentDashboard'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { FinancialWidget } from '@/components/shared/FinancialWidget'
+import { ProfilePhoto } from '@/components/shared/ProfilePhoto'
 
-import { 
-  GraduationCap, 
-  BookOpen, 
-  CalendarCheck, 
-  ClipboardList, 
-  CreditCard, 
+import {
+  GraduationCap,
+  BookOpen,
+  CalendarCheck,
+  ClipboardList,
+  CreditCard,
   User,
   ChevronRight
 } from 'lucide-react'
 import Link from 'next/link'
-import Image from 'next/image'
 
 export default function ParentDashboardPage() {
   const { selectedStudent, students, isLoading, error } = useParentDashboard()
+  const { fees, isLoading: feesLoading } = usePaymentHistory()
 
   const student = students.find(s => s.id === selectedStudent)
 
@@ -100,19 +103,12 @@ export default function ParentDashboardPage() {
           <CardContent className="p-6">
             <div className="flex items-center gap-6">
               {/* Student Photo */}
-              <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
-                {student.profile_photo_url ? (
-                  <Image
-                    src={student.profile_photo_url}
-                    alt={`${student.first_name}'s photo`}
-                    width={80}
-                    height={80}
-                    className="object-cover w-full h-full"
-                  />
-                ) : (
-                  <User className="h-10 w-10 text-white/70" />
-                )}
-              </div>
+              <ProfilePhoto
+                src={student.profile_photo_url}
+                name={`${student.first_name} ${student.last_name}`}
+                size="lg"
+                className="border-2 border-white/30"
+              />
               
               {/* Student Info */}
               <div className="flex-1">
@@ -163,6 +159,15 @@ export default function ParentDashboardPage() {
           </Link>
         ))}
       </div>
+
+      {/* Financial Widget */}
+      {student && (
+        <FinancialWidget
+          fees={fees}
+          isLoading={feesLoading}
+          feesPageHref="/parent/fees"
+        />
+      )}
 
       {/* No Student Message */}
       {!student && students.length === 0 && (

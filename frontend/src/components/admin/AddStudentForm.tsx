@@ -57,7 +57,7 @@ const STANDARD_FIELDS = [
   { id: 'studentPhoto', label: 'student_photo', type: 'photo', category: 'personal', sort_order: 7, required: false, width: 'full' },
   { id: 'address', label: 'address', type: 'textarea', category: 'personal', sort_order: 8, required: false, width: 'full' },
   { id: 'email', label: 'email', type: 'email', category: 'personal', sort_order: 9, required: true, width: 'half' },
-  { id: 'phoneNumber', label: 'phone_number', type: 'text', category: 'personal', sort_order: 10, required: false, width: 'half' },
+  { id: 'phoneNumber', label: 'phone_number', type: 'tel', category: 'personal', sort_order: 10, required: false, width: 'half' },
 
   // ACADEMIC INFORMATION (Category: academic)
   { id: 'grade_level_id', label: 'grade_level', type: 'grade_select', category: 'academic', sort_order: 1, required: true, width: 'half' },
@@ -550,13 +550,14 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
       // Create student via API
       const response = await createStudent({
         student_number: validatedData.studentId,
+        username: formData.username || undefined,
         first_name: validatedData.firstName,
-        father_name: validatedData.fatherName, // NEW: Father's name
-        grandfather_name: formData.grandfatherName || undefined, // NEW: Grandfather's name
+        father_name: validatedData.fatherName,
+        grandfather_name: formData.grandfatherName || undefined,
         last_name: validatedData.lastName,
         email: validatedData.email || undefined,
         phone: validatedData.phoneNumber || undefined,
-        password: formData.password || undefined, // FIX: Send the frontend-generated password to backend
+        password: formData.password || undefined,
         grade_level: grades.find(g => g.id === validatedData.grade_level_id)?.name || validatedData.gradeLevel || undefined,
         grade_level_id: validatedData.grade_level_id || undefined,
         section_id: validatedData.section_id || undefined,
@@ -896,12 +897,24 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
           {fieldDisplayLabel} {field.required && <span className="text-red-500">*</span>}
         </Label>
 
-        {(field.type === 'text' || field.type === 'email' || field.type === 'number') ? (
+        {(field.type === 'text' || field.type === 'email' || field.type === 'number' || field.type === 'tel') ? (
           <Input
             id={field.id}
             type={field.type}
             value={value}
-            onChange={(e) => handleChange(e.target.value)}
+            onKeyDown={(e) => {
+              const nav = ['Backspace','Delete','Tab','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'];
+              if (e.ctrlKey || e.metaKey) return;
+              if (nav.includes(e.key)) return;
+              if (field.type === 'tel' && !/[0-9+\-() ]/.test(e.key)) e.preventDefault();
+              if (field.type === 'number' && !/[0-9.]/.test(e.key)) e.preventDefault();
+            }}
+            onChange={(e) => {
+              let val = e.target.value;
+              if (field.type === 'tel') val = val.replace(/[^0-9+\-() ]/g, '');
+              if (field.type === 'number') val = val.replace(/[^0-9.]/g, '');
+              handleChange(val);
+            }}
             placeholder={field.placeholder || t("enter_field", { name: fieldDisplayLabel.toLowerCase() })}
             className={error ? "border-red-500" : ""}
           />

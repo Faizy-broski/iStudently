@@ -23,13 +23,15 @@ export class SchoolController {
         })
       }
 
-      // Validate required admin fields
+      // Validate required admin fields — email is required for Supabase auth
       if (!admin?.email || !admin?.password || !admin?.first_name || !admin?.last_name) {
         return res.status(400).json({
           success: false,
           error: 'Missing required admin fields: email, password, first_name, last_name'
         })
       }
+
+      // username is optional — will be auto-derived from first_name.last_name if not provided
 
       // Validate password strength
       if (admin.password.length < 8) {
@@ -326,12 +328,12 @@ export class SchoolController {
   async updateSchoolAdmin(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params
-      const { admin_name, admin_email, password } = req.body
+      const { admin_name, admin_email, password, username } = req.body
 
-      if (!admin_email && !admin_name && !password) {
+      if (!admin_email && !admin_name && !password && !username) {
         return res.status(400).json({
           success: false,
-          error: 'At least one field (admin_name, admin_email, or password) is required'
+          error: 'At least one field (admin_name, admin_email, password, or username) is required'
         })
       }
 
@@ -345,7 +347,8 @@ export class SchoolController {
       const result = await schoolService.updateSchoolAdmin(id, {
         admin_name,
         admin_email,
-        password
+        password,
+        username
       })
 
       res.json({

@@ -5,6 +5,8 @@
     "heading": "تسجيل الدخول إلى الحساب",
     "label_email": "البريد الإلكتروني",
     "placeholder_email": "name@school.com",
+    "label_email_or_username": "البريد الإلكتروني أو اسم المستخدم",
+    "placeholder_email_or_username": "email@school.com أو اسم المستخدم",
     "label_password": "كلمة المرور",
     "remember_me": "تذكرني",
     "btn_sign_in": "تسجيل الدخول",
@@ -202,9 +204,12 @@
     "showing_range": "عرض {start} إلى {end} من {total} طالب",
     "categories": {
       "personal": "شخصي",
+      "contact": "التواصل",
       "academic": "أكاديمي",
       "medical": "طبي",
       "family": "العائلة",
+      "school": "المدرسة",
+      "media": "الوسائط",
       "system": "النظام"
     },
     "category_descriptions": {
@@ -213,18 +218,26 @@
       "medical": "فصيلة الدم، الحساسية، والملاحظات الصحية",
       "family": "تفاصيل ولي الأمر وجهات اتصال الطوارئ",
       "system": "اسم المستخدم وحالة الحساب"
-    }
+    },
+    "male": "ذكر",
+    "female": "أنثى",
+    "contact_name": "اسم جهة الاتصال",
+    "contact_relationship": "صلة القرابة",
+    "contact_phone": "هاتف جهة الاتصال"
   },
   "topbar": {
     "searchPlaceholder": "ابحث في الصفحات...",
     "noResults": "لا توجد صفحات مطابقة لـ \"{query}\"",
     "loading": "جارٍ التحميل...",
+    "profile": "ملفي الشخصي",
     "settings": "الإعدادات",
     "signOut": "تسجيل الخروج",
     "switchToDark": "التبديل إلى الوضع الداكن",
     "switchToLight": "التبديل إلى الوضع الفاتح",
     "switchToArabic": "التبديل إلى العربية",
     "switchToEnglish": "Switch to English",
+    "enterFullscreen": "وضع الشاشة الكاملة",
+    "exitFullscreen": "الخروج من الشاشة الكاملة",
     "roles": {
       "admin": "مدير",
       "teacher": "معلم",
@@ -444,6 +457,8 @@
     "email_reminders": "تذكيرات البريد",
     "email_smtp": "إعدادات SMTP",
     "public_pages": "الصفحات العامة",
+    "agreement": "اتفاقية ولي الأمر",
+    "profile": "ملفي الشخصي",
     "school_information": "معلومات المدرسة",
     "associated_parents": "أولياء الأمور المرتبطون",
     "print_student_labels": "طباعة ملصقات الطلاب",
@@ -540,6 +555,18 @@
     }
   },
   "admin": {
+    "profile": {
+      "title": "ملفي الشخصي",
+      "subtitle": "تفاصيل حسابك ورمز الاستجواب الخاص بك",
+      "account_info": "معلومات الحساب",
+      "account_info_desc": "بيانات تسجيل الدخول ومعلومات التواصل",
+      "email": "البريد الإلكتروني",
+      "phone": "رقم الهاتف",
+      "last_login": "آخر تسجيل دخول",
+      "role": "الدور",
+      "qr_title": "رمز QR الخاص بي",
+      "qr_desc": "امسح للتحقق من هويتك. هذا الرمز فريد لحسابك."
+    },
     "title": "لوحة تحكم إدارة المدرسة",
     "subtitle": "إدارة عمليات المدرسة وتتبع الأداء",
     "refresh": "تحديث",
@@ -3429,6 +3456,8 @@
         "emergency_contacts": "جهات اتصال الطوارئ",
         "school_services": "خدمات المدرسة",
         "student_id": "رقم الطالب",
+        "student_number": "رقم الطالب",
+        "last_grade_completed": "آخر مرحلة مكتملة",
         "username": "اسم المستخدم",
         "password": "كلمة المرور",
         "status": "الحالة",
@@ -3821,7 +3850,23 @@
           "username": "اسم المستخدم",
           "password": "كلمة المرور",
           "full_name": "الاسم الكامل",
-          "student_id": "رقم الطالب"
+          "student_id": "رقم الطالب",
+          "last_name": "اسم العائلة",
+          "date_of_birth": "تاريخ الميلاد",
+          "student_number": "رقم الطالب",
+          "admission_number": "رقم القبول",
+          "roll_number": "رقم الكشف",
+          "grade_level": "الصف الدراسي",
+          "parent_name": "اسم ولي الأمر",
+          "parent_phone": "هاتف ولي الأمر",
+          "emergency_contact": "جهة اتصال الطوارئ",
+          "campus": "الحرم الجامعي",
+          "campus_address": "عنوان الحرم",
+          "campus_phone": "هاتف الحرم",
+          "academic_year": "العام الدراسي",
+          "school_logo": "شعار المدرسة",
+          "current_date": "التاريخ الحالي",
+          "valid_until": "صالح حتى"
         }
       },
       "id_card": {
@@ -3860,7 +3905,49 @@
         "pos_left": "يسار",
         "pos_right": "يمين",
         "pos_center": "وسط",
-        "print": "طباعة"
+        "print": "طباعة",
+        "select_field": "اختر حقلاً...",
+        "id_card_template_content": "محتوى قالب بطاقة الهوية",
+        "id_card_template_hint": "عدّل النص، أدرج الروابط والصور هنا",
+        "html_placeholder": "أدخل كود HTML لقالب بطاقة الهوية...",
+        "editor_placeholder": "انقر هنا لبدء تحرير قالب بطاقة الهوية...",
+        "editor_tip": "اكتب أو الصق المحتوى، استخدم أزرار شريط الأدوات للتنسيق، انقر على أيقونات الرابط/الصورة لإدراج الوسائط",
+        "insert_fields": "إدراج حقول بيانات الطالب",
+        "insert_fields_hint": "اختر حقلاً لإدراج العنصر النائب",
+        "card_padding": "حشو البطاقة",
+        "text_padding": "حشو النص",
+        "photo_padding": "حشو الصورة",
+        "photo": "الصورة",
+        "photo_width_hint": "الحد الأقصى للعرض (بكسل)",
+        "for_preview_only": "للمعاينة فقط",
+        "reference_info_message": "عرض أول 10 طلاب كمرجع. يرجى تحديد مستوى دراسي أو فصل معين لعرض وإنشاء بطاقات هوية لجميع الطلاب.",
+        "showing_preview_count": "عرض أول 10 طلاب (اختر مستوى/فصلاً لعرض المزيد)",
+        "print_quality_tip": "للطباعة بجودة عالية (144 نقطة في البوصة) وبالحجم الفعلي، احفظ البطاقات كصورة ثم اطبع بمقياس 50٪.",
+        "back_to_editor": "العودة إلى المحرر",
+        "insert_link_btn": "إدراج رابط",
+        "insert_image_btn": "إدراج صورة",
+        "close_fullscreen": "إغلاق ملء الشاشة",
+        "colors": {
+          "black": "أسود",
+          "red": "أحمر",
+          "blue": "أزرق",
+          "green": "أخضر",
+          "orange": "برتقالي",
+          "purple": "بنفسجي"
+        },
+        "toolbar": {
+          "bold": "عريض",
+          "italic": "مائل",
+          "underline": "تسطير",
+          "bullet_list": "قائمة نقطية",
+          "numbered_list": "قائمة مرقمة",
+          "align_left": "محاذاة لليسار",
+          "align_center": "توسيط",
+          "align_right": "محاذاة لليمين",
+          "justify": "ضبط",
+          "insert_link": "إدراج رابط",
+          "insert_image_hint": "إدراج صورة (اسحب للتحريك، حدد الحجم عند الرفع)"
+        }
       },
       "certificate": {
         "title": "شهادة القيد",
@@ -6510,7 +6597,14 @@
       "librarian": "أمين مكتبة",
       "hasLogin": "لديه دخول",
       "systemLibrarian": "أمين مكتبة النظام",
-      "systemRole": "تعيين دور النظام"
+      "systemRole": "تعيين دور النظام",
+      "librarianGetsLoginHint": "سيؤدي اختيار أمين المكتبة إلى إنشاء حساب دخول للوصول إلى المكتبة.",
+      "systemRoleDescPrefix": "سيُعيَّن لهذا الموظف دور",
+      "systemRoleDescSuffix": "في النظام، مما يمنحه الوصول إلى لوحة تحكم المكتبة.",
+      "librarianLoginCredentials": "بيانات دخول أمين المكتبة",
+      "emailUsername": "البريد الإلكتروني / اسم المستخدم",
+      "autoGeneratedPassword": "كلمة مرور مُولَّدة تلقائيًا",
+      "saveCredentialsHint": "احفظ هذه البيانات لمشاركتها مع أمين المكتبة."
     },
     "customFields": {
       "errors": {
@@ -7773,6 +7867,8 @@
       "discipline_score_desc": "يتتبع درجة انضباط من 100 نقطة لكل طالب. تنخفض الدرجة تلقائياً عند تقديم بلاغات المخالفات بناءً على معاملات العقوبة المحددة في نموذج البلاغ.",
       "icalendar_name": "iCalendar",
       "icalendar_desc": "يُضيف رابط اشتراك إلى صفحة الفعاليات والتقويم. زامن فعاليات المدرسة والجداول مع Outlook وGoogle Calendar وThunderbird وأي تطبيق يدعم ملفات .ics.",
+      "email_reminders_name": "تذكيرات البريد الإلكتروني",
+      "email_reminders_desc": "إرسال تذكيرات بريد إلكتروني تلقائية للأولياء والطلاب للفعاليات القادمة وتنبيهات الغياب ومواعيد الرسوم. إعداد جداول التذكير والقوالب لكل حرم.",
       "email_smtp_name": "بريد SMTP",
       "email_smtp_desc": "أرسل رسائل البريد الإلكتروني باستخدام خادم SMTP مخصص بدلاً من الخادم الافتراضي. إعداد إعدادات البريد الصادر لكل حرم بما فيها المضيف والمنفذ وبيانات الاعتماد.",
       "pdf_header_footer_name": "رأس وتذييل PDF",
@@ -8236,5 +8332,56 @@
     "email_reply_to_placeholder": "reply@example.com",
     "email_copy_to_placeholder": "admin@example.com",
     "email_test_placeholder": "اختياري - إرسال الكل إلى هذا البريد"
+  },
+  "vlaby": {
+    "title": "مختبرات VLaby الافتراضية",
+    "browse_all": "تصفح الكل",
+    "my_experiments": "تجاربي",
+    "loading": "جارٍ التحميل…",
+    "filters_btn": "الفلاتر",
+    "login": {
+      "title": "تسجيل الدخول إلى VLaby",
+      "description": "يلزم وجود حساب على VLaby لفتح التجربة التفاعلية. يمكنك التصفح دون حساب.",
+      "email": "البريد الإلكتروني",
+      "password": "كلمة المرور",
+      "sign_in": "تسجيل الدخول",
+      "no_account": "ليس لديك حساب؟",
+      "register": "سجّل في vlaby.com"
+    },
+    "filters": {
+      "title": "الفلاتر",
+      "reset": "إعادة تعيين",
+      "search": "بحث",
+      "search_placeholder": "كلمات مفتاحية…",
+      "country": "الدولة / المنهج",
+      "level": "المرحلة",
+      "class": "الصف",
+      "semester": "الفصل الدراسي",
+      "subject": "المادة",
+      "all": "الكل",
+      "all_countries": "جميع الدول",
+      "all_levels": "جميع المراحل",
+      "all_classes": "جميع الصفوف",
+      "all_semesters": "جميع الفصول",
+      "all_subjects": "جميع المواد",
+      "select_country_first": "اختر الدولة أولاً",
+      "select_level_first": "اختر المرحلة أولاً",
+      "select_class_first": "اختر الصف أولاً",
+      "select_semester_first": "اختر الفصل أولاً"
+    },
+    "table": {
+      "col_title": "العنوان",
+      "col_subject": "المادة",
+      "col_points": "النقاط",
+      "col_country": "الدولة",
+      "col_grade_term": "المرحلة · الفصل",
+      "no_results": "لا توجد تجارب تطابق الفلاتر",
+      "experiments_found": "تم العثور على {count} تجربة",
+      "experiment_found": "تم العثور على تجربة واحدة",
+      "logout": "تسجيل الخروج من VLaby",
+      "sign_in_prompt": "سجّل الدخول لفتح التجارب",
+      "pts": "نقطة",
+      "page_of": "الصفحة {page} من {lastPage}"
+    }
   }
 }

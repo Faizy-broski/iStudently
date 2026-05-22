@@ -20,6 +20,7 @@ import {
   Calculator,
   Award,
   Mail,
+  Bell,
   CalendarDays,
   ShieldAlert,
   CalendarRange,
@@ -145,6 +146,25 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     sidebarInjections: [],
   },
 
+  // ── Email Reminders ──────────────────────────────────────────────────────
+  {
+    id: 'email_reminders',
+    name: 'Email Reminders',
+    description:
+      'Send automated email reminders to parents and students for upcoming events, attendance alerts, and fee due dates. Configure reminder schedules and templates per campus.',
+    icon: Bell,
+    category: 'Email',
+    settingsHref: '/admin/settings/email-reminders',
+    sidebarInjections: [
+      {
+        parentTitle: 'settings',
+        items: [
+          { title: 'email_reminders', href: '/admin/settings/email-reminders', icon: Bell },
+        ],
+      },
+    ],
+  },
+
   // ── Email SMTP ───────────────────────────────────────────────────────────
   {
     id: 'email_smtp',
@@ -154,7 +174,14 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     icon: Mail,
     category: 'Email',
     settingsHref: '/admin/settings/email-smtp',
-    sidebarInjections: [],
+    sidebarInjections: [
+      {
+        parentTitle: 'settings',
+        items: [
+          { title: 'email_smtp', href: '/admin/settings/email-smtp', icon: Mail },
+        ],
+      },
+    ],
   },
 
   // ── PDF Header / Footer ──────────────────────────────────────────────────
@@ -185,7 +212,14 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     icon: Globe,
     category: 'Communication',
     settingsHref: '/admin/settings/public-pages',
-    sidebarInjections: [],
+    sidebarInjections: [
+      {
+        parentTitle: 'settings',
+        items: [
+          { title: 'public_pages', href: '/admin/settings/public-pages', icon: Globe },
+        ],
+      },
+    ],
   },
 
   // ── Previous Next Student ─────────────────────────────────────────────────
@@ -373,7 +407,14 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     icon: FileText,
     category: 'Compliance',
     settingsHref: '/admin/settings/parent-agreement',
-    sidebarInjections: [],
+    sidebarInjections: [
+      {
+        parentTitle: 'settings',
+        items: [
+          { title: 'agreement', href: '/admin/settings/parent-agreement', icon: FileText },
+        ],
+      },
+    ],
   },
 
   {

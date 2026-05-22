@@ -13,6 +13,7 @@ export class SchoolService {
       password: string
       first_name: string
       last_name: string
+      username?: string
     },
     billingData?: {
       billing_plan_id: string
@@ -61,6 +62,10 @@ export class SchoolService {
         }
         throw new Error(`Failed to create school: ${schoolError.message}`)
       }
+
+      // Derive username: use provided or fall back to first_name.last_name
+      const adminUsername = adminData.username ||
+        `${adminData.first_name.toLowerCase().replace(/\s+/g, '')}.${adminData.last_name.toLowerCase().replace(/\s+/g, '')}`
 
       // 2. Create admin user in auth.users
       console.log('🔐 Creating admin user:', {
@@ -131,6 +136,7 @@ export class SchoolService {
             first_name: adminData.first_name,
             last_name: adminData.last_name,
             school_id: school.id,
+            username: adminUsername,
             is_active: true
           })
 
@@ -150,7 +156,8 @@ export class SchoolService {
             school_id: school.id,
             role: 'admin',
             first_name: adminData.first_name,
-            last_name: adminData.last_name
+            last_name: adminData.last_name,
+            username: adminUsername,
           })
           .eq('id', authUser.user.id)
 
@@ -483,6 +490,7 @@ export class SchoolService {
   async getSchoolAdmin(schoolId: string): Promise<{
     admin_name: string;
     admin_email: string;
+    admin_username: string;
     user_id: string;
   } | null> {
     // Find an admin linked to this school via admin_schools table
@@ -491,7 +499,7 @@ export class SchoolService {
       .from('admin_schools')
       .select(`
         profile_id,
-        profiles:profile_id (id, first_name, last_name, email, role)
+        profiles:profile_id (id, first_name, last_name, email, username, role)
       `)
       .eq('school_id', schoolId)
       // We rely on the fact that only admins are in this table (or at least filtered by implication)
@@ -515,6 +523,7 @@ export class SchoolService {
     return {
       admin_name: `${adminUser.first_name || ''} ${adminUser.last_name || ''}`.trim(),
       admin_email: adminUser.email,
+      admin_username: adminUser.username || '',
       user_id: adminUser.id
     }
   }
@@ -524,10 +533,10 @@ export class SchoolService {
    */
   async updateSchoolAdmin(
     schoolId: string,
-    data: { admin_name?: string; admin_email?: string; password?: string }
+    data: { admin_name?: string; admin_email?: string; password?: string; username?: string }
   ): Promise<{
     message: string;
-    updated_fields: { name: boolean; email: boolean; password: boolean };
+    updated_fields: { name: boolean; email: boolean; password: boolean; username: boolean };
   }> {
     const adminInfo = await this.getSchoolAdmin(schoolId)
 
@@ -555,17 +564,24 @@ export class SchoolService {
       updates.push(authUpdate())
     }
 
-    // Update profile name
-    if (data.admin_name) {
+    // Update profile name and/or username
+    if (data.admin_name || data.username) {
       const profileUpdate = async () => {
-        const [firstName, ...lastNameParts] = data.admin_name!.trim().split(' ')
+        const profileFields: Record<string, string> = {}
+
+        if (data.admin_name) {
+          const [firstName, ...lastNameParts] = data.admin_name.trim().split(' ')
+          profileFields.first_name = firstName || ''
+          profileFields.last_name = lastNameParts.join(' ') || ''
+        }
+
+        if (data.username) {
+          profileFields.username = data.username
+        }
 
         const { error } = await supabase
           .from('profiles')
-          .update({
-            first_name: firstName || '',
-            last_name: lastNameParts.join(' ') || ''
-          })
+          .update(profileFields)
           .eq('id', userId)
 
         if (error) {
@@ -583,7 +599,8 @@ export class SchoolService {
       updated_fields: {
         name: !!data.admin_name,
         email: !!data.admin_email,
-        password: !!data.password
+        password: !!data.password,
+        username: !!data.username
       }
     }
   }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, BookOpen } from 'lucide-react'
+import { Plus, Pencil, Trash2, BookOpen, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -66,6 +66,39 @@ export default function SubjectsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [editingSubject, setEditingSubject] = useState<academicsApi.Subject | null>(null)
   const [subjectToDelete, setSubjectToDelete] = useState<string | null>(null)
+
+  type SortField = 'name' | 'code' | 'grade_name' | 'subject_type' | 'is_active'
+  const [sortField, setSortField] = useState<SortField>('name')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDir('asc')
+    }
+  }
+
+  const sortedSubjects = [...subjects].sort((a, b) => {
+    let valA: string
+    let valB: string
+    if (sortField === 'is_active') {
+      valA = a.is_active ? '1' : '0'
+      valB = b.is_active ? '1' : '0'
+    } else {
+      valA = String(a[sortField] ?? '')
+      valB = String(b[sortField] ?? '')
+    }
+    return sortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA)
+  })
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ChevronsUpDown className="inline h-3.5 w-3.5 ml-1 opacity-30" />
+    return sortDir === 'asc'
+      ? <ChevronUp className="inline h-3.5 w-3.5 ml-1 text-blue-500 font-bold" />
+      : <ChevronDown className="inline h-3.5 w-3.5 ml-1 text-blue-500 font-bold" />
+  }
 
   const [formData, setFormData] = useState({
     grade_level_id: '',
@@ -274,16 +307,16 @@ export default function SubjectsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t('name')}</TableHead>
-                  <TableHead>{t('code')}</TableHead>
-                  <TableHead>{t('grade')}</TableHead>
-                  <TableHead>{t('type')}</TableHead>
-                  <TableHead>{t('status')}</TableHead>
+                  <TableHead className={`cursor-pointer select-none ${sortField === 'name' ? 'text-blue-500 font-semibold' : ''}`} onClick={() => handleSort('name')}>{t('name')}<SortIcon field="name" /></TableHead>
+                  <TableHead className={`cursor-pointer select-none ${sortField === 'code' ? 'text-blue-500 font-semibold' : ''}`} onClick={() => handleSort('code')}>{t('code')}<SortIcon field="code" /></TableHead>
+                  <TableHead className={`cursor-pointer select-none ${sortField === 'grade_name' ? 'text-blue-500 font-semibold' : ''}`} onClick={() => handleSort('grade_name')}>{t('grade')}<SortIcon field="grade_name" /></TableHead>
+                  <TableHead className={`cursor-pointer select-none ${sortField === 'subject_type' ? 'text-blue-500 font-semibold' : ''}`} onClick={() => handleSort('subject_type')}>{t('type')}<SortIcon field="subject_type" /></TableHead>
+                  <TableHead className={`cursor-pointer select-none ${sortField === 'is_active' ? 'text-blue-500 font-semibold' : ''}`} onClick={() => handleSort('is_active')}>{t('status')}<SortIcon field="is_active" /></TableHead>
                   <TableHead className="text-right">{t('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {subjects.map((subject) => (
+                {sortedSubjects.map((subject) => (
                   <TableRow key={subject.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">

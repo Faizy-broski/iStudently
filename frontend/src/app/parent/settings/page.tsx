@@ -9,13 +9,14 @@ import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useAuth } from '@/context/AuthContext'
-import { Settings, Bell, Lock, User, Mail, Phone, MapPin, Save } from 'lucide-react'
+import { Settings, Bell, Lock, User, Mail, Phone, MapPin, Save, Clock } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { updateProfile } from '@/lib/api/auth'
+import { UserQRCode } from '@/components/shared/UserQRCode'
 
 export default function ParentSettingsPage() {
-  const { profile } = useAuth()
+  const { profile, user } = useAuth()
   const [isSaving, setIsSaving] = useState(false)
 
   // Notification settings
@@ -152,6 +153,21 @@ export default function ParentSettingsPage() {
                     onChange={(e) => setProfileData({ ...profileData, address: e.target.value })}
                     placeholder="Enter your address"
                   />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Last Login
+                  </Label>
+                  <p className="text-sm font-medium text-gray-700">
+                    {user?.last_sign_in_at
+                      ? new Date(user.last_sign_in_at).toLocaleString(undefined, {
+                          dateStyle: 'medium',
+                          timeStyle: 'short',
+                        })
+                      : '—'}
+                  </p>
                 </div>
               </div>
 
@@ -305,6 +321,22 @@ export default function ParentSettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* QR Code */}
+        {profile?.id && (
+          <Card>
+            <CardHeader>
+              <CardTitle>My QR Code</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-500 mb-4">Scan to verify your identity. This QR code is unique to your account.</p>
+              <UserQRCode
+                value={profile.id}
+                label={`${profile.first_name || ''} ${profile.last_name || ''} · ${profile.role}`.trim()}
+              />
+            </CardContent>
+          </Card>
+        )}
       </div>
     </ParentDashboardLayout>
   )

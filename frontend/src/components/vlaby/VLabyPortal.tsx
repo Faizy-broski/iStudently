@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import {
   FlaskConical, LogIn, LogOut, Search, Loader2, ChevronRight,
   SlidersHorizontal, ChevronLeft, X,
@@ -61,6 +62,7 @@ const subjectColor = (s: string) => SUBJECT_COLORS[s] ?? 'bg-gray-100 text-gray-
 // ─── Login dialog ─────────────────────────────────────────────────────────────
 
 function LoginDialog({ onSuccess, onCancel }: { onSuccess: (token: string) => void; onCancel: () => void }) {
+  const t = useTranslations('vlaby.login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -85,31 +87,29 @@ function LoginDialog({ onSuccess, onCancel }: { onSuccess: (token: string) => vo
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 font-semibold text-gray-800">
             <FlaskConical size={18} className="text-indigo-600" />
-            Sign in to VLaby
+            {t('title')}
           </div>
           <button onClick={onCancel} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
         </div>
-        <p className="text-xs text-gray-500">
-          A VLaby account is required to open the interactive experiment. You can browse without an account.
-        </p>
+        <p className="text-xs text-gray-500">{t('description')}</p>
         <form onSubmit={submit} className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-600">Email</label>
+            <label className="text-xs font-medium text-gray-600">{t('email')}</label>
             <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required autoFocus />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-600">Password</label>
+            <label className="text-xs font-medium text-gray-600">{t('password')}</label>
             <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required />
           </div>
           <Button type="submit" disabled={loading} className="w-full gap-2">
             {loading ? <Loader2 size={14} className="animate-spin" /> : <LogIn size={14} />}
-            Sign in
+            {t('sign_in')}
           </Button>
         </form>
         <p className="text-xs text-center text-gray-400">
-          No account?{' '}
+          {t('no_account')}{' '}
           <a href="https://vlaby.com/en/register" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
-            Register at vlaby.com
+            {t('register')}
           </a>
         </p>
       </div>
@@ -147,6 +147,7 @@ function extractArray(data: unknown): VLabyRelationItem[] {
 }
 
 function FilterPanel({ filters, onChange, onReset }: FilterPanelProps) {
+  const t = useTranslations('vlaby.filters')
   const [countries, setCountries] = useState<VLabyRelationItem[]>([])
   const [levels, setLevels] = useState<VLabyRelationItem[]>([])
   const [classes, setClasses] = useState<VLabyRelationItem[]>([])
@@ -216,10 +217,10 @@ function FilterPanel({ filters, onChange, onReset }: FilterPanelProps) {
       <label className="text-xs font-medium text-gray-500">{label}</label>
       <Select value={value || '_all'} onValueChange={v => onSelect(v === '_all' ? '' : v)} disabled={l}>
         <SelectTrigger className="h-8 text-sm">
-          <SelectValue placeholder={l ? 'Loading…' : placeholder} />
+          <SelectValue placeholder={l ? t('search_placeholder') : placeholder} />
         </SelectTrigger>
         <SelectContent className="max-h-60 overflow-y-auto">
-          <SelectItem value="_all">All</SelectItem>
+          <SelectItem value="_all">{t('all')}</SelectItem>
           {Array.isArray(items) && items.map(i => <SelectItem key={i.id} value={String(i.id)}>{i.locale_name ?? i.name ?? String(i.id)}</SelectItem>)}
         </SelectContent>
       </Select>
@@ -232,50 +233,50 @@ function FilterPanel({ filters, onChange, onReset }: FilterPanelProps) {
     <div className="flex flex-col gap-3 min-w-[200px]">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1">
-          <SlidersHorizontal size={12} /> Filters
+          <SlidersHorizontal size={12} /> {t('title')}
         </span>
         {hasFilters && (
-          <button onClick={onReset} className="text-xs text-indigo-600 hover:underline">Reset</button>
+          <button onClick={onReset} className="text-xs text-indigo-600 hover:underline">{t('reset')}</button>
         )}
       </div>
 
       {/* Search */}
       <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium text-gray-500">Search</label>
+        <label className="text-xs font-medium text-gray-500">{t('search')}</label>
         <div className="relative">
           <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
           <Input
             value={filters.search}
             onChange={e => onChange({ search: e.target.value })}
-            placeholder="Keywords…"
+            placeholder={t('search_placeholder')}
             className="pl-8 h-8 text-sm"
           />
         </div>
       </div>
 
       <SelectRow
-        label="Country / Curriculum" value={filters.country_id} items={countries}
-        loading={loadingC} placeholder="All countries"
+        label={t('country')} value={filters.country_id} items={countries}
+        loading={loadingC} placeholder={t('all_countries')}
         onSelect={v => onChange({ country_id: v, level_id: '', level_class_id: '', semester_id: '', subject_id: '' })}
       />
       <SelectRow
-        label="Level" value={filters.level_id} items={levels}
-        loading={loadingL} placeholder={filters.country_id ? 'All levels' : 'Select country first'}
+        label={t('level')} value={filters.level_id} items={levels}
+        loading={loadingL} placeholder={filters.country_id ? t('all_levels') : t('select_country_first')}
         onSelect={v => onChange({ level_id: v, level_class_id: '', semester_id: '', subject_id: '' })}
       />
       <SelectRow
-        label="Class" value={filters.level_class_id} items={classes}
-        loading={loadingCl} placeholder={filters.level_id ? 'All classes' : 'Select level first'}
+        label={t('class')} value={filters.level_class_id} items={classes}
+        loading={loadingCl} placeholder={filters.level_id ? t('all_classes') : t('select_level_first')}
         onSelect={v => onChange({ level_class_id: v, semester_id: '', subject_id: '' })}
       />
       <SelectRow
-        label="Semester / Term" value={filters.semester_id} items={semesters}
-        loading={loadingSem} placeholder={filters.level_class_id ? 'All semesters' : 'Select class first'}
+        label={t('semester')} value={filters.semester_id} items={semesters}
+        loading={loadingSem} placeholder={filters.level_class_id ? t('all_semesters') : t('select_class_first')}
         onSelect={v => onChange({ semester_id: v, subject_id: '' })}
       />
       <SelectRow
-        label="Subject" value={filters.subject_id} items={subjects}
-        loading={loadingSub} placeholder={filters.semester_id ? 'All subjects' : 'Select semester first'}
+        label={t('subject')} value={filters.subject_id} items={subjects}
+        loading={loadingSub} placeholder={filters.semester_id ? t('all_subjects') : t('select_semester_first')}
         onSelect={v => onChange({ subject_id: v })}
       />
     </div>
@@ -299,6 +300,7 @@ function ExperimentsTable({
   total: number
 }) {
   const router = useRouter()
+  const t = useTranslations('vlaby.table')
 
   const handleClick = (exp: VLabyExperiment) => {
     if (!token) {
@@ -312,10 +314,10 @@ function ExperimentsTable({
     <div className="flex flex-col gap-3 flex-1 min-w-0">
       {/* Results count + logout */}
       <div className="flex items-center justify-between text-sm text-gray-500">
-        <span>{total} experiment{total !== 1 ? 's' : ''} found</span>
+        <span>{total === 1 ? t('experiment_found') : t('experiments_found', { count: total })}</span>
         {token && (
           <Button variant="ghost" size="sm" className="gap-1 text-gray-400 h-7 text-xs" onClick={onLogout}>
-            <LogOut size={12} /> Logout of VLaby
+            <LogOut size={12} /> {t('logout')}
           </Button>
         )}
         {!token && (
@@ -323,7 +325,7 @@ function ExperimentsTable({
             className="text-xs text-indigo-600 hover:underline flex items-center gap-1"
             onClick={() => onLoginRequired(0)}
           >
-            <LogIn size={12} /> Sign in to open experiments
+            <LogIn size={12} /> {t('sign_in_prompt')}
           </button>
         )}
       </div>
@@ -333,17 +335,17 @@ function ExperimentsTable({
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b text-xs text-gray-500 uppercase tracking-wide">
             <tr>
-              <th className="px-4 py-3 text-left">Title</th>
-              <th className="px-4 py-3 text-left">Subject</th>
-              <th className="px-4 py-3 text-left">Points</th>
-              <th className="px-4 py-3 text-left">Country</th>
-              <th className="px-4 py-3 text-left">Grade Level · Term</th>
+              <th className="px-4 py-3 text-left">{t('col_title')}</th>
+              <th className="px-4 py-3 text-left">{t('col_subject')}</th>
+              <th className="px-4 py-3 text-left">{t('col_points')}</th>
+              <th className="px-4 py-3 text-left">{t('col_country')}</th>
+              <th className="px-4 py-3 text-left">{t('col_grade_term')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 bg-white">
             {experiments.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-gray-400">No experiments match your filters</td>
+                <td colSpan={5} className="px-4 py-10 text-center text-gray-400">{t('no_results')}</td>
               </tr>
             ) : (
               experiments.map(exp => (
@@ -364,7 +366,7 @@ function ExperimentsTable({
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    {exp.points > 0 ? <Badge variant="secondary">{exp.points} pts</Badge> : <span className="text-gray-400">—</span>}
+                    {exp.points > 0 ? <Badge variant="secondary">{exp.points} {t('pts')}</Badge> : <span className="text-gray-400">—</span>}
                   </td>
                   <td className="px-4 py-3 text-gray-600">{exp.country_name}</td>
                   <td className="px-4 py-3 text-gray-500 text-xs">
@@ -383,7 +385,7 @@ function ExperimentsTable({
           <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
             <ChevronLeft size={14} />
           </Button>
-          <span className="text-sm text-gray-600">Page {page} of {lastPage}</span>
+          <span className="text-sm text-gray-600">{t('page_of', { page, lastPage })}</span>
           <Button variant="outline" size="sm" disabled={page >= lastPage} onClick={() => onPageChange(page + 1)}>
             <ChevronRight size={14} />
           </Button>
@@ -401,6 +403,7 @@ interface VLabyPortalProps {
 
 export default function VLabyPortal({ basePath }: VLabyPortalProps) {
   const router = useRouter()
+  const t = useTranslations('vlaby')
 
   const [token, setToken] = useState<string | null>(null)
   const [tokenChecked, setTokenChecked] = useState(false)
@@ -533,7 +536,7 @@ export default function VLabyPortal({ basePath }: VLabyPortalProps) {
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2 font-semibold text-gray-800 text-lg">
             <FlaskConical size={22} className="text-indigo-600" />
-            VLaby Virtual Labs
+            {t('title')}
           </div>
           <div className="flex items-center gap-1 ml-auto">
             {/* Mobile filter toggle — only in catalog mode */}
@@ -545,7 +548,7 @@ export default function VLabyPortal({ basePath }: VLabyPortalProps) {
                 onClick={() => setFiltersOpen(v => !v)}
               >
                 <SlidersHorizontal size={14} />
-                Filters
+                {t('filters_btn')}
               </Button>
             )}
             <Button
@@ -553,14 +556,14 @@ export default function VLabyPortal({ basePath }: VLabyPortalProps) {
               size="sm"
               onClick={() => { setViewMode('catalog'); setPage(1); loadCatalog(filters, 1) }}
             >
-              Browse All
+              {t('browse_all')}
             </Button>
             <Button
               variant={viewMode === 'mine' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setViewMode('mine')}
             >
-              My Experiments
+              {t('my_experiments')}
             </Button>
           </div>
         </div>
@@ -582,7 +585,7 @@ export default function VLabyPortal({ basePath }: VLabyPortalProps) {
           <div className="flex-1 min-w-0 overflow-x-auto">
             {loading ? (
               <div className="flex items-center justify-center min-h-[30vh] gap-2 text-gray-500">
-                <Loader2 size={20} className="animate-spin" /> Loading…
+                <Loader2 size={20} className="animate-spin" /> {t('loading')}
               </div>
             ) : (
               <ExperimentsTable

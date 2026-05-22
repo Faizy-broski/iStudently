@@ -16,7 +16,6 @@ import {
     Eye,
     EyeOff,
     Copy,
-    DollarSign,
     Check
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -37,6 +36,7 @@ import { StaffPhotoUpload } from '@/components/ui/staff-photo-upload'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import { useStaffDesignations } from '@/hooks/useStaffDesignations'
+import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 
 // Helper to generate a random password
 function generatePassword(firstName: string): string {
@@ -53,6 +53,7 @@ export default function AddStaffPage() {
     const t = useTranslations('staff')
     const campusContext = useCampus()
     const { profile } = useAuth()
+    const { currencySymbol } = useSchoolSettings()
     const [loading, setLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
     const [copied, setCopied] = useState(false)
@@ -86,6 +87,14 @@ export default function AddStaffPage() {
         : ['Librarian', 'Accountant', 'Clerk', 'Driver', 'Security Guard', 'Nurse', 'Receptionist']
 
     const isLibrarian = formData.title?.toLowerCase() === 'librarian'
+
+    // Auto-generate username from first_name.last_name
+    useEffect(() => {
+        if (formData.first_name && formData.last_name) {
+            const generated = `${formData.first_name.toLowerCase().replace(/\s+/g, '')}.${formData.last_name.toLowerCase().replace(/\s+/g, '')}`
+            setFormData(prev => ({ ...prev, username: generated }))
+        }
+    }, [formData.first_name, formData.last_name])
 
     // Auto-generate password when Librarian is selected
     useEffect(() => {
@@ -241,12 +250,28 @@ export default function AddStaffPage() {
                                 <div className="relative">
                                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                                     <Input
+                                        type="tel"
                                         value={formData.phone}
-                                        onChange={e => handleChange('phone', e.target.value)}
+                                        onKeyDown={(e) => {
+                                            const nav = ['Backspace','Delete','Tab','ArrowLeft','ArrowRight','Home','End'];
+                                            if (e.ctrlKey || e.metaKey) return;
+                                            if (nav.includes(e.key)) return;
+                                            if (!/[0-9+\-() ]/.test(e.key)) e.preventDefault();
+                                        }}
+                                        onChange={e => handleChange('phone', e.target.value.replace(/[^0-9+\-() ]/g, ''))}
                                         className="pl-10"
                                         placeholder={t('placeholders.phone')}
                                     />
                                 </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Username <span className="text-xs text-muted-foreground font-normal">(auto-generated, can be edited)</span></Label>
+                                <Input
+                                    value={formData.username || ''}
+                                    onChange={e => handleChange('username', e.target.value)}
+                                    placeholder="firstname.lastname"
+                                />
+                                <p className="text-xs text-muted-foreground">Staff use this to log in alongside their email.</p>
                             </div>
                         </div>
                     </CardContent>
@@ -349,7 +374,7 @@ export default function AddStaffPage() {
                             <div className="space-y-2">
                                 <Label>{t('baseSalary')} <span className="text-red-500">*</span></Label>
                                 <div className="relative">
-                                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">{currencySymbol}</span>
                                     <Input
                                         type="number"
                                         value={formData.base_salary || ''}

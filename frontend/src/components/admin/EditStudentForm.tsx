@@ -140,6 +140,7 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
         phone: formData.phone,
         student_number: formData.studentNumber,
         grade_level: formData.gradeLevel,
+        username: formData.username || undefined,
         custom_fields: {
           personal: {
             gender: formData.gender,

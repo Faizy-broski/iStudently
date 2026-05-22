@@ -29,6 +29,11 @@ const onboardSchoolSchema = z.object({
   adminFirstName: z.string().min(2, "First name must be at least 2 characters"),
   adminLastName: z.string().min(2, "Last name must be at least 2 characters"),
   adminEmail: z.string().email("Invalid email address"),
+  adminUsername: z.string()
+    .min(3, "Username must be at least 3 characters")
+    .regex(/^[a-zA-Z0-9._-]+$/, "Username can only contain letters, numbers, dots, hyphens, and underscores")
+    .optional()
+    .or(z.literal("")),
   adminPassword: z.string().min(8, "Password must be at least 8 characters"),
   adminPasswordConfirm: z.string(),
   
@@ -197,7 +202,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
     const fieldsToValidate = currentStep === 1 
       ? ['schoolName', 'schoolSlug', 'contactEmail', 'address'] as const
       : currentStep === 2
-      ? ['adminFirstName', 'adminLastName', 'adminEmail', 'adminPassword', 'adminPasswordConfirm'] as const
+      ? ['adminFirstName', 'adminLastName', 'adminEmail', 'adminUsername', 'adminPassword', 'adminPasswordConfirm'] as const
       : ['subscriptionPlan', 'billingCycle', 'startDate'] as const;
     
     const isValid = await trigger(fieldsToValidate);
@@ -215,6 +220,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
             adminFirstName: 'First Name',
             adminLastName: 'Last Name',
             adminEmail: 'Admin Email',
+            adminUsername: 'Username',
             adminPassword: 'Password',
             adminPasswordConfirm: 'Confirm Password',
             billingPlanId: 'Billing Plan',
@@ -281,6 +287,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
           last_name: data.adminLastName,
           email: data.adminEmail,
           password: data.adminPassword,
+          username: data.adminUsername || undefined,
         },
         billing: {
           billing_plan_id: data.billingPlanId,
@@ -600,6 +607,27 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
             </div>
             {errors.adminEmail && (
               <p className="text-sm text-red-500">{errors.adminEmail.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="adminUsername" className="text-gray-700">
+              Username <span className="text-gray-400 text-xs font-normal">(optional — auto-generated if blank)</span>
+            </Label>
+            <div className="relative">
+              <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Input
+                id="adminUsername"
+                type="text"
+                {...register("adminUsername")}
+                placeholder="e.g. john.doe"
+                className="pl-10 border-gray-300 focus:border-[#57A3CC] focus:ring-[#57A3CC]"
+                disabled={isSubmitting}
+              />
+            </div>
+            <p className="text-xs text-gray-400">Letters, numbers, dots, hyphens, and underscores only</p>
+            {errors.adminUsername && (
+              <p className="text-sm text-red-500">{errors.adminUsername.message}</p>
             )}
           </div>
 

@@ -303,18 +303,18 @@ function LoginForm() {
               </div>
             )}
 
-            {/* Email */}
+            {/* Email or Username */}
             <div className={anim('delay-200')}>
-              <Label className="text-white/90 mb-1.5 block">{t('label_email')}</Label>
+              <Label className="text-white/90 mb-1.5 block">{t('label_email_or_username')}</Label>
               <Input
-                type="email"
-                placeholder={t('placeholder_email')}
+                type="text"
+                placeholder={t('placeholder_email_or_username')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="h-12 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:bg-white/20 focus:border-white transition-all"
                 required
                 disabled={loading || authLoading}
-                autoComplete="email"
+                autoComplete="username"
               />
             </div>
 

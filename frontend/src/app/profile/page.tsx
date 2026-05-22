@@ -5,9 +5,10 @@ import { useAuth } from '@/context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Mail, Phone, Calendar, Briefcase, User, Building, Hash } from 'lucide-react';
+import { Loader2, Mail, Phone, Calendar, Briefcase, User, Building, Hash, Clock } from 'lucide-react';
 import { getAuthToken } from '@/lib/api/schools';
 import { API_URL } from '@/config/api';
+import { UserQRCode } from '@/components/shared/UserQRCode';
 
 interface StaffDetails {
     id: string;
@@ -33,7 +34,7 @@ interface StaffDetails {
 }
 
 export default function ProfilePage() {
-    const { profile } = useAuth();
+    const { profile, user } = useAuth();
     const [staffDetails, setStaffDetails] = useState<StaffDetails | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -193,8 +194,40 @@ export default function ProfilePage() {
                             <p className="font-medium">{profile?.phone || 'N/A'}</p>
                         </div>
                     </div>
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                        <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
+                            <Clock className="h-5 w-5 text-purple-600" />
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500">Last Login</p>
+                            <p className="font-medium">
+                                {user?.last_sign_in_at
+                                    ? new Date(user.last_sign_in_at).toLocaleString(undefined, {
+                                        dateStyle: 'medium',
+                                        timeStyle: 'short',
+                                    })
+                                    : '—'}
+                            </p>
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
+
+            {/* QR Code */}
+            {profile?.id && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg">My QR Code</CardTitle>
+                        <CardDescription>Scan to verify your identity. This QR code is unique to your account.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <UserQRCode
+                            value={profile.id}
+                            label={`${profile.first_name || ''} ${profile.last_name || ''} · ${profile.role}`.trim()}
+                        />
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Employment Details - only for staff/librarian */}
             {staffDetails && (

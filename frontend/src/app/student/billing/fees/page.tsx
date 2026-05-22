@@ -5,6 +5,7 @@ import { Receipt, Loader2, AlertCircle, DollarSign } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { format, parseISO } from 'date-fns'
+import { FeeDueDateBadge } from '@/components/shared/FeeDueDateBadge'
 import { useTranslations } from 'next-intl'
 
 export default function StudentFeesPage() {
@@ -105,8 +106,13 @@ export default function StudentFeesPage() {
                         <p className="font-medium">{f.fee_name}</p>
                         <p className="text-xs text-muted-foreground">{f.academic_year}</p>
                       </td>
-                      <td className="py-3 pe-4 text-center text-muted-foreground">
-                        {f.due_date ? format(parseISO(f.due_date), 'MMM d, yyyy') : '—'}
+                      <td className="py-3 pe-4 text-center">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-muted-foreground text-sm">
+                            {f.due_date ? format(parseISO(f.due_date), 'MMM d, yyyy') : '—'}
+                          </span>
+                          <FeeDueDateBadge dueDate={f.due_date} status={f.status} />
+                        </div>
                       </td>
                       <td className="py-3 pe-4 text-end font-medium">${f.final_amount.toFixed(2)}</td>
                       <td className="py-3 pe-4 text-end text-green-600">${f.amount_paid.toFixed(2)}</td>

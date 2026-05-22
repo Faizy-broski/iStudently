@@ -15,14 +15,14 @@ import { getFieldOrders, getEffectiveFieldOrder, DefaultFieldOrder } from '@/lib
 import * as teachersApi from "@/lib/api/teachers"
 import { useCampus } from "@/context/CampusContext"
 import { useTranslations } from "next-intl"
-
+import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 // Standard Field Definitions with Sort Orders for Teachers
 const STANDARD_FIELDS = [
   // PERSONAL INFO (Category: personal)
   { id: 'first_name', label: 'First Name', type: 'text', category: 'personal', sort_order: 1, required: true, width: 'half' },
   { id: 'last_name', label: 'Last Name', type: 'text', category: 'personal', sort_order: 2, required: true, width: 'half' },
   { id: 'email', label: 'Email', type: 'email', category: 'personal', sort_order: 3, required: true, width: 'half' },
-  { id: 'phone', label: 'Phone', type: 'text', category: 'personal', sort_order: 4, required: false, width: 'half' },
+  { id: 'phone', label: 'Phone', type: 'tel', category: 'personal', sort_order: 4, required: false, width: 'half' },
 
   // PROFESSIONAL (Category: professional)
   { id: 'employment_type', label: 'Employment Type', type: 'select', category: 'professional', sort_order: 1, required: true, width: 'half', options: ['full_time', 'part_time', 'contract'] },
@@ -51,6 +51,7 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
   const t = useTranslations('teachers')
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
+  const { currencySymbol } = useSchoolSettings();
 
   const getDisplayLabel = (fieldId: string, fallback: string): string => {
     const map: Record<string, string> = {
@@ -222,12 +223,13 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
     }
   }, [editingTeacher, formData.employee_number])
 
-  // Set username to email when email changes (username = email)
+  // Auto-generate username from first_name.last_name when names change
   useEffect(() => {
-    if (formData.email && !editingTeacher) {
-      setFormData(prev => ({ ...prev, username: formData.email }))
+    if (!editingTeacher && formData.first_name && formData.last_name) {
+      const generated = `${formData.first_name.toLowerCase().replace(/\s+/g, '')}.${formData.last_name.toLowerCase().replace(/\s+/g, '')}`
+      setFormData(prev => ({ ...prev, username: generated }))
     }
-  }, [formData.email, editingTeacher])
+  }, [formData.first_name, formData.last_name, editingTeacher])
 
   const updateFormData = (field: keyof teachersApi.CreateStaffDTO, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -263,24 +265,28 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
       return null;
     }
 
-    // Special render: username (= email, read-only + copy)
+    // Special render: username (editable, auto-generated from name)
     if (field.id === 'username') {
-      const usernameValue = formData.email || '';
       return (
         <div key={field.id} className="col-span-1 space-y-2">
-          <Label>{t('form.usernameEmail')}</Label>
+          <Label>{t('fields.username')}</Label>
           <div className="flex gap-2">
-            <Input value={usernameValue} readOnly className="bg-gray-50 dark:bg-gray-800 flex-1" />
+            <Input
+              value={formData.username || ''}
+              onChange={(e) => updateFormData('username', e.target.value)}
+              placeholder="firstname.lastname"
+              className="flex-1"
+            />
             <Button
               type="button"
               variant="outline"
               size="icon"
-              onClick={() => handleCopy(usernameValue, t('fields.username'))}
+              onClick={() => handleCopy(formData.username || '', t('fields.username'))}
             >
               {copiedField === t('fields.username') ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">{t('form.usernameIsEmail')}</p>
+          <p className="text-xs text-muted-foreground">Auto-generated from name. Can be customised.</p>
         </div>
       );
     }
@@ -344,15 +350,43 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
           {field.required && <span className="text-red-500 ml-1">*</span>}
         </Label>
 
-        {field.type === 'text' || field.type === 'email' || field.type === 'number' ? (
+        {field.type === 'text' || field.type === 'email' || field.type === 'number' || field.type === 'tel' ? (
+          field.id === 'base_salary' ? (
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">{currencySymbol}</span>
+              <Input
+                id={field.id}
+                type="number"
+                value={value}
+                onChange={(e) => handleChange(parseFloat(e.target.value) || 0)}
+                placeholder={field.placeholder}
+                className={`pl-10 ${error ? "border-red-500" : ""}`}
+                min="0"
+                step="100"
+              />
+            </div>
+          ) : (
           <Input
             id={field.id}
             type={field.type}
             value={value}
-            onChange={(e) => handleChange(field.type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value)}
+            onKeyDown={(e) => {
+              const nav = ['Backspace','Delete','Tab','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'];
+              if (e.ctrlKey || e.metaKey) return;
+              if (nav.includes(e.key)) return;
+              if (field.type === 'tel' && !/[0-9+\-() ]/.test(e.key)) e.preventDefault();
+              if (field.type === 'number' && !/[0-9.]/.test(e.key)) e.preventDefault();
+            }}
+            onChange={(e) => {
+              let val = e.target.value;
+              if (field.type === 'tel') val = val.replace(/[^0-9+\-() ]/g, '');
+              if (field.type === 'number') val = val.replace(/[^0-9.]/g, '');
+              handleChange(field.type === 'number' ? parseFloat(val) || 0 : val);
+            }}
             placeholder={field.placeholder}
             className={error ? "border-red-500" : ""}
           />
+          )
         ) : field.type === 'date' ? (
           <Input
             id={field.id}
@@ -648,26 +682,6 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
                 {getMergedFields(['system']).map(renderField)}
               </div>
 
-              {/* Credentials summary — copy both at once */}
-              {!editingTeacher && formData.email && (
-                <div className="mt-2 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                  <p className="text-xs font-semibold text-amber-800 dark:text-amber-300 mb-2 uppercase tracking-wide">{t('form.loginCredentialsSummary')}</p>
-                  <div className="text-sm text-amber-900 dark:text-amber-200 space-y-0.5 font-mono mb-3">
-                    <div><span className="font-sans text-xs text-amber-700 dark:text-amber-400">Username: </span>{formData.email}</div>
-                    <div><span className="font-sans text-xs text-amber-700 dark:text-amber-400">Password: </span>{formData.password || '—'}</div>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-900/40"
-                    onClick={() => handleCopy(`Username: ${formData.email}\nPassword: ${formData.password}`, t('form.copyAllCredentials'))}
-                  >
-                    {copiedField === t('form.copyAllCredentials') ? <Check className="h-4 w-4 mr-1.5 text-green-600" /> : <Copy className="h-4 w-4 mr-1.5" />}
-                    {t('form.copyAllCredentials')}
-                  </Button>
-                </div>
-              )}
             </CardContent>
           </Card>
         </TabsContent>

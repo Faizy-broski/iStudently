@@ -282,6 +282,9 @@ export const createStaffRecord = async (
     }
 
     // 3. Update Profile with school_id and role
+    const baseUsername = data.username ||
+        `${(data.first_name || '').toLowerCase().replace(/\s+/g, '')}.${(data.last_name || '').toLowerCase().replace(/\s+/g, '')}`
+
     const { error: profileError } = await supabase
         .from('profiles')
         .update({
@@ -291,6 +294,7 @@ export const createStaffRecord = async (
             last_name: data.last_name,
             phone: data.phone || null,
             profile_photo_url: data.profile_photo_url || null,
+            username: baseUsername || null,
         })
         .eq('id', profileId)
 

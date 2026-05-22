@@ -239,12 +239,13 @@ export interface Profile {
   role: UserRole;
   first_name: string | null;
   last_name: string | null;
-  father_name: string | null; // NEW: Father's name
-  grandfather_name: string | null; // NEW: Grandfather's name
+  father_name: string | null;
+  grandfather_name: string | null;
   email: string | null;
   phone: string | null;
   avatar_url: string | null;
-  profile_photo_url: string | null; // NEW: Supabase storage URL
+  profile_photo_url: string | null;
+  username: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -368,13 +369,14 @@ export interface CreateStudentDTO {
   custom_fields?: Record<string, any>;
   // Profile data (if creating new user)
   first_name?: string;
-  father_name?: string; // NEW
-  grandfather_name?: string; // NEW
+  father_name?: string;
+  grandfather_name?: string;
   last_name?: string;
   email?: string;
   phone?: string;
-  profile_photo_url?: string; // NEW: Supabase storage URL
-  password?: string; // NEW: Optional password for creation
+  profile_photo_url?: string;
+  password?: string;
+  username?: string; // Custom login username; falls back to student_number
 }
 
 export interface UpdateStudentDTO {
@@ -386,14 +388,15 @@ export interface UpdateStudentDTO {
   custom_fields?: Record<string, any>;
   // Profile updates
   first_name?: string;
-  father_name?: string; // NEW
-  grandfather_name?: string; // NEW
+  father_name?: string;
+  grandfather_name?: string;
   last_name?: string;
   email?: string;
   phone?: string;
-  profile_photo_url?: string; // NEW
-  password?: string; // NEW: Optional password update
-  is_active?: boolean; // NEW: Student active status
+  profile_photo_url?: string;
+  password?: string;
+  is_active?: boolean;
+  username?: string; // Login username
 }
 
 // ============================================================================
@@ -1764,8 +1767,9 @@ export interface EmbeddedResource {
   created_at: string;
   updated_at: string;
   created_by: string | null;
-  // Joined
+  // Joined / computed
   published_grade_names?: string[];
+  creator_name?: string | null;
 }
 
 export interface CreateEmbeddedResourceDTO {

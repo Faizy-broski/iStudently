@@ -6,7 +6,7 @@ import { getStudentInfo, type StudentInfoData } from '@/lib/api/parent-dashboard
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { ProfilePhoto } from '@/components/shared/ProfilePhoto'
 import { Badge } from '@/components/ui/badge'
 import {
   GraduationCap, User, Calendar, Phone, Mail, MapPin,
@@ -55,7 +55,7 @@ function LoadingSkeleton() {
       <Card>
         <CardContent className="p-6 space-y-4">
           <div className="flex items-center gap-4">
-            <Skeleton className="h-20 w-20 rounded-full" />
+            <Skeleton className="w-20 h-[107px] rounded-lg" />
             <div className="space-y-2">
               <Skeleton className="h-6 w-48" />
               <Skeleton className="h-4 w-32" />
@@ -138,10 +138,7 @@ export default function ParentStudentsPage() {
       <Card>
         <CardContent className="p-5">
           <div className="flex items-center gap-5">
-            <Avatar className="h-20 w-20 text-xl shrink-0">
-              <AvatarImage src={info.profile_photo_url ?? undefined} alt={fullName} />
-              <AvatarFallback className="bg-[#57A3CC] text-white text-xl">{initials}</AvatarFallback>
-            </Avatar>
+            <ProfilePhoto src={info.profile_photo_url} name={fullName} size="lg" />
             <div className="space-y-1 min-w-0">
               <h2 className="text-xl font-bold text-[#022172] dark:text-white truncate">{fullName}</h2>
               <div className="flex flex-wrap gap-2">

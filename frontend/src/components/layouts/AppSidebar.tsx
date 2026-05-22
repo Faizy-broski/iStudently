@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { Menu, X, ChevronLeft, ChevronRight, ChevronDown, Calendar, GraduationCap, User, BookOpen } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { cn } from '@/lib/utils'
 import { SidebarMenuItem } from '@/config/sidebar'
 import { Button } from '@/components/ui/button'
@@ -70,10 +70,16 @@ function toHijri(date: Date) {
   return { day, month, year }
 }
 
-const HIJRI_MONTHS = [
+const HIJRI_MONTHS_EN = [
   'Muharram','Safar','Rabi al-Awwal','Rabi al-Thani',
   'Jumada al-Awwal','Jumada al-Thani','Rajab','Shaban',
   'Ramadan','Shawwal','Dhu al-Qidah','Dhu al-Hijjah',
+]
+
+const HIJRI_MONTHS_AR = [
+  'محرم','صفر','ربيع الأول','ربيع الثاني',
+  'جمادى الأولى','جمادى الثانية','رجب','شعبان',
+  'رمضان','شوال','ذو القعدة','ذو الحجة',
 ]
 
 function getISOWeek(date: Date) {
@@ -89,6 +95,8 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
   const { profile } = useAuth()
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
+  const locale = useLocale()
+  const isAr = locale === 'ar'
 
   const [now, setNow] = React.useState(() => new Date())
   React.useEffect(() => {
@@ -108,16 +116,26 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
     : ''
 
   // Gregorian
-  const dayName = now.toLocaleDateString('en-US', { weekday: 'long' })
-  const dayNum = now.getDate()
-  const monthShort = now.toLocaleDateString('en-US', { month: 'short' })
-  const year = now.getFullYear()
-  const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
-  const weekNum = getISOWeek(now)
+  const bcp = isAr ? 'ar-SA' : 'en-US'
+  const dayName = now.toLocaleDateString(bcp, { weekday: 'long' })
+  const dayNum = isAr
+    ? now.toLocaleDateString('ar-SA', { day: 'numeric' })
+    : now.getDate()
+  const monthShort = now.toLocaleDateString(bcp, { month: 'short' })
+  const year = isAr
+    ? now.toLocaleDateString('ar-SA', { year: 'numeric' })
+    : now.getFullYear()
+  const timeStr = now.toLocaleTimeString(bcp, { hour: '2-digit', minute: '2-digit', hour12: true })
+  const weekNum = isAr
+    ? getISOWeek(now).toLocaleString('ar-SA')
+    : getISOWeek(now)
 
   // Hijri
   const h = toHijri(now)
-  const hijriStr = `${h.day} ${HIJRI_MONTHS[h.month - 1]} ${h.year}`
+  const hijriMonths = isAr ? HIJRI_MONTHS_AR : HIJRI_MONTHS_EN
+  const hijriDay = isAr ? h.day.toLocaleString('ar-SA') : h.day
+  const hijriYear = isAr ? h.year.toLocaleString('ar-SA') : h.year
+  const hijriStr = `${hijriDay} ${hijriMonths[h.month - 1]} ${hijriYear}`
 
   if (isCollapsed) {
     return (
@@ -161,7 +179,7 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
         <div className="flex items-center justify-center gap-2 text-xs text-white/65">
           <span className="font-medium">{timeStr}</span>
           <span className="text-white/30">|</span>
-          <span>Week {weekNum}</span>
+          <span>{isAr ? `الأسبوع ${weekNum}` : `Week ${weekNum}`}</span>
         </div>
       </div>
     </div>
@@ -304,7 +322,7 @@ function AcademicSelectors() {
   return (
     <div className="px-3 mb-4 space-y-2">
       {/* Academic Year */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+      <div className="flex rtl:flex-row-reverse items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
         <GraduationCap className="h-4 w-4 text-white/80 shrink-0" />
         <Select
           value={selectedAcademicYear || ''}
@@ -339,7 +357,7 @@ function AcademicSelectors() {
       </div>
 
       {/* Quarter */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+      <div className="flex rtl:flex-row-reverse items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
         <Calendar className="h-4 w-4 text-white/80 shrink-0" />
         <Select
           value={selectedQuarter?.id ?? ''}
@@ -377,7 +395,7 @@ function AcademicSelectors() {
 
       {/* Course Period — teacher only */}
       {isTeacher && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+        <div className="flex rtl:flex-row-reverse items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
           <BookOpen className="h-4 w-4 text-white/80 shrink-0" />
           <Select
             value={selectedCoursePeriod?.id ?? ''}
@@ -508,7 +526,7 @@ function ParentSelectors() {
   return (
     <div className="px-3 mb-4 space-y-2">
       {/* Child selector */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+      <div className="flex rtl:flex-row-reverse items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
         <User className="h-4 w-4 text-white/80 shrink-0" />
         <Select
           value={selectedStudent || ''}
@@ -548,7 +566,7 @@ function ParentSelectors() {
       </div>
 
       {/* Academic Year */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+      <div className="flex rtl:flex-row-reverse items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
         <GraduationCap className="h-4 w-4 text-white/80 shrink-0" />
         <Select
           value={selectedAcademicYear || ''}
@@ -576,7 +594,7 @@ function ParentSelectors() {
       </div>
 
       {/* Quarter */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+      <div className="flex rtl:flex-row-reverse items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
         <Calendar className="h-4 w-4 text-white/80 shrink-0" />
         <Select
           value={selectedQuarter?.id ?? ''}
@@ -628,7 +646,7 @@ function CampusSelector() {
   if (loading) {
     return (
       <div className="px-3 mb-2">
-        <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+        <div className="flex rtl:flex-row-reverse items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
           <Building2 className="h-4 w-4 text-white/80 shrink-0 animate-pulse" />
           <span className="text-white/60 text-sm">Loading...</span>
         </div>
@@ -658,7 +676,7 @@ function CampusSelector() {
 
   return (
     <div className="px-3 mb-2">
-      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+      <div className="flex rtl:flex-row-reverse items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
         <Building2 className="h-4 w-4 text-white/80 shrink-0" />
         <Select
           value={selectedCampus?.id || ''}

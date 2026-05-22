@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { IconFilter, IconAdjustments, IconFileText, IconUser } from '@tabler/icons-react'
 import Link from 'next/link'
 import FeeAdjustmentModal from '@/components/admin/FeeAdjustmentModal'
+import { FeeDueDateBadge } from '@/components/shared/FeeDueDateBadge'
 import FeeChallanModal from '@/components/admin/FeeChallanModal'
 import useSWR from 'swr'
 
@@ -273,7 +274,12 @@ export default function BrowseFeesByGradePage() {
                                                 <TableCell className="text-red-600">
                                                     {formatCurrency(fee.final_amount - fee.amount_paid)}
                                                 </TableCell>
-                                                <TableCell>{new Date(fee.due_date).toLocaleDateString()}</TableCell>
+                                                <TableCell>
+                                                    <div className="flex flex-col gap-1">
+                                                        <span>{new Date(fee.due_date).toLocaleDateString()}</span>
+                                                        <FeeDueDateBadge dueDate={fee.due_date} status={fee.status} />
+                                                    </div>
+                                                </TableCell>
                                                 <TableCell>{getStatusBadge(fee.status)}</TableCell>
                                                 <TableCell className="text-end">
                                                     <div className="flex gap-1 justify-end">

@@ -29,8 +29,8 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
   const router = useRouter()
   const pathname = usePathname()
   const { profile, loading } = useAuth()
-  const [checkingSetup, setCheckingSetup] = React.useState(false)
-  const [setupChecked, setSetupChecked] = React.useState(false)
+  const setupCheckedRef = React.useRef(false)
+  const checkingSetupRef = React.useRef(false)
   const [dynamicDashboards, setDynamicDashboards] = React.useState<SidebarMenuItemType[]>([])
 
   // Use override role if provided, otherwise use profile role
@@ -54,49 +54,28 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
 
   // Check setup status for admin users
   React.useEffect(() => {
-    let isMounted = true
+    if (loading || !profile) return
+    if (effectiveRole !== 'admin') return
+    if (pathname?.startsWith('/admin/setup')) return
+    if (setupCheckedRef.current || checkingSetupRef.current) return
 
     const checkSetup = async () => {
-      // Only check for admin role
-      if (effectiveRole !== 'admin') {
-        if (isMounted) setSetupChecked(true)
-        return
-      }
-
-      // Don't check if already on setup page
-      if (pathname?.startsWith('/admin/setup')) {
-        if (isMounted) setSetupChecked(true)
-        return
-      }
-
-      // Skip if already checked or still loading auth
-      if (loading || setupChecked || checkingSetup) return
-
-      if (isMounted) setCheckingSetup(true)
+      checkingSetupRef.current = true
       try {
         const status = await getSetupStatus()
-        if (isMounted && !status.isComplete) {
+        if (!status.isComplete) {
           router.replace('/admin/setup')
-          return
         }
       } catch {
-        // Silently ignore all errors - don't block the user
+        // Silently ignore — don't block the user on network errors
       } finally {
-        if (isMounted) {
-          setCheckingSetup(false)
-          setSetupChecked(true)
-        }
+        checkingSetupRef.current = false
+        setupCheckedRef.current = true
       }
     }
 
-    if (!loading && profile) {
-      checkSetup()
-    }
-
-    return () => {
-      isMounted = false
-    }
-  }, [loading, profile, effectiveRole, pathname, router, setupChecked, checkingSetup])
+    checkSetup()
+  }, [loading, profile, effectiveRole, pathname, router])
 
   const baseMenuItems = effectiveRole ? getSidebarConfig(effectiveRole) : []
 

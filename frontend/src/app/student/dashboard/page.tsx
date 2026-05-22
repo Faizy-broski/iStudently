@@ -2,7 +2,9 @@
 
 import { useState } from 'react'
 import { SetupAssistantPanel } from '@/components/setup-assistant/SetupAssistantPanel'
-import { useStudentDashboard, useStudentInfo } from '@/hooks/useStudentDashboard'
+import { useStudentDashboard, useStudentInfo, useStudentFees } from '@/hooks/useStudentDashboard'
+import { FinancialWidget } from '@/components/shared/FinancialWidget'
+import { ProfilePhoto } from '@/components/shared/ProfilePhoto'
 import { useCampus } from '@/context/CampusContext'
 import { useAcademic } from '@/context/AcademicContext'
 import { getUpcomingEvents } from '@/lib/api/events'
@@ -27,7 +29,6 @@ import {
 } from 'lucide-react'
 import { format, formatDistance, isToday, isTomorrow, parseISO } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 
@@ -35,6 +36,7 @@ export default function StudentDashboardPage() {
   const t = useTranslations('dashboard')
   const { overview, isLoading: isDashboardLoading, error: dashboardError } = useStudentDashboard()
   const { studentInfo, isLoading: isInfoLoading } = useStudentInfo()
+  const { fees, isLoading: isFeesLoading } = useStudentFees()
   const campusContext = useCampus()
   const campus = campusContext?.selectedCampus
   const { selectedAcademicYear, academicYears, selectedQuarter } = useAcademic()
@@ -109,12 +111,12 @@ export default function StudentDashboardPage() {
         <div className="absolute bottom-0 left-0 -mb-10 -ml-10 h-64 w-64 rounded-full bg-blue-400/10 blur-3xl" />
         
         <div className="relative flex flex-col md:flex-row items-center gap-6">
-          <Avatar className="h-24 w-24 border-4 border-white/20 shadow-xl">
-            <AvatarImage src={studentInfo?.profile_photo_url || ''} />
-            <AvatarFallback className="bg-[#EEA831] text-white text-2xl font-bold">
-              {studentInfo?.first_name?.[0]}{studentInfo?.last_name?.[0]}
-            </AvatarFallback>
-          </Avatar>
+          <ProfilePhoto
+            src={studentInfo?.profile_photo_url}
+            name={`${studentInfo?.first_name || ''} ${studentInfo?.last_name || ''}`}
+            size="xl"
+            className="border-4 border-white/20 shadow-xl"
+          />
           
           <div className="flex-1 text-center md:text-left">
             <h1 className="text-3xl font-bold tracking-tight">
@@ -440,6 +442,12 @@ export default function StudentDashboardPage() {
               )}
             </CardContent>
           </Card>
+          {/* Financial Widget */}
+          <FinancialWidget
+            fees={fees}
+            isLoading={isFeesLoading}
+            feesPageHref="/student/billing/fees"
+          />
         </div>
       </div>
 

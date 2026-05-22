@@ -51,7 +51,7 @@ import {
   Mail,
   Send,
   Puzzle,
-  Globe,
+  UserCircle,
   type LucideIcon,
 } from "lucide-react";
 import { UserRole } from "@/types";
@@ -63,6 +63,8 @@ export interface SidebarMenuItem {
   badge?: string | number;
   subItems?: SidebarMenuItem[];
   isLabel?: boolean;
+  /** If set, this item is hidden unless the named plugin is active */
+  pluginRequired?: string;
 }
 
 export interface SidebarConfig {
@@ -439,9 +441,9 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "campuses", href: "/admin/settings/campuses", icon: Building2 },
       { title: "academic_years", href: "/admin/settings/academic-years", icon: Calendar },
       { title: "services", href: "/admin/settings/services", icon: Settings },
-      { title: "email_reminders", href: "/admin/settings/email-reminders", icon: Bell },
-      { title: "email_smtp", href: "/admin/settings/email-smtp", icon: Mail },
-      { title: "public_pages", href: "/admin/settings/public-pages", icon: Globe },
+      // email_reminders, email_smtp, public_pages, parent_agreement are injected
+      // by their respective plugins — see config/plugins.ts sidebarInjections
+      { title: "profile", href: "/admin/profile", icon: UserCircle },
     ],
   },
 ];
@@ -589,6 +591,8 @@ const teacherMenuItems: SidebarMenuItem[] = [
       { title: "quizzes", href: "/teacher/quiz", icon: HelpCircle },
     ],
   },
+  { title: "id_card", href: "/teacher/id-card", icon: CreditCard },
+  { title: "agreement", href: "/teacher/agreement", icon: FileText },
   { title: "settings", href: "/teacher/settings", icon: Settings },
 ];
 
@@ -701,6 +705,8 @@ const studentMenuItems: SidebarMenuItem[] = [
     subItems: [
       { title: "id_card", href: "/student/id-card", icon: CreditCard },
       { title: "my_profile", href: "/student/profile", icon: UserCheck },
+      { title: "advanced_report", href: "/student/students/advanced-report", icon: BarChart3 },
+      { title: "agreement", href: "/student/agreement", icon: FileText },
     ],
   },
 ];
@@ -789,6 +795,8 @@ const parentMenuItems: SidebarMenuItem[] = [
   },
   { title: "activities", href: "/parent/activities", icon: Star },
   { title: "id_card", href: "/parent/id-card", icon: CreditCard },
+  { title: "advanced_report", href: "/parent/students/advanced-report", icon: BarChart3 },
+  { title: "agreement", href: "/parent/agreement", icon: FileText },
   {
     title: "resources",
     href: "/parent/resources",
@@ -814,6 +822,10 @@ const librarianMenuItems: SidebarMenuItem[] = [
       { title: "document_fields", href: "/librarian/library/document-fields", icon: Sliders },
     ],
   },
+  { title: "discipline", href: "/librarian/discipline", icon: AlertCircle },
+  { title: "id_card", href: "/librarian/id-card", icon: CreditCard },
+  { title: "agreement", href: "/librarian/agreement", icon: FileText },
+  { title: "advanced_report", href: "/librarian/students/advanced-report", icon: BarChart3 },
   { title: "my_profile", href: "/profile", icon: UserCheck },
 ];
 

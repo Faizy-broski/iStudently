@@ -119,6 +119,7 @@ export class StudentService {
           email,
           phone,
           avatar_url,
+          profile_photo_url,
           is_active
         ),
         parent_links:parent_student_links(
@@ -183,6 +184,7 @@ export class StudentService {
           email,
           phone,
           avatar_url,
+          profile_photo_url,
           is_active,
           role
         ),
@@ -295,12 +297,13 @@ export class StudentService {
           school_id: studentData.school_id,
           role: 'student',
           first_name: studentData.first_name,
-          father_name: studentData.father_name, // NEW: Save father's name
-          grandfather_name: studentData.grandfather_name, // NEW: Save grandfather's name
+          father_name: studentData.father_name,
+          grandfather_name: studentData.grandfather_name,
           last_name: studentData.last_name,
           email: studentData.email,
           phone: studentData.phone,
-          profile_photo_url: studentData.profile_photo_url, // NEW: Supabase storage URL
+          profile_photo_url: studentData.profile_photo_url,
+          username: studentData.username || studentData.student_number || null,
           is_active: true
         })
         .select()
@@ -408,8 +411,7 @@ export class StudentService {
             last_name,
             email,
             phone,
-            avatar_url,
-            is_active,
+            avatar_url,            profile_photo_url,            is_active,
             role
           )
         `)
@@ -424,9 +426,9 @@ export class StudentService {
     }
 
     // Update profile if profile data is provided
-    if (updateData.first_name || updateData.father_name || updateData.grandfather_name || 
-        updateData.last_name || updateData.email || updateData.phone || updateData.profile_photo_url || 
-        updateData.is_active !== undefined) {
+    if (updateData.first_name || updateData.father_name || updateData.grandfather_name ||
+        updateData.last_name || updateData.email || updateData.phone || updateData.profile_photo_url ||
+        updateData.is_active !== undefined || updateData.username !== undefined) {
       const profileUpdates: any = {}
       if (updateData.first_name !== undefined) profileUpdates.first_name = updateData.first_name
       if (updateData.father_name !== undefined) profileUpdates.father_name = updateData.father_name
@@ -436,6 +438,7 @@ export class StudentService {
       if (updateData.phone !== undefined) profileUpdates.phone = updateData.phone
       if (updateData.profile_photo_url !== undefined) profileUpdates.profile_photo_url = updateData.profile_photo_url
       if (updateData.is_active !== undefined) profileUpdates.is_active = updateData.is_active
+      if (updateData.username !== undefined) profileUpdates.username = updateData.username || null
 
       if (Object.keys(profileUpdates).length > 0 && existing.profile_id) {
         const { error: profileError } = await supabase
@@ -470,19 +473,33 @@ export class StudentService {
     if (updateData.medical_info !== undefined) studentUpdates.medical_info = updateData.medical_info
     if (updateData.custom_fields !== undefined) studentUpdates.custom_fields = updateData.custom_fields
 
-    const { data, error } = await supabase
-      .from('students')
-      .update(studentUpdates)
-      .eq('id', studentId)
-      .eq('school_id', schoolId)
-      .select(`
-        *,
-        profile:profiles(*)
-      `)
-      .single()
+    const selectQuery = `*, profile:profiles(*)`
+    let data: any
+    let queryError: any
 
-    if (error) {
-      throw new Error(`Failed to update student: ${error.message}`)
+    if (Object.keys(studentUpdates).length > 0) {
+      const result = await supabase
+        .from('students')
+        .update(studentUpdates)
+        .eq('id', studentId)
+        .eq('school_id', schoolId)
+        .select(selectQuery)
+        .single()
+      data = result.data
+      queryError = result.error
+    } else {
+      const result = await supabase
+        .from('students')
+        .select(selectQuery)
+        .eq('id', studentId)
+        .eq('school_id', schoolId)
+        .single()
+      data = result.data
+      queryError = result.error
+    }
+
+    if (queryError) {
+      throw new Error(`Failed to update student: ${queryError.message}`)
     }
 
     return data

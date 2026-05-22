@@ -323,6 +323,9 @@ export class ParentService {
 
       profileId = authUser.user.id
 
+      // Generate username from first_name.last_name (lowercase, no spaces)
+      const baseUsername = `${parentData.first_name.toLowerCase().replace(/\s+/g, '')}.${parentData.last_name.toLowerCase().replace(/\s+/g, '')}`
+
       // Now create/update the profile with the auth user's ID
       const { data: newProfile, error: profileError } = await supabase
         .from('profiles')
@@ -334,6 +337,7 @@ export class ParentService {
           last_name: parentData.last_name,
           email: parentData.email || tempEmail,
           phone: parentData.phone,
+          username: parentData.username || baseUsername,
           is_active: true
         })
         .select()

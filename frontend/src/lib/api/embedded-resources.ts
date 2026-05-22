@@ -19,6 +19,9 @@ export interface EmbeddedResource {
   created_at: string
   updated_at: string
   created_by: string | null
+  // Enriched server-side
+  published_grade_names?: string[]
+  creator_name?: string | null
 }
 
 export interface CreateEmbeddedResourceDTO {

@@ -5,12 +5,13 @@ import { useAuth } from '@/context/AuthContext'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Loader2, User, Bell, Lock, Save, Mail, Phone } from 'lucide-react'
+import { Loader2, User, Bell, Lock, Save, Mail, Phone, Clock } from 'lucide-react'
 import { toast } from 'sonner'
 import { updateProfile, changePassword } from '@/lib/api/auth'
+import { UserQRCode } from '@/components/shared/UserQRCode'
 
 export default function SettingsPage() {
-  const { profile } = useAuth()
+  const { profile, user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [profileForm, setProfileForm] = useState({
     first_name: '',
@@ -267,8 +268,31 @@ export default function SettingsPage() {
             <span className="text-muted-foreground">Campus ID:</span>
             <span className="font-medium">{profile?.school_id?.slice(0, 8)}...</span>
           </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Last login:</span>
+            <span className="font-medium">
+              {user?.last_sign_in_at
+                ? new Date(user.last_sign_in_at).toLocaleString(undefined, {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  })
+                : '—'}
+            </span>
+          </div>
         </div>
       </Card>
+
+      {/* QR Code */}
+      {profile?.id && (
+        <Card className="p-6">
+          <h3 className="font-semibold mb-4">My QR Code</h3>
+          <p className="text-sm text-muted-foreground mb-4">Scan to verify your identity. This QR code is unique to your account.</p>
+          <UserQRCode
+            value={profile.id}
+            label={`${profileForm.first_name} ${profileForm.last_name} · ${profile.role}`.trim()}
+          />
+        </Card>
+      )}
     </div>
   )
 }

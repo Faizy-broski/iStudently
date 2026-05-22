@@ -171,6 +171,36 @@ router.get('/social-login-config', async (_req: Request, res: Response) => {
 })
 
 /**
+ * POST /api/public/resolve-username
+ * Resolves a username to its associated email for login purposes.
+ * No authentication required — needed before the user can sign in.
+ * Returns only { email } — no sensitive data exposed.
+ */
+router.post('/resolve-username', async (req: Request, res: Response) => {
+  try {
+    const { username } = req.body
+    if (!username || typeof username !== 'string' || username.trim().length === 0) {
+      return res.status(400).json({ success: false, error: 'Username is required' })
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('email')
+      .ilike('username', username.trim())
+      .eq('is_active', true)
+      .single()
+
+    if (error || !data?.email) {
+      return res.status(404).json({ success: false, error: 'User not found' })
+    }
+
+    res.json({ success: true, email: data.email })
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message })
+  }
+})
+
+/**
  * GET /api/public/:slug
  * Returns school info + public pages config (which pages are enabled, default page)
  */

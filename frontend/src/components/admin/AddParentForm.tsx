@@ -52,7 +52,7 @@ const STANDARD_FIELDS = [
   { id: 'primaryFirstName', label: 'First Name', type: 'text', category: 'personal', sort_order: 1, required: true, width: 'half' },
   { id: 'primaryLastName', label: 'Last Name', type: 'text', category: 'personal', sort_order: 2, required: true, width: 'half' },
   { id: 'primaryCNIC', label: 'CNIC / ID Number', type: 'text', category: 'personal', sort_order: 3, required: true, width: 'half', placeholder: 'XXXXX-XXXXXXX-X' },
-  { id: 'primaryPhone', label: 'Phone Number', type: 'text', category: 'personal', sort_order: 4, required: true, width: 'half', placeholder: '+92 XXX XXXXXXX' },
+  { id: 'primaryPhone', label: 'Phone Number', type: 'tel', category: 'personal', sort_order: 4, required: true, width: 'half', placeholder: '+92 XXX XXXXXXX' },
   { id: 'primaryEmail', label: 'Email Address', type: 'email', category: 'personal', sort_order: 5, required: true, width: 'half', placeholder: 'email@example.com' },
   { id: 'primaryOccupation', label: 'Occupation', type: 'text', category: 'professional', sort_order: 1, required: true, width: 'half', placeholder: 'e.g., Teacher' },
   { id: 'primaryWorkplace', label: 'Workplace', type: 'text', category: 'professional', sort_order: 2, required: false, width: 'half' },
@@ -67,7 +67,7 @@ const STANDARD_FIELDS = [
   // Emergency
   { id: 'emergencyContactName', label: 'Emergency Contact Name', type: 'text', category: 'emergency', sort_order: 1, required: false, width: 'third' },
   { id: 'emergencyContactRelation', label: 'Relationship', type: 'text', category: 'emergency', sort_order: 2, required: false, width: 'third' },
-  { id: 'emergencyContactPhone', label: 'Phone', type: 'text', category: 'emergency', sort_order: 3, required: false, width: 'third' },
+  { id: 'emergencyContactPhone', label: 'Phone', type: 'tel', category: 'emergency', sort_order: 3, required: false, width: 'third' },
 
   // SYSTEM (Category: system)
   { id: 'username', label: 'Username', type: 'text', category: 'system', sort_order: 1, required: false, width: 'half', help: 'Auto-generated if empty' },
@@ -408,12 +408,24 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
           {field.label} {field.required && <span className="text-red-500">*</span>}
         </Label>
 
-        {field.type === 'text' || field.type === 'email' || field.type === 'number' ? (
+        {field.type === 'text' || field.type === 'email' || field.type === 'number' || field.type === 'tel' ? (
           <Input
             id={field.id}
             type={field.type}
             value={value}
-            onChange={(e) => handleChange(e.target.value)}
+            onKeyDown={(e) => {
+              const nav = ['Backspace','Delete','Tab','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'];
+              if (e.ctrlKey || e.metaKey) return;
+              if (nav.includes(e.key)) return;
+              if (field.type === 'tel' && !/[0-9+\-() ]/.test(e.key)) e.preventDefault();
+              if (field.type === 'number' && !/[0-9.]/.test(e.key)) e.preventDefault();
+            }}
+            onChange={(e) => {
+              let val = e.target.value;
+              if (field.type === 'tel') val = val.replace(/[^0-9+\-() ]/g, '');
+              if (field.type === 'number') val = val.replace(/[^0-9.]/g, '');
+              handleChange(val);
+            }}
             placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
             className={error ? "border-red-500" : ""}
           />

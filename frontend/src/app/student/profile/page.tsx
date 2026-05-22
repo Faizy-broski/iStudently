@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input'
 import { Loader2, User, Lock, Save, Mail, Phone, Shield } from 'lucide-react'
 import { toast } from 'sonner'
 import { updateProfile, changePassword } from '@/lib/api/auth'
+import { UserQRCode } from '@/components/shared/UserQRCode'
 
 export default function StudentProfilePage() {
-  const { profile } = useAuth()
+  const { profile, user } = useAuth()
   const [saving, setSaving] = useState(false)
   const [changingPw, setChangingPw] = useState(false)
   const [phone, setPhone] = useState('')
@@ -180,8 +181,28 @@ export default function StudentProfilePage() {
               {profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : '—'}
             </span>
           </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Last login:</span>
+            <span className="font-medium">
+              {user?.last_sign_in_at
+                ? new Date(user.last_sign_in_at).toLocaleString(undefined, {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  })
+                : '—'}
+            </span>
+          </div>
         </div>
       </Card>
+
+      {/* QR Code */}
+      {profile?.id && (
+        <Card className="p-6">
+          <h3 className="font-semibold mb-4">My QR Code</h3>
+          <p className="text-sm text-muted-foreground mb-4">Scan to verify your identity. This QR code is unique to your account.</p>
+          <UserQRCode value={profile.id} label={`${fullName} · ${profile.role}`} />
+        </Card>
+      )}
     </div>
   )
 }

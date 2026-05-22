@@ -17,6 +17,7 @@ import Link from 'next/link'
 import FeeAdjustmentModal from '@/components/admin/FeeAdjustmentModal'
 import FeeChallanModal from '@/components/admin/FeeChallanModal'
 import StudentFeeOverrideModal from '@/components/admin/StudentFeeOverrideModal'
+import { FeeDueDateBadge } from '@/components/shared/FeeDueDateBadge'
 import useSWR from 'swr'
 import { useTranslations } from 'next-intl'
 
@@ -417,7 +418,12 @@ export default function FeesPage() {
                                                     <TableCell>{formatCurrency(fee.final_amount)}</TableCell>
                                                     <TableCell className="text-green-600">{formatCurrency(fee.amount_paid)}</TableCell>
                                                     <TableCell className={balance.color}>{formatCurrency(parseFloat(balance.value))}</TableCell>
-                                                    <TableCell>{new Date(fee.due_date).toLocaleDateString()}</TableCell>
+                                                    <TableCell>
+                                                        <div className="flex flex-col gap-1">
+                                                            <span>{new Date(fee.due_date).toLocaleDateString()}</span>
+                                                            <FeeDueDateBadge dueDate={fee.due_date} status={fee.status} />
+                                                        </div>
+                                                    </TableCell>
                                                     <TableCell>{getStatusBadge(fee.status)}</TableCell>
                                                     <TableCell className="text-end">
                                                         <div className="flex gap-1 justify-end">

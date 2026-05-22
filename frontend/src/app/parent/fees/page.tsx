@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 
 import { format, parseISO } from 'date-fns'
+import { FeeDueDateBadge } from '@/components/shared/FeeDueDateBadge'
 
 const MONTHS = [
   { value: 0, label: 'All Months' },
@@ -251,13 +252,14 @@ export default function ParentFeesPage() {
             <div className="flex items-center gap-2 flex-wrap">
               <h4 className="font-semibold truncate">{fee.fee_name || fee.category || 'Fee'}</h4>
               {showStatus && (
-                <Badge 
+                <Badge
                   variant={isPaid ? 'default' : isOverdue ? 'destructive' : 'secondary'}
                   className={isPaid ? 'bg-green-500' : ''}
                 >
                   {isPaid ? 'Paid' : isOverdue ? 'Overdue' : 'Pending'}
                 </Badge>
               )}
+              <FeeDueDateBadge dueDate={fee.due_date} status={fee.status} />
             </div>
             <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
               <span>Amount: {formatCurrency(fee.final_amount || 0)}</span>

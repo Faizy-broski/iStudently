@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useStudentInfo } from '@/hooks/useStudentDashboard'
 import { User, MapPin, Phone, Mail, Calendar, Hash, School, Loader2, AlertCircle } from 'lucide-react'
+import { ProfilePhoto } from '@/components/shared/ProfilePhoto'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { format, parseISO } from 'date-fns'
@@ -50,12 +51,7 @@ export default function StudentInfoPage() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-          {s.profile_photo_url
-            ? <img src={s.profile_photo_url} alt={fullName} className="h-14 w-14 rounded-full object-cover" />
-            : <User className="h-7 w-7 text-primary" />
-          }
-        </div>
+        <ProfilePhoto src={s.profile_photo_url} name={fullName} size="md" />
         <div>
           <h1 className="text-2xl font-bold">{fullName || '—'}</h1>
           <p className="text-muted-foreground text-sm">{s.school_name}</p>

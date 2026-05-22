@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { useParentStudents } from '@/hooks/useParentDashboard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { ProfilePhoto } from '@/components/shared/ProfilePhoto'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Loader2, ArrowLeft, GraduationCap, MapPin, Phone, Mail, User } from 'lucide-react'
@@ -53,12 +53,11 @@ export default function ParentStudentDetailPage() {
       <Card>
         <CardHeader className="pb-4">
           <div className="flex items-start gap-4">
-            <Avatar className="h-20 w-20">
-              <AvatarImage src={student.profile_photo_url} />
-              <AvatarFallback className="bg-[#57A3CC] text-white text-xl">
-                {student.first_name?.[0]}{student.last_name?.[0]}
-              </AvatarFallback>
-            </Avatar>
+            <ProfilePhoto
+              src={student.profile_photo_url}
+              name={`${student.first_name} ${student.last_name}`}
+              size="lg"
+            />
             <div className="flex-1">
               <CardTitle className="text-2xl">
                 {student.first_name} {student.last_name}

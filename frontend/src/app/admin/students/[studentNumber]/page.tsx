@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ProfilePhoto } from "@/components/shared/ProfilePhoto";
 import {
   ChevronLeft,
   ChevronRight,
@@ -239,15 +240,12 @@ export default function StudentDetailsPage() {
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row gap-6 items-start">
-            <Avatar className="h-24 w-24 border-4 border-white shadow-lg">
-              <AvatarImage
-                src={currentStudent.profile?.profile_photo_url || currentStudent.custom_fields?.personal?.student_photo}
-                alt={fullName}
-              />
-              <AvatarFallback className="text-2xl bg-linear-to-r from-[#57A3CC] to-[#022172] text-white">
-                {getInitials(currentStudent.profile?.first_name, currentStudent.profile?.last_name)}
-              </AvatarFallback>
-            </Avatar>
+            <ProfilePhoto
+              src={currentStudent.profile?.profile_photo_url || currentStudent.custom_fields?.personal?.student_photo}
+              name={fullName}
+              size="xl"
+              className="border-4 border-white shadow-lg"
+            />
 
             <div className="flex-1">
               <div className="flex items-start justify-between">

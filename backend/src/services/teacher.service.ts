@@ -221,11 +221,12 @@ export const createTeacher = async (dto: CreateStaffDTO): Promise<ApiResponse<St
         throw new Error(`A user with email ${dto.email} already exists`)
       }
 
-      // Use provided username or use email as username (no auto-generation)
       if (dto.username) {
         finalUsername = dto.username
+      } else if (dto.first_name && dto.last_name) {
+        // Auto-generate firstname.lastname username
+        finalUsername = `${dto.first_name.toLowerCase().replace(/\s+/g, '')}.${dto.last_name.toLowerCase().replace(/\s+/g, '')}`
       } else {
-        // Use email as username if not provided
         finalUsername = dto.email
       }
 
@@ -256,7 +257,8 @@ export const createTeacher = async (dto: CreateStaffDTO): Promise<ApiResponse<St
           first_name: dto.first_name,
           last_name: dto.last_name,
           email: dto.email,
-          phone: dto.phone
+          phone: dto.phone,
+          username: finalUsername || null,
         }, {
           onConflict: 'id'
         })

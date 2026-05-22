@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Search, LogOut, Settings, Menu, Moon, Sun, Languages, LayoutDashboard, Users, BookOpen, Calendar, FileText, ChevronRight } from 'lucide-react'
+import { Search, LogOut, Settings, Menu, Moon, Sun, Languages, LayoutDashboard, Users, BookOpen, Calendar, FileText, ChevronRight, Maximize, Minimize, UserCircle } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { NotificationBell } from '@/components/portal'
@@ -43,6 +43,21 @@ export function Topbar({ className }: TopbarProps) {
   const t = useTranslations('topbar')
   const [searchQuery, setSearchQuery] = React.useState('')
   const [isSearchOpen, setIsSearchOpen] = React.useState(false)
+  const [isFullscreen, setIsFullscreen] = React.useState(false)
+
+  React.useEffect(() => {
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {})
+    } else {
+      document.exitFullscreen().catch(() => {})
+    }
+  }
 
   // Get all menu items including submenu items based on user role
   const buildFlattenedMenuItems = () => {
@@ -241,6 +256,22 @@ export function Topbar({ className }: TopbarProps) {
             <span className="sr-only">Toggle Language</span>
           </Button>
 
+          {/* Fullscreen Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleFullscreen}
+            className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
+            title={isFullscreen ? t('exitFullscreen') : t('enterFullscreen')}
+          >
+            {isFullscreen ? (
+              <Minimize className="h-5 w-5" />
+            ) : (
+              <Maximize className="h-5 w-5" />
+            )}
+            <span className="sr-only">{isFullscreen ? t('exitFullscreen') : t('enterFullscreen')}</span>
+          </Button>
+
           {/* Notifications */}
           <NotificationBell className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100" />
 
@@ -280,6 +311,22 @@ export function Topbar({ className }: TopbarProps) {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="cursor-pointer"
+                onClick={() => {
+                  const role = profile?.role
+                  const profileRoutes: Record<string, string> = {
+                    admin: '/admin/profile',
+                    teacher: '/teacher/settings',
+                    superadmin: '/superadmin/settings',
+                    librarian: '/librarian/id-card',
+                  }
+                  router.push(profileRoutes[role as string] ?? '/profile')
+                }}
+              >
+                <UserCircle className="h-4 w-4 me-2" />
+                {t('profile')}
+              </DropdownMenuItem>
               <DropdownMenuItem
                 className="cursor-pointer"
                 onClick={() => {

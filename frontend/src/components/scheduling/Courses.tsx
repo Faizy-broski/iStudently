@@ -32,7 +32,7 @@ import {
 import { getMarkingPeriods, type MarkingPeriod } from "@/lib/api/marking-periods"
 import { getClassList, type ClassListResponse } from "@/lib/api/scheduling"
 import { getAllTeachers, type Staff } from "@/lib/api/teachers"
-import { CalendarDays, Plus, Pencil, Trash2, Loader2 } from "lucide-react"
+import { CalendarDays, Plus, Pencil, Trash2, Loader2, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -84,6 +84,11 @@ export function Courses() {
   // ── Selection state ─────────────────────────────────────────────────
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null)
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
+
+  // ── Sort state ───────────────────────────────────────────────────────
+  const [subjectSort, setSubjectSort] = useState<'asc' | 'desc'>('asc')
+  const [courseSort, setCourseSort] = useState<'asc' | 'desc'>('asc')
+  const [cpSort, setCpSort] = useState<'asc' | 'desc'>('asc')
 
   // ── Dialog state ────────────────────────────────────────────────────
   const [subjectDialog, setSubjectDialog] = useState<{ open: boolean; mode: "add" | "edit"; subject?: Subject }>({
@@ -164,8 +169,7 @@ export function Courses() {
   const [seatMap, setSeatMap] = useState<Record<string, ClassListResponse>>({})
 
   const coursePeriods = useMemo<CoursePeriodWithSeats[]>(() => {
-    const list = cpsRes?.data || []
-    return list.map((cp) => {
+    const list = (cpsRes?.data || []).map((cp) => {
       const seats = seatMap[cp.id]
       return {
         ...cp,
@@ -177,7 +181,12 @@ export function Courses() {
             : null,
       }
     })
-  }, [cpsRes, seatMap])
+    return [...list].sort((a, b) => {
+      const aTitle = a.title || a.short_name || ''
+      const bTitle = b.title || b.short_name || ''
+      return cpSort === 'asc' ? aTitle.localeCompare(bTitle) : bTitle.localeCompare(aTitle)
+    })
+  }, [cpsRes, seatMap, cpSort])
 
   // Fetch seats for each CP when course is selected
   useSWR(
@@ -239,13 +248,17 @@ export function Courses() {
 
   // ── Derived data ────────────────────────────────────────────────────
 
-  const subjects = useMemo<Subject[]>(() => subjectsRes?.data || [], [subjectsRes])
+  const subjects = useMemo<Subject[]>(() => {
+    const list = [...(subjectsRes?.data || [])]
+    list.sort((a, b) => subjectSort === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name))
+    return list
+  }, [subjectsRes, subjectSort])
 
   const filteredCourses = useMemo<Course[]>(() => {
     if (!selectedSubjectId) return []
-    const all = coursesRes?.data || []
-    return all.filter((c) => c.subject_id === selectedSubjectId)
-  }, [coursesRes, selectedSubjectId])
+    const all = (coursesRes?.data || []).filter((c) => c.subject_id === selectedSubjectId)
+    return [...all].sort((a, b) => courseSort === 'asc' ? a.title.localeCompare(b.title) : b.title.localeCompare(a.title))
+  }, [coursesRes, selectedSubjectId, courseSort])
 
   const teachers = useMemo<Staff[]>(() => teachersData?.data || [], [teachersData])
   const gradeLevels = useMemo(() => gradesRes?.data || [], [gradesRes])
@@ -525,6 +538,12 @@ export function Courses() {
     return ""
   }
 
+  const SortIcon = ({ dir }: { dir: 'asc' | 'desc' | null }) => {
+    if (dir === 'asc') return <ArrowUp className="h-3 w-3 inline-block ml-1" />
+    if (dir === 'desc') return <ArrowDown className="h-3 w-3 inline-block ml-1" />
+    return <ArrowUpDown className="h-3 w-3 inline-block ml-1 opacity-40" />
+  }
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -552,8 +571,12 @@ export function Courses() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
-                <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-teal-700">
+                <th
+                  className="px-3 py-2 text-left text-xs font-semibold uppercase text-teal-700 cursor-pointer select-none hover:text-teal-900"
+                  onClick={() => setSubjectSort(s => s === 'asc' ? 'desc' : 'asc')}
+                >
                   {t("th_subject")}
+                  <SortIcon dir={subjectSort} />
                 </th>
                 <th className="w-16"></th>
               </tr>
@@ -636,8 +659,12 @@ export function Courses() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b">
-                  <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-teal-700">
+                  <th
+                    className="px-3 py-2 text-left text-xs font-semibold uppercase text-teal-700 cursor-pointer select-none hover:text-teal-900"
+                    onClick={() => setCourseSort(s => s === 'asc' ? 'desc' : 'asc')}
+                  >
                     {t("th_course")}
+                    <SortIcon dir={courseSort} />
                   </th>
                   <th className="w-16"></th>
                 </tr>
@@ -721,8 +748,12 @@ export function Courses() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b">
-                  <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-teal-700">
+                  <th
+                    className="px-3 py-2 text-left text-xs font-semibold uppercase text-teal-700 cursor-pointer select-none hover:text-teal-900"
+                    onClick={() => setCpSort(s => s === 'asc' ? 'desc' : 'asc')}
+                  >
                     {t("th_course_period")}
+                    <SortIcon dir={cpSort} />
                   </th>
                   <th className="px-3 py-2 text-right text-xs font-semibold uppercase text-teal-700">
                     {t("th_available_seats")}

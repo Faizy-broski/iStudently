@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { generateStudentIdCard, GeneratedIdCard } from '@/lib/api/id-card-template'
+import { useAuth } from '@/context/AuthContext'
 import { CreditCard, Download, Printer } from 'lucide-react'
 import Image from 'next/image'
 import QRCode from 'react-qr-code'
 
 export default function IdCardPage() {
+  const { profile } = useAuth()
   const [idCard, setIdCard] = useState<GeneratedIdCard | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -135,8 +137,8 @@ export default function IdCardPage() {
               )
             })}
 
-            {/* QR Code */}
-            {config.qrCode?.enabled && config.qrCode.data && (
+            {/* QR Code — from template config, or fallback to profile ID */}
+            {config.qrCode?.enabled && config.qrCode.data ? (
               <div
                 className="absolute"
                 style={{
@@ -144,13 +146,22 @@ export default function IdCardPage() {
                   top: `${config.qrCode.position.y}px`,
                 }}
               >
-                <QRCode 
-                  value={config.qrCode.data} 
+                <QRCode
+                  value={config.qrCode.data}
                   size={config.qrCode.size}
                   level="M"
                 />
               </div>
-            )}
+            ) : profile?.id ? (
+              <div
+                className="absolute"
+                style={{ right: '12px', bottom: '12px' }}
+              >
+                <div className="bg-white p-1 rounded shadow-sm">
+                  <QRCode value={profile.id} size={64} level="M" />
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
 

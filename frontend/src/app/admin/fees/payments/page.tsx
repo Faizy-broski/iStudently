@@ -252,33 +252,33 @@ export default function PaymentsPage() {
             <div className="flex gap-2 text-sm">
                 <button
                     onClick={() => setViewMode('original')}
-                    className={`hover:underline ${viewMode === 'original' ? 'text-[#3d8fb5] font-semibold' : 'text-gray-600'}`}
+                    className={`hover:underline ${viewMode === 'original' ? 'text-[#3d8fb5] font-semibold' : 'text-gray-600 dark:text-gray-400'}`}
                 >
                     {t('originalView')}
                 </button>
                 <span>|</span>
                 <button
                     onClick={() => setViewMode('expanded')}
-                    className={`hover:underline ${viewMode === 'expanded' ? 'text-[#3d8fb5] font-semibold' : 'text-gray-600'}`}
+                    className={`hover:underline ${viewMode === 'expanded' ? 'text-[#3d8fb5] font-semibold' : 'text-gray-600 dark:text-gray-400'}`}
                 >
                     {t('expandedView')}
                 </button>
                 <span>|</span>
                 <button
                     onClick={() => setViewMode('family')}
-                    className={`hover:underline ${viewMode === 'family' ? 'text-[#3d8fb5] font-semibold' : 'text-gray-600'}`}
+                    className={`hover:underline ${viewMode === 'family' ? 'text-[#3d8fb5] font-semibold' : 'text-gray-600 dark:text-gray-400'}`}
                 >
                     {t('groupByFamily')}
                 </button>
             </div>
 
             {/* Divider */}
-            <hr className="border-gray-300" />
+            <hr className="border-gray-300 dark:border-gray-700" />
 
             {/* Student Count and Search */}
             <div className="flex items-center justify-between py-2">
                 <div className="flex items-center gap-2">
-                    <p className="text-sm text-gray-700">
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
                         {viewMode === 'family' 
                             ? t('foundFamilies', { count: familyGroups.length, studentCount: filteredStudents.length })
                             : viewMode === 'expanded' 
@@ -293,7 +293,7 @@ export default function PaymentsPage() {
                         onClick={handleExport}
                         title={t('exportCSV')}
                     >
-                        <IconDownload className="h-5 w-5 text-gray-700" />
+                        <IconDownload className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                     </Button>
                 </div>
                 <div className="relative">
@@ -328,7 +328,7 @@ export default function PaymentsPage() {
                                     </div>
                                     <Table>
                                         <TableHeader>
-                                            <TableRow className="bg-gray-100">
+                                            <TableRow className="bg-gray-100 dark:bg-gray-800">
                                                 <TableHead className="text-[#3d8fb5] font-semibold">{t('student')}</TableHead>
                                                 <TableHead className="text-[#3d8fb5] font-semibold">{t('istudentlyId')}</TableHead>
                                                 <TableHead className="text-[#3d8fb5] font-semibold">{t('gradeLevel')}</TableHead>
@@ -339,7 +339,7 @@ export default function PaymentsPage() {
                                             {family.students.map((student, index) => (
                                                 <TableRow 
                                                     key={student.id}
-                                                    className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                                                    className={index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800'}
                                                 >
                                                     <TableCell>
                                                         <Link 
@@ -365,7 +365,7 @@ export default function PaymentsPage() {
                         // Original or Expanded View
                         <Table>
                             <TableHeader>
-                                <TableRow className="bg-gray-100">
+                                <TableRow className="bg-gray-100 dark:bg-gray-800">
                                     <TableHead className="text-[#3d8fb5] font-semibold">{t('student')}</TableHead>
                                     <TableHead className="text-[#3d8fb5] font-semibold">{t('istudentlyId')}</TableHead>
                                     <TableHead className="text-[#3d8fb5] font-semibold">{t('gradeLevel')}</TableHead>
@@ -387,7 +387,7 @@ export default function PaymentsPage() {
                                     return (
                                         <TableRow 
                                             key={student.id}
-                                            className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                                            className={index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800'}
                                         >
                                             <TableCell>
                                                 <Link 

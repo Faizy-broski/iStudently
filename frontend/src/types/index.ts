@@ -128,6 +128,7 @@ export interface Profile {
   first_name: string | null
   last_name: string | null
   email: string | null
+  username: string | null
   is_active: boolean
   force_password_change: boolean
   created_at: string

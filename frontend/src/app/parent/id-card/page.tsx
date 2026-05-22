@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CreditCard, Download, Printer, User } from 'lucide-react'
+import QRCode from 'react-qr-code'
 
 import Image from 'next/image'
 import { useRef, useState } from 'react'
@@ -132,11 +133,14 @@ export default function ParentIdCardPage() {
                   </div>
                 </div>
 
-                {/* Footer */}
-                <div className="mt-4 pt-3 border-t border-white/30 text-center">
+                {/* QR Code + Footer */}
+                <div className="mt-4 pt-3 border-t border-white/30 flex items-center justify-between">
                   <p className="text-xs opacity-70">
                     Valid for Academic Year 2025-2026
                   </p>
+                  <div className="bg-white p-1 rounded shadow-sm">
+                    <QRCode value={student.id} size={56} level="M" />
+                  </div>
                 </div>
               </div>
             </CardContent>

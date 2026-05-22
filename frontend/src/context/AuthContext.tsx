@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, useRef, useCallback } f
 import { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/client'
 import { Profile, AuthContextType } from '@/types'
+import { API_URL } from '@/config/api'
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
@@ -1080,11 +1081,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setMustChangePassword(profile?.force_password_change === true)
   }, [profile])
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+  const signIn = async (emailOrUsername: string, password: string) => {
+    let email = emailOrUsername.trim()
+
+    // If input has no '@', treat as username and resolve to email first
+    if (!email.includes('@')) {
+      const res = await fetch(`${API_URL}/public/resolve-username`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: email }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.email) {
+        throw new Error('Invalid username or password')
+      }
+      email = data.email
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
   }
 

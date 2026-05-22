@@ -23,9 +23,9 @@ router.get('/stats', requireRole('admin'), (req, res) =>
 /**
  * GET /api/students/report
  * Get students report with proper joins for advanced reporting
- * Admin only
+ * Admin, teacher, and librarian can access
  */
-router.get('/report', requireRole('admin'), (req, res) =>
+router.get('/report', requireRole('admin', 'teacher', 'librarian'), (req, res) =>
   studentController.getStudentsReport(req, res)
 )
 
@@ -67,9 +67,9 @@ router.get('/:id/relatives', requireRole('admin', 'teacher'), async (req: Reques
 /**
  * GET /api/students/:id
  * Get a single student by ID
- * Admin and teacher can access
+ * Admin, teacher, and student (own record only) can access
  */
-router.get('/:id', requireRole('admin', 'teacher'), (req, res) =>
+router.get('/:id', requireRole('admin', 'teacher', 'student'), (req, res) =>
   studentController.getStudentById(req, res)
 )
 

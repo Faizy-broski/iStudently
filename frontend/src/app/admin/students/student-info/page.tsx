@@ -22,6 +22,7 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useGradeLevels } from "@/hooks/useAcademics";
 import { getSchoolSettings, type StudentListAppendConfig } from "@/lib/api/school-settings";
 import { useTranslations, useLocale } from "next-intl";
+import { ProfilePhoto } from "@/components/shared/ProfilePhoto";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -308,17 +309,11 @@ export default function StudentInfoPage() {
                             <TableCell className="font-medium">{student.student_number}</TableCell>
                             <TableCell>
                               <div className="flex items-center gap-3">
-                                {(student.profile?.profile_photo_url || student.custom_fields?.personal?.student_photo) ? (
-                                  <img
-                                    src={student.profile?.profile_photo_url || student.custom_fields?.personal?.student_photo}
-                                    alt={fullName}
-                                    className="h-8 w-8 rounded-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="h-8 w-8 rounded-full bg-linear-to-r from-[#57A3CC] to-[#022172] flex items-center justify-center text-white font-semibold text-sm">
-                                    {initials || tCommon("noData")}
-                                  </div>
-                                )}
+                                <ProfilePhoto
+                                  src={student.profile?.profile_photo_url || student.custom_fields?.personal?.student_photo}
+                                  name={fullName}
+                                  size="xs"
+                                />
                                 <div>
                                   <div className="font-medium">
                                     {fullName || tCommon("noData")}

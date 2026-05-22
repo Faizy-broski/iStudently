@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Settings, Save, AlertTriangle } from "lucide-react";
+import { Settings, Save, AlertTriangle, Clock } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { UserQRCode } from "@/components/shared/UserQRCode";
 
 export default function SuperAdminSettingsPage() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [systemSettings, setSystemSettings] = useState({
     maintenanceMode: false,
@@ -123,6 +124,57 @@ export default function SuperAdminSettingsPage() {
           </ul>
         </CardContent>
       </Card>
+
+      {/* Account Information */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Clock className="h-5 w-5 text-[#022172]" />
+            <CardTitle>Account Information</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <div className="flex justify-between py-1">
+            <span className="text-muted-foreground">Name:</span>
+            <span className="font-medium">{profile?.first_name} {profile?.last_name}</span>
+          </div>
+          <div className="flex justify-between py-1">
+            <span className="text-muted-foreground">Email:</span>
+            <span className="font-medium">{profile?.email || '—'}</span>
+          </div>
+          <div className="flex justify-between py-1">
+            <span className="text-muted-foreground">Role:</span>
+            <span className="font-medium capitalize">{profile?.role}</span>
+          </div>
+          <div className="flex justify-between py-1">
+            <span className="text-muted-foreground">Last login:</span>
+            <span className="font-medium">
+              {user?.last_sign_in_at
+                ? new Date(user.last_sign_in_at).toLocaleString(undefined, {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })
+                : "—"}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* QR Code */}
+      {profile?.id && (
+        <Card>
+          <CardHeader>
+            <CardTitle>My QR Code</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">Scan to verify your identity. This QR code is unique to your account.</p>
+            <UserQRCode
+              value={profile.id}
+              label={`${profile.first_name || ''} ${profile.last_name || ''} · ${profile.role}`.trim()}
+            />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
