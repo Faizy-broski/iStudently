@@ -36,7 +36,7 @@ function LanguageToggle() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ locale: next }),
       })
-      router.refresh()
+      window.location.reload()
     } finally {
       setSwitching(false)
     }
