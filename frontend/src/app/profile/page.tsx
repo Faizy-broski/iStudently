@@ -106,13 +106,14 @@ export default function ProfilePage() {
                 <CardContent className="relative pt-0 pb-6">
                     <div className="flex flex-col md:flex-row gap-6">
                         {/* Avatar */}
-                        <div className="-mt-16 md:-mt-12 flex-shrink-0">
-                            <Avatar className="h-32 w-32 border-4 border-white shadow-lg">
+                        <div className="-mt-24 md:-mt-16 flex-shrink-0">
+                            <Avatar className="aspect-[3/4] w-32 h-auto rounded-2xl border-4 border-white shadow-lg">
                                 <AvatarImage
                                     src={profile?.profile_photo_url || ''}
                                     alt={profile?.first_name || 'User'}
+                                    className="aspect-[3/4] h-full w-full object-cover"
                                 />
-                                <AvatarFallback className="bg-[#022172] text-white text-3xl">
+                                <AvatarFallback className="bg-[#022172] text-white text-3xl rounded-2xl">
                                     {getInitials()}
                                 </AvatarFallback>
                             </Avatar>

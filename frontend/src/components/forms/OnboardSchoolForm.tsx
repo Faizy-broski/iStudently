@@ -348,7 +348,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
                     ? "bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white"
                     : currentStep === step.number
                     ? "bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white"
-                    : "bg-gray-200 text-gray-500"
+                    : "bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
                 }`}
               >
                 {currentStep > step.number ? (
@@ -359,7 +359,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
               </div>
               <span
                 className={`text-xs mt-2 font-medium ${
-                  currentStep >= step.number ? "text-[#022172]" : "text-gray-400"
+                  currentStep >= step.number ? "text-[#022172] dark:text-[#57A3CC]" : "text-gray-400 dark:text-gray-500"
                 }`}
               >
                 {step.title}
@@ -370,7 +370,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
                 className={`w-24 h-0.5 mx-4 mb-6 transition-all ${
                   currentStep > step.number
                     ? "bg-gradient-to-r from-[#57A3CC] to-[#022172]"
-                    : "bg-gray-200"
+                    : "bg-gray-200 dark:bg-gray-800"
                 }`}
               />
             )}
@@ -382,16 +382,16 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
       {currentStep === 1 && (
         <div className="space-y-6 animate-in fade-in duration-300">
           <div className="space-y-1 mb-6">
-            <h3 className="text-xl font-semibold text-[#022172] flex items-center gap-2">
+            <h3 className="text-xl font-semibold text-[#022172] dark:text-white flex items-center gap-2">
               <Building2 className="h-5 w-5" />
               School Information
             </h3>
-            <p className="text-sm text-gray-500">Enter the basic details about the school</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Enter the basic details about the school</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="schoolName" className="text-gray-700">
+              <Label htmlFor="schoolName" className="text-gray-700 dark:text-gray-300">
                 School Name <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -403,7 +403,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
                 }}
                 placeholder="e.g., Springfield High School"
                 disabled={isSubmitting}
-                className="border-gray-300 focus:border-[#57A3CC] focus:ring-[#57A3CC]"
+                className="border-gray-300 dark:border-gray-700 focus:border-[#57A3CC] focus:ring-[#57A3CC] dark:bg-gray-800 dark:text-white"
               />
               {errors.schoolName && (
                 <p className="text-sm text-red-500">{errors.schoolName.message}</p>
@@ -411,7 +411,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="schoolSlug" className="text-gray-700">
+              <Label htmlFor="schoolSlug" className="text-gray-700 dark:text-gray-300">
                 School Slug <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -419,12 +419,12 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
                 {...register("schoolSlug")}
                 placeholder="e.g., springfield-high"
                 disabled={isSubmitting}
-                className="border-gray-300 focus:border-[#57A3CC] focus:ring-[#57A3CC]"
+                className="border-gray-300 dark:border-gray-700 focus:border-[#57A3CC] focus:ring-[#57A3CC] dark:bg-gray-800 dark:text-white"
               />
               {errors.schoolSlug && (
                 <p className="text-sm text-red-500">{errors.schoolSlug.message}</p>
               )}
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 Used in URLs and must be unique
               </p>
             </div>
@@ -432,7 +432,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="contactEmail" className="text-gray-700">
+              <Label htmlFor="contactEmail" className="text-gray-700 dark:text-gray-300">
                 Contact Email <span className="text-red-500">*</span>
               </Label>
               <div className="relative">
@@ -442,7 +442,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
                   type="email"
                   {...register("contactEmail")}
                   placeholder="contact@school.edu"
-                  className="pl-10 border-gray-300 focus:border-[#57A3CC] focus:ring-[#57A3CC]"
+                  className="pl-10 border-gray-300 dark:border-gray-700 focus:border-[#57A3CC] focus:ring-[#57A3CC] dark:bg-gray-800 dark:text-white"
                   disabled={isSubmitting}
                 />
               </div>
@@ -452,7 +452,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="website" className="text-gray-700">Website</Label>
+              <Label htmlFor="website" className="text-gray-700 dark:text-gray-300">Website</Label>
               <div className="relative">
                 <Globe className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
@@ -460,7 +460,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
                   type="url"
                   {...register("website")}
                   placeholder="https://www.school.edu"
-                  className="pl-10 border-gray-300 focus:border-[#57A3CC] focus:ring-[#57A3CC]"
+                  className="pl-10 border-gray-300 dark:border-gray-700 focus:border-[#57A3CC] focus:ring-[#57A3CC] dark:bg-gray-800 dark:text-white"
                   disabled={isSubmitting}
                 />
               </div>
@@ -471,18 +471,18 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="logo" className="text-gray-700">School Logo</Label>
+            <Label htmlFor="logo" className="text-gray-700 dark:text-gray-300">School Logo</Label>
             <div className="space-y-3">
               {logoPreview ? (
-                <div className="flex items-center gap-4 p-4 border-2 border-gray-200 rounded-lg">
+                <div className="flex items-center gap-4 p-4 border-2 border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-850">
                   <img 
                     src={logoPreview} 
                     alt="Logo preview" 
                     className="w-20 h-20 object-cover rounded-lg"
                   />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-700">{logoFile?.name}</p>
-                    <p className="text-xs text-gray-500">{(logoFile!.size / 1024).toFixed(2)} KB</p>
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{logoFile?.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{(logoFile!.size / 1024).toFixed(2)} KB</p>
                   </div>
                   <Button
                     type="button"
@@ -490,7 +490,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
                     size="sm"
                     onClick={removeLogo}
                     disabled={isSubmitting}
-                    className="text-red-600 hover:text-red-700"
+                    className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 dark:border-gray-700"
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -499,14 +499,14 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
                 <div className="flex items-center justify-center w-full">
                   <label
                     htmlFor="logo-upload"
-                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100"
+                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 dark:border-gray-700 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
                       <Upload className="w-8 h-8 mb-2 text-gray-400" />
-                      <p className="mb-2 text-sm text-gray-500">
-                        <span className="font-semibold">Click to upload</span> or drag and drop
+                      <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
+                        <span className="font-semibold text-gray-700 dark:text-gray-300">Click to upload</span> or drag and drop
                       </p>
-                      <p className="text-xs text-gray-500">PNG, JPG, GIF (MAX. 2MB)</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">PNG, JPG, GIF (MAX. 2MB)</p>
                     </div>
                     <input
                       id="logo-upload"
@@ -523,7 +523,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="address" className="text-gray-700">
+            <Label htmlFor="address" className="text-gray-700 dark:text-gray-300">
               Address <span className="text-red-500">*</span>
             </Label>
             <div className="relative">
@@ -532,7 +532,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
                 id="address"
                 {...register("address")}
                 placeholder="123 Main St, City, State, ZIP"
-                className="pl-10 border-gray-300 focus:border-[#57A3CC] focus:ring-[#57A3CC]"
+                className="pl-10 border-gray-300 dark:border-gray-700 focus:border-[#57A3CC] focus:ring-[#57A3CC] dark:bg-gray-800 dark:text-white"
                 disabled={isSubmitting}
               />
             </div>
@@ -547,18 +547,18 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
       {currentStep === 2 && (
         <div className="space-y-6 animate-in fade-in duration-300">
           <div className="space-y-1 mb-6">
-            <h3 className="text-xl font-semibold text-[#022172] flex items-center gap-2">
+            <h3 className="text-xl font-semibold text-[#022172] dark:text-white flex items-center gap-2">
               <User className="h-5 w-5" />
               School Admin Credentials
             </h3>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               Create login credentials for the school administrator
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="adminFirstName" className="text-gray-700">
+              <Label htmlFor="adminFirstName" className="text-gray-700 dark:text-gray-300">
                 First Name <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -566,7 +566,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
                 {...register("adminFirstName")}
                 placeholder="John"
                 disabled={isSubmitting}
-                className="border-gray-300 focus:border-[#57A3CC] focus:ring-[#57A3CC]"
+                className="border-gray-300 dark:border-gray-700 focus:border-[#57A3CC] focus:ring-[#57A3CC] dark:bg-gray-800 dark:text-white"
               />
               {errors.adminFirstName && (
                 <p className="text-sm text-red-500">{errors.adminFirstName.message}</p>
@@ -574,7 +574,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="adminLastName" className="text-gray-700">
+              <Label htmlFor="adminLastName" className="text-gray-700 dark:text-gray-300">
                 Last Name <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -582,7 +582,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
                 {...register("adminLastName")}
                 placeholder="Doe"
                 disabled={isSubmitting}
-                className="border-gray-300 focus:border-[#57A3CC] focus:ring-[#57A3CC]"
+                className="border-gray-300 dark:border-gray-700 focus:border-[#57A3CC] focus:ring-[#57A3CC] dark:bg-gray-800 dark:text-white"
               />
               {errors.adminLastName && (
                 <p className="text-sm text-red-500">{errors.adminLastName.message}</p>
@@ -591,7 +591,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="adminEmail" className="text-gray-700">
+            <Label htmlFor="adminEmail" className="text-gray-700 dark:text-gray-300">
               Email <span className="text-red-500">*</span>
             </Label>
             <div className="relative">
@@ -601,7 +601,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
                 type="email"
                 {...register("adminEmail")}
                 placeholder="admin@school.edu"
-                className="pl-10 border-gray-300 focus:border-[#57A3CC] focus:ring-[#57A3CC]"
+                className="pl-10 border-gray-300 dark:border-gray-700 focus:border-[#57A3CC] focus:ring-[#57A3CC] dark:bg-gray-800 dark:text-white"
                 disabled={isSubmitting}
               />
             </div>
@@ -611,8 +611,8 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="adminUsername" className="text-gray-700">
-              Username <span className="text-gray-400 text-xs font-normal">(optional — auto-generated if blank)</span>
+            <Label htmlFor="adminUsername" className="text-gray-700 dark:text-gray-300">
+              Username <span className="text-gray-400 dark:text-gray-500 text-xs font-normal">(optional — auto-generated if blank)</span>
             </Label>
             <div className="relative">
               <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -621,11 +621,11 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
                 type="text"
                 {...register("adminUsername")}
                 placeholder="e.g. john.doe"
-                className="pl-10 border-gray-300 focus:border-[#57A3CC] focus:ring-[#57A3CC]"
+                className="pl-10 border-gray-300 dark:border-gray-700 focus:border-[#57A3CC] focus:ring-[#57A3CC] dark:bg-gray-800 dark:text-white"
                 disabled={isSubmitting}
               />
             </div>
-            <p className="text-xs text-gray-400">Letters, numbers, dots, hyphens, and underscores only</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500">Letters, numbers, dots, hyphens, and underscores only</p>
             {errors.adminUsername && (
               <p className="text-sm text-red-500">{errors.adminUsername.message}</p>
             )}
@@ -633,7 +633,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="adminPassword" className="text-gray-700">
+              <Label htmlFor="adminPassword" className="text-gray-700 dark:text-gray-300">
                 Password <span className="text-red-500">*</span>
               </Label>
               <div className="relative">
@@ -643,7 +643,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
                   type={showPassword ? "text" : "password"}
                   {...register("adminPassword")}
                   placeholder="••••••••"
-                  className="pl-10 pr-10 border-gray-300 focus:border-[#57A3CC] focus:ring-[#57A3CC]"
+                  className="pl-10 pr-10 border-gray-300 dark:border-gray-700 focus:border-[#57A3CC] focus:ring-[#57A3CC] dark:bg-gray-800 dark:text-white"
                   disabled={isSubmitting}
                 />
                 <button
@@ -665,7 +665,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="adminPasswordConfirm" className="text-gray-700">
+              <Label htmlFor="adminPasswordConfirm" className="text-gray-700 dark:text-gray-300">
                 Confirm Password <span className="text-red-500">*</span>
               </Label>
               <div className="relative">
@@ -675,7 +675,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
                   type={showPasswordConfirm ? "text" : "password"}
                   {...register("adminPasswordConfirm")}
                   placeholder="••••••••"
-                  className="pl-10 pr-10 border-gray-300 focus:border-[#57A3CC] focus:ring-[#57A3CC]"
+                  className="pl-10 pr-10 border-gray-300 dark:border-gray-700 focus:border-[#57A3CC] focus:ring-[#57A3CC] dark:bg-gray-800 dark:text-white"
                   disabled={isSubmitting}
                 />
                 <button
@@ -703,29 +703,29 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
       {currentStep === 3 && (
         <div className="space-y-6 animate-in fade-in duration-300">
           <div className="space-y-1 mb-6">
-            <h3 className="text-xl font-semibold text-[#022172] flex items-center gap-2">
+            <h3 className="text-xl font-semibold text-[#022172] dark:text-white flex items-center gap-2">
               <DollarSign className="h-5 w-5" />
               Subscription Plan & Billing
             </h3>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               Select a subscription plan and billing cycle for the school
             </p>
           </div>
 
           {/* Subscription Plan */}
           <div className="space-y-2">
-            <Label htmlFor="billingPlanId" className="text-gray-700">
+            <Label htmlFor="billingPlanId" className="text-gray-700 dark:text-gray-300">
               Subscription Plan <span className="text-red-500">*</span>
             </Label>
             {loadingPlans ? (
-              <div className="h-11 bg-gray-100 rounded animate-pulse"></div>
+              <div className="h-11 bg-gray-100 dark:bg-gray-800 rounded animate-pulse"></div>
             ) : (
               <Select
                 value={watch("billingPlanId")}
                 onValueChange={(value) => setValue("billingPlanId", value)}
                 disabled={isSubmitting || billingPlans.length === 0}
               >
-                <SelectTrigger className="border-gray-300 focus:border-[#57A3CC] focus:ring-[#57A3CC]">
+                <SelectTrigger className="border-gray-300 dark:border-gray-700 focus:border-[#57A3CC] focus:ring-[#57A3CC] dark:bg-gray-800 dark:text-white">
                   <SelectValue placeholder="Select a billing plan" />
                 </SelectTrigger>
                 <SelectContent>
@@ -733,7 +733,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
                     <SelectItem key={plan.id} value={plan.id}>
                       <div className="flex items-center justify-between w-full">
                         <span className="font-medium">{plan.name}</span>
-                        <span className="text-sm text-gray-500 ml-4">
+                        <span className="text-sm text-gray-500 dark:text-gray-400 ml-4">
                           ${plan.monthly_price}/mo
                           {plan.max_students && ` - Up to ${plan.max_students} students`}
                         </span>
@@ -747,13 +747,13 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
               <p className="text-sm text-red-500">{errors.billingPlanId.message}</p>
             )}
             {billingPlans.length === 0 && !loadingPlans && (
-              <p className="text-sm text-amber-600">No billing plans available. Please contact administrator.</p>
+              <p className="text-sm text-amber-600 dark:text-amber-400">No billing plans available. Please contact administrator.</p>
             )}
           </div>
 
           {/* Billing Cycle */}
           <div className="space-y-2">
-            <Label htmlFor="billingCycle" className="text-gray-700">
+            <Label htmlFor="billingCycle" className="text-gray-700 dark:text-gray-300">
               Billing Cycle <span className="text-red-500">*</span>
             </Label>
             <Select
@@ -761,26 +761,26 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
               onValueChange={(value) => setValue("billingCycle", value as any)}
               disabled={isSubmitting}
             >
-              <SelectTrigger className="border-gray-300 focus:border-[#57A3CC] focus:ring-[#57A3CC]">
+              <SelectTrigger className="border-gray-300 dark:border-gray-700 focus:border-[#57A3CC] focus:ring-[#57A3CC] dark:bg-gray-800 dark:text-white">
                 <SelectValue placeholder="Select billing cycle" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Monthly">
                   <div className="flex items-center justify-between w-full">
                     <span className="font-medium">Monthly</span>
-                    <span className="text-sm text-gray-500 ml-4">Pay monthly</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400 ml-4">Pay monthly</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="Quarterly">
                   <div className="flex items-center justify-between w-full">
                     <span className="font-medium">Quarterly</span>
-                    <span className="text-sm text-gray-500 ml-4">Save 8% annually</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400 ml-4">Save 8% annually</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="Yearly">
                   <div className="flex items-center justify-between w-full">
                     <span className="font-medium">Yearly</span>
-                    <span className="text-sm text-gray-500 ml-4">Save 15% annually</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400 ml-4">Save 15% annually</span>
                   </div>
                 </SelectItem>
               </SelectContent>
@@ -792,7 +792,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
 
           {/* Start Date */}
           <div className="space-y-2">
-            <Label htmlFor="startDate" className="text-gray-700">
+            <Label htmlFor="startDate" className="text-gray-700 dark:text-gray-300">
               Subscription Start Date <span className="text-red-500">*</span>
             </Label>
             <div className="relative">
@@ -801,7 +801,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
                 id="startDate"
                 type="date"
                 {...register("startDate")}
-                className="pl-10 border-gray-300 focus:border-[#57A3CC] focus:ring-[#57A3CC]"
+                className="pl-10 border-gray-300 dark:border-gray-700 focus:border-[#57A3CC] focus:ring-[#57A3CC] dark:bg-gray-800 dark:text-white"
                 disabled={isSubmitting}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -816,32 +816,32 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
           </div>
 
           {/* Summary Card */}
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-200">
-            <h4 className="font-bold text-[#022172] mb-4 flex items-center gap-2">
-              <FileText className="h-5 w-5" />
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-955 dark:to-indigo-955 p-6 rounded-lg border border-blue-200 dark:border-blue-900/40 bg-blue-50/10">
+            <h4 className="font-bold text-[#022172] dark:text-white mb-4 flex items-center gap-2">
+              <FileText className="h-5 w-5 text-[#57A3CC]" />
               Billing Summary
             </h4>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600">Plan:</span>
-                <span className="font-semibold text-[#022172]">
+                <span className="text-gray-600 dark:text-gray-400">Plan:</span>
+                <span className="font-semibold text-[#022172] dark:text-sky-300">
                   {billingPlans.find(p => p.id === watch("billingPlanId"))?.name || "—"}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Billing Cycle:</span>
-                <span className="font-semibold text-[#022172]">{watch("billingCycle")}</span>
+                <span className="text-gray-600 dark:text-gray-400">Billing Cycle:</span>
+                <span className="font-semibold text-[#022172] dark:text-sky-300">{watch("billingCycle")}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Start Date:</span>
-                <span className="font-semibold text-[#022172]">
+                <span className="text-gray-600 dark:text-gray-400">Start Date:</span>
+                <span className="font-semibold text-[#022172] dark:text-sky-300">
                   {watch("startDate") ? new Date(watch("startDate")).toLocaleDateString() : "—"}
                 </span>
               </div>
-              <div className="border-t border-blue-300 mt-3 pt-3">
+              <div className="border-t border-blue-300 dark:border-blue-900 mt-3 pt-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-700 font-medium">First Payment:</span>
-                  <span className="text-2xl font-bold text-[#57A3CC]">
+                  <span className="text-gray-700 dark:text-gray-300 font-medium">First Payment:</span>
+                  <span className="text-2xl font-bold text-[#57A3CC] dark:text-[#57A3CC]">
                     ${(() => {
                       const selectedPlan = billingPlans.find(p => p.id === watch("billingPlanId"));
                       if (!selectedPlan) return 0;
@@ -856,7 +856,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
       )}
 
       {/* Navigation Buttons */}
-      <div className="flex justify-between pt-6 border-t">
+      <div className="flex justify-between pt-6 border-t dark:border-gray-800">
         <Button
           type="button"
           variant="outline"
@@ -865,7 +865,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
             prevStep();
           }}
           disabled={currentStep === 1 || isSubmitting}
-          className="border-gray-300 text-gray-700 hover:bg-gray-50"
+          className="border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
         >
           Previous Step
         </Button>

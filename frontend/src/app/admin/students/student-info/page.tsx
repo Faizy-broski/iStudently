@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MultiSelect } from "@/components/ui/multi-select";
 import {
   Pagination,
   PaginationContent,
@@ -91,12 +91,13 @@ export default function StudentInfoPage() {
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [credentialsData, setCredentialsData] = useState<{ id: string, name: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [gradeFilter, setGradeFilter] = useState("all");
+  const [gradeFilter, setGradeFilter] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showEditForm, setShowEditForm] = useState(false);
   const [showParentDialog, setShowParentDialog] = useState(false);
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
   const itemsPerPage = 10;
   const [appendConfig, setAppendConfig] = useState<StudentListAppendConfig | null>(null);
 
@@ -117,7 +118,7 @@ export default function StudentInfoPage() {
     page: currentPage,
     limit: itemsPerPage,
     search: debouncedSearch,
-    grade_level: gradeFilter,
+    grade_level: gradeFilter.length > 0 ? gradeFilter : undefined,
   });
 
   const { gradeLevels } = useGradeLevels();
@@ -192,6 +193,12 @@ export default function StudentInfoPage() {
     );
   };
 
+  // Filter by active/inactive status (client-side)
+  const filteredStudents = useMemo(() => {
+    if (showInactive) return students;
+    return students.filter(s => s.profile?.is_active !== false);
+  }, [students, showInactive]);
+
   return (
     <div className="p-6 space-y-6">
       {showEditForm && selectedStudent ? (
@@ -214,44 +221,58 @@ export default function StudentInfoPage() {
           {/* Search and Filters */}
           <Card>
             <CardContent className="pt-6">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder={t("search_placeholder")}
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setCurrentPage(1);
-                    }}
-                    className="pl-10 rtl:pr-10 rtl:pl-3"
-                  />
+              <div className="space-y-4">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder={t("search_placeholder")}
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                      className="pl-10 rtl:pr-10 rtl:pl-3"
+                    />
+                  </div>
+
+                  <div className="flex-1 md:flex-none md:min-w-64">
+                    <MultiSelect
+                      options={gradeLevels.map((grade) => grade.name)}
+                      value={gradeFilter}
+                      onChange={(value) => {
+                        setGradeFilter(value);
+                        setCurrentPage(1);
+                      }}
+                      placeholder={t("filter_grade")}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer md:self-start">
+                    <input
+                      type="checkbox"
+                      checked={showInactive}
+                      onChange={(e) => setShowInactive(e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    Show inactive
+                  </label>
+
+                  {(gradeFilter.length > 0 || searchQuery) && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setGradeFilter([]);
+                        setCurrentPage(1);
+                      }}
+                      className="md:self-start"
+                    >
+                      {tCommon("clearAll")}
+                    </Button>
+                  )}
                 </div>
-
-                <Select value={gradeFilter} onValueChange={handleFilterChange(setGradeFilter)}>
-                  <SelectTrigger className="w-full md:w-45">
-                    <SelectValue placeholder={t("filter_grade")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t("all_grades")}</SelectItem>
-                    {gradeLevels.map((grade) => (
-                      <SelectItem key={grade.id} value={grade.name}>
-                        {grade.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setGradeFilter("all");
-                    setCurrentPage(1);
-                  }}
-                >
-                  {tCommon("clearAll")}
-                </Button>
               </div>
             </CardContent>
           </Card>
@@ -290,16 +311,16 @@ export default function StudentInfoPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {students.length === 0 ? (
+                    {filteredStudents.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                           {t("no_students_found")}
                         </TableCell>
                       </TableRow>
                     ) : (
-                      students.map((student) => {
+                      filteredStudents.map((student) => {
                         const fullName = `${student.profile?.first_name || ''} ${student.profile?.last_name || ''}`.trim();
-                        const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase();
+                        const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
                         return (
                           <TableRow
                             key={student.id}
@@ -307,25 +328,25 @@ export default function StudentInfoPage() {
                             onClick={() => handleViewDetails(student)}
                           >
                             <TableCell className="font-medium">{student.student_number}</TableCell>
-                            <TableCell>
+                            <TableCell className="max-w-sm">
                               <div className="flex items-center gap-3">
                                 <ProfilePhoto
                                   src={student.profile?.profile_photo_url || student.custom_fields?.personal?.student_photo}
                                   name={fullName}
                                   size="xs"
                                 />
-                                <div>
-                                  <div className="font-medium">
+                                <div className="min-w-0 flex-1">
+                                  <div className="font-medium truncate">
                                     {fullName || tCommon("noData")}
                                   </div>
-                                  <div className="text-sm text-muted-foreground">{student.profile?.email || tCommon("noData")}</div>
+                                  <div className="text-sm text-muted-foreground truncate">{student.profile?.email || tCommon("noData")}</div>
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell>{buildGradeDisplay(student, student.grade_level || tCommon("noData"), appendConfig)}</TableCell>
+                            <TableCell className="max-w-xs">{buildGradeDisplay(student, student.grade_level || tCommon("noData"), appendConfig)}</TableCell>
                             <TableCell>{getStatusBadge(student.profile?.is_active ? 'active' : 'inactive')}</TableCell>
-                            <TableCell>
-                              <div className="text-sm">
+                            <TableCell className="max-w-xs">
+                              <div className="text-sm truncate">
                                 <div>{student.profile?.phone || tCommon("noData")}</div>
                               </div>
                             </TableCell>

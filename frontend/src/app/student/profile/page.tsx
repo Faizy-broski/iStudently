@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Loader2, User, Lock, Save, Mail, Phone, Shield } from 'lucide-react'
 import { toast } from 'sonner'
 import { updateProfile, changePassword } from '@/lib/api/auth'
@@ -65,9 +66,12 @@ export default function StudentProfilePage() {
       {/* Avatar & Name */}
       <Card className="p-6">
         <div className="flex items-center gap-5">
-          <div className="h-20 w-20 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-2xl font-bold shrink-0">
-            {initials}
-          </div>
+          <Avatar className="aspect-[3/4] w-20 h-auto rounded-xl border-2 border-blue-200 shrink-0">
+            <AvatarImage src={profile?.profile_photo_url || ''} alt={fullName} className="aspect-[3/4] h-full w-full object-cover" />
+            <AvatarFallback className="bg-blue-100 text-blue-600 text-2xl font-bold rounded-xl">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
           <div>
             <h2 className="text-xl font-semibold">{fullName}</h2>
             <p className="text-muted-foreground capitalize">{profile?.role}</p>

@@ -184,7 +184,7 @@ export default function TeacherStudentInfoPage() {
                 ) : (
                   students.map((student) => {
                     const fullName = `${student.profile?.first_name || ''} ${student.profile?.last_name || ''}`.trim();
-                    const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase();
+                    const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
                     return (
                       <TableRow
                         key={student.id}

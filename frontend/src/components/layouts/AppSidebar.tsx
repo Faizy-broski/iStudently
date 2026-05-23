@@ -154,7 +154,7 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
   }
 
   return (
-    <div className="px-4 pt-6 pb-5 mb-1 border-b border-white/10 flex flex-col items-center text-center">
+    <div className="px-4 pt-6 pb-5 mb-1 border-b border-white/10 flex flex-col items-center rtl:items-end text-center rtl:text-right">
       {/* Campus logo — centered, square/rectangle */}
       <div className="w-28 h-20 rounded-xl overflow-hidden ring-2 ring-white/30 shadow-lg mb-3 bg-white">
         {selectedCampus?.logo_url ? (
@@ -176,7 +176,7 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
           {dayName}, {dayNum} {monthShort} {year}
         </p>
         <p className="text-white/65 text-xs">{hijriStr}</p>
-        <div className="flex items-center justify-center gap-2 text-xs text-white/65">
+        <div className="flex items-center rtl:flex-row-reverse justify-center gap-2 text-xs text-white/65">
           <span className="font-medium">{timeStr}</span>
           <span className="text-white/30">|</span>
           <span>{isAr ? `الأسبوع ${weekNum}` : `Week ${weekNum}`}</span>
@@ -189,6 +189,8 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
 // Academic Year, Quarter & (for teachers) Course Period Selectors
 function AcademicSelectors() {
   const { profile } = useAuth()
+  const locale = useLocale()
+  const isAr = locale === 'ar'
   const {
     academicYears,
     selectedAcademicYear,
@@ -322,14 +324,15 @@ function AcademicSelectors() {
   return (
     <div className="px-3 mb-4 space-y-2">
       {/* Academic Year */}
-      <div className="flex rtl:flex-row-reverse items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
         <GraduationCap className="h-4 w-4 text-white/80 shrink-0" />
         <Select
+          dir={isAr ? 'rtl' : 'ltr'}
           value={selectedAcademicYear || ''}
           onValueChange={setSelectedAcademicYear}
           disabled={loading || academicYears.length === 0}
         >
-          <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 disabled:opacity-50">
+          <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 disabled:opacity-50 text-start flex-1">
             <SelectValue placeholder={loading ? 'Loading...' : 'Select Year'}>
               {loading ? 'Loading...' : (currentAcademicYear?.name || 'Select Year')}
             </SelectValue>
@@ -357,14 +360,15 @@ function AcademicSelectors() {
       </div>
 
       {/* Quarter */}
-      <div className="flex rtl:flex-row-reverse items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
         <Calendar className="h-4 w-4 text-white/80 shrink-0" />
         <Select
+          dir={isAr ? 'rtl' : 'ltr'}
           value={selectedQuarter?.id ?? ''}
           onValueChange={(id) => setSelectedQuarter(quarters.find(q => q.id === id) ?? null)}
           disabled={loadingQ}
         >
-          <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 disabled:opacity-50">
+          <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 disabled:opacity-50 text-start flex-1">
             <SelectValue placeholder={loadingQ ? 'Loading…' : 'No quarters'}>
               {loadingQ ? 'Loading…' : (selectedQuarter?.title ?? (quarters.length === 0 ? 'No quarters' : 'Select Quarter'))}
             </SelectValue>
@@ -395,9 +399,10 @@ function AcademicSelectors() {
 
       {/* Course Period — teacher only */}
       {isTeacher && (
-        <div className="flex rtl:flex-row-reverse items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+        <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
           <BookOpen className="h-4 w-4 text-white/80 shrink-0" />
           <Select
+            dir={isAr ? 'rtl' : 'ltr'}
             value={selectedCoursePeriod?.id ?? ''}
             onValueChange={(id) => {
               const cp = coursePeriods.find(c => c.id === id)
@@ -413,7 +418,7 @@ function AcademicSelectors() {
             }}
             disabled={loadingCp || !selectedAcademicYear}
           >
-            <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 disabled:opacity-50">
+            <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 disabled:opacity-50 text-start flex-1">
               <SelectValue placeholder={loadingCp ? 'Loading…' : 'Select Course'}>
                 {loadingCp
                   ? 'Loading…'
@@ -448,6 +453,8 @@ function AcademicSelectors() {
 // Parent: Child + Academic Year + Quarter selectors (parent role only)
 function ParentSelectors() {
   const { profile } = useAuth()
+  const locale = useLocale()
+  const isAr = locale === 'ar'
   const parentCtx = useParentDashboardSafe()
   const {
     academicYears,
@@ -526,14 +533,15 @@ function ParentSelectors() {
   return (
     <div className="px-3 mb-4 space-y-2">
       {/* Child selector */}
-      <div className="flex rtl:flex-row-reverse items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
         <User className="h-4 w-4 text-white/80 shrink-0" />
         <Select
+          dir={isAr ? 'rtl' : 'ltr'}
           value={selectedStudent || ''}
           onValueChange={(id) => setSelectedStudent(id)}
           disabled={isLoadingStudents || students.length === 0}
         >
-          <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 disabled:opacity-50">
+          <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 disabled:opacity-50 text-start flex-1">
             <SelectValue placeholder={isLoadingStudents ? 'Loading...' : 'Select Child'}>
               {isLoadingStudents
                 ? 'Loading...'
@@ -566,14 +574,15 @@ function ParentSelectors() {
       </div>
 
       {/* Academic Year */}
-      <div className="flex rtl:flex-row-reverse items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
         <GraduationCap className="h-4 w-4 text-white/80 shrink-0" />
         <Select
+          dir={isAr ? 'rtl' : 'ltr'}
           value={selectedAcademicYear || ''}
           onValueChange={setSelectedAcademicYear}
           disabled={academicLoading}
         >
-          <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 disabled:opacity-50">
+          <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 disabled:opacity-50 text-start flex-1">
             <SelectValue placeholder={academicLoading ? 'Loading...' : 'No year'}>
               {academicLoading ? 'Loading...' : (currentAcademicYear?.name || 'Select Year')}
             </SelectValue>
@@ -594,14 +603,15 @@ function ParentSelectors() {
       </div>
 
       {/* Quarter */}
-      <div className="flex rtl:flex-row-reverse items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
         <Calendar className="h-4 w-4 text-white/80 shrink-0" />
         <Select
+          dir={isAr ? 'rtl' : 'ltr'}
           value={selectedQuarter?.id ?? ''}
           onValueChange={(id) => setSelectedQuarter(quarters.find(q => q.id === id) ?? null)}
           disabled={loadingQ}
         >
-          <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 disabled:opacity-50">
+          <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 disabled:opacity-50 text-start flex-1">
             <SelectValue placeholder={loadingQ ? 'Loading…' : 'No quarters'}>
               {loadingQ ? 'Loading…' : (selectedQuarter?.title ?? (quarters.length === 0 ? 'No quarters' : 'Select Quarter'))}
             </SelectValue>
@@ -636,6 +646,8 @@ function ParentSelectors() {
 function CampusSelector() {
   const { profile } = useAuth()
   const campusContext = useCampus()
+  const locale = useLocale()
+  const isAr = locale === 'ar'
 
   // Only show for admin
   if (profile?.role !== 'admin' || !campusContext) return null
@@ -646,7 +658,7 @@ function CampusSelector() {
   if (loading) {
     return (
       <div className="px-3 mb-2">
-        <div className="flex rtl:flex-row-reverse items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+        <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
           <Building2 className="h-4 w-4 text-white/80 shrink-0 animate-pulse" />
           <span className="text-white/60 text-sm">Loading...</span>
         </div>
@@ -676,13 +688,14 @@ function CampusSelector() {
 
   return (
     <div className="px-3 mb-2">
-      <div className="flex rtl:flex-row-reverse items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
+      <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg border border-white/20">
         <Building2 className="h-4 w-4 text-white/80 shrink-0" />
         <Select
+          dir={isAr ? 'rtl' : 'ltr'}
           value={selectedCampus?.id || ''}
           onValueChange={handleCampusChange}
         >
-          <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 truncate">
+          <SelectTrigger className="h-8 border-0 bg-transparent text-white font-medium text-sm focus:ring-0 hover:bg-white/5 text-start flex-1 truncate">
             <SelectValue placeholder="Select Campus">
               {selectedCampus?.name || 'Select Campus'}
             </SelectValue>
@@ -703,6 +716,8 @@ function CampusSelector() {
 // Viewed Profile Indicator Component
 function ViewedProfileIndicator() {
   const router = useRouter()
+  const locale = useLocale()
+  const isAr = locale === 'ar'
   
   const context = React.useContext(ProfileViewContext);
   const viewedProfile = context?.viewedProfile ?? null;
@@ -740,12 +755,12 @@ function ViewedProfileIndicator() {
       <div className="flex items-center gap-2 px-3 py-2.5 bg-linear-to-r from-[#EEA831]/30 to-[#F59E0B]/20 rounded-lg border-2 border-[#EEA831] shadow-lg shadow-[#EEA831]/20">
         {getIcon()}
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] uppercase tracking-wider text-[#EEA831] font-semibold">{getLabel()}</p>
-          <p className="text-white text-sm font-bold truncate">{viewedProfile.name}</p>
+          <p className="text-[10px] uppercase tracking-wider text-[#EEA831] font-semibold text-start">{getLabel()}</p>
+          <p className="text-white text-sm font-bold truncate text-start">{viewedProfile.name}</p>
         </div>
         <button
           onClick={handleClose}
-          className="p-1.5 bg-red-500 hover:bg-red-600 rounded-full transition-colors shadow-md"
+          className="p-1.5 bg-red-500 hover:bg-red-600 rounded-full transition-colors shadow-md shrink-0"
           title="Close profile view"
         >
           <X className="h-4 w-4 text-white" />

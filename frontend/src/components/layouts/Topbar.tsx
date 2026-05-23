@@ -70,9 +70,9 @@ export function Topbar({ className }: TopbarProps) {
         if (item.isLabel) return // Skip label items
         const itemTitle = item.title.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
         const displayTitle = parentTitle ? `${parentTitle} > ${itemTitle}` : itemTitle
-        
-        // Only add items that have a parentTitle (submenu items only)
-        if (parentTitle) {
+
+        // Add navigable items (both top-level and submenu items)
+        if (item.href) {
           flattened.push({
             title: displayTitle,
             originalTitle: itemTitle,
@@ -81,7 +81,7 @@ export function Topbar({ className }: TopbarProps) {
             fullPath: displayTitle,
           })
         }
-        
+
         if (item.subItems) {
           flatten(item.subItems, itemTitle)
         }

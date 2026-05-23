@@ -56,13 +56,13 @@ export function CampusSwitcher() {
     }
 
     return (
-        <div className="flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-[#022172]" />
+        <div className="flex items-center gap-2 rtl:flex-row-reverse">
+            <Building2 className="h-4 w-4 text-[#022172] shrink-0" />
             <Select
                 value={selectedCampus?.id || ''}
                 onValueChange={handleCampusChange}
             >
-                <SelectTrigger className="w-[180px] h-9 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-200 text-sm font-medium">
+                <SelectTrigger className="w-[180px] h-9 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-200 text-sm font-medium rtl:text-right">
                     <SelectValue placeholder="Select Campus" />
                 </SelectTrigger>
                 <SelectContent>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,7 @@ export default function ParentInfoPage() {
   const [credentialsData, setCredentialsData] = useState<{ id: string, name: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [showInactive, setShowInactive] = useState(false);
   const [selectedParent, setSelectedParent] = useState<Parent | null>(null);
   const [showChildrenDialog, setShowChildrenDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
@@ -108,6 +109,12 @@ export default function ParentInfoPage() {
       <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">{t("inactive")}</Badge>
     );
   };
+
+  // Filter by active/inactive status (client-side)
+  const filteredParents = useMemo(() => {
+    if (showInactive) return parents;
+    return parents.filter(p => p.profile?.is_active !== false);
+  }, [parents, showInactive]);
 
   const renderChildren = (parent: Parent) => {
     const children = parent.children || [];
@@ -172,17 +179,28 @@ export default function ParentInfoPage() {
       {/* Search Bar */}
       <Card>
         <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={t("searchPlaceholder")}
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="pl-10"
-            />
+          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={t("searchPlaceholder")}
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-10"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={(e) => setShowInactive(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              Show inactive
+            </label>
           </div>
         </CardContent>
       </Card>
@@ -217,16 +235,16 @@ export default function ParentInfoPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {parents.length === 0 ? (
+                  {filteredParents.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                         {t("noParentsFound")}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    parents.map((parent) => {
+                    filteredParents.map((parent) => {
                       const fullName = `${parent.profile?.first_name || ''} ${parent.profile?.last_name || ''}`.trim();
-                      const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase();
+                      const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 
                       return (
                         <TableRow 
@@ -234,22 +252,24 @@ export default function ParentInfoPage() {
                           className="hover:bg-muted/50 cursor-pointer"
                           onClick={() => handleViewDetails(parent)}
                         >
-                          <TableCell>
+                          <TableCell className="max-w-sm">
                             <div className="flex items-center gap-3">
-                              <div className="h-10 w-10 rounded-full bg-linear-to-r from-[#57A3CC] to-[#022172] flex items-center justify-center text-white font-semibold">
+                              <div className="h-10 w-10 rounded-full bg-linear-to-r from-[#57A3CC] to-[#022172] flex items-center justify-center text-white font-semibold shrink-0">
                                 {initials || t("na")}
                               </div>
-                              <div className="font-medium">{fullName || t("na")}</div>
+                              <div className="min-w-0 flex-1">
+                                <div className="font-medium truncate">{fullName || t("na")}</div>
+                              </div>
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <div className="text-sm">
-                              <div>{parent.profile?.email || t("na")}</div>
-                              <div className="text-muted-foreground">{parent.profile?.phone || t("na")}</div>
+                          <TableCell className="max-w-xs">
+                            <div className="text-sm space-y-1 min-w-0">
+                              <div className="truncate">{parent.profile?.email || t("na")}</div>
+                              <div className="text-muted-foreground truncate">{parent.profile?.phone || t("na")}</div>
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <span className="text-sm">{parent.occupation || t("na")}</span>
+                          <TableCell className="max-w-xs">
+                            <span className="text-sm truncate block">{parent.occupation || t("na")}</span>
                           </TableCell>
                           <TableCell>{renderChildren(parent)}</TableCell>
                           <TableCell>{getStatusBadge(parent.profile?.is_active || false)}</TableCell>
@@ -379,7 +399,7 @@ export default function ParentInfoPage() {
               <div className="space-y-3">
                 {selectedParent.children.map((child) => {
                   const fullName = `${child.profile?.first_name || ''} ${child.profile?.last_name || ''}`.trim();
-                  const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase();
+                  const initials = fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 
                   return (
                     <div

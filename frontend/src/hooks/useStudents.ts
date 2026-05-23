@@ -9,7 +9,7 @@ interface UseStudentsOptions {
   page?: number;
   limit?: number;
   search?: string;
-  grade_level?: string;
+  grade_level?: string | string[];
 }
 
 export function useStudents(options: UseStudentsOptions = {}) {
@@ -29,7 +29,9 @@ export function useStudents(options: UseStudentsOptions = {}) {
         page,
         limit,
         search: search || undefined,
-        grade_level: grade_level !== 'all' ? grade_level : undefined,
+        grade_level: Array.isArray(grade_level)
+          ? grade_level.length > 0 ? grade_level : undefined
+          : grade_level !== 'all' ? grade_level : undefined,
         campus_id: campusContext?.selectedCampus?.id,
       });
 

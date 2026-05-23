@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
@@ -68,6 +68,7 @@ export default function StaffPage() {
     const [page, setPage] = useState(1)
     const [search, setSearch] = useState('')
     const [roleFilter, setRoleFilter] = useState<'staff' | 'librarian' | 'all'>('all')
+    const [showInactive, setShowInactive] = useState(false)
     const [editDialogOpen, setEditDialogOpen] = useState(false)
     const [editingStaff, setEditingStaff] = useState<Staff | null>(null)
     const [saving, setSaving] = useState(false)
@@ -76,6 +77,12 @@ export default function StaffPage() {
     const campusContext = useCampus()
     const { staff, totalPages, isLoading, mutate } = useStaff(page, 10, search, roleFilter, campusContext?.selectedCampus?.id)
     const { profile } = useAuth()
+
+    // Filter by active/inactive status (client-side)
+    const filteredStaff = useMemo(() => {
+        if (showInactive) return staff
+        return staff.filter(s => s.is_active !== false)
+    }, [staff, showInactive])
 
     // Credentials modal state
     const [credentialsModalOpen, setCredentialsModalOpen] = useState(false)
@@ -188,7 +195,7 @@ export default function StaffPage() {
 
             {/* Filters */}
             <Card className="border-blue-100">
-                <CardContent className="p-4 flex flex-col md:flex-row gap-4">
+                <CardContent className="p-4 flex flex-col md:flex-row gap-4 items-start md:items-center">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input
@@ -198,7 +205,7 @@ export default function StaffPage() {
                             className="pl-10"
                         />
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                         <Button
                             variant={roleFilter === 'all' ? 'default' : 'outline'}
                             onClick={() => setRoleFilter('all')}
@@ -221,6 +228,15 @@ export default function StaffPage() {
                             {t('filters.librarians')}
                         </Button>
                     </div>
+                    <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={showInactive}
+                            onChange={(e) => setShowInactive(e.target.checked)}
+                            className="rounded border-gray-300"
+                        />
+                        Show inactive
+                    </label>
                 </CardContent>
             </Card>
 
@@ -242,37 +258,37 @@ export default function StaffPage() {
                             <TableRow>
                                 <TableCell colSpan={6} className="h-24 text-center">{t('loading')}</TableCell>
                             </TableRow>
-                        ) : staff.length === 0 ? (
+                        ) : filteredStaff.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={6} className="h-24 text-center text-gray-500">
                                     {t('noStaffFound')}
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            staff.map((member: Staff) => (
+                            filteredStaff.map((member: Staff) => (
                                 <TableRow 
                                     key={member.id} 
                                     className="hover:bg-blue-50/30 dark:hover:bg-gray-700/30 transition-colors cursor-pointer"
                                     onClick={() => router.push(`/admin/staff/${encodeURIComponent(member.employee_number)}`)}
                                 >
-                                    <TableCell>
+                                    <TableCell className="max-w-sm">
                                         <div className="flex items-center gap-3">
-                                            <div className="h-9 w-9 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center text-[#022172] dark:text-blue-300 font-semibold text-sm">
+                                            <div className="h-9 w-9 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center text-[#022172] dark:text-blue-300 font-semibold text-sm shrink-0">
                                                 {member.profile?.first_name?.[0]}{member.profile?.last_name?.[0]}
                                             </div>
-                                            <div>
-                                                <div className="font-medium text-[#022172] dark:text-gray-200">
+                                            <div className="min-w-0 flex-1">
+                                                <div className="font-medium text-[#022172] dark:text-gray-200 truncate">
                                                     {member.profile?.first_name} {member.profile?.last_name}
                                                 </div>
-                                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
                                                     {t('employeeNumberLabel')}: {member.employee_number}
                                                 </div>
                                             </div>
                                         </div>
                                     </TableCell>
-                                    <TableCell>
+                                    <TableCell className="max-w-xs">
                                         <div className="flex flex-col">
-                                            <span className="font-medium dark:text-gray-200">{member.title || t('na')}</span>
+                                            <span className="font-medium dark:text-gray-200 truncate">{member.title || t('na')}</span>
                                             {member.profile?.role === 'librarian' && (
                                                 <Badge variant="secondary" className="w-fit mt-1 text-[10px] bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/70 border-purple-200 dark:border-purple-800">
                                                     {t('designations.systemLibrarian')}
@@ -280,22 +296,22 @@ export default function StaffPage() {
                                             )}
                                         </div>
                                     </TableCell>
-                                    <TableCell>
+                                    <TableCell className="max-w-xs">
                                         <div className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-400">
-                                            <div className="flex items-center gap-2">
-                                                <Mail className="h-3 w-3" />
-                                                {member.profile?.email}
+                                            <div className="flex items-center gap-2 truncate">
+                                                <Mail className="h-3 w-3 shrink-0" />
+                                                <span className="truncate">{member.profile?.email}</span>
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <Phone className="h-3 w-3" />
-                                                {member.profile?.phone || t('na')}
+                                            <div className="flex items-center gap-2 truncate">
+                                                <Phone className="h-3 w-3 shrink-0" />
+                                                <span className="truncate">{member.profile?.phone || t('na')}</span>
                                             </div>
                                         </div>
                                     </TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                                            <Briefcase className="h-3 w-3" />
-                                            {member.department || t('na')}
+                                    <TableCell className="max-w-xs">
+                                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 truncate">
+                                            <Briefcase className="h-3 w-3 shrink-0" />
+                                            <span className="truncate">{member.department || t('na')}</span>
                                         </div>
                                     </TableCell>
                                     <TableCell>

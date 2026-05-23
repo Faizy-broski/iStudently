@@ -11,7 +11,7 @@ export class StudentService {
     page: number = 1,
     limit: number = 10,
     search?: string,
-    gradeLevel?: string,
+    gradeLevel?: string | string[],
     sectionId?: string
   ) {
     const offset = (page - 1) * limit
@@ -35,7 +35,12 @@ export class StudentService {
           // Apply grade filter client-side if needed
           let filtered = searchResults || [];
           if (gradeLevel) {
-            filtered = filtered.filter((s: any) => s.grade_level === gradeLevel);
+            if (Array.isArray(gradeLevel)) {
+              const gradeSet = new Set(gradeLevel);
+              filtered = filtered.filter((s: any) => gradeSet.has(s.grade_level));
+            } else {
+              filtered = filtered.filter((s: any) => s.grade_level === gradeLevel);
+            }
           }
 
           // Apply pagination
@@ -141,7 +146,11 @@ export class StudentService {
 
     // Apply grade filter
     if (gradeLevel) {
-      query = query.eq('grade_level', gradeLevel)
+      if (Array.isArray(gradeLevel)) {
+        query = query.in('grade_level', gradeLevel)
+      } else {
+        query = query.eq('grade_level', gradeLevel)
+      }
     }
 
     // Apply section filter

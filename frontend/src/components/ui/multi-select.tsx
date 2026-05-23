@@ -50,16 +50,16 @@ export function MultiSelect({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={`w-full justify-between ${className}`}
+          className={`w-full justify-between h-auto min-h-10 ${className}`}
           type="button"
         >
-          <div className="flex flex-wrap gap-1 flex-1">
+          <div className="flex flex-wrap gap-1 flex-1 items-center">
             {value.length > 0 ? (
               value.map((item) => (
                 <Badge
                   key={item}
                   variant="secondary"
-                  className="bg-gradient-to-r from-[#57A3CC]/20 to-[#022172]/20 text-[#022172] border border-[#57A3CC]/30"
+                  className="bg-gradient-to-r from-[#57A3CC]/20 to-[#022172]/20 text-[#022172] border border-[#57A3CC]/30 whitespace-nowrap"
                 >
                   {item}
                   <span
@@ -67,7 +67,7 @@ export function MultiSelect({
                       e.stopPropagation();
                       handleRemove(item);
                     }}
-                    className="ml-1 rounded-full hover:bg-[#022172]/20 cursor-pointer inline-flex"
+                    className="ml-1 rounded-full hover:bg-[#022172]/20 cursor-pointer inline-flex shrink-0"
                   >
                     <X className="h-3 w-3" />
                   </span>

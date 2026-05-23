@@ -27,9 +27,15 @@ export class StudentController {
       const page = parseInt(req.query.page as string) || 1
       const limit = parseInt(req.query.limit as string) || 10
       const search = req.query.search as string
-      const gradeLevel = req.query.grade_level as string
+      const gradeLevelParam = req.query.grade_level
       const campusId = req.query.campus_id as string
       const sectionId = req.query.section_id as string
+
+      const gradeLevels = Array.isArray(gradeLevelParam)
+        ? (gradeLevelParam as string[])
+        : gradeLevelParam
+          ? String(gradeLevelParam).split(',').map((value) => value.trim()).filter(Boolean)
+          : undefined
 
       // Use campus_id if provided and not empty, otherwise use admin's school_id
       const effectiveSchoolId = (campusId && campusId.trim() !== '') ? campusId : schoolId
@@ -39,7 +45,7 @@ export class StudentController {
         page,
         limit,
         search,
-        gradeLevel,
+        gradeLevels,
         sectionId
       )
 

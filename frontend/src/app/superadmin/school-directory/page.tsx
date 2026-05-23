@@ -58,8 +58,7 @@ export default function SchoolDirectoryPage() {
 
     if (statusFilter !== "all") {
       filtered = filtered.filter(network =>
-        network.root.status === statusFilter ||
-        network.branches.some(b => b.status === statusFilter)
+        network.root.status === statusFilter
       );
     }
 

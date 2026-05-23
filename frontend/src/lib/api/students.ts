@@ -141,7 +141,7 @@ export async function getStudents(params?: {
   page?: number
   limit?: number
   search?: string
-  grade_level?: string
+  grade_level?: string | string[]
   campus_id?: string
   /** Scope results to a specific section (used by teacher dashboard) */
   section_id?: string
@@ -150,7 +150,13 @@ export async function getStudents(params?: {
   if (params?.page) queryParams.append('page', params.page.toString())
   if (params?.limit) queryParams.append('limit', params.limit.toString())
   if (params?.search) queryParams.append('search', params.search)
-  if (params?.grade_level) queryParams.append('grade_level', params.grade_level)
+  if (params?.grade_level) {
+    if (Array.isArray(params.grade_level)) {
+      params.grade_level.forEach((grade) => queryParams.append('grade_level', grade))
+    } else {
+      queryParams.append('grade_level', params.grade_level)
+    }
+  }
   if (params?.campus_id) queryParams.append('campus_id', params.campus_id)
   if (params?.section_id) queryParams.append('section_id', params.section_id)
 

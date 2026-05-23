@@ -258,10 +258,16 @@ export default function TeachersPage() {
                           onClick={() => router.push(`/admin/teachers/${encodeURIComponent(teacher.employee_number)}`)}
                         >
                           <TableCell className="font-medium">{teacher.employee_number}</TableCell>
-                          <TableCell>{fullName}</TableCell>
-                          <TableCell>{teacher.department || t("dash")}</TableCell>
-                          <TableCell className="max-w-xs truncate">
-                            {teacher.specialization || t("dash")}
+                          <TableCell className="max-w-sm">
+                            <div className="truncate">{fullName}</div>
+                          </TableCell>
+                          <TableCell className="max-w-xs">
+                            <div className="truncate">{teacher.department || t("dash")}</div>
+                          </TableCell>
+                          <TableCell className="max-w-xs">
+                            <div className="truncate">
+                              {teacher.specialization || t("dash")}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <Badge variant={getEmploymentBadge(teacher.employment_type) as any}>
@@ -273,9 +279,9 @@ export default function TeachersPage() {
                               {teacher.is_active ? t("active") : t("inactive")}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-sm">
-                            <div>{teacher.profile?.email || t("dash")}</div>
-                            <div className="text-muted-foreground">{teacher.profile?.phone || t("dash")}</div>
+                          <TableCell className="text-sm max-w-xs">
+                            <div className="truncate">{teacher.profile?.email || t("dash")}</div>
+                            <div className="text-muted-foreground truncate">{teacher.profile?.phone || t("dash")}</div>
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>

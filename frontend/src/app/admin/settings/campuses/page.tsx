@@ -190,6 +190,8 @@ export default function CampusesPage() {
                                 await deleteCampus(campus.id)
                                 toast.success(t('delete_success'))
                                 loadCampuses()
+                                // Invalidate campus context cache so deleted campus is removed from sidebar
+                                campusContext?.refreshCampuses()
                             } catch (error) {
                                 console.error("Error deleting campus:", error)
                                 toast.error(t('delete_error'))
