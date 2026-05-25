@@ -31,6 +31,7 @@ import {
 import { toast } from "sonner";
 import { useProfileView } from "@/context/ProfileViewContext";
 import { QualificationsTab } from "@/components/admin/QualificationsTab";
+import { UserQRCode } from "@/components/shared/UserQRCode";
 import { type Staff } from "@/lib/api/teachers";
 import { useTeachers } from "@/hooks/useTeachers";
 import { format } from "date-fns";
@@ -242,7 +243,7 @@ export default function TeacherDetailsPage() {
                   </Badge>
                 </div>
               </div>
-              
+
               {/* Quick Contact Info */}
               <div className="flex flex-wrap gap-4 mt-4 text-sm">
                 {currentTeacher.profile?.email && (
@@ -265,6 +266,12 @@ export default function TeacherDetailsPage() {
                 )}
               </div>
             </div>
+
+            {currentTeacher.profile_id && (
+              <div className="shrink-0">
+                <UserQRCode value={currentTeacher.profile_id} size={100} label={fullName || currentTeacher.employee_number} />
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

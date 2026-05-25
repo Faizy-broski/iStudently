@@ -2,14 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, FlaskConical, Loader2, ExternalLink } from 'lucide-react'
+import { ArrowLeft, FlaskConical, Loader2, ExternalLink, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import {
   getVLabyExperiment,
-  getStoredVLabyToken,
-  clearVLabyToken,
   type VLabyExperimentDetail,
 } from '@/lib/api/vlaby'
 
@@ -17,27 +15,19 @@ interface VLabyExperimentViewerProps {
   experimentId: string | number
   /** Back href, e.g. /admin/resources/vlaby */
   backPath: string
-  /** If no token, redirect to this path for login */
-  loginPath: string
 }
 
 export default function VLabyExperimentViewer({
   experimentId,
   backPath,
-  loginPath,
 }: VLabyExperimentViewerProps) {
   const router = useRouter()
   const [experiment, setExperiment] = useState<VLabyExperimentDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [noAccount, setNoAccount] = useState(false)
 
   useEffect(() => {
-    const token = getStoredVLabyToken()
-    if (!token) {
-      router.replace(loginPath)
-      return
-    }
-
     let cancelled = false
 
     const load = async () => {
@@ -46,13 +36,11 @@ export default function VLabyExperimentViewer({
       setLoading(false)
 
       if (!res.success) {
-        if (res.code === 'VLABY_TOKEN_EXPIRED') {
-          clearVLabyToken()
-          toast.error('VLaby session expired. Please log in again.')
-          router.replace(loginPath)
-          return
+        if ((res as any).code === 'VLABY_TOKEN_REQUIRED') {
+          setNoAccount(true)
+        } else {
+          setError(res.error || 'Failed to load experiment')
         }
-        setError(res.error || 'Failed to load experiment')
         return
       }
 
@@ -61,7 +49,7 @@ export default function VLabyExperimentViewer({
 
     load()
     return () => { cancelled = true }
-  }, [experimentId, loginPath, router])
+  }, [experimentId])
 
   if (loading) {
     return (
@@ -72,12 +60,29 @@ export default function VLabyExperimentViewer({
     )
   }
 
+  if (noAccount) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[30vh] gap-4 text-center px-4">
+        <AlertCircle size={40} className="text-amber-400" />
+        <div>
+          <p className="font-semibold text-gray-800 dark:text-gray-100 mb-1">No VLaby account connected</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm">
+            Ask your school administrator to connect the school's VLaby account so experiments can be opened.
+          </p>
+        </div>
+        <Button variant="outline" onClick={() => router.push(backPath)}>
+          <ArrowLeft size={14} className="mr-1 rtl:rotate-180 rtl:ml-1 rtl:mr-0" /> Back to experiments
+        </Button>
+      </div>
+    )
+  }
+
   if (error || !experiment) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[30vh] gap-4">
         <p className="text-red-500">{error || 'Experiment not found'}</p>
         <Button variant="outline" onClick={() => router.push(backPath)}>
-          <ArrowLeft size={14} className="mr-1" /> Back to experiments
+          <ArrowLeft size={14} className="mr-1 rtl:rotate-180 rtl:ml-1 rtl:mr-0" /> Back to experiments
         </Button>
       </div>
     )
@@ -89,17 +94,17 @@ export default function VLabyExperimentViewer({
     <div className="flex flex-col gap-4">
       {/* Top bar */}
       <div className="flex items-center gap-3 flex-wrap">
-        <Button variant="ghost" size="sm" onClick={() => router.push(backPath)} className="gap-1 text-gray-500">
-          <ArrowLeft size={14} /> Back
+        <Button variant="ghost" size="sm" onClick={() => router.push(backPath)} className="gap-1 text-gray-500 dark:text-gray-400">
+          <ArrowLeft size={14} className="rtl:rotate-180" /> Back
         </Button>
-        <div className="flex items-center gap-2 font-semibold text-gray-800 text-base">
-          <FlaskConical size={18} className="text-indigo-600" />
+        <div className="flex items-center gap-2 font-semibold text-gray-800 dark:text-gray-100 text-base">
+          <FlaskConical size={18} className="text-indigo-600 dark:text-indigo-400" />
           {experiment.title}
         </div>
       </div>
 
       {/* Meta row */}
-      <div className="flex items-center gap-2 flex-wrap text-sm text-gray-500">
+      <div className="flex items-center gap-2 flex-wrap text-sm text-gray-500 dark:text-gray-400">
         <Badge variant="secondary">{experiment.subject_name}</Badge>
         {experiment.points > 0 && <Badge variant="outline">{experiment.points} pts</Badge>}
         <span>·</span>
@@ -111,7 +116,7 @@ export default function VLabyExperimentViewer({
             href={experiment.file}
             target="_blank"
             rel="noopener noreferrer"
-            className="ml-auto flex items-center gap-1 text-indigo-600 hover:underline text-xs"
+            className="ml-auto flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:underline text-xs"
           >
             Open in new tab <ExternalLink size={12} />
           </a>
@@ -120,7 +125,7 @@ export default function VLabyExperimentViewer({
 
       {/* Iframe */}
       {hasIframe ? (
-        <div className="rounded-xl overflow-hidden border shadow-sm" style={{ height: 'calc(100vh - 260px)', minHeight: 480 }}>
+        <div className="rounded-xl overflow-hidden border dark:border-gray-800 shadow-sm" style={{ height: 'calc(100vh - 260px)', minHeight: 480 }}>
           <iframe
             src={experiment.file}
             title={experiment.title}
@@ -130,14 +135,14 @@ export default function VLabyExperimentViewer({
           />
         </div>
       ) : (
-        <div className="flex items-center justify-center h-64 border rounded-xl bg-gray-50 text-gray-400">
+        <div className="flex items-center justify-center h-64 border dark:border-gray-800 rounded-xl bg-gray-50 dark:bg-gray-900 text-gray-400">
           No interactive file available for this experiment.
         </div>
       )}
 
       {/* Description */}
       {experiment.description && (
-        <div className="prose prose-sm max-w-none text-gray-600 border rounded-xl p-4 bg-white">
+        <div className="prose prose-sm max-w-none text-gray-600 dark:text-gray-300 border dark:border-gray-800 rounded-xl p-4 bg-white dark:bg-gray-900">
           <p>{experiment.description}</p>
         </div>
       )}

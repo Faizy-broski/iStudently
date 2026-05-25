@@ -12,7 +12,6 @@ export default async function StudentVLabyExperimentPage({ params }: Props) {
     <VLabyExperimentViewer
       experimentId={id}
       backPath="/student/resources/vlaby"
-      loginPath="/student/resources/vlaby"
     />
   )
 }

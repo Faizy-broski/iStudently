@@ -1,4 +1,5 @@
 import { Request, Response } from 'express'
+import { supabase } from '../config/supabase'
 
 interface AuthRequest extends Request {
   profile?: {
@@ -55,6 +56,33 @@ function sendTokenExpired(res: Response): void {
     error: 'VLaby session expired. Please log in again.',
     code: 'VLABY_TOKEN_EXPIRED',
   })
+}
+
+// ─── School-level VLaby token helpers ────────────────────────────────────────
+
+async function getSchoolVlabyToken(schoolId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('school_settings')
+    .select('vlaby_config')
+    .eq('school_id', schoolId)
+    .is('campus_id', null)
+    .maybeSingle()
+  return (data?.vlaby_config as any)?.token ?? null
+}
+
+async function upsertSchoolSettings(schoolId: string, patch: Record<string, unknown>): Promise<void> {
+  const { data: existing } = await supabase
+    .from('school_settings')
+    .select('id')
+    .eq('school_id', schoolId)
+    .is('campus_id', null)
+    .maybeSingle()
+
+  if (existing?.id) {
+    await supabase.from('school_settings').update(patch).eq('id', existing.id)
+  } else {
+    await supabase.from('school_settings').insert({ school_id: schoolId, campus_id: null, ...patch })
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -164,10 +192,13 @@ export const getUserExperiments = async (req: AuthRequest, res: Response): Promi
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const getExperiment = async (req: AuthRequest, res: Response): Promise<void> => {
-  const vlabyToken = req.headers['x-vlaby-token'] as string | undefined
-  if (!vlabyToken) {
-    res.status(401).json({ success: false, error: 'VLaby session token missing. Please log in to VLaby first.' })
-    return
+  const schoolId = req.profile?.school_id
+  const userToken = (req.headers['x-vlaby-token'] as string | undefined) || null
+
+  // Resolve token: user's own first, then school-level fallback
+  let vlabyToken = userToken
+  if (!vlabyToken && schoolId) {
+    vlabyToken = await getSchoolVlabyToken(schoolId)
   }
 
   const { id } = req.params
@@ -184,7 +215,12 @@ export const getExperiment = async (req: AuthRequest, res: Response): Promise<vo
     )
 
     if (!body?.status) {
-      if (httpStatus === 401) { sendTokenExpired(res); return }
+      if (httpStatus === 401) {
+        // Return 200 so the frontend apiRequest doesn't misinterpret this as a
+        // Studently session expiry (which triggers a redirect to /auth/login)
+        res.json({ success: false, error: 'No VLaby account connected.', code: 'VLABY_TOKEN_REQUIRED' })
+        return
+      }
       res.status(502).json({ success: false, error: body?.message || body?.msg || 'Failed to fetch experiment' })
       return
     }
@@ -193,6 +229,91 @@ export const getExperiment = async (req: AuthRequest, res: Response): Promise<vo
   } catch (err: any) {
     console.error('VLaby experiment error:', err)
     res.status(502).json({ success: false, error: 'Could not reach VLaby API' })
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// School-level VLaby config (admin only for write)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const getSchoolConfig = async (req: AuthRequest, res: Response): Promise<void> => {
+  const schoolId = req.profile?.school_id
+  if (!schoolId) { res.status(403).json({ success: false, error: 'No school associated' }); return }
+
+  try {
+    const { data } = await supabase
+      .from('school_settings')
+      .select('vlaby_config')
+      .eq('school_id', schoolId)
+      .is('campus_id', null)
+      .maybeSingle()
+
+    const config = data?.vlaby_config as any
+    res.json({
+      success: true,
+      data: {
+        connected: Boolean(config?.token),
+        email: config?.email ?? null,
+        connected_at: config?.connected_at ?? null,
+      },
+    })
+  } catch (err: any) {
+    console.error('VLaby school config error:', err)
+    res.status(500).json({ success: false, error: 'Failed to retrieve VLaby configuration' })
+  }
+}
+
+export const connectSchoolVlaby = async (req: AuthRequest, res: Response): Promise<void> => {
+  const schoolId = req.profile?.school_id
+  if (!schoolId) { res.status(403).json({ success: false, error: 'No school associated' }); return }
+
+  const { email, password } = req.body
+  if (!email || !password) {
+    res.status(400).json({ success: false, error: 'Email and password are required' })
+    return
+  }
+
+  try {
+    const { body } = await proxyPost(`${VLABY_BASE}/login`, { email, password }, resolveLocale(req))
+
+    if (!body?.status || !body?.data?.user?.token) {
+      const msg = body?.errors
+        ? Array.isArray(body.errors) ? body.errors.join(' ') : JSON.stringify(body.errors)
+        : body?.message || body?.msg || 'VLaby login failed'
+      res.status(401).json({ success: false, error: msg })
+      return
+    }
+
+    const config = { token: body.data.user.token, email, connected_at: new Date().toISOString() }
+    await upsertSchoolSettings(schoolId, { vlaby_config: config })
+
+    res.json({ success: true, data: { connected: true, email, connected_at: config.connected_at } })
+  } catch (err: any) {
+    console.error('VLaby connect error:', err)
+    res.status(500).json({ success: false, error: 'Failed to connect VLaby account' })
+  }
+}
+
+export const disconnectSchoolVlaby = async (req: AuthRequest, res: Response): Promise<void> => {
+  const schoolId = req.profile?.school_id
+  if (!schoolId) { res.status(403).json({ success: false, error: 'No school associated' }); return }
+
+  try {
+    const { data: existing } = await supabase
+      .from('school_settings')
+      .select('id')
+      .eq('school_id', schoolId)
+      .is('campus_id', null)
+      .maybeSingle()
+
+    if (existing?.id) {
+      await supabase.from('school_settings').update({ vlaby_config: null }).eq('id', existing.id)
+    }
+
+    res.json({ success: true })
+  } catch (err: any) {
+    console.error('VLaby disconnect error:', err)
+    res.status(500).json({ success: false, error: 'Failed to disconnect VLaby account' })
   }
 }
 

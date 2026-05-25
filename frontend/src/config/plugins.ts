@@ -479,10 +479,10 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     ],
   },
 
-  // ── VLaby Virtual Labs ───────────────────────────────────────────────────
+  // ── Virtual Labs ─────────────────────────────────────────────────────────
   {
     id: 'vlaby',
-    name: 'VLaby Virtual Labs',
+    name: 'Virtual Labs',
     description:
       'Browse and run interactive virtual lab experiments (Biology, Chemistry, Physics) from VLaby.com directly inside the portal. Each role uses their own VLaby credentials. Available in English, Arabic, French, German & Indonesian.',
     icon: FlaskConical,

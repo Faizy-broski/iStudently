@@ -8,9 +8,15 @@ const router = Router()
 router.use(authenticate)
 
 const allowed = requireRole('super_admin', 'admin', 'teacher', 'student', 'parent')
+const adminOnly = requireRole('super_admin', 'admin')
 
 // Auth
 router.post('/login', allowed, controller.login)
+
+// School-level VLaby account (admin configures once, all users benefit)
+router.get('/school-config', allowed, controller.getSchoolConfig)
+router.post('/school-config', adminOnly, controller.connectSchoolVlaby)
+router.delete('/school-config', adminOnly, controller.disconnectSchoolVlaby)
 
 // Public catalog — no VLaby token needed, just Studently auth + plugin active
 router.get('/catalog', allowed, controller.getCatalog)

@@ -12,7 +12,6 @@ export default async function AdminVLabyExperimentPage({ params }: Props) {
     <VLabyExperimentViewer
       experimentId={id}
       backPath="/admin/resources/vlaby"
-      loginPath="/admin/resources/vlaby"
     />
   )
 }

@@ -41,6 +41,7 @@ import { getParentById, type Parent } from "@/lib/api/parents";
 import { format } from "date-fns";
 import DisciplineScoreTab from "@/components/admin/DisciplineScoreTab";
 import RelativesTab from "@/components/admin/RelativesTab";
+import { UserQRCode } from "@/components/shared/UserQRCode";
 import { useTranslations } from "next-intl";
 
 interface EmergencyContact {
@@ -288,6 +289,12 @@ export default function StudentDetailsPage() {
                 )}
               </div>
             </div>
+
+            {currentStudent.profile_id && (
+              <div className="shrink-0">
+                <UserQRCode value={currentStudent.profile_id} size={100} label={fullName || currentStudent.student_number} />
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

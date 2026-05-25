@@ -133,6 +133,32 @@ function qs(params: Record<string, string | number | undefined>): string {
   return s ? `?${s}` : ''
 }
 
+// ─── School-level config ──────────────────────────────────────────────────────
+
+export interface VlabySchoolConfig {
+  connected: boolean
+  email: string | null
+  connected_at: string | null
+}
+
+export async function getVlabySchoolConfig(): Promise<ApiResponse<VlabySchoolConfig>> {
+  return apiRequest<VlabySchoolConfig>('/vlaby/school-config')
+}
+
+export async function connectVlabySchool(
+  email: string,
+  password: string
+): Promise<ApiResponse<VlabySchoolConfig>> {
+  return apiRequest<VlabySchoolConfig>('/vlaby/school-config', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  })
+}
+
+export async function disconnectVlabySchool(): Promise<ApiResponse<void>> {
+  return apiRequest<void>('/vlaby/school-config', { method: 'DELETE' })
+}
+
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
 export async function vlabyLogin(
@@ -148,11 +174,13 @@ export async function vlabyLogin(
 // ─── Public catalog (no VLaby token needed) ───────────────────────────────────
 
 export async function getVLabyCatalog(
-  filters: VLabyCatalogFilters = {}
+  filters: VLabyCatalogFilters = {},
+  locale?: string
 ): Promise<ApiResponse<VLabyPaginatedResult>> {
   const { country_id, level_id, level_class_id, semester_id, subject_id, search, page, length_page } = filters
   const query = qs({ country_id, level_id, level_class_id, semester_id, subject_id, search, page, length_page })
-  return apiRequest<VLabyPaginatedResult>(`/vlaby/catalog${query}`)
+  const extraHeaders = locale ? { 'x-locale': locale } : undefined
+  return apiRequest<VLabyPaginatedResult>(`/vlaby/catalog${query}`, { headers: extraHeaders })
 }
 
 // ─── Groups ───────────────────────────────────────────────────────────────────

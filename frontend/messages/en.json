@@ -7899,7 +7899,7 @@
       "unsaved_changes_warning_desc": "Warns users when navigating away from a page with unsaved form changes. Shows a confirmation dialog before leaving. Also guards against browser close/reload.",
       "embedded_resources_name": "Embedded Resources",
       "embedded_resources_desc": "Embed external websites directly inside the portal. Admins add links with optional grade-level restrictions from the Resources menu.",
-      "vlaby_name": "VLaby Virtual Labs",
+      "vlaby_name": "Virtual Labs",
       "vlaby_desc": "Browse and run interactive virtual lab experiments (Biology, Chemistry, Physics) from VLaby.com directly inside the portal. Available in English, Arabic, French, German & Indonesian."
     }
   },
@@ -8336,7 +8336,7 @@
     "email_test_placeholder": "Optional – all go here"
   },
   "vlaby": {
-    "title": "VLaby Virtual Labs",
+    "title": "Virtual Labs",
     "browse_all": "Browse All",
     "my_experiments": "My Experiments",
     "loading": "Loading…",

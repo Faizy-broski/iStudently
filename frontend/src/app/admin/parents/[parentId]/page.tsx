@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useProfileView } from "@/context/ProfileViewContext";
+import { UserQRCode } from "@/components/shared/UserQRCode";
 import { type Parent } from "@/lib/api/parents";
 import { useParents } from "@/hooks/useParents";
 import { format } from "date-fns";
@@ -232,7 +233,7 @@ export default function ParentDetailsPage() {
                   )}
                 </div>
               </div>
-              
+
               {/* Quick Contact Info */}
               <div className="flex flex-wrap gap-4 mt-4 text-sm">
                 {currentParent.profile?.email && (
@@ -255,6 +256,12 @@ export default function ParentDetailsPage() {
                 )}
               </div>
             </div>
+
+            {currentParent.profile_id && (
+              <div className="shrink-0">
+                <UserQRCode value={currentParent.profile_id} size={100} label={fullName || currentParent.id} />
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { useProfileView } from "@/context/ProfileViewContext";
 import { QualificationsTab } from "@/components/admin/QualificationsTab";
+import { UserQRCode } from "@/components/shared/UserQRCode";
 import { type Staff } from "@/lib/api/staff";
 import { useStaff } from "@/hooks/useStaff";
 import { useCampus } from "@/context/CampusContext";
@@ -239,7 +240,7 @@ export default function StaffDetailsPage() {
                   </Badge>
                 </div>
               </div>
-              
+
               {/* Quick Contact Info */}
               <div className="flex flex-wrap gap-4 mt-4 text-sm">
                 {currentStaff.profile?.email && (
@@ -262,6 +263,12 @@ export default function StaffDetailsPage() {
                 )}
               </div>
             </div>
+
+            {currentStaff.profile_id && (
+              <div className="shrink-0">
+                <UserQRCode value={currentStaff.profile_id} size={100} label={fullName || currentStaff.employee_number} />
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
