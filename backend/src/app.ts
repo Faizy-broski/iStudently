@@ -8,6 +8,7 @@ import dashboardRoutes from "./routes/dashboard.routes";
 import schoolDashboardRoutes from "./routes/school-dashboard.routes";
 import studentRoutes from "./routes/student.routes";
 import parentRoutes from "./routes/parent.routes";
+import quotesRoutes from './routes/quotes.routes';
 import eventRoutes from "./routes/event.routes";
 import libraryRoutes from "./routes/library.routes";
 import academicsRoutes from "./routes/academics.routes";
@@ -228,6 +229,7 @@ registerRoutes("/auth/social", socialAuthRoutes);
 
 // Register all routes using helper for dual-path support
 registerRoutes("/schools", schoolRoutes);
+registerRoutes('/quotes', quotesRoutes);
 registerRoutes("/dashboard", dashboardRoutes);
 registerRoutes("/school-dashboard", schoolDashboardRoutes);
 registerRoutes("/students", studentRoutes);

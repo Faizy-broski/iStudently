@@ -255,12 +255,12 @@ export default function StudentGradesPage() {
                     {students.map((s, idx) => (
                       <TableRow
                         key={s.id}
-                        className={`cursor-pointer hover:bg-blue-50 ${
-                          idx % 2 === 0 ? "bg-white" : "bg-gray-50"
-                        }`}
+                       className={`cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950/30 ${
+  idx % 2 === 0 ? "bg-white dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-800"
+}`}
                         onClick={() => handleStudentClick(s)}
                       >
-                        <TableCell className="font-medium text-[#0369a1] hover:underline">
+                        <TableCell className="font-medium text-[#0369a1] dark:text-[#57A3CC] hover:underline">
                           {getStudentName(s)}
                         </TableCell>
                         <TableCell>{s.student_number}</TableCell>
@@ -308,7 +308,7 @@ export default function StudentGradesPage() {
             <div className="border rounded-md overflow-hidden">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-gray-100">
+                    <TableRow className="bg-gray-100 dark:bg-gray-800">
                     <TableHead className="font-semibold">{t("th_course")}</TableHead>
                     <TableHead className="font-semibold">{t("th_teacher")}</TableHead>
                     <TableHead className="font-semibold text-center">

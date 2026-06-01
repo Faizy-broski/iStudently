@@ -16,13 +16,9 @@ import moment from "moment";
 import momentHijri from "moment-hijri";
 import { type SchoolEvent } from "@/lib/api/events";
 import { cn } from "@/lib/utils";
+import { useTranslations, useLocale } from "next-intl";
 
 const HIJRI_OFFSET_KEY = "studently_global_hijri_offset";
-
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December"
-];
 
 const HIJRI_MONTHS = [
   "Muharram", "Safar", "Rabi' al-Awwal", "Rabi' al-Thani",
@@ -30,14 +26,24 @@ const HIJRI_MONTHS = [
   "Ramadan", "Shawwal", "Dhu al-Qi'dah", "Dhu al-Hijjah"
 ];
 
-// Generate years array (10 years back and 10 years forward)
+const HIJRI_MONTHS_AR = [
+  "محرم", "صفر", "ربيع الأول", "ربيع الثاني",
+  "جمادى الأولى", "جمادى الثانية", "رجب", "شعبان",
+  "رمضان", "شوال", "ذو القعدة", "ذو الحجة"
+];
+
 const currentYear = new Date().getFullYear();
 const GREGORIAN_YEARS = Array.from({ length: 21 }, (_, i) => currentYear - 10 + i);
 const HIJRI_YEARS = Array.from({ length: 21 }, (_, i) => momentHijri().iYear() - 10 + i);
 
-// Convert Arabic-Indic numerals (٠١٢٣٤٥٦٧٨٩) to Western numerals (0123456789)
-const toWesternNumerals = (str: string) =>
+const toArabicNumerals = (num: number): string =>
+  String(num).replace(/[0-9]/g, (d) => String.fromCharCode(0x0660 + parseInt(d)));
+
+const toWesternNumerals = (str: string): string =>
   str.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660));
+
+const formatNumber = (num: number, isArabic: boolean): string =>
+  isArabic ? toArabicNumerals(num) : String(num);
 
 interface DayInfo {
   date: Date;
@@ -49,7 +55,6 @@ interface DayInfo {
   gregorianDate?: string;
 }
 
-
 import { type CalendarDay, type ScheduleViewEntry } from "@/lib/api/attendance-calendars";
 import {
   Tooltip,
@@ -57,8 +62,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-
-// ── Schedule view colour helper ────────────────────────────────────────────
 
 const SCHEDULE_PALETTE = [
   '#3B82F6', '#10B981', '#F59E0B', '#EF4444',
@@ -82,21 +85,9 @@ interface CalendarGridProps {
   onDateClick?: (date: Date) => void;
   onEventClick?: (event: SchoolEvent) => void;
   calendarType: "gregorian" | "hijri";
-  /** ISO date string (YYYY-MM-DD) — first month of the calendar range */
   calendarStart?: string | null;
-  /** ISO date string (YYYY-MM-DD) — last month of the calendar range */
   calendarEnd?: string | null;
-  /**
-   * Weekday mask from the AttendanceCalendar (index 0=Sun … 6=Sat).
-   * Days where weekdays[i] === false are treated as off-days even without
-   * an explicit CalendarDay DB entry.
-   */
   weekdays?: boolean[];
-  /**
-   * When provided the grid switches to Schedule View mode:
-   * timetable entries shown per day cell instead of events.
-   * Keyed by "YYYY-MM-DD" (always Gregorian).
-   */
   scheduleEntries?: Record<string, ScheduleViewEntry[]>;
 }
 
@@ -113,10 +104,28 @@ export function CalendarGrid({
   weekdays,
   scheduleEntries,
 }: CalendarGridProps) {
+  const locale = useLocale();
+  const isArabic = locale === "ar";
+  const tCommon = useTranslations("common");
+  const tEvents = useTranslations("school.events");
+
+  const MONTHS_LOCALIZED = Array.from({ length: 12 }, (_, i) =>
+    tCommon(`months.${i}`)
+  );
+
+  const WEEK_DAYS_FULL = Array.from({ length: 7 }, (_, i) =>
+    tCommon(`days.${i}`)
+  );
+
+  const WEEK_DAYS_SHORT = isArabic
+    ? ["أحد", "إثن", "ثلا", "أرب", "خمي", "جمع", "سبت"]
+    : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  const HIJRI_MONTHS_LOCALIZED = isArabic ? HIJRI_MONTHS_AR : HIJRI_MONTHS;
+
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
   const [globalHijriOffset, setGlobalHijriOffset] = useState<number>(0);
 
-  // Load global Hijri offset
   useEffect(() => {
     const loadOffset = () => {
       const saved = localStorage.getItem(HIJRI_OFFSET_KEY);
@@ -124,21 +133,16 @@ export function CalendarGrid({
         setGlobalHijriOffset(parseInt(saved));
       }
     };
-
     loadOffset();
-
-    // Listen for offset changes
     const handleOffsetChange = (event: CustomEvent) => {
       setGlobalHijriOffset(event.detail);
     };
-
     window.addEventListener('hijri-offset-changed', handleOffsetChange as EventListener);
     return () => {
       window.removeEventListener('hijri-offset-changed', handleOffsetChange as EventListener);
     };
   }, []);
 
-  // Clamp helpers — compare year+month only
   const calStartDate = calendarStart ? new Date(calendarStart) : null;
   const calEndDate   = calendarEnd   ? new Date(calendarEnd)   : null;
 
@@ -157,19 +161,11 @@ export function CalendarGrid({
   const canGoPrev = !isBeforeStart(prevMonthDate);
   const canGoNext = !isAfterEnd(nextMonthDate);
 
-  const goToPreviousMonth = () => {
-    if (!canGoPrev) return;
-    onMonthChange(prevMonthDate);
-  };
-
-  const goToNextMonth = () => {
-    if (!canGoNext) return;
-    onMonthChange(nextMonthDate);
-  };
+  const goToPreviousMonth = () => { if (!canGoPrev) return; onMonthChange(prevMonthDate); };
+  const goToNextMonth = () => { if (!canGoNext) return; onMonthChange(nextMonthDate); };
 
   const goToToday = () => {
     const today = new Date();
-    // Clamp today to calendar range
     if (calStartDate && today < calStartDate) { onMonthChange(calStartDate); return; }
     if (calEndDate   && today > calEndDate)   { onMonthChange(calEndDate);   return; }
     onMonthChange(today);
@@ -188,34 +184,24 @@ export function CalendarGrid({
   };
 
   const handleHijriMonthChange = (monthIndex: number) => {
-    // Create a new Hijri date with the selected month
     const currentHijri = momentHijri(currentMonth);
     const currentYear = currentHijri.iYear();
     const currentDay = currentHijri.iDate();
-    
-    // Create new date with updated month
     const newHijriDate = momentHijri(`${currentYear}-${monthIndex + 1}-${currentDay}`, 'iYYYY-iM-iD');
     onMonthChange(newHijriDate.toDate());
   };
 
   const handleHijriYearChange = (year: number) => {
-    // Create a new Hijri date with the selected year
     const currentHijri = momentHijri(currentMonth);
     const currentMonth_hijri = currentHijri.iMonth();
     const currentDay = currentHijri.iDate();
-    
-    // Create new date with updated year
     const newHijriDate = momentHijri(`${year}-${currentMonth_hijri + 1}-${currentDay}`, 'iYYYY-iM-iD');
     onMonthChange(newHijriDate.toDate());
   };
 
-  // Generate calendar days
   const generateCalendarDays = () => {
-    if (calendarType === "gregorian") {
-      return generateGregorianDays();
-    } else {
-      return generateHijriDays();
-    }
+    if (calendarType === "gregorian") return generateGregorianDays();
+    else return generateHijriDays();
   };
 
   const generateGregorianDays = (): DayInfo[] => {
@@ -237,47 +223,36 @@ export function CalendarGrid({
         hijriDate: (() => {
           const hd = momentHijri(day.toDate());
           if (globalHijriOffset !== 0) hd.add(globalHijriOffset, 'days');
-          return toWesternNumerals(hd.format("iD iMMMM"));
+          const dayNum = hd.iDate();
+          const monthName = HIJRI_MONTHS_LOCALIZED[hd.iMonth()];
+          const formattedNum = isArabic ? toArabicNumerals(dayNum) : String(dayNum);
+          return `${formattedNum} ${monthName}`;
         })(),
       });
       day.add(1, "day");
     }
-
     return days;
   };
 
   const generateHijriDays = (): DayInfo[] => {
-    // Convert current Gregorian month to Hijri with offset
     const currentHijri = momentHijri(currentMonth);
-    if (globalHijriOffset !== 0) {
-      currentHijri.add(globalHijriOffset, 'days');
-    }
-    
-    // Get the Hijri month and year
+    if (globalHijriOffset !== 0) currentHijri.add(globalHijriOffset, 'days');
+
     const hijriMonth = currentHijri.iMonth();
     const hijriYear = currentHijri.iYear();
-    
-    // Find the first day of this Hijri month in Gregorian calendar
+
     const firstDayGregorian = (() => {
       const startSearch = moment(currentMonth).startOf('month');
       while (true) {
         const checkHijri = momentHijri(startSearch.toDate());
-        if (globalHijriOffset !== 0) {
-          checkHijri.add(globalHijriOffset, 'days');
-        }
-        if (checkHijri.iMonth() === hijriMonth && checkHijri.iYear() === hijriYear) {
-          return startSearch;
-        }
+        if (globalHijriOffset !== 0) checkHijri.add(globalHijriOffset, 'days');
+        if (checkHijri.iMonth() === hijriMonth && checkHijri.iYear() === hijriYear) return startSearch;
         startSearch.add(1, 'day');
-        // Safety check to avoid infinite loop
         if (startSearch.diff(moment(currentMonth), 'days') > 60) return startSearch;
       }
     })();
-    
-    // Get start of week for this date
+
     const startDate = firstDayGregorian.clone().startOf("week");
-    
-    // Calculate roughly 6 weeks to cover the month
     const endDate = startDate.clone().add(41, 'days');
 
     const days: DayInfo[] = [];
@@ -285,10 +260,11 @@ export function CalendarGrid({
 
     while (day.isSameOrBefore(endDate)) {
       const hijriDay = momentHijri(day.toDate());
-      if (globalHijriOffset !== 0) {
-        hijriDay.add(globalHijriOffset, 'days');
-      }
+      if (globalHijriOffset !== 0) hijriDay.add(globalHijriOffset, 'days');
       const isCurrentHijriMonth = hijriDay.iMonth() === hijriMonth && hijriDay.iYear() === hijriYear;
+
+      const gregMonth = MONTHS_LOCALIZED[day.month()];
+      const gregDay = day.date();
 
       days.push({
         date: day.toDate(),
@@ -296,18 +272,15 @@ export function CalendarGrid({
         dayNumber: hijriDay.iDate(),
         isCurrentMonth: isCurrentHijriMonth,
         isToday: day.isSame(moment(), "day"),
-        gregorianDate: day.format("D MMMM"),
+        gregorianDate: `${isArabic ? toArabicNumerals(gregDay) : gregDay} ${gregMonth}`,
       });
       day.add(1, "day");
     }
-
     return days;
   };
 
   const days = generateCalendarDays();
 
-
-  // Get events for a specific date
   const getEventsForDate = (dateKey: string) => {
     return events.filter((event) => {
       const eventDate = moment(event.start_at).format("YYYY-MM-DD");
@@ -315,29 +288,27 @@ export function CalendarGrid({
     });
   };
 
-  // Get calendar day info for a specific date
   const getCalendarDay = (dateKey: string) => {
     return calendarDays.find((d) => d.school_date === dateKey);
   };
 
-  // Format month header
-  const monthHeader =
-    calendarType === "gregorian"
-      ? moment(currentMonth).format("MMMM YYYY")
-      : momentHijri(currentMonth).format("iMMMM iYYYY");
+  const currentGregorianMonth = MONTHS_LOCALIZED[currentMonth.getMonth()];
+  const currentGregorianYear = currentMonth.getFullYear();
+  const currentHijriMoment = momentHijri(currentMonth);
+  const currentHijriMonth = HIJRI_MONTHS_LOCALIZED[currentHijriMoment.iMonth()];
+  const currentHijriYear = currentHijriMoment.iYear();
 
-  const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const mobileWeekDays = ["S", "M", "T", "W", "T", "F", "S"];
+  const calendarTitle = calendarType === "gregorian"
+    ? tEvents("tab_gregorian")
+    : tEvents("tab_hijri");
 
   return (
     <div className="space-y-4 transition-opacity duration-200">
-      {/* Header */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex-1">
           <h2 className="text-xl font-semibold mb-3">
-            {calendarType === "gregorian" ? "Gregorian Calendar" : "Hijri Calendar"}
+            {calendarTitle}
           </h2>
-          {/* Month & Year Dropdowns */}
           {calendarType === "gregorian" ? (
             <div className="flex items-center gap-2">
               <Select
@@ -348,7 +319,7 @@ export function CalendarGrid({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {MONTHS.map((month, index) => (
+                  {MONTHS_LOCALIZED.map((month, index) => (
                     <SelectItem key={index} value={index.toString()}>
                       {month}
                     </SelectItem>
@@ -381,7 +352,7 @@ export function CalendarGrid({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {HIJRI_MONTHS.map((month, index) => (
+                  {HIJRI_MONTHS_LOCALIZED.map((month, index) => (
                     <SelectItem key={index} value={index.toString()}>
                       {month}
                     </SelectItem>
@@ -411,7 +382,7 @@ export function CalendarGrid({
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Button variant="outline" size="sm" onClick={goToToday}>
-            Today
+            {isArabic ? "اليوم" : "Today"}
           </Button>
           <Button variant="outline" size="sm" onClick={goToNextMonth} disabled={!canGoNext}>
             <ChevronRight className="h-4 w-4" />
@@ -419,32 +390,26 @@ export function CalendarGrid({
         </div>
       </div>
 
-      {/* Calendar Grid */}
       <Card className="transition-all duration-200">
         <CardContent className="p-4">
-          {/* Week days header */}
           <div className="grid grid-cols-7 gap-1 md:gap-2 mb-2">
-            {weekDays.map((day, idx) => (
+            {WEEK_DAYS_FULL.map((day, idx) => (
               <div
-                key={day}
+                key={idx}
                 className="text-center text-[10px] md:text-sm font-semibold py-2"
               >
                 <span className="hidden md:inline">{day}</span>
-                <span className="md:hidden">{mobileWeekDays[idx]}</span>
+                <span className="md:hidden">{WEEK_DAYS_SHORT[idx]}</span>
               </div>
             ))}
           </div>
 
-          {/* Calendar days */}
           <div className="grid grid-cols-7 gap-2">
             {days.map((day) => {
               const dayEvents = getEventsForDate(day.dateKey);
               const hasEvents = dayEvents.length > 0;
               const calDay = getCalendarDay(day.dateKey);
-              // Weekday index: 0=Sun … 6=Sat (JS Date.getDay())
               const dowIndex = day.date.getDay();
-              // A day is an off-day if: explicit CalendarDay marks it so, OR
-              // the calendar's weekday mask excludes that weekday.
               const isWeekdayOff = weekdays ? weekdays[dowIndex] === false : false;
               const isSchoolDay = calDay ? calDay.is_school_day : (!isWeekdayOff);
               const isHoliday = calDay ? !calDay.is_school_day : isWeekdayOff;
@@ -470,9 +435,12 @@ export function CalendarGrid({
                   onClick={() => onDateClick?.(day.date)}
                   onMouseEnter={() => setHoveredDate(day.dateKey)}
                   onMouseLeave={() => setHoveredDate(null)}
+                  dir={isArabic ? "rtl" : "ltr"}
                 >
-                  {/* Day number */}
-                  <div className="flex items-start justify-between mb-0.5 md:mb-1">
+                  <div className={cn(
+                    "flex items-start justify-between mb-0.5 md:mb-1",
+                    isArabic && "flex-row-reverse"
+                  )}>
                     <span
                       className={cn(
                         "text-xs md:text-sm font-semibold",
@@ -483,7 +451,7 @@ export function CalendarGrid({
                           : "text-foreground"
                       )}
                     >
-                      {day.dayNumber}
+                      {formatNumber(day.dayNumber, isArabic)}
                     </span>
                     {hasEvents && (
                       <Badge variant="secondary" className="h-4 md:h-5 px-1 text-[8px] md:text-xs">
@@ -492,29 +460,30 @@ export function CalendarGrid({
                     )}
                   </div>
 
-                  {/* Alternate calendar date */}
                   <div className={cn(
                     "text-[8px] md:text-[10px] mb-0.5 md:mb-1 truncate",
+                    isArabic ? "text-right" : "text-left",
                     !day.isCurrentMonth && "opacity-80",
                     day.isCurrentMonth && (isSchoolDay || isHoliday) && !day.isToday ? "text-gray-600 dark:text-gray-300" : "text-muted-foreground opacity-80"
                   )}>
                     {calendarType === "gregorian" ? day.hijriDate : day.gregorianDate}
                   </div>
 
-                  {/* School day/holiday indicator (HIDDEN ON MOBILE to save space) */}
                   {calDay && (
                     <div className="mb-1 hidden md:block">
                       {isSchoolDay ? (
-                        <span className="text-[10px] text-green-700 dark:text-green-400 font-bold uppercase">School</span>
+                        <span className="text-[10px] text-green-700 dark:text-green-400 font-bold uppercase">
+                          {isArabic ? "مدرسة" : "School"}
+                        </span>
                       ) : (
-                        <span className="text-[10px] text-red-700 dark:text-red-400 font-bold uppercase">Holiday</span>
+                        <span className="text-[10px] text-red-700 dark:text-red-400 font-bold uppercase">
+                          {isArabic ? "عطلة" : "Holiday"}
+                        </span>
                       )}
                     </div>
                   )}
 
-                  {/* Events (Dots on mobile, list on desktop) */}
                   <div className="mt-auto">
-                    {/* Schedule View (Desktop only) */}
                     {scheduleEntries && (
                       <div className="hidden md:block space-y-0.5 mb-1">
                         {(scheduleEntries[day.dateKey] || []).map((entry) => {
@@ -527,9 +496,7 @@ export function CalendarGrid({
                                 <TooltipTrigger asChild>
                                   <div
                                     className="text-[10px] leading-tight px-1.5 py-0.5 rounded-sm truncate cursor-default bg-white/60 dark:bg-gray-950/40 shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
-                                    style={{
-                                      borderLeft: `3px solid ${color}`,
-                                    }}
+                                    style={{ borderLeft: `3px solid ${color}` }}
                                   >
                                     <span className="font-semibold text-gray-900 dark:text-gray-100">{label}</span>
                                     <span className="text-gray-600 dark:text-gray-400 ml-1">{period}</span>
@@ -555,15 +522,13 @@ export function CalendarGrid({
                         <div key={ev.id} className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: ev.color_code }} />
                       ))}
                     </div>
-                    
+
                     <div className="hidden md:block space-y-1.5">
                       {dayEvents.slice(0, 2).map((event) => (
                         <div
                           key={event.id}
                           className="text-[10px] px-1.5 py-0.5 rounded-sm truncate cursor-pointer hover:opacity-80 font-medium text-gray-800 dark:text-gray-100 bg-white/60 dark:bg-gray-950/40 shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
-                          style={{
-                            borderLeft: `3px solid ${event.color_code}`,
-                          }}
+                          style={{ borderLeft: `3px solid ${event.color_code}` }}
                           onClick={(e) => {
                             e.stopPropagation();
                             onEventClick?.(event);

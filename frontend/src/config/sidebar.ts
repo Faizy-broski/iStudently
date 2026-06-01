@@ -78,6 +78,7 @@ const superAdminMenuItems: SidebarMenuItem[] = [
   { title: "school_directory", href: "/superadmin/school-directory", icon: Building2 },
   { title: "onboard_school", href: "/superadmin/onboard-school", icon: School },
   { title: "billing_status", href: "/superadmin/billing-status", icon: CreditCard },
+  { title: "login_quotes", href: "/superadmin/quotes", icon: MessageSquare },  // ← YEH ADD KARO
   { title: "settings", href: "/superadmin/settings", icon: Settings },
 ];
 
@@ -376,7 +377,7 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "overview", href: "/admin/library", icon: BookOpen },
       { title: "document_categories", href: "/admin/library/categories", icon: FolderOpen },
       { title: "document_fields", href: "/admin/library/document-fields", icon: Sliders },
-      
+
     ],
   },
   {

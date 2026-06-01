@@ -43,6 +43,7 @@ import DisciplineScoreTab from "@/components/admin/DisciplineScoreTab";
 import RelativesTab from "@/components/admin/RelativesTab";
 import { UserQRCode } from "@/components/shared/UserQRCode";
 import { useTranslations } from "next-intl";
+import { getFieldDefinitions, type CustomFieldDefinition } from "@/lib/api/custom-fields";
 
 interface EmergencyContact {
   name?: string;
@@ -58,6 +59,7 @@ const getInitials = (firstName?: string | null, lastName?: string | null) => {
 export default function StudentDetailsPage() {
   const t = useTranslations("school.students.student_details");
   const tFields = useTranslations("school.students.fields");
+  const tCommon = useTranslations("common");
   const params = useParams();
   const router = useRouter();
   const campusContext = useCampus();
@@ -74,6 +76,7 @@ export default function StudentDetailsPage() {
   const [linkedParent, setLinkedParent] = useState<Parent | null>(null);
   const [loadingParent, setLoadingParent] = useState(false);
   const [activeTab, setActiveTab] = useState("personal");
+  const [customFieldDefs, setCustomFieldDefs] = useState<CustomFieldDefinition[]>([]);
 
   const { students, total, loading: studentsLoading } = useStudents(
     prevNextEnabled ? { page: 1, limit: 1000 } : { page: 1, limit: 0 }
@@ -145,6 +148,10 @@ export default function StudentDetailsPage() {
       fetchStudent();
     }
 
+    getFieldDefinitions('student').then((res) => {
+      if (res.success && res.data) setCustomFieldDefs(res.data);
+    }).catch(() => {});
+
     return () => {
       clearViewedProfile();
     };
@@ -178,6 +185,41 @@ export default function StudentDetailsPage() {
     );
   }
 
+  const renderCustomFieldsForCategory = (categoryId: string) => {
+    const fields = customFieldDefs.filter(f => f.category_id === categoryId);
+    if (fields.length === 0) return null;
+    return (
+      <>
+        <Separator className="my-6" />
+        <h4 className="font-semibold mb-4 text-[#022172]">Additional Fields</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {fields.map((field) => {
+            const rawValue = currentStudent.custom_fields?.[categoryId]?.[field.field_key];
+            let displayValue: React.ReactNode = rawValue;
+            if (rawValue === undefined || rawValue === null || rawValue === '') {
+              displayValue = null;
+            } else if (field.type === 'checkbox') {
+              displayValue = rawValue ? 'Yes' : 'No';
+            } else if (field.type === 'date') {
+              displayValue = formatDate(rawValue);
+            } else if (Array.isArray(rawValue)) {
+              displayValue = (
+                <div className="flex flex-wrap gap-1">
+                  {rawValue.map((v: string, i: number) => (
+                    <Badge key={i} variant="outline">{v}</Badge>
+                  ))}
+                </div>
+              );
+            } else {
+              displayValue = String(rawValue);
+            }
+            return <InfoRow key={field.field_key} label={field.label} value={displayValue} />;
+          })}
+        </div>
+      </>
+    );
+  };
+
   const sectionName = currentStudent.custom_fields?.academic?.section_name;
   const campusName = currentStudent.custom_fields?.academic?.campus_name || campusContext?.selectedCampus?.name;
   const academicYearName = currentStudent.custom_fields?.academic?.academic_year_name;
@@ -186,7 +228,6 @@ export default function StudentDetailsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header with Navigation */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => router.push("/admin/students/student-info")}>
@@ -237,7 +278,6 @@ export default function StudentDetailsPage() {
         </div>
       </div>
 
-      {/* Student Profile Header Card */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row gap-6 items-start">
@@ -299,7 +339,6 @@ export default function StudentDetailsPage() {
         </CardContent>
       </Card>
 
-      {/* Detailed Information Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className={`grid w-full lg:w-auto lg:inline-grid ${[disciplineScoreActive, relativesActive].filter(Boolean).length === 2 ? 'grid-cols-7' : [disciplineScoreActive, relativesActive].filter(Boolean).length === 1 ? 'grid-cols-6' : 'grid-cols-5'}`}>
           <TabsTrigger value="personal" className="gap-2">
@@ -336,7 +375,6 @@ export default function StudentDetailsPage() {
           )}
         </TabsList>
 
-        {/* Personal Information Tab */}
         <TabsContent value="personal" className="mt-6">
           <Card>
             <CardHeader>
@@ -372,11 +410,11 @@ export default function StudentDetailsPage() {
                   <InfoRow label={tFields("address")} value={currentStudent.custom_fields?.personal?.address} icon={MapPin} />
                 </div>
               </div>
+              {renderCustomFieldsForCategory('personal')}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Academic Information Tab */}
         <TabsContent value="academic" className="mt-6">
           <Card>
             <CardHeader>
@@ -419,11 +457,11 @@ export default function StudentDetailsPage() {
                   </div>
                 </>
               )}
+              {renderCustomFieldsForCategory('academic')}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Medical Information Tab */}
         <TabsContent value="medical" className="mt-6">
           <Card>
             <CardHeader>
@@ -486,11 +524,11 @@ export default function StudentDetailsPage() {
                   <p>{t("no_allergies")}</p>
                 </div>
               )}
+              {renderCustomFieldsForCategory('medical')}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Family & Emergency Tab */}
         <TabsContent value="family" className="mt-6 space-y-6">
           <Card>
             <CardHeader>
@@ -575,11 +613,11 @@ export default function StudentDetailsPage() {
                   <p>{t("no_emergency_contacts")}</p>
                 </div>
               )}
+              {renderCustomFieldsForCategory('family')}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Discipline Score Tab */}
         {disciplineScoreActive && (
           <TabsContent value="discipline" className="mt-6">
             <DisciplineScoreTab
@@ -590,14 +628,12 @@ export default function StudentDetailsPage() {
           </TabsContent>
         )}
 
-        {/* Relatives Tab */}
         {relativesActive && (
           <TabsContent value="relatives" className="mt-6">
             <RelativesTab studentId={currentStudent.id} />
           </TabsContent>
         )}
 
-        {/* System Information Tab */}
         <TabsContent value="system" className="mt-6">
           <Card>
             <CardHeader>
@@ -647,6 +683,7 @@ export default function StudentDetailsPage() {
                   </div>
                 </>
               )}
+              {renderCustomFieldsForCategory('system')}
             </CardContent>
           </Card>
         </TabsContent>

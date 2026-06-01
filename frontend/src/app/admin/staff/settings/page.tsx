@@ -117,14 +117,14 @@ export default function StaffSettingsPage() {
         <div className="p-6 max-w-4xl mx-auto space-y-6">
             <div>
                 <h1 className="text-3xl font-bold text-[#022172] dark:text-white">{t('settings.title')}</h1>
-                <p className="text-gray-500 mt-1">{t('settings.subtitle')}</p>
+                <p className="text-gray-500 dark:text-gray-400 mt-1">{t('settings.subtitle')}</p>
             </div>
 
             {/* Campus Context Banner */}
             {campusContext?.selectedCampus && (
-                <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <Building className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm text-blue-800">
+                <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <Building className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <span className="text-sm text-blue-800 dark:text-blue-300">
                         {t('settings.viewingDesignationsFor', { campus: campusContext.selectedCampus.name })}
                     </span>
                     <Badge variant="outline" className="ml-auto text-xs">
@@ -168,7 +168,7 @@ export default function StaffSettingsPage() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             {/* Add New Designation Form */}
-                            <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                            <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
                                 <Label className="text-sm font-medium">{t('settings.addNewDesignation')}</Label>
                                 <div className="flex gap-4 flex-wrap">
                                     <Input
@@ -240,7 +240,7 @@ export default function StaffSettingsPage() {
                                         <div>
                                             <div className="flex items-center gap-2 mb-3">
                                                 <Globe className="h-4 w-4 text-gray-500" />
-                                                <h3 className="text-sm font-medium text-gray-700">School-wide Designations</h3>
+                                                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">School-wide Designations</h3>
                                                 <Badge variant="secondary" className="text-xs">
                                                     {schoolWideDesignations.length}
                                                 </Badge>
@@ -249,12 +249,12 @@ export default function StaffSettingsPage() {
                                                 {schoolWideDesignations.map(designation => (
                                                     <div 
                                                         key={designation.id} 
-                                                        className="flex items-center justify-between p-3 border rounded-lg bg-white hover:bg-gray-50 transition-colors group"
+                                                        className="flex items-center justify-between p-3 border dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors group"
                                                     >
                                                         <span className="font-medium text-sm">{designation.name}</span>
                                                         <div className="flex items-center gap-2">
                                                             {designation.is_system ? (
-                                                                <Badge variant="outline" className="text-[10px] border-purple-200 text-purple-700 bg-purple-50">
+                                                                <Badge variant="outline" className="text-[10px] border-purple-200 dark:border-purple-700 text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50">
                                                                     {t('settings.system')}
                                                                 </Badge>
                                                             ) : (
@@ -280,15 +280,15 @@ export default function StaffSettingsPage() {
                                             <Separator className="my-4" />
                                             <div className="flex items-center gap-2 mb-3">
                                                 <Building className="h-4 w-4 text-blue-500" />
-                                                <h3 className="text-sm font-medium text-gray-700">
+                                                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                                     {t('settings.campusSpecificDesignations')}
                                                     {campusContext?.selectedCampus && (
-                                                        <span className="font-normal text-gray-500 ml-1">
+                                                        <span className="font-normal text-gray-500 dark:text-gray-400 ml-1">
                                                             ({campusContext.selectedCampus.name})
                                                         </span>
                                                     )}
                                                 </h3>
-                                                <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
+                                                <Badge variant="secondary" className="text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
                                                     {campusSpecificDesignations.length}
                                                 </Badge>
                                             </div>
@@ -296,7 +296,7 @@ export default function StaffSettingsPage() {
                                                 {campusSpecificDesignations.map(designation => (
                                                     <div 
                                                         key={designation.id} 
-                                                        className="flex items-center justify-between p-3 border border-blue-100 rounded-lg bg-blue-50/50 hover:bg-blue-50 transition-colors group"
+                                                        className="flex items-center justify-between p-3 border border-blue-100 dark:border-blue-800/50 rounded-lg bg-blue-50/50 dark:bg-blue-950/30 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-colors group"
                                                     >
                                                         <span className="font-medium text-sm">{designation.name}</span>
                                                         <Button
@@ -327,7 +327,7 @@ export default function StaffSettingsPage() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="flex flex-col items-center justify-center p-8 text-center text-gray-500 border-2 border-dashed rounded-lg">
+                            <div className="flex flex-col items-center justify-center p-8 text-center text-gray-500 dark:text-gray-400 border-2 border-dashed dark:border-gray-700 rounded-lg">
                                 <Info className="h-8 w-8 mb-2 text-gray-400" />
                                 <p className="font-medium">{t('settings.customFieldsManager')}</p>
                                 <p className="text-sm">{t('settings.toBeImplemented')}</p>

@@ -276,6 +276,9 @@
     "sessionExpired": "Your session has expired. Please sign in again.",
     "unauthorized": "You are not authorized to access this page."
   },
+  "login_quote_widget": {
+  "quote_label": "Quote of the Week"
+},
   "sidebar": {
     "dashboard": "Dashboard",
     "school_directory": "School Directory",
@@ -284,6 +287,7 @@
     "settings": "Settings",
     "school": "School",
     "school_details": "School Details",
+    "login_quotes": "Login Quotes",
     "overview": "Overview",
     "grade_levels": "Grade Levels",
     "sections": "Sections",
@@ -501,6 +505,7 @@
     "staff_payroll": "Staff Payroll",
     "human_resources": "Human Resources",
     "vlaby": "Virtual Labs",
+    "periodic_table": "J Periodic Table",
     "embedded_resources": "Embedded Resources",
     "attendance_summary": "Attendance Summary",
     "print_attendance_sheets": "Print Attendance Sheets",
@@ -6220,6 +6225,7 @@
     "notFound": "Teacher Not Found",
     "notFoundDesc": "The teacher you're looking for doesn't exist or has been removed.",
     "customFields": {
+      "title": "Teacher Custom Fields",
       "addCategory": "Add Category",
       "enterCategoryName": "Enter category name...",
       "categoryNameCannotBeEmpty": "Category name cannot be empty",
@@ -6388,6 +6394,7 @@
       "personalInformation": "Personal Information",
       "professionalDetails": "Professional Details",
       "qualificationsCertifications": "Qualifications & Certifications",
+      "employmentCompensation": "Employment & Compensation",
       "systemLogin": "System & Login"
     },
     "fields": {
@@ -6593,6 +6600,8 @@
       "saveCredentialsHint": "Save these credentials to share with the librarian."
     },
     "customFields": {
+      "title": "Staff Custom Fields",
+      "subtitle": "Define custom fields for staff member forms",
       "errors": {
         "load": "Failed to load custom fields",
         "categoryNameEmpty": "Category name cannot be empty",
@@ -7900,7 +7909,9 @@
       "embedded_resources_name": "Embedded Resources",
       "embedded_resources_desc": "Embed external websites directly inside the portal. Admins add links with optional grade-level restrictions from the Resources menu.",
       "vlaby_name": "Virtual Labs",
-      "vlaby_desc": "Browse and run interactive virtual lab experiments (Biology, Chemistry, Physics) from VLaby.com directly inside the portal. Available in English, Arabic, French, German & Indonesian."
+      "vlaby_desc": "Browse and run interactive virtual lab experiments (Biology, Chemistry, Physics) from VLaby.com directly inside the portal. Available in English, Arabic, French, German & Indonesian.",
+      "periodic_table_name": "J Periodic Table",
+      "periodic_table_desc": "Interactive periodic table with 118 elements, 3D atom models, chemical equation balancer, molar mass calculator, and worksheet generator — all self-contained with no login required."
     }
   },
   "studentPortal": {

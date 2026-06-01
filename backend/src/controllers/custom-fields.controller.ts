@@ -141,10 +141,12 @@ export class CustomFieldsController {
      */
     async updateFieldDefinition(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
         try {
-            const schoolId = req.profile?.school_id
+            const adminSchoolId = req.profile?.school_id
+            const campusId = req.query.campus_id as string | undefined
+            const effectiveSchoolId = campusId || adminSchoolId
             const fieldId = req.params.id
 
-            if (!schoolId) {
+            if (!effectiveSchoolId) {
                 res.status(400).json({
                     success: false,
                     error: 'School context required'
@@ -154,7 +156,7 @@ export class CustomFieldsController {
 
             const updates = req.body
 
-            const field = await customFieldsService.updateFieldDefinition(fieldId, schoolId, updates)
+            const field = await customFieldsService.updateFieldDefinition(fieldId, effectiveSchoolId, updates)
 
             res.json({
                 success: true,
@@ -186,10 +188,12 @@ export class CustomFieldsController {
      */
     async deleteFieldDefinition(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
         try {
-            const schoolId = req.profile?.school_id
+            const adminSchoolId = req.profile?.school_id
+            const campusId = req.query.campus_id as string | undefined
+            const effectiveSchoolId = campusId || adminSchoolId
             const fieldId = req.params.id
 
-            if (!schoolId) {
+            if (!effectiveSchoolId) {
                 res.status(400).json({
                     success: false,
                     error: 'School context required'
@@ -197,7 +201,7 @@ export class CustomFieldsController {
                 return
             }
 
-            await customFieldsService.deleteFieldDefinition(fieldId, schoolId)
+            await customFieldsService.deleteFieldDefinition(fieldId, effectiveSchoolId)
 
             res.json({
                 success: true,

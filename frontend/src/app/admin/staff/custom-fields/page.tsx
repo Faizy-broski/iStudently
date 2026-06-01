@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Trash2, Save, Settings2, ChevronDown, ChevronRight, Building2, GripVertical, FolderPlus } from "lucide-react";
+import { Plus, Trash2, Save, Settings2, ChevronDown, ChevronRight, Building2, GripVertical, FolderPlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { CustomFieldCategory, CustomField, CustomFieldType, CampusScope } from "@/types";
 import { customFieldsApi, CustomFieldDefinition, BranchSchool } from "@/lib/api/custom-fields";
@@ -51,7 +51,12 @@ export default function StaffCustomFieldsPage() {
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
   const [categories, setCategories] = useState<ExtendedCategory[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isDataLoadedRef = useRef(false);
+  const isSavingRef = useRef(false);
+  const pendingSaveRef = useRef(false);
+  const categoriesRef = useRef(categories);
   const [isLoading, setIsLoading] = useState(true);
   const [branchSchools, setBranchSchools] = useState<BranchSchool[]>([]);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
@@ -165,10 +170,35 @@ export default function StaffCustomFieldsPage() {
         toast.error(t('customFields.errors.load'));
       } finally {
         setIsLoading(false);
+        setTimeout(() => {
+          isDataLoadedRef.current = true;
+          console.log('[CF:staff] isDataLoadedRef → true (initial load done)');
+        }, 0);
       }
     };
+    isDataLoadedRef.current = false;
+    console.log('[CF:staff] loadData start — isDataLoadedRef → false');
     loadData();
   }, [selectedCampus?.id]);
+
+  useEffect(() => { categoriesRef.current = categories; }, [categories]);
+
+  useEffect(() => {
+    if (!isDataLoadedRef.current) {
+      console.log('[CF:staff] auto-save skipped — data not loaded yet');
+      return;
+    }
+    const snapshot = categories.flatMap(c => c.fields.map(f => `${f.id}:${f.label}`));
+    console.log('[CF:staff] categories changed → scheduling auto-save in 1500ms | fields:', snapshot);
+    if (isSavingRef.current) {
+      console.log('[CF:staff] save in progress — marking pendingSave');
+      pendingSaveRef.current = true;
+      return;
+    }
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => { handleSaveTemplate(); }, 1500);
+    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
+  }, [categories]);
 
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories(prev => {
@@ -253,34 +283,66 @@ export default function StaffCustomFieldsPage() {
   };
 
   const removeCustomField = (categoryId: string, fieldId: string) => {
+    const field = categories.find(c => c.id === categoryId)?.fields.find(f => f.id === fieldId);
+    console.log(`[CF:staff] removeCustomField`, { categoryId, fieldId, label: field?.label, isTemp: fieldId.startsWith('field-') });
     setCategories(categories.map((cat) =>
       cat.id === categoryId ? { ...cat, fields: cat.fields.filter((field) => field.id !== fieldId) } : cat
     ));
   };
 
+  const rebuildCategoriesFromApi = (current: ExtendedCategory[], apiFields: CustomFieldDefinition[]): ExtendedCategory[] => {
+    const existingRealIds = new Set<string>();
+    current.forEach(cat => cat.fields.forEach(f => { if (!f.id.startsWith('field-')) existingRealIds.add(f.id); }));
+    const newIdByLabelAndCat: Record<string, string> = {};
+    apiFields.forEach(f => {
+      if (!existingRealIds.has(f.id)) newIdByLabelAndCat[`${f.category_id}::${f.label}`] = f.id;
+    });
+    console.log(`[CF:staff] rebuildCategoriesFromApi`, { currentFieldCount: current.reduce((n, c) => n + c.fields.length, 0), apiFieldCount: apiFields.length, newMappings: newIdByLabelAndCat });
+    const result = current.map(cat => ({
+      ...cat,
+      fields: cat.fields.map(f => {
+        if (!f.id.startsWith('field-')) return f;
+        const realId = newIdByLabelAndCat[`${cat.id}::${f.label}`];
+        if (realId) console.log(`[CF:staff] resolved temp id ${f.id} → ${realId}`);
+        else console.warn(`[CF:staff] no match for temp id=${f.id} label="${f.label}"`);
+        return realId ? { ...f, id: realId } : f;
+      }).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
+    }));
+    console.log(`[CF:staff] rebuild result fieldCount=${result.reduce((n, c) => n + c.fields.length, 0)}`);
+    return result;
+  };
+
   const handleSaveTemplate = async () => {
-    setIsSaving(true);
+    console.log(`[CF:staff] handleSaveTemplate called | isSaving=${isSavingRef.current}`);
+    if (isSavingRef.current) {
+      console.warn('[CF:staff] save skipped — marking pendingSave');
+      pendingSaveRef.current = true;
+      return;
+    }
+    pendingSaveRef.current = false;
+    isSavingRef.current = true;
+    setSaveStatus('saving');
     try {
       const campusId = selectedCampus?.id;
       const existingResponse = await customFieldsApi.getFieldDefinitions('staff', campusId);
       const existingIds = new Set((existingResponse.data || []).map(f => f.id));
       const currentIds = new Set<string>();
+      let newFieldsCreated = false;
 
       const allFields: { categoryId: string; categoryName: string; categoryOrder: number; field: CustomField }[] = [];
-      categories.forEach(cat => {
+      categoriesRef.current.forEach(cat => {
         cat.fields.forEach(field => {
           if (field.label.trim()) {
-            allFields.push({ 
-              categoryId: cat.id, 
-              categoryName: cat.name, 
-              categoryOrder: cat.order,
-              field 
-            });
-            if (!field.id.startsWith('field-')) {
-              currentIds.add(field.id);
-            }
+            allFields.push({ categoryId: cat.id, categoryName: cat.name, categoryOrder: cat.order, field });
+            if (!field.id.startsWith('field-')) currentIds.add(field.id);
           }
         });
+      });
+
+      console.log(`[CF:staff] save snapshot`, {
+        existingIdsInDB: [...existingIds],
+        currentIdsInUI: [...currentIds],
+        toDelete: [...existingIds].filter(id => !currentIds.has(id)),
       });
 
       for (const { categoryId, categoryName, categoryOrder, field } of allFields) {
@@ -289,30 +351,53 @@ export default function StaffCustomFieldsPage() {
             label: field.label, type: field.type, options: field.options,
             required: field.required, sort_order: field.sort_order,
             category_order: categoryOrder,
-            campus_scope: field.campus_scope, applicable_school_ids: field.applicable_school_ids
-          });
+            campus_scope: field.campus_scope, applicable_school_ids: field.applicable_school_ids,
+          }, campusId);
         } else {
           await customFieldsApi.createFieldDefinition({
             entity_type: 'staff', category_id: categoryId, category_name: categoryName,
             label: field.label, type: field.type, options: field.options,
             required: field.required, sort_order: field.sort_order,
             category_order: categoryOrder,
-            campus_scope: field.campus_scope, applicable_school_ids: field.applicable_school_ids
+            campus_scope: field.campus_scope, applicable_school_ids: field.applicable_school_ids,
           }, campusId);
+          console.log(`[CF:staff] created field tempId=${field.id} label="${field.label}"`);
+          newFieldsCreated = true;
         }
       }
 
       for (const id of existingIds) {
         if (!currentIds.has(id)) {
-          await customFieldsApi.deleteFieldDefinition(id);
+          console.log(`[CF:staff] deleting field id=${id}`);
+          const deleteResult = await customFieldsApi.deleteFieldDefinition(id, campusId);
+          console.log(`[CF:staff] delete result for ${id}:`, deleteResult);
         }
       }
-      toast.success(t("customFields.toasts.saved"));
+
+      if (newFieldsCreated) {
+        console.log('[CF:staff] reloading from API to resolve temp IDs...');
+        const refreshed = await customFieldsApi.getFieldDefinitions('staff', campusId);
+        console.log('[CF:staff] reload response:', { success: refreshed.success, count: refreshed.data?.length, fields: refreshed.data?.map(f => ({ id: f.id, label: f.label, isActive: f.is_active })) });
+        if (refreshed.success && refreshed.data) {
+          setCategories(prev => rebuildCategoriesFromApi(prev, refreshed.data!));
+        }
+      }
+
+      console.log('[CF:staff] save complete');
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (error) {
-      console.error("Error saving:", error);
+      console.error('[CF:staff] save error:', error);
       toast.error(t("customFields.errors.save"));
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
     } finally {
-      setIsSaving(false);
+      isSavingRef.current = false;
+      if (pendingSaveRef.current) {
+        console.log('[CF:staff] pendingSave detected — running follow-up save');
+        pendingSaveRef.current = false;
+        saveTimeoutRef.current = setTimeout(() => handleSaveTemplate(), 0);
+      }
     }
   };
 
@@ -398,18 +483,19 @@ export default function StaffCustomFieldsPage() {
           <h1 className="text-xl font-bold text-[#022172] dark:text-white">{t("customFields.title")}</h1>
           <p className="text-xs text-gray-500 dark:text-gray-400">{t("customFields.subtitle")}</p>
         </div>
-        <div className="flex gap-2">
-          <Button 
-            onClick={() => setShowAddCategory(true)} 
-            variant="outline" 
-            size="sm"
-          >
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            {saveStatus === 'saving' && <><Loader2 className="h-3 w-3 animate-spin" /><span>{t("saving")}</span></>}
+            {saveStatus === 'saved' && <span className="text-green-600">✓ {t("save")}</span>}
+            {saveStatus === 'error' && <span className="text-red-500">{t("customFields.errors.save")}</span>}
+          </div>
+          <Button onClick={() => setShowAddCategory(true)} variant="outline" size="sm">
             <FolderPlus className="mr-1 h-3 w-3" />
             {t("customFields.addCategory")}
           </Button>
-          <Button onClick={handleSaveTemplate} disabled={isSaving} size="sm" className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white">
+          <Button onClick={handleSaveTemplate} disabled={saveStatus === 'saving'} size="sm" className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white">
             <Save className="mr-1 h-3 w-3" />
-            {isSaving ? t("saving") : t("save")}
+            {saveStatus === 'saving' ? t("saving") : t("save")}
           </Button>
         </div>
       </div>

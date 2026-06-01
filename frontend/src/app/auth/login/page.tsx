@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { LoginQuoteWidget } from '@/components/auth/LoginQuoteWidget'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
@@ -250,6 +251,7 @@ function LoginForm() {
               priority
             />
           </div>
+          <LoginQuoteWidget locale={locale as "en" | "ar"} />
         </div>
       </div>
 

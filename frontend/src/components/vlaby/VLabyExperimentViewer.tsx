@@ -142,9 +142,10 @@ export default function VLabyExperimentViewer({
 
       {/* Description */}
       {experiment.description && (
-        <div className="prose prose-sm max-w-none text-gray-600 dark:text-gray-300 border dark:border-gray-800 rounded-xl p-4 bg-white dark:bg-gray-900">
-          <p>{experiment.description}</p>
-        </div>
+       <div
+  className="prose prose-sm max-w-none text-gray-600 dark:text-gray-300 border dark:border-gray-800 rounded-xl p-4 bg-white dark:bg-gray-900"
+  dangerouslySetInnerHTML={{ __html: experiment.description }}
+/>
       )}
     </div>
   )

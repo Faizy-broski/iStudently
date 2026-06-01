@@ -143,8 +143,9 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
   useEffect(() => {
     const loadFields = async () => {
       try {
+        const campusId = selectedCampus?.id;
         const [fieldsResponse, ordersResponse] = await Promise.all([
-          getFieldDefinitions('parent'),
+          getFieldDefinitions('parent', campusId),
           getFieldOrders('parent')
         ]);
         
@@ -174,7 +175,7 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
       }
     };
     loadFields();
-  }, []);
+  }, [selectedCampus?.id]);
 
   const getFieldError = (fieldName: string): string | undefined => {
     return formErrors[fieldName];

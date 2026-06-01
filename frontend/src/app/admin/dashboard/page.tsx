@@ -6,16 +6,16 @@ import { Users, BookOpen, Calendar, TrendingUp, GraduationCap, Bookmark, Refresh
 import { useSchoolDashboard } from "@/hooks/useSchoolDashboard";
 import { Spinner } from "@/components/ui/spinner";
 import { useTranslations } from "next-intl";
-import { 
-  Area, 
-  AreaChart, 
-  CartesianGrid, 
-  Legend, 
-  Line, 
-  LineChart, 
-  ResponsiveContainer, 
-  Tooltip, 
-  XAxis, 
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
   YAxis
 } from "recharts";
 
@@ -46,7 +46,7 @@ export default function AdminDashboard() {
   // Memoized stats cards
   const statsCards = useMemo(() => {
     if (!stats) return [];
-    
+
     return [
       {
         label: t('stats.total_students'),
@@ -156,29 +156,29 @@ export default function AdminDashboard() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                <XAxis 
-                  dataKey="month" 
-                  stroke="#666" 
+                <XAxis
+                  dataKey="month"
+                  stroke="#666"
                   interval={0}
                   tick={{ fontSize: 12 }}
                   angle={-45}
                   textAnchor="end"
                   height={80}
                 />
-                <YAxis stroke="#666" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#fff', 
+                <YAxis stroke="#666" width={40} dx={-10} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#fff',
                     border: '1px solid #ddd',
-                    borderRadius: '8px' 
+                    borderRadius: '8px'
                   }}
                 />
-                <Area 
-                  type="monotone" 
-                  dataKey="students" 
-                  stroke="#3B82F6" 
-                  fillOpacity={1} 
-                  fill="url(#colorStudents)" 
+                <Area
+                  type="monotone"
+                  dataKey="students"
+                  stroke="#3B82F6"
+                  fillOpacity={1}
+                  fill="url(#colorStudents)"
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -196,26 +196,26 @@ export default function AdminDashboard() {
               <LineChart data={attendanceData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
                 <XAxis dataKey="date" stroke="#666" />
-                <YAxis stroke="#666" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#fff', 
+                <YAxis stroke="#666" width={40} dx={-10} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#fff',
                     border: '1px solid #ddd',
-                    borderRadius: '8px' 
+                    borderRadius: '8px'
                   }}
                 />
                 <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="present" 
-                  stroke="#10B981" 
+                <Line
+                  type="monotone"
+                  dataKey="present"
+                  stroke="#10B981"
                   strokeWidth={2}
                   dot={{ fill: '#10B981', r: 4 }}
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="absent" 
-                  stroke="#EF4444" 
+                <Line
+                  type="monotone"
+                  dataKey="absent"
+                  stroke="#EF4444"
                   strokeWidth={2}
                   dot={{ fill: '#EF4444', r: 4 }}
                 />
@@ -239,8 +239,8 @@ export default function AdminDashboard() {
                 {gradeDistribution.map((item, index) => (
                   <div key={item.grade} className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div 
-                        className="w-3 h-3 rounded-full" 
+                      <div
+                        className="w-3 h-3 rounded-full"
                         style={{ backgroundColor: COLORS[index % COLORS.length] }}
                       ></div>
                       <span className="text-sm font-medium">{t('charts.grade_label', { number: item.grade })}</span>
@@ -287,7 +287,7 @@ export default function AdminDashboard() {
                   </div>
                   <span className="text-2xl font-bold">{stats.libraryBooks}</span>
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-3 bg-orange-100 rounded-lg">
@@ -300,7 +300,7 @@ export default function AdminDashboard() {
                   </div>
                   <span className="text-2xl font-bold">{stats.borrowedBooks}</span>
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-3 bg-green-100 rounded-lg">

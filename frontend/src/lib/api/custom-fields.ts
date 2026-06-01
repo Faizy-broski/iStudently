@@ -160,8 +160,11 @@ export async function createFieldDefinition(data: CreateCustomFieldDTO, campusId
 /**
  * Update a custom field definition
  */
-export async function updateFieldDefinition(fieldId: string, data: UpdateCustomFieldDTO): Promise<ApiResponse<CustomFieldDefinition>> {
-    return apiRequest<CustomFieldDefinition>(`/custom-fields/${fieldId}`, {
+export async function updateFieldDefinition(fieldId: string, data: UpdateCustomFieldDTO, campusId?: string): Promise<ApiResponse<CustomFieldDefinition>> {
+    const url = campusId
+        ? `/custom-fields/${fieldId}?campus_id=${campusId}`
+        : `/custom-fields/${fieldId}`
+    return apiRequest<CustomFieldDefinition>(url, {
         method: 'PATCH',
         body: JSON.stringify(data)
     })
@@ -170,8 +173,11 @@ export async function updateFieldDefinition(fieldId: string, data: UpdateCustomF
 /**
  * Delete a custom field definition (soft delete)
  */
-export async function deleteFieldDefinition(fieldId: string): Promise<ApiResponse<void>> {
-    return apiRequest<void>(`/custom-fields/${fieldId}`, {
+export async function deleteFieldDefinition(fieldId: string, campusId?: string): Promise<ApiResponse<void>> {
+    const url = campusId
+        ? `/custom-fields/${fieldId}?campus_id=${campusId}`
+        : `/custom-fields/${fieldId}`
+    return apiRequest<void>(url, {
         method: 'DELETE'
     })
 }

@@ -241,17 +241,17 @@ export default function AllEventsPage() {
                         </Badge>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
-                        {moment(event.start_at).format("DD MMM YYYY")}
-                        {!event.is_all_day && (
-                          <span className="block text-xs">{moment(event.start_at).format("h:mm A")}</span>
-                        )}
-                      </td>
+  {moment(event.start_at).locale("en").format("DD MMM YYYY")}
+  {!event.is_all_day && (
+    <span className="block text-xs">{moment(event.start_at).locale("en").format("h:mm A")}</span>
+  )}
+</td>
                       <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
-                        {moment(event.end_at).format("DD MMM YYYY")}
-                        {!event.is_all_day && (
-                          <span className="block text-xs">{moment(event.end_at).format("h:mm A")}</span>
-                        )}
-                      </td>
+  {moment(event.end_at).locale("en").format("DD MMM YYYY")}
+  {!event.is_all_day && (
+    <span className="block text-xs">{moment(event.end_at).locale("en").format("h:mm A")}</span>
+  )}
+</td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
                           {event.visible_to_roles.map((r) => (
