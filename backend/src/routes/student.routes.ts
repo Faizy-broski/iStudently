@@ -1,0 +1,139 @@
+import { Router, Request, Response } from 'express'
+import { StudentController } from '../controllers/student.controller'
+import { authenticate } from '../middlewares/auth.middleware'
+import { requireRole } from '../middlewares/role.middleware'
+import type { AuthRequest } from '../middlewares/auth.middleware'
+import { getStudentRelatives } from '../services/parent.service'
+
+const router = Router()
+const studentController = new StudentController()
+
+// All routes require authentication
+router.use(authenticate)
+
+/**
+ * GET /api/students/stats
+ * Get student statistics for the school
+ * Admin only
+ */
+router.get('/stats', requireRole('admin'), (req, res) =>
+  studentController.getStudentStats(req, res)
+)
+
+/**
+ * GET /api/students/report
+ * Get students report with proper joins for advanced reporting
+ * Admin, teacher, and librarian can access
+ */
+router.get('/report', requireRole('admin', 'teacher', 'librarian'), (req, res) =>
+  studentController.getStudentsReport(req, res)
+)
+
+/**
+ * GET /api/students/grade/:gradeLevel
+ * Get students by grade level
+ * Admin and teacher can access
+ */
+router.get('/grade/:gradeLevel', requireRole('admin', 'teacher'), (req, res) =>
+  studentController.getStudentsByGrade(req, res)
+)
+
+/**
+ * GET /api/students/number/:studentNumber
+ * Get student by student number
+ * Admin and teacher can access
+ */
+router.get('/number/:studentNumber', requireRole('admin', 'teacher'), (req, res) =>
+  studentController.getStudentByNumber(req, res)
+)
+
+/**
+ * GET /api/students/:id/relatives
+ * Get siblings and parents for a student (Relatives plugin)
+ * Admin and teacher can access
+ */
+router.get('/:id/relatives', requireRole('admin', 'teacher'), async (req: Request, res: Response) => {
+  try {
+    const profile = (req as AuthRequest).profile
+    const schoolId = profile?.school_id
+    if (!schoolId) return res.status(403).json({ success: false, error: 'No school associated with account' })
+    const data = await getStudentRelatives(req.params.id, schoolId)
+    res.json({ success: true, data })
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message })
+  }
+})
+
+/**
+ * GET /api/students/:id
+ * Get a single student by ID
+ * Admin, teacher, and student (own record only) can access
+ */
+router.get('/:id', requireRole('admin', 'teacher', 'student'), (req, res) =>
+  studentController.getStudentById(req, res)
+)
+
+/**
+ * GET /api/students
+ * Get all students with pagination and search
+ * Admin, teacher, and librarian can access
+ */
+router.get('/', requireRole('admin', 'teacher', 'librarian'), (req, res) =>
+  studentController.getStudents(req, res)
+)
+
+/**
+ * GET /api/students/import-template
+ * Download CSV template for bulk import
+ * Admin only
+ */
+router.get('/import-template', requireRole('admin'), (req, res) =>
+  studentController.getImportTemplate(req, res)
+)
+
+/**
+ * POST /api/students/bulk-import
+ * Bulk import students from parsed CSV/Excel data
+ * Admin only
+ */
+router.post('/bulk-import', requireRole('admin'), (req, res) =>
+  studentController.bulkImportStudents(req, res)
+)
+
+/**
+ * POST /api/students
+ * Create a new student
+ * Admin only
+ */
+router.post('/', requireRole('admin'), (req, res) =>
+  studentController.createStudent(req, res)
+)
+
+/**
+ * POST /api/students/print-info
+ * Get students info for printing with selected categories
+ * Admin only
+ */
+router.post('/print-info', requireRole('admin'), (req, res) =>
+  studentController.getStudentsPrintInfo(req, res)
+)
+
+/**
+ * PUT /api/students/:id
+ * Update a student
+ * Admin only
+ */
+router.put('/:id', requireRole('admin'), (req, res) =>
+  studentController.updateStudent(req, res)
+)
+
+/**
+ * DELETE /api/students/:id
+ * Delete a student
+ * Admin only
+ */
+router.delete('/:id', requireRole('admin'), (req, res) =>
+  studentController.deleteStudent(req, res)
+)
+
+export default router
