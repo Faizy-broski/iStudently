@@ -106,7 +106,6 @@ export default function StaffDetailsPage() {
         backUrl: '/admin/staff'
       });
     }
-
     // Clear profile view when leaving the page
     return () => {
       clearViewedProfile();
@@ -174,7 +173,6 @@ export default function StaffDetailsPage() {
             </p>
           </div>
         </div>
-
         <div className="flex items-center gap-2">
           <Button
             variant="outline"

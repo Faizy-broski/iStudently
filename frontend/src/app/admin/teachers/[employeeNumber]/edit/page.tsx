@@ -17,7 +17,7 @@ export default function EditTeacherPage() {
   const router = useRouter()
   const campusContext = useCampus()
   const employeeNumber = decodeURIComponent(params.employeeNumber as string)
-  
+
   const [teacher, setTeacher] = useState<teachersApi.Staff | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -26,13 +26,13 @@ export default function EditTeacherPage() {
       try {
         // First get all teachers to find the one with matching employee number
         // Use campus filter to match the list page behavior
-        const result = await teachersApi.getAllTeachers({ 
-          page: 1, 
+        const result = await teachersApi.getAllTeachers({
+          page: 1,
           limit: 1000,
-          campus_id: campusContext?.selectedCampus?.id 
+          campus_id: campusContext?.selectedCampus?.id
         })
         const foundTeacher = result.data?.find(t => t.employee_number === employeeNumber)
-        
+
         if (foundTeacher) {
           // Fetch full details including base_salary
           const fullTeacher = await teachersApi.getTeacherById(foundTeacher.id)
@@ -82,7 +82,7 @@ export default function EditTeacherPage() {
               variant="ghost"
               size="sm"
               onClick={() => router.push(`/admin/teachers/${encodeURIComponent(employeeNumber)}`)}
-              className="text-[#022172] hover:text-[#022172]/80"
+              className="text-[#022172] dark:text-blue-300 hover:text-[#022172]/80 dark:hover:text-blue-200"
             >
               <ArrowLeft className="h-4 w-4 mr-1" />
               {t("backToTeacherDetails")}
@@ -100,13 +100,13 @@ export default function EditTeacherPage() {
       {/* Form Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-[#022172]">{t("editTeacherInformation")}</CardTitle>
+          <CardTitle className="text-[#022172] dark:text-white">{t("editTeacherInformation")}</CardTitle>
           <CardDescription>
             {t("editTeacherDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <AddTeacherForm 
+          <AddTeacherForm
             onSuccess={() => {
               router.push(`/admin/teachers/${encodeURIComponent(employeeNumber)}`)
             }}

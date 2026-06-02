@@ -143,27 +143,28 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
   useEffect(() => {
     const loadFields = async () => {
       try {
+        const campusId = selectedCampus?.id;
         const [fieldsResponse, ordersResponse] = await Promise.all([
-          getFieldDefinitions('parent'),
+          getFieldDefinitions('parent', campusId),
           getFieldOrders('parent')
         ]);
-        
+
         // Apply saved default field orders
         if (ordersResponse.success && ordersResponse.data) {
           setDefaultFieldOrders(ordersResponse.data);
-          
+
           // Apply orders to STANDARD_FIELDS
           const orderedFields = STANDARD_FIELDS.map(field => {
             // Get effective order for this field
             const categoryOrders = ordersResponse.data!.filter(o => o.category_id === field.category);
             const savedOrder = categoryOrders.find(o => o.field_label === field.label);
-            
+
             return savedOrder ? { ...field, sort_order: savedOrder.sort_order } : field;
           });
-          
+
           setOrderedStandardFields(orderedFields);
         }
-        
+
         if (fieldsResponse.success && fieldsResponse.data) {
           setCustomFields(fieldsResponse.data);
         }
@@ -174,7 +175,7 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
       }
     };
     loadFields();
-  }, []);
+  }, [selectedCampus?.id]);
 
   const getFieldError = (fieldName: string): string | undefined => {
     return formErrors[fieldName];
@@ -507,8 +508,8 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
   }
 
   return (
-    <form 
-      onSubmit={(e) => e.preventDefault()} 
+    <form
+      onSubmit={(e) => e.preventDefault()}
       onKeyDown={handleKeyDown}
       className="space-y-6"
     >

@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Trash2, Save, Settings2, ChevronDown, ChevronRight, Building2, GripVertical, FolderPlus } from "lucide-react";
+import { Plus, Trash2, Save, Settings2, ChevronDown, ChevronRight, Building2, GripVertical, FolderPlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { CustomFieldCategory, CustomField, CustomFieldType, CampusScope } from "@/types";
 import { customFieldsApi, CustomFieldDefinition, BranchSchool } from "@/lib/api/custom-fields";
@@ -56,7 +56,12 @@ export default function ParentCustomFieldsPage() {
   const { selectedCampus } = useCampus();
   const t = useTranslations("parents");
   const [categories, setCategories] = useState<ExtendedCategory[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isDataLoadedRef = useRef(false);
+  const isSavingRef = useRef(false);
+  const pendingSaveRef = useRef(false);
+  const categoriesRef = useRef(categories);
   const [isLoading, setIsLoading] = useState(true);
   const [branchSchools, setBranchSchools] = useState<BranchSchool[]>([]);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
@@ -89,7 +94,7 @@ export default function ParentCustomFieldsPage() {
         // Load saved default field orders if any
         if (defaultOrdersResponse.success && defaultOrdersResponse.data) {
           setSavedDefaultOrders(defaultOrdersResponse.data);
-          
+
           // Apply saved orders to default fields
           const updatedDefaults: Record<string, Array<{label: string, sort_order: number}>> = {};
           Object.keys(DEFAULT_FIELDS_BY_CATEGORY).forEach(categoryId => {
@@ -132,7 +137,7 @@ export default function ParentCustomFieldsPage() {
               fieldsByCategory[field.category_id] = [];
             }
             fieldsByCategory[field.category_id].push(customField);
-            
+
             // Track category order from database
             if (!categoryOrderMap[field.category_id] && field.category_order !== undefined) {
               categoryOrderMap[field.category_id] = field.category_order;
@@ -176,10 +181,35 @@ export default function ParentCustomFieldsPage() {
         toast.error(t("customFieldsPage.toasts.failedLoad"));
       } finally {
         setIsLoading(false);
+        setTimeout(() => {
+          isDataLoadedRef.current = true;
+          console.log('[CF:parent] isDataLoadedRef → true (initial load done)');
+        }, 0);
       }
     };
+    isDataLoadedRef.current = false;
+    console.log('[CF:parent] loadData start — isDataLoadedRef → false');
     loadData();
-  }, [selectedCampus?.id]); // Reload when campus changes
+  }, [selectedCampus?.id]);
+
+  useEffect(() => { categoriesRef.current = categories; }, [categories]);
+
+  useEffect(() => {
+    if (!isDataLoadedRef.current) {
+      console.log('[CF:parent] auto-save skipped — data not loaded yet');
+      return;
+    }
+    const snapshot = categories.flatMap(c => c.fields.map(f => `${f.id}:${f.label}`));
+    console.log('[CF:parent] categories changed → scheduling auto-save in 1500ms | fields:', snapshot);
+    if (isSavingRef.current) {
+      console.log('[CF:parent] save in progress — marking pendingSave');
+      pendingSaveRef.current = true;
+      return;
+    }
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => { handleSaveTemplate(); }, 1500);
+    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
+  }, [categories]);
 
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories(prev => {
@@ -192,12 +222,12 @@ export default function ParentCustomFieldsPage() {
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    
+
     if (over && active.id !== over.id) {
       setCategories((items) => {
         const oldIndex = items.findIndex((item) => item.id === active.id);
         const newIndex = items.findIndex((item) => item.id === over.id);
-        
+
         const reordered = arrayMove(items, oldIndex, newIndex);
         // Update order values
         return reordered.map((cat, idx) => ({ ...cat, order: idx + 1 }));
@@ -210,7 +240,7 @@ export default function ParentCustomFieldsPage() {
       toast.error(t("customFieldsPage.toasts.categoryNameEmpty"));
       return;
     }
-    
+
     const categoryId = `custom_${Date.now()}`;
     const newCategory: ExtendedCategory = {
       id: categoryId,
@@ -218,7 +248,7 @@ export default function ParentCustomFieldsPage() {
       fields: [],
       order: categories.length + 1
     };
-    
+
     setCategories([...categories, newCategory]);
     setExpandedCategories(prev => new Set(prev).add(categoryId));
     setNewCategoryName('');
@@ -231,7 +261,7 @@ export default function ParentCustomFieldsPage() {
       toast.error(t("customFieldsPage.toasts.cannotDeleteStandard"));
       return;
     }
-    
+
     setCategories(categories.filter(c => c.id !== categoryId));
     toast.success(t("customFieldsPage.toasts.categoryDeleted"));
   };
@@ -265,36 +295,66 @@ export default function ParentCustomFieldsPage() {
   };
 
   const removeCustomField = (categoryId: string, fieldId: string) => {
+    const field = categories.find(c => c.id === categoryId)?.fields.find(f => f.id === fieldId);
+    console.log(`[CF:parent] removeCustomField`, { categoryId, fieldId, label: field?.label, isTemp: fieldId.startsWith('field-') });
     setCategories(categories.map((cat) =>
       cat.id === categoryId ? { ...cat, fields: cat.fields.filter((field) => field.id !== fieldId) } : cat
     ));
   };
 
+  const rebuildCategoriesFromApi = (current: ExtendedCategory[], apiFields: CustomFieldDefinition[]): ExtendedCategory[] => {
+    const existingRealIds = new Set<string>();
+    current.forEach(cat => cat.fields.forEach(f => { if (!f.id.startsWith('field-')) existingRealIds.add(f.id); }));
+    const newIdByLabelAndCat: Record<string, string> = {};
+    apiFields.forEach(f => {
+      if (!existingRealIds.has(f.id)) newIdByLabelAndCat[`${f.category_id}::${f.label}`] = f.id;
+    });
+    console.log(`[CF:parent] rebuildCategoriesFromApi`, { currentFieldCount: current.reduce((n, c) => n + c.fields.length, 0), apiFieldCount: apiFields.length, newMappings: newIdByLabelAndCat });
+    const result = current.map(cat => ({
+      ...cat,
+      fields: cat.fields.map(f => {
+        if (!f.id.startsWith('field-')) return f;
+        const realId = newIdByLabelAndCat[`${cat.id}::${f.label}`];
+        if (realId) console.log(`[CF:parent] resolved temp id ${f.id} → ${realId}`);
+        else console.warn(`[CF:parent] no match for temp id=${f.id} label="${f.label}"`);
+        return realId ? { ...f, id: realId } : f;
+      }).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
+    }));
+    console.log(`[CF:parent] rebuild result fieldCount=${result.reduce((n, c) => n + c.fields.length, 0)}`);
+    return result;
+  };
+
   const handleSaveTemplate = async () => {
-    setIsSaving(true);
+    console.log(`[CF:parent] handleSaveTemplate called | isSaving=${isSavingRef.current}`);
+    if (isSavingRef.current) {
+      console.warn('[CF:parent] save skipped — marking pendingSave');
+      pendingSaveRef.current = true;
+      return;
+    }
+    pendingSaveRef.current = false;
+    isSavingRef.current = true;
+    setSaveStatus('saving');
     try {
-      // Pass campus_id to get/create campus-specific fields
       const campusId = selectedCampus?.id;
       const existingResponse = await customFieldsApi.getFieldDefinitions('parent', campusId);
       const existingIds = new Set((existingResponse.data || []).map(f => f.id));
       const currentIds = new Set<string>();
+      let newFieldsCreated = false;
 
       const allFields: { categoryId: string; categoryName: string; categoryOrder: number; field: CustomField }[] = [];
-      categories.forEach(cat => {
+      categoriesRef.current.forEach(cat => {
         cat.fields.forEach(field => {
           if (field.label.trim()) {
-            allFields.push({ 
-              categoryId: cat.id, 
-              categoryName: cat.name, 
-              categoryOrder: cat.order,
-              field 
-            });
-            // Track IDs of fields currently in the UI (excluding new temporary IDs)
-            if (!field.id.startsWith('field-')) {
-              currentIds.add(field.id);
-            }
+            allFields.push({ categoryId: cat.id, categoryName: cat.name, categoryOrder: cat.order, field });
+            if (!field.id.startsWith('field-')) currentIds.add(field.id);
           }
         });
+      });
+
+      console.log(`[CF:parent] save snapshot`, {
+        existingIdsInDB: [...existingIds],
+        currentIdsInUI: [...currentIds],
+        toDelete: [...existingIds].filter(id => !currentIds.has(id)),
       });
 
       for (const { categoryId, categoryName, categoryOrder, field } of allFields) {
@@ -303,47 +363,68 @@ export default function ParentCustomFieldsPage() {
             label: field.label, type: field.type, options: field.options,
             required: field.required, sort_order: field.sort_order,
             category_order: categoryOrder,
-            campus_scope: field.campus_scope, applicable_school_ids: field.applicable_school_ids
-          });
+            campus_scope: field.campus_scope, applicable_school_ids: field.applicable_school_ids,
+          }, campusId);
         } else {
-          // Create new field with campus_id
           await customFieldsApi.createFieldDefinition({
             entity_type: 'parent', category_id: categoryId, category_name: categoryName,
             label: field.label, type: field.type, options: field.options,
             required: field.required, sort_order: field.sort_order,
             category_order: categoryOrder,
-            campus_scope: field.campus_scope, applicable_school_ids: field.applicable_school_ids
+            campus_scope: field.campus_scope, applicable_school_ids: field.applicable_school_ids,
           }, campusId);
+          console.log(`[CF:parent] created field tempId=${field.id} label="${field.label}"`);
+          newFieldsCreated = true;
         }
       }
 
-      // Delete fields that are in DB but no longer in the UI
       for (const id of existingIds) {
         if (!currentIds.has(id)) {
-          await customFieldsApi.deleteFieldDefinition(id);
+          console.log(`[CF:parent] deleting field id=${id}`);
+          const deleteResult = await customFieldsApi.deleteFieldDefinition(id, campusId);
+          console.log(`[CF:parent] delete result for ${id}:`, deleteResult);
         }
       }
-      toast.success(t("customFieldsPage.toasts.saved"));
+
+      if (newFieldsCreated) {
+        console.log('[CF:parent] reloading from API to resolve temp IDs...');
+        const refreshed = await customFieldsApi.getFieldDefinitions('parent', campusId);
+        console.log('[CF:parent] reload response:', { success: refreshed.success, count: refreshed.data?.length, fields: refreshed.data?.map(f => ({ id: f.id, label: f.label, isActive: f.is_active })) });
+        if (refreshed.success && refreshed.data) {
+          setCategories(prev => rebuildCategoriesFromApi(prev, refreshed.data!));
+        }
+      }
+
+      console.log('[CF:parent] save complete');
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (error) {
-      console.error("Error saving:", error);
+      console.error('[CF:parent] save error:', error);
       toast.error(t("customFieldsPage.toasts.failedSave"));
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
     } finally {
-      setIsSaving(false);
+      isSavingRef.current = false;
+      if (pendingSaveRef.current) {
+        console.log('[CF:parent] pendingSave detected — running follow-up save');
+        pendingSaveRef.current = false;
+        saveTimeoutRef.current = setTimeout(() => handleSaveTemplate(), 0);
+      }
     }
   };
 
   const handleDefaultFieldDragEnd = (categoryId: string, event: DragEndEvent) => {
     const { active, over } = event;
-    
+
     if (over && active.id !== over.id) {
       const fields = defaultFieldsByCategory[categoryId] || [];
       const oldIndex = fields.findIndex((field) => field.label === active.id);
       const newIndex = fields.findIndex((field) => field.label === over.id);
-      
+
       const reordered = arrayMove(fields, oldIndex, newIndex);
       // Update sort_order values based on new position
       const updatedFields = reordered.map((field, idx) => ({ ...field, sort_order: idx + 1 }));
-      
+
       setDefaultFieldsByCategory({
         ...defaultFieldsByCategory,
         [categoryId]: updatedFields
@@ -360,14 +441,14 @@ export default function ParentCustomFieldsPage() {
       }));
 
       const result = await saveFieldOrders('parent', categoryId, fieldOrders);
-      
+
       if (result.success) {
         toast.success(t("customFieldsPage.toasts.defaultOrderSaved", { categoryId }));
         // Reload saved orders and re-apply them
         const response = await getFieldOrders('parent');
         if (response.success && response.data) {
           setSavedDefaultOrders(response.data);
-          
+
           // Re-apply saved orders to all categories
           const updatedDefaults: Record<string, Array<{label: string, sort_order: number}>> = {};
           Object.keys(DEFAULT_FIELDS_BY_CATEGORY).forEach(catId => {
@@ -417,18 +498,19 @@ export default function ParentCustomFieldsPage() {
           <h1 className="text-xl font-bold text-[#022172] dark:text-white">{t("customFields")}</h1>
           <p className="text-xs text-gray-500 dark:text-gray-400">{t("defineCustomFields")}</p>
         </div>
-        <div className="flex gap-2">
-          <Button 
-            onClick={() => setShowAddCategory(true)} 
-            variant="outline" 
-            size="sm"
-          >
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            {saveStatus === 'saving' && <><Loader2 className="h-3 w-3 animate-spin" /><span>{t("saving")}</span></>}
+            {saveStatus === 'saved' && <span className="text-green-600">✓ {t("save")}</span>}
+            {saveStatus === 'error' && <span className="text-red-500">{t("customFieldsPage.toasts.failedSave")}</span>}
+          </div>
+          <Button onClick={() => setShowAddCategory(true)} variant="outline" size="sm">
             <FolderPlus className="mr-1 h-3 w-3" />
             {t("customFieldsPage.addCategory")}
           </Button>
-          <Button onClick={handleSaveTemplate} disabled={isSaving} size="sm" className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white">
+          <Button onClick={handleSaveTemplate} disabled={saveStatus === 'saving'} size="sm" className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white">
             <Save className="mr-1 h-3 w-3" />
-            {isSaving ? t("saving") : t("save")}
+            {saveStatus === 'saving' ? t("saving") : t("save")}
           </Button>
         </div>
       </div>
@@ -459,12 +541,12 @@ export default function ParentCustomFieldsPage() {
       </div>
 
       {/* Categories - Draggable */}
-      <DndContext 
+      <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
-        <SortableContext 
+        <SortableContext
           items={categories.map(c => c.id)}
           strategy={verticalListSortingStrategy}
         >
@@ -495,12 +577,12 @@ export default function ParentCustomFieldsPage() {
 }
 
 // Sortable Category Component
-function SortableCategoryItem({ 
-  category, 
-  expanded, 
-  onToggle, 
-  onAddField, 
-  onUpdateField, 
+function SortableCategoryItem({
+  category,
+  expanded,
+  onToggle,
+  onAddField,
+  onUpdateField,
   onRemoveField,
   onDeleteCategory,
   branchSchools,

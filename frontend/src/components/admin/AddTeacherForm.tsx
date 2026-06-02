@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent } from "@/components/ui/tabs"
+import { Checkbox } from "@/components/ui/checkbox"
+import { MultiSelect } from "@/components/ui/multi-select"
 import { toast } from "sonner"
 import { ChevronLeft, ChevronRight, Check, Copy, Eye, EyeOff } from "lucide-react"
 import { getFieldDefinitions, CustomFieldDefinition } from "@/lib/api/custom-fields"
@@ -113,35 +115,31 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
     custom_fields: {}
   });
 
-  // Load custom fields on mount
+  // Load custom fields on mount or when campus changes
   useEffect(() => {
     const loadCustomFields = async () => {
       try {
+        const campusId = selectedCampus?.id;
         const [fieldsResponse, ordersResponse] = await Promise.all([
-          getFieldDefinitions('teacher'),
+          getFieldDefinitions('teacher', campusId),
           getFieldOrders('teacher')
         ]);
-        
-        // Apply saved default field orders
+
         if (ordersResponse.success && ordersResponse.data) {
           setDefaultFieldOrders(ordersResponse.data);
-          
-          // Apply orders to STANDARD_FIELDS
+
           const orderedFields = STANDARD_FIELDS.map(field => {
-            // Get effective order for this field
             const categoryOrders = ordersResponse.data!.filter(o => o.category_id === field.category);
             const savedOrder = categoryOrders.find(o => o.field_label === field.label);
-            
             return savedOrder ? { ...field, sort_order: savedOrder.sort_order } : field;
           });
-          
+
           setOrderedStandardFields(orderedFields);
         }
-        
+
         if (fieldsResponse.success && fieldsResponse.data) {
           setCustomFields(fieldsResponse.data);
 
-          // Update active tab to the first ordered category
           const categoryOrderMap: Record<string, number> = {};
           fieldsResponse.data.forEach((field: CustomFieldDefinition) => {
             if (field.category_order !== undefined && !categoryOrderMap[field.category_id]) {
@@ -149,7 +147,7 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
             }
           });
 
-          const standardCategories = ['personal', 'professional', 'qualifications', 'system'];
+          const standardCategories = ['personal', 'professional', 'qualifications', 'employment', 'system'];
           let minOrder = Infinity;
           let firstCategory = 'personal';
 
@@ -171,7 +169,7 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
     };
 
     loadCustomFields();
-  }, []);
+  }, [selectedCampus?.id]);
 
   // Populate form when editing
   useEffect(() => {
@@ -179,10 +177,10 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
       console.log('🔍 AddTeacherForm - editingTeacher received:', editingTeacher)
       console.log('💰 AddTeacherForm - base_salary:', editingTeacher.base_salary)
       console.log('💰 AddTeacherForm - (any)base_salary:', (editingTeacher as any).base_salary)
-      
+
       // Extract profile data from nested profile object
       const profile = editingTeacher.profile;
-      
+
       setFormData({
         employee_number: editingTeacher.employee_number || "",
         title: editingTeacher.title || "",
@@ -204,11 +202,11 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
         status: editingTeacher.is_active ? "active" : "inactive",
         custom_fields: editingTeacher.custom_fields || {}
       });
-      
+
       console.log('📝 AddTeacherForm - formData after setFormData:', {
         base_salary: (editingTeacher as any).base_salary || 0
       })
-      
+
       setCustomFieldValues(editingTeacher.custom_fields || {});
     }
   }, [editingTeacher]);
@@ -330,7 +328,10 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
     }
 
     const isCustom = !!field.isCustom;
-    const value = isCustom ? (customFieldValues[field.field_key] ?? '') : (formData[field.id as keyof teachersApi.CreateStaffDTO] ?? '');
+    const defaultValue = field.type === 'multi-select' ? [] : '';
+    const value = isCustom
+      ? (customFieldValues[field.field_key] ?? defaultValue)
+      : (formData[field.id as keyof teachersApi.CreateStaffDTO] ?? defaultValue);
 
     const handleChange = (val: any) => {
       if (isCustom) {
@@ -353,7 +354,7 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
         {field.type === 'text' || field.type === 'email' || field.type === 'number' || field.type === 'tel' ? (
           field.id === 'base_salary' ? (
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">{currencySymbol}</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-gray-500 font-medium">{currencySymbol}</span>
               <Input
                 id={field.id}
                 type="number"
@@ -403,7 +404,7 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
             <SelectContent>
               {field.options?.map((opt: string) => (
                 <SelectItem key={opt} value={opt}>
-                  {opt.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                  {opt.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -417,6 +418,36 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
             rows={4}
             className={error ? "border-red-500" : ""}
           />
+        ) : field.type === 'checkbox' ? (
+          <div className="flex items-center space-x-2 pt-2 rtl:space-x-reverse">
+            <Checkbox
+              id={field.id}
+              checked={!!value}
+              onCheckedChange={handleChange}
+              className={error ? "border-red-500" : ""}
+            />
+            <label htmlFor={field.id} className="text-sm cursor-pointer">{field.label}</label>
+          </div>
+        ) : field.type === 'multi-select' ? (
+          <MultiSelect
+            options={field.options || []}
+            value={Array.isArray(value) ? value : (value ? [value] : [])}
+            onChange={handleChange}
+            placeholder={`Select ${field.label.toLowerCase()}`}
+          />
+        ) : field.type === 'file' ? (
+          <div className="space-y-1">
+            <Input
+              type="file"
+              id={field.id}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleChange(file.name);
+              }}
+              className={error ? "border-red-500" : ""}
+            />
+            {value && <p className="text-xs text-muted-foreground">Current: {value}</p>}
+          </div>
         ) : null}
 
         {field.help && <p className="text-xs text-muted-foreground">{field.help}</p>}
@@ -427,7 +458,7 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
 
   // Define tab order for navigation - use category_order from database
   const getTabsInOrder = () => {
-    const standardCategories = ['personal', 'professional', 'qualifications', 'system'];
+    const standardCategories = ['personal', 'professional', 'qualifications', 'employment', 'system'];
 
     const categoryOrderMap: Record<string, number> = {};
     customFields.forEach(field => {
@@ -436,10 +467,15 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
       }
     });
 
-    const categoriesWithOrder = standardCategories.map(cat => ({
-      id: cat,
-      order: categoryOrderMap[cat] || (standardCategories.indexOf(cat) + 1)
-    }));
+    // Only include employment tab if it has custom fields (no standard fields live there)
+    const hasEmploymentFields = customFields.some(f => f.category_id === 'employment');
+
+    const categoriesWithOrder = standardCategories
+      .filter(cat => cat !== 'employment' || hasEmploymentFields)
+      .map(cat => ({
+        id: cat,
+        order: categoryOrderMap[cat] || (standardCategories.indexOf(cat) + 1)
+      }));
 
     categoriesWithOrder.sort((a, b) => a.order - b.order);
     return categoriesWithOrder.map(c => c.id);
@@ -495,6 +531,13 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
           errors[`custom_${field.field_key}`] = t('validation.fieldRequired', { field: field.label });
         }
       });
+    } else if (activeTab === 'employment') {
+      customFields.filter(f => f.category_id === 'employment' && f.required).forEach(field => {
+        const value = customFieldValues[field.field_key];
+        if (!value || (Array.isArray(value) && value.length === 0) || value === '') {
+          errors[`custom_${field.field_key}`] = t('validation.fieldRequired', { field: field.label });
+        }
+      });
     } else if (activeTab === 'system') {
       customFields.filter(f => f.category_id === 'system' && f.required).forEach(field => {
         const value = customFieldValues[field.field_key];
@@ -531,6 +574,7 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
       personal: t('tabs.personalInformation'),
       professional: t('tabs.professionalDetails'),
       qualifications: t('tabs.qualificationsCertifications'),
+      employment: t('tabs.employmentCompensation'),
       system: t('tabs.systemLogin'),
     };
     return titles[activeTab] || '';
@@ -601,22 +645,22 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
   }
 
   return (
-    <form 
-      onSubmit={(e) => e.preventDefault()} 
-      onKeyDown={handleKeyDown} 
+    <form
+      onSubmit={(e) => e.preventDefault()}
+      onKeyDown={handleKeyDown}
       className="space-y-6"
     >
       {/* Progress Indicator */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-[#022172]">
+          <span className="text-sm font-medium text-[#022172] dark:text-blue-300">
             {t('form.stepOf', { current: currentTabIndex + 1, total: tabs.length })}
           </span>
           <span className="text-sm text-muted-foreground">
             {getStepTitle()}
           </span>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
+        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
           <div
             className="bg-gradient-to-r from-[#57A3CC] to-[#022172] h-2 rounded-full transition-all duration-300"
             style={{ width: `${((currentTabIndex + 1) / tabs.length) * 100}%` }}
@@ -629,7 +673,7 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
         <TabsContent value="personal" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#022172]">{t('tabs.personalInformation')}</CardTitle>
+              <CardTitle className="text-[#022172] dark:text-white">{t('tabs.personalInformation')}</CardTitle>
               <CardDescription>{t('form.personalDetailsDescription')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -644,7 +688,7 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
         <TabsContent value="professional" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#022172]">{t('tabs.professionalDetails')}</CardTitle>
+              <CardTitle className="text-[#022172] dark:text-white">{t('tabs.professionalDetails')}</CardTitle>
               <CardDescription>{t('form.professionalDetailsDescription')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -659,7 +703,7 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
         <TabsContent value="qualifications" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#022172]">{t('tabs.qualificationsCertifications')}</CardTitle>
+              <CardTitle className="text-[#022172] dark:text-white">{t('tabs.qualificationsCertifications')}</CardTitle>
               <CardDescription>{t('form.qualificationsDescription')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -670,25 +714,39 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
           </Card>
         </TabsContent>
 
+        {/* Employment & Compensation Tab — rendered only when custom fields exist */}
+        <TabsContent value="employment" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-[#022172] dark:text-white">{t('tabs.employmentCompensation')}</CardTitle>
+              <CardDescription>{t('form.professionalDetailsDescription')}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {getMergedFields(['employment']).map(renderField)}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* System & Login Tab */}
         <TabsContent value="system" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#022172]">{t('tabs.systemLogin')}</CardTitle>
+              <CardTitle className="text-[#022172] dark:text-white">{t('tabs.systemLogin')}</CardTitle>
               <CardDescription>{t('form.systemInfoDescription')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {getMergedFields(['system']).map(renderField)}
               </div>
-
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
 
       {/* Navigation Buttons */}
-      <div className="flex justify-between pt-4">
+      <div className="flex justify-between pt-4 border-t dark:border-gray-700">
         <Button
           type="button"
           variant="outline"

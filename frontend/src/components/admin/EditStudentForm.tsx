@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, ArrowRight, Save, Loader2, User, GraduationCap, Heart, Shield } from "lucide-react";
 import { toast } from "sonner";
@@ -25,10 +26,9 @@ interface EditStudentFormProps {
 }
 
 interface FormData {
+  // Personal Information
   firstName: string;
   lastName: string;
-  fatherName: string;
-  grandfatherName: string;
   email: string;
   phone: string;
   gender: string;
@@ -43,10 +43,12 @@ interface FormData {
   previousSchool: string;
   lastGrade: string;
 
+  // Medical Information
   bloodGroup: string;
   allergies: string;
   medicalNotes: string;
 
+  // Emergency Contact
   emergencyName: string;
   emergencyRelation: string;
   emergencyPhone: string;
@@ -57,6 +59,7 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
   const t = useTranslations("school.students.edit_student");
   const tFields = useTranslations("school.students.fields");
   const tCommon = useTranslations("common");
+  const { user } = useAuth();
   const campusContext = useCampus();
   const [activeTab, setActiveTab] = useState('personal');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -69,26 +72,22 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
     { id: 'emergency', label: t("emergency_contacts"), icon: Shield }
   ];
 
+  // Initialize form data with student information
   const [formData, setFormData] = useState<FormData>({
     firstName: student.profile?.first_name || '',
     lastName: student.profile?.last_name || '',
-    fatherName: student.profile?.father_name || '',
-    grandfatherName: student.profile?.grandfather_name || '',
     email: student.profile?.email || '',
     phone: student.profile?.phone || '',
     gender: student.custom_fields?.personal?.gender || '',
-    dateOfBirth: student.custom_fields?.personal?.date_of_birth
-      ? new Date(student.custom_fields.personal.date_of_birth).toISOString().split('T')[0]
-      : '',
+    dateOfBirth: student.custom_fields?.personal?.date_of_birth ?
+      new Date(student.custom_fields.personal.date_of_birth).toISOString().split('T')[0] : '',
     address: student.custom_fields?.personal?.address || '',
-    studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.personal?.student_photo || '',
-
+studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.personal?.student_photo || '',
     studentNumber: student.student_number || '',
     gradeLevel: student.grade_level || '',
     username: student.custom_fields?.system?.username || '',
-    admissionDate: student.custom_fields?.academic?.admission_date
-      ? new Date(student.custom_fields.academic.admission_date).toISOString().split('T')[0]
-      : '',
+    admissionDate: student.custom_fields?.academic?.admission_date ?
+      new Date(student.custom_fields.academic.admission_date).toISOString().split('T')[0] : '',
     previousSchool: student.custom_fields?.academic?.previous_school?.schoolName || '',
     lastGrade: student.custom_fields?.academic?.previous_school?.lastGradeCompleted || '',
 
@@ -111,11 +110,15 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
   };
 
   const handleNext = () => {
-    if (!isLastTab) setActiveTab(tabs[currentTabIndex + 1].id);
+    if (!isLastTab) {
+      setActiveTab(tabs[currentTabIndex + 1].id);
+    }
   };
 
   const handlePrevious = () => {
-    if (!isFirstTab) setActiveTab(tabs[currentTabIndex - 1].id);
+    if (!isFirstTab) {
+      setActiveTab(tabs[currentTabIndex - 1].id);
+    }
   };
 
   const getStepTitle = () => {
@@ -133,26 +136,20 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
     try {
       const updateData = {
         first_name: formData.firstName,
-        father_name: formData.fatherName,
-        grandfather_name: formData.grandfatherName,
         last_name: formData.lastName,
         email: formData.email,
         phone: formData.phone,
         student_number: formData.studentNumber,
         grade_level: formData.gradeLevel,
         username: formData.username || undefined,
-        profile_photo_url: formData.studentPhoto || undefined,
         custom_fields: {
-          ...student.custom_fields,
           personal: {
-            ...(student.custom_fields?.personal || {}),
             gender: formData.gender,
             date_of_birth: formData.dateOfBirth,
             address: formData.address,
             student_photo: formData.studentPhoto,
           },
           academic: {
-            ...(student.custom_fields?.academic || {}),
             admission_date: formData.admissionDate,
             previous_school: {
               schoolName: formData.previousSchool,
@@ -160,11 +157,9 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
             },
           },
           system: {
-            ...(student.custom_fields?.system || {}),
             username: formData.username,
           },
           family: {
-            ...(student.custom_fields?.family || {}),
             emergency_contacts: [{
               name: formData.emergencyName,
               relationship: formData.emergencyRelation,
@@ -181,7 +176,6 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
       };
 
       const result = await updateStudent(student.id, updateData, campusContext?.selectedCampus?.id);
-
       if (result.success) {
         toast.success(t("msg_update_success"));
         onSuccess();
@@ -198,6 +192,7 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-[#022172] dark:text-white">
@@ -211,12 +206,15 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
         </Button>
       </div>
 
+      {/* Progress Indicator */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium text-[#022172] dark:text-gray-200">
             {t("step_of", { current: currentTabIndex + 1, total: tabs.length })}
           </span>
-          <span className="text-sm text-muted-foreground">{getStepTitle()}</span>
+          <span className="text-sm text-muted-foreground">
+            {getStepTitle()}
+          </span>
         </div>
         <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-2">
           <div
@@ -226,6 +224,7 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
         </div>
       </div>
 
+      {/* Tab Navigation */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4">
           {tabs.map(tab => (
@@ -236,6 +235,7 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
           ))}
         </TabsList>
 
+        {/* Personal Information Tab */}
         <TabsContent value="personal" className="space-y-4 mt-6">
           <Card>
             <CardHeader>
@@ -264,24 +264,6 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
                     onChange={(e) => handleInputChange('firstName', e.target.value)}
                     placeholder={tFields("first_name")}
                     required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="fatherName">{tFields("father_name")}</Label>
-                  <Input
-                    id="fatherName"
-                    value={formData.fatherName}
-                    onChange={(e) => handleInputChange('fatherName', e.target.value)}
-                    placeholder={tFields("father_name")}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="grandfatherName">{tFields("grandfather_name")}</Label>
-                  <Input
-                    id="grandfatherName"
-                    value={formData.grandfatherName}
-                    onChange={(e) => handleInputChange('grandfatherName', e.target.value)}
-                    placeholder={tFields("grandfather_name")}
                   />
                 </div>
                 <div>
@@ -349,6 +331,7 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
           </Card>
         </TabsContent>
 
+        {/* Academic Information Tab */}
         <TabsContent value="academic" className="space-y-4 mt-6">
           <Card>
             <CardHeader>
@@ -423,6 +406,7 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
           </Card>
         </TabsContent>
 
+        {/* Medical Information Tab */}
         <TabsContent value="medical" className="space-y-4 mt-6">
           <Card>
             <CardHeader>
@@ -438,9 +422,14 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
                       <SelectValue placeholder={t("select_blood_group")} />
                     </SelectTrigger>
                     <SelectContent>
-                      {['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'].map(bg => (
-                        <SelectItem key={bg} value={bg}>{bg}</SelectItem>
-                      ))}
+                      <SelectItem value="A+">A+</SelectItem>
+                      <SelectItem value="A-">A-</SelectItem>
+                      <SelectItem value="B+">B+</SelectItem>
+                      <SelectItem value="B-">B-</SelectItem>
+                      <SelectItem value="O+">O+</SelectItem>
+                      <SelectItem value="O-">O-</SelectItem>
+                      <SelectItem value="AB+">AB+</SelectItem>
+                      <SelectItem value="AB-">AB-</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -468,6 +457,7 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
           </Card>
         </TabsContent>
 
+        {/* Emergency Contacts Tab */}
         <TabsContent value="emergency" className="space-y-4 mt-6">
           <Card>
             <CardHeader>
@@ -519,6 +509,7 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
         </TabsContent>
       </Tabs>
 
+      {/* Navigation Buttons */}
       <div className="flex justify-between pt-6 border-t">
         <Button
           type="button"
@@ -531,7 +522,12 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
         </Button>
 
         <div className="flex gap-2">
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={isSubmitting}
+          >
             {tCommon("cancel")}
           </Button>
 

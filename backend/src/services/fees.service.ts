@@ -1245,7 +1245,6 @@ class FeesService {
                     const now = new Date();
                     const currentYear = now.getFullYear();
                     const currentMonth = now.getMonth() + 1;
-
                     if (currentMonth >= 7) {
                         currentAcademicYear = `${currentYear}-${currentYear + 1}`;
                     } else {
@@ -1359,7 +1358,6 @@ class FeesService {
 
                 // Create single fee record with breakdown details stored as JSON
                 const dueDate = new Date(targetYear, normalizedMonth - 1, 5); // 5th of the month
-
                 const { data: createdFee, error: createError } = await supabase
                     .from('student_fees')
                     .insert({
@@ -1625,7 +1623,6 @@ class FeesService {
             .eq('grade_level_id', gradeId)
             .eq('academic_year', options.academicYear)
             .eq('is_active', true)
-
         let globalQuery = supabase
             .from('fee_structures')
             .select('*, fee_categories!inner(*)')
@@ -1633,7 +1630,6 @@ class FeesService {
             .is('grade_level_id', null)
             .eq('academic_year', options.academicYear)
             .eq('is_active', true)
-
         // Filter by specific categories if provided
         if (options.categoryIds && options.categoryIds.length > 0) {
             gradeQuery = gradeQuery.in('fee_category_id', options.categoryIds)

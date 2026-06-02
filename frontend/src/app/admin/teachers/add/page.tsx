@@ -21,7 +21,7 @@ export default function AddTeacherPage() {
               variant="ghost"
               size="sm"
               onClick={() => router.push('/admin/teachers')}
-              className="text-[#022172] hover:text-[#022172]/80"
+              className="text-[#022172] dark:text-blue-300 hover:text-[#022172]/80 dark:hover:text-blue-200"
             >
               <ArrowLeft className="h-4 w-4 mr-1" />
               {t("backToTeachers")}
@@ -39,13 +39,13 @@ export default function AddTeacherPage() {
       {/* Form Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-[#022172]">{t("teacherRegistrationForm")}</CardTitle>
+          <CardTitle className="text-[#022172] dark:text-white">{t("teacherRegistrationForm")}</CardTitle>
           <CardDescription>
             {t("teacherRegistrationDescription")}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <AddTeacherForm 
+          <AddTeacherForm
             onSuccess={() => {
               router.push('/admin/teachers')
             }}

@@ -92,7 +92,6 @@ export default function ParentDetailsPage() {
         const parent = parents.find((p) => p.id === parentId);
         if (parent) {
           setCurrentParent(parent);
-
           // Update profile view context for sidebar indicator
           const parentFullName = `${parent.profile?.first_name || ""} ${parent.profile?.last_name || ""}`.trim() || "Parent";
           setViewedProfile({
@@ -113,7 +112,6 @@ export default function ParentDetailsPage() {
     if (parents.length > 0) {
       fetchParent();
     }
-
     // Clear profile view when leaving the page
     return () => {
       clearViewedProfile();
@@ -168,7 +166,6 @@ export default function ParentDetailsPage() {
             </p>
           </div>
         </div>
-
         <div className="flex items-center gap-2">
           <Button
             variant="outline"

@@ -21,6 +21,9 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
+import { MultiSelect } from '@/components/ui/multi-select'
 import {
     Select,
     SelectContent,
@@ -37,26 +40,39 @@ import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import { useStaffDesignations } from '@/hooks/useStaffDesignations'
 import { useSchoolSettings } from '@/hooks/useSchoolSettings'
+import { getFieldDefinitions, CustomFieldDefinition } from '@/lib/api/custom-fields'
+import { getFieldOrders, DefaultFieldOrder } from '@/lib/utils/field-ordering'
 
-// Helper to generate a random password
+// Standard categories — custom fields in these are appended to their matching cards
+const STAFF_STANDARD_CATEGORIES = ['personal', 'employment', 'system']
+
 function generatePassword(firstName: string): string {
-    const cleanName = firstName.replace(/[^a-zA-Z]/g, '').slice(0, 4) || 'User';
-    const capitalizedName = cleanName.charAt(0).toUpperCase() + cleanName.slice(1).toLowerCase();
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
-    const specialChars = ['!', '@', '#', '$'];
-    const special = specialChars[Math.floor(Math.random() * specialChars.length)];
-    return `${capitalizedName}${randomNum}${special}`;
+    const cleanName = firstName.replace(/[^a-zA-Z]/g, '').slice(0, 4) || 'User'
+    const capitalizedName = cleanName.charAt(0).toUpperCase() + cleanName.slice(1).toLowerCase()
+    const randomNum = Math.floor(1000 + Math.random() * 9000)
+    const specialChars = ['!', '@', '#', '$']
+    const special = specialChars[Math.floor(Math.random() * specialChars.length)]
+    return `${capitalizedName}${randomNum}${special}`
 }
 
 export default function AddStaffPage() {
     const router = useRouter()
     const t = useTranslations('staff')
     const campusContext = useCampus()
+    const selectedCampus = campusContext?.selectedCampus
     const { profile } = useAuth()
     const { currencySymbol } = useSchoolSettings()
+
     const [loading, setLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
     const [copied, setCopied] = useState(false)
+
+    // Custom fields state
+    const [customFields, setCustomFields] = useState<CustomFieldDefinition[]>([])
+    const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({})
+    const [loadingFields, setLoadingFields] = useState(true)
+    const [defaultFieldOrders, setDefaultFieldOrders] = useState<DefaultFieldOrder[]>([])
+
     const [formData, setFormData] = useState<CreateStaffDTO>({
         first_name: '',
         last_name: '',
@@ -73,22 +89,48 @@ export default function AddStaffPage() {
         base_salary: undefined,
     })
 
-    // Fetch designations from database based on selected campus
-    const { designations, isLoading: designationsLoading } = useStaffDesignations(campusContext?.selectedCampus?.id)
-    
-    // Map designations to names for the dropdown
-    // Always ensure "Librarian" is available as it's a system role with dashboard access
-    const designationNames = designations.map(d => d.name)
-    const hasLibrarian = designationNames.some(name => name.toLowerCase() === 'librarian')
-    
-    // Build final list: database designations + ensure Librarian (no "Other")
-    const DESIGNATIONS = designations.length > 0 
-        ? [...designationNames, ...(hasLibrarian ? [] : ['Librarian'])]
+    const { designations, isLoading: designationsLoading } = useStaffDesignations(selectedCampus?.id)
+
+    const hasLibrarian = designations.some(d => d.name.toLowerCase() === 'librarian')
+    const DESIGNATIONS = designations.length > 0
+        ? [...designations.map(d => d.name), ...(hasLibrarian ? [] : ['Librarian'])]
         : ['Librarian', 'Accountant', 'Clerk', 'Driver', 'Security Guard', 'Nurse', 'Receptionist']
 
     const isLibrarian = formData.title?.toLowerCase() === 'librarian'
 
-    // Auto-generate username from first_name.last_name
+    // Load custom fields when campus changes
+    useEffect(() => {
+        const loadCustomFields = async () => {
+            setLoadingFields(true)
+            try {
+                const campusId = selectedCampus?.id
+                const [fieldsResponse, ordersResponse] = await Promise.all([
+                    getFieldDefinitions('staff', campusId),
+                    getFieldOrders('staff')
+                ])
+
+                if (ordersResponse.success && ordersResponse.data) {
+                    setDefaultFieldOrders(ordersResponse.data)
+                }
+
+                if (fieldsResponse.success && fieldsResponse.data) {
+                    // Sort by category_order then sort_order
+                    const sorted = [...fieldsResponse.data].sort((a, b) => {
+                        const catDiff = (a.category_order ?? 999) - (b.category_order ?? 999)
+                        return catDiff !== 0 ? catDiff : (a.sort_order ?? 1000) - (b.sort_order ?? 1000)
+                    })
+                    setCustomFields(sorted)
+                }
+            } catch (err) {
+                console.error('Error loading staff custom fields', err)
+            } finally {
+                setLoadingFields(false)
+            }
+        }
+        loadCustomFields()
+    }, [selectedCampus?.id])
+
+    // Auto-generate username from names
     useEffect(() => {
         if (formData.first_name && formData.last_name) {
             const generated = `${formData.first_name.toLowerCase().replace(/\s+/g, '')}.${formData.last_name.toLowerCase().replace(/\s+/g, '')}`
@@ -99,19 +141,19 @@ export default function AddStaffPage() {
     // Auto-generate password when Librarian is selected
     useEffect(() => {
         if (isLibrarian && formData.first_name && !formData.password) {
-            const newPassword = generatePassword(formData.first_name)
-            setFormData(prev => ({ ...prev, password: newPassword }))
+            setFormData(prev => ({ ...prev, password: generatePassword(formData.first_name) }))
         }
     }, [isLibrarian, formData.first_name])
 
     const handleChange = (field: keyof CreateStaffDTO, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }))
-
-        // If switching to Librarian and first name exists, generate password
         if (field === 'title' && value?.toLowerCase() === 'librarian' && formData.first_name) {
-            const newPassword = generatePassword(formData.first_name)
-            setFormData(prev => ({ ...prev, [field]: value, password: newPassword }))
+            setFormData(prev => ({ ...prev, [field]: value, password: generatePassword(formData.first_name) }))
         }
+    }
+
+    const handleCustomFieldChange = (fieldKey: string, value: any) => {
+        setCustomFieldValues(prev => ({ ...prev, [fieldKey]: value }))
     }
 
     const handleCopyPassword = () => {
@@ -123,35 +165,46 @@ export default function AddStaffPage() {
         }
     }
 
+    // Validate required custom fields and return errors
+    const validateCustomFields = (): Record<string, string> => {
+        const errors: Record<string, string> = {}
+        customFields.filter(f => f.required).forEach(field => {
+            const value = customFieldValues[field.field_key]
+            const isEmpty = value === undefined || value === null || value === '' ||
+                (Array.isArray(value) && value.length === 0)
+            if (isEmpty) {
+                errors[`custom_${field.field_key}`] = `${field.label} is required`
+            }
+        })
+        return errors
+    }
+
     const handleSubmit = async () => {
+        if (!formData.first_name || !formData.last_name || !formData.email || !formData.title) {
+            toast.error(t('errors.fillRequiredFields'))
+            return
+        }
+        if (isLibrarian && !formData.password) {
+            toast.error(t('errors.passwordRequiredForLibrarian'))
+            return
+        }
+
+        const customErrors = validateCustomFields()
+        if (Object.keys(customErrors).length > 0) {
+            toast.error(`Please fill in all required fields (${Object.keys(customErrors).length} missing)`)
+            return
+        }
+
         setLoading(true)
-
         try {
-            // Validate
-            if (!formData.first_name || !formData.last_name || !formData.email || !formData.title) {
-                toast.error(t('errors.fillRequiredFields'))
-                setLoading(false)
-                return
-            }
-
-            // For Librarian, password is required
-            if (isLibrarian && !formData.password) {
-                toast.error(t('errors.passwordRequiredForLibrarian'))
-                setLoading(false)
-                return
-            }
-
             await createStaff({
                 ...formData,
-                campus_id: campusContext?.selectedCampus?.id // Send the selected campus ID
+                custom_fields: customFieldValues,
+                campus_id: selectedCampus?.id
             })
-            
-            console.log('✅ Staff created with campus_id:', campusContext?.selectedCampus?.id)
-            console.log('   Campus name:', campusContext?.selectedCampus?.name)
-            
+
             toast.success(t('toasts.added'))
 
-            // Show credentials if it's a Librarian
             if (isLibrarian) {
                 toast.info(t('toasts.loginCredentials', { email: formData.email, password: formData.password }), {
                     duration: 10000
@@ -167,18 +220,113 @@ export default function AddStaffPage() {
         }
     }
 
-    // Handle Enter key to prevent auto-submission
     const handleKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
-        if (e.key === 'Enter') {
-            const target = e.target as HTMLElement;
-            // Allow Enter in textareas
-            if (target.tagName === 'TEXTAREA') {
-                return;
-            }
-            // Always prevent default Enter behavior to stop form auto-submission
-            e.preventDefault();
+        if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
+            e.preventDefault()
         }
-    };
+    }
+
+    // Render a single custom field input
+    const renderCustomField = (field: CustomFieldDefinition) => {
+        const value = customFieldValues[field.field_key]
+        const defaultValue = field.type === 'multi-select' ? [] : ''
+        const currentValue = value ?? defaultValue
+        const widthClass = field.type === 'long-text' ? 'col-span-1 md:col-span-2' : 'col-span-1'
+
+        return (
+            <div key={field.id} className={`${widthClass} space-y-2`}>
+                <Label htmlFor={`custom-${field.field_key}`}>
+                    {field.label}
+                    {field.required && <span className="text-red-500 ml-1">*</span>}
+                </Label>
+
+                {field.type === 'text' || field.type === 'number' || field.type === 'email' || field.type === 'tel' ? (
+                    <Input
+                        id={`custom-${field.field_key}`}
+                        type={field.type === 'number' ? 'number' : field.type === 'email' ? 'email' : field.type === 'tel' ? 'tel' : 'text'}
+                        value={currentValue}
+                        onChange={e => handleCustomFieldChange(field.field_key, e.target.value)}
+                        placeholder={`Enter ${field.label.toLowerCase()}`}
+                    />
+                ) : field.type === 'long-text' ? (
+                    <Textarea
+                        id={`custom-${field.field_key}`}
+                        value={currentValue}
+                        onChange={e => handleCustomFieldChange(field.field_key, e.target.value)}
+                        placeholder={`Enter ${field.label.toLowerCase()}`}
+                        rows={3}
+                    />
+                ) : field.type === 'date' ? (
+                    <Input
+                        id={`custom-${field.field_key}`}
+                        type="date"
+                        value={currentValue}
+                        onChange={e => handleCustomFieldChange(field.field_key, e.target.value)}
+                    />
+                ) : field.type === 'select' ? (
+                    <Select value={currentValue} onValueChange={val => handleCustomFieldChange(field.field_key, val)}>
+                        <SelectTrigger>
+                            <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {(field.options || []).map(opt => (
+                                <SelectItem key={opt} value={opt}>
+                                    {opt.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                ) : field.type === 'checkbox' ? (
+                    <div className="flex items-center space-x-2 pt-2 rtl:space-x-reverse">
+                        <Checkbox
+                            id={`custom-${field.field_key}`}
+                            checked={!!currentValue}
+                            onCheckedChange={checked => handleCustomFieldChange(field.field_key, checked)}
+                        />
+                        <label htmlFor={`custom-${field.field_key}`} className="text-sm cursor-pointer">
+                            {field.label}
+                        </label>
+                    </div>
+                ) : field.type === 'multi-select' ? (
+                    <MultiSelect
+                        options={field.options || []}
+                        value={Array.isArray(currentValue) ? currentValue : (currentValue ? [currentValue] : [])}
+                        onChange={val => handleCustomFieldChange(field.field_key, val)}
+                        placeholder={`Select ${field.label.toLowerCase()}`}
+                    />
+                ) : field.type === 'file' ? (
+                    <div className="space-y-1">
+                        <Input
+                            id={`custom-${field.field_key}`}
+                            type="file"
+                            onChange={e => {
+                                const file = e.target.files?.[0]
+                                if (file) handleCustomFieldChange(field.field_key, file.name)
+                            }}
+                        />
+                        {currentValue && <p className="text-xs text-muted-foreground">Current: {currentValue}</p>}
+                    </div>
+                ) : null}
+            </div>
+        )
+    }
+
+    // Get custom fields for a given category, sorted by sort_order
+    const getCustomFieldsForCategory = (categoryId: string) =>
+        customFields
+            .filter(f => f.category_id === categoryId)
+            .sort((a, b) => (a.sort_order ?? 1000) - (b.sort_order ?? 1000))
+
+    // Categories that have custom fields but no matching hardcoded card
+    const extraCategoryIds = [...new Set(
+        customFields
+            .map(f => f.category_id)
+            .filter(id => !STAFF_STANDARD_CATEGORIES.includes(id))
+    )]
+
+    const personalCustomFields = getCustomFieldsForCategory('personal')
+    const employmentCustomFields = getCustomFieldsForCategory('employment')
+    const systemCustomFields = getCustomFieldsForCategory('system')
 
     return (
         <div className="p-6 max-w-4xl mx-auto space-y-6">
@@ -193,7 +341,7 @@ export default function AddStaffPage() {
                 </div>
             </div>
 
-            <form onSubmit={(e) => e.preventDefault()} onKeyDown={handleKeyDown} className="space-y-6">
+            <form onSubmit={e => e.preventDefault()} onKeyDown={handleKeyDown} className="space-y-6">
                 {/* Personal Details */}
                 <Card>
                     <CardHeader>
@@ -203,18 +351,18 @@ export default function AddStaffPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* Photo Upload - Left Side */}
+                        {/* Photo Upload */}
                         <div className="flex flex-col items-center justify-center md:border-r md:pr-6">
                             <Label className="mb-3">{t('profilePhoto')}</Label>
                             <StaffPhotoUpload
                                 value={formData.profile_photo_url || ''}
-                                onChange={(url) => handleChange('profile_photo_url', url)}
+                                onChange={url => handleChange('profile_photo_url', url)}
                                 schoolId={profile?.school_id || ''}
                                 staffName={`${formData.first_name} ${formData.last_name}`}
                             />
                         </div>
 
-                        {/* Form Fields - Right Side */}
+                        {/* Standard personal fields */}
                         <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <Label>{t('firstName')} <span className="text-red-500">*</span></Label>
@@ -235,12 +383,12 @@ export default function AddStaffPage() {
                             <div className="space-y-2">
                                 <Label>{t('emailRequired')} <span className="text-red-500">*</span></Label>
                                 <div className="relative">
-                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 rtl:right-3 rtl:left-auto" />
                                     <Input
                                         type="email"
                                         value={formData.email}
                                         onChange={e => handleChange('email', e.target.value)}
-                                        className="pl-10"
+                                        className="pl-10 rtl:pr-10 rtl:pl-3"
                                         placeholder={t('placeholders.email')}
                                     />
                                 </div>
@@ -248,24 +396,26 @@ export default function AddStaffPage() {
                             <div className="space-y-2">
                                 <Label>{t('phone')}</Label>
                                 <div className="relative">
-                                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 rtl:right-3 rtl:left-auto" />
                                     <Input
                                         type="tel"
                                         value={formData.phone}
-                                        onKeyDown={(e) => {
-                                            const nav = ['Backspace','Delete','Tab','ArrowLeft','ArrowRight','Home','End'];
-                                            if (e.ctrlKey || e.metaKey) return;
-                                            if (nav.includes(e.key)) return;
-                                            if (!/[0-9+\-() ]/.test(e.key)) e.preventDefault();
+                                        onKeyDown={e => {
+                                            const nav = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'Home', 'End']
+                                            if (e.ctrlKey || e.metaKey || nav.includes(e.key)) return
+                                            if (!/[0-9+\-() ]/.test(e.key)) e.preventDefault()
                                         }}
                                         onChange={e => handleChange('phone', e.target.value.replace(/[^0-9+\-() ]/g, ''))}
-                                        className="pl-10"
+                                        className="pl-10 rtl:pr-10 rtl:pl-3"
                                         placeholder={t('placeholders.phone')}
                                     />
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label>Username <span className="text-xs text-muted-foreground font-normal">(auto-generated, can be edited)</span></Label>
+                                <Label>
+                                    Username
+                                    <span className="text-xs text-muted-foreground font-normal ml-1">(auto-generated)</span>
+                                </Label>
                                 <Input
                                     value={formData.username || ''}
                                     onChange={e => handleChange('username', e.target.value)}
@@ -273,6 +423,9 @@ export default function AddStaffPage() {
                                 />
                                 <p className="text-xs text-muted-foreground">Staff use this to log in alongside their email.</p>
                             </div>
+
+                            {/* Custom personal fields */}
+                            {!loadingFields && personalCustomFields.map(renderCustomField)}
                         </div>
                     </CardContent>
                 </Card>
@@ -298,7 +451,6 @@ export default function AddStaffPage() {
                                         <SelectValue placeholder={designationsLoading ? t('designations.loadingDesignations') : t('designations.selectDesignation')} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {/* Always show Librarian first with special badge */}
                                         <SelectItem value="Librarian">
                                             <div className="flex items-center gap-2">
                                                 {t('designations.librarian')}
@@ -307,16 +459,12 @@ export default function AddStaffPage() {
                                                 </span>
                                             </div>
                                         </SelectItem>
-                                        {/* Show other designations from database */}
                                         {designations
                                             .filter(d => d.name.toLowerCase() !== 'librarian')
                                             .map(d => (
-                                                <SelectItem key={d.id} value={d.name}>
-                                                    {d.name}
-                                                </SelectItem>
+                                                <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>
                                             ))
                                         }
-                                        {/* Show fallback designations if no database designations */}
                                         {designations.length === 0 && DESIGNATIONS
                                             .filter(role => role.toLowerCase() !== 'librarian')
                                             .map(role => (
@@ -325,10 +473,8 @@ export default function AddStaffPage() {
                                         }
                                     </SelectContent>
                                 </Select>
-                                {formData.title?.toLowerCase() === 'librarian' && (
-                                    <p className="text-xs text-purple-600">
-                                        {t('designations.librarianGetsLoginHint')}
-                                    </p>
+                                {isLibrarian && (
+                                    <p className="text-xs text-purple-600">{t('designations.librarianGetsLoginHint')}</p>
                                 )}
                             </div>
 
@@ -347,9 +493,7 @@ export default function AddStaffPage() {
                                     value={formData.employment_type}
                                     onValueChange={(val: any) => handleChange('employment_type', val)}
                                 >
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="full_time">{t('employmentTypeOptions.fullTime')}</SelectItem>
                                         <SelectItem value="part_time">{t('employmentTypeOptions.partTime')}</SelectItem>
@@ -361,12 +505,12 @@ export default function AddStaffPage() {
                             <div className="space-y-2">
                                 <Label>{t('dateOfJoining')}</Label>
                                 <div className="relative">
-                                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 rtl:right-3 rtl:left-auto" />
                                     <Input
                                         type="date"
                                         value={formData.date_of_joining}
                                         onChange={e => handleChange('date_of_joining', e.target.value)}
-                                        className="pl-10"
+                                        className="pl-10 rtl:pr-10 rtl:pl-3"
                                     />
                                 </div>
                             </div>
@@ -374,22 +518,42 @@ export default function AddStaffPage() {
                             <div className="space-y-2">
                                 <Label>{t('baseSalary')} <span className="text-red-500">*</span></Label>
                                 <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">{currencySymbol}</span>
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium rtl:right-3 rtl:left-auto">{currencySymbol}</span>
                                     <Input
                                         type="number"
                                         value={formData.base_salary || ''}
                                         onChange={e => handleChange('base_salary', e.target.value ? parseFloat(e.target.value) : undefined)}
                                         placeholder={t('placeholders.baseSalary')}
-                                        className="pl-10"
+                                        className="pl-10 rtl:pr-10 rtl:pl-3"
                                         min="0"
                                         step="100"
                                     />
                                 </div>
                                 <p className="text-xs text-muted-foreground">{t('requiredForPayroll')}</p>
                             </div>
+
+                            <div className="space-y-2">
+                                <Label>{t('qualifications')}</Label>
+                                <Input
+                                    value={formData.qualifications}
+                                    onChange={e => handleChange('qualifications', e.target.value)}
+                                    placeholder={t('placeholders.qualifications')}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>{t('specializationSkills')}</Label>
+                                <Input
+                                    value={formData.specialization}
+                                    onChange={e => handleChange('specialization', e.target.value)}
+                                    placeholder={t('placeholders.specializationSkills')}
+                                />
+                            </div>
+
+                            {/* Custom employment fields */}
+                            {!loadingFields && employmentCustomFields.map(renderCustomField)}
                         </div>
 
-                        {/* Librarian Role Alert */}
                         {isLibrarian && (
                             <Alert className="bg-purple-50 border-purple-200">
                                 <BookOpen className="h-4 w-4 text-purple-600" />
@@ -399,29 +563,10 @@ export default function AddStaffPage() {
                                 </AlertDescription>
                             </Alert>
                         )}
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label>{t('qualifications')}</Label>
-                                <Input
-                                    value={formData.qualifications}
-                                    onChange={e => handleChange('qualifications', e.target.value)}
-                                    placeholder={t('placeholders.qualifications')}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>{t('specializationSkills')}</Label>
-                                <Input
-                                    value={formData.specialization}
-                                    onChange={e => handleChange('specialization', e.target.value)}
-                                    placeholder={t('placeholders.specializationSkills')}
-                                />
-                            </div>
-                        </div>
                     </CardContent>
                 </Card>
 
-                {/* Credentials - Only show for Librarian */}
+                {/* Librarian Credentials */}
                 {isLibrarian && (
                     <Card className="border-purple-200 bg-purple-50/50">
                         <CardHeader>
@@ -434,11 +579,7 @@ export default function AddStaffPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <Label>{t('designations.emailUsername')}</Label>
-                                    <Input
-                                        value={formData.email}
-                                        disabled
-                                        className="bg-white"
-                                    />
+                                    <Input value={formData.email} disabled className="bg-white" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>{t('designations.autoGeneratedPassword')}</Label>
@@ -451,35 +592,64 @@ export default function AddStaffPage() {
                                                 className="pr-20 bg-white"
                                             />
                                             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="h-6 w-6 p-0"
-                                                    onClick={() => setShowPassword(!showPassword)}
-                                                >
+                                                <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowPassword(!showPassword)}>
                                                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                                 </Button>
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="h-6 w-6 p-0"
-                                                    onClick={handleCopyPassword}
-                                                >
+                                                <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={handleCopyPassword}>
                                                     {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
                                                 </Button>
                                             </div>
                                         </div>
                                     </div>
-                                    <p className="text-xs text-purple-700">
-                                        {t('designations.saveCredentialsHint')}
-                                    </p>
+                                    <p className="text-xs text-purple-700">{t('designations.saveCredentialsHint')}</p>
                                 </div>
+                            </div>
+
+                            {/* Custom system fields */}
+                            {!loadingFields && systemCustomFields.length > 0 && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
+                                    {systemCustomFields.map(renderCustomField)}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* System custom fields when not a Librarian */}
+                {!isLibrarian && !loadingFields && systemCustomFields.length > 0 && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-lg flex items-center gap-2">
+                                <Shield className="h-5 w-5 text-[#57A3CC]" />
+                                System
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {systemCustomFields.map(renderCustomField)}
                             </div>
                         </CardContent>
                     </Card>
                 )}
+
+                {/* Extra custom field categories (not personal/employment/system) */}
+                {!loadingFields && extraCategoryIds.map(categoryId => {
+                    const fields = getCustomFieldsForCategory(categoryId)
+                    if (fields.length === 0) return null
+                    const categoryName = fields[0].category_name || categoryId
+                    return (
+                        <Card key={categoryId}>
+                            <CardHeader>
+                                <CardTitle className="text-lg capitalize">{categoryName}</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {fields.map(renderCustomField)}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )
+                })}
 
                 <div className="flex justify-end gap-3">
                     <Button type="button" variant="outline" onClick={() => router.back()}>
@@ -488,7 +658,7 @@ export default function AddStaffPage() {
                     <Button
                         type="button"
                         disabled={loading}
-                        onClick={() => { if (!loading) handleSubmit(); }}
+                        onClick={() => { if (!loading) handleSubmit() }}
                         className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white min-w-[120px]"
                     >
                         {loading ? t('creating') : t('createStaff')}

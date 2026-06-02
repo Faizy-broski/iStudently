@@ -98,7 +98,6 @@ export default function TeacherDetailsPage() {
         const teacher = teachers.find((t) => t.employee_number === employeeNumber);
         if (teacher) {
           setCurrentTeacher(teacher);
-
           // Update profile view context for sidebar indicator
           const teacherFullName = `${teacher.profile?.first_name || ""} ${teacher.profile?.last_name || ""}`.trim() || teacher.employee_number;
           setViewedProfile({
@@ -119,7 +118,6 @@ export default function TeacherDetailsPage() {
     if (teachers.length > 0) {
       fetchTeacher();
     }
-
     // Clear profile view when leaving the page
     return () => {
       clearViewedProfile();
@@ -180,7 +178,6 @@ export default function TeacherDetailsPage() {
             </p>
           </div>
         </div>
-
         <div className="flex items-center gap-2">
           <Button
             variant="outline"

@@ -216,8 +216,9 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
   useEffect(() => {
     const loadCustomFields = async () => {
       try {
+        const campusId = selectedCampus?.id;
         const [fieldsResponse, ordersResponse] = await Promise.all([
-          getFieldDefinitions('student'),
+          getFieldDefinitions('student', campusId),
           getFieldOrders('student')
         ]);
 
@@ -288,7 +289,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
     } catch (error) {
       console.error('Error loading custom field templates:', error);
     }
-  }, []);
+  }, [selectedCampus?.id]);
 
   // Reset section when grade changes (since sections are filtered by useMemo)
   useEffect(() => {
@@ -851,7 +852,7 @@ customFields.forEach((field) => {
         return (
           <div key={field.id} className="col-span-1 md:col-span-2 space-y-4">
             <Separator className="my-4" />
-            <h3 className="font-semibold text-[#022172]">{t("fields.previous_school")}</h3>
+            <h3 className="font-semibold text-[#022172] dark:text-white">{t("fields.previous_school")}</h3>
             <div className="space-y-2">
               <Label htmlFor="previousSchoolName">{t("previous_school_name")}</Label>
               <Input
@@ -964,12 +965,12 @@ customFields.forEach((field) => {
           <DatePicker
             value={value || undefined}
             onChange={(date) => handleChange(date || null)}
-            placeholder={tCommon("select_item", { item: t("fields." + field.label).toLowerCase() })}
+            placeholder={tCommon("select_item", { item: fieldDisplayLabel.toLowerCase() })}
           />
         ) : field.type === 'checkbox' ? (
           <div className="flex items-center space-x-2 pt-2">
             <Checkbox checked={!!value} onCheckedChange={handleChange} id={field.id} />
-            <label htmlFor={field.id} className="text-sm cursor-pointer rtl:mr-2">{t("fields." + field.label)}</label>
+            <label htmlFor={field.id} className="text-sm cursor-pointer rtl:mr-2">{fieldDisplayLabel}</label>
           </div>
         ) : field.type === 'file' ? (
           <div className="space-y-2">
@@ -995,7 +996,7 @@ customFields.forEach((field) => {
             options={field.options || []}
             value={Array.isArray(value) ? value : (value ? [value] : [])}
             onChange={handleChange}
-            placeholder={tCommon("select_item", { item: t("fields." + field.label).toLowerCase() })}
+            placeholder={tCommon("select_item", { item: fieldDisplayLabel.toLowerCase() })}
           />
         ) : null}
 
@@ -1365,14 +1366,14 @@ customFields.forEach((field) => {
       {/* Progress Indicator */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-[#022172]">
+          <span className="text-sm font-medium text-[#022172] dark:text-blue-300">
             {tCommon("step_x_of_y", { x: currentTabIndex + 1, y: tabs.length })}
           </span>
           <span className="text-sm text-muted-foreground">
             {getStepTitle()}
           </span>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
+        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
           <div
             className="bg-gradient-to-r from-[#57A3CC] to-[#022172] h-2 rounded-full transition-all duration-300"
             style={{ width: `${((currentTabIndex + 1) / tabs.length) * 100}%` }}
@@ -1386,7 +1387,7 @@ customFields.forEach((field) => {
         <TabsContent value="personal" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#022172]">{tAdd("personal_tab")}</CardTitle>
+              <CardTitle className="text-[#022172] dark:text-white">{tAdd("personal_tab")}</CardTitle>
               <CardDescription>{tAdd("personal_desc")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1402,7 +1403,7 @@ customFields.forEach((field) => {
         <TabsContent value="academic" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#022172]">{tAdd("academic_tab")}</CardTitle>
+              <CardTitle className="text-[#022172] dark:text-white">{tAdd("academic_tab")}</CardTitle>
               <CardDescription>{tAdd("academic_desc")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1418,7 +1419,7 @@ customFields.forEach((field) => {
         <TabsContent value="medical" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#022172]">{tAdd("medical_tab")}</CardTitle>
+              <CardTitle className="text-[#022172] dark:text-white">{tAdd("medical_tab")}</CardTitle>
               <CardDescription>{tAdd("medical_desc")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1434,7 +1435,7 @@ customFields.forEach((field) => {
         <TabsContent value="services" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#022172]">{tAdd("services_tab")}</CardTitle>
+              <CardTitle className="text-[#022172] dark:text-white">{tAdd("services_tab")}</CardTitle>
               <CardDescription>{tAdd("services_desc")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1453,7 +1454,7 @@ customFields.forEach((field) => {
                     return (
                       <div
                         key={service.id}
-                        className={`border rounded-lg p-4 cursor-pointer transition-colors ${isSelected ? 'border-[#022172] bg-blue-50' : 'hover:border-gray-400'}`}
+                        className={`border rounded-lg p-4 cursor-pointer transition-colors ${isSelected ? 'border-[#022172] bg-blue-50 dark:bg-blue-950/30 dark:border-blue-400' : 'hover:border-gray-400 dark:border-gray-600 dark:hover:border-gray-400'}`}
                         onClick={() => {
                           if (isSelected) {
                             setSelectedServices(prev => prev.filter(id => id !== service.id));
@@ -1466,12 +1467,12 @@ customFields.forEach((field) => {
                           <div className="space-y-1">
                             <div className="font-medium flex items-center">
                               {service.name}
-                              {service.is_mandatory && <span className="ml-2 rtl:mr-2 rtl:ml-0 text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded">{tCommon("mandatory")}</span>}
+                              {service.is_mandatory && <span className="ml-2 rtl:mr-2 rtl:ml-0 text-xs bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded">{tCommon("mandatory")}</span>}
                             </div>
                             <div className="text-sm text-muted-foreground capitalize">{tCommon("freq_" + service.charge_frequency)} {tCommon("charge")}</div>
                           </div>
                           <div className="text-right">
-                            <div className="font-bold text-[#022172]">${amount.toFixed(2)}</div>
+                            <div className="font-bold text-[#022172] dark:text-blue-300">${amount.toFixed(2)}</div>
                             <Checkbox
                               checked={isSelected}
                               onCheckedChange={(checked) => {
@@ -1494,7 +1495,7 @@ customFields.forEach((field) => {
 
               {/* Fee Generation - On the Spot */}
               <div className="pt-4 mt-6 border-t">
-                <div className="flex items-start space-x-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex items-start space-x-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
                   <Checkbox
                     id="generate_challan"
                     checked={generateFirstChallan}
@@ -1540,7 +1541,7 @@ customFields.forEach((field) => {
         <TabsContent value="family" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#022172]">{tAdd("family_tab")}</CardTitle>
+              <CardTitle className="text-[#022172] dark:text-white">{tAdd("family_tab")}</CardTitle>
               <CardDescription>{tAdd("family_desc")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1570,7 +1571,7 @@ customFields.forEach((field) => {
 
                 {showNewParentForm ? (
                   <div className="border rounded-lg p-4 space-y-4 bg-muted/20">
-                    <h4 className="font-medium text-sm text-[#022172]">{tAdd("new_parent_details")}</h4>
+                    <h4 className="font-medium text-sm text-[#022172] dark:text-blue-300">{tAdd("new_parent_details")}</h4>
 
                     {/* Personal Information */}
                     <div className="grid grid-cols-2 gap-4">
@@ -1741,7 +1742,7 @@ customFields.forEach((field) => {
                     {formData.linkedParentId && (
                       <div className="flex items-center gap-2 mt-2">
                         <div className="text-sm text-muted-foreground flex items-center">
-                          <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs mr-2 rtl:ml-2 rtl:mr-0">{tCommon("selected")}</span>
+                          <span className="bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-400 px-2 py-0.5 rounded text-xs mr-2 rtl:ml-2 rtl:mr-0">{tCommon("selected")}</span>
                           <Button
                             type="button"
                             variant="ghost"
@@ -1782,7 +1783,7 @@ customFields.forEach((field) => {
 
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <h3 className="font-semibold text-[#022172]">{t("fields.emergency_contacts")}</h3>
+                  <h3 className="font-semibold text-[#022172] dark:text-white">{t("fields.emergency_contacts")}</h3>
                   <Button
                     type="button"
                     variant="outline"
@@ -1799,7 +1800,7 @@ customFields.forEach((field) => {
                   <Card key={index} className="border-[#57A3CC]/30">
                     <CardContent className="pt-4 space-y-3">
                       <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium text-[#022172]">
+                        <span className="text-sm font-medium text-[#022172] dark:text-blue-300">
                           {tAdd("contact_n", { n: index + 1 })}
                         </span>
                         <Button
@@ -1859,8 +1860,12 @@ customFields.forEach((field) => {
                 ))}
               </div>
 
-              {/* Custom fields for Family category */}
-              {renderCustomFieldsSection('family')}
+              {/* Custom fields for Family category — interleaved via new rendering path */}
+              {customFields.some(f => f.category_id === 'family') && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 mt-2 border-t">
+                  {getMergedFields(['family']).filter(f => f.isCustom).map(renderField)}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -1869,60 +1874,13 @@ customFields.forEach((field) => {
         <TabsContent value="system" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-[#022172]">{tAdd("system_tab")}</CardTitle>
+              <CardTitle className="text-[#022172] dark:text-white">{tAdd("system_tab")}</CardTitle>
               <CardDescription>{tAdd("system_desc")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="studentId">{t("fields.student_id")}</Label>
-                  <Input
-                    id="studentId"
-                    value={formData.studentId}
-                    onChange={(e) => updateFormData("studentId", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="username">{t("fields.username")}</Label>
-                  <Input
-                    id="username"
-                    value={formData.username}
-                    onChange={(e) => updateFormData("username", e.target.value)}
-                    placeholder={tAdd("placeholder_username_example")}
-                  />
-                </div>
+                {getMergedFields(['system']).map(renderField)}
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="password">{t("fields.password")}</Label>
-                  <Input
-                    id="password"
-                    type="text"
-                    value={formData.password}
-                    onChange={(e) => updateFormData("password", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="status">{tCommon("status")}</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value) => updateFormData("status", value as StudentStatus)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">{tCommon("active")}</SelectItem>
-                      <SelectItem value="inactive">{tCommon("inactive")}</SelectItem>
-                      <SelectItem value="suspended">{tCommon("suspended")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Custom fields for System category */}
-              {renderCustomFieldsSection('system')}
             </CardContent>
           </Card>
         </TabsContent>
@@ -1936,7 +1894,7 @@ customFields.forEach((field) => {
                 .map((category) => (
                   <Card key={category.id}>
                     <CardHeader>
-                      <CardTitle className="text-[#022172]">{category.name}</CardTitle>
+                      <CardTitle className="text-[#022172] dark:text-white">{category.name}</CardTitle>
                       <CardDescription>
                         {tAdd("additional_tab_desc", { name: category.name })}
                       </CardDescription>
@@ -1963,7 +1921,7 @@ customFields.forEach((field) => {
       </Tabs>
 
       {/* Navigation Buttons */}
-      <div className="flex justify-between gap-3 pt-4 border-t">
+      <div className="flex justify-between gap-3 pt-4 border-t dark:border-gray-700">
         <Button
           type="button"
           variant="outline"

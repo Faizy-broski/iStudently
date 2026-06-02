@@ -512,6 +512,39 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     ],
   },
 
+  // ── J Periodic Table ──────────────────────────────────────────────────────
+  {
+    id: 'periodic_table',
+    name: 'J Periodic Table',
+    description:
+      'Interactive periodic table with 118 elements, 3D atom models, chemical equation balancer, molar mass calculator, and worksheet generator — all self-contained with no login required.',
+    icon: FlaskConical,
+    category: 'Resources',
+    settingsHref: '/admin/resources/zperiod',
+    sidebarInjections: [
+      {
+        parentTitle: 'resources',
+        items: [{ title: 'periodic_table', href: '/admin/resources/zperiod', icon: FlaskConical }],
+        roles: ['admin'],
+      },
+      {
+        parentTitle: 'resources',
+        items: [{ title: 'periodic_table', href: '/teacher/resources/zperiod', icon: FlaskConical }],
+        roles: ['teacher'],
+      },
+      {
+        parentTitle: 'resources',
+        items: [{ title: 'periodic_table', href: '/student/resources/zperiod', icon: FlaskConical }],
+        roles: ['student'],
+      },
+      {
+        parentTitle: 'resources',
+        items: [{ title: 'periodic_table', href: '/parent/resources/zperiod', icon: FlaskConical }],
+        roles: ['parent'],
+      },
+    ],
+  },
+
   // ── Future plugins go here ────────────────────────────────────────────────
   // Example template:
   // {
