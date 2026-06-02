@@ -1,0 +1,513 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { useTranslations } from "next-intl"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Separator } from "@/components/ui/separator"
+import { Textarea } from "@/components/ui/textarea"
+import { useCampus } from "@/context/CampusContext"
+import { getAuthToken } from "@/lib/api/schools"
+import { toast } from "sonner"
+import {
+  Building2,
+  MapPin,
+  Phone,
+  Mail,
+  Users,
+  GraduationCap,
+  Loader2,
+  Edit,
+  Save,
+  X,
+} from "lucide-react"
+
+interface CampusStats {
+  total_students: number
+  total_teachers: number
+  total_staff: number
+  total_parents: number
+  total_grade_levels: number
+  total_sections: number
+}
+
+interface CampusFormData {
+  name: string
+  address: string
+  city: string
+  state: string
+  zip_code: string
+  phone: string
+  contact_email: string
+  principal_name: string
+  short_name: string
+  school_number: string
+}
+
+export default function SchoolDetailsPage() {
+  const t = useTranslations("school.details")
+  const campusContext = useCampus()
+  const [loading, setLoading] = useState(false)
+  const [stats, setStats] = useState<CampusStats | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [formData, setFormData] = useState<CampusFormData>({
+    name: "",
+    address: "",
+    city: "",
+    state: "",
+    zip_code: "",
+    phone: "",
+    contact_email: "",
+    principal_name: "",
+    short_name: "",
+    school_number: "",
+  })
+
+  // Get selected campus directly from context
+  const selectedCampus = campusContext?.selectedCampus
+
+  // Update form data when selected campus changes
+  useEffect(() => {
+    if (selectedCampus) {
+      setFormData({
+        name: selectedCampus.name || "",
+        address: selectedCampus.address || "",
+        city: selectedCampus.city || "",
+        state: selectedCampus.state || "",
+        zip_code: selectedCampus.zip_code || "",
+        phone: selectedCampus.phone || "",
+        contact_email: selectedCampus.contact_email || "",
+        principal_name: selectedCampus.principal_name || "",
+        short_name: selectedCampus.short_name || "",
+        school_number: selectedCampus.school_number || "",
+      })
+    }
+  }, [selectedCampus])
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!selectedCampus?.id) {
+        setLoading(false)
+        return
+      }
+      
+      const token = await getAuthToken()
+      if (!token) {
+        setLoading(false)
+        return
+      }
+
+      setLoading(true)
+      try {
+        // Fetch campus statistics
+        const statsRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/setup/campuses/${selectedCampus.id}/stats`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          }
+        )
+        const statsData = await statsRes.json()
+        if (statsData.success) {
+          setStats(statsData.data)
+        }
+      } catch (error) {
+        console.error("Error fetching stats:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchStats()
+  }, [selectedCampus?.id])
+
+  const handleSave = async () => {
+    if (!selectedCampus?.id) return
+
+    const token = await getAuthToken()
+    if (!token) return
+
+    setIsSaving(true)
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/setup/campuses/${selectedCampus.id}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
+        }
+      )
+      const data = await res.json()
+      
+      if (res.ok) {
+        toast.success(t("update_success"))
+        setIsEditing(false)
+        // Refresh campuses to get updated data
+        campusContext?.refreshCampuses()
+      } else {
+        toast.error(data.error || t("update_error"))
+      }
+    } catch (error) {
+      console.error("Error updating campus:", error)
+      toast.error(t("update_error"))
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleCancel = () => {
+    if (selectedCampus) {
+      setFormData({
+        name: selectedCampus.name || "",
+        address: selectedCampus.address || "",
+        city: selectedCampus.city || "",
+        state: selectedCampus.state || "",
+        zip_code: selectedCampus.zip_code || "",
+        phone: selectedCampus.phone || "",
+        contact_email: selectedCampus.contact_email || "",
+        principal_name: selectedCampus.principal_name || "",
+        short_name: selectedCampus.short_name || "",
+        school_number: selectedCampus.school_number || "",
+      })
+    }
+    setIsEditing(false)
+    toast.info("Edit cancelled")
+  }
+
+  const selectedCampusName = selectedCampus?.name || "All Campuses"
+
+  return (
+    <div className="p-4 md:p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#022172] dark:text-white">
+            {t("title")}
+          </h1>
+          <p className="text-muted-foreground">
+            {selectedCampus ? t("manage_details", { name: selectedCampusName }) : t("select_campus")}
+          </p>
+        </div>
+        {selectedCampus && !isEditing && (
+          <Button 
+            type="button"
+            onClick={() => setIsEditing(true)}
+            className="bg-gray-900 hover:bg-gray-800 text-white"
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            {t("edit_campus")}
+          </Button>
+        )}
+        {isEditing && (
+          <div className="flex gap-2">
+            <Button 
+              type="button"
+              variant="outline" 
+              onClick={handleCancel} 
+              disabled={isSaving}
+            >
+              <X className="h-4 w-4 mr-2" />
+              {t("cancel")}
+            </Button>
+            <Button 
+              type="button"
+              onClick={handleSave} 
+              disabled={isSaving}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              {t("save_changes")}
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {!selectedCampus ? (
+        <Card>
+          <CardContent className="py-12">
+            <div className="text-center">
+              <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">{t("no_campus_selected")}</h3>
+              <p className="text-muted-foreground">
+                {t("no_campus_desc")}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Campus Information Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-[#022172]" />
+                {t("information")}
+              </CardTitle>
+              <CardDescription>
+                {isEditing ? t("edit_desc") : t("details_for", { name: selectedCampus.name })}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isEditing ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">{t("campus_name")}</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder={t("campus_name")}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="short_name">{t("short_name")}</Label>
+                    <Input
+                      id="short_name"
+                      value={formData.short_name}
+                      onChange={(e) => setFormData({ ...formData, short_name: e.target.value })}
+                      placeholder="e.g., SMS, ABC Campus"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="school_number">{t("campus_number")}</Label>
+                    <Input
+                      id="school_number"
+                      value={formData.school_number}
+                      onChange={(e) => setFormData({ ...formData, school_number: e.target.value })}
+                      placeholder="Official campus code/number"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">{t("phone")}</Label>
+                    <Input
+                      id="phone"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      placeholder={t("phone")}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">{t("email")}</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.contact_email}
+                      onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
+                      placeholder="campus@school.com"
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="address">{t("address")}</Label>
+                    <Textarea
+                      id="address"
+                      value={formData.address}
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      placeholder={t("address")}
+                      rows={2}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="city">{t("city")}</Label>
+                    <Input
+                      id="city"
+                      value={formData.city}
+                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      placeholder={t("city")}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="state">{t("state")}</Label>
+                    <Input
+                      id="state"
+                      value={formData.state}
+                      onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                      placeholder={t("state")}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="zip_code">{t("zip_code")}</Label>
+                    <Input
+                      id="zip_code"
+                      value={formData.zip_code}
+                      onChange={(e) => setFormData({ ...formData, zip_code: e.target.value })}
+                      placeholder={t("zip_code")}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="principal">{t("principal")}</Label>
+                    <Input
+                      id="principal"
+                      value={formData.principal_name}
+                      onChange={(e) => setFormData({ ...formData, principal_name: e.target.value })}
+                      placeholder={t("principal")}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-medium">{selectedCampus.name}</h3>
+                      {selectedCampus.short_name && (
+                        <p className="text-sm text-muted-foreground">{t("short_name")}: {selectedCampus.short_name}</p>
+                      )}
+                    </div>
+                    <Badge variant={selectedCampus.status === 'active' ? "default" : "secondary"}>
+                      {selectedCampus.status === 'active' ? t("active") : t("inactive")}
+                    </Badge>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {selectedCampus.school_number && (
+                      <div className="flex items-center gap-3">
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">{t("campus_number")}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {selectedCampus.school_number}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {selectedCampus.principal_name && (
+                      <div className="flex items-center gap-3">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">{t("principal")}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {selectedCampus.principal_name}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-start gap-3">
+                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{t("address")}</p>
+                        {selectedCampus.address ? (
+                          <>
+                            <p className="text-sm text-muted-foreground">
+                              {selectedCampus.address}
+                            </p>
+                            {(selectedCampus.city || selectedCampus.state || selectedCampus.zip_code) && (
+                              <p className="text-sm text-muted-foreground">
+                                {[selectedCampus.city, selectedCampus.state, selectedCampus.zip_code]
+                                  .filter(Boolean)
+                                  .join(", ")}
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">{t("not_provided")}</p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">{t("phone")}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedCampus.phone || t("not_provided")}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">{t("email")}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedCampus.contact_email || t("not_provided")}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Campus Statistics */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-[#022172]" />
+                {t("stats_title")}
+              </CardTitle>
+              <CardDescription>{t("stats_overview", { name: selectedCampus.name })}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                  <div className="text-center p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                    <GraduationCap className="h-6 w-6 mx-auto text-blue-600 mb-2" />
+                    <p className="text-2xl font-bold text-blue-600">
+                      {stats?.total_students ?? 0}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{t("students")}</p>
+                  </div>
+                  <div className="text-center p-4 bg-green-50 dark:bg-green-950 rounded-lg">
+                    <Users className="h-6 w-6 mx-auto text-green-600 mb-2" />
+                    <p className="text-2xl font-bold text-green-600">
+                      {stats?.total_teachers ?? 0}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{t("teachers")}</p>
+                  </div>
+                  <div className="text-center p-4 bg-purple-50 dark:bg-purple-950 rounded-lg">
+                    <Users className="h-6 w-6 mx-auto text-purple-600 mb-2" />
+                    <p className="text-2xl font-bold text-purple-600">
+                      {stats?.total_staff ?? 0}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{t("staff")}</p>
+                  </div>
+                  <div className="text-center p-4 bg-orange-50 dark:bg-orange-950 rounded-lg">
+                    <Users className="h-6 w-6 mx-auto text-orange-600 mb-2" />
+                    <p className="text-2xl font-bold text-orange-600">
+                      {stats?.total_parents ?? 0}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{t("parents")}</p>
+                  </div>
+                  <div className="text-center p-4 bg-cyan-50 dark:bg-cyan-950 rounded-lg">
+                    <GraduationCap className="h-6 w-6 mx-auto text-cyan-600 mb-2" />
+                    <p className="text-2xl font-bold text-cyan-600">
+                      {stats?.total_grade_levels ?? 0}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{t("grade_levels")}</p>
+                  </div>
+                  <div className="text-center p-4 bg-pink-50 dark:bg-pink-950 rounded-lg">
+                    <Users className="h-6 w-6 mx-auto text-pink-600 mb-2" />
+                    <p className="text-2xl font-bold text-pink-600">
+                      {stats?.total_sections ?? 0}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{t("sections")}</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
+    </div>
+  )
+}

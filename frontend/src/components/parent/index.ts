@@ -1,0 +1,11 @@
+// Parent Dashboard Components
+export { StudentSelector } from './StudentSelector'
+export { AtGlanceStats } from './AtGlanceStats'
+export { ParentDashboardLayout } from './ParentDashboardLayout'
+export { FinancialCenter } from './FinancialCenter'
+export { AcademicProgress } from './AcademicProgress'
+export { DigitalDiary } from './DigitalDiary'
+export { StudentIdCard } from './StudentIdCard'
+export { SubjectWiseAttendance } from './SubjectWiseAttendance'
+export { ReportCard } from './ReportCard'
+export { PaymentHistory } from './PaymentHistory'
