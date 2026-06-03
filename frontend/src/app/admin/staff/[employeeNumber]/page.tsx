@@ -1,0 +1,448 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ArrowLeft,
+  Edit,
+  Loader2,
+  User,
+  Briefcase,
+  Settings,
+  Phone,
+  Mail,
+  Calendar,
+  Building,
+  AlertCircle,
+  DollarSign,
+  Clock,
+  Shield,
+  GraduationCap,
+  LucideIcon,
+} from "lucide-react";
+import { useProfileView } from "@/context/ProfileViewContext";
+import { QualificationsTab } from "@/components/admin/QualificationsTab";
+import { UserQRCode } from "@/components/shared/UserQRCode";
+import { type Staff } from "@/lib/api/staff";
+import { useStaff } from "@/hooks/useStaff";
+import { useCampus } from "@/context/CampusContext";
+import { format } from "date-fns";
+import { useTranslations } from "next-intl";
+
+// Helper to format dates
+const formatDate = (dateString: string | null | undefined, notProvidedLabel: string) => {
+  if (!dateString) return notProvidedLabel;
+  try {
+    return format(new Date(dateString), "MMMM d, yyyy");
+  } catch {
+    return dateString;
+  }
+};
+
+// Helper to get initials
+const getInitials = (firstName?: string | null, lastName?: string | null) => {
+  return `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase() || "NA";
+};
+
+// Helper to format currency
+const formatCurrency = (amount: number | null | undefined, notSetLabel: string) => {
+  if (!amount) return notSetLabel;
+  return amount.toLocaleString();
+};
+
+// Info Row Component
+const InfoRow = ({ label, value, icon: Icon, fallbackLabel }: { label: string; value: React.ReactNode; icon?: LucideIcon; fallbackLabel: string }) => (
+  <div className="flex flex-col gap-1">
+    <span className="text-sm text-muted-foreground flex items-center gap-2">
+      {Icon && <Icon className="h-4 w-4" />}
+      {label}
+    </span>
+    <span className="font-medium">{value || <span className="text-muted-foreground italic">{fallbackLabel}</span>}</span>
+  </div>
+);
+
+export default function StaffDetailsPage() {
+  const t = useTranslations("staff");
+  const params = useParams();
+  const router = useRouter();
+  const { setViewedProfile, clearViewedProfile } = useProfileView();
+  const campusContext = useCampus();
+
+  // Get employee number from URL (URL-encoded, so decode it)
+  const employeeNumber = decodeURIComponent(params.employeeNumber as string);
+
+  const [activeTab, setActiveTab] = useState("personal");
+
+  // Fetch all staff for navigation - use same campus filter as the staff list page
+  const { staff: staffList, isLoading: staffLoading } = useStaff(1, 1000, undefined, 'all', campusContext?.selectedCampus?.id);
+  const total = staffList.length;
+
+  // Find current staff from the list
+  const currentStaff = useMemo(() => {
+    return staffList.find((s: Staff) => s.employee_number === employeeNumber) || null;
+  }, [staffList, employeeNumber]);
+
+  // Find current staff index for prev/next navigation
+  const currentIndex = staffList.findIndex((s: Staff) => s.employee_number === employeeNumber);
+  const prevStaff = currentIndex > 0 ? staffList[currentIndex - 1] : null;
+  const nextStaff = currentIndex < staffList.length - 1 ? staffList[currentIndex + 1] : null;
+
+  // Update profile view context when staff is loaded
+  useEffect(() => {
+    if (currentStaff) {
+      const staffFullName = `${currentStaff.profile?.first_name || ""} ${currentStaff.profile?.last_name || ""}`.trim() || currentStaff.employee_number;
+      setViewedProfile({
+        id: currentStaff.employee_number,
+        name: staffFullName,
+        type: 'staff',
+        backUrl: '/admin/staff'
+      });
+    }
+    // Clear profile view when leaving the page
+    return () => {
+      clearViewedProfile();
+    };
+  }, [currentStaff, setViewedProfile, clearViewedProfile]);
+
+  // Navigate using employee_number for readable URLs
+  const navigateToStaff = (staff: Staff) => {
+    router.push(`/admin/staff/${encodeURIComponent(staff.employee_number)}`);
+  };
+
+  if (staffLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-100">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!currentStaff) {
+    return (
+      <div className="p-6">
+        <div className="text-center py-12">
+          <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <h2 className="text-xl font-semibold mb-2">{t("notFound")}</h2>
+          <p className="text-muted-foreground mb-4">{t("notFoundDesc")}</p>
+          <Button onClick={() => router.push("/admin/staff")}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            {t("backToStaff")}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const fullName = `${currentStaff.profile?.first_name || ""} ${currentStaff.profile?.last_name || ""}`.trim();
+
+  // Format employment type
+  const formatEmploymentType = (type: string | null | undefined) => {
+    if (!type) return t("na");
+    return type.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+  };
+
+  // Get role display name
+  const getRoleDisplay = (role: string | null | undefined) => {
+    if (!role) return t("filters.staff");
+    if (role === "librarian") return t("designations.librarian");
+    return role.charAt(0).toUpperCase() + role.slice(1);
+  };
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* Header with Navigation */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => router.push("/admin/staff")}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent dark:text-white">
+              {t("staffDetails")}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {t("viewingCount", { current: currentIndex + 1, total })}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!prevStaff}
+            onClick={() => prevStaff && navigateToStaff(prevStaff)}
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            {t("previous")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!nextStaff}
+            onClick={() => nextStaff && navigateToStaff(nextStaff)}
+          >
+            {t("next")}
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+          <Separator orientation="vertical" className="h-6" />
+          <Button
+            onClick={() => router.push(`/admin/staff?edit=${currentStaff.id}`)}
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            {t("actions.edit")}
+          </Button>
+        </div>
+      </div>
+
+      {/* Staff Profile Header Card */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col md:flex-row gap-6 items-start">
+            <div className="h-32 w-24 rounded-xl border-4 border-white shadow-lg overflow-hidden shrink-0 bg-linear-to-b from-[#57A3CC] to-[#022172] flex items-center justify-center">
+  {currentStaff.custom_fields?.personal?.photo ? (
+    <img
+      src={currentStaff.custom_fields.personal.photo}
+      alt={fullName}
+      className="h-full w-full object-cover object-top"
+    />
+  ) : (
+    <span className="text-2xl font-bold text-white">
+      {getInitials(currentStaff.profile?.first_name, currentStaff.profile?.last_name)}
+    </span>
+  )}
+</div>
+
+            {/* Basic Info */}
+            <div className="flex-1">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold">{fullName || t("na")}</h2>
+                  <p className="text-muted-foreground">
+                    {currentStaff.employee_number} • {currentStaff.department || t("noDepartment")}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Badge className={currentStaff.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                    {currentStaff.is_active ? t("active") : t("inactive")}
+                  </Badge>
+                  <Badge variant="outline" className="capitalize">
+                    {getRoleDisplay((currentStaff.profile as any)?.role)}
+                  </Badge>
+                  <Badge variant="secondary" className="capitalize">
+                    {formatEmploymentType(currentStaff.employment_type)}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Quick Contact Info */}
+              <div className="flex flex-wrap gap-4 mt-4 text-sm">
+                {currentStaff.profile?.email && (
+                  <span className="flex items-center gap-1 text-muted-foreground">
+                    <Mail className="h-4 w-4" />
+                    {currentStaff.profile.email}
+                  </span>
+                )}
+                {currentStaff.profile?.phone && (
+                  <span className="flex items-center gap-1 text-muted-foreground">
+                    <Phone className="h-4 w-4" />
+                    {currentStaff.profile.phone}
+                  </span>
+                )}
+                {currentStaff.title && (
+                  <span className="flex items-center gap-1 text-muted-foreground">
+                    <Briefcase className="h-4 w-4" />
+                    {currentStaff.title}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {currentStaff.profile_id && (
+              <div className="shrink-0">
+                <UserQRCode value={currentStaff.profile_id} size={100} label={fullName || currentStaff.employee_number} />
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Detailed Information Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+          <TabsTrigger value="personal" className="gap-2">
+            <User className="h-4 w-4" />
+            <span className="hidden sm:inline">{t("tabs.personal")}</span>
+          </TabsTrigger>
+          <TabsTrigger value="professional" className="gap-2">
+            <Briefcase className="h-4 w-4" />
+            <span className="hidden sm:inline">{t("tabs.professional")}</span>
+          </TabsTrigger>
+          <TabsTrigger value="qualifications" className="gap-2">
+            <GraduationCap className="h-4 w-4" />
+            <span className="hidden sm:inline">{t("tabs.qualifications")}</span>
+          </TabsTrigger>
+          <TabsTrigger value="system" className="gap-2">
+            <Settings className="h-4 w-4" />
+            <span className="hidden sm:inline">{t("tabs.system")}</span>
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Personal Information Tab */}
+        <TabsContent value="personal" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                {t("personal")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <InfoRow label={t("fields.firstName")} value={currentStaff.profile?.first_name} fallbackLabel={t("notProvided")} />
+                <InfoRow label={t("fields.lastName")} value={currentStaff.profile?.last_name} fallbackLabel={t("notProvided")} />
+                <InfoRow label={t("fields.email")} value={currentStaff.profile?.email} icon={Mail} fallbackLabel={t("notProvided")} />
+                <InfoRow label={t("fields.phone")} value={currentStaff.profile?.phone} icon={Phone} fallbackLabel={t("notProvided")} />
+                <InfoRow label={t("fields.username")} value={currentStaff.profile?.username} icon={User} fallbackLabel={t("notProvided")} />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Professional Information Tab */}
+        <TabsContent value="professional" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Briefcase className="h-5 w-5" />
+                {t("professional")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <InfoRow label={t("fields.employeeNumber")} value={currentStaff.employee_number} fallbackLabel={t("notProvided")} />
+                <InfoRow label={t("fields.title")} value={currentStaff.title} icon={Briefcase} fallbackLabel={t("notProvided")} />
+                <InfoRow label={t("fields.department")} value={currentStaff.department} icon={Building} fallbackLabel={t("notProvided")} />
+                <InfoRow
+                  label={t("fields.role")}
+                  value={
+                    <Badge variant="outline" className="capitalize">
+                      {getRoleDisplay((currentStaff.profile as any)?.role)}
+                    </Badge>
+                  }
+                  icon={Shield}
+                  fallbackLabel={t("notProvided")}
+                />
+                <InfoRow
+                  label={t("fields.employmentType")}
+                  value={
+                    <Badge variant="secondary" className="capitalize">
+                      {formatEmploymentType(currentStaff.employment_type)}
+                    </Badge>
+                  }
+                  fallbackLabel={t("notProvided")}
+                />
+                <InfoRow
+                  label={t("fields.dateOfJoining")}
+                  value={formatDate(currentStaff.date_of_joining, t("notProvided"))}
+                  icon={Calendar}
+                  fallbackLabel={t("notProvided")}
+                />
+                <InfoRow
+                  label={t("fields.baseSalary")}
+                  value={formatCurrency(currentStaff.base_salary, t("notSet"))}
+                  icon={DollarSign}
+                  fallbackLabel={t("notProvided")}
+                />
+                <div className="md:col-span-2 lg:col-span-3">
+                  <InfoRow label={t("fields.qualifications")} value={currentStaff.qualifications} fallbackLabel={t("notProvided")} />
+                </div>
+                <div className="md:col-span-2 lg:col-span-3">
+                  <InfoRow label={t("fields.specialization")} value={currentStaff.specialization} fallbackLabel={t("notProvided")} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Qualifications Tab */}
+        <TabsContent value="qualifications" className="mt-6">
+          {currentStaff.profile_id ? (
+            <QualificationsTab profileId={currentStaff.profile_id} />
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              {t("profileIdNotAvailable")}
+            </p>
+          )}
+        </TabsContent>
+
+        {/* System Information Tab */}
+        <TabsContent value="system" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                {t("tabs.system")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <InfoRow label={t("fields.staffId")} value={currentStaff.id} fallbackLabel={t("notProvided")} />
+                <InfoRow label={t("fields.profileId")} value={currentStaff.profile_id} fallbackLabel={t("notProvided")} />
+                <InfoRow label={t("fields.schoolId")} value={currentStaff.school_id} fallbackLabel={t("notProvided")} />
+                <InfoRow
+                  label={t("fields.status")}
+                  value={
+                    <Badge className={currentStaff.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                      {currentStaff.is_active ? t("active") : t("inactive")}
+                    </Badge>
+                  }
+                  fallbackLabel={t("notProvided")}
+                />
+                <InfoRow
+                  label={t("fields.createdAt")}
+                  value={formatDate(currentStaff.created_at, t("notProvided"))}
+                  icon={Clock}
+                  fallbackLabel={t("notProvided")}
+                />
+                <InfoRow
+                  label={t("fields.lastUpdated")}
+                  value={formatDate(currentStaff.updated_at, t("notProvided"))}
+                  icon={Clock}
+                  fallbackLabel={t("notProvided")}
+                />
+              </div>
+
+              {/* Permissions */}
+              {currentStaff.permissions && Object.keys(currentStaff.permissions).length > 0 && (
+                <>
+                  <Separator className="my-6" />
+                  <h4 className="font-semibold mb-4 flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    {t("permissions")}
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(currentStaff.permissions).map(([key, value]) => (
+                      value && (
+                        <Badge key={key} variant="outline" className="capitalize">
+                          {key.replace(/_/g, ' ')}
+                        </Badge>
+                      )
+                    ))}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

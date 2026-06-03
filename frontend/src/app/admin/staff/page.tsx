@@ -1,0 +1,517 @@
+'use client'
+
+import { useState, useEffect, useMemo } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { UniversalFilter, type FilterState } from '@/components/filters/UniversalFilter'
+import {
+    Users,
+    Plus,
+    MoreVertical,
+    Edit,
+    Trash2,
+    Shield,
+    Briefcase,
+    Mail,
+    Phone,
+    DollarSign,
+    Save,
+    Loader2,
+    Lock,
+    Eye
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow
+} from '@/components/ui/table'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent } from '@/components/ui/card'
+import { useStaff } from '@/hooks/useStaff'
+import { deleteStaff, updateStaff, UpdateStaffDTO, Staff, getStaffById } from '@/lib/api/staff'
+import { toast } from 'sonner'
+import { EditCredentialsModal } from '@/components/admin/EditCredentialsModal'
+import { useAuth } from '@/context/AuthContext'
+import { useCampus } from '@/context/CampusContext'
+
+export default function StaffPage() {
+    const router = useRouter()
+    const t = useTranslations('staff')
+    const [page, setPage] = useState(1)
+    const [staffFilters, setStaffFilters] = useState<FilterState>({})
+    const [showInactive, setShowInactive] = useState(false)
+    const [editDialogOpen, setEditDialogOpen] = useState(false)
+    const [editingStaff, setEditingStaff] = useState<Staff | null>(null)
+    const [saving, setSaving] = useState(false)
+    const [formData, setFormData] = useState<UpdateStaffDTO>({})
+
+    const campusContext = useCampus()
+    const staffRole = (staffFilters.role || 'all') as 'staff' | 'librarian' | 'teacher' | 'all'
+    const { staff, totalPages, isLoading, mutate } = useStaff(page, 10, staffFilters.search || '', staffRole, campusContext?.selectedCampus?.id)
+    const { profile } = useAuth()
+
+    // Filter by active/inactive status (client-side)
+    const filteredStaff = useMemo(() => {
+        if (showInactive) return staff
+        return staff.filter(s => s.is_active !== false)
+    }, [staff, showInactive])
+
+    // Credentials modal state
+    const [credentialsModalOpen, setCredentialsModalOpen] = useState(false)
+    const [credentialsStaff, setCredentialsStaff] = useState<Staff | null>(null)
+
+    // Populate form when editing staff is selected
+    useEffect(() => {
+        if (editingStaff) {
+            console.log('🔄 useEffect triggered - editingStaff:', editingStaff)
+            
+            // Extract staff data from API response
+            const staffData = (editingStaff as any).data || editingStaff
+            
+            console.log('🔄 useEffect - staffData:', staffData)
+            console.log('🔄 useEffect - staffData.title:', staffData.title)
+            console.log('🔄 useEffect - staffData.base_salary:', staffData.base_salary)
+            
+            const newFormData = {
+                title: staffData.title || '',
+                department: staffData.department || '',
+                qualifications: staffData.qualifications || '',
+                specialization: staffData.specialization || '',
+                employment_type: staffData.employment_type || 'full_time',
+                is_active: staffData.is_active,
+                base_salary: staffData.base_salary || 0
+            }
+            
+            console.log('🔄 useEffect - Setting formData to:', newFormData)
+            setFormData(newFormData)
+        }
+    }, [editingStaff])
+
+    const handleEdit = async (member: Staff) => {
+        console.log('🎯 handleEdit - Fetching fresh staff data with base_salary for:', member.id)
+        
+        // Fetch fresh staff data including base_salary
+        const response = await getStaffById(member.id)
+        
+        if (!response) {
+            toast.error(t('errors.loadStaffDetails'))
+            return
+        }
+        
+        // Extract staff data from API response wrapper
+        const freshStaff = (response as any).data || response
+        
+        console.log('🎯 handleEdit - Fresh staff data loaded:', freshStaff)
+        console.log('🎯 handleEdit - base_salary from fresh data:', freshStaff.base_salary)
+        
+        setEditingStaff(freshStaff)
+        setEditDialogOpen(true)
+    }
+
+    const handleSave = async () => {
+        if (!editingStaff) return
+
+        setSaving(true)
+        try {
+            // Extract staff data if it's wrapped in API response
+            const staffData = (editingStaff as any).data || editingStaff
+            await updateStaff(staffData.id, formData)
+            toast.success(t('toasts.updated'))
+            setEditDialogOpen(false)
+            setEditingStaff(null)
+            mutate()
+        } catch (error) {
+            toast.error(t('errors.updateStaff'))
+            console.error(error)
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const handleDelete = async (id: string) => {
+        if (!confirm(t('confirmDelete'))) return
+
+        try {
+            await deleteStaff(id)
+            toast.success(t('toasts.deleted'))
+            mutate()
+        } catch (error) {
+            toast.error(t('errors.deleteStaff'))
+            console.error(error)
+        }
+    }
+
+    return (
+        <div className="p-6 space-y-6">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold text-[#022172] dark:text-white">{t('title')}</h1>
+                    <p className="text-gray-500 dark:text-gray-400 mt-1">{t('subtitle')}</p>
+                </div>
+                <div className="flex gap-3">
+                    <Link href="/admin/staff/settings">
+                        <Button variant="outline" className="border-[#57A3CC] dark:border-blue-500 text-[#022172] dark:text-blue-400">
+                            <Shield className="mr-2 h-4 w-4" />
+                            {t('settings.title')}
+                        </Button>
+                    </Link>
+                    <Link href="/admin/staff/add-staff">
+                        <Button className="bg-linear-to-r from-[#57A3CC] to-[#022172] dark:from-blue-600 dark:to-blue-800 text-white">
+                            <Plus className="mr-2 h-4 w-4" />
+                            {t('addStaff')}
+                        </Button>
+                    </Link>
+                </div>
+            </div>
+
+            {/* Universal Filter */}
+            <Card>
+                <CardContent className="py-4">
+                    <div className="flex flex-col gap-3">
+                        <UniversalFilter
+                            availableFilters={['search', 'role']}
+                            entityType="staff"
+                            currentFilters={staffFilters}
+                            onFilterChange={(f) => { setStaffFilters(f); setPage(1) }}
+                        />
+                        <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={showInactive}
+                                onChange={(e) => setShowInactive(e.target.checked)}
+                                className="rounded border-gray-300"
+                            />
+                            Show inactive
+                        </label>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Table */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700 shadow-sm">
+                <Table>
+                    <TableHeader>
+                        <TableRow className="bg-gray-50/50 dark:bg-gray-900/50">
+                            <TableHead>{t('table.staffMember')}</TableHead>
+                            <TableHead>{t('table.roleDesignation')}</TableHead>
+                            <TableHead>{t('table.contact')}</TableHead>
+                            <TableHead>{t('table.department')}</TableHead>
+                            <TableHead>{t('table.status')}</TableHead>
+                            <TableHead className="text-right">{t('table.actions')}</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {isLoading ? (
+                            <TableRow>
+                                <TableCell colSpan={6} className="h-24 text-center">{t('loading')}</TableCell>
+                            </TableRow>
+                        ) : filteredStaff.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={6} className="h-24 text-center text-gray-500">
+                                    {t('noStaffFound')}
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            filteredStaff.map((member: Staff) => (
+                                <TableRow 
+                                    key={member.id} 
+                                    className="hover:bg-blue-50/30 dark:hover:bg-gray-700/30 transition-colors cursor-pointer"
+                                    onClick={() => router.push(`/admin/staff/${encodeURIComponent(member.employee_number)}`)}
+                                >
+                                    <TableCell className="max-w-sm">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-9 w-9 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center text-[#022172] dark:text-blue-300 font-semibold text-sm shrink-0">
+                                                {member.profile?.first_name?.[0]}{member.profile?.last_name?.[0]}
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="font-medium text-[#022172] dark:text-gray-200 truncate">
+                                                    {member.profile?.first_name} {member.profile?.last_name}
+                                                </div>
+                                                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                                    {t('employeeNumberLabel')}: {member.employee_number}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="max-w-xs">
+                                        <div className="flex flex-col">
+                                            <span className="font-medium dark:text-gray-200 truncate">{member.title || t('na')}</span>
+                                            {member.profile?.role === 'librarian' && (
+                                                <Badge variant="secondary" className="w-fit mt-1 text-[10px] bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/70 border-purple-200 dark:border-purple-800">
+                                                    {t('designations.systemLibrarian')}
+                                                </Badge>
+                                            )}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="max-w-xs">
+                                        <div className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-400">
+                                            <div className="flex items-center gap-2 truncate">
+                                                <Mail className="h-3 w-3 shrink-0" />
+                                                <span className="truncate">{member.profile?.email}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 truncate">
+                                                <Phone className="h-3 w-3 shrink-0" />
+                                                <span className="truncate">{member.profile?.phone || t('na')}</span>
+                                            </div>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="max-w-xs">
+                                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 truncate">
+                                            <Briefcase className="h-3 w-3 shrink-0" />
+                                            <span className="truncate">{member.department || t('na')}</span>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge
+                                            variant="outline"
+                                            className={member.is_active
+                                                ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800'
+                                                : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800'
+                                            }
+                                        >
+                                            {member.is_active ? t('active') : t('inactive')}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                    <MoreVertical className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuLabel>{t('table.actions')}</DropdownMenuLabel>
+                                                <DropdownMenuItem onClick={() => router.push(`/admin/staff/${encodeURIComponent(member.employee_number)}`)}>
+                                                    <Eye className="mr-2 h-4 w-4" /> {t('actions.viewDetails')}
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleEdit(member)}>
+                                                    <Edit className="mr-2 h-4 w-4" /> {t('actions.edit')}
+                                                </DropdownMenuItem>
+                                                {member.profile?.role === 'librarian' && (
+                                                    <DropdownMenuItem onClick={() => {
+                                                        setCredentialsStaff(member)
+                                                        setCredentialsModalOpen(true)
+                                                    }}>
+                                                        <Lock className="mr-2 h-4 w-4" /> {t('actions.editCredentials')}
+                                                    </DropdownMenuItem>
+                                                )}
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem
+                                                    className="text-red-600"
+                                                    onClick={() => handleDelete(member.id)}
+                                                >
+                                                    <Trash2 className="mr-2 h-4 w-4" /> {t('actions.delete')}
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-500">
+                    {t('pagination.pageOf', { page, totalPages: totalPages || 1 })}
+                </p>
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                    >
+                        {t('previous')}
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                        disabled={page === totalPages || totalPages === 0}
+                    >
+                        {t('next')}
+                    </Button>
+                </div>
+            </div>
+
+            {/* Edit Dialog */}
+            <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+                <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>{t('editStaff')}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        {/* Name (read-only) */}
+                        <div className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <div className="h-10 w-10 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center text-[#022172] dark:text-blue-300 font-semibold">
+                                {editingStaff?.profile?.first_name?.[0]}{editingStaff?.profile?.last_name?.[0]}
+                            </div>
+                            <div>
+                                <p className="font-medium dark:text-gray-100">{editingStaff?.profile?.first_name} {editingStaff?.profile?.last_name}</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">{editingStaff?.profile?.email}</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>{t('form.titleDesignation')}</Label>
+                                <Input
+                                    value={formData.title || ''}
+                                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                    placeholder={t('placeholders.title')}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>{t('department')}</Label>
+                                <Input
+                                    value={formData.department || ''}
+                                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                                    placeholder={t('placeholders.department')}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>{t('employmentType')}</Label>
+                                <Select
+                                    value={formData.employment_type}
+                                    onValueChange={(val) => setFormData({ ...formData, employment_type: val as any })}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="full_time">{t('employmentTypes.full_time')}</SelectItem>
+                                        <SelectItem value="part_time">{t('employmentTypes.part_time')}</SelectItem>
+                                        <SelectItem value="contract">{t('employmentTypes.contract')}</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>{t('table.status')}</Label>
+                                <Select
+                                    value={formData.is_active ? 'active' : 'inactive'}
+                                    onValueChange={(val) => setFormData({ ...formData, is_active: val === 'active' })}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="active">{t('active')}</SelectItem>
+                                        <SelectItem value="inactive">{t('inactive')}</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>{t('qualifications')}</Label>
+                            <Input
+                                value={formData.qualifications || ''}
+                                onChange={(e) => setFormData({ ...formData, qualifications: e.target.value })}
+                                placeholder={t('placeholders.qualifications')}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>{t('specialization')}</Label>
+                            <Input
+                                value={formData.specialization || ''}
+                                onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
+                                placeholder={t('placeholders.specialization')}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>
+                                <DollarSign className="inline h-4 w-4 mr-1" />
+                                {t('baseSalary')}
+                            </Label>
+                            <Input
+                                type="number"
+                                value={formData.base_salary || 0}
+                                onChange={(e) => setFormData({ ...formData, base_salary: parseFloat(e.target.value) || 0 })}
+                                placeholder={t('placeholders.baseSalary')}
+                                min="0"
+                                step="100"
+                            />
+                            <p className="text-xs text-gray-500">{t('requiredForPayroll')}</p>
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-4">
+                            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+                                {t('cancel')}
+                            </Button>
+                            <Button
+                                onClick={handleSave}
+                                disabled={saving}
+                                className="bg-[#022172]"
+                            >
+                                {saving ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        {t('saving')}
+                                    </>
+                                ) : (
+                                    <>
+                                        <Save className="mr-2 h-4 w-4" />
+                                        {t('saveChanges')}
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Credentials Modal */}
+            {credentialsStaff && (
+                <EditCredentialsModal
+                    isOpen={credentialsModalOpen}
+                    onClose={() => {
+                        setCredentialsModalOpen(false)
+                        setCredentialsStaff(null)
+                    }}
+                    entityId={credentialsStaff.id}
+                    entityName={`${credentialsStaff.profile?.first_name} ${credentialsStaff.profile?.last_name}`}
+                    entityType="staff"
+                    schoolId={profile?.school_id || ''}
+                    onSuccess={() => mutate()}
+                />
+            )}
+        </div>
+    )
+}
