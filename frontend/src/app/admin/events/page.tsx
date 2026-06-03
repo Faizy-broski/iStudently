@@ -162,7 +162,7 @@ export default function EventsPage() {
   const [gregorianCalendar, setGregorianCalendar] = useState<AttendanceCalendar | null>(null);
   const [hijriCalendar, setHijriCalendar] = useState<AttendanceCalendar | null>(null);
   const [activeTab, setActiveTab] = useState<'gregorian' | 'hijri'>('gregorian');
-  
+
   // Event states
   const [showEventForm, setShowEventForm] = useState(false);
   const [showEventDetails, setShowEventDetails] = useState(false);
@@ -202,9 +202,9 @@ export default function EventsPage() {
   // Set default calendars when data loads; jump the grid to the calendar's start month
   useEffect(() => {
     if (allCalendars && allCalendars.length > 0) {
-      const greg = allCalendars.find(c => c.calendar_type === "gregorian" && c.is_default) || 
+      const greg = allCalendars.find(c => c.calendar_type === "gregorian" && c.is_default) ||
                    allCalendars.find(c => c.calendar_type === "gregorian");
-      const hij = allCalendars.find(c => c.calendar_type === "hijri" && c.is_default) || 
+      const hij = allCalendars.find(c => c.calendar_type === "hijri" && c.is_default) ||
                   allCalendars.find(c => c.calendar_type === "hijri");
       if (greg) setGregorianCalendar(greg);
       if (hij) setHijriCalendar(hij);
@@ -298,7 +298,7 @@ export default function EventsPage() {
 
   // Get the active calendar based on current tab
   const activeCalendar = activeTab === 'gregorian' ? gregorianCalendar : hijriCalendar;
-  
+
   // Pass calendar date range to category counts (if calendar is selected)
   const { categoryCounts, mutate: mutateCategoryCounts } = useCategoryCounts(
     activeCalendar?.start_date,
@@ -568,8 +568,8 @@ export default function EventsPage() {
       {/* Category Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {(Object.entries(CATEGORY_LABELS) as [EventCategory, string][]).map(([category, label]) => (
-          <Card 
-            key={category} 
+          <Card
+            key={category}
             className={`cursor-pointer transition-all hover:shadow-md ${
               selectedCategory === category ? "ring-2 ring-[#022172]" : ""
             }`}
@@ -577,9 +577,9 @@ export default function EventsPage() {
           >
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div 
+                <div
                   className="p-2 rounded-lg"
-                  style={{ 
+                  style={{
                     backgroundColor: EVENT_COLORS[category] + "20",
                     color: EVENT_COLORS[category]
                   }}

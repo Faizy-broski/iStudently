@@ -235,9 +235,9 @@ function AcademicSelectors() {
       setLoadingQ(true)
       try {
         const all = await getMarkingPeriods(campusId || undefined)
-        
+
         if (!active) return
-        
+
         const qtrs = (all || [])
           .filter(mp => mp.mp_type === 'QTR')
           .filter(mp => {
@@ -245,7 +245,7 @@ function AcademicSelectors() {
             return mp.start_date >= currentAcademicYear.start_date && mp.start_date <= currentAcademicYear.end_date
           })
           .sort((a, b) => a.sort_order - b.sort_order)
-        
+
         setQuarters(qtrs)
         if (qtrs.length === 0) {
           setSelectedQuarter(null)
@@ -258,7 +258,7 @@ function AcademicSelectors() {
           const match = qtrs.find(q => q.id === storedId)
           if (match) { setSelectedQuarter(match); return }
         }
-        
+
         const activeMp = qtrs.find(
           q => q.start_date && q.end_date && q.start_date <= today && today <= q.end_date
         )
@@ -490,9 +490,9 @@ function ParentSelectors() {
       setLoadingQ(true)
       try {
         const all = await getMarkingPeriods(childCampusId || undefined)
-        
+
         if (!active) return
-        
+
         const qtrs = (all || [])
           .filter(mp => mp.mp_type === 'QTR')
           .filter(mp => {
@@ -500,20 +500,20 @@ function ParentSelectors() {
             return mp.start_date >= currentAcademicYear.start_date && mp.start_date <= currentAcademicYear.end_date
           })
           .sort((a, b) => a.sort_order - b.sort_order)
-        
+
         setQuarters(qtrs)
         if (qtrs.length === 0) {
           setSelectedQuarter(null)
           return
         }
-        
+
         const today = new Date().toISOString().split('T')[0]
         const storedId = getStoredSelectedQuarterId()
         if (storedId) {
           const match = qtrs.find(q => q.id === storedId)
           if (match) { setSelectedQuarter(match); return }
         }
-        
+
         const activeMp = qtrs.find(
           q => q.start_date && q.end_date && q.start_date <= today && today <= q.end_date
         )
@@ -719,18 +719,18 @@ function ViewedProfileIndicator() {
   const router = useRouter()
   const locale = useLocale()
   const isAr = locale === 'ar'
-  
+
   const context = React.useContext(ProfileViewContext);
   const viewedProfile = context?.viewedProfile ?? null;
   const clearViewedProfile = context?.clearViewedProfile ?? (() => {});
-  
+
   if (!viewedProfile) return null
-  
+
   const handleClose = () => {
     clearViewedProfile();
     router.push(viewedProfile.backUrl)
   }
-  
+
   const getIcon = () => {
     switch (viewedProfile.type) {
       case 'student': return <GraduationCap className="h-4 w-4 text-[#EEA831] shrink-0" />
@@ -740,7 +740,7 @@ function ViewedProfileIndicator() {
       default: return <User className="h-4 w-4 text-[#EEA831] shrink-0" />
     }
   }
-  
+
   const getLabel = () => {
     switch (viewedProfile.type) {
       case 'student': return 'Viewing Student'
@@ -750,7 +750,7 @@ function ViewedProfileIndicator() {
       default: return 'Viewing Profile'
     }
   }
-  
+
   return (
     <div className="px-3 mb-2">
       <div className="flex items-center gap-2 px-3 py-2.5 bg-linear-to-r from-[#EEA831]/30 to-[#F59E0B]/20 rounded-lg border-2 border-[#EEA831] shadow-lg shadow-[#EEA831]/20">
@@ -808,7 +808,7 @@ function SidebarItem({
 
   const Icon = item.icon
   const hasSubItems = item.subItems && item.subItems.length > 0
-  
+
   // Check if this item is currently expanded
   const isExpanded = expandedItemKey === item.href
 

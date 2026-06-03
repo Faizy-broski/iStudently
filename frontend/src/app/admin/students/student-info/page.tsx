@@ -120,7 +120,7 @@ export default function StudentInfoPage() {
   // Show error toast if there's an error, but only for persistent errors
   // Skip transient errors during component mount/remount
   const [hasInitialized, setHasInitialized] = useState(false);
-  
+
   useEffect(() => {
     // Wait a moment before showing errors to avoid transient errors on remount
     const timer = setTimeout(() => setHasInitialized(true), 1000);
@@ -130,7 +130,7 @@ export default function StudentInfoPage() {
   useEffect(() => {
     if (error && hasInitialized) {
       // Don't show toast for network errors or cancelled requests
-      if (error.message === 'Network error' || 
+      if (error.message === 'Network error' ||
           error.message === 'Request cancelled' ||
           error.message === 'Failed to fetch') {
         return;

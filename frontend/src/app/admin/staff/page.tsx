@@ -92,14 +92,14 @@ export default function StaffPage() {
     useEffect(() => {
         if (editingStaff) {
             console.log('🔄 useEffect triggered - editingStaff:', editingStaff)
-            
+
             // Extract staff data from API response
             const staffData = (editingStaff as any).data || editingStaff
-            
+
             console.log('🔄 useEffect - staffData:', staffData)
             console.log('🔄 useEffect - staffData.title:', staffData.title)
             console.log('🔄 useEffect - staffData.base_salary:', staffData.base_salary)
-            
+
             const newFormData = {
                 title: staffData.title || '',
                 department: staffData.department || '',
@@ -109,7 +109,7 @@ export default function StaffPage() {
                 is_active: staffData.is_active,
                 base_salary: staffData.base_salary || 0
             }
-            
+
             console.log('🔄 useEffect - Setting formData to:', newFormData)
             setFormData(newFormData)
         }
@@ -117,21 +117,21 @@ export default function StaffPage() {
 
     const handleEdit = async (member: Staff) => {
         console.log('🎯 handleEdit - Fetching fresh staff data with base_salary for:', member.id)
-        
+
         // Fetch fresh staff data including base_salary
         const response = await getStaffById(member.id)
-        
+
         if (!response) {
             toast.error(t('errors.loadStaffDetails'))
             return
         }
-        
+
         // Extract staff data from API response wrapper
         const freshStaff = (response as any).data || response
-        
+
         console.log('🎯 handleEdit - Fresh staff data loaded:', freshStaff)
         console.log('🎯 handleEdit - base_salary from fresh data:', freshStaff.base_salary)
-        
+
         setEditingStaff(freshStaff)
         setEditDialogOpen(true)
     }
@@ -242,8 +242,8 @@ export default function StaffPage() {
                             </TableRow>
                         ) : (
                             filteredStaff.map((member: Staff) => (
-                                <TableRow 
-                                    key={member.id} 
+                                <TableRow
+                                    key={member.id}
                                     className="hover:bg-blue-50/30 dark:hover:bg-gray-700/30 transition-colors cursor-pointer"
                                     onClick={() => router.push(`/admin/staff/${encodeURIComponent(member.employee_number)}`)}
                                 >

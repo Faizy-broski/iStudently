@@ -240,8 +240,8 @@ export default function TeachersPage() {
                         `${teacher.profile?.first_name || ""} ${teacher.profile?.last_name || ""}`.trim() ||
                         t("na")
                       return (
-                        <TableRow 
-                          key={teacher.id} 
+                        <TableRow
+                          key={teacher.id}
                           className="hover:bg-muted/50 cursor-pointer"
                           onClick={() => router.push(`/admin/teachers/${encodeURIComponent(teacher.employee_number)}`)}
                         >
