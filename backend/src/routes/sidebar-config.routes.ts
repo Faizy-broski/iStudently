@@ -1,31 +1,28 @@
 import { Router } from 'express'
 import * as sidebarConfigController from '../controllers/sidebar-config.controller'
 import { authenticate } from '../middlewares/auth.middleware'
-import { requireSuperAdmin } from '../middlewares/role.middleware'
+import { requireSuperAdmin, requireAdmin } from '../middlewares/role.middleware'
 
 const router = Router()
 
 router.use(authenticate)
 
-// GET /api/sidebar-config/superadmin — super admin reads own config
+// Superadmin-only routes
 router.get('/superadmin', requireSuperAdmin, sidebarConfigController.getSuperadminConfig)
-
-// PUT /api/sidebar-config/superadmin — super admin writes own config
 router.put('/superadmin', requireSuperAdmin, sidebarConfigController.updateSuperadminConfig)
-
-// POST /api/sidebar-config/superadmin/reset — reset super admin config to defaults
 router.post('/superadmin/reset', requireSuperAdmin, sidebarConfigController.resetSuperadminConfig)
 
-// GET /api/sidebar-config/school/:schoolId — super admin reads a school's config
-router.get('/school/:schoolId', requireSuperAdmin, sidebarConfigController.getSchoolConfig)
+// School-level routes — super_admin or school admin (ownership verified in controller)
+router.get('/school/:schoolId', requireAdmin, sidebarConfigController.getSchoolConfig)
+router.put('/school/:schoolId', requireAdmin, sidebarConfigController.updateSchoolConfig)
+router.post('/school/:schoolId/reset', requireAdmin, sidebarConfigController.resetSchoolConfig)
 
-// PUT /api/sidebar-config/school/:schoolId — super admin writes a school's config
-router.put('/school/:schoolId', requireSuperAdmin, sidebarConfigController.updateSchoolConfig)
+// Campus-level routes — super_admin or school admin (campus ownership verified in controller)
+router.get('/campus/:campusId', requireAdmin, sidebarConfigController.getCampusConfig)
+router.put('/campus/:campusId', requireAdmin, sidebarConfigController.updateCampusConfig)
+router.post('/campus/:campusId/reset', requireAdmin, sidebarConfigController.resetCampusConfig)
 
-// POST /api/sidebar-config/school/:schoolId/reset — reset school config to defaults
-router.post('/school/:schoolId/reset', requireSuperAdmin, sidebarConfigController.resetSchoolConfig)
-
-// GET /api/sidebar-config/my — any authenticated user reads their own effective config
+// Any authenticated user reads their effective config (campus → school → null)
 router.get('/my', sidebarConfigController.getMyConfig)
 
 export default router

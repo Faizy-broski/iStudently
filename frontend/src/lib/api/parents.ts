@@ -111,6 +111,7 @@ export interface Parent {
     email: string | null
     phone: string | null
     avatar_url: string | null
+    profile_photo_url?: string | null
     is_active: boolean
   }
   children?: StudentWithRelationship[]
@@ -139,6 +140,7 @@ export interface CreateParentDTO {
   notes?: string
   metadata?: Record<string, any>
   custom_fields?: Record<string, any>
+  profile_photo_url?: string
 }
 
 export interface UpdateParentDTO {
@@ -164,6 +166,7 @@ export interface UpdateParentDTO {
   notes?: string
   metadata?: Record<string, any>
   custom_fields?: Record<string, any>
+  profile_photo_url?: string
 }
 
 export interface CreateParentStudentLinkDTO {

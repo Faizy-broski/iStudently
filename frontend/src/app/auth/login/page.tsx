@@ -361,7 +361,7 @@ function LoginForm() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute end-3 top-1/2 -translate-y-1/2 text-blue-900/70 hover:text-blue-900 dark:text-white/90 dark:hover:text-white transition-colors"
+                  className="absolute end-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors"
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}

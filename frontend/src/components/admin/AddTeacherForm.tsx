@@ -12,6 +12,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { MultiSelect } from "@/components/ui/multi-select"
 import { toast } from "sonner"
 import { ChevronLeft, ChevronRight, Check, Copy, Eye, EyeOff } from "lucide-react"
+import { StudentPhotoUpload } from "@/components/ui/student-photo-upload"
+import { useAuth } from "@/context/AuthContext"
 import { getFieldDefinitions, CustomFieldDefinition } from "@/lib/api/custom-fields"
 import { getFieldOrders, getEffectiveFieldOrder, DefaultFieldOrder } from '@/lib/utils/field-ordering';
 import * as teachersApi from "@/lib/api/teachers"
@@ -53,6 +55,8 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
   const t = useTranslations('teachers')
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
+  const { profile } = useAuth();
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string>('');
   const { currencySymbol } = useSchoolSettings();
 
   const getDisplayLabel = (fieldId: string, fallback: string): string => {
@@ -591,6 +595,7 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
     try {
       const dataToSend = {
         ...formData,
+        profile_photo_url: profilePhotoUrl || undefined,
         custom_fields: customFieldValues,
         school_id: selectedCampus?.id
       };
@@ -677,6 +682,18 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
               <CardDescription>{t('form.personalDetailsDescription')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Photo upload */}
+              <div className="space-y-1.5">
+                <Label>Profile Photo</Label>
+                <StudentPhotoUpload
+                  value={profilePhotoUrl}
+                  onChange={setProfilePhotoUrl}
+                  schoolId={selectedCampus?.id || profile?.school_id || ''}
+                  role="teacher"
+                  label="Upload Photo"
+                  className="max-w-xs"
+                />
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {getMergedFields(['personal']).map(renderField)}
               </div>

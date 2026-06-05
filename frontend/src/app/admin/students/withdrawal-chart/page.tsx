@@ -20,7 +20,7 @@ export default function WithdrawalChartPage() {
 
   useEffect(() => {
     getAcademicYears(true)
-      .then((years) => setAcademicYears(years.filter((y) => y.is_active)))
+      .then((years) => setAcademicYears(years))
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
@@ -63,7 +63,6 @@ export default function WithdrawalChartPage() {
       {/* Chart */}
       <WithdrawalChart
         academicYears={academicYears}
-        campusId={selectedCampus?.id}
       />
     </div>
   )

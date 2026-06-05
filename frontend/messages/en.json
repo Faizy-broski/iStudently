@@ -230,7 +230,9 @@
     "female": "Female",
     "contact_name": "Contact Name",
     "contact_relationship": "Contact Relationship",
-    "contact_phone": "Contact Phone"
+    "contact_phone": "Contact Phone",
+    "confirm_delete": "Confirm Deletion",
+    "delete_warning": "Are you sure you want to delete this? This action cannot be undone."
   },
   "topbar": {
     "searchPlaceholder": "Search pages...",
@@ -469,6 +471,7 @@
     "inventory_snapshots": "Inventory Snapshots",
     "general": "General",
     "campuses": "Campuses",
+    "sidebar_theme": "Sidebar Theme",
     "academic_years": "Academic Years",
     "services": "Services",
     "email_reminders": "Email Reminders",
@@ -2972,7 +2975,8 @@
         "delete_course_warning": " All course periods under this course will also be deleted.",
         "type_subject": "Subject",
         "type_course": "Course",
-        "type_cp": "Course Period"
+        "type_cp": "Course Period",
+        "hint_short_name_required": "Tip: fill in a unique Short Name (e.g. ara1, ara2) when adding multiple periods for the same teacher."
       },
       "student_schedule": {
         "title": "Student Schedule",

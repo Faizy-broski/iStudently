@@ -74,7 +74,8 @@ function LoanCard({ loan, showStatus = false }: { loan: any; showStatus?: boolea
 
 export default function StudentLibraryPage() {
   const { profile } = useAuth()
-  const studentId = profile?.student_id
+  // library_loans.student_id stores profiles.id (not students.id) — must use profile.id
+  const studentId = profile?.id
   const [tab, setTab] = useState<Tab>('active')
 
   const fetchWithToken = async (fn: (id: string, tok: string) => Promise<any>) => {
@@ -86,7 +87,7 @@ export default function StudentLibraryPage() {
   }
 
   const { data: activeLoans, isLoading: loadingActive } = useSWR(
-    studentId ? ['library-active', studentId] : null,
+    studentId ? ['library-active-v2', studentId] : null,
     () => fetchWithToken(getActiveLoans),
     { revalidateOnFocus: false }
   )

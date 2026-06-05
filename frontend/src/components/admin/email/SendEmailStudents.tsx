@@ -6,6 +6,9 @@ import { getStudents } from "@/lib/api/students"
 import { getAllStaff } from "@/lib/api/staff"
 import type { Staff } from "@/lib/api/staff"
 import type { EmailSendResult } from "@/lib/api/email"
+import { useGradeLevels } from "@/hooks/useAcademics"
+import { getSections } from "@/lib/api/academics"
+import type { Section } from "@/lib/api/academics"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -14,6 +17,13 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { toast } from "sonner"
 import {
   Mail,
@@ -52,6 +62,13 @@ export function SendEmailStudents() {
 
   const studentSubsKeys = useMemo(() => GET_STUDENT_SUBS_KEYS(tFields), [tFields])
 
+  // Grade / section filter
+  const { gradeLevels } = useGradeLevels()
+  const [gradeFilter, setGradeFilter] = useState("all")
+  const [sectionFilter, setSectionFilter] = useState("all")
+  const [sections, setSections] = useState<Section[]>([])
+  const [sectionsLoading, setSectionsLoading] = useState(false)
+
   // Compose state
   const [subject, setSubject] = useState("")
   const [body, setBody] = useState("")
@@ -76,21 +93,42 @@ export function SendEmailStudents() {
   const fetchStudents = useCallback(async () => {
     setLoadingStudents(true)
     try {
+      const selectedGradeName = gradeFilter !== "all"
+        ? gradeLevels.find((g) => g.id === gradeFilter)?.name
+        : undefined
       const res = await getStudents({
         limit: 300,
         search: search.trim() || undefined,
         campus_id: selectedCampusId,
+        grade_level: selectedGradeName,
+        section_id: sectionFilter !== "all" ? sectionFilter : undefined,
       })
       setStudents((res.data as any) || [])
     } finally {
       setLoadingStudents(false)
     }
-  }, [search, selectedCampusId])
+  }, [search, selectedCampusId, gradeFilter, sectionFilter, gradeLevels])
 
   useEffect(() => {
     const timer = setTimeout(fetchStudents, 350)
     return () => clearTimeout(timer)
   }, [fetchStudents])
+
+  // ── Load sections when grade changes ────────────────────────────────────────
+
+  useEffect(() => {
+    if (gradeFilter === "all") {
+      setSections([])
+      setSectionFilter("all")
+      return
+    }
+    setSectionsLoading(true)
+    getSections(gradeFilter)
+      .then((res) => { if (res.success && res.data) setSections(res.data) })
+      .catch(() => {})
+      .finally(() => setSectionsLoading(false))
+    setSectionFilter("all")
+  }, [gradeFilter])
 
   // ── Fetch staff for CC ─────────────────────────────────────────────────────
 
@@ -415,15 +453,44 @@ export function SendEmailStudents() {
         </CardHeader>
 
         <CardContent className="space-y-3">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none rtl:right-3 rtl:left-auto" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t("search_placeholder")}
-              className="pl-9 rtl:pr-9 rtl:pl-3"
-            />
+          {/* Filters row */}
+          <div className="flex flex-wrap gap-2">
+            {/* Search */}
+            <div className="relative flex-1 min-w-48">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none rtl:right-3 rtl:left-auto" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t("search_placeholder")}
+                className="pl-9 rtl:pr-9 rtl:pl-3"
+              />
+            </div>
+            {/* Grade */}
+            <Select value={gradeFilter} onValueChange={setGradeFilter}>
+              <SelectTrigger className="w-36">
+                <SelectValue placeholder="All Grades" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Grades</SelectItem>
+                {gradeLevels.map((g) => (
+                  <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {/* Section — only when grade selected */}
+            {gradeFilter !== "all" && (
+              <Select value={sectionFilter} onValueChange={setSectionFilter} disabled={sectionsLoading}>
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="All Sections" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sections</SelectItem>
+                  {sections.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           {/* Table */}

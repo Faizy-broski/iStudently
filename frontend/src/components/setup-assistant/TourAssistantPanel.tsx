@@ -14,11 +14,11 @@ import {
 import { useAuth } from '@/context/AuthContext'
 import { useSchoolSettings } from '@/context/SchoolSettingsContext'
 import { getTourSteps, type TourStep } from '@/config/tour-steps'
-import { dismissSetupAssistant } from '@/lib/api/setup-assistant'
+import { dismissSetupAssistant, getSetupAssistantProgress } from '@/lib/api/setup-assistant'
 
-// ─── Local Storage ────────────────────────────────────────────────────────────
+// ─── Local Storage (step tracking only — dismissed state lives in DB) ─────────
 
-const TOUR_KEY = 'studently_tour_v1'
+const TOUR_STEP_KEY = 'studently_tour_step_v1'
 
 interface TourState {
   active: boolean
@@ -27,25 +27,29 @@ interface TourState {
   dismissed: boolean
 }
 
-function getStoredState(role: string): TourState {
+function getStoredStep(role: string): { active: boolean; stepIndex: number } {
   try {
-    const raw = localStorage.getItem(TOUR_KEY)
+    const raw = localStorage.getItem(TOUR_STEP_KEY)
     if (raw) {
-      const parsed: TourState = JSON.parse(raw)
-      if (parsed.role === role) return parsed
+      const parsed = JSON.parse(raw)
+      if (parsed.role === role) return { active: parsed.active ?? false, stepIndex: parsed.stepIndex ?? 0 }
     }
   } catch {
     // ignore
   }
-  return { active: false, stepIndex: 0, role, dismissed: false }
+  return { active: false, stepIndex: 0 }
 }
 
-function saveState(state: TourState) {
+function saveStep(state: TourState) {
   try {
-    localStorage.setItem(TOUR_KEY, JSON.stringify(state))
+    localStorage.setItem(TOUR_STEP_KEY, JSON.stringify({ role: state.role, active: state.active, stepIndex: state.stepIndex }))
   } catch {
     // ignore
   }
+}
+
+function clearStep() {
+  try { localStorage.removeItem(TOUR_STEP_KEY) } catch { /* ignore */ }
 }
 
 // ─── Welcome Card ─────────────────────────────────────────────────────────────
@@ -294,21 +298,35 @@ export function TourAssistantPanel() {
   const [loading, setLoading] = useState(true)
   const [visible, setVisible] = useState(false)
 
-  // ── Load state from localStorage on mount ──
+  // ── Load state: DB is source of truth for dismissed; localStorage for step ──
   useEffect(() => {
     if (!profile || !isPluginActive('setup_assistant') || !isRoleEnabled) {
       setLoading(false)
       return
     }
 
-    const stored = getStoredState(role)
-    setTourState(stored)
-    setLoading(false)
+    getSetupAssistantProgress().then((res) => {
+      // If DB says dismissed, never show again regardless of localStorage
+      if (res.success && res.data?.dismissed) {
+        clearStep()
+        setTourState({ active: false, stepIndex: 0, role, dismissed: true })
+        setLoading(false)
+        return
+      }
 
-    // Brief delay before showing so it doesn't flash during page load
-    const t = setTimeout(() => setVisible(true), 800)
-    return () => clearTimeout(t)
-  }, [profile, isPluginActive, isRoleEnabled, role])
+      // Not dismissed in DB — restore active step from localStorage
+      const { active, stepIndex } = getStoredStep(role)
+      setTourState({ active, stepIndex, role, dismissed: false })
+      setLoading(false)
+
+      const t = setTimeout(() => setVisible(true), 800)
+      return () => clearTimeout(t)
+    }).catch(() => {
+      // On API error fall back to not showing
+      setLoading(false)
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id, isRoleEnabled, role, isPluginActive])
 
   // Keep ref updated when tourSteps changes
   const totalSteps = tourSteps.length
@@ -318,7 +336,7 @@ export function TourAssistantPanel() {
     if (tourSteps.length === 0) return
     const newState: TourState = { active: true, stepIndex: 0, role, dismissed: false }
     setTourState(newState)
-    saveState(newState)
+    saveStep(newState)
     router.push(tourSteps[0].href)
   }, [tourSteps, role, router])
 
@@ -327,17 +345,17 @@ export function TourAssistantPanel() {
     const nextIndex = tourState.stepIndex + 1
 
     if (nextIndex >= totalSteps) {
-      // Tour complete
+      // Tour complete — mark dismissed in DB and clear local step
       const newState: TourState = { active: false, stepIndex: 0, role, dismissed: true }
       setTourState(newState)
-      saveState(newState)
+      clearStep()
       dismissSetupAssistant().catch(() => {})
       return
     }
 
     const newState: TourState = { ...tourState, stepIndex: nextIndex }
     setTourState(newState)
-    saveState(newState)
+    saveStep(newState)
     router.push(tourSteps[nextIndex].href)
   }, [tourState, totalSteps, tourSteps, role, router])
 
@@ -346,21 +364,22 @@ export function TourAssistantPanel() {
     const prevIndex = tourState.stepIndex - 1
     const newState: TourState = { ...tourState, stepIndex: prevIndex }
     setTourState(newState)
-    saveState(newState)
+    saveStep(newState)
     router.push(tourSteps[prevIndex].href)
   }, [tourState, tourSteps, router])
 
   const handleCancel = useCallback(() => {
     const newState: TourState = { active: false, stepIndex: 0, role, dismissed: true }
     setTourState(newState)
-    saveState(newState)
+    clearStep()
     dismissSetupAssistant().catch(() => {})
   }, [role])
 
   const handleSkipWelcome = useCallback(() => {
     const newState: TourState = { active: false, stepIndex: 0, role, dismissed: true }
     setTourState(newState)
-    saveState(newState)
+    clearStep()
+    dismissSetupAssistant().catch(() => {})
   }, [role])
 
   // ── Guards ──

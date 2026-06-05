@@ -42,6 +42,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { AcademicYear } from '@/lib/api/academics'
+import { useCampus } from '@/context/CampusContext'
 import {
   WithdrawalDataPoint,
   WithdrawalComparisonData,
@@ -139,12 +140,12 @@ function EmptyState({ title, desc }: { title: string; desc: string }) {
 
 interface WithdrawalChartProps {
   academicYears: AcademicYear[]
-  campusId?: string
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export function WithdrawalChart({ academicYears, campusId }: WithdrawalChartProps) {
+export function WithdrawalChart({ academicYears }: WithdrawalChartProps) {
+  const campusId = useCampus()?.selectedCampus?.id
   const t = useTranslations('withdrawal')
 
   // ── State ──────────────────────────────────────────────────────────────────

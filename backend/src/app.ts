@@ -281,6 +281,7 @@ registerRoutes("/embedded-resources", embeddedResourcesRoutes);
 registerRoutes("/vlaby", vlabyRoutes);
 registerRoutes("/sidebar-config", sidebarConfigRoutes);
 registerRoutes("/signup-links", signupLinksRoutes);
+registerRoutes("/pending-signups", pendingSignupsRoutes);
 // Public signup — registered BEFORE auth routes so no middleware intercepts it
 registerRoutes("/public-signup", publicSignupRoutes);
 registerRoutes("/credentials", credentialsRoutes);

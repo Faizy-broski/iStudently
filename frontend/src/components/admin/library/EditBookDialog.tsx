@@ -25,10 +25,10 @@ import {
 } from "@/components/ui/form";
 import { useAuth } from "@/context/AuthContext";
 import { updateBook, getCategories, type Book } from "@/lib/api/library";
-import { uploadLibraryCoverImage } from "@/lib/api/storage";
+import { uploadLibraryCoverImage, uploadLibraryDocument } from "@/lib/api/storage";
 import { LibraryCategory } from "@/types";
 import { toast } from "sonner";
-import { ImageIcon, X, Loader2 } from "lucide-react";
+import { ImageIcon, X, Loader2, FileText, Upload, ExternalLink } from "lucide-react";
 
 const bookSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -58,6 +58,10 @@ export function EditBookDialog({ open, onOpenChange, book, onBookUpdated }: Edit
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
   const [coverUploading, setCoverUploading] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const [existingFileUrl, setExistingFileUrl] = useState<string | null>(null);
+  const [digitalFile, setDigitalFile] = useState<File | null>(null);
+  const [fileUploading, setFileUploading] = useState(false);
+  const digitalFileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<BookFormData>({
     resolver: zodResolver(bookSchema),
@@ -89,6 +93,8 @@ export function EditBookDialog({ open, onOpenChange, book, onBookUpdated }: Edit
         description: book.description || "",
       });
       setCoverImageUrl(book.cover_image_url || null);
+      setExistingFileUrl(book.file_url || null);
+      setDigitalFile(null);
     }
   }, [book, open]);
 
@@ -115,13 +121,44 @@ export function EditBookDialog({ open, onOpenChange, book, onBookUpdated }: Edit
     if (coverInputRef.current) coverInputRef.current.value = "";
   };
 
+  const handleDigitalFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 50 * 1024 * 1024) { toast.error('File too large. Maximum 50 MB.'); return; }
+    setDigitalFile(file);
+    if (digitalFileInputRef.current) digitalFileInputRef.current.value = '';
+  };
+
   const onSubmit = async (data: BookFormData) => {
     if (!user?.access_token || !book) return;
     try {
       setIsSubmitting(true);
+
+      // Upload new digital file if selected
+      let fileUrl: string | null | undefined = existingFileUrl;
+      if (digitalFile && profile?.school_id) {
+        setFileUploading(true);
+        const uploadRes = await uploadLibraryDocument(digitalFile, profile.school_id, data.category_id || undefined);
+        setFileUploading(false);
+        if (!uploadRes.success || !uploadRes.url) {
+          toast.error(uploadRes.error || 'Failed to upload digital file');
+          return;
+        }
+        fileUrl = uploadRes.url;
+      }
+
       const response = await updateBook(
         book.id,
-        { ...data, cover_image_url: coverImageUrl ?? undefined },
+        {
+          ...data,
+          // Send null instead of empty string so the DB unique constraint on isbn isn't violated
+          isbn: data.isbn?.trim() || null,
+          reference: data.reference?.trim() || undefined,
+          category_id: data.category_id || undefined,
+          publication_year: data.publication_year || null,
+          cover_image_url: coverImageUrl ?? undefined,
+          file_url: fileUrl ?? undefined,
+        },
         user.access_token
       );
       if (response.success) {
@@ -136,6 +173,7 @@ export function EditBookDialog({ open, onOpenChange, book, onBookUpdated }: Edit
       toast.error("Failed to update book");
     } finally {
       setIsSubmitting(false);
+      setFileUploading(false);
     }
   };
 
@@ -355,6 +393,71 @@ export function EditBookDialog({ open, onOpenChange, book, onBookUpdated }: Edit
               )}
             />
 
+            {/* Digital File Upload */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium">
+                Digital File
+                <span className="text-xs text-muted-foreground ml-1">(optional — makes book available in E-Library)</span>
+              </p>
+
+              {/* Existing file */}
+              {existingFileUrl && !digitalFile && (
+                <div className="flex items-center gap-3 p-3 rounded-lg border bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800">
+                  <FileText className="h-5 w-5 text-green-600 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-green-700 dark:text-green-400">File already uploaded</p>
+                    <a href={existingFileUrl} target="_blank" rel="noopener noreferrer"
+                      className="text-xs text-green-600 hover:underline flex items-center gap-1 truncate">
+                      View current file <ExternalLink className="h-3 w-3 shrink-0" />
+                    </a>
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <Button type="button" variant="outline" size="sm" className="text-xs h-7"
+                      onClick={() => digitalFileInputRef.current?.click()}>
+                      Replace
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" className="h-7"
+                      onClick={() => setExistingFileUrl(null)}>
+                      <X className="h-3.5 w-3.5 text-red-500" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* New file selected */}
+              {digitalFile && (
+                <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
+                  <FileText className="h-5 w-5 text-[#57A3CC] shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{digitalFile.name}</p>
+                    <p className="text-xs text-muted-foreground">{(digitalFile.size / (1024 * 1024)).toFixed(1)} MB · Will replace existing file</p>
+                  </div>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setDigitalFile(null)}>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )}
+
+              {/* Drop zone — shown when no existing file and no new file selected */}
+              {!existingFileUrl && !digitalFile && (
+                <div
+                  className="flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 border-dashed border-muted-foreground/30 cursor-pointer hover:border-[#57A3CC]/50 hover:bg-muted/20 transition-colors"
+                  onClick={() => digitalFileInputRef.current?.click()}
+                >
+                  <Upload className="h-6 w-6 text-muted-foreground/50" />
+                  <p className="text-xs text-muted-foreground text-center">Click to upload PDF, Word, Excel, PowerPoint, image · max 50 MB</p>
+                </div>
+              )}
+
+              <input
+                ref={digitalFileInputRef}
+                type="file"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.webp"
+                className="hidden"
+                onChange={handleDigitalFileChange}
+              />
+            </div>
+
             <DialogFooter className="gap-2">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
                 Cancel
@@ -364,7 +467,11 @@ export function EditBookDialog({ open, onOpenChange, book, onBookUpdated }: Edit
                 disabled={isSubmitting}
                 className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white hover:opacity-90"
               >
-                {isSubmitting ? "Saving…" : "Save Changes"}
+                {fileUploading ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Uploading file…</>
+                ) : isSubmitting ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving…</>
+                ) : "Save Changes"}
               </Button>
             </DialogFooter>
           </form>

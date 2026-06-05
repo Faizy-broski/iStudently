@@ -32,6 +32,7 @@ export class ParentService {
           email,
           phone,
           avatar_url,
+          profile_photo_url,
           is_active
         )
       `, { count: 'exact' })
@@ -105,6 +106,7 @@ export class ParentService {
           email,
           phone,
           avatar_url,
+          profile_photo_url,
           is_active
         )
       `, { count: 'exact' })
@@ -220,6 +222,7 @@ export class ParentService {
           email,
           phone,
           avatar_url,
+          profile_photo_url,
           is_active,
           role
         )
@@ -338,6 +341,7 @@ export class ParentService {
           email: parentData.email || tempEmail,
           phone: parentData.phone,
           username: parentData.username || baseUsername,
+          profile_photo_url: parentData.profile_photo_url || null,
           is_active: true
         })
         .select()
@@ -406,12 +410,13 @@ export class ParentService {
     }
 
     // Update profile if profile data is provided
-    if (updateData.first_name || updateData.last_name || updateData.email || updateData.phone) {
+    if (updateData.first_name || updateData.last_name || updateData.email || updateData.phone || updateData.profile_photo_url !== undefined) {
       const profileUpdates: any = {}
       if (updateData.first_name) profileUpdates.first_name = updateData.first_name
       if (updateData.last_name) profileUpdates.last_name = updateData.last_name
       if (updateData.email) profileUpdates.email = updateData.email
       if (updateData.phone) profileUpdates.phone = updateData.phone
+      if (updateData.profile_photo_url !== undefined) profileUpdates.profile_photo_url = updateData.profile_photo_url || null
 
       if (Object.keys(profileUpdates).length > 0 && existing.profile_id) {
         const { error: profileError } = await supabase

@@ -177,6 +177,60 @@ class CoursesService {
   }
 
   async createCoursePeriod(schoolId: string, dto: CreateCoursePeriodDTO, createdBy?: string): Promise<CoursePeriod> {
+    // ── Auto-generate short_name when not supplied ────────────────────────────
+    // Each course period must have a short_name so multiple periods for the
+    // same teacher/course remain distinguishable (e.g. "P1", "P2", "ara1").
+    let shortName = dto.short_name?.trim() || null
+    if (!shortName) {
+      const { count } = await supabase
+        .from('course_periods')
+        .select('*', { count: 'exact', head: true })
+        .eq('course_id', dto.course_id)
+        .eq('teacher_id', dto.teacher_id)
+      shortName = `P${(count ?? 0) + 1}`
+    }
+
+    // ── Friendly duplicate detection ──────────────────────────────────────────
+    // If a period_id is specified, check whether this teacher already teaches
+    // this course in that same period slot (avoids a cryptic DB constraint error).
+    if (dto.period_id) {
+      let query = supabase
+        .from('course_periods')
+        .select('id, short_name, days')
+        .eq('course_id', dto.course_id)
+        .eq('teacher_id', dto.teacher_id)
+        .eq('period_id', dto.period_id)
+
+      if (dto.marking_period_id) {
+        query = query.eq('marking_period_id', dto.marking_period_id)
+      } else {
+        query = query.is('marking_period_id', null)
+      }
+
+      const { data: existingPeriods } = await query
+
+      if (existingPeriods && existingPeriods.length > 0) {
+        // Check for day overlaps
+        const hasConflict = existingPeriods.some(existing => {
+          // If either has no specific days defined (null/empty), assume it meets every day and thus conflicts
+          if (!existing.days || !dto.days) return true
+          
+          // Otherwise, check for any intersecting characters (e.g. 'MWF' vs 'TR')
+          const existingDays = existing.days.split('')
+          const newDays = dto.days.split('')
+          return existingDays.some(day => newDays.includes(day))
+        })
+
+        if (hasConflict) {
+          const conflictNames = existingPeriods.map(e => e.short_name || e.id).join(', ')
+          throw new Error(
+            `This teacher is already assigned to this course for that period slot on overlapping days (${conflictNames}). ` +
+            `Please choose different meeting days, a different period, or edit the existing one.`
+          )
+        }
+      }
+    }
+
     const { data, error } = await supabase
       .from('course_periods')
       .insert({
@@ -186,11 +240,11 @@ class CoursesService {
         teacher_id: dto.teacher_id,
         secondary_teacher_id: dto.secondary_teacher_id || null,
         section_id: dto.section_id || null,
-        period_id: dto.period_id,
-        marking_period_id: dto.marking_period_id,
-        grading_scale_id: dto.grading_scale_id,
-        title: dto.title,
-        short_name: dto.short_name,
+        period_id: dto.period_id || null,
+        marking_period_id: dto.marking_period_id || null,
+        grading_scale_id: dto.grading_scale_id || null,
+        title: dto.title || shortName,
+        short_name: shortName,
         does_breakoff: dto.does_breakoff || false,
         does_honor_roll: dto.does_honor_roll !== false, // default true
         takes_attendance: dto.takes_attendance || false,
@@ -209,7 +263,16 @@ class CoursesService {
       .select()
       .single()
 
-    if (error) throw new Error(`Failed to create course period: ${error.message}`)
+    if (error) {
+      // Surface a user-friendly message when the DB constraint fires anyway
+      if (error.code === '23505') {
+        throw new Error(
+          'A course period with this teacher and period slot already exists. ' +
+          'Please select a different period slot or use the Short Name field to differentiate.'
+        )
+      }
+      throw new Error(`Failed to create course period: ${error.message}`)
+    }
     return data as CoursePeriod
   }
 

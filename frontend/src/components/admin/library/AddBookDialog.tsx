@@ -25,10 +25,10 @@ import {
 } from "@/components/ui/form";
 import { useAuth } from "@/context/AuthContext";
 import { createBook, getCategories } from "@/lib/api/library";
-import { uploadLibraryCoverImage } from "@/lib/api/storage";
+import { uploadLibraryCoverImage, uploadLibraryDocument } from "@/lib/api/storage";
 import { LibraryCategory } from "@/types";
 import { toast } from "sonner";
-import { ImageIcon, X, Loader2 } from "lucide-react";
+import { ImageIcon, X, Loader2, FileText, Upload } from "lucide-react";
 
 const bookSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -58,6 +58,9 @@ export function AddBookDialog({ open, onOpenChange, onBookAdded }: AddBookDialog
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
   const [coverUploading, setCoverUploading] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const [digitalFile, setDigitalFile] = useState<File | null>(null);
+  const [fileUploading, setFileUploading] = useState(false);
+  const digitalFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open && user?.access_token) {
@@ -98,6 +101,17 @@ export function AddBookDialog({ open, onOpenChange, onBookAdded }: AddBookDialog
     if (coverInputRef.current) coverInputRef.current.value = '';
   };
 
+  const handleDigitalFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('File too large. Maximum 50 MB.');
+      return;
+    }
+    setDigitalFile(file);
+    if (digitalFileInputRef.current) digitalFileInputRef.current.value = '';
+  };
+
   const onSubmit = async (data: BookFormData) => {
     if (!user?.access_token) {
       toast.error('You must be signed in to add a book');
@@ -106,8 +120,22 @@ export function AddBookDialog({ open, onOpenChange, onBookAdded }: AddBookDialog
 
     try {
       setIsSubmitting(true);
+
+      // Upload digital file if selected
+      let fileUrl: string | undefined;
+      if (digitalFile && profile?.school_id) {
+        setFileUploading(true);
+        const uploadRes = await uploadLibraryDocument(digitalFile, profile.school_id, data.category_id || undefined);
+        setFileUploading(false);
+        if (!uploadRes.success || !uploadRes.url) {
+          toast.error(uploadRes.error || 'Failed to upload digital file');
+          return;
+        }
+        fileUrl = uploadRes.url;
+      }
+
       const response = await createBook(
-        { ...data, cover_image_url: coverImageUrl ?? undefined },
+        { ...data, cover_image_url: coverImageUrl ?? undefined, file_url: fileUrl },
         user.access_token
       );
 
@@ -115,6 +143,7 @@ export function AddBookDialog({ open, onOpenChange, onBookAdded }: AddBookDialog
         toast.success("Book added successfully!");
         form.reset();
         setCoverImageUrl(null);
+        setDigitalFile(null);
         onBookAdded();
       } else {
         toast.error(response.error || "Failed to add book");
@@ -124,6 +153,7 @@ export function AddBookDialog({ open, onOpenChange, onBookAdded }: AddBookDialog
       toast.error("Failed to add book");
     } finally {
       setIsSubmitting(false);
+      setFileUploading(false);
     }
   };
 
@@ -359,6 +389,38 @@ export function AddBookDialog({ open, onOpenChange, onBookAdded }: AddBookDialog
               )}
             />
 
+            {/* Digital File Upload */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Digital File <span className="text-xs text-muted-foreground">(optional — makes book available in E-Library)</span></p>
+              {digitalFile ? (
+                <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
+                  <FileText className="h-5 w-5 text-[#57A3CC] shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{digitalFile.name}</p>
+                    <p className="text-xs text-muted-foreground">{(digitalFile.size / (1024 * 1024)).toFixed(1)} MB</p>
+                  </div>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setDigitalFile(null)}>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <div
+                  className="flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 border-dashed border-muted-foreground/30 cursor-pointer hover:border-[#57A3CC]/50 hover:bg-muted/20 transition-colors"
+                  onClick={() => digitalFileInputRef.current?.click()}
+                >
+                  <Upload className="h-6 w-6 text-muted-foreground/50" />
+                  <p className="text-xs text-muted-foreground text-center">Click to upload PDF, Word, Excel, PowerPoint, image · max 50 MB</p>
+                </div>
+              )}
+              <input
+                ref={digitalFileInputRef}
+                type="file"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.webp"
+                className="hidden"
+                onChange={handleDigitalFileChange}
+              />
+            </div>
+
             <DialogFooter className="gap-2">
               <Button
                 type="button"
@@ -373,7 +435,11 @@ export function AddBookDialog({ open, onOpenChange, onBookAdded }: AddBookDialog
                 disabled={isSubmitting}
                 className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white hover:opacity-90"
               >
-                {isSubmitting ? "Adding..." : "Add Book"}
+                {fileUploading ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Uploading file…</>
+                ) : isSubmitting ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Adding…</>
+                ) : "Add Book"}
               </Button>
             </DialogFooter>
           </form>

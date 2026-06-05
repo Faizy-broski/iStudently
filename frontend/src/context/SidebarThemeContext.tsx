@@ -8,9 +8,11 @@ import {
   useCallback,
 } from 'react'
 import { useAuth } from '@/context/AuthContext'
+import { useCampus } from '@/context/CampusContext'
 import {
   getMySidebarConfig,
   getSuperadminSidebarConfig,
+  getCampusSidebarConfig,
   type SidebarConfig,
 } from '@/lib/api/sidebar-config'
 
@@ -31,6 +33,9 @@ export function SidebarThemeProvider({
   children: React.ReactNode
 }) {
   const { profile, loading: authLoading } = useAuth()
+  const campusCtx = useCampus()
+  const selectedCampus = campusCtx?.selectedCampus ?? null
+
   const [config, setConfig] = useState<SidebarConfig | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -38,10 +43,25 @@ export function SidebarThemeProvider({
     if (!profile) return
     try {
       setLoading(true)
-      const result =
-        profile.role === 'super_admin'
-          ? await getSuperadminSidebarConfig()
-          : await getMySidebarConfig()
+
+      if (profile.role === 'super_admin') {
+        const result = await getSuperadminSidebarConfig()
+        if (result.success) setConfig(result.data ?? null)
+        return
+      }
+
+      // For all other roles: try campus config first, fall back to school/default
+      const campusId = selectedCampus?.id ?? null
+      if (campusId) {
+        const campusResult = await getCampusSidebarConfig(campusId)
+        if (campusResult.success && campusResult.data) {
+          setConfig(campusResult.data)
+          return
+        }
+      }
+
+      // No campus config — fall back to school config (backend handles the cascade)
+      const result = await getMySidebarConfig()
       if (result.success) {
         setConfig(result.data ?? null)
       }
@@ -50,7 +70,7 @@ export function SidebarThemeProvider({
     } finally {
       setLoading(false)
     }
-  }, [profile])
+  }, [profile, selectedCampus?.id])
 
   useEffect(() => {
     if (authLoading || !profile) return

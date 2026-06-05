@@ -200,9 +200,10 @@ export default function ParentDetailsPage() {
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row gap-6 items-start">
             <div className="h-32 w-24 rounded-xl border-4 border-white shadow-lg overflow-hidden shrink-0 bg-linear-to-b from-[#57A3CC] to-[#022172] flex items-center justify-center">
-  {currentParent.profile?.avatar_url ? (
+  {(currentParent.profile?.profile_photo_url || currentParent.profile?.avatar_url) ? (
+    // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={currentParent.profile.avatar_url}
+      src={(currentParent.profile!.profile_photo_url || currentParent.profile!.avatar_url)!}
       alt={fullName}
       className="h-full w-full object-cover object-top"
     />

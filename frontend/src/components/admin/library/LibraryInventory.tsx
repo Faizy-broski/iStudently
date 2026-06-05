@@ -5,10 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, BookOpen, Search, Layers, Barcode, Users, FileText, AlertTriangle, CheckCircle, Zap, Upload, ImageIcon, Pencil } from "lucide-react";
+import { Plus, BookOpen, Search, Layers, Barcode, Users, FileText, AlertTriangle, CheckCircle, Zap, Upload, ImageIcon, Pencil, RotateCcw, Trash2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
-import { getBooks, type Book } from "@/lib/api/library";
+import { getBooks, deleteBook, type Book } from "@/lib/api/library";
 import { LibraryCategory } from "@/types";
 import { AddBookDialog } from "./AddBookDialog";
 import { EditBookDialog } from "./EditBookDialog";
@@ -40,6 +42,9 @@ export function LibraryInventory() {
   const [showAddCopiesDialog, setShowAddCopiesDialog] = useState(false);
   const [showIssueBookDialog, setShowIssueBookDialog] = useState(false);
   const [showReturnBookDialog, setShowReturnBookDialog] = useState(false);
+  const [returnBook, setReturnBook] = useState<Book | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Book | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showMarkLostDialog, setShowMarkLostDialog] = useState(false);
   const [showQuickLoanDialog, setShowQuickLoanDialog] = useState(false);
   const [showUploadDocumentDialog, setShowUploadDocumentDialog] = useState(false);
@@ -147,12 +152,32 @@ export function LibraryInventory() {
     setShowIssueBookDialog(true);
   };
 
-  const openReturnBook = () => {
+  const openReturnBook = (book: Book) => {
+    setReturnBook(book);
     setShowReturnBookDialog(true);
   };
 
   const openMarkLost = () => {
     setShowMarkLostDialog(true);
+  };
+
+  const handleDeleteBook = async () => {
+    if (!deleteTarget || !user?.access_token) return;
+    setIsDeleting(true);
+    try {
+      const res = await deleteBook(deleteTarget.id, user.access_token);
+      if (res.success) {
+        toast.success(`"${deleteTarget.title}" deleted successfully`);
+        setDeleteTarget(null);
+        loadBooks();
+      } else {
+        toast.error(res.error || 'Failed to delete book');
+      }
+    } catch {
+      toast.error('Failed to delete book');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const getCategoryColor = (categoryId: string | null) => {
@@ -290,7 +315,7 @@ export function LibraryInventory() {
                                   )}
                                 </div>
                               </td>
-                              <td className="px-4 py-4 whitespace-nowrap">
+                              <td className="px-4 py-4">
                                 <div className="flex items-center gap-2">
                                   {catColor && (
                                     <div
@@ -334,53 +359,59 @@ export function LibraryInventory() {
                                   {book.available_copies > 0 ? t("status.available") : t("status.unavailable")}
                                 </Badge>
                               </td>
-                              <td className="px-4 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => openEditBook(book)}
-                                  className="h-8"
-                                >
-                                  <Pencil className="h-3 w-3 mr-1" />
-                                  {tCommon("edit")}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => openAddCopies(book)}
-                                  className="h-8"
-                                >
-                                  <Layers className="h-3 w-3 mr-1" />
-                                  {t("actions.add_copies")}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => openIssueBook(book)}
-                                  disabled={book.available_copies === 0}
-                                  className="h-8"
-                                >
-                                  <Barcode className="h-3 w-3 mr-1" />
-                                  {t("actions.issue")}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={openReturnBook}
-                                  className="h-8"
-                                >
-                                  <FileText className="h-3 w-3 mr-1" />
-                                  {t("actions.return")}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={openMarkLost}
-                                  className="h-8"
-                                >
-                                  <Users className="h-3 w-3 mr-1" />
-                                  {t("actions.lost")}
-                                </Button>
+                              <td className="px-4 py-4">
+                                <TooltipProvider delayDuration={200}>
+                                  <div className="flex items-center gap-1">
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button size="icon" variant="outline" onClick={() => openEditBook(book)} className="h-8 w-8">
+                                          <Pencil className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>{tCommon("edit")}</TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button size="icon" variant="outline" onClick={() => openAddCopies(book)} className="h-8 w-8">
+                                          <Layers className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>{t("actions.add_copies")}</TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button size="icon" variant="outline" onClick={() => openIssueBook(book)} disabled={book.available_copies === 0} className="h-8 w-8">
+                                          <Barcode className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>{t("actions.issue")}</TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button size="icon" variant="outline" onClick={() => openReturnBook(book)} className="h-8 w-8">
+                                          <RotateCcw className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>{t("actions.return")}</TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button size="icon" variant="destructive" onClick={openMarkLost} className="h-8 w-8">
+                                          <Users className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>{t("actions.lost")}</TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button size="icon" variant="destructive" onClick={() => setDeleteTarget(book)} className="h-8 w-8 bg-red-700 hover:bg-red-800">
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Delete Book</TooltipContent>
+                                    </Tooltip>
+                                  </div>
+                                </TooltipProvider>
                               </td>
                             </tr>
                           );
@@ -425,8 +456,9 @@ export function LibraryInventory() {
 
       <ReturnBookDialog
         open={showReturnBookDialog}
-        onOpenChange={setShowReturnBookDialog}
+        onOpenChange={(o) => { setShowReturnBookDialog(o); if (!o) setReturnBook(null); }}
         onBookReturned={handleBookReturned}
+        prefilledBook={returnBook}
       />
 
       <MarkLostDialog
@@ -447,6 +479,34 @@ export function LibraryInventory() {
         onDocumentUploaded={handleDocumentUploaded}
         preselectedCategoryId={selectedCategoryId}
       />
+
+      {/* Delete Book Confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Book</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>&ldquo;{deleteTarget?.title}&rdquo;</strong>?
+              This will permanently remove it from the library and the E-Library.
+              {(deleteTarget?.total_copies ?? 0) > 0 && (
+                <span className="block mt-2 text-red-600 font-medium">
+                  ⚠ This book has {deleteTarget?.total_copies} copies. Delete all copies first.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteBook}
+              disabled={isDeleting || (deleteTarget?.total_copies ?? 0) > 0}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isDeleting ? 'Deleting…' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

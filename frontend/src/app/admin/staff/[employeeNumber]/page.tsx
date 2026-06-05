@@ -207,9 +207,10 @@ export default function StaffDetailsPage() {
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row gap-6 items-start">
             <div className="h-32 w-24 rounded-xl border-4 border-white shadow-lg overflow-hidden shrink-0 bg-linear-to-b from-[#57A3CC] to-[#022172] flex items-center justify-center">
-  {currentStaff.custom_fields?.personal?.photo ? (
+  {(currentStaff.profile?.profile_photo_url || currentStaff.profile?.avatar_url || currentStaff.custom_fields?.personal?.photo) ? (
+    // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={currentStaff.custom_fields.personal.photo}
+      src={(currentStaff.profile?.profile_photo_url || currentStaff.profile?.avatar_url || currentStaff.custom_fields?.personal?.photo)!}
       alt={fullName}
       className="h-full w-full object-cover object-top"
     />

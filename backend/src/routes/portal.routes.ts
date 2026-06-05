@@ -23,14 +23,6 @@ router.get('/notes', async (req: AuthRequest, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 50
     const includeInactive = req.query.include_inactive === 'true' && role === 'admin'
 
-    console.log('🔔 GET /notes - Profile:', { 
-      role, 
-      schoolId, 
-      campusId, 
-      profileCampusId: req.profile?.campus_id,
-      queryCampusId: req.query.campus_id 
-    })
-
     if (!schoolId) {
       return res.status(400).json({ success: false, error: 'School ID required' })
     }
@@ -41,7 +33,6 @@ router.get('/notes', async (req: AuthRequest, res: Response) => {
 
     // Admins see all notes, others see only their role's notes
     const filterRole = role === 'admin' ? undefined : role
-    console.log('🔔 GET /notes - Filtering with role:', filterRole)
 
     const result = await portalService.getNotes(schoolId, campusId, {
       role: filterRole,

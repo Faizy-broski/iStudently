@@ -12,6 +12,8 @@ import { type Parent, getParentById, updateParent } from "@/lib/api/parents"
 import { toast } from "sonner"
 import { CustomFieldsRenderer } from "@/components/admin/CustomFieldsRenderer"
 import { useTranslations } from "next-intl"
+import { StudentPhotoUpload } from "@/components/ui/student-photo-upload"
+import { useAuth } from "@/context/AuthContext"
 
 export default function EditParentPage() {
   const params = useParams()
@@ -19,10 +21,12 @@ export default function EditParentPage() {
   const t = useTranslations("parents")
   const parentId = params.parentId as string
   
+  const { profile } = useAuth()
   const [parent, setParent] = useState<Parent | null>(null)
   const [loading, setLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [editCustomFields, setEditCustomFields] = useState<Record<string, any>>({})
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string>('')
 
   useEffect(() => {
     const fetchData = async () => {
@@ -32,6 +36,7 @@ export default function EditParentPage() {
         if (response.success && response.data) {
           setParent(response.data)
           setEditCustomFields(response.data.custom_fields || {})
+          setProfilePhotoUrl(response.data.profile?.profile_photo_url || '')
         } else {
           toast.error(response.error || t("notFound"))
           router.push('/admin/parents/parent-info')
@@ -75,6 +80,7 @@ export default function EditParentPage() {
         emergency_contact_phone: formData.get('emergencyPhone') as string,
         notes: formData.get('notes') as string,
         custom_fields: editCustomFields,
+        profile_photo_url: profilePhotoUrl || undefined,
       }
 
       await updateParent(parent.id, updateData)
@@ -141,6 +147,17 @@ export default function EditParentPage() {
             {/* Personal Information */}
             <div>
               <h4 className="font-semibold mb-3 text-sm">{t("personalInfo")}</h4>
+              <div className="mb-4 space-y-1.5">
+                <Label>Profile Photo</Label>
+                <StudentPhotoUpload
+                  value={profilePhotoUrl}
+                  onChange={setProfilePhotoUrl}
+                  schoolId={profile?.school_id || ''}
+                  role="parent"
+                  label="Upload Photo"
+                  className="max-w-xs"
+                />
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="firstName">{t("firstName")}</Label>

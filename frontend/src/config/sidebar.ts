@@ -3,6 +3,7 @@ import {
   Users,
   GraduationCap,
   DoorOpen,
+  BookMarked,
   UserCheck,
   BookOpen,
   CalendarCheck,
@@ -454,6 +455,7 @@ const adminMenuItems: SidebarMenuItem[] = [
     subItems: [
       { title: "general", href: "/admin/settings", icon: Settings },
       { title: "campuses", href: "/admin/settings/campuses", icon: Building2 },
+      { title: "sidebar_theme", href: "/admin/settings/sidebar-theme", icon: Paintbrush },
       { title: "academic_years", href: "/admin/settings/academic-years", icon: Calendar },
       { title: "services", href: "/admin/settings/services", icon: Settings },
       // email_reminders, email_smtp, public_pages, parent_agreement are injected
@@ -827,6 +829,7 @@ const parentMenuItems: SidebarMenuItem[] = [
 const librarianMenuItems: SidebarMenuItem[] = [
   { title: "dashboard", href: "/librarian/dashboard", icon: LayoutDashboard },
   { title: "books", href: "/librarian/books", icon: BookOpen },
+  { title: "e_library", href: "/librarian/e-library", icon: BookMarked },
   { title: "loan_directory", href: "/librarian/loans", icon: ClipboardList },
   {
     title: "library",

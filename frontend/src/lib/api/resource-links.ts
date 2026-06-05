@@ -56,7 +56,11 @@ export interface ResourceLink {
   campus_id?: string
   title: string
   url: string
-  visible_to: string[]
+  visible_to: string[]                 // roles: admin, teacher, student, parent, …
+  visible_to_grade_ids: string[]       // student/parent grade sub-filter (empty = all)
+  visible_to_section_ids: string[]     // student section sub-filter (takes priority over grade)
+  visible_to_teacher_ids: string[]     // teacher sub-filter (empty = all teachers)
+  visible_to_student_ids: string[]     // specific student record IDs (empty = all in section/grade)
   sort_order?: number
   created_by?: string
   created_at: string
@@ -131,6 +135,10 @@ export async function bulkSaveResourceLinks(
     title: string
     url: string
     visible_to: string[]
+    visible_to_grade_ids: string[]
+    visible_to_section_ids: string[]
+    visible_to_teacher_ids: string[]
+    visible_to_student_ids: string[]
     sort_order?: number
   }>,
   existingIds: string[]

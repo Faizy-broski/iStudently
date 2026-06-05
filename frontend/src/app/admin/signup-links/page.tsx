@@ -48,7 +48,7 @@ import {
 import { getPendingCount } from '@/lib/api/pending-signups'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 
-const ROLES = ['teacher', 'student', 'parent', 'staff', 'librarian', 'counselor'] as const
+const ROLES = ['teacher', 'student', 'parent', 'staff', 'librarian'] as const
 
 const ROLE_COLORS: Record<string, string> = {
   teacher: 'bg-blue-100 text-blue-800',
@@ -413,12 +413,12 @@ export default function SignupLinksPage() {
           ) : (
             /* Success state */
             <div className="py-4 text-center space-y-4">
-              <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto">
-                <Check className="h-7 w-7 text-green-600" />
+              <div className="w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto">
+                <Check className="h-7 w-7 text-green-600 dark:text-green-400" />
               </div>
-              <h3 className="text-lg font-semibold text-green-700">{t('generateSuccessTitle')}</h3>
+              <h3 className="text-lg font-semibold text-green-700 dark:text-green-400">{t('generateSuccessTitle')}</h3>
               <p className="text-sm text-muted-foreground">{t('generateSuccessDesc')}</p>
-              <div className="bg-gray-50 border rounded-lg p-3 text-sm font-mono break-all text-start">
+              <div className="bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-3 text-sm font-mono break-all text-start text-gray-900 dark:text-gray-100">
                 {buildSignupUrl(generatedLink.token)}
               </div>
               <Button
@@ -466,7 +466,7 @@ export default function SignupLinksPage() {
               <p className="text-sm text-muted-foreground">
                 {isAr ? 'شارك هذا الرابط مع المستخدمين للتسجيل:' : 'Share this link with users to sign up:'}
               </p>
-              <div className="bg-gray-50 border rounded-lg p-3 text-sm font-mono break-all">
+              <div className="bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-3 text-sm font-mono break-all text-gray-900 dark:text-gray-100">
                 {buildSignupUrl(showShareDialog.token)}
               </div>
               <Button

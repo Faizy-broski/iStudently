@@ -254,8 +254,13 @@ export default function ParentInfoPage() {
                         >
                           <TableCell className="max-w-sm">
                             <div className="flex items-center gap-3">
-                              <div className="h-10 w-10 rounded-full bg-linear-to-r from-[#57A3CC] to-[#022172] flex items-center justify-center text-white font-semibold shrink-0">
-                                {initials || t("na")}
+                              <div className="h-10 w-10 rounded-full shrink-0 overflow-hidden bg-linear-to-r from-[#57A3CC] to-[#022172] flex items-center justify-center text-white font-semibold">
+                                {parent.profile?.profile_photo_url ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={parent.profile.profile_photo_url} alt={fullName} className="w-full h-full object-cover" />
+                                ) : (
+                                  initials || t("na")
+                                )}
                               </div>
                               <div className="min-w-0 flex-1">
                                 <div className="font-medium truncate">{fullName || t("na")}</div>

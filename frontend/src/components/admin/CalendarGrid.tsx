@@ -128,7 +128,16 @@ export function CalendarGrid({
     ? ["أحد", "إثن", "ثلا", "أرب", "خمي", "جمع", "سبت"]
     : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-  const HIJRI_MONTHS_LOCALIZED = isArabic ? HIJRI_MONTHS_AR : HIJRI_MONTHS;
+  // Hijri calendar always uses Arabic names — it IS the Arabic calendar
+  const WEEK_DAYS_AR_FULL = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+  const WEEK_DAYS_AR_SHORT = ["أحد", "إثن", "ثلا", "أرب", "خمي", "جمع", "سبت"];
+
+  const isHijriMode = calendarType === "hijri";
+  // In Hijri mode, always treat as Arabic for formatting
+  const useArabic = isArabic || isHijriMode;
+
+  // Hijri months: always Arabic in Hijri mode since it's the Arabic calendar
+  const HIJRI_MONTHS_LOCALIZED = (isArabic || isHijriMode) ? HIJRI_MONTHS_AR : HIJRI_MONTHS;
 
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
   const [globalHijriOffset, setGlobalHijriOffset] = useState<number>(0);
@@ -238,8 +247,8 @@ export function CalendarGrid({
           if (globalHijriOffset !== 0) hd.add(globalHijriOffset, 'days');
           const dayNum = hd.iDate();
           const monthName = HIJRI_MONTHS_LOCALIZED[hd.iMonth()];
-          const formattedNum = isArabic ? toArabicNumerals(dayNum) : String(dayNum);
-          return isArabic ? `${monthName} ${formattedNum}` : `${formattedNum} ${monthName}`;
+          const formattedNum = useArabic ? toArabicNumerals(dayNum) : String(dayNum);
+          return useArabic ? `${formattedNum} ${monthName}` : `${formattedNum} ${monthName}`;
         })(),
       });
       day.add(1, "day");
@@ -278,6 +287,8 @@ export function CalendarGrid({
       const gregMonth = MONTHS_LOCALIZED[day.month()];
       const gregDay = day.date();
 
+      const hijriMonthName = HIJRI_MONTHS_LOCALIZED[hijriDay.iMonth()];
+      const hijriDayNum = hijriDay.iDate();
       days.push({
         date: day.toDate(),
         dateKey: day.format("YYYY-MM-DD"),
@@ -285,15 +296,15 @@ export function CalendarGrid({
         isCurrentMonth: isCurrentHijriMonth,
         isToday: day.isSame(moment(), "day"),
         gregorianDate: isArabic
-          ? `${MONTHS_LOCALIZED[day.month()]} ${toArabicNumerals(day.date())}`
-          : `${day.date()} ${MONTHS_LOCALIZED[day.month()]}`,
+          ? `${toArabicNumerals(hijriDayNum)} ${hijriMonthName}`
+          : `${hijriDayNum} ${hijriMonthName}`,
       });
       day.add(1, "day");
     }
     return days;
   };
 
-  const days = generateCalendarDays();
+  const days = calendarType === "hijri" ? generateHijriDays() : generateCalendarDays();
 
   const getEventsForDate = (dateKey: string) => {
     return events.filter((event) => {
@@ -412,13 +423,13 @@ export function CalendarGrid({
       <Card className="transition-all duration-200">
         <CardContent className="p-4">
           <div className="grid grid-cols-7 gap-1 md:gap-2 mb-2">
-            {WEEK_DAYS_FULL.map((day, idx) => (
+            {(isHijriMode ? WEEK_DAYS_AR_FULL : WEEK_DAYS_FULL).map((day, idx) => (
               <div
                 key={idx}
                 className="text-center text-[10px] md:text-sm font-semibold py-2"
               >
                 <span className="hidden md:inline">{day}</span>
-                <span className="md:hidden">{WEEK_DAYS_SHORT[idx]}</span>
+                <span className="md:hidden">{(isHijriMode ? WEEK_DAYS_AR_SHORT : WEEK_DAYS_SHORT)[idx]}</span>
               </div>
             ))}
           </div>
@@ -471,7 +482,7 @@ export function CalendarGrid({
                       )}
                       onClick={(e) => handleDayNumberClick(e, day.date, dayEvents)}
                     >
-                      {formatNumber(day.dayNumber, isArabic)}
+                      {formatNumber(day.dayNumber, useArabic)}
                     </span>
                     {hasEvents && (
                       <Badge

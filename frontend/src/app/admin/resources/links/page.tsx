@@ -1,79 +1,482 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef } from 'react'
-import { useTranslations } from 'next-intl'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import useSWR, { mutate } from 'swr'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { Plus, Minus, Search, Link2, Loader2, Save, X } from 'lucide-react'
+import { Plus, Minus, Search, Link2, Loader2, Save, X, Users, ChevronDown } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
-import {
-  getResourceLinks,
-  bulkSaveResourceLinks,
-} from '@/lib/api/resource-links'
+import { getResourceLinks, bulkSaveResourceLinks } from '@/lib/api/resource-links'
+import * as academicsApi from '@/lib/api/academics'
+import { getAllTeachers, type Staff } from '@/lib/api/teachers'
+import { getStudents } from '@/lib/api/students'
 
-// Note: Role labels are retrieved from translations on component render
-const ROLE_OPTIONS = [
-  { value: 'student' },
-  { value: 'admin' },
-  { value: 'teacher' },
-  { value: 'parent' },
-]
+// ── Types ──────────────────────────────────────────────────────────────────────
 
 interface EditableLink {
   id?: string
   title: string
   url: string
   visible_to: string[]
+  visible_to_grade_ids: string[]
+  visible_to_section_ids: string[]
+  visible_to_teacher_ids: string[]
+  visible_to_student_ids: string[]
   isNew?: boolean
 }
 
-export default function ResourceLinksPage() {
-  useAuth()
-  const t = useTranslations('school.resources.links')
-  const campusContext = useCampus()
-  const selectedCampus = campusContext?.selectedCampus
+interface GradeWithSections extends academicsApi.GradeLevel {
+  sections: academicsApi.Section[]
+}
 
-  const [editableLinks, setEditableLinks] = useState<EditableLink[]>([])
-  const [initialized, setInitialized] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [linkToDelete, setLinkToDelete] = useState<number | null>(null)
-  const [visibleDropdown, setVisibleDropdown] = useState<number | null>(null)
-  const dropdownRef = useRef<HTMLDivElement>(null)
+interface StudentInfo { id: string; name: string }
 
-  // Close dropdown when clicking outside
+const ALL_ROLES = ['admin', 'teacher', 'student', 'parent', 'librarian']
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'Admin', teacher: 'Teacher', student: 'Student',
+  parent: 'Parent', librarian: 'Librarian',
+}
+const ROLE_COLORS: Record<string, string> = {
+  admin:     'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
+  teacher:   'bg-amber-100  text-amber-700  dark:bg-amber-900/40  dark:text-amber-300',
+  student:   'bg-green-100  text-green-700  dark:bg-green-900/40  dark:text-green-300',
+  parent:    'bg-blue-100   text-blue-700   dark:bg-blue-900/40   dark:text-blue-300',
+  librarian: 'bg-rose-100   text-rose-700   dark:bg-rose-900/40   dark:text-rose-300',
+}
+
+// ── Audience Popover ───────────────────────────────────────────────────────────
+
+interface AudiencePopoverProps {
+  link: EditableLink
+  gradesWithSections: GradeWithSections[]
+  teachers: Staff[]
+  campusId: string
+  onChange: (patch: Partial<EditableLink>) => void
+}
+
+function AudiencePopover({ link, gradesWithSections, teachers, campusId, onChange }: AudiencePopoverProps) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const [sectionStudentsMap, setSectionStudentsMap] = useState<Record<string, StudentInfo[]>>({})
+  const [loadingStudents, setLoadingStudents] = useState<Set<string>>(new Set())
+  const [activeTab, setActiveTab] = useState<'roles' | 'students' | 'teachers'>('roles')
+
+  // Clear student cache on campus change
+  useEffect(() => { setSectionStudentsMap({}); setLoadingStudents(new Set()) }, [campusId])
+
   useEffect(() => {
-    if (visibleDropdown === null) return
-    const handleClick = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setVisibleDropdown(null)
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const loadSectionStudents = useCallback(async (sectionId: string) => {
+    if (sectionStudentsMap[sectionId] !== undefined) return
+    if (loadingStudents.has(sectionId)) return
+    setLoadingStudents(prev => new Set([...prev, sectionId]))
+    const res = await getStudents({ section_id: sectionId, campus_id: campusId, limit: 200 })
+    const students = (res.data || []).map(s => ({
+      id: s.id,
+      name: [s.medical_info?.first_name, s.medical_info?.last_name].filter(Boolean).join(' ') || s.student_number,
+    }))
+    setSectionStudentsMap(prev => ({ ...prev, [sectionId]: students }))
+    setLoadingStudents(prev => { const n = new Set(prev); n.delete(sectionId); return n })
+  }, [sectionStudentsMap, loadingStudents, campusId])
+
+  const toggleRole = (role: string) => {
+    const next = link.visible_to.includes(role)
+      ? link.visible_to.filter(r => r !== role)
+      : [...link.visible_to, role]
+    const patch: Partial<EditableLink> = { visible_to: next }
+    if (!next.includes('student') && !next.includes('parent')) {
+      patch.visible_to_grade_ids = []
+      patch.visible_to_section_ids = []
+      patch.visible_to_student_ids = []
+    }
+    if (!next.includes('teacher')) patch.visible_to_teacher_ids = []
+    onChange(patch)
+  }
+
+  const toggleGrade = (gid: string) => {
+    const isDeselecting = link.visible_to_grade_ids.includes(gid)
+    const next = isDeselecting
+      ? link.visible_to_grade_ids.filter(id => id !== gid)
+      : [...link.visible_to_grade_ids, gid]
+
+    const validSectionSet = new Set(
+      gradesWithSections.filter(g => next.includes(g.id)).flatMap(g => g.sections.map(s => s.id))
+    )
+
+    let newStudentIds = link.visible_to_student_ids
+    if (isDeselecting) {
+      const removedGrade = gradesWithSections.find(g => g.id === gid)
+      if (removedGrade) {
+        const removedSectionIds = new Set(removedGrade.sections.map(s => s.id))
+        const removedStudentIds = new Set(
+          Object.entries(sectionStudentsMap)
+            .filter(([sid]) => removedSectionIds.has(sid))
+            .flatMap(([, students]) => students.map(s => s.id))
+        )
+        newStudentIds = newStudentIds.filter(id => !removedStudentIds.has(id))
       }
     }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [visibleDropdown])
+
+    onChange({
+      visible_to_grade_ids:   next,
+      visible_to_section_ids: link.visible_to_section_ids.filter(id => validSectionSet.has(id)),
+      visible_to_student_ids: newStudentIds,
+    })
+  }
+
+  const toggleSection = (sid: string) => {
+    const isDeselecting = link.visible_to_section_ids.includes(sid)
+    const next = isDeselecting
+      ? link.visible_to_section_ids.filter(id => id !== sid)
+      : [...link.visible_to_section_ids, sid]
+
+    let newStudentIds = link.visible_to_student_ids
+    if (isDeselecting) {
+      const removedStudentIds = new Set((sectionStudentsMap[sid] || []).map(s => s.id))
+      newStudentIds = newStudentIds.filter(id => !removedStudentIds.has(id))
+    } else {
+      loadSectionStudents(sid)
+    }
+
+    onChange({ visible_to_section_ids: next, visible_to_student_ids: newStudentIds })
+  }
+
+  const toggleStudent = (sid: string) => {
+    const next = link.visible_to_student_ids.includes(sid)
+      ? link.visible_to_student_ids.filter(id => id !== sid)
+      : [...link.visible_to_student_ids, sid]
+    onChange({ visible_to_student_ids: next })
+  }
+
+  const toggleTeacher = (tid: string) => {
+    const next = link.visible_to_teacher_ids.includes(tid)
+      ? link.visible_to_teacher_ids.filter(id => id !== tid)
+      : [...link.visible_to_teacher_ids, tid]
+    onChange({ visible_to_teacher_ids: next })
+  }
+
+  const hasStudentRole = link.visible_to.includes('student')
+  const hasParentRole = link.visible_to.includes('parent')
+  const showStudentSub = hasStudentRole || hasParentRole
+  const showTeacherSub = link.visible_to.includes('teacher')
+
+  // Reset tab if role is unselected
+  useEffect(() => {
+    if (activeTab === 'students' && !showStudentSub) setActiveTab('roles')
+    if (activeTab === 'teachers' && !showTeacherSub) setActiveTab('roles')
+  }, [showStudentSub, showTeacherSub, activeTab])
+
+  const summary = link.visible_to.length === 0
+    ? 'No one'
+    : link.visible_to.map(r => ROLE_LABELS[r] ?? r).join(', ')
+
+  const studentTabLabel = hasStudentRole && hasParentRole ? 'Students & Parents' 
+                        : hasParentRole ? 'Parents' 
+                        : 'Students'
+
+  return (
+    <div className="relative" ref={ref}>
+      {/* Trigger — selected roles as removable badges */}
+      <div
+        className="flex flex-wrap items-center gap-1 min-h-9 px-2 py-1.5 border rounded-md cursor-pointer bg-background hover:border-blue-400 transition-colors"
+        onClick={() => setOpen(v => !v)}
+      >
+        {link.visible_to.length === 0 ? (
+          <span className="text-muted-foreground text-xs px-1">Select roles…</span>
+        ) : (
+          link.visible_to.map(role => (
+            <Badge
+              key={role}
+              className={`flex items-center gap-1 text-xs border-0 ${ROLE_COLORS[role] ?? 'bg-gray-100 text-gray-700'}`}
+            >
+              <button
+                type="button"
+                onClick={e => { e.stopPropagation(); onChange({ visible_to: link.visible_to.filter(r => r !== role) }) }}
+                className="hover:opacity-70"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+              {ROLE_LABELS[role] ?? role}
+            </Badge>
+          ))
+        )}
+        <ChevronDown className="h-3 w-3 text-muted-foreground ms-auto shrink-0" />
+      </div>
+
+      {/* Popover */}
+      {open && (
+        <div className="absolute z-50 top-full right-0 mt-1 w-[360px] bg-white dark:bg-gray-900 border rounded-lg shadow-xl p-0 overflow-hidden flex flex-col">
+          {/* Tab Navigation */}
+          <div className="flex border-b bg-gray-50 dark:bg-gray-800">
+            <button 
+              onClick={() => setActiveTab('roles')} 
+              className={`flex-1 px-2 py-2.5 text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide transition-colors border-b-2 ${activeTab === 'roles' ? 'border-blue-600 text-blue-700 bg-white dark:bg-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+            >
+              Roles
+            </button>
+            {showStudentSub && (
+              <button 
+                onClick={() => setActiveTab('students')} 
+                className={`flex-1 px-2 py-2.5 text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide transition-colors border-b-2 ${activeTab === 'students' ? 'border-blue-600 text-blue-700 bg-white dark:bg-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+              >
+                {studentTabLabel}
+              </button>
+            )}
+            {showTeacherSub && (
+              <button 
+                onClick={() => setActiveTab('teachers')} 
+                className={`flex-1 px-2 py-2.5 text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide transition-colors border-b-2 ${activeTab === 'teachers' ? 'border-blue-600 text-blue-700 bg-white dark:bg-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+              >
+                Teachers
+              </button>
+            )}
+          </div>
+
+          <div className="p-4 min-h-[200px]">
+            {/* Roles Tab */}
+            {activeTab === 'roles' && (
+              <div className="space-y-4">
+                <p className="text-[11px] text-gray-500">Select which roles can access this link.</p>
+                <div className="flex flex-wrap gap-2">
+                  {ALL_ROLES.map(role => (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => toggleRole(role)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                        link.visible_to.includes(role)
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                          : 'bg-white border-gray-300 text-gray-700 hover:border-blue-400 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300'
+                      }`}
+                    >
+                      {ROLE_LABELS[role]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Students/Parents Tab */}
+            {activeTab === 'students' && showStudentSub && (
+              <div className="space-y-3">
+                <p className="text-[10px] text-gray-500 leading-tight">
+                  {hasParentRole && !hasStudentRole 
+                    ? "Empty = all parents. Select grade(s), section(s), or specific students to target their parents."
+                    : hasStudentRole && hasParentRole
+                    ? "Empty = all. Target specific students (and their parents) by grade, section, or individual."
+                    : "Empty = all students. Select grade(s), section(s), or specific students to target individuals."}
+                </p>
+                {gradesWithSections.length === 0 ? (
+                  <p className="text-xs text-gray-400 italic">No grades configured</p>
+                ) : (
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    {gradesWithSections.map(grade => {
+                      const gradeSelected = link.visible_to_grade_ids.includes(grade.id)
+                      return (
+                        <div key={grade.id} className="border rounded-md p-2 bg-gray-50 dark:bg-gray-800/50">
+                          {/* Grade toggle */}
+                          <button
+                            type="button"
+                            onClick={() => toggleGrade(grade.id)}
+                            className={`w-full text-left px-2 py-1.5 rounded text-xs font-medium transition-colors ${gradeSelected ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300'}`}
+                          >
+                            {grade.name}
+                          </button>
+
+                          {/* Sections within grade */}
+                          {gradeSelected && grade.sections.length > 0 && (
+                            <div className="ml-2 mt-2 space-y-2 border-l-2 border-indigo-100 pl-2">
+                              <div className="flex flex-wrap gap-1.5">
+                                {grade.sections.map(sec => {
+                                  const secSelected = link.visible_to_section_ids.includes(sec.id)
+                                  return (
+                                    <button
+                                      key={sec.id}
+                                      type="button"
+                                      onClick={() => toggleSection(sec.id)}
+                                      className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${secSelected ? 'bg-teal-600 text-white border-teal-600 shadow-sm' : 'bg-white border-gray-300 text-gray-600 hover:border-teal-400 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300'}`}
+                                    >
+                                      {sec.name}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+
+                              {/* Students within each selected section */}
+                              {grade.sections.filter(sec => link.visible_to_section_ids.includes(sec.id)).map(sec => (
+                                <div key={`students-${sec.id}`} className="mt-1.5 p-2 bg-white dark:bg-gray-900 rounded border border-gray-100 dark:border-gray-800">
+                                  <p className="text-[10px] text-gray-400 mb-1.5 font-medium">
+                                    {sec.name} — specific students (empty = all):
+                                  </p>
+                                  {loadingStudents.has(sec.id) ? (
+                                    <p className="text-[10px] text-gray-400 italic">Loading…</p>
+                                  ) : (sectionStudentsMap[sec.id] || []).length === 0 ? (
+                                    <p className="text-[10px] text-gray-400 italic">No students found</p>
+                                  ) : (
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {(sectionStudentsMap[sec.id] || []).map(student => {
+                                        const sel = link.visible_to_student_ids.includes(student.id)
+                                        return (
+                                          <button
+                                            key={student.id}
+                                            type="button"
+                                            onClick={() => toggleStudent(student.id)}
+                                            className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors ${sel ? 'bg-orange-500 text-white border-orange-500 shadow-sm' : 'bg-white border-gray-200 text-gray-500 hover:border-orange-400 dark:bg-gray-800 dark:border-gray-700'}`}
+                                          >
+                                            {student.name}
+                                          </button>
+                                        )
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Teacher sub-filter */}
+            {activeTab === 'teachers' && showTeacherSub && (
+              <div className="space-y-3">
+                <p className="text-[10px] text-gray-500">Empty = all teachers. Select specific teachers to restrict access.</p>
+                {teachers.length === 0 ? (
+                  <p className="text-xs text-gray-400 italic">No teachers found</p>
+                ) : (
+                  <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1">
+                    {teachers.map(t => {
+                      const name = `${t.profile?.first_name ?? ''} ${t.profile?.last_name ?? ''}`.trim() || t.employee_number
+                      const sel = link.visible_to_teacher_ids.includes(t.id)
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => toggleTeacher(t.id)}
+                          className={`w-full text-left px-3 py-2 rounded text-xs font-medium transition-colors border ${sel ? 'bg-amber-500 text-white border-amber-600 shadow-sm' : 'bg-white border-gray-200 text-gray-700 hover:bg-amber-50 hover:border-amber-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700'}`}
+                        >
+                          {name}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="border-t p-2 bg-gray-50 dark:bg-gray-800/50">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="w-full text-xs font-semibold text-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white py-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Sub-filter summary badges ──────────────────────────────────────────────────
+
+function SubFilterBadges({ link, gradesWithSections, teachers }: {
+  link: EditableLink
+  gradesWithSections: GradeWithSections[]
+  teachers: Staff[]
+}) {
+  const items: { label: string; color: string }[] = []
+
+  if (link.visible_to_student_ids.length > 0) {
+    items.push({ label: `${link.visible_to_student_ids.length} student${link.visible_to_student_ids.length !== 1 ? 's' : ''}`, color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' })
+  } else if (link.visible_to_section_ids.length > 0) {
+    const names = gradesWithSections.flatMap(g => g.sections)
+      .filter(s => link.visible_to_section_ids.includes(s.id))
+      .map(s => s.name)
+    names.forEach(n => items.push({ label: `§ ${n}`, color: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300' }))
+  } else if (link.visible_to_grade_ids.length > 0) {
+    const names = gradesWithSections.filter(g => link.visible_to_grade_ids.includes(g.id)).map(g => g.name)
+    names.forEach(n => items.push({ label: n, color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' }))
+  }
+
+  if (link.visible_to_teacher_ids.length > 0) {
+    const names = teachers
+      .filter(t => link.visible_to_teacher_ids.includes(t.id))
+      .map(t => `${t.profile?.first_name ?? ''} ${t.profile?.last_name ?? ''}`.trim() || t.employee_number)
+    names.forEach(n => items.push({ label: `👤 ${n}`, color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' }))
+  }
+
+  if (items.length === 0) return null
+  return (
+    <div className="flex flex-wrap gap-1 mt-1">
+      {items.map((item, i) => (
+        <span key={i} className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${item.color}`}>
+          {item.label}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+// ── Main Page ──────────────────────────────────────────────────────────────────
+
+export default function ResourceLinksPage() {
+  useAuth()
+  const campusCtx      = useCampus()
+  const selectedCampus = campusCtx?.selectedCampus
+
+  const [editableLinks,      setEditableLinks]      = useState<EditableLink[]>([])
+  const [initialized,        setInitialized]        = useState(false)
+  const [saving,             setSaving]             = useState(false)
+  const [searchQuery,        setSearchQuery]        = useState('')
+  const [deleteIdx,          setDeleteIdx]          = useState<number | null>(null)
+  const [gradesWithSections, setGradesWithSections] = useState<GradeWithSections[]>([])
+  const [teachers,           setTeachers]           = useState<Staff[]>([])
+
+  // ── Load lookup data ────────────────────────────────────────────────────────
+
+  const fetchLookups = useCallback(async () => {
+    if (!selectedCampus) return
+
+    const [gradesRes, teachersRes] = await Promise.all([
+      academicsApi.getGradeLevels(selectedCampus.id),
+      getAllTeachers({ campus_id: selectedCampus.id, limit: 200 }),
+    ])
+
+    const grades = [...(gradesRes.data || [])].sort((a, b) => a.order_index - b.order_index)
+
+    // Fetch sections per grade for reliable field names (uses get_sections_by_grade RPC)
+    const sectionsArrays = await Promise.all(
+      grades.map(g => academicsApi.getSections(g.id, selectedCampus.id))
+    )
+    setGradesWithSections(grades.map((g, i) => ({
+      ...g,
+      sections: sectionsArrays[i].data || [],
+    })))
+    setTeachers(teachersRes.data || [])
+  }, [selectedCampus])
+
+  useEffect(() => { fetchLookups() }, [fetchLookups])
+
+  // ── Load links ──────────────────────────────────────────────────────────────
 
   const cacheKey = ['resource-links', selectedCampus?.id]
 
@@ -84,126 +487,87 @@ export default function ResourceLinksPage() {
       revalidateOnFocus: false,
       onSuccess: (data) => {
         if (!initialized) {
-          setEditableLinks(
-            data.map((l) => ({
-              id: l.id,
-              title: l.title,
-              url: l.url,
-              visible_to: l.visible_to || [],
-            }))
-          )
+          setEditableLinks(data.map(l => ({
+            id:                     l.id,
+            title:                  l.title,
+            url:                    l.url,
+            visible_to:             l.visible_to             || [],
+            visible_to_grade_ids:   l.visible_to_grade_ids   || [],
+            visible_to_section_ids: l.visible_to_section_ids || [],
+            visible_to_teacher_ids: l.visible_to_teacher_ids || [],
+            visible_to_student_ids: l.visible_to_student_ids || [],
+          })))
           setInitialized(true)
         }
       },
     }
   )
 
-  // Reset initialized flag when campus changes
-  useEffect(() => {
-    setInitialized(false)
-    setEditableLinks([])
-  }, [selectedCampus?.id])
+  useEffect(() => { setInitialized(false); setEditableLinks([]) }, [selectedCampus?.id])
 
-  // Filter by search
+  // ── Search filter ───────────────────────────────────────────────────────────
+
   const filteredLinks = useMemo(() => {
     if (!searchQuery.trim()) return editableLinks
     const q = searchQuery.toLowerCase()
-    return editableLinks.filter(
-      (l) =>
-        l.title.toLowerCase().includes(q) ||
-        l.url.toLowerCase().includes(q)
-    )
+    return editableLinks.filter(l => l.title.toLowerCase().includes(q) || l.url.toLowerCase().includes(q))
   }, [editableLinks, searchQuery])
 
-  const handleAddNew = () => {
-    setEditableLinks((prev) => [
-      ...prev,
-      { title: '', url: '', visible_to: ['admin'], isNew: true },
-    ])
-  }
+  // ── Mutations ───────────────────────────────────────────────────────────────
 
-  const confirmDelete = (index: number) => {
-    setLinkToDelete(index)
-    setDeleteDialogOpen(true)
+  const addNew = () => setEditableLinks(prev => [
+    ...prev,
+    { title: '', url: '', visible_to: ['admin'], visible_to_grade_ids: [], visible_to_section_ids: [], visible_to_teacher_ids: [], visible_to_student_ids: [], isNew: true },
+  ])
+
+  const updateLink = (idx: number, patch: Partial<EditableLink>) => {
+    const target = filteredLinks[idx]
+    setEditableLinks(prev => prev.map(l => l === target ? { ...l, ...patch } : l))
   }
 
   const handleDelete = () => {
-    if (linkToDelete === null) return
-    // Find the actual index in editableLinks (not filtered)
-    const linkToRemove = filteredLinks[linkToDelete]
-    setEditableLinks((prev) => prev.filter((l) => l !== linkToRemove))
-    setDeleteDialogOpen(false)
-    setLinkToDelete(null)
+    if (deleteIdx === null) return
+    const target = filteredLinks[deleteIdx]
+    setEditableLinks(prev => prev.filter(l => l !== target))
+    setDeleteIdx(null)
   }
 
-  const updateLink = (index: number, field: keyof EditableLink, value: string | string[]) => {
-    const actualLink = filteredLinks[index]
-    setEditableLinks((prev) =>
-      prev.map((l) => (l === actualLink ? { ...l, [field]: value } : l))
-    )
-  }
-
-  const toggleRole = (index: number, role: string) => {
-    const actualLink = filteredLinks[index]
-    setEditableLinks((prev) =>
-      prev.map((l) => {
-        if (l !== actualLink) return l
-        const current = l.visible_to || []
-        const updated = current.includes(role)
-          ? current.filter((r) => r !== role)
-          : [...current, role]
-        return { ...l, visible_to: updated }
-      })
-    )
-  }
-
-  const removeRole = (index: number, role: string) => {
-    const actualLink = filteredLinks[index]
-    setEditableLinks((prev) =>
-      prev.map((l) => {
-        if (l !== actualLink) return l
-        return { ...l, visible_to: (l.visible_to || []).filter((r) => r !== role) }
-      })
-    )
-  }
+  // ── Save ────────────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
-    // Validate
     for (const link of editableLinks) {
-      if (!link.title.trim()) {
-        toast.error(t('msg_all_required'))
-        return
-      }
-      if (!link.url.trim()) {
-        toast.error(t('msg_url_required'))
-        return
-      }
+      if (!link.title.trim()) { toast.error('All links must have a title'); return }
+      if (!link.url.trim())   { toast.error('All links must have a URL');   return }
     }
 
     setSaving(true)
     try {
-      const existingIds = (serverLinks || []).map((l) => l.id)
+      const existingIds = (serverLinks || []).map(l => l.id)
       await bulkSaveResourceLinks(
         editableLinks.map((l, i) => ({
-          id: l.id,
-          title: l.title.trim(),
-          url: l.url.trim(),
-          visible_to: l.visible_to,
-          sort_order: i + 1,
+          id:                     l.id,
+          title:                  l.title.trim(),
+          url:                    l.url.trim(),
+          visible_to:             l.visible_to,
+          visible_to_grade_ids:   l.visible_to_grade_ids,
+          visible_to_section_ids: l.visible_to_section_ids,
+          visible_to_teacher_ids: l.visible_to_teacher_ids,
+          visible_to_student_ids: l.visible_to_student_ids,
+          sort_order:             i + 1,
         })),
         existingIds
       )
-
-      // Refresh from server
       setInitialized(false)
       mutate(cacheKey)
-      toast.success(t('msg_save_success'))
+      toast.success('Saved successfully')
     } catch {
-      toast.error(t('msg_save_error'))
+      toast.error('Failed to save')
     } finally {
       setSaving(false)
     }
   }
+
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -212,218 +576,132 @@ export default function ResourceLinksPage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-[#022172] dark:text-white flex items-center gap-2">
             <Link2 className="h-7 w-7" />
-            {t('header_title')}
+            Resources
           </h1>
           <p className="text-muted-foreground mt-1">
-            {t('subtitle')}
+            Add external links with granular audience targeting per role, grade, section, specific student, or teacher.
           </p>
         </div>
-        <Button
-          onClick={handleSave}
-          disabled={saving}
-          className="bg-[#008B8B] hover:bg-[#007070] text-white"
-        >
-          {saving ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              {t('saving_button')}
-            </>
-          ) : (
-            <>
-              <Save className="h-4 w-4 mr-2" />
-              {t('save_button')}
-            </>
-          )}
+        <Button onClick={handleSave} disabled={saving} className="bg-[#008B8B] hover:bg-[#007070] text-white">
+          {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving…</> : <><Save className="h-4 w-4 mr-2" />Save</>}
         </Button>
       </div>
 
-      {/* Main Card */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <CardTitle className="text-sm text-muted-foreground">
-            {isLoading
-              ? t('loading')
-              : editableLinks.length === 1 ? t('resources_found_singular') : t('resources_found', { count: editableLinks.length })}
-          </CardTitle>
-          {/* Search */}
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder={t('search_placeholder')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 w-48"
-              />
-            </div>
+      {/* Card */}
+      <div className="border rounded-xl bg-white dark:bg-gray-900 shadow-sm overflow-visible">
+        {/* Card header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b">
+          <span className="text-sm text-muted-foreground">
+            {isLoading ? 'Loading…' : `${editableLinks.length} resource${editableLinks.length !== 1 ? 's' : ''}`}
+          </span>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="pl-9 w-48"
+            />
           </div>
-        </CardHeader>
-        <CardContent className="overflow-visible">
-          {isLoading ? (
-            <div className="space-y-2">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          ) : (
-            <div className="border rounded-md overflow-visible">
-              <div className="relative w-full overflow-visible">
-              <table className="w-full caption-bottom text-sm">
-                <TableHeader>
-                  <TableRow className="bg-gray-900 hover:bg-gray-900">
-                    <TableHead className="w-12 text-white" />
-                    <TableHead className="text-white font-semibold">{t('th_title')}</TableHead>
-                    <TableHead className="text-white font-semibold">{t('th_link')}</TableHead>
-                    <TableHead className="text-white font-semibold w-64">{t('th_visible_to')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredLinks.map((link, idx) => (
-                    <TableRow key={link.id || `new-${idx}`}>
-                      {/* Delete button */}
-                      <TableCell className="text-center">
-                        <button
-                          className="text-red-500 hover:text-red-700 text-lg font-bold"
-                          title="Delete resource"
-                          onClick={() => confirmDelete(idx)}
-                        >
-                          <Minus className="h-5 w-5" />
-                        </button>
-                      </TableCell>
+        </div>
 
-                      {/* Title */}
-                      <TableCell>
-                        <Input
-                          value={link.title}
-                          onChange={(e) => updateLink(idx, 'title', e.target.value)}
-                          placeholder={t('resource')}
-                          className="max-w-xs"
-                        />
-                      </TableCell>
-
-                      {/* Link / URL */}
-                      <TableCell>
-                        <Input
-                          value={link.url}
-                          onChange={(e) => updateLink(idx, 'url', e.target.value)}
-                          placeholder="https://..."
-                          className="max-w-md"
-                        />
-                      </TableCell>
-
-                      {/* Visible To - multi-select with badges */}
-                      <TableCell>
-                        <div className="relative" ref={visibleDropdown === idx ? dropdownRef : undefined}>
-                          {/* Selected roles as badges */}
-                          <div
-                            className="flex flex-wrap gap-1 min-h-9 p-1.5 border rounded-md cursor-pointer bg-background"
-                            onClick={() =>
-                              setVisibleDropdown(visibleDropdown === idx ? null : idx)
-                            }
-                          >
-                            {(link.visible_to || []).length === 0 ? (
-                              <span className="text-muted-foreground text-sm px-1">
-                                Select options
-                              </span>
-                            ) : (
-                              (link.visible_to || []).map((role) => {
-                                const roleKey = `role_${role}`
-                                const label = t(roleKey)
-                                return (
-                                  <Badge
-                                    key={role}
-                                    variant="secondary"
-                                    className="flex items-center gap-1 text-xs"
-                                  >
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        removeRole(idx, role)
-                                      }}
-                                      className="hover:text-red-500"
-                                    >
-                                      <X className="h-3 w-3" />
-                                    </button>
-                                    {label}
-                                  </Badge>
-                                )
-                              })
-                            )}
-                          </div>
-
-                          {/* Dropdown */}
-                          {visibleDropdown === idx && (
-                            <div className="absolute z-50 top-full left-0 mt-1 w-full bg-white dark:bg-gray-800 border rounded-md shadow-lg overflow-visible">
-                              {ROLE_OPTIONS.map((opt) => {
-                                const isSelected = (link.visible_to || []).includes(opt.value)
-                                const roleLabel = t(`role_${opt.value}`)
-                                return (
-                                  <button
-                                    key={opt.value}
-                                    className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-500 hover:text-white transition-colors ${
-                                      isSelected ? 'bg-blue-500 text-white' : ''
-                                    }`}
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      toggleRole(idx, opt.value)
-                                    }}
-                                  >
-                                    {roleLabel}
-                                  </button>
-                                )
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-
-                  {/* Add new row */}
-                  <TableRow>
-                    <TableCell className="text-center">
+        {/* Table */}
+        {isLoading ? (
+          <div className="p-4 space-y-2">
+            {[0,1,2].map(i => <Skeleton key={i} className="h-10 w-full" />)}
+          </div>
+        ) : (
+          <div className="overflow-visible">
+            <table className="w-full text-sm">
+              <TableHeader>
+                <TableRow className="bg-gray-900 hover:bg-gray-900">
+                  <TableHead className="w-10 text-white" />
+                  <TableHead className="text-white font-semibold w-44">Title</TableHead>
+                  <TableHead className="text-white font-semibold">Link</TableHead>
+                  <TableHead className="text-white font-semibold w-72">Visible To</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredLinks.map((link, idx) => (
+                  <TableRow key={link.id || `new-${idx}`} className="align-top">
+                    {/* Delete */}
+                    <TableCell className="text-center pt-3">
                       <button
-                        className="text-green-600 hover:text-green-800 text-lg font-bold"
-                        title="Add resource"
-                        onClick={handleAddNew}
+                        className="text-red-500 hover:text-red-700"
+                        onClick={() => setDeleteIdx(idx)}
                       >
-                        <Plus className="h-5 w-5" />
+                        <Minus className="h-5 w-5" />
                       </button>
                     </TableCell>
-                    <TableCell
-                      colSpan={3}
-                      className="text-muted-foreground text-sm italic"
-                    >
-                      {t('add_row_prompt')}
+
+                    {/* Title */}
+                    <TableCell className="pt-2.5">
+                      <Input
+                        value={link.title}
+                        onChange={e => updateLink(idx, { title: e.target.value })}
+                        placeholder="Resource name"
+                        className="max-w-xs"
+                      />
+                    </TableCell>
+
+                    {/* URL */}
+                    <TableCell className="pt-2.5">
+                      <Input
+                        value={link.url}
+                        onChange={e => updateLink(idx, { url: e.target.value })}
+                        placeholder="https://…"
+                        className="max-w-md"
+                      />
+                    </TableCell>
+
+                    {/* Audience */}
+                    <TableCell className="pt-2.5 pb-3">
+                      <AudiencePopover
+                        link={link}
+                        gradesWithSections={gradesWithSections}
+                        teachers={teachers}
+                        campusId={selectedCampus?.id ?? ''}
+                        onChange={patch => updateLink(idx, patch)}
+                      />
+                      <SubFilterBadges
+                        link={link}
+                        gradesWithSections={gradesWithSections}
+                        teachers={teachers}
+                      />
                     </TableCell>
                   </TableRow>
-                </TableBody>
-              </table>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('btn_delete')}</DialogTitle>
-            <DialogDescription>
-              {t('delete_confirm')}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                {/* Add row */}
+                <TableRow>
+                  <TableCell className="text-center">
+                    <button className="text-green-600 hover:text-green-800" onClick={addNew}>
+                      <Plus className="h-5 w-5" />
+                    </button>
+                  </TableCell>
+                  <TableCell colSpan={3} className="text-muted-foreground text-sm italic">
+                    Click + to add a new resource link
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Delete confirm */}
+      {deleteIdx !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setDeleteIdx(null)}>
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl p-6 w-80 space-y-4" onClick={e => e.stopPropagation()}>
+            <p className="font-semibold">Delete this resource link?</p>
+            <p className="text-sm text-muted-foreground">This cannot be undone.</p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setDeleteIdx(null)}>Cancel</Button>
+              <Button variant="destructive" onClick={handleDelete}>Delete</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

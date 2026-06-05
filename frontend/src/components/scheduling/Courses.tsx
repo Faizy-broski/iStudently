@@ -32,7 +32,7 @@ import {
 import { getMarkingPeriods, type MarkingPeriod } from "@/lib/api/marking-periods"
 import { getClassList, type ClassListResponse } from "@/lib/api/scheduling"
 import { getAllTeachers, type Staff } from "@/lib/api/teachers"
-import { CalendarDays, Plus, Pencil, Trash2, Loader2, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react"
+import { CalendarDays, Plus, Pencil, Trash2, Loader2, ArrowUp, ArrowDown, ArrowUpDown, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -979,12 +979,28 @@ export function Courses() {
           <div className="grid grid-cols-2 gap-4">
             {/* Short Name */}
             <div className="space-y-2">
-              <Label>{t("label_short_name")}</Label>
+              <Label className="flex items-center gap-1">
+                {t("label_short_name")}
+                <span
+                  title="Required when creating multiple periods for the same teacher. Each period must have a unique Short Name (e.g. ara1, ara2)."
+                  className="cursor-help text-muted-foreground"
+                >
+                  <Info className="h-3.5 w-3.5" />
+                </span>
+              </Label>
               <Input
                 value={cpForm.short_name}
                 onChange={(e) => setCpForm((f) => ({ ...f, short_name: e.target.value }))}
                 placeholder={t("placeholder_cp_short")}
               />
+              {cpDialog.mode === "add" && !cpForm.short_name && (
+                <p className="text-xs text-amber-600">
+                  {t("hint_short_name_required", {
+                    defaultValue:
+                      "Tip: fill in a unique Short Name (e.g. ara1, ara2) when adding multiple periods for the same teacher.",
+                  })}
+                </p>
+              )}
             </div>
 
             {/* Teacher */}
@@ -1079,7 +1095,15 @@ export function Courses() {
 
             {/* Period + Meeting Days */}
             <div className="space-y-2 col-span-2">
-              <Label>{t("label_period")}</Label>
+              <Label className="flex items-center gap-1">
+                {t("label_period")}
+                <span
+                  title="Selecting a specific period slot lets you create multiple periods for the same teacher without conflicts."
+                  className="cursor-help text-muted-foreground"
+                >
+                  <Info className="h-3.5 w-3.5" />
+                </span>
+              </Label>
               <div className="flex gap-3 items-center">
                 <div className="flex-1">
                   <Select

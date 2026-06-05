@@ -236,7 +236,7 @@ export default function SignupPage() {
                   placeholder="Ahmad"
                   value={form.first_name}
                   onChange={(e) => setForm(f => ({ ...f, first_name: e.target.value }))}
-                  className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900 placeholder:text-gray-400', errors.first_name ? 'border-red-400' : '')}
+                  className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900! placeholder:text-gray-400', errors.first_name ? 'border-red-400' : '')}
                   disabled={submitting}
                 />
                 {errors.first_name && <p className="text-xs text-red-500">{errors.first_name}</p>}
@@ -250,7 +250,7 @@ export default function SignupPage() {
                   placeholder="Ali"
                   value={form.last_name}
                   onChange={(e) => setForm(f => ({ ...f, last_name: e.target.value }))}
-                  className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900 placeholder:text-gray-400', errors.last_name ? 'border-red-400' : '')}
+                  className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900! placeholder:text-gray-400', errors.last_name ? 'border-red-400' : '')}
                   disabled={submitting}
                 />
                 {errors.last_name && <p className="text-xs text-red-500">{errors.last_name}</p>}
@@ -268,7 +268,7 @@ export default function SignupPage() {
                 placeholder="you@example.com"
                 value={form.email}
                 onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
-                className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900 placeholder:text-gray-400', errors.email ? 'border-red-400' : '')}
+                className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900! placeholder:text-gray-400', errors.email ? 'border-red-400' : '')}
                 disabled={submitting}
               />
               {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
@@ -285,7 +285,7 @@ export default function SignupPage() {
                 placeholder="+966 5xx xxx xxxx"
                 value={form.phone}
                 onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))}
-                className="border-gray-300 focus:border-[#57A3CC] text-gray-900 placeholder:text-gray-400"
+                className="border-gray-300 focus:border-[#57A3CC] text-gray-900! placeholder:text-gray-400"
                 disabled={submitting}
               />
             </div>
@@ -302,7 +302,7 @@ export default function SignupPage() {
                   placeholder="••••••••"
                   value={form.password}
                   onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))}
-                  className={cn('pe-10 border-gray-300 focus:border-[#57A3CC] text-gray-900 placeholder:text-gray-400', errors.password ? 'border-red-400' : '')}
+                  className={cn('pe-10 border-gray-300 focus:border-[#57A3CC] text-gray-900! placeholder:text-gray-400', errors.password ? 'border-red-400' : '')}
                   disabled={submitting}
                 />
                 <button
@@ -357,7 +357,7 @@ export default function SignupPage() {
                   placeholder="••••••••"
                   value={form.confirm_password}
                   onChange={(e) => setForm(f => ({ ...f, confirm_password: e.target.value }))}
-                  className={cn('pe-10 border-gray-300 focus:border-[#57A3CC] text-gray-900 placeholder:text-gray-400', errors.confirm_password ? 'border-red-400' : '')}
+                  className={cn('pe-10 border-gray-300 focus:border-[#57A3CC] text-gray-900! placeholder:text-gray-400', errors.confirm_password ? 'border-red-400' : '')}
                   disabled={submitting}
                 />
                 <button

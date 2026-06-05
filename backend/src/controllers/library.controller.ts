@@ -5,14 +5,14 @@ import { libraryService } from '../services/library.service';
 /**
  * Returns the correct school_id for library queries.
  * Library data (books, copies, loans, etc.) is stored with the CAMPUS id.
- * The auth middleware sets profile.school_id = parent school for librarians,
- * and profile.campus_id = their assigned campus — so we must use campus_id here.
+ * The auth middleware resolves profile.school_id to the PARENT school for
+ * students/teachers/librarians, and sets profile.campus_id to the actual campus.
+ * We must always use campus_id here so loan lookups match what librarians stored.
  */
 function libSchoolId(req: AuthRequest): string | null {
   const p = req.profile;
   if (!p) return null;
-  if (p.role === 'librarian') return p.campus_id || p.school_id || null;
-  return p.school_id || null;
+  return p.campus_id || p.school_id || null;
 }
 
 export class LibraryController {

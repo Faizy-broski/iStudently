@@ -28,6 +28,8 @@ export interface Profile {
   email: string | null
   phone: string | null
   username?: string | null
+  profile_photo_url?: string | null
+  avatar_url?: string | null
 }
 
 export interface Staff {

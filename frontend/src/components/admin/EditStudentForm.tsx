@@ -531,26 +531,22 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
             {tCommon("cancel")}
           </Button>
 
-          {isLastTab ? (
-            <Button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t("btn_saving")}
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />
-                  {t("btn_save_changes")}
-                </>
-              )}
-            </Button>
-          ) : (
+          {/* Save available on every step */}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="border-[#022172] text-[#022172] dark:text-white hover:bg-[#022172]/5"
+          >
+            {isSubmitting ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("btn_saving")}</>
+            ) : (
+              <><Save className="mr-2 h-4 w-4 rtl:ml-2 rtl:mr-0" />{t("btn_save_changes")}</>
+            )}
+          </Button>
+
+          {!isLastTab && (
             <Button
               type="button"
               onClick={handleNext}

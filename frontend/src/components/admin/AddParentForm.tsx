@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Plus, Trash2, Loader2, CalendarIcon } from "lucide-react";
+import { StudentPhotoUpload } from "@/components/ui/student-photo-upload";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import { createParent } from "@/lib/api/parents";
@@ -92,6 +93,7 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
   const [activeTab, setActiveTab] = useState("relationship");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string>('');
 
   const isLastTab = activeTab === "preferences";
 
@@ -242,7 +244,8 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
       setIsSubmitting(true);
 
       const response = await createParent({
-        school_id: user?.school_id, // Admin's base school_id (parents are school-wide)
+        school_id: user?.school_id,
+        profile_photo_url: profilePhotoUrl || undefined,
         first_name: validatedData.primaryFirstName,
         last_name: validatedData.primaryLastName,
         email: validatedData.primaryEmail || undefined,
@@ -590,6 +593,20 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
           <Card>
             <CardContent className="pt-6 space-y-6">
               <h3 className="text-lg font-semibold">{getPrimaryLabel()} Information</h3>
+
+              {/* Photo Upload */}
+              <div className="space-y-1.5">
+                <Label>Profile Photo</Label>
+                <StudentPhotoUpload
+                  value={profilePhotoUrl}
+                  onChange={setProfilePhotoUrl}
+                  schoolId={campusContext?.selectedCampus?.id || user?.school_id || ''}
+                  role="parent"
+                  label="Upload Photo"
+                  className="max-w-xs"
+                />
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Render Primary fields (Personal + Professional) sorted */}
                 {getMergedFields(['personal', 'professional']).map(renderField)}

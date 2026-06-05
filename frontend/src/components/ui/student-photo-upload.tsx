@@ -1,28 +1,28 @@
 "use client";
 
 import * as React from "react";
-import { Upload, X, Loader2 } from "lucide-react";
+import { Upload, X, Loader2, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/client";
+import { uploadProfilePhoto } from "@/lib/api/storage";
 import { toast } from "sonner";
 
 interface StudentPhotoUploadProps {
     value?: string;
     onChange: (url: string) => void;
     schoolId: string;
-    studentId?: string; // Optional - for existing students
+    studentId?: string;
+    role?: string; // 'student' | 'teacher' | 'staff' | 'parent' — used for storage path
     label?: string;
     className?: string;
 }
 
-const ALLOWED_TYPES = ['image/svg+xml', 'image/png', 'image/jpeg', 'image/webp'];
-const MAX_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 
 export function StudentPhotoUpload({
     value,
     onChange,
     schoolId,
     studentId,
+    role = 'student',
     label = "Upload Photo",
     className
 }: StudentPhotoUploadProps) {
@@ -30,7 +30,6 @@ export function StudentPhotoUpload({
     const [isUploading, setIsUploading] = React.useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-    // Update preview when value changes externally
     React.useEffect(() => {
         setPreview(value || null);
     }, [value]);
@@ -39,59 +38,25 @@ export function StudentPhotoUpload({
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Validate file type
-        if (!ALLOWED_TYPES.includes(file.type)) {
-            toast.error("Invalid file type. Allowed: PNG, JPEG, WebP, SVG");
-            return;
-        }
-
-        // Validate file size
-        if (file.size > MAX_SIZE_BYTES) {
-            toast.error("File too large. Maximum size is 1MB");
+        if (!schoolId) {
+            toast.error('School ID is required to upload a photo');
             return;
         }
 
         setIsUploading(true);
+        const res = await uploadProfilePhoto(file, schoolId, role, studentId);
+        setIsUploading(false);
 
-        try {
-            // Create Supabase client
-            const supabase = createClient();
-
-            // Generate unique filename
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${studentId || 'new'}-${Date.now()}.${fileExt}`;
-            const filePath = `${schoolId}/${fileName}`;
-
-            // Upload to Supabase Storage
-            const { data, error } = await supabase.storage
-                .from('students-profile-pictures')
-                .upload(filePath, file, {
-                    cacheControl: '3600',
-                    upsert: true
-                });
-
-            if (error) {
-                console.error('Upload error:', error);
-                toast.error(`Upload failed: ${error.message}`);
-                return;
-            }
-
-            // Get public URL
-            const { data: urlData } = supabase.storage
-                .from('students-profile-pictures')
-                .getPublicUrl(data.path);
-
-            const publicUrl = urlData.publicUrl;
-
-            setPreview(publicUrl);
-            onChange(publicUrl);
-            toast.success("Photo uploaded successfully!");
-        } catch (err: any) {
-            console.error('Upload error:', err);
-            toast.error("Failed to upload photo");
-        } finally {
-            setIsUploading(false);
+        if (!res.success || !res.url) {
+            toast.error(res.error || 'Failed to upload photo');
+            return;
         }
+
+        setPreview(res.url);
+        onChange(res.url);
+        toast.success('Photo uploaded successfully!');
+
+        if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
     const clearFile = async () => {
@@ -119,7 +84,7 @@ export function StudentPhotoUpload({
             {!preview ? (
                 <label
                     htmlFor="student-photo-upload"
-                    className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50 transition-colors border-[#57A3CC]/50 hover:border-[#022172]/50 ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border-[#57A3CC]/50 hover:border-[#022172]/50 ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
                         {isUploading ? (
@@ -139,23 +104,41 @@ export function StudentPhotoUpload({
                     </div>
                 </label>
             ) : (
-                <div className="relative w-full border rounded-lg p-4 bg-gray-50">
+                <div className="relative w-full border rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-800 group">
+                    {/* Remove button */}
                     <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="absolute top-2 right-2 h-6 w-6"
+                        className="absolute top-2 right-2 z-10 h-6 w-6 bg-black/40 hover:bg-black/60 text-white rounded-full"
                         onClick={clearFile}
                         disabled={isUploading}
                     >
-                        <X className="h-4 w-4" />
+                        <X className="h-3.5 w-3.5" />
                     </Button>
 
-                    <img
-                        src={preview}
-                        alt="Student Photo"
-                        className="w-full h-32 object-contain rounded"
-                    />
+                    {/* Clickable image with change overlay */}
+                    <div
+                        className="relative cursor-pointer"
+                        onClick={() => !isUploading && fileInputRef.current?.click()}
+                    >
+                        <img
+                            src={preview}
+                            alt="Student Photo"
+                            className="w-full h-32 object-contain rounded"
+                        />
+                        {/* Hover overlay to indicate editability */}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                            {isUploading ? (
+                                <Loader2 className="h-6 w-6 text-white animate-spin opacity-0 group-hover:opacity-100 transition-opacity" />
+                            ) : (
+                                <div className="flex flex-col items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Camera className="h-6 w-6 text-white" />
+                                    <span className="text-white text-xs font-medium">Change Photo</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

@@ -305,6 +305,52 @@ export async function uploadLibraryDocument(
 }
 
 /**
+/**
+ * Upload a profile photo for any role (student, teacher, staff, parent) to the
+ * 'students-profile-pictures' bucket.
+ * Path: {schoolId}/profiles/{role}/{timestamp}-{filename}
+ * Accepted: JPEG, PNG, WebP, SVG — max 2 MB
+ */
+export async function uploadProfilePhoto(
+  file: File,
+  schoolId: string,
+  role: string = 'user',
+  entityId?: string
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  const ALLOWED = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml']
+  const MAX_SIZE = 2 * 1024 * 1024
+
+  if (!ALLOWED.includes(file.type)) {
+    return { success: false, error: 'Invalid file type. Allowed: PNG, JPEG, WebP, SVG' }
+  }
+  if (file.size > MAX_SIZE) {
+    return { success: false, error: 'File too large. Maximum 2 MB' }
+  }
+
+  try {
+    const supabase = createClient()
+    const ext = file.name.split('.').pop()
+    const id = entityId || 'new'
+    const fileName = `${Date.now()}-${id}.${ext}`
+    const filePath = `${schoolId}/profiles/${role}/${fileName}`
+
+    const { data, error } = await supabase.storage
+      .from('students-profile-pictures')
+      .upload(filePath, file, { cacheControl: '3600', upsert: true })
+
+    if (error) return { success: false, error: error.message }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('students-profile-pictures')
+      .getPublicUrl(data.path)
+
+    return { success: true, url: publicUrl }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Upload failed' }
+  }
+}
+
+/**
  * Upload a book cover image to Supabase Storage ('books' bucket)
  * Path structure: {school_id}/covers/{timestamp}-{filename}
  * Accepts: JPEG, PNG, WebP — max 5 MB

@@ -34,6 +34,7 @@ import {
 } from '@/lib/api/pending-signups'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 import { arSA, enUS } from 'date-fns/locale'
+import { useCampus } from '@/context/CampusContext'
 
 const ROLE_COLORS: Record<string, string> = {
   teacher: 'bg-blue-100 text-blue-800',
@@ -67,6 +68,8 @@ export default function PendingApprovalsPage() {
   const locale = useLocale()
   const isAr = locale === 'ar'
   const dateFnsLocale = isAr ? arSA : enUS
+  const campusContext = useCampus()
+  const selectedCampusId = campusContext?.selectedCampus?.id
 
   type TabStatus = 'all' | 'pending' | 'approved' | 'rejected'
   const [activeTab, setActiveTab] = React.useState<TabStatus>('pending')
@@ -95,6 +98,7 @@ export default function PendingApprovalsPage() {
         status: activeTab === 'all' ? undefined : activeTab,
         role: roleFilter === 'all' ? undefined : roleFilter,
         search: search.trim() || undefined,
+        campus_id: selectedCampusId || undefined,
       })
       if (res.success) {
         setSignups(res.data ?? [])
@@ -103,7 +107,7 @@ export default function PendingApprovalsPage() {
     } finally {
       setLoading(false)
     }
-  }, [activeTab, roleFilter, search])
+  }, [activeTab, roleFilter, search, selectedCampusId])
 
   React.useEffect(() => { fetchSignups() }, [fetchSignups])
 
@@ -205,7 +209,7 @@ export default function PendingApprovalsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t('filterRole')}</SelectItem>
-            {['teacher', 'student', 'parent', 'staff', 'librarian', 'counselor'].map(r => (
+            {['teacher', 'student', 'parent', 'staff', 'librarian'].map(r => (
               <SelectItem key={r} value={r} className="capitalize">{r}</SelectItem>
             ))}
           </SelectContent>

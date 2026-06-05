@@ -213,9 +213,10 @@ export default function TeacherDetailsPage() {
           <div className="flex flex-col md:flex-row gap-6 items-start">
             {/* Avatar */}
            <div className="h-32 w-24 rounded-xl border-4 border-white shadow-lg overflow-hidden shrink-0 bg-linear-to-b from-[#57A3CC] to-[#022172] flex items-center justify-center">
-  {currentTeacher.custom_fields?.personal?.photo ? (
+  {currentTeacher.profile?.profile_photo_url ? (
+    // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={currentTeacher.custom_fields.personal.photo}
+      src={currentTeacher.profile.profile_photo_url}
       alt={fullName}
       className="h-full w-full object-cover object-top"
     />

@@ -3,8 +3,9 @@ import { ApiResponse } from '../types'
 
 export interface SidebarConfig {
   id: string
-  scope: 'superadmin' | 'school'
+  scope: 'superadmin' | 'school' | 'campus'
   school_id: string | null
+  campus_id: string | null
   bg_color: string | null
   bg_image_url: string | null
   bg_image_opacity: number
@@ -50,6 +51,7 @@ export async function upsertSuperadminConfig(
     .insert({
       scope: 'superadmin',
       school_id: null,
+      campus_id: null,
       bg_image_opacity: 0.15,
       ...dto,
     })
@@ -93,6 +95,7 @@ export async function upsertSchoolConfig(
     .insert({
       scope: 'school',
       school_id: schoolId,
+      campus_id: null,
       bg_image_opacity: 0.15,
       ...dto,
     })
@@ -102,30 +105,84 @@ export async function upsertSchoolConfig(
   return data
 }
 
+export async function getCampusConfig(campusId: string): Promise<SidebarConfig | null> {
+  const { data, error } = await supabase
+    .from('sidebar_configs')
+    .select('*')
+    .eq('scope', 'campus')
+    .eq('campus_id', campusId)
+    .maybeSingle()
+
+  if (error) throw error
+  return data
+}
+
+export async function upsertCampusConfig(
+  campusId: string,
+  schoolId: string,
+  dto: UpdateSidebarConfigDTO
+): Promise<SidebarConfig> {
+  const existing = await getCampusConfig(campusId)
+
+  if (existing) {
+    const { data, error } = await supabase
+      .from('sidebar_configs')
+      .update({ ...dto, updated_at: new Date().toISOString() })
+      .eq('id', existing.id)
+      .select()
+      .single()
+    if (error) throw error
+    return data
+  }
+
+  const { data, error } = await supabase
+    .from('sidebar_configs')
+    .insert({
+      scope: 'campus',
+      school_id: schoolId,
+      campus_id: campusId,
+      bg_image_opacity: 0.15,
+      ...dto,
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+/**
+ * Resolve effective config for an authenticated user.
+ * Priority: campus config → school config → null (falls back to superadmin on the frontend)
+ */
 export async function getMyConfig(
   role: string,
-  schoolId: string | null
+  schoolId: string | null,
+  campusId?: string | null
 ): Promise<SidebarConfig | null> {
   if (role === 'super_admin') {
     return getSuperadminConfig()
   }
+
+  // Check campus-level config first (campus overrides school)
+  if (campusId) {
+    const campusConfig = await getCampusConfig(campusId)
+    if (campusConfig) return campusConfig
+  }
+
   if (schoolId) {
     return getSchoolConfig(schoolId)
   }
+
   return null
 }
 
+export async function resetConfig(scope: 'superadmin', schoolId?: null, campusId?: null): Promise<void>
+export async function resetConfig(scope: 'school', schoolId: string, campusId?: null): Promise<void>
+export async function resetConfig(scope: 'campus', schoolId: string, campusId: string): Promise<void>
 export async function resetConfig(
-  scope: 'superadmin',
-  schoolId?: null
-): Promise<void>
-export async function resetConfig(
-  scope: 'school',
-  schoolId: string
-): Promise<void>
-export async function resetConfig(
-  scope: 'superadmin' | 'school',
-  schoolId?: string | null
+  scope: 'superadmin' | 'school' | 'campus',
+  schoolId?: string | null,
+  campusId?: string | null
 ): Promise<void> {
   const dto: UpdateSidebarConfigDTO = {
     bg_color: null,
@@ -135,7 +192,9 @@ export async function resetConfig(
 
   if (scope === 'superadmin') {
     await upsertSuperadminConfig(dto)
-  } else if (schoolId) {
+  } else if (scope === 'school' && schoolId) {
     await upsertSchoolConfig(schoolId, dto)
+  } else if (scope === 'campus' && campusId && schoolId) {
+    await upsertCampusConfig(campusId, schoolId, dto)
   }
 }

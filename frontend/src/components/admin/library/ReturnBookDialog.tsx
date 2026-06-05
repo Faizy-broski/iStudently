@@ -47,15 +47,28 @@ interface ReturnBookDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onBookReturned: () => void;
+  prefilledBook?: { id: string; title: string } | null;
 }
 
-export function ReturnBookDialog({ open, onOpenChange, onBookReturned }: ReturnBookDialogProps) {
+export function ReturnBookDialog({ open, onOpenChange, onBookReturned, prefilledBook }: ReturnBookDialogProps) {
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [bookLoans, setBookLoans] = useState<BookLoan[]>([]);
   const [selectedLoan, setSelectedLoan] = useState<BookLoan | null>(null);
   const [isLoadingLoans, setIsLoadingLoans] = useState(false);
+
+  // Auto-populate search when a book is pre-selected
+  useEffect(() => {
+    if (open && prefilledBook?.title) {
+      setSearchQuery(prefilledBook.title);
+      setSelectedLoan(null);
+    } else if (!open) {
+      setSearchQuery("");
+      setSelectedLoan(null);
+      setBookLoans([]);
+    }
+  }, [open, prefilledBook]);
 
   const form = useForm<ReturnBookFormData>({
     resolver: zodResolver(returnBookSchema),

@@ -43,6 +43,16 @@ import {
   type DisciplineReferral,
   type DisciplineField,
 } from "@/lib/api/discipline";
+import { useGradeLevels } from "@/hooks/useAcademics";
+import { getSections } from "@/lib/api/academics";
+import type { Section } from "@/lib/api/academics";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // ---------------------------------------------------------------------------
 
@@ -87,6 +97,13 @@ export default function DisciplineReferralsPage() {
   const [page, setPage] = useState(1);
   const LIMIT = 20;
 
+  // Grade/section filter
+  const { gradeLevels } = useGradeLevels();
+  const [gradeFilter, setGradeFilter] = useState("all");
+  const [sectionFilter, setSectionFilter] = useState("all");
+  const [sections, setSections] = useState<Section[]>([]);
+  const [sectionsLoading, setSectionsLoading] = useState(false);
+
   // Filters
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -104,6 +121,21 @@ export default function DisciplineReferralsPage() {
     const t = setTimeout(() => setDebouncedSearch(search), 400);
     return () => clearTimeout(t);
   }, [search]);
+
+  // Load sections when grade changes
+  useEffect(() => {
+    if (gradeFilter === "all") {
+      setSections([]);
+      setSectionFilter("all");
+      return;
+    }
+    setSectionsLoading(true);
+    getSections(gradeFilter)
+      .then((res) => { if (res.success && res.data) setSections(res.data); })
+      .catch(() => {})
+      .finally(() => setSectionsLoading(false));
+    setSectionFilter("all");
+  }, [gradeFilter]);
 
   // Fetch fields once
   useEffect(() => {
@@ -143,7 +175,7 @@ export default function DisciplineReferralsPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [campusId, startDate, endDate, debouncedSearch]);
+  }, [campusId, startDate, endDate, debouncedSearch, gradeFilter, sectionFilter]);
 
   useEffect(() => {
     fetchReferrals();
@@ -168,16 +200,18 @@ export default function DisciplineReferralsPage() {
     }
   }
 
-  // Client-side filter by student name (search)
-  const displayed = debouncedSearch
-    ? referrals.filter(
-        (r) =>
-          studentName(r)
-            .toLowerCase()
-            .includes(debouncedSearch.toLowerCase()) ||
-          (r.students?.student_number ?? "").includes(debouncedSearch),
-      )
-    : referrals;
+  // Client-side filtering
+  const selectedGradeName = gradeLevels.find((g) => g.id === gradeFilter)?.name;
+  const displayed = referrals.filter((r) => {
+    if (debouncedSearch) {
+      const name = studentName(r).toLowerCase();
+      const num = r.students?.student_number ?? "";
+      if (!name.includes(debouncedSearch.toLowerCase()) && !num.includes(debouncedSearch)) return false;
+    }
+    if (gradeFilter !== "all" && r.students?.grade_level !== selectedGradeName) return false;
+    if (sectionFilter !== "all" && r.students?.section_id !== sectionFilter) return false;
+    return true;
+  });
 
   const totalPages = Math.ceil(total / LIMIT);
 
@@ -207,8 +241,9 @@ export default function DisciplineReferralsPage() {
         {/* Filters */}
         <Card>
           <CardContent className="pt-4 pb-4">
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
-              <div className="space-y-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3 items-end">
+              {/* Search */}
+              <div className="space-y-1 xl:col-span-2">
                 <Label className="text-xs">{t("search_student")}</Label>
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -220,6 +255,42 @@ export default function DisciplineReferralsPage() {
                   />
                 </div>
               </div>
+
+              {/* Grade */}
+              <div className="space-y-1">
+                <Label className="text-xs">Grade</Label>
+                <Select value={gradeFilter} onValueChange={setGradeFilter}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="All Grades" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Grades</SelectItem>
+                    {gradeLevels.map((g) => (
+                      <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Section */}
+              {gradeFilter !== "all" && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Section</Label>
+                  <Select value={sectionFilter} onValueChange={setSectionFilter} disabled={sectionsLoading}>
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="All Sections" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Sections</SelectItem>
+                      {sections.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* From date */}
               <div className="space-y-1">
                 <Label className="text-xs">{t("from_date")}</Label>
                 <Input
@@ -229,6 +300,8 @@ export default function DisciplineReferralsPage() {
                   onChange={(e) => setStartDate(e.target.value)}
                 />
               </div>
+
+              {/* To date */}
               <div className="space-y-1">
                 <Label className="text-xs">{t("to_date")}</Label>
                 <Input
@@ -238,20 +311,27 @@ export default function DisciplineReferralsPage() {
                   onChange={(e) => setEndDate(e.target.value)}
                 />
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSearch("");
-                  setStartDate("");
-                  setEndDate("");
-                  setPage(1);
-                }}
-                className="h-8"
-              >
-                <RefreshCcw className="h-3.5 w-3.5 mr-1.5" />
-                {t("reset")}
-              </Button>
+
+              {/* Reset */}
+              <div className="space-y-1">
+                <Label className="text-xs opacity-0 select-none">.</Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSearch("");
+                    setStartDate("");
+                    setEndDate("");
+                    setGradeFilter("all");
+                    setSectionFilter("all");
+                    setPage(1);
+                  }}
+                  className="h-8 w-full"
+                >
+                  <RefreshCcw className="h-3.5 w-3.5 mr-1.5" />
+                  {t("reset")}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

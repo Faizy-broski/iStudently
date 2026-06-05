@@ -13,6 +13,7 @@ import { Building2, Plus, Pencil, Trash2, Loader2, Upload, X } from "lucide-reac
 import { getCampuses, createCampus, updateCampus, deleteCampus, Campus, CreateCampusData } from "@/lib/api/setup-status"
 import { createClient } from "@/lib/supabase/client"
 import { useCampus } from "@/context/CampusContext"
+import { CampusSidebarConfigButton } from "@/components/sidebar/CampusSidebarConfigButton"
 
 import { useTranslations } from "next-intl"
 
@@ -441,7 +442,11 @@ export default function CampusesPage() {
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="flex gap-1">
+                                    <div className="flex gap-1 items-center">
+                                        <CampusSidebarConfigButton
+                                            campusId={campus.id}
+                                            campusName={campus.name}
+                                        />
                                         <Button
                                             variant="ghost"
                                             size="icon"

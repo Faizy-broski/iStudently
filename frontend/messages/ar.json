@@ -228,7 +228,9 @@
     "female": "أنثى",
     "contact_name": "اسم جهة الاتصال",
     "contact_relationship": "صلة القرابة",
-    "contact_phone": "هاتف جهة الاتصال"
+    "contact_phone": "هاتف جهة الاتصال",
+    "confirm_delete": "تأكيد الحذف",
+    "delete_warning": "هل أنت متأكد أنك تريد حذف هذا؟ لا يمكن التراجع عن هذا الإجراء."
   },
   "topbar": {
     "searchPlaceholder": "ابحث في الصفحات...",
@@ -464,6 +466,7 @@
     "inventory_snapshots": "لقطات المخزون",
     "general": "عام",
     "campuses": "الأفرع",
+    "sidebar_theme": "مظهر الشريط الجانبي",
     "academic_years": "السنوات الدراسية",
     "services": "الخدمات",
     "email_reminders": "تذكيرات البريد",
@@ -2967,7 +2970,8 @@
         "delete_course_warning": " سيتم أيضاً حذف جميع فترات الدورات تحت هذه الدورة.",
         "type_subject": "مادة",
         "type_course": "دورة",
-        "type_cp": "فترة دورة"
+        "type_cp": "فترة دورة",
+        "hint_short_name_required": "تلميح: أدخل اسمًا مختصرًا فريدًا (مثل ara1، ara2) عند إضافة فترات متعددة لنفس المعلم."
       },
       "student_schedule": {
         "title": "جدول الطالب",

@@ -466,6 +466,7 @@ export interface CreateParentDTO {
   phone?: string;
   username?: string; // Optional custom username
   password?: string; // Optional custom password
+  profile_photo_url?: string;
 }
 
 export interface UpdateParentDTO {
@@ -490,6 +491,7 @@ export interface UpdateParentDTO {
   email?: string;
   phone?: string;
   password?: string; // Optional password update
+  profile_photo_url?: string;
 }
 
 export interface ParentStudentLink {
@@ -677,6 +679,7 @@ export interface UpdateStaffDTO {
   phone?: string;
   password?: string; // Optional password update
   base_salary?: number; // Optional base salary update
+  profile_photo_url?: string;
 }
 
 export interface AcademicYear {
@@ -1762,13 +1765,19 @@ export interface EmbeddedResource {
   school_id: string;
   title: string;
   url: string;
-  published_grade_ids: string[];
+  // Audience targeting
+  published_grade_ids: string[];      // students in these grades
+  published_section_ids: string[];    // students in these sections (overrides grade when set)
+  visible_to_roles: string[];         // empty = all roles
+  visible_to_teacher_ids: string[];   // empty = all teachers
+  visible_to_student_ids: string[];   // specific student record IDs (empty = all in section/grade)
   is_active: boolean;
   created_at: string;
   updated_at: string;
   created_by: string | null;
   // Joined / computed
   published_grade_names?: string[];
+  published_section_names?: string[];
   creator_name?: string | null;
 }
 
@@ -1777,6 +1786,10 @@ export interface CreateEmbeddedResourceDTO {
   title: string;
   url: string;
   published_grade_ids?: string[];
+  published_section_ids?: string[];
+  visible_to_roles?: string[];
+  visible_to_teacher_ids?: string[];
+  visible_to_student_ids?: string[];
   created_by?: string;
 }
 
@@ -1784,5 +1797,9 @@ export interface UpdateEmbeddedResourceDTO {
   title?: string;
   url?: string;
   published_grade_ids?: string[];
+  published_section_ids?: string[];
+  visible_to_roles?: string[];
+  visible_to_teacher_ids?: string[];
+  visible_to_student_ids?: string[];
   is_active?: boolean;
 }

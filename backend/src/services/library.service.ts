@@ -70,15 +70,28 @@ export class LibraryService {
    * Create a new book
    */
   async createBook(bookData: Omit<Book, 'id' | 'created_at' | 'updated_at' | 'total_copies' | 'available_copies'>, schoolId: string) {
-    // Sanitize and validate ISBN and publication_year to satisfy DB CHECK constraints
-    // Sanitize ISBN: remove any characters other than digits and X, then uppercase
-    let isbnToInsert: string | null = null;
-    if (bookData.isbn) {
-      const cleanIsbn = bookData.isbn.replace(/[^0-9Xx]/g, '').toUpperCase();
-      if (!this.isValidISBN(cleanIsbn)) {
-        throw new Error('Invalid ISBN format');
-      }
-      isbnToInsert = cleanIsbn;
+    // Convert empty string ISBN to null
+    const isbnToInsert: string | null = bookData.isbn?.trim() || null;
+    const referenceToInsert: string | null = (bookData as any).reference?.trim() || null;
+
+    // Uniqueness checks within the same school
+    if (isbnToInsert) {
+      const { data: existingIsbn } = await supabase
+        .from('library_books')
+        .select('id')
+        .eq('school_id', schoolId)
+        .eq('isbn', isbnToInsert)
+        .maybeSingle();
+      if (existingIsbn) throw new Error(`A book with ISBN "${isbnToInsert}" already exists in this library.`);
+    }
+    if (referenceToInsert) {
+      const { data: existingRef } = await supabase
+        .from('library_books')
+        .select('id')
+        .eq('school_id', schoolId)
+        .eq('reference', referenceToInsert)
+        .maybeSingle();
+      if (existingRef) throw new Error(`A book with reference code "${referenceToInsert}" already exists in this library.`);
     }
 
     // Normalize publication_year: treat empty string as null and validate range
@@ -133,13 +146,34 @@ export class LibraryService {
    * Update a book
    */
   async updateBook(bookId: string, bookData: Partial<Book>, schoolId: string) {
-    // Sanitize ISBN if present
+    // Convert empty string ISBN/reference to null
+    if (bookData.isbn !== undefined) {
+      bookData.isbn = (String(bookData.isbn).trim() || null) as any;
+    }
+    if ((bookData as any).reference !== undefined) {
+      (bookData as any).reference = (bookData as any).reference?.trim() || null;
+    }
+
+    // Uniqueness checks within the same school (exclude current book)
     if (bookData.isbn) {
-      const cleanIsbn = String(bookData.isbn).replace(/[^0-9Xx]/g, '').toUpperCase();
-      if (!this.isValidISBN(cleanIsbn)) {
-        throw new Error('Invalid ISBN format');
-      }
-      bookData.isbn = cleanIsbn as any;
+      const { data: existingIsbn } = await supabase
+        .from('library_books')
+        .select('id')
+        .eq('school_id', schoolId)
+        .eq('isbn', bookData.isbn)
+        .neq('id', bookId)
+        .maybeSingle();
+      if (existingIsbn) throw new Error(`A book with ISBN "${bookData.isbn}" already exists in this library.`);
+    }
+    if ((bookData as any).reference) {
+      const { data: existingRef } = await supabase
+        .from('library_books')
+        .select('id')
+        .eq('school_id', schoolId)
+        .eq('reference', (bookData as any).reference)
+        .neq('id', bookId)
+        .maybeSingle();
+      if (existingRef) throw new Error(`A book with reference code "${(bookData as any).reference}" already exists in this library.`);
     }
 
     // Normalize publication_year: treat empty string as null and validate range
@@ -412,7 +446,22 @@ export class LibraryService {
       throw new Error('Borrower account is inactive. Cannot issue books.');
     }
 
-    // Validation 3: Check for overdue books (only for students)
+    // Validation 3: Check if student already has an active loan for this same book
+    const { data: existingLoan } = await supabase
+      .from('library_loans')
+      .select('id, due_date, library_book_copies!inner(book_id)')
+      .eq('student_id', effectiveBorrowerId)
+      .eq('school_id', schoolId)
+      .eq('status', 'active')
+      .eq('library_book_copies.book_id', copy.book_id)
+      .maybeSingle();
+
+    if (existingLoan) {
+      const due = new Date(existingLoan.due_date).toLocaleDateString();
+      throw new Error(`This student already has an active loan for this book (due ${due}). They must return it before borrowing again.`);
+    }
+
+    // Validation 4: Check for overdue books (only for students)
     let totalUnpaidFines = 0;
     if (borrowerType === 'student') {
       const overdueLoans = await this.getOverdueLoans(effectiveBorrowerId, schoolId);
@@ -420,7 +469,7 @@ export class LibraryService {
         throw new Error('Borrower has overdue books. Please return them before issuing new books.');
       }
 
-      // Validation 4: Check max books limit
+      // Validation 5: Check max books limit
       const activeLoans = await this.getActiveLoans(effectiveBorrowerId, schoolId);
       const { data: school } = await supabase
         .from('schools')
@@ -433,7 +482,7 @@ export class LibraryService {
         throw new Error(`Borrower has reached maximum book limit (${maxBooks} books)`);
       }
 
-      // Validation 5: Check for unpaid fines (Warning - not blocker)
+      // Validation 6: Check for unpaid fines (Warning - not blocker)
       const unpaidFines = await this.getUnpaidFines(effectiveBorrowerId, schoolId);
       totalUnpaidFines = unpaidFines.reduce((sum, fine) => sum + fine.amount, 0);
     }
@@ -532,13 +581,11 @@ export class LibraryService {
       overdueFine = daysLate * finePerDay;
     }
 
-    // collectedAmount represents condition/damage fine collected at return time
-    // It's separate from overdue fine
+    // Condition/damage fine collected at return time (independent of overdue fine)
     const conditionFineCollected = typeof collectedAmount === 'number' && collectedAmount > 0 ? collectedAmount : 0;
 
-    // For database constraint: fine_amount is overdue fine, collected_amount is condition fine
-    // They are independent - we don't enforce collected <= fine here
-    const totalFineAmount = overdueFine;
+    // fine_amount = total fine (overdue + condition) so DB constraint collected_amount <= fine_amount is satisfied
+    const totalFineAmount = overdueFine + conditionFineCollected;
     const totalCollectedAmount = conditionFineCollected;
 
     // Update the loan

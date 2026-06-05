@@ -3,8 +3,9 @@ import { createClient } from '@/lib/supabase/client'
 
 export interface SidebarConfig {
   id: string
-  scope: 'superadmin' | 'school'
+  scope: 'superadmin' | 'school' | 'campus'
   school_id: string | null
+  campus_id: string | null
   bg_color: string | null
   bg_image_url: string | null
   bg_image_opacity: number
@@ -55,13 +56,33 @@ export async function resetSchoolSidebarConfig(schoolId: string) {
   })
 }
 
+export async function getCampusSidebarConfig(campusId: string) {
+  return apiRequest<SidebarConfig>(`/sidebar-config/campus/${campusId}`)
+}
+
+export async function updateCampusSidebarConfig(
+  campusId: string,
+  dto: UpdateSidebarConfigDTO
+) {
+  return apiRequest<SidebarConfig>(`/sidebar-config/campus/${campusId}`, {
+    method: 'PUT',
+    body: JSON.stringify(dto),
+  })
+}
+
+export async function resetCampusSidebarConfig(campusId: string) {
+  return apiRequest<SidebarConfig>(`/sidebar-config/campus/${campusId}/reset`, {
+    method: 'POST',
+  })
+}
+
 export async function getMySidebarConfig() {
   return apiRequest<SidebarConfig>('/sidebar-config/my')
 }
 
 // Upload a sidebar background image directly to Supabase Storage.
 // Uses the existing 'school-logos' bucket under a 'sidebar-bg/' prefix path.
-// scope: 'superadmin' or the school_id string.
+// scope: 'superadmin', school_id, or campus_id string.
 export async function uploadSidebarImage(
   file: File,
   scope: string

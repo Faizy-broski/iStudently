@@ -61,6 +61,7 @@ export default function AllEventsPage() {
 
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<EventCategory | "all">("all");
+  const [monthFilter, setMonthFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"date_asc" | "date_desc">("date_asc");
   const [page, setPage] = useState(1);
 
@@ -84,6 +85,12 @@ export default function AllEventsPage() {
     { revalidateOnFocus: false }
   );
 
+  // Derive sorted unique month options ("YYYY-MM") from loaded events
+  const monthOptions = useMemo(() => {
+    const ym = new Set((data ?? []).map((e) => e.start_at.substring(0, 7)));
+    return [...ym].sort();
+  }, [data]);
+
   const filtered = useMemo(() => {
     let list = data ?? [];
     if (search.trim()) {
@@ -95,12 +102,15 @@ export default function AllEventsPage() {
           e.category.toLowerCase().includes(q)
       );
     }
+    if (monthFilter !== "all") {
+      list = list.filter((e) => e.start_at.substring(0, 7) === monthFilter);
+    }
     list = [...list].sort((a, b) => {
       const diff = new Date(a.start_at).getTime() - new Date(b.start_at).getTime();
       return sortBy === "date_asc" ? diff : -diff;
     });
     return list;
-  }, [data, search, sortBy]);
+  }, [data, search, monthFilter, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -178,6 +188,22 @@ export default function AllEventsPage() {
             <SelectItem value="all">All Categories</SelectItem>
             {(Object.entries(CATEGORY_LABELS) as [EventCategory, string][]).map(([k, v]) => (
               <SelectItem key={k} value={k}>{v}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={monthFilter}
+          onValueChange={(v) => { setMonthFilter(v); setPage(1); }}
+        >
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="All Months" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Months</SelectItem>
+            {monthOptions.map((ym) => (
+              <SelectItem key={ym} value={ym}>
+                {moment(ym + "-01").locale("en").format("MMM YYYY")}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>

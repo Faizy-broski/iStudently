@@ -51,8 +51,8 @@ export interface PendingSignupsFilter {
   limit?: number
 }
 
-function stripPasswordHash<T extends { password_hash?: unknown }>(row: T): Omit<T, 'password_hash'> {
-  const { password_hash: _ph, ...safe } = row as any
+function stripPasswordHash<T extends Record<string, any>>(row: T): Omit<T, 'password_hash'> {
+  const { password_hash: _ph, ...safe } = row
   return safe
 }
 
@@ -239,7 +239,75 @@ export async function approvePendingSignup(
     throw new Error(`Failed to create profile: ${profileError.message}`)
   }
 
-  // 3. Mark as approved
+  // 3. Create the role-specific record so the user appears in the correct list.
+  // campus_id is the actual campus school_id; fall back to school_id if not set.
+  const campusId = row.campus_id ?? row.school_id
+
+  if (['teacher', 'staff', 'librarian', 'counselor'].includes(row.role)) {
+    const rolePrefix =
+      row.role === 'teacher'   ? 'TCH' :
+      row.role === 'librarian' ? 'LIB' :
+      row.role === 'counselor' ? 'CSL' : 'STF'
+    const employeeNumber = `${rolePrefix}-${Date.now().toString().slice(-6)}`
+
+    const { error: staffError } = await supabase
+      .from('staff')
+      .insert({
+        profile_id: profileId,
+        school_id: campusId,
+        employee_number: employeeNumber,
+        role: row.role,
+        employment_type: 'full_time',
+        payment_type: 'fixed_salary',
+        is_active: true,
+        permissions: {},
+        custom_fields: {},
+        created_by: reviewedBy,
+      })
+
+    if (staffError) {
+      console.error('⚠️ Failed to create staff record for approved signup:', staffError.message)
+    } else {
+      await supabase.from('profiles').update({ school_id: campusId }).eq('id', profileId)
+    }
+
+  } else if (row.role === 'student') {
+    const studentNumber = `STU-${Date.now().toString().slice(-8)}`
+
+    const { error: studentError } = await supabase
+      .from('students')
+      .insert({
+        profile_id: profileId,
+        school_id: campusId,
+        student_number: studentNumber,
+        medical_info: {},
+        custom_fields: {},
+      })
+
+    if (studentError) {
+      console.error('⚠️ Failed to create student record for approved signup:', studentError.message)
+    } else {
+      await supabase.from('profiles').update({ school_id: campusId }).eq('id', profileId)
+    }
+
+  } else if (row.role === 'parent') {
+    const { error: parentError } = await supabase
+      .from('parents')
+      .insert({
+        profile_id: profileId,
+        school_id: campusId,
+        metadata: {},
+        custom_fields: {},
+      })
+
+    if (parentError) {
+      console.error('⚠️ Failed to create parent record for approved signup:', parentError.message)
+    } else {
+      await supabase.from('profiles').update({ school_id: campusId }).eq('id', profileId)
+    }
+  }
+
+  // 4. Mark as approved
   const { data: updated, error: updateError } = await supabase
     .from('pending_signups')
     .update({
@@ -257,7 +325,7 @@ export async function approvePendingSignup(
 
   if (updateError) throw updateError
 
-  // 4. Generate login credentials and store them on the profile
+  // 6. Generate login credentials and store them on the profile
   let plainPassword: string | undefined
   try {
     const creds = await generateCredentials()
@@ -280,7 +348,7 @@ export async function approvePendingSignup(
     // Non-fatal — user can still log in with their signup password
   }
 
-  // 5. Send approval email to user (non-blocking — never breaks the approval)
+  // 7. Send approval email to user (non-blocking — never breaks the approval)
   sendApprovalEmail(row.school_id, row.email, row.first_name, row.role).catch(() => {})
 
   return { profile, pendingSignup: stripPasswordHash(updated) as PendingSignup, plainPassword }

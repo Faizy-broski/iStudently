@@ -247,7 +247,20 @@ export default function TeachersPage() {
                         >
                           <TableCell className="font-medium">{teacher.employee_number}</TableCell>
                           <TableCell className="max-w-sm">
-                            <div className="truncate">{fullName}</div>
+                            <div className="flex items-center gap-3">
+                              <div className="h-9 w-9 rounded-full shrink-0 overflow-hidden bg-linear-to-br from-[#57A3CC] to-[#022172] flex items-center justify-center text-white font-semibold text-sm">
+                                {teacher.profile?.profile_photo_url ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={teacher.profile.profile_photo_url} alt={fullName} className="w-full h-full object-cover" />
+                                ) : (
+                                  `${teacher.profile?.first_name?.[0] || ''}${teacher.profile?.last_name?.[0] || ''}`
+                                )}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="font-medium truncate">{fullName}</div>
+                                <div className="text-xs text-muted-foreground truncate">{teacher.profile?.email}</div>
+                              </div>
+                            </div>
                           </TableCell>
                           <TableCell className="max-w-xs">
                             <div className="truncate">{teacher.department || t("dash")}</div>
