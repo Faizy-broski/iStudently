@@ -90,6 +90,7 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({});
   const [showPassword, setShowPassword] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [uniqueUserNum] = useState(() => Math.floor(1000 + Math.random() * 9000));
 
   const handleCopy = (text: string, fieldName: string) => {
     navigator.clipboard.writeText(text);
@@ -113,7 +114,7 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
     email: "",
     phone: "",
     username: "",
-    password: Math.random().toString(36).slice(-8),
+    password: Math.floor(10000000 + Math.random() * 90000000).toString(),
     role: "teacher",
     status: "active",
     custom_fields: {}
@@ -225,13 +226,14 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
     }
   }, [editingTeacher, formData.employee_number])
 
-  // Auto-generate username from first_name.last_name when names change
+  // Auto-generate username from first_name+last_name+unique number when names change
   useEffect(() => {
     if (!editingTeacher && formData.first_name && formData.last_name) {
-      const generated = `${formData.first_name.toLowerCase().replace(/\s+/g, '')}.${formData.last_name.toLowerCase().replace(/\s+/g, '')}`
-      setFormData(prev => ({ ...prev, username: generated }))
+      const cleanFirst = formData.first_name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const cleanLast = formData.last_name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      setFormData(prev => ({ ...prev, username: `${cleanFirst}${cleanLast}${uniqueUserNum}` }));
     }
-  }, [formData.first_name, formData.last_name, editingTeacher])
+  }, [formData.first_name, formData.last_name, editingTeacher, uniqueUserNum]);
 
   const updateFormData = (field: keyof teachersApi.CreateStaffDTO, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));

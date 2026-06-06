@@ -79,9 +79,11 @@ async function upsertSchoolSettings(schoolId: string, patch: Record<string, unkn
     .maybeSingle()
 
   if (existing?.id) {
-    await supabase.from('school_settings').update(patch).eq('id', existing.id)
+    const { error } = await supabase.from('school_settings').update(patch).eq('id', existing.id)
+    if (error) throw new Error(`Failed to update school settings: ${error.message}`)
   } else {
-    await supabase.from('school_settings').insert({ school_id: schoolId, campus_id: null, ...patch })
+    const { error } = await supabase.from('school_settings').insert({ school_id: schoolId, campus_id: null, ...patch })
+    if (error) throw new Error(`Failed to insert school settings: ${error.message}`)
   }
 }
 
@@ -195,12 +197,6 @@ export const getExperiment = async (req: AuthRequest, res: Response): Promise<vo
   const schoolId = req.profile?.school_id
   const userToken = (req.headers['x-vlaby-token'] as string | undefined) || null
 
-  // Resolve token: user's own first, then school-level fallback
-  let vlabyToken = userToken
-  if (!vlabyToken && schoolId) {
-    vlabyToken = await getSchoolVlabyToken(schoolId)
-  }
-
   const { id } = req.params
   if (!id || !/^\d+$/.test(id)) {
     res.status(400).json({ success: false, error: 'Invalid experiment ID' })
@@ -208,6 +204,18 @@ export const getExperiment = async (req: AuthRequest, res: Response): Promise<vo
   }
 
   try {
+    // Resolve token: user's own first, then school-level fallback
+    let vlabyToken = userToken
+    if (!vlabyToken && schoolId) {
+      vlabyToken = await getSchoolVlabyToken(schoolId)
+    }
+
+    // No token available at all — school has not connected VLaby yet
+    if (!vlabyToken) {
+      res.json({ success: false, error: 'No VLaby account connected.', code: 'VLABY_TOKEN_REQUIRED' })
+      return
+    }
+
     const { httpStatus, body } = await proxyGet(
       `${VLABY_BASE}/experiment/${id}`,
       vlabyToken,
@@ -216,9 +224,9 @@ export const getExperiment = async (req: AuthRequest, res: Response): Promise<vo
 
     if (!body?.status) {
       if (httpStatus === 401) {
-        // Return 200 so the frontend apiRequest doesn't misinterpret this as a
-        // Studently session expiry (which triggers a redirect to /auth/login)
-        res.json({ success: false, error: 'No VLaby account connected.', code: 'VLABY_TOKEN_REQUIRED' })
+        // Token exists but VLaby rejected it — session expired; return 200 so
+        // the frontend doesn't misinterpret this as a Studently session expiry
+        res.json({ success: false, error: 'VLaby session expired. Ask the admin to reconnect.', code: 'VLABY_TOKEN_EXPIRED' })
         return
       }
       res.status(502).json({ success: false, error: body?.message || body?.msg || 'Failed to fetch experiment' })

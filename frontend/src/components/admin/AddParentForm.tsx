@@ -94,6 +94,7 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string>('');
+  const [uniqueUserNum] = useState(() => Math.floor(1000 + Math.random() * 9000));
 
   const isLastTab = activeTab === "preferences";
 
@@ -132,7 +133,7 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
     emergencyContactPhone: "",
 
     username: "",
-    password: Math.random().toString(36).slice(-8),
+    password: Math.floor(10000000 + Math.random() * 90000000).toString(),
     status: "active",
     notes: "",
 
@@ -185,18 +186,12 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
 
   // Auto-generate username logic
   useEffect(() => {
-    if (!formData.username) {
-      let generatedUsername = '';
-      if (formData.primaryEmail) {
-        generatedUsername = formData.primaryEmail.split('@')[0];
-      } else if (formData.primaryFirstName && formData.primaryLastName) {
-        generatedUsername = `${formData.primaryFirstName.toLowerCase()}.${formData.primaryLastName.toLowerCase()}`;
-      }
-      if (generatedUsername && generatedUsername !== formData.username) {
-        setFormData(prev => ({ ...prev, username: generatedUsername }));
-      }
+    if (formData.primaryFirstName && formData.primaryLastName) {
+      const cleanFirst = formData.primaryFirstName.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const cleanLast = formData.primaryLastName.toLowerCase().replace(/[^a-z0-9]/g, '');
+      setFormData(prev => ({ ...prev, username: `${cleanFirst}${cleanLast}${uniqueUserNum}` }));
     }
-  }, [formData.primaryEmail, formData.primaryFirstName, formData.primaryLastName, formData.username]);
+  }, [formData.primaryFirstName, formData.primaryLastName, uniqueUserNum]);
 
   const handleStandardChange = (id: string, value: any) => {
     setFormData(prev => ({ ...prev, [id]: value }));

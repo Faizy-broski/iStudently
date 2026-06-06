@@ -3,12 +3,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Plus, Minus, Save, Globe, ExternalLink, Loader2, Users, ChevronDown, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { useTranslations } from 'next-intl'
 import { useCampus } from '@/context/CampusContext'
 import * as embeddedApi from '@/lib/api/embedded-resources'
 import * as academicsApi from '@/lib/api/academics'
@@ -36,9 +38,12 @@ interface GradeWithSections extends academicsApi.GradeLevel {
 interface StudentInfo { id: string; name: string }
 
 const ALL_ROLES = ['admin', 'teacher', 'student', 'parent', 'librarian']
-const ROLE_LABELS: Record<string, string> = {
-  admin: 'Admin', teacher: 'Teacher', student: 'Student',
-  parent: 'Parent', librarian: 'Librarian',
+const ROLE_COLORS: Record<string, string> = {
+  admin:     'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
+  teacher:   'bg-amber-100  text-amber-700  dark:bg-amber-900/40  dark:text-amber-300',
+  student:   'bg-green-100  text-green-700  dark:bg-green-900/40  dark:text-green-300',
+  parent:    'bg-blue-100   text-blue-700   dark:bg-blue-900/40   dark:text-blue-300',
+  librarian: 'bg-rose-100   text-rose-700   dark:bg-rose-900/40   dark:text-rose-300',
 }
 
 function isValidUrl(v: string) {
@@ -47,15 +52,22 @@ function isValidUrl(v: string) {
 
 // ── Audience Popover ───────────────────────────────────────────────────────────
 
+type T = ReturnType<typeof useTranslations>
+
 interface AudiencePopoverProps {
   row: RowState
   gradesWithSections: GradeWithSections[]
   teachers: Staff[]
   campusId: string
+  t: T
   onChange: (patch: Partial<RowState>) => void
 }
 
-function AudiencePopover({ row, gradesWithSections, teachers, campusId, onChange }: AudiencePopoverProps) {
+function AudiencePopover({ row, gradesWithSections, teachers, campusId, t, onChange }: AudiencePopoverProps) {
+  const roleLabels: Record<string, string> = {
+    admin: t('role_admin'), teacher: t('role_teacher'), student: t('role_student'),
+    parent: t('role_parent'), librarian: t('role_librarian'),
+  }
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const [sectionStudentsMap, setSectionStudentsMap] = useState<Record<string, StudentInfo[]>>({})
@@ -165,6 +177,7 @@ function AudiencePopover({ row, gradesWithSections, teachers, campusId, onChange
     onChange({ visible_to_teacher_ids: next })
   }
 
+  const allRoles = row.visible_to_roles.length === 0
   const hasStudentRole = row.visible_to_roles.includes('student')
   const hasParentRole = row.visible_to_roles.includes('parent')
   const showStudentSub = hasStudentRole || hasParentRole
@@ -176,35 +189,53 @@ function AudiencePopover({ row, gradesWithSections, teachers, campusId, onChange
     if (activeTab === 'teachers' && !showTeacherSub) setActiveTab('roles')
   }, [showStudentSub, showTeacherSub, activeTab])
 
-  const summary = allRoles ? 'All roles' : row.visible_to_roles.map(r => ROLE_LABELS[r] ?? r).join(', ')
-
-  const studentTabLabel = hasStudentRole && hasParentRole ? 'Students & Parents' 
-                        : hasParentRole ? 'Parents' 
-                        : 'Students'
+  const studentTabLabel = hasStudentRole && hasParentRole ? t('tab_students_parents')
+                        : hasParentRole ? t('tab_parents')
+                        : t('tab_students')
 
   return (
     <div className="relative" ref={ref}>
-      <button
-        type="button"
+      {/* Trigger — selected roles as removable badges, matching the links page UI */}
+      <div
+        className="flex flex-wrap items-center gap-1 min-h-9 px-2 py-1.5 border rounded-md cursor-pointer bg-background hover:border-blue-400 transition-colors"
         onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-gray-200 bg-white hover:border-blue-400 text-xs text-gray-700 w-full min-w-[140px] justify-between"
       >
-        <span className="flex items-center gap-1 truncate">
-          <Users className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-          <span className="truncate">{summary}</span>
-        </span>
-        <ChevronDown className="h-3 w-3 shrink-0 text-gray-400" />
-      </button>
+        {allRoles ? (
+          <Badge className="flex items-center gap-1 text-xs border-0 bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+            {t('all_roles')}
+          </Badge>
+        ) : (
+          row.visible_to_roles.map(role => (
+            <Badge
+              key={role}
+              className={`flex items-center gap-1 text-xs border-0 ${ROLE_COLORS[role] ?? 'bg-gray-100 text-gray-700'}`}
+            >
+              <button
+                type="button"
+                onClick={e => {
+                  e.stopPropagation()
+                  onChange({ visible_to_roles: row.visible_to_roles.filter(r => r !== role) })
+                }}
+                className="hover:opacity-70"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+              {roleLabels[role] ?? role}
+            </Badge>
+          ))
+        )}
+        <ChevronDown className="h-3 w-3 text-muted-foreground ms-auto shrink-0" />
+      </div>
 
       {open && (
-        <div className="absolute z-50 top-full right-0 mt-1 w-[360px] bg-white border rounded-lg shadow-xl p-0 overflow-hidden flex flex-col">
+        <div className="absolute z-50 top-full right-0 mt-1 w-[360px] bg-white dark:bg-gray-900 border rounded-lg shadow-xl p-0 overflow-hidden flex flex-col">
           {/* Tab Navigation */}
           <div className="flex border-b bg-gray-50 dark:bg-gray-800">
-            <button 
-              onClick={() => setActiveTab('roles')} 
+            <button
+              onClick={() => setActiveTab('roles')}
               className={`flex-1 px-2 py-2.5 text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide transition-colors border-b-2 ${activeTab === 'roles' ? 'border-blue-600 text-blue-700 bg-white dark:bg-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
             >
-              Roles
+              {t('tab_roles')}
             </button>
             {showStudentSub && (
               <button 
@@ -215,11 +246,11 @@ function AudiencePopover({ row, gradesWithSections, teachers, campusId, onChange
               </button>
             )}
             {showTeacherSub && (
-              <button 
-                onClick={() => setActiveTab('teachers')} 
+              <button
+                onClick={() => setActiveTab('teachers')}
                 className={`flex-1 px-2 py-2.5 text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide transition-colors border-b-2 ${activeTab === 'teachers' ? 'border-blue-600 text-blue-700 bg-white dark:bg-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
               >
-                Teachers
+                {t('tab_teachers')}
               </button>
             )}
           </div>
@@ -228,14 +259,14 @@ function AudiencePopover({ row, gradesWithSections, teachers, campusId, onChange
             {/* Roles Tab */}
             {activeTab === 'roles' && (
               <div className="space-y-4">
-                <p className="text-[11px] text-gray-500">Select which roles can access this resource.</p>
+                <p className="text-[11px] text-gray-500">{t('audience_roles_help')}</p>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => onChange({ visible_to_roles: [], published_grade_ids: [], published_section_ids: [], visible_to_teacher_ids: [], visible_to_student_ids: [] })}
                     className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${allRoles ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white border-gray-300 text-gray-700 hover:border-blue-400 dark:bg-gray-800 dark:text-gray-300'}`}
                   >
-                    All Roles
+                    {t('all_roles')}
                   </button>
                   {ALL_ROLES.map(role => (
                     <button
@@ -244,7 +275,7 @@ function AudiencePopover({ row, gradesWithSections, teachers, campusId, onChange
                       onClick={() => toggleRole(role)}
                       className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${row.visible_to_roles.includes(role) ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white border-gray-300 text-gray-700 hover:border-blue-400 dark:bg-gray-800 dark:text-gray-300'}`}
                     >
-                      {ROLE_LABELS[role]}
+                      {roleLabels[role]}
                     </button>
                   ))}
                 </div>
@@ -255,14 +286,14 @@ function AudiencePopover({ row, gradesWithSections, teachers, campusId, onChange
             {activeTab === 'students' && showStudentSub && (
               <div className="space-y-3">
                 <p className="text-[10px] text-gray-500 leading-tight">
-                  {hasParentRole && !hasStudentRole 
-                    ? "Empty = all parents. Select grade(s), section(s), or specific students to target their parents."
+                  {hasParentRole && !hasStudentRole
+                    ? t('audience_parents_help')
                     : hasStudentRole && hasParentRole
-                    ? "Empty = all. Target specific students (and their parents) by grade, section, or individual."
-                    : "Empty = all students. Select grade(s), section(s), or specific students to target individuals."}
+                    ? t('audience_students_parents_help')
+                    : t('audience_students_help')}
                 </p>
                 {gradesWithSections.length === 0 ? (
-                  <p className="text-xs text-gray-400 italic">No grades configured</p>
+                  <p className="text-xs text-gray-400 italic">{t('no_grades_configured')}</p>
                 ) : (
                   <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                     {gradesWithSections.map(grade => {
@@ -301,12 +332,12 @@ function AudiencePopover({ row, gradesWithSections, teachers, campusId, onChange
                               {grade.sections.filter(sec => row.published_section_ids.includes(sec.id)).map(sec => (
                                 <div key={`students-${sec.id}`} className="mt-1.5 p-2 bg-white dark:bg-gray-900 rounded border border-gray-100 dark:border-gray-800">
                                   <p className="text-[10px] text-gray-400 mb-1.5 font-medium">
-                                    {sec.name} — specific students (empty = all):
+                                    {t('section_students_label', { section: sec.name })}
                                   </p>
                                   {loadingStudents.has(sec.id) ? (
-                                    <p className="text-[10px] text-gray-400 italic">Loading…</p>
+                                    <p className="text-[10px] text-gray-400 italic">{t('loading_students')}</p>
                                   ) : (sectionStudentsMap[sec.id] || []).length === 0 ? (
-                                    <p className="text-[10px] text-gray-400 italic">No students found</p>
+                                    <p className="text-[10px] text-gray-400 italic">{t('no_students_found')}</p>
                                   ) : (
                                     <div className="flex flex-wrap gap-1.5">
                                       {(sectionStudentsMap[sec.id] || []).map(student => {
@@ -339,19 +370,19 @@ function AudiencePopover({ row, gradesWithSections, teachers, campusId, onChange
             {/* Teacher sub-filter */}
             {activeTab === 'teachers' && showTeacherSub && (
               <div className="space-y-3">
-                <p className="text-[10px] text-gray-500">Empty = all teachers. Select specific teachers to restrict access.</p>
+                <p className="text-[10px] text-gray-500">{t('audience_teachers_help')}</p>
                 {teachers.length === 0 ? (
-                  <p className="text-xs text-gray-400 italic">No teachers found</p>
+                  <p className="text-xs text-gray-400 italic">{t('no_teachers_found')}</p>
                 ) : (
                   <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1">
-                    {teachers.map(t => {
-                      const name = `${t.profile?.first_name ?? ''} ${t.profile?.last_name ?? ''}`.trim() || t.employee_number
-                      const sel = row.visible_to_teacher_ids.includes(t.id)
+                    {teachers.map(teacher => {
+                      const name = `${teacher.profile?.first_name ?? ''} ${teacher.profile?.last_name ?? ''}`.trim() || teacher.employee_number
+                      const sel = row.visible_to_teacher_ids.includes(teacher.id)
                       return (
                         <button
-                          key={t.id}
+                          key={teacher.id}
                           type="button"
-                          onClick={() => toggleTeacher(t.id)}
+                          onClick={() => toggleTeacher(teacher.id)}
                           className={`w-full text-left px-3 py-2 rounded text-xs font-medium transition-colors border ${sel ? 'bg-amber-500 text-white border-amber-600 shadow-sm' : 'bg-white border-gray-200 text-gray-700 hover:bg-amber-50 hover:border-amber-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700'}`}
                         >
                           {name}
@@ -370,7 +401,7 @@ function AudiencePopover({ row, gradesWithSections, teachers, campusId, onChange
               onClick={() => setOpen(false)}
               className="w-full text-xs font-semibold text-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white py-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
             >
-              Done
+              {t('done')}
             </button>
           </div>
         </div>
@@ -381,41 +412,35 @@ function AudiencePopover({ row, gradesWithSections, teachers, campusId, onChange
 
 // ── Audience Summary Badges ────────────────────────────────────────────────────
 
+// Roles are shown in the trigger chips; this only shows grade/section/teacher sub-filters.
 function AudienceSummaryBadges({ row, gradesWithSections, teachers }: {
   row: RowState
   gradesWithSections: GradeWithSections[]
   teachers: Staff[]
 }) {
-  const badges: { label: string; color: string }[] = []
-
-  if (row.visible_to_roles.length === 0) {
-    badges.push({ label: 'All roles', color: 'bg-gray-100 text-gray-600' })
-  } else {
-    for (const role of row.visible_to_roles) {
-      badges.push({ label: ROLE_LABELS[role] ?? role, color: 'bg-blue-100 text-blue-700' })
-    }
-  }
+  const items: { label: string; color: string }[] = []
 
   if (row.visible_to_student_ids.length > 0) {
-    badges.push({ label: `${row.visible_to_student_ids.length} student${row.visible_to_student_ids.length !== 1 ? 's' : ''}`, color: 'bg-orange-100 text-orange-700' })
+    items.push({ label: `${row.visible_to_student_ids.length} student${row.visible_to_student_ids.length !== 1 ? 's' : ''}`, color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' })
   } else if (row.published_section_ids.length > 0) {
     const names = gradesWithSections.flatMap(g => g.sections).filter(s => row.published_section_ids.includes(s.id)).map(s => s.name)
-    names.forEach(n => badges.push({ label: `§ ${n}`, color: 'bg-teal-100 text-teal-700' }))
+    names.forEach(n => items.push({ label: `§ ${n}`, color: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300' }))
   } else if (row.published_grade_ids.length > 0) {
     const names = gradesWithSections.filter(g => row.published_grade_ids.includes(g.id)).map(g => g.name)
-    names.forEach(n => badges.push({ label: n, color: 'bg-indigo-100 text-indigo-700' }))
+    names.forEach(n => items.push({ label: n, color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' }))
   }
 
   if (row.visible_to_teacher_ids.length > 0) {
     const names = teachers.filter(t => row.visible_to_teacher_ids.includes(t.id))
       .map(t => `${t.profile?.first_name ?? ''} ${t.profile?.last_name ?? ''}`.trim() || t.employee_number)
-    names.forEach(n => badges.push({ label: `👤 ${n}`, color: 'bg-amber-100 text-amber-700' }))
+    names.forEach(n => items.push({ label: `👤 ${n}`, color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' }))
   }
 
+  if (items.length === 0) return null
   return (
     <div className="flex flex-wrap gap-1 mt-1">
-      {badges.map((b, i) => (
-        <span key={i} className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${b.color}`}>{b.label}</span>
+      {items.map((item, i) => (
+        <span key={i} className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${item.color}`}>{item.label}</span>
       ))}
     </div>
   )
@@ -426,6 +451,7 @@ function AudienceSummaryBadges({ row, gradesWithSections, teachers }: {
 export default function EmbeddedResourcesPage() {
   const campusCtx     = useCampus()
   const selectedCampus = campusCtx?.selectedCampus
+  const t = useTranslations('school.resources.embedded')
 
   const [rows,               setRows]               = useState<RowState[]>([])
   const [gradesWithSections, setGradesWithSections] = useState<GradeWithSections[]>([])
@@ -500,12 +526,12 @@ export default function EmbeddedResourcesPage() {
 
   const saveAll = async () => {
     const dirty = rows.filter(r => r.dirty)
-    if (dirty.length === 0) { toast.info('No changes to save'); return }
+    if (dirty.length === 0) { toast.info(t('msg_no_changes')); return }
 
     for (const r of dirty) {
       if (r.id !== 'new') {
-        if (!r.title.trim()) { toast.error('Title cannot be empty'); return }
-        if (!r.url.trim() || !isValidUrl(r.url)) { toast.error(`Invalid URL: ${r.url}`); return }
+        if (!r.title.trim()) { toast.error(t('msg_title_empty')); return }
+        if (!r.url.trim() || !isValidUrl(r.url)) { toast.error(t('msg_url_invalid', { url: r.url })); return }
       }
     }
 
@@ -527,15 +553,15 @@ export default function EmbeddedResourcesPage() {
         if (!r.title.trim() || !r.url.trim()) continue
         if (!isValidUrl(r.url)) { toast.error(`Invalid URL: ${r.url}`); hadError = true; continue }
         const res = await embeddedApi.createEmbeddedResource({ ...payload, campus_id: selectedCampus?.id })
-        if (!res.success) { toast.error(res.error || 'Create failed'); hadError = true }
+        if (!res.success) { toast.error(res.error || t('msg_create_error')); hadError = true }
       } else {
         const res = await embeddedApi.updateEmbeddedResource(r.id, payload, selectedCampus?.id)
-        if (!res.success) { toast.error(res.error || 'Update failed'); hadError = true }
+        if (!res.success) { toast.error(res.error || t('msg_update_error')); hadError = true }
       }
     }
 
     setSaving(false)
-    if (!hadError) toast.success('Saved successfully')
+    if (!hadError) toast.success(t('msg_save_success'))
     await fetchData()
   }
 
@@ -545,10 +571,10 @@ export default function EmbeddedResourcesPage() {
     if (!deleteTarget) return
     const res = await embeddedApi.deleteEmbeddedResource(deleteTarget, selectedCampus?.id)
     if (res.success) {
-      toast.success('Deleted')
+      toast.success(t('msg_delete_success'))
       setRows(prev => prev.filter(r => r.id !== deleteTarget))
     } else {
-      toast.error(res.error || 'Delete failed')
+      toast.error(res.error || t('msg_delete_error'))
     }
     setDeleteTarget(null)
   }
@@ -564,20 +590,19 @@ export default function EmbeddedResourcesPage() {
             <Globe className="h-6 w-6 text-blue-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Embedded Resources</h1>
-            <p className="text-sm text-gray-500">Add external websites with granular audience targeting</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('title')}</h1>
+            <p className="text-sm text-gray-500">{t('subtitle')}</p>
           </div>
         </div>
         <Button onClick={saveAll} disabled={saving} className="gap-2">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? t('saving_button') : t('save_button')}
         </Button>
       </div>
 
       {/* Note */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-800 dark:bg-blue-950/30 dark:border-blue-900/50 dark:text-blue-300">
-        Add external websites. Use the <strong>Audience</strong> column to control which roles, grades, sections,
-        specific students, or teachers can see each resource.
+        {t('note_audience_banner')}
       </div>
 
       {/* Table */}
@@ -591,9 +616,9 @@ export default function EmbeddedResourcesPage() {
             <thead className="bg-gray-50 dark:bg-gray-800 border-b">
               <tr>
                 <th className="w-10 px-4 py-3" />
-                <th className="px-4 py-3 text-left font-semibold text-blue-600 uppercase text-xs tracking-wide w-48">Title</th>
-                <th className="px-4 py-3 text-left font-semibold text-blue-600 uppercase text-xs tracking-wide">Link</th>
-                <th className="px-4 py-3 text-left font-semibold text-blue-600 uppercase text-xs tracking-wide w-72">Audience</th>
+                <th className="px-4 py-3 text-left font-semibold text-blue-600 uppercase text-xs tracking-wide w-48">{t('th_title_header')}</th>
+                <th className="px-4 py-3 text-left font-semibold text-blue-600 uppercase text-xs tracking-wide">{t('th_link_header')}</th>
+                <th className="px-4 py-3 text-left font-semibold text-blue-600 uppercase text-xs tracking-wide w-72">{t('th_audience')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -614,7 +639,7 @@ export default function EmbeddedResourcesPage() {
                     <Input
                       value={row.title}
                       onChange={e => updateRow(row.id, { title: e.target.value })}
-                      placeholder="Resource title"
+                      placeholder={t('resource_title_placeholder')}
                       maxLength={60}
                       className="h-8 text-sm"
                     />
@@ -627,13 +652,13 @@ export default function EmbeddedResourcesPage() {
                         <a href={row.url} target="_blank" rel="noopener noreferrer"
                           className="text-blue-600 hover:underline flex items-center gap-1 shrink-0">
                           <ExternalLink className="h-3.5 w-3.5" />
-                          Link
+                          {t('link_label')}
                         </a>
                       )}
                       <Input
                         value={row.url}
                         onChange={e => updateRow(row.id, { url: e.target.value })}
-                        placeholder="https://..."
+                        placeholder={t('url_placeholder')}
                         className="h-8 text-sm flex-1"
                       />
                     </div>
@@ -646,6 +671,7 @@ export default function EmbeddedResourcesPage() {
                       gradesWithSections={gradesWithSections}
                       teachers={teachers}
                       campusId={selectedCampus?.id ?? ''}
+                      t={t}
                       onChange={patch => updateRow(row.id, patch)}
                     />
                     <AudienceSummaryBadges row={row} gradesWithSections={gradesWithSections} teachers={teachers} />
@@ -662,13 +688,13 @@ export default function EmbeddedResourcesPage() {
                       <Plus className="h-3.5 w-3.5" />
                     </button>
                   </td>
-                  <td colSpan={3} className="px-4 py-3 text-sm text-gray-400 italic">Add a new resource…</td>
+                  <td colSpan={3} className="px-4 py-3 text-sm text-gray-400 italic">{t('add_resource_prompt')}</td>
                 </tr>
               )}
 
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="text-center py-12 text-gray-400 italic">No embedded resources yet. Click + to add one.</td>
+                  <td colSpan={4} className="text-center py-12 text-gray-400 italic">{t('no_resources_empty')}</td>
                 </tr>
               )}
             </tbody>
@@ -680,7 +706,7 @@ export default function EmbeddedResourcesPage() {
       <div className="flex justify-center">
         <Button onClick={saveAll} disabled={saving} size="lg" className="gap-2 px-10">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? t('saving_button') : t('save_button')}
         </Button>
       </div>
 
@@ -688,12 +714,12 @@ export default function EmbeddedResourcesPage() {
       <AlertDialog open={!!deleteTarget} onOpenChange={o => !o && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this resource?</AlertDialogTitle>
-            <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
+            <AlertDialogTitle>{t('delete_confirm_title')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('delete_confirm_desc')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">{t('btn_delete')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

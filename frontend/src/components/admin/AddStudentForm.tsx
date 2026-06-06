@@ -145,8 +145,8 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
   const [activeTab, setActiveTab] = useState("personal");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({});
+  const [uniqueUserNum] = useState(() => Math.floor(1000 + Math.random() * 9000));
 
   // Keep for backward compatibility if needed
   const [customFieldTemplates, setCustomFieldTemplates] = useState<CustomFieldCategory[]>([]);
@@ -366,7 +366,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
     // System & Identity
     studentId: `JEHZ-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 1000)).padStart(3, "0")}`,
     username: "",
-    password: Math.random().toString(36).slice(-8),
+    password: Math.floor(10000000 + Math.random() * 90000000).toString(),
     status: "active",
 
     // Personal Information (4 Name Fields)
@@ -411,13 +411,14 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Auto-generate username when first name or last name changes
+  // Auto-generate username from names and unique number
   useEffect(() => {
     if (formData.firstName && formData.lastName) {
-      const username = `${formData.firstName.toLowerCase()}.${formData.lastName.toLowerCase()}`.replace(/\s+/g, '');
-      updateFormData("username", username);
+      const cleanFirst = formData.firstName.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const cleanLast = formData.lastName.toLowerCase().replace(/[^a-z0-9]/g, '');
+      updateFormData("username", `${cleanFirst}${cleanLast}${uniqueUserNum}`);
     }
-  }, [formData.firstName, formData.lastName]);
+  }, [formData.firstName, formData.lastName, uniqueUserNum]);
 
   const updateNestedField = (parent: string, field: string, value: string) => {
     setFormData((prev) => ({

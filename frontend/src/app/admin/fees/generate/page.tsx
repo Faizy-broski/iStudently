@@ -333,10 +333,15 @@ export default function GenerateFeesPage() {
                         .status-paid { background: #d1fae5; color: #065f46; }
                         .status-overdue { background: #fee2e2; color: #991b1b; }
                         .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #666; }
-                        @media print { body { padding: 0; } }
+                        @media print { body { padding: 0; } .print-btn-container { display: none; } }
+                        .print-btn-container { text-align: center; margin-bottom: 20px; }
+                        .print-btn { padding: 10px 24px; background: #3d8fb5; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: 500; }
                     </style>
                 </head>
                 <body>
+                    <div class="print-btn-container">
+                        <button class="print-btn" onclick="window.print()">Print Challan</button>
+                    </div>
                     <div class="header">
                         <h1>FEE CHALLAN</h1>
                         <p>Academic Year: ${feeData.academic_year}</p>
@@ -425,10 +430,6 @@ export default function GenerateFeesPage() {
             `)
             printWindow.document.close()
             
-            // Auto-trigger print after a short delay
-            setTimeout(() => {
-                printWindow.print()
-            }, 500)
         } catch (error) {
             toast.error(t('failedPrintChallan'))
         }

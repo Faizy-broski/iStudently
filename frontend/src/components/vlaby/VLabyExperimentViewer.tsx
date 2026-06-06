@@ -26,6 +26,7 @@ export default function VLabyExperimentViewer({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [noAccount, setNoAccount] = useState(false)
+  const [tokenExpired, setTokenExpired] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -36,8 +37,11 @@ export default function VLabyExperimentViewer({
       setLoading(false)
 
       if (!res.success) {
-        if ((res as any).code === 'VLABY_TOKEN_REQUIRED') {
+        const code = (res as any).code
+        if (code === 'VLABY_TOKEN_REQUIRED') {
           setNoAccount(true)
+        } else if (code === 'VLABY_TOKEN_EXPIRED') {
+          setTokenExpired(true)
         } else {
           setError(res.error || 'Failed to load experiment')
         }
@@ -68,6 +72,23 @@ export default function VLabyExperimentViewer({
           <p className="font-semibold text-gray-800 dark:text-gray-100 mb-1">No VLaby account connected</p>
           <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm">
             Ask your school administrator to connect the school's VLaby account so experiments can be opened.
+          </p>
+        </div>
+        <Button variant="outline" onClick={() => router.push(backPath)}>
+          <ArrowLeft size={14} className="mr-1 rtl:rotate-180 rtl:ml-1 rtl:mr-0" /> Back to experiments
+        </Button>
+      </div>
+    )
+  }
+
+  if (tokenExpired) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[30vh] gap-4 text-center px-4">
+        <AlertCircle size={40} className="text-orange-400" />
+        <div>
+          <p className="font-semibold text-gray-800 dark:text-gray-100 mb-1">VLaby session expired</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm">
+            The school's VLaby session has expired. Ask your administrator to reconnect the VLaby account in Settings.
           </p>
         </div>
         <Button variant="outline" onClick={() => router.push(backPath)}>

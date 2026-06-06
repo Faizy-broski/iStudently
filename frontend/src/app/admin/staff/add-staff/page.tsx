@@ -46,13 +46,8 @@ import { getFieldOrders, DefaultFieldOrder } from '@/lib/utils/field-ordering'
 // Standard categories — custom fields in these are appended to their matching cards
 const STAFF_STANDARD_CATEGORIES = ['personal', 'employment', 'system']
 
-function generatePassword(firstName: string): string {
-    const cleanName = firstName.replace(/[^a-zA-Z]/g, '').slice(0, 4) || 'User'
-    const capitalizedName = cleanName.charAt(0).toUpperCase() + cleanName.slice(1).toLowerCase()
-    const randomNum = Math.floor(1000 + Math.random() * 9000)
-    const specialChars = ['!', '@', '#', '$']
-    const special = specialChars[Math.floor(Math.random() * specialChars.length)]
-    return `${capitalizedName}${randomNum}${special}`
+function generatePassword(): string {
+    return Math.floor(10000000 + Math.random() * 90000000).toString()
 }
 
 export default function AddStaffPage() {
@@ -66,6 +61,7 @@ export default function AddStaffPage() {
     const [loading, setLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
     const [copied, setCopied] = useState(false)
+    const [uniqueUserNum] = useState(() => Math.floor(1000 + Math.random() * 9000))
 
     // Custom fields state
     const [customFields, setCustomFields] = useState<CustomFieldDefinition[]>([])
@@ -130,25 +126,26 @@ export default function AddStaffPage() {
         loadCustomFields()
     }, [selectedCampus?.id])
 
-    // Auto-generate username from names
+    // Auto-generate username from names and unique number
     useEffect(() => {
         if (formData.first_name && formData.last_name) {
-            const generated = `${formData.first_name.toLowerCase().replace(/\s+/g, '')}.${formData.last_name.toLowerCase().replace(/\s+/g, '')}`
-            setFormData(prev => ({ ...prev, username: generated }))
+            const cleanFirst = formData.first_name.toLowerCase().replace(/[^a-z0-9]/g, '')
+            const cleanLast = formData.last_name.toLowerCase().replace(/[^a-z0-9]/g, '')
+            setFormData(prev => ({ ...prev, username: `${cleanFirst}${cleanLast}${uniqueUserNum}` }))
         }
-    }, [formData.first_name, formData.last_name])
+    }, [formData.first_name, formData.last_name, uniqueUserNum])
 
     // Auto-generate password when Librarian is selected
     useEffect(() => {
-        if (isLibrarian && formData.first_name && !formData.password) {
-            setFormData(prev => ({ ...prev, password: generatePassword(formData.first_name) }))
+        if (isLibrarian && !formData.password) {
+            setFormData(prev => ({ ...prev, password: generatePassword() }))
         }
-    }, [isLibrarian, formData.first_name])
+    }, [isLibrarian])
 
     const handleChange = (field: keyof CreateStaffDTO, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }))
-        if (field === 'title' && value?.toLowerCase() === 'librarian' && formData.first_name) {
-            setFormData(prev => ({ ...prev, [field]: value, password: generatePassword(formData.first_name) }))
+        if (field === 'title' && value?.toLowerCase() === 'librarian' && !formData.password) {
+            setFormData(prev => ({ ...prev, [field]: value, password: generatePassword() }))
         }
     }
 
@@ -419,7 +416,7 @@ export default function AddStaffPage() {
                                 <Input
                                     value={formData.username || ''}
                                     onChange={e => handleChange('username', e.target.value)}
-                                    placeholder="firstname.lastname"
+                                    placeholder="firstnamelastname1234"
                                 />
                                 <p className="text-xs text-muted-foreground">Staff use this to log in alongside their email.</p>
                             </div>

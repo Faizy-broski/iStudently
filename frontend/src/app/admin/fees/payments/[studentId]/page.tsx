@@ -145,18 +145,24 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                     .footer .date { font-size: 12px; color: #666; }
                     .footer .signature { text-align: center; }
                     .footer .signature-line { border-top: 1px solid #333; padding-top: 4px; margin-top: 48px; width: 200px; }
-                    @media print { .receipt:last-child { page-break-after: auto; } }
+                    .print-btn-container { text-align: center; margin-bottom: 20px; }
+                    .print-btn { padding: 10px 24px; background: #3d8fb5; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: 500; margin-top: 20px; }
+                    @media print { 
+                        .receipt:last-child { page-break-after: auto; }
+                        .print-btn-container { display: none; }
+                    }
                 </style>
             </head>
-            <body>${content.innerHTML}</body>
+            <body>
+                <div class="print-btn-container">
+                    <button class="print-btn" onclick="window.print()">Print Receipt</button>
+                </div>
+                ${content.innerHTML}
+            </body>
             </html>
         `)
         printWindow.document.close()
         printWindow.focus()
-        setTimeout(() => {
-            printWindow.print()
-            printWindow.close()
-        }, 250)
     }, [])
     const [saving, setSaving] = useState(false)
     const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null)

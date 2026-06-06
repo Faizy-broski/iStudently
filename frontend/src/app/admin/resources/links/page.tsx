@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { Plus, Minus, Search, Link2, Loader2, Save, X, Users, ChevronDown } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import { getResourceLinks, bulkSaveResourceLinks } from '@/lib/api/resource-links'
@@ -37,10 +38,6 @@ interface GradeWithSections extends academicsApi.GradeLevel {
 interface StudentInfo { id: string; name: string }
 
 const ALL_ROLES = ['admin', 'teacher', 'student', 'parent', 'librarian']
-const ROLE_LABELS: Record<string, string> = {
-  admin: 'Admin', teacher: 'Teacher', student: 'Student',
-  parent: 'Parent', librarian: 'Librarian',
-}
 const ROLE_COLORS: Record<string, string> = {
   admin:     'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
   teacher:   'bg-amber-100  text-amber-700  dark:bg-amber-900/40  dark:text-amber-300',
@@ -49,6 +46,8 @@ const ROLE_COLORS: Record<string, string> = {
   librarian: 'bg-rose-100   text-rose-700   dark:bg-rose-900/40   dark:text-rose-300',
 }
 
+type T = ReturnType<typeof useTranslations>
+
 // ── Audience Popover ───────────────────────────────────────────────────────────
 
 interface AudiencePopoverProps {
@@ -56,10 +55,15 @@ interface AudiencePopoverProps {
   gradesWithSections: GradeWithSections[]
   teachers: Staff[]
   campusId: string
+  t: T
   onChange: (patch: Partial<EditableLink>) => void
 }
 
-function AudiencePopover({ link, gradesWithSections, teachers, campusId, onChange }: AudiencePopoverProps) {
+function AudiencePopover({ link, gradesWithSections, teachers, campusId, t, onChange }: AudiencePopoverProps) {
+  const roleLabels: Record<string, string> = {
+    admin: t('role_admin'), teacher: t('role_teacher'), student: t('role_student'),
+    parent: t('role_parent'), librarian: t('role_librarian'),
+  }
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const [sectionStudentsMap, setSectionStudentsMap] = useState<Record<string, StudentInfo[]>>({})
@@ -179,12 +183,12 @@ function AudiencePopover({ link, gradesWithSections, teachers, campusId, onChang
   }, [showStudentSub, showTeacherSub, activeTab])
 
   const summary = link.visible_to.length === 0
-    ? 'No one'
-    : link.visible_to.map(r => ROLE_LABELS[r] ?? r).join(', ')
+    ? t('no_one')
+    : link.visible_to.map(r => roleLabels[r] ?? r).join(', ')
 
-  const studentTabLabel = hasStudentRole && hasParentRole ? 'Students & Parents' 
-                        : hasParentRole ? 'Parents' 
-                        : 'Students'
+  const studentTabLabel = hasStudentRole && hasParentRole ? t('tab_students_parents')
+                        : hasParentRole ? t('tab_parents')
+                        : t('tab_students')
 
   return (
     <div className="relative" ref={ref}>
@@ -194,7 +198,7 @@ function AudiencePopover({ link, gradesWithSections, teachers, campusId, onChang
         onClick={() => setOpen(v => !v)}
       >
         {link.visible_to.length === 0 ? (
-          <span className="text-muted-foreground text-xs px-1">Select roles…</span>
+          <span className="text-muted-foreground text-xs px-1">{t('select_roles')}</span>
         ) : (
           link.visible_to.map(role => (
             <Badge
@@ -208,7 +212,7 @@ function AudiencePopover({ link, gradesWithSections, teachers, campusId, onChang
               >
                 <X className="h-2.5 w-2.5" />
               </button>
-              {ROLE_LABELS[role] ?? role}
+              {roleLabels[role] ?? role}
             </Badge>
           ))
         )}
@@ -220,11 +224,11 @@ function AudiencePopover({ link, gradesWithSections, teachers, campusId, onChang
         <div className="absolute z-50 top-full right-0 mt-1 w-[360px] bg-white dark:bg-gray-900 border rounded-lg shadow-xl p-0 overflow-hidden flex flex-col">
           {/* Tab Navigation */}
           <div className="flex border-b bg-gray-50 dark:bg-gray-800">
-            <button 
-              onClick={() => setActiveTab('roles')} 
+            <button
+              onClick={() => setActiveTab('roles')}
               className={`flex-1 px-2 py-2.5 text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide transition-colors border-b-2 ${activeTab === 'roles' ? 'border-blue-600 text-blue-700 bg-white dark:bg-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
             >
-              Roles
+              {t('tab_roles')}
             </button>
             {showStudentSub && (
               <button 
@@ -235,11 +239,11 @@ function AudiencePopover({ link, gradesWithSections, teachers, campusId, onChang
               </button>
             )}
             {showTeacherSub && (
-              <button 
-                onClick={() => setActiveTab('teachers')} 
+              <button
+                onClick={() => setActiveTab('teachers')}
                 className={`flex-1 px-2 py-2.5 text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide transition-colors border-b-2 ${activeTab === 'teachers' ? 'border-blue-600 text-blue-700 bg-white dark:bg-gray-900' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
               >
-                Teachers
+                {t('tab_teachers')}
               </button>
             )}
           </div>
@@ -248,7 +252,7 @@ function AudiencePopover({ link, gradesWithSections, teachers, campusId, onChang
             {/* Roles Tab */}
             {activeTab === 'roles' && (
               <div className="space-y-4">
-                <p className="text-[11px] text-gray-500">Select which roles can access this link.</p>
+                <p className="text-[11px] text-gray-500">{t('audience_roles_help')}</p>
                 <div className="flex flex-wrap gap-2">
                   {ALL_ROLES.map(role => (
                     <button
@@ -261,7 +265,7 @@ function AudiencePopover({ link, gradesWithSections, teachers, campusId, onChang
                           : 'bg-white border-gray-300 text-gray-700 hover:border-blue-400 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300'
                       }`}
                     >
-                      {ROLE_LABELS[role]}
+                      {roleLabels[role]}
                     </button>
                   ))}
                 </div>
@@ -272,14 +276,14 @@ function AudiencePopover({ link, gradesWithSections, teachers, campusId, onChang
             {activeTab === 'students' && showStudentSub && (
               <div className="space-y-3">
                 <p className="text-[10px] text-gray-500 leading-tight">
-                  {hasParentRole && !hasStudentRole 
-                    ? "Empty = all parents. Select grade(s), section(s), or specific students to target their parents."
+                  {hasParentRole && !hasStudentRole
+                    ? t('audience_parents_help')
                     : hasStudentRole && hasParentRole
-                    ? "Empty = all. Target specific students (and their parents) by grade, section, or individual."
-                    : "Empty = all students. Select grade(s), section(s), or specific students to target individuals."}
+                    ? t('audience_students_parents_help')
+                    : t('audience_students_help')}
                 </p>
                 {gradesWithSections.length === 0 ? (
-                  <p className="text-xs text-gray-400 italic">No grades configured</p>
+                  <p className="text-xs text-gray-400 italic">{t('no_grades_configured')}</p>
                 ) : (
                   <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                     {gradesWithSections.map(grade => {
@@ -318,12 +322,12 @@ function AudiencePopover({ link, gradesWithSections, teachers, campusId, onChang
                               {grade.sections.filter(sec => link.visible_to_section_ids.includes(sec.id)).map(sec => (
                                 <div key={`students-${sec.id}`} className="mt-1.5 p-2 bg-white dark:bg-gray-900 rounded border border-gray-100 dark:border-gray-800">
                                   <p className="text-[10px] text-gray-400 mb-1.5 font-medium">
-                                    {sec.name} — specific students (empty = all):
+                                    {t('section_students_label', { section: sec.name })}
                                   </p>
                                   {loadingStudents.has(sec.id) ? (
-                                    <p className="text-[10px] text-gray-400 italic">Loading…</p>
+                                    <p className="text-[10px] text-gray-400 italic">{t('loading_students')}</p>
                                   ) : (sectionStudentsMap[sec.id] || []).length === 0 ? (
-                                    <p className="text-[10px] text-gray-400 italic">No students found</p>
+                                    <p className="text-[10px] text-gray-400 italic">{t('no_students_found')}</p>
                                   ) : (
                                     <div className="flex flex-wrap gap-1.5">
                                       {(sectionStudentsMap[sec.id] || []).map(student => {
@@ -356,19 +360,19 @@ function AudiencePopover({ link, gradesWithSections, teachers, campusId, onChang
             {/* Teacher sub-filter */}
             {activeTab === 'teachers' && showTeacherSub && (
               <div className="space-y-3">
-                <p className="text-[10px] text-gray-500">Empty = all teachers. Select specific teachers to restrict access.</p>
+                <p className="text-[10px] text-gray-500">{t('audience_teachers_help')}</p>
                 {teachers.length === 0 ? (
-                  <p className="text-xs text-gray-400 italic">No teachers found</p>
+                  <p className="text-xs text-gray-400 italic">{t('no_teachers_found')}</p>
                 ) : (
                   <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1">
-                    {teachers.map(t => {
-                      const name = `${t.profile?.first_name ?? ''} ${t.profile?.last_name ?? ''}`.trim() || t.employee_number
-                      const sel = link.visible_to_teacher_ids.includes(t.id)
+                    {teachers.map(teacher => {
+                      const name = `${teacher.profile?.first_name ?? ''} ${teacher.profile?.last_name ?? ''}`.trim() || teacher.employee_number
+                      const sel = link.visible_to_teacher_ids.includes(teacher.id)
                       return (
                         <button
-                          key={t.id}
+                          key={teacher.id}
                           type="button"
-                          onClick={() => toggleTeacher(t.id)}
+                          onClick={() => toggleTeacher(teacher.id)}
                           className={`w-full text-left px-3 py-2 rounded text-xs font-medium transition-colors border ${sel ? 'bg-amber-500 text-white border-amber-600 shadow-sm' : 'bg-white border-gray-200 text-gray-700 hover:bg-amber-50 hover:border-amber-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700'}`}
                         >
                           {name}
@@ -387,7 +391,7 @@ function AudiencePopover({ link, gradesWithSections, teachers, campusId, onChang
               onClick={() => setOpen(false)}
               className="w-full text-xs font-semibold text-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white py-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
             >
-              Done
+              {t('done')}
             </button>
           </div>
         </div>
@@ -442,6 +446,7 @@ export default function ResourceLinksPage() {
   useAuth()
   const campusCtx      = useCampus()
   const selectedCampus = campusCtx?.selectedCampus
+  const t = useTranslations('school.resources.links')
 
   const [editableLinks,      setEditableLinks]      = useState<EditableLink[]>([])
   const [initialized,        setInitialized]        = useState(false)
@@ -536,8 +541,8 @@ export default function ResourceLinksPage() {
 
   const handleSave = async () => {
     for (const link of editableLinks) {
-      if (!link.title.trim()) { toast.error('All links must have a title'); return }
-      if (!link.url.trim())   { toast.error('All links must have a URL');   return }
+      if (!link.title.trim()) { toast.error(t('msg_all_required')); return }
+      if (!link.url.trim())   { toast.error(t('msg_url_required')); return }
     }
 
     setSaving(true)
@@ -559,9 +564,9 @@ export default function ResourceLinksPage() {
       )
       setInitialized(false)
       mutate(cacheKey)
-      toast.success('Saved successfully')
+      toast.success(t('msg_save_success'))
     } catch {
-      toast.error('Failed to save')
+      toast.error(t('msg_save_error'))
     } finally {
       setSaving(false)
     }
@@ -576,14 +581,14 @@ export default function ResourceLinksPage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-[#022172] dark:text-white flex items-center gap-2">
             <Link2 className="h-7 w-7" />
-            Resources
+            {t('title')}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Add external links with granular audience targeting per role, grade, section, specific student, or teacher.
+            {t('subtitle')}
           </p>
         </div>
         <Button onClick={handleSave} disabled={saving} className="bg-[#008B8B] hover:bg-[#007070] text-white">
-          {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving…</> : <><Save className="h-4 w-4 mr-2" />Save</>}
+          {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t('saving_button')}</> : <><Save className="h-4 w-4 mr-2" />{t('save_button')}</>}
         </Button>
       </div>
 
@@ -592,12 +597,12 @@ export default function ResourceLinksPage() {
         {/* Card header */}
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <span className="text-sm text-muted-foreground">
-            {isLoading ? 'Loading…' : `${editableLinks.length} resource${editableLinks.length !== 1 ? 's' : ''}`}
+            {isLoading ? t('loading') : `${editableLinks.length} ${t('resource')}${editableLinks.length !== 1 ? 's' : ''}`}
           </span>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search…"
+              placeholder={t('search_placeholder')}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="pl-9 w-48"
@@ -616,9 +621,9 @@ export default function ResourceLinksPage() {
               <TableHeader>
                 <TableRow className="bg-gray-900 hover:bg-gray-900">
                   <TableHead className="w-10 text-white" />
-                  <TableHead className="text-white font-semibold w-44">Title</TableHead>
-                  <TableHead className="text-white font-semibold">Link</TableHead>
-                  <TableHead className="text-white font-semibold w-72">Visible To</TableHead>
+                  <TableHead className="text-white font-semibold w-44">{t('th_title')}</TableHead>
+                  <TableHead className="text-white font-semibold">{t('th_link')}</TableHead>
+                  <TableHead className="text-white font-semibold w-72">{t('th_visible_to')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -639,7 +644,7 @@ export default function ResourceLinksPage() {
                       <Input
                         value={link.title}
                         onChange={e => updateLink(idx, { title: e.target.value })}
-                        placeholder="Resource name"
+                        placeholder={t('resource_name_placeholder')}
                         className="max-w-xs"
                       />
                     </TableCell>
@@ -649,7 +654,7 @@ export default function ResourceLinksPage() {
                       <Input
                         value={link.url}
                         onChange={e => updateLink(idx, { url: e.target.value })}
-                        placeholder="https://…"
+                        placeholder={t('url_placeholder')}
                         className="max-w-md"
                       />
                     </TableCell>
@@ -661,6 +666,7 @@ export default function ResourceLinksPage() {
                         gradesWithSections={gradesWithSections}
                         teachers={teachers}
                         campusId={selectedCampus?.id ?? ''}
+                        t={t}
                         onChange={patch => updateLink(idx, patch)}
                       />
                       <SubFilterBadges
@@ -680,7 +686,7 @@ export default function ResourceLinksPage() {
                     </button>
                   </TableCell>
                   <TableCell colSpan={3} className="text-muted-foreground text-sm italic">
-                    Click + to add a new resource link
+                    {t('add_row_prompt')}
                   </TableCell>
                 </TableRow>
               </TableBody>
@@ -693,11 +699,11 @@ export default function ResourceLinksPage() {
       {deleteIdx !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setDeleteIdx(null)}>
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl p-6 w-80 space-y-4" onClick={e => e.stopPropagation()}>
-            <p className="font-semibold">Delete this resource link?</p>
-            <p className="text-sm text-muted-foreground">This cannot be undone.</p>
+            <p className="font-semibold">{t('delete_confirm_title')}</p>
+            <p className="text-sm text-muted-foreground">{t('delete_cannot_undo')}</p>
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setDeleteIdx(null)}>Cancel</Button>
-              <Button variant="destructive" onClick={handleDelete}>Delete</Button>
+              <Button variant="outline" onClick={() => setDeleteIdx(null)}>{t('cancel')}</Button>
+              <Button variant="destructive" onClick={handleDelete}>{t('btn_delete')}</Button>
             </div>
           </div>
         </div>
