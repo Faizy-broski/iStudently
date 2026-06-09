@@ -426,30 +426,30 @@ export default function PrintReceiptsPage() {
                     ) : filteredPayments.length === 0 ? (
                         <p className="text-muted-foreground text-center py-8">{t('noPayments')}</p>
                     ) : (
-                        <Table>
+                        <Table className="w-full text-sm bg-white dark:bg-slate-950">
                             <TableHeader>
-                                <TableRow className="bg-gray-100">
+                                <TableRow className="bg-gray-100 dark:bg-slate-800">
                                     <TableHead className="w-12">
                                         <Checkbox 
                                             checked={selectAll}
                                             onCheckedChange={handleSelectAll}
                                         />
                                     </TableHead>
-                                    <TableHead className="text-[#3d8fb5]">{t('student') || 'STUDENT'}</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">ID</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">{t('th_gradeLevel') || 'GRADE'}</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">{t('th_paymentDate')}</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">{t('th_receipt')}</TableHead>
-                                    <TableHead className="text-[#3d8fb5] text-right">{t('amountPaid')}</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">{t('th_method')}</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">{t('th_comment')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] dark:text-[#93c5fd]">{t('student') || 'STUDENT'}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] dark:text-[#93c5fd]">ID</TableHead>
+                                    <TableHead className="text-[#3d8fb5] dark:text-[#93c5fd]">{t('th_gradeLevel') || 'GRADE'}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] dark:text-[#93c5fd]">{t('th_paymentDate')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] dark:text-[#93c5fd]">{t('th_receipt')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] dark:text-[#93c5fd] text-right">{t('amountPaid')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] dark:text-[#93c5fd]">{t('th_method')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] dark:text-[#93c5fd]">{t('th_comment')}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {filteredPayments.map((payment, index) => (
                                     <TableRow 
                                         key={payment.id}
-                                        className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                                        className={index % 2 === 0 ? 'bg-white dark:bg-slate-950' : 'bg-gray-50 dark:bg-slate-900'}
                                     >
                                         <TableCell>
                                             <Checkbox 

@@ -141,87 +141,89 @@ export function CategorySidebar({
 
     return (
         <>
-            <div className="w-full space-y-1">
+            <div className="w-full">
                 <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                         Categories
                     </h3>
-                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={openCreate}>
-                        <Plus className="h-3.5 w-3.5" />
+                    <Button size="sm" variant="ghost" className="h-8" onClick={openCreate}>
+                        <Plus className="h-4 w-4 mr-2" /> New Category
                     </Button>
                 </div>
 
-                {/* All Documents */}
-                <button
-                    onClick={() => onSelectCategory(null)}
-                    className={cn(
-                        "w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors",
-                        selectedCategoryId === null
-                            ? "bg-primary/10 text-primary font-medium"
-                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                    )}
-                >
-                    <FolderOpen className="h-4 w-4 shrink-0" />
-                    <span className="truncate">All Documents</span>
-                    <Badge variant="secondary" className="ml-auto text-xs h-5 px-1.5">
-                        {categories.reduce((sum) => sum, categories.length)}
-                    </Badge>
-                </button>
+                <div className="flex flex-wrap gap-2 items-center">
+                    {/* All Documents */}
+                    <button
+                        onClick={() => onSelectCategory(null)}
+                        className={cn(
+                            "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-colors border",
+                            selectedCategoryId === null
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-background text-muted-foreground hover:bg-muted border-border"
+                        )}
+                    >
+                        <FolderOpen className="h-4 w-4 shrink-0" />
+                        <span className="whitespace-nowrap">All Documents</span>
+                        <Badge variant="secondary" className={cn("ml-1 text-xs h-5 px-1.5", selectedCategoryId === null ? "bg-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/20" : "")}>
+                            {categories.reduce((sum) => sum, categories.length)}
+                        </Badge>
+                    </button>
 
-                {isLoading ? (
-                    <div className="flex items-center justify-center py-4">
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    </div>
-                ) : (
-                    categories.map((cat) => (
-                        <div
-                            key={cat.id}
-                            className={cn(
-                                "group flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer",
-                                selectedCategoryId === cat.id
-                                    ? "bg-primary/10 text-primary font-medium"
-                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                            )}
-                            onClick={() => onSelectCategory(cat.id)}
-                        >
-                            <div
-                                className="h-3 w-3 rounded-full shrink-0 ring-1 ring-black/10"
-                                style={{ backgroundColor: cat.color_code || "#6B7280" }}
-                            />
-                            <span className="truncate flex-1">{cat.name}</span>
-                            <div className="hidden group-hover:flex items-center gap-0.5">
-                                <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-5 w-5"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        openEdit(cat);
-                                    }}
-                                >
-                                    <Pencil className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-5 w-5 text-destructive"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleDelete(cat);
-                                    }}
-                                >
-                                    <Trash2 className="h-3 w-3" />
-                                </Button>
-                            </div>
+                    {isLoading ? (
+                        <div className="flex items-center justify-center py-2 px-4">
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                         </div>
-                    ))
-                )}
+                    ) : (
+                        categories.map((cat) => (
+                            <div
+                                key={cat.id}
+                                className={cn(
+                                    "group flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-colors cursor-pointer border",
+                                    selectedCategoryId === cat.id
+                                        ? "bg-primary/10 text-primary border-primary/30 font-medium"
+                                        : "bg-background text-muted-foreground hover:bg-muted border-border"
+                                )}
+                                onClick={() => onSelectCategory(cat.id)}
+                            >
+                                <div
+                                    className="h-3 w-3 rounded-full shrink-0 ring-1 ring-black/10"
+                                    style={{ backgroundColor: cat.color_code || "#6B7280" }}
+                                />
+                                <span className="whitespace-nowrap max-w-[150px] truncate">{cat.name}</span>
+                                <div className="hidden group-hover:flex items-center gap-0.5 ml-1">
+                                    <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-5 w-5 rounded-full"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            openEdit(cat);
+                                        }}
+                                    >
+                                        <Pencil className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-5 w-5 rounded-full text-destructive hover:bg-destructive/10"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDelete(cat);
+                                        }}
+                                    >
+                                        <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                            </div>
+                        ))
+                    )}
 
-                {!isLoading && categories.length === 0 && (
-                    <p className="text-xs text-muted-foreground text-center py-3">
-                        No categories yet. Click + to create one.
-                    </p>
-                )}
+                    {!isLoading && categories.length === 0 && (
+                        <p className="text-xs text-muted-foreground ml-2">
+                            No categories yet. Click New Category to create one.
+                        </p>
+                    )}
+                </div>
             </div>
 
             {/* Create / Edit dialog */}

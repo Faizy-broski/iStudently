@@ -545,6 +545,51 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     ],
   },
 
+  // ── Physics IGCSE + A-Level Virtual Labs ─────────────────────────────────
+  {
+    id: 'physics_virtual_labs',
+    name: 'Physics IGCSE + A-Level Virtual Labs',
+    description:
+      'Embeds the Nobook Physics interactive virtual lab (IGCSE + A-Level) directly inside the portal. Students, teachers, parents, and admins can access physics simulations without leaving the system.',
+    icon: FlaskConical,
+    category: 'Resources',
+    settingsHref: '/admin/resources/physics-virtual-labs',
+    sidebarInjections: [
+      {
+        parentTitle: 'resources',
+        items: [
+          { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
+          { title: 'physics_virtual_labs', href: '/admin/resources/physics-virtual-labs', icon: FlaskConical },
+        ],
+        roles: ['admin'],
+      },
+      {
+        parentTitle: 'resources',
+        items: [
+          { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
+          { title: 'physics_virtual_labs', href: '/teacher/resources/physics-virtual-labs', icon: FlaskConical },
+        ],
+        roles: ['teacher'],
+      },
+      {
+        parentTitle: 'resources',
+        items: [
+          { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
+          { title: 'physics_virtual_labs', href: '/student/resources/physics-virtual-labs', icon: FlaskConical },
+        ],
+        roles: ['student'],
+      },
+      {
+        parentTitle: 'resources',
+        items: [
+          { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
+          { title: 'physics_virtual_labs', href: '/parent/resources/physics-virtual-labs', icon: FlaskConical },
+        ],
+        roles: ['parent'],
+      },
+    ],
+  },
+
   // ── Future plugins go here ────────────────────────────────────────────────
   // Example template:
   // {

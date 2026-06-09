@@ -94,22 +94,22 @@ export default function DailyTransactionsPage() {
       <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 space-y-4">
         {/* View type + Date Range */}
         <div className="flex flex-wrap items-center gap-3">
-          <select className="h-8 border rounded px-2 text-sm" defaultValue="daily">
+          <select className="h-8 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 px-2 text-sm" defaultValue="daily">
             <option value="daily">{t("title")}</option>
           </select>
-          <span className="text-sm font-medium text-gray-600">{t("report_timeframe")}</span>
+          <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("report_timeframe")}</span>
           <Input
             type="date"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
-            className="h-8 w-40"
+            className="h-8 w-40 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100"
           />
-          <span className="text-sm text-gray-400">{tCommon("to")}</span>
+          <span className="text-sm text-gray-400 dark:text-gray-500">{tCommon("to")}</span>
           <Input
             type="date"
             value={toDate}
             onChange={(e) => setToDate(e.target.value)}
-            className="h-8 w-40"
+            className="h-8 w-40 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100"
           />
           <Button
             size="sm"
@@ -130,11 +130,11 @@ export default function DailyTransactionsPage() {
         {/* Category + Reconcile */}
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600">{t("category")}:</label>
+            <label className="text-sm text-gray-600 dark:text-gray-300">{t("category")}:</label>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="h-8 border rounded px-2 text-sm"
+              className="h-8 border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 px-2 text-sm"
             >
               <option value="">{tCommon("all")}</option>
               {categories.map((cat) => (
@@ -157,50 +157,50 @@ export default function DailyTransactionsPage() {
       </div>
 
       {/* Transactions Table */}
-      <div className="bg-white dark:bg-gray-900 rounded-lg border">
+      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
         {transactions.length === 0 && (
-          <p className="px-4 py-3 text-sm text-gray-500 font-medium border-b">
+          <p className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 font-medium border-b border-gray-200 dark:border-gray-700">
             {t("no_transactions")}
           </p>
         )}
 
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10">
+            <tr className="border-b border-gray-200 dark:border-gray-700 bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10 dark:from-slate-900 dark:to-slate-950">
               <th className="w-8 px-3 py-2"></th>
-              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{tCommon("student")}</th>
-              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{t("grade_level")}</th>
-              <th className="px-3 py-2 text-right text-xs font-semibold text-[#022172] uppercase">{t("fee")}</th>
-              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{tCommon("date")}</th>
-              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] uppercase">{t("comment")}</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] dark:text-sky-200 uppercase">{tCommon("student")}</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] dark:text-sky-200 uppercase">{t("grade_level")}</th>
+              <th className="px-3 py-2 text-right text-xs font-semibold text-[#022172] dark:text-sky-200 uppercase">{t("fee")}</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] dark:text-sky-200 uppercase">{tCommon("date")}</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] dark:text-sky-200 uppercase">{t("comment")}</th>
             </tr>
           </thead>
           <tbody>
             {transactions.map((t) => (
-              <tr key={t.id} className="border-b hover:bg-gray-50">
+              <tr key={t.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
                 <td className="px-3 py-2">
-                  <Plus className="h-3.5 w-3.5 text-gray-400" />
+                  <Plus className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
                 </td>
-                <td className="px-3 py-2 font-medium text-[#008B8B]">{t.student_name}</td>
-                <td className="px-3 py-2">{t.grade_level}</td>
-                <td className="px-3 py-2 text-right font-mono font-bold">{t.amount.toFixed(2)}</td>
-                <td className="px-3 py-2 text-gray-500">
+                <td className="px-3 py-2 font-medium text-[#008B8B] dark:text-cyan-300">{t.student_name}</td>
+                <td className="px-3 py-2 text-gray-700 dark:text-gray-200">{t.grade_level}</td>
+                <td className="px-3 py-2 text-right font-mono font-bold text-gray-900 dark:text-gray-100">{t.amount.toFixed(2)}</td>
+                <td className="px-3 py-2 text-gray-500 dark:text-gray-400">
                   {t.transaction_date ? new Date(t.transaction_date).toLocaleDateString("en-US", {
                     month: "short", day: "numeric", year: "numeric"
                   }) : t("dash")}
                 </td>
-                <td className="px-3 py-2 text-gray-400">{t.comment || ""}</td>
+                <td className="px-3 py-2 text-gray-400 dark:text-gray-500">{t.comment || ""}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
-            <tr className="border-t bg-gray-50 font-semibold">
+            <tr className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 font-semibold">
               <td className="px-3 py-3">
-                <Plus className="h-3.5 w-3.5 text-gray-400" />
+                <Plus className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
               </td>
-              <td className="px-3 py-3 text-gray-600">{t("total")}:</td>
+              <td className="px-3 py-3 text-gray-600 dark:text-gray-300">{t("total")}:</td>
               <td className="px-3 py-3"></td>
-              <td className="px-3 py-3 text-right font-mono font-bold text-[#022172]">
+              <td className="px-3 py-3 text-right font-mono font-bold text-[#022172] dark:text-sky-200">
                 {totalFee.toFixed(2)}
               </td>
               <td className="px-3 py-3"></td>

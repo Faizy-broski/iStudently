@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { IconLoader, IconPlus, IconTrash, IconCalendar, IconUpload, IconPencil, IconCheck, IconX } from '@tabler/icons-react'
+import { IconLoader, IconPlus, IconTrash, IconCalendar, IconUpload, IconPencil, IconCheck, IconX, IconBell } from '@tabler/icons-react'
 import useSWR from 'swr'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -503,7 +503,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
         <div className="container mx-auto py-6 space-y-4">
             {/* Header */}
             <div className="flex items-center gap-3">
-                <span className="text-3xl">🔔</span>
+                <IconBell className="h-8 w-8 text-[#3d8fb5]" />
                 <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
             </div>
 
@@ -544,18 +544,18 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
             </div>
 
             {/* Divider */}
-            <hr className="border-gray-300" />
+            <hr className="border-gray-300 dark:border-gray-700" />
 
             {/* Student Name Header */}
             {student && (
-                <div className="bg-gray-100 p-3 text-sm font-medium text-gray-700">
+                <div className="bg-gray-100 dark:bg-gray-800 p-3 text-sm font-medium text-gray-700 dark:text-gray-200">
                     {formatStudentName()} | {student.student_number}
                 </div>
             )}
 
             {/* No Payments Message */}
             {payments.length === 0 && (
-                <p className="text-sm font-medium text-gray-700">{t('noPayments')}</p>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('noPayments')}</p>
             )}
 
             {/* Payments Table */}
@@ -568,7 +568,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                     ) : (
                         <Table>
                             <TableHeader>
-                                <TableRow className="bg-gray-100">
+                                <TableRow className="bg-gray-100 dark:bg-gray-800">
                                     <TableHead className="w-10"></TableHead>
                                     <TableHead className="text-[#3d8fb5] font-semibold text-center">{t('th_receipt')}</TableHead>
                                     <TableHead className="text-[#3d8fb5] font-semibold text-center">{t('th_amount')}</TableHead>
@@ -593,7 +593,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                     return (
                                     <TableRow
                                         key={payment.id}
-                                        className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                                        className={index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800'}
                                     >
                                         <TableCell></TableCell>
                                         <TableCell>{payment.receipt_number || '-'}</TableCell>
@@ -618,7 +618,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                                     type="date"
                                                     value={editingValues.payment_date}
                                                     onChange={e => setEditingValues(v => ({ ...v, payment_date: e.target.value }))}
-                                                    className="h-8 rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                                                    className="h-8 rounded-md border border-input bg-background text-foreground px-2 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
                                                 />
                                             ) : formatDate(payment.payment_date)}
                                         </TableCell>
@@ -757,7 +757,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
 
                                 {/* New Payment Rows */}
                                 {newPayments.map((payment, index) => (
-                                    <TableRow key={`new-${index}`} className="bg-white">
+                                    <TableRow key={`new-${index}`} className="bg-white dark:bg-gray-900">
                                         <TableCell>
                                             <Button
                                                 variant="ghost"

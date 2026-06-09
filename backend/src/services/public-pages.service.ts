@@ -5,10 +5,15 @@ import crypto from 'crypto'
 // TYPES
 // ============================================================================
 
+export type CustomPageType = 'url' | 'embed' | 'text' | 'image'
+
 export interface CustomLink {
   id: string
   title: string
-  url: string
+  page_type: CustomPageType
+  url?: string
+  content?: string
+  image_url?: string
   order: number
   isActive: boolean
 }
@@ -250,19 +255,31 @@ async function persistConfig(schoolId: string, rowId: string | null, config: Pub
 
 export async function getCustomLinks(schoolId: string): Promise<CustomLink[]> {
   const { config } = await getRawSettingsRow(schoolId)
-  return (config.custom_links ?? []).sort((a, b) => a.order - b.order)
+  return (config.custom_links ?? [])
+    .map((l) => ({ page_type: 'url' as CustomPageType, ...l }))
+    .sort((a, b) => a.order - b.order)
 }
 
 export async function addCustomLink(
   schoolId: string,
-  data: { title: string; url: string; isActive: boolean }
+  data: {
+    title: string
+    page_type: CustomPageType
+    url?: string
+    content?: string
+    image_url?: string
+    isActive: boolean
+  }
 ): Promise<CustomLink> {
   const { id: rowId, config } = await getRawSettingsRow(schoolId)
   const links: CustomLink[] = config.custom_links ?? []
   const newLink: CustomLink = {
     id: crypto.randomUUID(),
     title: data.title.trim(),
-    url: data.url.trim(),
+    page_type: data.page_type,
+    ...(data.url !== undefined ? { url: data.url.trim() } : {}),
+    ...(data.content !== undefined ? { content: data.content } : {}),
+    ...(data.image_url !== undefined ? { image_url: data.image_url.trim() } : {}),
     isActive: data.isActive,
     order: links.length,
   }
@@ -274,17 +291,28 @@ export async function addCustomLink(
 export async function updateCustomLink(
   schoolId: string,
   pageId: string,
-  data: Partial<{ title: string; url: string; isActive: boolean }>
+  data: Partial<{
+    title: string
+    page_type: CustomPageType
+    url: string
+    content: string
+    image_url: string
+    isActive: boolean
+  }>
 ): Promise<CustomLink> {
   const { id: rowId, config } = await getRawSettingsRow(schoolId)
   const links: CustomLink[] = config.custom_links ?? []
   const idx = links.findIndex((l) => l.id === pageId)
   if (idx === -1) throw new Error('Custom page not found')
 
-  const updated = {
+  const updated: CustomLink = {
     ...links[idx],
+    page_type: links[idx].page_type ?? 'url',
     ...(data.title !== undefined ? { title: data.title.trim() } : {}),
+    ...(data.page_type !== undefined ? { page_type: data.page_type } : {}),
     ...(data.url !== undefined ? { url: data.url.trim() } : {}),
+    ...(data.content !== undefined ? { content: data.content } : {}),
+    ...(data.image_url !== undefined ? { image_url: data.image_url.trim() } : {}),
     ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
   }
   links[idx] = updated
@@ -345,7 +373,14 @@ export async function getGlobalCustomLinks(): Promise<CustomLink[]> {
 }
 
 export async function addGlobalCustomLink(
-  data: { title: string; url: string; isActive: boolean }
+  data: {
+    title: string
+    page_type: CustomPageType
+    url?: string
+    content?: string
+    image_url?: string
+    isActive: boolean
+  }
 ): Promise<CustomLink> {
   const schoolId = await getPrimarySchoolId()
   if (!schoolId) throw new Error('No active school found')
@@ -354,7 +389,14 @@ export async function addGlobalCustomLink(
 
 export async function updateGlobalCustomLink(
   pageId: string,
-  data: Partial<{ title: string; url: string; isActive: boolean }>
+  data: Partial<{
+    title: string
+    page_type: CustomPageType
+    url: string
+    content: string
+    image_url: string
+    isActive: boolean
+  }>
 ): Promise<CustomLink> {
   const schoolId = await getPrimarySchoolId()
   if (!schoolId) throw new Error('No active school found')

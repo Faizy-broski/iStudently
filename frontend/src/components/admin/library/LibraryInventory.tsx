@@ -191,57 +191,53 @@ export function LibraryInventory() {
   };
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="flex flex-col md:flex-row gap-6">
-        {/* Category Sidebar */}
-        <div className="w-full md:w-56 shrink-0">
-          <Card className="shadow-sm sticky top-4">
-            <CardContent className="p-3">
-              <CategorySidebar
-                selectedCategoryId={selectedCategoryId}
-                onSelectCategory={setSelectedCategoryId}
-                onCategoriesChange={setCategories}
-              />
-            </CardContent>
-          </Card>
+    <div className="p-4 md:p-6 space-y-6">
+      {/* Header section */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 min-w-0">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent">
+            {t("title")}
+          </h1>
+          <p className="text-sm md:text-base text-muted-foreground mt-2">
+            {t("subtitle")}
+          </p>
         </div>
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            onClick={() => setShowQuickLoanDialog(true)}
+            variant="outline"
+            className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400"
+          >
+            <Zap className="mr-2 h-4 w-4" />
+            {t("actions.quick_loan")}
+          </Button>
+          <Button
+            onClick={() => setShowUploadDocumentDialog(true)}
+            variant="outline"
+            className="border-[#57A3CC] text-[#022172] hover:bg-[#57A3CC]/10"
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            {t("actions.upload_document")}
+          </Button>
+          <Button onClick={() => setShowAddBookDialog(true)} className="bg-linear-to-r from-[#57A3CC] to-[#022172] text-white hover:opacity-90">
+            <Plus className="mr-2 h-4 w-4" />
+            {t("actions.add_book")}
+          </Button>
+        </div>
+      </div>
 
-        {/* Main Content */}
-        <div className="flex-1 space-y-6">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent">
-                {t("title")}
-              </h1>
-              <p className="text-sm md:text-base text-muted-foreground mt-2">
-                {t("subtitle")}
-              </p>
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              <Button
-                onClick={() => setShowQuickLoanDialog(true)}
-                variant="outline"
-                className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400"
-              >
-                <Zap className="mr-2 h-4 w-4" />
-                {t("actions.quick_loan")}
-              </Button>
-              <Button
-                onClick={() => setShowUploadDocumentDialog(true)}
-                variant="outline"
-                className="border-[#57A3CC] text-[#022172] hover:bg-[#57A3CC]/10"
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                {t("actions.upload_document")}
-              </Button>
-              <Button onClick={() => setShowAddBookDialog(true)} className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white hover:opacity-90">
-                <Plus className="mr-2 h-4 w-4" />
-                {t("actions.add_book")}
-              </Button>
-            </div>
-          </div>
+      {/* Categories on top */}
+      <Card className="shadow-sm">
+        <CardContent className="p-4">
+          <CategorySidebar
+            selectedCategoryId={selectedCategoryId}
+            onSelectCategory={setSelectedCategoryId}
+            onCategoriesChange={setCategories}
+          />
+        </CardContent>
+      </Card>
 
-          {/* Search */}
+      {/* Search */}
           <Card className="shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
@@ -277,7 +273,7 @@ export function LibraryInventory() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-muted">
+                  <table className="min-w-full w-full divide-y divide-muted">
                     <thead>
                       <tr className="bg-muted">
                         <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider w-12">{t("table.cover")}</th>
@@ -315,16 +311,16 @@ export function LibraryInventory() {
                                   )}
                                 </div>
                               </td>
-                              <td className="px-4 py-4">
-                                <div className="flex items-center gap-2">
+                              <td className="px-4 py-4 max-w-[200px] md:max-w-[300px]">
+                                <div className="flex items-center gap-2 min-w-0">
                                   {catColor && (
                                     <div
                                       className="h-2.5 w-2.5 rounded-full shrink-0"
                                       style={{ backgroundColor: catColor }}
                                     />
                                   )}
-                                  <div>
-                                    <div className="font-medium text-foreground">{book.title}</div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="font-medium text-foreground truncate" title={book.title}>{book.title}</div>
                                     {book.document_type && book.document_type !== "book" && (
                                       <Badge variant="outline" className="text-[10px] mt-0.5 capitalize">
                                         {book.document_type}
@@ -333,10 +329,10 @@ export function LibraryInventory() {
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-4 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                              <td className="px-4 py-4 text-sm text-muted-foreground max-w-[150px] truncate" title={book.author}>
                                 {book.author}
                               </td>
-                              <td className="px-4 py-4 whitespace-nowrap text-sm font-mono text-muted-foreground">
+                              <td className="px-4 py-4 text-sm font-mono text-muted-foreground max-w-[150px] truncate" title={book.reference || book.isbn || tCommon("na")}>
                                 {book.reference || book.isbn || tCommon("na")}
                               </td>
                               <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
@@ -423,9 +419,6 @@ export function LibraryInventory() {
               )}
             </CardContent>
           </Card>
-        </div>
-      </div>
-
       {/* Modals */}
       <AddBookDialog
         open={showAddBookDialog}

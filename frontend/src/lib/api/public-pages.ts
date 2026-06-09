@@ -188,10 +188,15 @@ export async function savePublicPagesSettings(config: PublicPagesConfig) {
 // CUSTOM LINKS (Super Admin manages, Login Page consumes)
 // ============================================================================
 
+export type CustomPageType = 'url' | 'embed' | 'text' | 'image'
+
 export interface CustomLink {
   id: string
   title: string
-  url: string
+  page_type: CustomPageType
+  url?: string
+  content?: string
+  image_url?: string
   order: number
   isActive: boolean
 }
@@ -209,7 +214,7 @@ export async function getSuperAdminCustomLinks(schoolId: string) {
 /** Super Admin — add a new custom link page (per-school). */
 export async function addCustomLink(
   schoolId: string,
-  data: { title: string; url: string; isActive: boolean }
+  data: { title: string; page_type: CustomPageType; url?: string; content?: string; image_url?: string; isActive: boolean }
 ) {
   return authFetch<CustomLink>(`/public/superadmin/pages/${schoolId}`, {
     method: 'POST',
@@ -221,7 +226,7 @@ export async function addCustomLink(
 export async function updateCustomLink(
   schoolId: string,
   pageId: string,
-  data: Partial<{ title: string; url: string; isActive: boolean }>
+  data: Partial<{ title: string; page_type: CustomPageType; url: string; content: string; image_url: string; isActive: boolean }>
 ) {
   return authFetch<CustomLink>(`/public/superadmin/pages/${schoolId}/${pageId}`, {
     method: 'PUT',
@@ -248,7 +253,14 @@ export async function getGlobalCustomLinks() {
   return authFetch<CustomLink[]>('/public/superadmin/global-pages')
 }
 
-export async function addGlobalCustomLink(data: { title: string; url: string; isActive: boolean }) {
+export async function addGlobalCustomLink(data: {
+  title: string
+  page_type: CustomPageType
+  url?: string
+  content?: string
+  image_url?: string
+  isActive: boolean
+}) {
   return authFetch<CustomLink>('/public/superadmin/global-pages', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -257,7 +269,7 @@ export async function addGlobalCustomLink(data: { title: string; url: string; is
 
 export async function updateGlobalCustomLink(
   pageId: string,
-  data: Partial<{ title: string; url: string; isActive: boolean }>
+  data: Partial<{ title: string; page_type: CustomPageType; url: string; content: string; image_url: string; isActive: boolean }>
 ) {
   return authFetch<CustomLink>(`/public/superadmin/global-pages/${pageId}`, {
     method: 'PUT',

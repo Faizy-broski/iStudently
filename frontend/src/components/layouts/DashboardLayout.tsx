@@ -169,7 +169,7 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
       <AppSidebar menuItems={menuItems} />
 
       <div className={cn(
-        'flex-1 flex flex-col transition-all duration-300',
+        'flex-1 flex flex-col transition-all duration-300 min-w-0',
         'lg:ml-0'
       )}>
         <Topbar />

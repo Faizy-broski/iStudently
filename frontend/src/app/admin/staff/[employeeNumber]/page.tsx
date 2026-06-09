@@ -33,6 +33,7 @@ import { QualificationsTab } from "@/components/admin/QualificationsTab";
 import { UserQRCode } from "@/components/shared/UserQRCode";
 import { type Staff } from "@/lib/api/staff";
 import { useStaff } from "@/hooks/useStaff";
+import { getLastLogin } from "@/lib/api/auth";
 import { useCampus } from "@/context/CampusContext";
 import { format } from "date-fns";
 import { useTranslations } from "next-intl";
@@ -80,6 +81,7 @@ export default function StaffDetailsPage() {
   const employeeNumber = decodeURIComponent(params.employeeNumber as string);
 
   const [activeTab, setActiveTab] = useState("personal");
+  const [lastLogin, setLastLogin] = useState<string | null>(null);
 
   // Fetch all staff for navigation - use same campus filter as the staff list page
   const { staff: staffList, isLoading: staffLoading } = useStaff(1, 1000, undefined, 'all', campusContext?.selectedCampus?.id);
@@ -94,6 +96,15 @@ export default function StaffDetailsPage() {
   const currentIndex = staffList.findIndex((s: Staff) => s.employee_number === employeeNumber);
   const prevStaff = currentIndex > 0 ? staffList[currentIndex - 1] : null;
   const nextStaff = currentIndex < staffList.length - 1 ? staffList[currentIndex + 1] : null;
+
+  // Fetch last login when staff is loaded
+  useEffect(() => {
+    if (currentStaff?.profile_id) {
+      getLastLogin(currentStaff.profile_id).then((res) => {
+        if (res.success && res.data) setLastLogin(res.data.last_sign_in);
+      }).catch(() => {});
+    }
+  }, [currentStaff?.profile_id]);
 
   // Update profile view context when staff is loaded
   useEffect(() => {
@@ -395,9 +406,6 @@ export default function StaffDetailsPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <InfoRow label={t("fields.staffId")} value={currentStaff.id} fallbackLabel={t("notProvided")} />
-                <InfoRow label={t("fields.profileId")} value={currentStaff.profile_id} fallbackLabel={t("notProvided")} />
-                <InfoRow label={t("fields.schoolId")} value={currentStaff.school_id} fallbackLabel={t("notProvided")} />
                 <InfoRow
                   label={t("fields.status")}
                   value={
@@ -416,6 +424,12 @@ export default function StaffDetailsPage() {
                 <InfoRow
                   label={t("fields.lastUpdated")}
                   value={formatDate(currentStaff.updated_at, t("notProvided"))}
+                  icon={Clock}
+                  fallbackLabel={t("notProvided")}
+                />
+                <InfoRow
+                  label={t("fields.lastLogin")}
+                  value={lastLogin ? formatDate(lastLogin, t("notProvided")) : t("never")}
                   icon={Clock}
                   fallbackLabel={t("notProvided")}
                 />

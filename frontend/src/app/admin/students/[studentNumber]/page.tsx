@@ -38,6 +38,7 @@ import { useSchoolSettings } from "@/context/SchoolSettingsContext";
 import { type Student } from "@/lib/api/students";
 import { useStudents } from "@/hooks/useStudents";
 import { getParentById, type Parent } from "@/lib/api/parents";
+import { getLastLogin } from "@/lib/api/auth";
 import { format } from "date-fns";
 import DisciplineScoreTab from "@/components/admin/DisciplineScoreTab";
 import RelativesTab from "@/components/admin/RelativesTab";
@@ -73,6 +74,7 @@ export default function StudentDetailsPage() {
 
   const [currentStudent, setCurrentStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lastLogin, setLastLogin] = useState<string | null>(null);
   const [linkedParent, setLinkedParent] = useState<Parent | null>(null);
   const [loadingParent, setLoadingParent] = useState(false);
   const [activeTab, setActiveTab] = useState("personal");
@@ -112,6 +114,12 @@ export default function StudentDetailsPage() {
         const student = students.find((s) => s.student_number === studentNumber);
         if (student) {
           setCurrentStudent(student);
+
+          if (student.profile_id) {
+            getLastLogin(student.profile_id).then((res) => {
+              if (res.success && res.data) setLastLogin(res.data.last_sign_in);
+            }).catch(() => {});
+          }
 
           const studentFullName = `${student.profile?.first_name || ""} ${student.profile?.father_name || ""}`.trim() || student.student_number;
           setViewedProfile({
@@ -660,12 +668,9 @@ export default function StudentDetailsPage() {
                   icon={Clock}
                 />
                 <InfoRow
-                  label={t("profile_id")}
-                  value={<code className="text-xs bg-muted px-2 py-1 rounded">{currentStudent.profile_id}</code>}
-                />
-                <InfoRow
-                  label={t("record_id")}
-                  value={<code className="text-xs bg-muted px-2 py-1 rounded">{currentStudent.id}</code>}
+                  label={t("last_login")}
+                  value={lastLogin ? formatDate(lastLogin) : t("never")}
+                  icon={Clock}
                 />
               </div>
 

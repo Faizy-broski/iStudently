@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
 import { authService } from '../services/auth.service'
+import { supabase } from '../config/supabase'
 
 // ============================================================================
 // AUTH CONTROLLER — password management
@@ -134,6 +135,24 @@ export const resetForcePasswordChange = async (req: Request, res: Response) => {
  * Query: { campus_id?: string }
  * Admin only — returns how many users currently have the flag set.
  */
+export const getLastLogin = async (req: Request, res: Response) => {
+  try {
+    const profileId = req.params.profileId
+    if (!profileId) {
+      return res.status(400).json({ success: false, error: 'profileId is required' })
+    }
+
+    const { data, error } = await supabase.auth.admin.getUserById(profileId)
+    if (error || !data?.user) {
+      return res.json({ success: true, data: { last_sign_in: null } })
+    }
+
+    return res.json({ success: true, data: { last_sign_in: data.user.last_sign_in_at ?? null } })
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message })
+  }
+}
+
 export const forcePasswordChangeStatus = async (req: Request, res: Response) => {
   try {
     const adminSchoolId = (req as AuthRequest).profile?.school_id

@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { IconLoader, IconSearch, IconDownload, IconUsers } from '@tabler/icons-react'
+import { IconLoader, IconSearch, IconDownload, IconUsers, IconBell } from '@tabler/icons-react'
 import useSWR from 'swr'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -244,7 +244,7 @@ export default function PaymentsPage() {
         <div className="container mx-auto py-6 space-y-4">
             {/* Header */}
             <div className="flex items-center gap-3">
-                <span className="text-3xl">🔔</span>
+                <IconBell className="h-8 w-8 text-[#3d8fb5]" />
                 <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
             </div>
 

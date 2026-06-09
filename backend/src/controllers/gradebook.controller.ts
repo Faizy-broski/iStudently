@@ -444,6 +444,32 @@ export const setConfig = async (req: Request, res: Response) => {
   }
 }
 
+// Admin: save multiple config keys at once
+export const setBatchConfig = async (req: Request, res: Response) => {
+  try {
+    const schoolId = (req as AuthRequest).profile?.school_id
+    if (!schoolId) {
+      return res.status(400).json({ success: false, error: 'school_id is required' })
+    }
+
+    const { configs, campus_id } = req.body
+    if (!Array.isArray(configs) || configs.length === 0) {
+      return res.status(400).json({ success: false, error: 'configs array is required' })
+    }
+
+    await Promise.all(
+      configs.map(({ key, value }: { key: string; value: string }) =>
+        gradebookService.setConfig(schoolId, campus_id || null, key, String(value))
+      )
+    )
+
+    res.json({ success: true, message: 'Config saved' })
+  } catch (error: any) {
+    console.error('Error in setBatchConfig:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+}
+
 // Teacher-scoped: can only set config for CPs they own
 export const setConfigAsTeacher = async (req: Request, res: Response) => {
   try {

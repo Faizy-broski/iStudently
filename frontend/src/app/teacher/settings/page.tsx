@@ -9,6 +9,7 @@ import { Loader2, User, Bell, Lock, Save, Mail, Phone, Clock } from 'lucide-reac
 import { toast } from 'sonner'
 import { updateProfile, changePassword } from '@/lib/api/auth'
 import { UserQRCode } from '@/components/shared/UserQRCode'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 export default function SettingsPage() {
   const { profile, user } = useAuth()
@@ -90,6 +91,20 @@ export default function SettingsPage() {
         </div>
 
         <div className="space-y-4">
+          {/* Avatar */}
+          <div className="flex items-center gap-6">
+            <Avatar className="h-24 w-24">
+              <AvatarImage src={profile?.profile_photo_url || ''} />
+              <AvatarFallback className="bg-[#57A3CC] text-white text-2xl">
+                {profile?.first_name?.[0]}{profile?.last_name?.[0]}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <Button variant="outline" size="sm">Change Photo</Button>
+              <p className="text-xs text-gray-500 mt-2">JPG, PNG or GIF. Max size 2MB</p>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium mb-2 block">First Name</label>

@@ -472,7 +472,7 @@
     "email_reminders": "تذكيرات البريد",
     "email_smtp": "إعدادات SMTP",
     "public_pages": "الصفحات العامة",
-    "agreement": "اتفاقية ولي الأمر",
+    "agreement": "اتفاقية",
     "profile": "ملفي الشخصي",
     "school_information": "معلومات المدرسة",
     "associated_parents": "أولياء الأمور المرتبطون",
@@ -513,6 +513,8 @@
     "vlaby": "المختبرات الافتراضية",
     "periodic_table": "J Periodic Table",
     "embedded_resources": "الموارد المدمجة",
+    "premium_resources": "الموارد المميزة",
+    "physics_virtual_labs": "مختبرات الفيزياء الافتراضية IGCSE + A-Level",
     "attendance_summary": "ملخص الحضور",
     "print_attendance_sheets": "طباعة كشوف الحضور",
     "take_missing_attendance": "تسجيل الحضور الفائت",
@@ -2927,7 +2929,7 @@
         "label_marking_period": "فترة التقييم",
         "label_seats": "المقاعد",
         "label_period": "الفترة",
-        "label_meeting_days": "أيام الاجتماع",
+        "label_meeting_days": "الأيام",
         "label_takes_attendance": "يأخذ الحضور",
         "label_calendar": "التقويم",
         "label_grading_scale": "مقياس الدرجات",
@@ -3662,6 +3664,8 @@
         "cnic": "رقم الهوية",
         "student_id": "رقم الطالب",
         "created_at": "تاريخ الإنشاء",
+        "last_login": "آخر تسجيل دخول",
+        "never": "لم يسجل دخولاً بعد",
         "profile_id": "معرف الملف الشخصي",
         "record_id": "معرف سجل الطالب",
         "subscribed_services": "الخدمات المشترك بها"
@@ -4258,6 +4262,17 @@
         "latency": "وقت التأخير (بالدقائق)",
         "latency_help": "تأخير تغيير الدرجة قبل أن يتمكن الطلاب وأولياء الأمور من رؤيتها",
         "latency_none": "بدون",
+        "hide_letter_grades": "إخفاء الدرجات الحرفية لجميع مهام دفتر الدرجات",
+        "hide_prev_quarters": "إخفاء أنواع المهام للفصول السابقة",
+        "eligibility_section": "الأهلية",
+        "eligibility_cumulative": "حساب الأهلية باستخدام درجات الفصل التراكمية",
+        "final_grading_section": "نسب التقدير النهائي",
+        "final_grading_help": "حدد النسبة التي يساهم بها كل فترة تقييمية في الدرجة النهائية. يجب أن يكون مجموع كل صف 100%.",
+        "no_graded_periods": "لا توجد فترات تقييمية مُعدَّة. قم بتفعيل التقديرات على الفصول الدراسية أو السنة الكاملة أولاً.",
+        "total_label": "المجموع",
+        "total_ok": "100% ✓",
+        "total_error": "المجموع ≠ 100%!",
+        "no_quarters": "لا توجد فصول لهذا الفصل الدراسي.",
         "config_saved": "تم حفظ الإعدادات",
         "config_save_failed": "فشل حفظ الإعدادات"
       },
@@ -6176,8 +6191,10 @@
       "profileId": "معرّف الملف الشخصي",
       "schoolId": "معرّف المدرسة",
       "createdAt": "تاريخ الإنشاء",
-      "lastUpdated": "آخر تحديث"
+      "lastUpdated": "آخر تحديث",
+      "lastLogin": "آخر تسجيل دخول"
     },
+    "never": "لم يسجل دخولاً بعد",
     "cancel": "إلغاء",
     "saving": "جارٍ الحفظ...",
     "saveChanges": "حفظ التغييرات",
@@ -6500,8 +6517,10 @@
       "schoolId": "معرّف المدرسة",
       "status": "الحالة",
       "createdAt": "تاريخ الإنشاء",
-      "lastUpdated": "آخر تحديث"
+      "lastUpdated": "آخر تحديث",
+      "lastLogin": "آخر تسجيل دخول"
     },
+    "never": "لم يسجل دخولاً بعد",
     "actions": {
       "viewDetails": "عرض التفاصيل",
       "editTeacher": "تعديل المعلم",
@@ -6847,8 +6866,10 @@
       "schoolId": "معرّف المدرسة",
       "status": "الحالة",
       "createdAt": "تاريخ الإنشاء",
-      "lastUpdated": "آخر تحديث"
+      "lastUpdated": "آخر تحديث",
+      "lastLogin": "آخر تسجيل دخول"
     },
+    "never": "لم يسجل دخولاً بعد",
     "filters": {
       "all": "الكل",
       "staff": "الموظفون",
@@ -7997,7 +8018,9 @@
       "vlaby_name": "المختبرات الافتراضية",
       "vlaby_desc": "تصفح وتشغيل تجارب المختبرات الافتراضية التفاعلية (الأحياء والكيمياء والفيزياء) من VLaby.com مباشرةً داخل البوابة. متاح بالعربية والإنجليزية والفرنسية والألمانية والإندونيسية.",
       "periodic_table_name": "J Periodic Table",
-      "periodic_table_desc": "جدول دوري تفاعلي يضم 118 عنصرًا مع نماذج ثلاثية الأبعاد للذرات وموازن المعادلات الكيميائية وحاسبة الكتلة المولية ومولّد أوراق العمل — كل ذلك دون الحاجة إلى تسجيل دخول."
+      "periodic_table_desc": "جدول دوري تفاعلي يضم 118 عنصرًا مع نماذج ثلاثية الأبعاد للذرات وموازن المعادلات الكيميائية وحاسبة الكتلة المولية ومولّد أوراق العمل — كل ذلك دون الحاجة إلى تسجيل دخول.",
+      "physics_virtual_labs_name": "مختبرات الفيزياء الافتراضية IGCSE + A-Level",
+      "physics_virtual_labs_desc": "تضمين مختبر الفيزياء التفاعلي من Nobook (IGCSE + A-Level) مباشرةً داخل البوابة. يمكن للطلاب والمعلمين وأولياء الأمور والمديرين الوصول إلى محاكاة الفيزياء دون مغادرة النظام."
     }
   },
   "studentPortal": {

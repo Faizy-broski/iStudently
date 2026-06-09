@@ -5,6 +5,7 @@ import { SetupAssistantPanel } from '@/components/setup-assistant/SetupAssistant
 import { useStudentDashboard, useStudentInfo, useStudentFees } from '@/hooks/useStudentDashboard'
 import { FinancialWidget } from '@/components/shared/FinancialWidget'
 import { ProfilePhoto } from '@/components/shared/ProfilePhoto'
+import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import { useAcademic } from '@/context/AcademicContext'
 import { getUpcomingEvents } from '@/lib/api/events'
@@ -34,6 +35,7 @@ import { Separator } from '@/components/ui/separator'
 
 export default function StudentDashboardPage() {
   const t = useTranslations('dashboard')
+  const { profile } = useAuth()
   const { overview, isLoading: isDashboardLoading, error: dashboardError } = useStudentDashboard()
   const { studentInfo, isLoading: isInfoLoading } = useStudentInfo()
   const { fees, isLoading: isFeesLoading } = useStudentFees()
@@ -112,8 +114,8 @@ export default function StudentDashboardPage() {
         
         <div className="relative flex flex-col md:flex-row items-center gap-6">
           <ProfilePhoto
-            src={studentInfo?.profile_photo_url}
-            name={`${studentInfo?.first_name || ''} ${studentInfo?.last_name || ''}`}
+            src={profile?.profile_photo_url || studentInfo?.profile_photo_url}
+            name={`${studentInfo?.first_name || profile?.first_name || ''} ${studentInfo?.last_name || profile?.last_name || ''}`}
             size="xl"
             className="border-4 border-white/20 shadow-xl"
           />

@@ -10,10 +10,68 @@ import { Label } from '@/components/ui/label'
 import { LoginQuoteWidget } from '@/components/auth/LoginQuoteWidget'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
-import { Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Loader2, ExternalLink, ChevronRight } from 'lucide-react'
 import { API_URL } from '@/config/api'
 import { useTranslations, useLocale } from 'next-intl'
-import { getLoginLinks, CustomLink } from '@/lib/api/public-pages'
+import { getLoginLinks, type CustomLink } from '@/lib/api/public-pages'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+
+// ── Custom page viewer modal ──────────────────────────────────────────────────
+
+function CustomPageModal({ link, onClose }: { link: CustomLink | null; onClose: () => void }) {
+  if (!link) return null
+
+  return (
+    <Dialog open={!!link} onOpenChange={(v) => { if (!v) onClose() }}>
+      <DialogContent className="max-w-3xl w-full p-0 overflow-hidden max-h-[90vh] flex flex-col">
+        <DialogHeader className="px-5 py-4 border-b shrink-0 flex flex-row items-center justify-between">
+          <DialogTitle className="text-base font-semibold">{link.title}</DialogTitle>
+          {link.page_type === 'embed' && link.url && (
+            <a
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground hover:text-foreground transition-colors p-1"
+              title="Open in new tab"
+            >
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          )}
+        </DialogHeader>
+
+        <div className="flex-1 overflow-auto">
+          {link.page_type === 'embed' && link.url && (
+            <iframe
+              src={link.url}
+              className="w-full"
+              style={{ height: '70vh', border: 'none' }}
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+              title={link.title}
+            />
+          )}
+
+          {link.page_type === 'text' && link.content && (
+            <div
+              className="prose prose-sm max-w-none px-6 py-5 dark:prose-invert"
+              dangerouslySetInnerHTML={{ __html: link.content }}
+            />
+          )}
+
+          {link.page_type === 'image' && link.image_url && (
+            <div className="flex items-center justify-center p-4 bg-muted/30 min-h-[300px]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={link.image_url}
+                alt={link.title}
+                className="max-w-full max-h-[75vh] object-contain rounded-lg shadow"
+              />
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 interface SocialLoginConfig {
   google_enabled: boolean
@@ -84,6 +142,8 @@ function LoginForm() {
 
   // Custom public link tabs
   const [customLinks, setCustomLinks] = useState<CustomLink[]>([])
+  const [openPage, setOpenPage] = useState<CustomLink | null>(null)
+  const [aboutOpen, setAboutOpen] = useState(false)
 
   const error = searchParams.get('error')
 
@@ -263,26 +323,6 @@ function LoginForm() {
             />
           </div>
           <LoginQuoteWidget locale={locale as "en" | "ar"} />
-
-          {/* Custom public link tabs */}
-          {customLinks.length > 0 && (
-            <div className="mt-6 flex flex-wrap justify-center gap-2">
-              {customLinks.map((link) => (
-                <a
-                  key={link.id}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-brand-blue/30 bg-brand-blue/5 text-brand-blue text-sm font-medium hover:bg-brand-blue/10 hover:border-brand-blue/60 transition-all"
-                >
-                  {link.title}
-                  <svg className="h-3 w-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </a>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
@@ -460,9 +500,63 @@ function LoginForm() {
               {t('contact_admin')}
             </p>
 
+            {/* About toggle — only when there are custom pages */}
+            {customLinks.length > 0 && (
+              <div className={`mt-4 ${anim('delay-700')}`}>
+                {/* Toggle button */}
+                <button
+                  type="button"
+                  onClick={() => setAboutOpen((o) => !o)}
+                  className="flex items-center gap-1.5 text-white/60 hover:text-white text-sm font-medium transition-colors select-none w-full"
+                >
+                  <ChevronRight
+                    className={`h-4 w-4 transition-transform duration-200 ${aboutOpen ? 'rotate-90' : ''}`}
+                  />
+                  About
+                </button>
+
+                {/* Collapsible link list */}
+                {aboutOpen && (
+                  <div className="mt-3 flex flex-col gap-1.5 ps-5 border-s border-white/20">
+                    {customLinks.map((link) => {
+                      const isExternal = link.page_type === 'url' || !link.page_type
+                      if (isExternal) {
+                        return (
+                          <a
+                            key={link.id}
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 text-white/80 hover:text-white text-sm transition-colors group"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5 opacity-50 group-hover:opacity-100 shrink-0" />
+                            {link.title}
+                          </a>
+                        )
+                      }
+                      return (
+                        <button
+                          key={link.id}
+                          type="button"
+                          onClick={() => setOpenPage(link)}
+                          className="flex items-center gap-2 text-white/80 hover:text-white text-sm transition-colors text-start group"
+                        >
+                          <ChevronRight className="h-3.5 w-3.5 opacity-50 group-hover:opacity-100 shrink-0" />
+                          {link.title}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
           </form>
         </div>
       </div>
+
+      {/* Viewer modal for embed / text / image pages */}
+      <CustomPageModal link={openPage} onClose={() => setOpenPage(null)} />
     </div>
   )
 }

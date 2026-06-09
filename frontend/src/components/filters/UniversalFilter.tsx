@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslations } from 'next-intl'
-import { Search, X, SlidersHorizontal } from 'lucide-react'
+import { Search, X, SlidersHorizontal, ChevronDown, Check } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select,
   SelectContent,
@@ -13,19 +14,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useGradeLevels } from '@/hooks/useAcademics'
 import { getSections } from '@/lib/api/academics'
 import type { Section, GradeLevel } from '@/lib/api/academics'
+import { useCampus } from '@/context/CampusContext'
+import { cn } from '@/lib/utils'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface FilterState {
   search?: string
-  gradeId?: string     // grade_level UUID — used for section cascade
-  gradeName?: string   // grade name string — used by student API
+  // Multi-select grades
+  gradeIds?: string[]
+  gradeNames?: string[]
+  // Single-grade kept for backward compat (section cascade uses first selected grade)
+  gradeId?: string
+  gradeName?: string
   sectionId?: string
-  role?: string        // 'all' | 'teacher' | 'staff' | 'librarian' | 'counselor'
+  role?: string
 }
 
 export type AvailableFilter = 'search' | 'grade' | 'section' | 'role'
@@ -40,6 +52,111 @@ interface UniversalFilterProps {
   className?: string
 }
 
+// ── Multi-select Grade Picker ─────────────────────────────────────────────────
+
+function GradeMultiSelect({
+  grades,
+  selectedIds,
+  loading,
+  onChange,
+  placeholder,
+}: {
+  grades: GradeLevel[]
+  selectedIds: string[]
+  loading: boolean
+  onChange: (ids: string[]) => void
+  placeholder: string
+}) {
+  const [open, setOpen] = useState(false)
+
+  const toggle = (id: string) => {
+    const next = selectedIds.includes(id)
+      ? selectedIds.filter((x) => x !== id)
+      : [...selectedIds, id]
+    onChange(next)
+  }
+
+  const label =
+    selectedIds.length === 0
+      ? placeholder
+      : selectedIds.length === 1
+        ? grades.find((g) => g.id === selectedIds[0])?.name ?? placeholder
+        : selectedIds.length === grades.length
+          ? placeholder // all selected = same as none
+          : `${selectedIds.length} grades`
+
+  const isAllSelected = selectedIds.length === grades.length
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={loading}
+          className={cn(
+            'flex h-9 w-44 items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background',
+            'hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+            'disabled:cursor-not-allowed disabled:opacity-50',
+            selectedIds.length > 0 && 'border-primary/60 bg-primary/5 text-primary'
+          )}
+        >
+          <span className="truncate">{loading ? 'Loading…' : label}</span>
+          <ChevronDown className={cn('h-4 w-4 shrink-0 opacity-50 transition-transform', open && 'rotate-180')} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-52 p-2" align="start">
+        {/* Clear / All option */}
+        <button
+          type="button"
+          onClick={() => onChange([])}
+          className={cn(
+            'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent',
+            selectedIds.length === 0 && 'font-medium text-primary'
+          )}
+        >
+          <Check className={cn('h-4 w-4', selectedIds.length === 0 ? 'opacity-100 text-primary' : 'opacity-0')} />
+          {placeholder}
+        </button>
+
+        <div className="my-1 border-t" />
+
+        <div className="max-h-60 overflow-y-auto space-y-0.5">
+          {grades.map((g) => {
+            const checked = selectedIds.includes(g.id)
+            return (
+              <label
+                key={g.id}
+                className="flex items-center gap-2.5 rounded-sm px-2 py-1.5 text-sm cursor-pointer hover:bg-accent select-none"
+              >
+                <Checkbox
+                  checked={checked}
+                  onCheckedChange={() => toggle(g.id)}
+                  className="shrink-0"
+                />
+                <span className="truncate">{g.name}</span>
+              </label>
+            )
+          })}
+        </div>
+
+        {selectedIds.length > 0 && (
+          <>
+            <div className="my-1 border-t" />
+            <button
+              type="button"
+              onClick={() => { onChange([]); setOpen(false) }}
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <X className="h-3 w-3" />
+              Clear selection
+            </button>
+          </>
+        )}
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function UniversalFilter({
@@ -51,9 +168,9 @@ export function UniversalFilter({
 }: UniversalFilterProps) {
   const t = useTranslations('filters')
 
-  // Local state
   const [search, setSearch] = useState(currentFilters?.search ?? '')
-  const [selectedGrade, setSelectedGrade] = useState<GradeLevel | null>(null)
+  // Multi-select grade IDs
+  const [selectedGradeIds, setSelectedGradeIds] = useState<string[]>(currentFilters?.gradeIds ?? [])
   const [selectedSectionId, setSelectedSectionId] = useState(currentFilters?.sectionId ?? '')
   const [selectedRole, setSelectedRole] = useState(currentFilters?.role ?? '')
   const [sections, setSections] = useState<Section[]>([])
@@ -61,52 +178,72 @@ export function UniversalFilter({
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const debouncedSearch = useDebouncedValue(search, 500)
-
   const { gradeLevels, isLoading: gradesLoading } = useGradeLevels()
+  const campusContext = useCampus()
 
-  // ── Cascade: load sections when grade changes ──────────────────────────────
+  // Section cascade: only load when exactly 1 grade selected
+  const singleSelectedGrade = selectedGradeIds.length === 1
+    ? gradeLevels.find((g) => g.id === selectedGradeIds[0]) ?? null
+    : null
 
   useEffect(() => {
-    if (!selectedGrade) {
+    if (!singleSelectedGrade) {
       setSections([])
+      setSelectedSectionId('')
       return
     }
     setSectionsLoading(true)
-    getSections(selectedGrade.id)
+    getSections(singleSelectedGrade.id, campusContext?.selectedCampus?.id)
       .then((res) => { if (res.success && res.data) setSections(res.data) })
       .catch(() => {})
       .finally(() => setSectionsLoading(false))
-  }, [selectedGrade])
+  }, [singleSelectedGrade?.id, campusContext?.selectedCampus?.id])
 
-  // ── Notify parent when any filter changes ──────────────────────────────────
+  // ── Notify parent ──────────────────────────────────────────────────────────
 
   const notify = useCallback(
     (overrides: Partial<FilterState> = {}) => {
+      const gradeIds = overrides.gradeIds ?? selectedGradeIds
+      const gradeNames = gradeIds
+        .map((id) => gradeLevels.find((g) => g.id === id)?.name)
+        .filter(Boolean) as string[]
+
       onFilterChange({
         search: debouncedSearch || undefined,
-        gradeId: selectedGrade?.id || undefined,
-        gradeName: selectedGrade?.name || undefined,
-        sectionId: selectedSectionId || undefined,
-        role: selectedRole || undefined,
+        gradeIds: gradeIds.length ? gradeIds : undefined,
+        gradeNames: gradeNames.length ? gradeNames : undefined,
+        // keep legacy single fields for backward compat
+        gradeId: gradeIds[0] ?? undefined,
+        gradeName: gradeNames[0] ?? undefined,
+        sectionId: (overrides.sectionId ?? selectedSectionId) || undefined,
+        role: (overrides.role ?? selectedRole) || undefined,
         ...overrides,
       })
     },
-    [debouncedSearch, selectedGrade, selectedSectionId, selectedRole, onFilterChange]
+    [debouncedSearch, selectedGradeIds, selectedSectionId, selectedRole, gradeLevels, onFilterChange]
   )
 
-  // Notify on debounced search change
   useEffect(() => { notify() }, [debouncedSearch]) // eslint-disable-line
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
-  const handleGradeChange = (gradeId: string) => {
-    const grade = gradeId === '__all__' ? null : (gradeLevels.find((g) => g.id === gradeId) ?? null)
-    setSelectedGrade(grade)
+  const handleGradeChange = (ids: string[]) => {
+    setSelectedGradeIds(ids)
+    // Clear section whenever grade selection changes
     setSelectedSectionId('')
-    notify({
-      gradeId: grade?.id,
-      gradeName: grade?.name,
+
+    const gradeNames = ids
+      .map((id) => gradeLevels.find((g) => g.id === id)?.name)
+      .filter(Boolean) as string[]
+
+    onFilterChange({
+      search: debouncedSearch || undefined,
+      gradeIds: ids.length ? ids : undefined,
+      gradeNames: gradeNames.length ? gradeNames : undefined,
+      gradeId: ids[0] ?? undefined,
+      gradeName: gradeNames[0] ?? undefined,
       sectionId: undefined,
+      role: selectedRole || undefined,
     })
   }
 
@@ -124,7 +261,7 @@ export function UniversalFilter({
 
   const handleClear = () => {
     setSearch('')
-    setSelectedGrade(null)
+    setSelectedGradeIds([])
     setSelectedSectionId('')
     setSelectedRole('')
     setSections([])
@@ -135,14 +272,12 @@ export function UniversalFilter({
 
   const activeCount = [
     debouncedSearch,
-    selectedGrade,
+    selectedGradeIds.length > 0 ? true : null,
     selectedSectionId,
     selectedRole,
   ].filter(Boolean).length
 
   const hasActive = activeCount > 0
-
-  // ── Resolve search placeholder ─────────────────────────────────────────────
 
   const searchPlaceholder =
     entityType === 'students' ? t('searchStudents')
@@ -175,29 +310,19 @@ export function UniversalFilter({
         </div>
       )}
 
-      {/* Grade */}
+      {/* Grade — multi-select */}
       {availableFilters.includes('grade') && (
-        <Select
-          value={selectedGrade?.id ?? '__all__'}
-          onValueChange={handleGradeChange}
-          disabled={gradesLoading}
-        >
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder={t('allGrades')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">{t('allGrades')}</SelectItem>
-            {gradeLevels.map((g) => (
-              <SelectItem key={g.id} value={g.id}>
-                {g.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <GradeMultiSelect
+          grades={gradeLevels}
+          selectedIds={selectedGradeIds}
+          loading={gradesLoading}
+          onChange={handleGradeChange}
+          placeholder={t('allGrades')}
+        />
       )}
 
-      {/* Section — only when grade selected */}
-      {availableFilters.includes('section') && selectedGrade && (
+      {/* Section — only when exactly 1 grade selected */}
+      {availableFilters.includes('section') && singleSelectedGrade && (
         <Select
           value={selectedSectionId || '__all__'}
           onValueChange={handleSectionChange}

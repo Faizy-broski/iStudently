@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Search, Eye, Edit, MoreHorizontal, ChevronLeft, ChevronRight, Loader2, RefreshCw } from "lucide-react";
+import { ProfilePhoto } from "@/components/shared/ProfilePhoto";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -254,14 +255,7 @@ export default function ParentInfoPage() {
                         >
                           <TableCell className="max-w-sm">
                             <div className="flex items-center gap-3">
-                              <div className="h-10 w-10 rounded-full shrink-0 overflow-hidden bg-linear-to-r from-[#57A3CC] to-[#022172] flex items-center justify-center text-white font-semibold">
-                                {parent.profile?.profile_photo_url ? (
-                                  // eslint-disable-next-line @next/next/no-img-element
-                                  <img src={parent.profile.profile_photo_url} alt={fullName} className="w-full h-full object-cover" />
-                                ) : (
-                                  initials || t("na")
-                                )}
-                              </div>
+                              <ProfilePhoto src={parent.profile?.profile_photo_url} name={fullName} size="xs" />
                               <div className="min-w-0 flex-1">
                                 <div className="font-medium truncate">{fullName || t("na")}</div>
                               </div>
@@ -412,9 +406,7 @@ export default function ParentInfoPage() {
                       className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-linear-to-r from-[#57A3CC] to-[#022172] flex items-center justify-center text-white font-semibold text-sm">
-                          {initials || t("na")}
-                        </div>
+                        <ProfilePhoto src={undefined} name={fullName} size="xs" />
                         <div>
                           <p className="font-medium">{fullName || t("na")}</p>
                           <p className="text-sm text-muted-foreground">
@@ -456,9 +448,7 @@ export default function ParentInfoPage() {
             <div className="space-y-6">
               {/* Profile Section */}
               <div className="flex items-center gap-4 pb-4 border-b">
-                <div className="h-16 w-16 rounded-full bg-linear-to-r from-[#57A3CC] to-[#022172] flex items-center justify-center text-white font-semibold text-xl">
-                  {`${selectedParent.profile?.first_name?.[0] || ''}${selectedParent.profile?.last_name?.[0] || ''}`.toUpperCase()}
-                </div>
+                <ProfilePhoto src={selectedParent.profile?.profile_photo_url} name={`${selectedParent.profile?.first_name || ''} ${selectedParent.profile?.last_name || ''}`.trim()} size="sm" />
                 <div>
                   <h3 className="text-lg font-semibold">
                     {selectedParent.profile?.first_name} {selectedParent.profile?.last_name}

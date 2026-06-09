@@ -223,7 +223,14 @@ export class StudentService {
       throw new Error(`Failed to fetch student: ${error.message}`)
     }
 
-    return data
+    // Fetch last_sign_in_at from Supabase auth
+    let last_sign_in: string | null = null
+    if (data?.profile_id) {
+      const { data: authUser } = await supabase.auth.admin.getUserById(data.profile_id)
+      last_sign_in = authUser?.user?.last_sign_in_at ?? null
+    }
+
+    return { ...data, last_sign_in }
   }
 
   /**

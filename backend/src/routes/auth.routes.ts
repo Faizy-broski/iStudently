@@ -28,4 +28,7 @@ router.post('/force-password-change', requireAdmin, authController.forcePassword
 // POST /auth/force-password-change/reset    — clear flag for all users in school/campus
 router.post('/force-password-change/reset', requireAdmin, authController.resetForcePasswordChange)
 
+// GET /auth/last-login/:profileId  — admin: fetch last_sign_in_at for any user
+router.get('/last-login/:profileId', requireAdmin, authController.getLastLogin)
+
 export default router

@@ -113,7 +113,12 @@ export default function StudentInfoPage() {
     page: currentPage,
     limit: itemsPerPage,
     search: studentFilters.search || undefined,
-    grade_level: studentFilters.gradeName ? [studentFilters.gradeName] : undefined,
+    // Use multi-select grade names array when available, fall back to single
+    grade_level: studentFilters.gradeNames?.length
+      ? studentFilters.gradeNames
+      : studentFilters.gradeName
+        ? [studentFilters.gradeName]
+        : undefined,
     section_id: studentFilters.sectionId || undefined,
   });
 

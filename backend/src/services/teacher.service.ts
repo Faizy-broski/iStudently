@@ -172,13 +172,10 @@ export const getTeacherById = async (teacherId: string, schoolId?: string): Prom
         .eq('is_current', true)
         .maybeSingle()
 
-      return {
-        success: true,
-        data: {
-          ...staffData,
-          base_salary: salaryData?.base_salary || 0
-        } as Staff
-      }
+      const fallbackData = { ...staffData, base_salary: salaryData?.base_salary || 0 } as any
+      const { data: authUser } = await supabase.auth.admin.getUserById(fallbackData.profile_id)
+      fallbackData.last_sign_in = authUser?.user?.last_sign_in_at ?? null
+      return { success: true, data: fallbackData as Staff }
     }
 
     if (!data || (Array.isArray(data) && data.length === 0)) {
@@ -187,9 +184,16 @@ export const getTeacherById = async (teacherId: string, schoolId?: string): Prom
 
     const teacherData = Array.isArray(data) ? data[0] : data
 
+    // Fetch last_sign_in_at from Supabase auth
+    let last_sign_in: string | null = null
+    if (teacherData?.profile_id) {
+      const { data: authUser } = await supabase.auth.admin.getUserById(teacherData.profile_id)
+      last_sign_in = authUser?.user?.last_sign_in_at ?? null
+    }
+
     return {
       success: true,
-      data: teacherData as Staff
+      data: { ...teacherData, last_sign_in } as Staff
     }
   } catch (error: any) {
     console.error('Error fetching teacher:', error)

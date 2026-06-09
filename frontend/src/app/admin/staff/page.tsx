@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { UniversalFilter, type FilterState } from '@/components/filters/UniversalFilter'
+import { ProfilePhoto } from '@/components/shared/ProfilePhoto'
 import {
     Users,
     Plus,
@@ -249,14 +250,7 @@ export default function StaffPage() {
                                 >
                                     <TableCell className="max-w-sm">
                                         <div className="flex items-center gap-3">
-                                            <div className="h-9 w-9 rounded-full shrink-0 overflow-hidden bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[#022172] dark:text-blue-300 font-semibold text-sm">
-                                                {member.profile?.profile_photo_url ? (
-                                                    // eslint-disable-next-line @next/next/no-img-element
-                                                    <img src={member.profile.profile_photo_url} alt="" className="w-full h-full object-cover" />
-                                                ) : (
-                                                    `${member.profile?.first_name?.[0] || ''}${member.profile?.last_name?.[0] || ''}`
-                                                )}
-                                            </div>
+                                            <ProfilePhoto src={member.profile?.profile_photo_url} name={`${member.profile?.first_name || ''} ${member.profile?.last_name || ''}`.trim()} size="xs" />
                                             <div className="min-w-0 flex-1">
                                                 <div className="font-medium text-[#022172] dark:text-gray-200 truncate">
                                                     {member.profile?.first_name} {member.profile?.last_name}
@@ -380,9 +374,7 @@ export default function StaffPage() {
                     <div className="space-y-4 py-4">
                         {/* Name (read-only) */}
                         <div className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                            <div className="h-10 w-10 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center text-[#022172] dark:text-blue-300 font-semibold">
-                                {editingStaff?.profile?.first_name?.[0]}{editingStaff?.profile?.last_name?.[0]}
-                            </div>
+                            <ProfilePhoto src={editingStaff?.profile?.profile_photo_url} name={`${editingStaff?.profile?.first_name || ''} ${editingStaff?.profile?.last_name || ''}`.trim()} size="xs" />
                             <div>
                                 <p className="font-medium dark:text-gray-100">{editingStaff?.profile?.first_name} {editingStaff?.profile?.last_name}</p>
                                 <p className="text-sm text-gray-500 dark:text-gray-400">{editingStaff?.profile?.email}</p>

@@ -141,11 +141,13 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
   if (isCollapsed) {
     return (
       <div className="flex flex-col items-center py-4 mb-2">
-        <div className="w-12 h-10 rounded-lg overflow-hidden ring-2 ring-white/20">
-          {selectedCampus?.logo_url ? (
+        <div className="w-12 h-10 rounded-lg overflow-hidden ring-2 ring-white/20 bg-white">
+          {!selectedCampus ? (
+            <div className="w-full h-full bg-white/20 animate-pulse" />
+          ) : selectedCampus.logo_url ? (
             <Image src={selectedCampus.logo_url} alt={selectedCampus.name} width={48} height={40} className="object-contain w-full h-full" />
           ) : (
-            <div className="w-full h-full bg-[#EEA831] flex items-center justify-center">
+            <div className="w-full h-full bg-white flex items-center justify-center">
               <span className="text-[#022172] font-bold text-xs">{initials}</span>
             </div>
           )}
@@ -158,10 +160,12 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
     <div className="px-4 pt-6 pb-5 mb-1 border-b border-white/10 flex flex-col items-center rtl:items-end text-center rtl:text-right">
       {/* Campus logo — centered, square/rectangle */}
       <div className="w-28 h-20 rounded-xl overflow-hidden ring-2 ring-white/30 shadow-lg mb-3 bg-white">
-        {selectedCampus?.logo_url ? (
+        {!selectedCampus ? (
+          <div className="w-full h-full bg-white/20 animate-pulse" />
+        ) : selectedCampus.logo_url ? (
           <Image src={selectedCampus.logo_url} alt={selectedCampus.name} width={112} height={80} className="object-contain w-full h-full" />
         ) : (
-          <div className="w-full h-full bg-[#EEA831] flex items-center justify-center">
+          <div className="w-full h-full bg-white flex items-center justify-center">
             <span className="text-[#022172] font-bold text-2xl">{initials}</span>
           </div>
         )}
@@ -295,14 +299,14 @@ function AcademicSelectors() {
         if (cps.length === 0) { setSelectedCoursePeriod(null); return }
         const current = selectedCoursePeriodRef.current
         if (current && cps.some(cp => cp.id === current.id)) return
-        const first = cps[0]
+        const active = cps.find(cp => cp.is_active) ?? cps[0]
         setSelectedCoursePeriod({
-          id: first.id,
-          title: first.title ?? null,
-          short_name: first.short_name ?? null,
-          section_name: first.section?.name ?? null,
-          grade_name: first.section?.grade_level?.name ?? null,
-          course_title: first.course?.title ?? null,
+          id: active.id,
+          title: active.title ?? null,
+          short_name: active.short_name ?? null,
+          section_name: active.section?.name ?? null,
+          grade_name: active.section?.grade_level?.name ?? null,
+          course_title: active.course?.title ?? null,
         })
       } catch {
         if (active) setCoursePeriods([])

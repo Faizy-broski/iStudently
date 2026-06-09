@@ -24,7 +24,10 @@ import {
   updateGlobalCustomLink,
   deleteGlobalCustomLink,
   reorderGlobalCustomLinks,
+  type CustomPageType,
 } from '../services/public-pages.service'
+
+const VALID_PAGE_TYPES: CustomPageType[] = ['url', 'embed', 'text', 'image']
 import { supabase } from '../config/supabase'
 
 const router = Router()
@@ -252,10 +255,13 @@ router.post(
   requireRole('super_admin'),
   async (req: Request, res: Response) => {
     try {
-      const { title, url, isActive = true } = req.body
+      const { title, page_type = 'url', url, content, image_url, isActive = true } = req.body
       if (!title?.trim()) return res.status(400).json({ success: false, error: 'title is required' })
-      if (!url?.trim()) return res.status(400).json({ success: false, error: 'url is required' })
-      const link = await addGlobalCustomLink({ title, url, isActive: Boolean(isActive) })
+      if (!VALID_PAGE_TYPES.includes(page_type)) return res.status(400).json({ success: false, error: `page_type must be one of: ${VALID_PAGE_TYPES.join(', ')}` })
+      if ((page_type === 'url' || page_type === 'embed') && !url?.trim()) return res.status(400).json({ success: false, error: 'url is required for this page type' })
+      if (page_type === 'text' && !content?.trim()) return res.status(400).json({ success: false, error: 'content is required for text pages' })
+      if (page_type === 'image' && !image_url?.trim()) return res.status(400).json({ success: false, error: 'image_url is required for image pages' })
+      const link = await addGlobalCustomLink({ title, page_type, url, content, image_url, isActive: Boolean(isActive) })
       res.status(201).json({ success: true, data: link })
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message })
@@ -286,10 +292,16 @@ router.put(
   async (req: Request, res: Response) => {
     try {
       const { pageId } = req.params
-      const { title, url, isActive } = req.body
+      const { title, page_type, url, content, image_url, isActive } = req.body
+      if (page_type !== undefined && !VALID_PAGE_TYPES.includes(page_type)) {
+        return res.status(400).json({ success: false, error: `page_type must be one of: ${VALID_PAGE_TYPES.join(', ')}` })
+      }
       const link = await updateGlobalCustomLink(pageId, {
         ...(title !== undefined ? { title } : {}),
+        ...(page_type !== undefined ? { page_type } : {}),
         ...(url !== undefined ? { url } : {}),
+        ...(content !== undefined ? { content } : {}),
+        ...(image_url !== undefined ? { image_url } : {}),
         ...(isActive !== undefined ? { isActive: Boolean(isActive) } : {}),
       })
       res.json({ success: true, data: link })
@@ -349,12 +361,12 @@ router.post(
   async (req: Request, res: Response) => {
     try {
       const { schoolId } = req.params
-      const { title, url, isActive = true } = req.body
+      const { title, page_type = 'url', url, content, image_url, isActive = true } = req.body
 
       if (!title?.trim()) return res.status(400).json({ success: false, error: 'title is required' })
-      if (!url?.trim()) return res.status(400).json({ success: false, error: 'url is required' })
+      if (!VALID_PAGE_TYPES.includes(page_type)) return res.status(400).json({ success: false, error: `page_type must be one of: ${VALID_PAGE_TYPES.join(', ')}` })
 
-      const link = await addCustomLink(schoolId, { title, url, isActive: Boolean(isActive) })
+      const link = await addCustomLink(schoolId, { title, page_type, url, content, image_url, isActive: Boolean(isActive) })
       res.status(201).json({ success: true, data: link })
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message })
@@ -395,10 +407,13 @@ router.put(
   async (req: Request, res: Response) => {
     try {
       const { schoolId, pageId } = req.params
-      const { title, url, isActive } = req.body
+      const { title, page_type, url, content, image_url, isActive } = req.body
       const link = await updateCustomLink(schoolId, pageId, {
         ...(title !== undefined ? { title } : {}),
+        ...(page_type !== undefined ? { page_type } : {}),
         ...(url !== undefined ? { url } : {}),
+        ...(content !== undefined ? { content } : {}),
+        ...(image_url !== undefined ? { image_url } : {}),
         ...(isActive !== undefined ? { isActive: Boolean(isActive) } : {}),
       })
       res.json({ success: true, data: link })

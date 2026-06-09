@@ -149,6 +149,23 @@ export interface MarkingPeriodOption {
   mp_type: string
 }
 
+export interface MarkingPeriodFull extends MarkingPeriodOption {
+  parent_id: string | null
+  does_grades: boolean
+  does_comments: boolean
+  sort_order: number
+  start_date: string | null
+  end_date: string | null
+  is_active: boolean
+}
+
+export interface GroupedMarkingPeriods {
+  FY: MarkingPeriodFull[]
+  SEM: MarkingPeriodFull[]
+  QTR: MarkingPeriodFull[]
+  PRO: MarkingPeriodFull[]
+}
+
 export interface ReportCardOptions {
   include_student_photo: boolean
   include_teacher: boolean
@@ -267,6 +284,22 @@ export async function getMarkingPeriods(campusId?: string) {
   const qp = new URLSearchParams()
   if (campusId) qp.append('campus_id', campusId)
   return apiRequest<MarkingPeriodOption[]>(`/marking-periods?${qp}`)
+}
+
+export async function getGroupedMarkingPeriods(campusId?: string) {
+  const qp = new URLSearchParams()
+  if (campusId) qp.append('campus_id', campusId)
+  return apiRequest<GroupedMarkingPeriods>(`/marking-periods/grouped?${qp}`)
+}
+
+export async function saveBatchGradebookConfig(
+  configs: Array<{ key: string; value: string }>,
+  campusId?: string
+) {
+  return apiRequest('/gradebook/config/batch', {
+    method: 'POST',
+    body: JSON.stringify({ configs, campus_id: campusId }),
+  })
 }
 
 // ============================================================================

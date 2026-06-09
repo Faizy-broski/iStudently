@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useLibrarianDashboard } from '@/hooks/useLibrarianDashboard'
 import { useAuth } from '@/context/AuthContext'
+import { ProfilePhoto } from '@/components/shared/ProfilePhoto'
 
 export default function LibrarianDashboard() {
   const { stats, loading, error, refreshDashboard, isValidating } = useLibrarianDashboard()
@@ -88,13 +89,21 @@ export default function LibrarianDashboard() {
     <div className="space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-[#022172] dark:text-white">
-            Welcome back, <span className="text-[#57A3CC]">{firstName}</span>
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage library operations and track book circulation.
-          </p>
+        <div className="flex items-center gap-4">
+          <ProfilePhoto
+            src={profile?.profile_photo_url}
+            name={firstName}
+            size="lg"
+            className="border-2 border-[#022172]/20 shadow-sm"
+          />
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-[#022172] dark:text-white">
+              Welcome back, <span className="text-[#57A3CC]">{firstName}</span>
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage library operations and track book circulation.
+            </p>
+          </div>
         </div>
         <Button
           variant="outline"

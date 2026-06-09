@@ -467,25 +467,29 @@ export const getStaffList = async (
   campusId?: string
 ): Promise<ApiResponse<{ id: string; name: string; role: string }[]>> => {
   try {
-    // Staff profiles store school_id = campus_id (the campus they belong to).
-    // When campusId is provided, query profiles by that campus directly;
-    // otherwise fall back to the parent school_id.
+    // Query the staff table (one row per person per school/campus) rather than
+    // profiles directly, so we get proper campus scoping and is_active filtering.
+    // Staff rows store school_id = campus_id when they belong to a specific campus.
     const effectiveId = campusId || schoolId
 
     const { data, error } = await supabase
-      .from('profiles')
-      .select('id, first_name, last_name, role')
+      .from('staff')
+      .select('profile_id, role, profile:profiles!staff_profile_id_fkey(first_name, last_name)')
       .eq('school_id', effectiveId)
+      .eq('is_active', true)
       .in('role', ['admin', 'teacher', 'staff', 'librarian'])
-      .order('first_name', { ascending: true })
+      .order('role', { ascending: true })
 
     if (error) return { data: null, error: error.message }
 
-    const staff = (data || []).map((p: any) => ({
-      id: p.id,
-      name: `${p.first_name || ''} ${p.last_name || ''}`.trim(),
-      role: p.role,
-    }))
+    const staff = (data || [])
+      .map((s: any) => ({
+        id: s.profile_id,
+        name: `${s.profile?.first_name || ''} ${s.profile?.last_name || ''}`.trim(),
+        role: s.role,
+      }))
+      .filter((s) => s.name)
+      .sort((a, b) => a.name.localeCompare(b.name))
 
     return { data: staff, error: null }
   } catch (err: any) {

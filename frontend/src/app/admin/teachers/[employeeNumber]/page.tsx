@@ -34,6 +34,7 @@ import { QualificationsTab } from "@/components/admin/QualificationsTab";
 import { UserQRCode } from "@/components/shared/UserQRCode";
 import { type Staff } from "@/lib/api/teachers";
 import { useTeachers } from "@/hooks/useTeachers";
+import { getLastLogin } from "@/lib/api/auth";
 import { format } from "date-fns";
 import { useTranslations } from "next-intl";
 
@@ -80,6 +81,7 @@ export default function TeacherDetailsPage() {
 
   const [currentTeacher, setCurrentTeacher] = useState<Staff | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lastLogin, setLastLogin] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("personal");
 
   // Fetch all teachers for navigation
@@ -98,6 +100,13 @@ export default function TeacherDetailsPage() {
         const teacher = teachers.find((t) => t.employee_number === employeeNumber);
         if (teacher) {
           setCurrentTeacher(teacher);
+
+          if (teacher.profile_id) {
+            getLastLogin(teacher.profile_id).then((res) => {
+              if (res.success && res.data) setLastLogin(res.data.last_sign_in);
+            }).catch(() => {});
+          }
+
           // Update profile view context for sidebar indicator
           const teacherFullName = `${teacher.profile?.first_name || ""} ${teacher.profile?.last_name || ""}`.trim() || teacher.employee_number;
           setViewedProfile({
@@ -429,9 +438,6 @@ export default function TeacherDetailsPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <InfoRow label={t("fields.teacherId")} value={currentTeacher.id} fallbackLabel={t("notProvided")} />
-                <InfoRow label={t("fields.profileId")} value={currentTeacher.profile_id} fallbackLabel={t("notProvided")} />
-                <InfoRow label={t("fields.schoolId")} value={currentTeacher.school_id} fallbackLabel={t("notProvided")} />
                 <InfoRow
                   label={t("fields.status")}
                   value={
@@ -450,6 +456,12 @@ export default function TeacherDetailsPage() {
                 <InfoRow
                   label={t("fields.lastUpdated")}
                   value={formatDate(currentTeacher.updated_at, t("notProvided"))}
+                  icon={Clock}
+                  fallbackLabel={t("notProvided")}
+                />
+                <InfoRow
+                  label={t("fields.lastLogin")}
+                  value={lastLogin ? formatDate(lastLogin, t("notProvided")) : t("never")}
                   icon={Clock}
                   fallbackLabel={t("notProvided")}
                 />

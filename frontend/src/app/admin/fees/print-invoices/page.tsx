@@ -392,28 +392,28 @@ export default function PrintInvoicesPage() {
                     ) : (
                         <Table>
                             <TableHeader>
-                                <TableRow className="bg-gray-100">
+                                <TableRow className="bg-gray-100 dark:bg-slate-800">
                                     <TableHead className="w-12">
                                         <Checkbox 
                                             checked={selectAll}
                                             onCheckedChange={handleSelectAll}
                                         />
                                     </TableHead>
-                                    <TableHead className="text-[#3d8fb5]">{tf('th_student') || 'STUDENT'}</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">{tf('th_studentId') || 'ID'}</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">{tf('gradeLevel') || 'GRADE'}</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">{t('th_feeMonth')}</TableHead>
-                                    <TableHead className="text-[#3d8fb5] text-end">{tp('th_amount') || 'AMOUNT'}</TableHead>
-                                    <TableHead className="text-[#3d8fb5] text-end">{t('th_balance') || 'BALANCE'}</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">{t('th_dueDate')}</TableHead>
-                                    <TableHead className="text-[#3d8fb5]">{tp('th_status') || 'STATUS'}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] dark:text-[#93c5fd]">{tf('th_student') || 'STUDENT'}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] dark:text-[#93c5fd]">{tf('th_studentId') || 'ID'}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] dark:text-[#93c5fd]">{tf('gradeLevel') || 'GRADE'}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] dark:text-[#93c5fd]">{t('th_feeMonth')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] dark:text-[#93c5fd] text-end">{tp('th_amount') || 'AMOUNT'}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] dark:text-[#93c5fd] text-end">{t('th_balance') || 'BALANCE'}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] dark:text-[#93c5fd]">{t('th_dueDate')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] dark:text-[#93c5fd]">{tp('th_status') || 'STATUS'}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {filteredFees.map((fee, index) => (
                                     <TableRow 
                                         key={fee.id}
-                                        className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                                        className={index % 2 === 0 ? 'bg-white dark:bg-slate-950' : 'bg-gray-50 dark:bg-slate-900'}
                                     >
                                         <TableCell>
                                             <Checkbox 
@@ -434,10 +434,10 @@ export default function PrintInvoicesPage() {
                                         <TableCell>{fee.due_date ? formatDate(fee.due_date) : '-'}</TableCell>
                                         <TableCell>
                                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                                fee.status === 'paid' ? 'bg-green-100 text-green-800' :
-                                                fee.status === 'overdue' ? 'bg-red-100 text-red-800' :
-                                                fee.status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
-                                                'bg-gray-100 text-gray-800'
+                                                fee.status === 'paid' ? 'bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-300' :
+                                                fee.status === 'overdue' ? 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-300' :
+                                                fee.status === 'partial' ? 'bg-yellow-100 dark:bg-yellow-950 text-yellow-800 dark:text-yellow-300' :
+                                                'bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-gray-100'
                                             }`}>
                                                 {fee.status?.toUpperCase()}
                                             </span>

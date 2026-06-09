@@ -12,6 +12,22 @@ import type {
 // COURSES SERVICE
 // ============================================================================
 
+// Maps the single-character day code used in course_periods.days → day_of_week int
+const DAY_CHAR_MAP: Record<string, number> = {
+  M: 0, // Monday
+  T: 1, // Tuesday
+  W: 2, // Wednesday
+  R: 3, // Thursday
+  F: 4, // Friday
+  S: 5, // Saturday
+  U: 6, // Sunday
+}
+
+function parseDays(days: string | null | undefined): number[] {
+  if (!days) return []
+  return days.split('').filter(d => d in DAY_CHAR_MAP).map(d => DAY_CHAR_MAP[d])
+}
+
 class CoursesService {
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -176,6 +192,181 @@ class CoursesService {
     return data as CoursePeriod
   }
 
+  // ── Timetable auto-sync helpers ────────────────────────────────────────────
+  //
+  // When a course period has period_id + section_id + days set, the system
+  // automatically maintains matching rows in timetable_entries so that teacher
+  // and student schedule views reflect the setup without manual timetable entry.
+  //
+  // Strategy (no DB migration required):
+  //   • Composite key: (school_id, academic_year_id, section_id, period_id,
+  //                      teacher_id, subject_id) identifies the slot.
+  //   • On create  → insert one timetable_entry per day in `days` string.
+  //   • On update  → delete entries for OLD slot key, insert for NEW slot key.
+  //   • On delete  → delete entries for the slot key.
+  //
+  // Sync failures are logged but never propagate — course period CRUD must
+  // never fail because of a timetable sync problem.
+
+  private async fetchCPForSync(id: string): Promise<{
+    id: string
+    school_id: string
+    campus_id: string | null
+    academic_year_id: string
+    section_id: string | null
+    period_id: string | null
+    teacher_id: string
+    days: string | null
+    room: string | null
+    subject_id: string | null
+  } | null> {
+    const { data } = await supabase
+      .from('course_periods')
+      .select(`
+        id, school_id, campus_id, academic_year_id,
+        section_id, period_id, teacher_id, days, room,
+        course:courses!course_id(subject_id)
+      `)
+      .eq('id', id)
+      .maybeSingle()
+    if (!data) return null
+    return {
+      ...(data as any),
+      subject_id: (data as any).course?.subject_id ?? null,
+    }
+  }
+
+  private async deleteTimetableSlot(
+    schoolId: string,
+    academicYearId: string,
+    sectionId: string,
+    periodId: string,
+    teacherId: string,
+    subjectId: string,
+  ): Promise<void> {
+    await supabase
+      .from('timetable_entries')
+      .delete()
+      .eq('school_id', schoolId)
+      .eq('academic_year_id', academicYearId)
+      .eq('section_id', sectionId)
+      .eq('period_id', periodId)
+      .eq('teacher_id', teacherId)
+      .eq('subject_id', subjectId)
+  }
+
+  private async insertTimetableSlot(cp: {
+    school_id: string
+    campus_id: string | null
+    academic_year_id: string
+    section_id: string
+    period_id: string
+    teacher_id: string
+    subject_id: string
+    days: string
+    room: string | null
+  }): Promise<void> {
+    const dayOfWeeks = parseDays(cp.days)
+    if (dayOfWeeks.length === 0) return
+
+    const entries = dayOfWeeks.map(day => ({
+      school_id: cp.school_id,
+      campus_id: cp.campus_id,
+      academic_year_id: cp.academic_year_id,
+      section_id: cp.section_id,
+      subject_id: cp.subject_id,
+      teacher_id: cp.teacher_id,
+      period_id: cp.period_id,
+      day_of_week: day,
+      room_number: cp.room,
+      created_by: null,
+    }))
+
+    const { error } = await supabase.from('timetable_entries').insert(entries)
+    // Ignore duplicate-key errors — the entry already exists; anything else log
+    if (error && error.code !== '23505') {
+      console.error('[syncTimetable] insert error:', error.message)
+    }
+  }
+
+  private async syncTimetableOnCreate(cpId: string): Promise<void> {
+    try {
+      const cp = await this.fetchCPForSync(cpId)
+      if (!cp || !cp.period_id || !cp.section_id || !cp.days || !cp.subject_id) return
+      await this.insertTimetableSlot({
+        school_id: cp.school_id,
+        campus_id: cp.campus_id,
+        academic_year_id: cp.academic_year_id,
+        section_id: cp.section_id,
+        period_id: cp.period_id,
+        teacher_id: cp.teacher_id,
+        subject_id: cp.subject_id,
+        days: cp.days,
+        room: cp.room,
+      })
+    } catch (e) {
+      console.error('[syncTimetable] onCreate failed:', e)
+    }
+  }
+
+  private async syncTimetableOnUpdate(cpId: string, oldCp: {
+    school_id: string
+    academic_year_id: string
+    section_id: string | null
+    period_id: string | null
+    teacher_id: string
+    subject_id: string | null
+  }): Promise<void> {
+    try {
+      // 1. Remove entries for the OLD slot
+      if (oldCp.section_id && oldCp.period_id && oldCp.subject_id) {
+        await this.deleteTimetableSlot(
+          oldCp.school_id, oldCp.academic_year_id,
+          oldCp.section_id, oldCp.period_id,
+          oldCp.teacher_id, oldCp.subject_id,
+        )
+      }
+      // 2. Insert entries for the NEW slot
+      const newCp = await this.fetchCPForSync(cpId)
+      if (!newCp || !newCp.period_id || !newCp.section_id || !newCp.days || !newCp.subject_id) return
+      await this.insertTimetableSlot({
+        school_id: newCp.school_id,
+        campus_id: newCp.campus_id,
+        academic_year_id: newCp.academic_year_id,
+        section_id: newCp.section_id,
+        period_id: newCp.period_id,
+        teacher_id: newCp.teacher_id,
+        subject_id: newCp.subject_id,
+        days: newCp.days,
+        room: newCp.room,
+      })
+    } catch (e) {
+      console.error('[syncTimetable] onUpdate failed:', e)
+    }
+  }
+
+  private async syncTimetableOnDelete(cp: {
+    school_id: string
+    academic_year_id: string
+    section_id: string | null
+    period_id: string | null
+    teacher_id: string
+    subject_id: string | null
+  }): Promise<void> {
+    try {
+      if (!cp.section_id || !cp.period_id || !cp.subject_id) return
+      await this.deleteTimetableSlot(
+        cp.school_id, cp.academic_year_id,
+        cp.section_id, cp.period_id,
+        cp.teacher_id, cp.subject_id,
+      )
+    } catch (e) {
+      console.error('[syncTimetable] onDelete failed:', e)
+    }
+  }
+
+  // ── Course Period CRUD ─────────────────────────────────────────────────────
+
   async createCoursePeriod(schoolId: string, dto: CreateCoursePeriodDTO, createdBy?: string): Promise<CoursePeriod> {
     // ── Auto-generate short_name when not supplied ────────────────────────────
     // Each course period must have a short_name so multiple periods for the
@@ -273,10 +464,27 @@ class CoursesService {
       }
       throw new Error(`Failed to create course period: ${error.message}`)
     }
+
+    // Non-blocking timetable sync — fire and forget; errors are logged inside
+    this.syncTimetableOnCreate((data as CoursePeriod).id)
+
     return data as CoursePeriod
   }
 
   async updateCoursePeriod(id: string, dto: UpdateCoursePeriodDTO): Promise<CoursePeriod> {
+    // Snapshot the OLD slot before applying changes so sync can remove stale entries
+    const oldSnap = await this.fetchCPForSync(id)
+    const oldSlot = oldSnap
+      ? {
+          school_id: oldSnap.school_id,
+          academic_year_id: oldSnap.academic_year_id,
+          section_id: oldSnap.section_id,
+          period_id: oldSnap.period_id,
+          teacher_id: oldSnap.teacher_id,
+          subject_id: oldSnap.subject_id,
+        }
+      : null
+
     const { data, error } = await supabase
       .from('course_periods')
       .update(dto)
@@ -285,16 +493,35 @@ class CoursesService {
       .single()
 
     if (error) throw new Error(`Failed to update course period: ${error.message}`)
+
+    // Non-blocking timetable sync
+    if (oldSlot) this.syncTimetableOnUpdate(id, oldSlot)
+
     return data as CoursePeriod
   }
 
   async deleteCoursePeriod(id: string): Promise<void> {
+    // Snapshot slot info before deletion so we can clean up timetable entries
+    const snap = await this.fetchCPForSync(id)
+
     const { error } = await supabase
       .from('course_periods')
       .delete()
       .eq('id', id)
 
     if (error) throw new Error(`Failed to delete course period: ${error.message}`)
+
+    // Non-blocking timetable cleanup
+    if (snap) {
+      this.syncTimetableOnDelete({
+        school_id: snap.school_id,
+        academic_year_id: snap.academic_year_id,
+        section_id: snap.section_id,
+        period_id: snap.period_id,
+        teacher_id: snap.teacher_id,
+        subject_id: snap.subject_id,
+      })
+    }
   }
 
   // ──────────────────────────────────────────────────────────────────────────

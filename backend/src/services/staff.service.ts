@@ -129,7 +129,10 @@ export const getStaffById = async (id: string, schoolId?: string): Promise<ApiRe
         }).maybeSingle()
 
         if (!rpcError && rpcData) {
-            return { success: true, data: rpcData as Staff }
+            const rpcResult: any = rpcData
+            const { data: authUser } = await supabase.auth.admin.getUserById(rpcResult.profile_id)
+            rpcResult.last_sign_in = authUser?.user?.last_sign_in_at ?? null
+            return { success: true, data: rpcResult as Staff }
         }
 
         // Fallback: Manual query WITHOUT school_id filter
@@ -163,10 +166,13 @@ export const getStaffById = async (id: string, schoolId?: string): Promise<ApiRe
             console.error('❌ Error fetching salary:', salaryError)
         }
 
-        const staffWithSalary = {
+        const staffWithSalary: any = {
             ...data,
             base_salary: salaryData?.base_salary || 0
         }
+
+        const { data: authUser } = await supabase.auth.admin.getUserById(data.profile_id)
+        staffWithSalary.last_sign_in = authUser?.user?.last_sign_in_at ?? null
 
         return { success: true, data: staffWithSalary as Staff }
     } catch (error: any) {

@@ -10,16 +10,17 @@ interface UseStudentsOptions {
   limit?: number;
   search?: string;
   grade_level?: string | string[];
+  section_id?: string;
 }
 
 export function useStudents(options: UseStudentsOptions = {}) {
   const { user } = useAuth();
   const campusContext = useCampus();
-  const { page = 1, limit = 10, search, grade_level } = options;
+  const { page = 1, limit = 10, search, grade_level, section_id } = options;
 
   // Create a cache key that includes all parameters INCLUDING campus
-  const cacheKey = user 
-    ? ['students', user.id, campusContext?.selectedCampus?.id, page, limit, search, grade_level] 
+  const cacheKey = user
+    ? ['students', user.id, campusContext?.selectedCampus?.id, page, limit, search, grade_level, section_id]
     : null;
 
   const { data, error, isLoading, mutate } = useSWR(
@@ -32,6 +33,7 @@ export function useStudents(options: UseStudentsOptions = {}) {
         grade_level: Array.isArray(grade_level)
           ? grade_level.length > 0 ? grade_level : undefined
           : grade_level !== 'all' ? grade_level : undefined,
+        section_id: section_id || undefined,
         campus_id: campusContext?.selectedCampus?.id,
       });
 

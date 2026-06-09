@@ -71,3 +71,7 @@ export async function resetForcePasswordChange(campusId?: string): Promise<ApiRe
     body: JSON.stringify({ campus_id: campusId }),
   })
 }
+
+export async function getLastLogin(profileId: string): Promise<ApiResponse<{ last_sign_in: string | null }>> {
+  return apiRequest(`/auth/last-login/${profileId}`)
+}

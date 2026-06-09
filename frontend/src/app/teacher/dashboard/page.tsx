@@ -24,6 +24,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useAcademic } from "@/context/AcademicContext"
+import { ProfilePhoto } from "@/components/shared/ProfilePhoto"
 import * as timetableApi from "@/lib/api/timetable"
 import * as coursesApi from "@/lib/api/courses"
 import useSWR from "swr"
@@ -223,13 +224,21 @@ export default function TeacherDashboard() {
     <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-7xl mx-auto">
       {/* ── Header ── */}
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">
-            Teacher Dashboard
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Welcome back, {profile?.first_name} {profile?.last_name}
-          </p>
+        <div className="flex items-center gap-4">
+          <ProfilePhoto
+            src={profile?.profile_photo_url}
+            name={`${profile?.first_name || ''} ${profile?.last_name || ''}`}
+            size="lg"
+            className="border-2 border-[#022172]/20 shadow-sm"
+          />
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">
+              Teacher Dashboard
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Welcome back, {profile?.first_name} {profile?.last_name}
+            </p>
+          </div>
         </div>
         <div className="text-right">
           <div className="text-3xl font-bold text-[#022172]">

@@ -390,9 +390,12 @@ const adminMenuItems: SidebarMenuItem[] = [
     icon: Library,
     subItems: [
       { title: "overview", href: "/admin/library", icon: BookOpen },
+      { title: "books", href: "/admin/library/books", icon: BookOpen },
+      { title: "loan_directory", href: "/admin/library/loans", icon: ClipboardList },
+      { title: "fines", href: "/admin/library/fines", icon: DollarSign },
+      { title: "setup", href: "#", icon: Settings, isLabel: true },
       { title: "document_categories", href: "/admin/library/categories", icon: FolderOpen },
       { title: "document_fields", href: "/admin/library/document-fields", icon: Sliders },
-
     ],
   },
   {
@@ -713,6 +716,8 @@ const studentMenuItems: SidebarMenuItem[] = [
       { title: "learning_resources", href: "/student/learning-resources", icon: Upload },
       { title: "syllabus", href: "/student/syllabus", icon: BookOpen },
       { title: "learning_materials", href: "/student/materials", icon: Library },
+      { title: "premium_resources", href: "#", icon: Star, isLabel: true },
+      { title: "physics_virtual_labs", href: "/student/resources/physics-virtual-labs", icon: Globe },
     ],
   },
   {

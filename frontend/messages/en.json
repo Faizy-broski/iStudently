@@ -477,7 +477,7 @@
     "email_reminders": "Email Reminders",
     "email_smtp": "Email SMTP",
     "public_pages": "Public Pages",
-    "agreement": "Parent Agreement",
+    "agreement": "Agreement",
     "profile": "My Profile",
     "school_information": "School Information",
     "associated_parents": "Associated Parents",
@@ -518,11 +518,14 @@
     "vlaby": "Virtual Labs",
     "periodic_table": "J Periodic Table",
     "embedded_resources": "Embedded Resources",
+    "premium_resources": "Premium Resources",
+    "physics_virtual_labs": "Physics IGCSE + A-Level Virtual Labs",
     "attendance_summary": "Attendance Summary",
     "print_attendance_sheets": "Print Attendance Sheets",
     "take_missing_attendance": "Take Missing Attendance",
     "send_days_absent": "Send Days Absent",
-    "pdf_header_footer": "PDF Header Footer"
+    "pdf_header_footer": "PDF Header Footer",
+    "fines": "Fines"
   },
   "dashboard": {
     "welcome_back": "Welcome back, {name}!",
@@ -2932,7 +2935,7 @@
         "label_marking_period": "Marking Period",
         "label_seats": "Seats",
         "label_period": "Period",
-        "label_meeting_days": "Meeting Days",
+        "label_meeting_days": "Days",
         "label_takes_attendance": "Takes Attendance",
         "label_calendar": "Calendar",
         "label_grading_scale": "Grading Scale",
@@ -3667,6 +3670,8 @@
         "cnic": "CNIC",
         "student_id": "Student ID",
         "created_at": "Created At",
+        "last_login": "Last Login",
+        "never": "Never",
         "profile_id": "Profile ID",
         "record_id": "Student Record ID",
         "subscribed_services": "Subscribed Services"
@@ -4244,6 +4249,17 @@
         "latency": "Latency (minutes)",
         "latency_help": "Grade change delay before students/parents can see",
         "latency_none": "None",
+        "hide_letter_grades": "Hide letter grades for all gradebook assignments",
+        "hide_prev_quarters": "Hide previous quarters assignment types",
+        "eligibility_section": "Eligibility",
+        "eligibility_cumulative": "Calculate Eligibility using Cumulative Semester Grades",
+        "final_grading_section": "Final Grading Percentages",
+        "final_grading_help": "Set the percentage each marking period contributes to the final grade. Each row must total 100%.",
+        "no_graded_periods": "No graded marking periods configured. Enable grading on semester or full-year marking periods first.",
+        "total_label": "Total",
+        "total_ok": "100% ✓",
+        "total_error": "Total ≠ 100%!",
+        "no_quarters": "No quarters found for this semester.",
         "config_saved": "Configuration saved",
         "config_save_failed": "Failed to save configuration"
       },
@@ -6162,8 +6178,10 @@
       "profileId": "Profile ID",
       "schoolId": "School ID",
       "createdAt": "Created At",
-      "lastUpdated": "Last Updated"
+      "lastUpdated": "Last Updated",
+      "lastLogin": "Last Login"
     },
+    "never": "Never",
     "cancel": "Cancel",
     "saving": "Saving...",
     "saveChanges": "Save Changes",
@@ -6486,8 +6504,10 @@
       "schoolId": "School ID",
       "status": "Status",
       "createdAt": "Created At",
-      "lastUpdated": "Last Updated"
+      "lastUpdated": "Last Updated",
+      "lastLogin": "Last Login"
     },
+    "never": "Never",
     "actions": {
       "viewDetails": "View Details",
       "editTeacher": "Edit Teacher",
@@ -6831,8 +6851,10 @@
       "schoolId": "School ID",
       "status": "Status",
       "createdAt": "Created At",
-      "lastUpdated": "Last Updated"
+      "lastUpdated": "Last Updated",
+      "lastLogin": "Last Login"
     },
+    "never": "Never",
     "filters": {
       "all": "All",
       "staff": "Staff",
@@ -7981,7 +8003,9 @@
       "vlaby_name": "Virtual Labs",
       "vlaby_desc": "Browse and run interactive virtual lab experiments (Biology, Chemistry, Physics) from VLaby.com directly inside the portal. Available in English, Arabic, French, German & Indonesian.",
       "periodic_table_name": "J Periodic Table",
-      "periodic_table_desc": "Interactive periodic table with 118 elements, 3D atom models, chemical equation balancer, molar mass calculator, and worksheet generator — all self-contained with no login required."
+      "periodic_table_desc": "Interactive periodic table with 118 elements, 3D atom models, chemical equation balancer, molar mass calculator, and worksheet generator — all self-contained with no login required.",
+      "physics_virtual_labs_name": "Physics IGCSE + A-Level Virtual Labs",
+      "physics_virtual_labs_desc": "Embeds the Nobook Physics interactive virtual lab (IGCSE + A-Level) directly inside the portal. Students, teachers, parents, and admins can access physics simulations without leaving the system."
     }
   },
   "studentPortal": {

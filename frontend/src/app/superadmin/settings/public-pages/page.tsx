@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import {
   GripVertical, Plus, Pencil, Trash2, ExternalLink,
-  Loader2, Globe, CheckCircle2, XCircle, TrendingDown,
+  Loader2, Globe, Link2, AlignLeft, Image as ImageIcon, Code2,
 } from 'lucide-react'
 import {
   DndContext,
@@ -27,6 +27,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
@@ -47,13 +48,33 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import {
-  CustomLink,
+  type CustomLink,
+  type CustomPageType,
   getGlobalCustomLinks,
   addGlobalCustomLink,
   updateGlobalCustomLink,
   deleteGlobalCustomLink,
   reorderGlobalCustomLinks,
 } from '@/lib/api/public-pages'
+
+// ── Page type config ──────────────────────────────────────────────────────────
+
+const PAGE_TYPES: { value: CustomPageType; label: string; icon: React.ElementType; desc: string }[] = [
+  { value: 'url',   label: 'External Link', icon: Link2,      desc: 'Opens an external website in a new tab' },
+  { value: 'embed', label: 'Embedded Page', icon: Code2,      desc: 'Show a website inside an iframe panel' },
+  { value: 'text',  label: 'Text / HTML',   icon: AlignLeft,  desc: 'Display formatted text or HTML content' },
+  { value: 'image', label: 'Poster / Image',icon: ImageIcon,  desc: 'Show an image or visual poster' },
+]
+
+function typeIcon(type: CustomPageType | undefined) {
+  const cfg = PAGE_TYPES.find((t) => t.value === (type ?? 'url'))
+  const Icon = cfg?.icon ?? Globe
+  return <Icon className="h-4 w-4 text-brand-blue" />
+}
+
+function typeLabel(type: CustomPageType | undefined) {
+  return PAGE_TYPES.find((t) => t.value === (type ?? 'url'))?.label ?? 'Link'
+}
 
 // ── Sortable row ──────────────────────────────────────────────────────────────
 
@@ -78,6 +99,15 @@ function SortableRow({
     zIndex: isDragging ? 10 : undefined,
   }
 
+  const subtitle =
+    link.page_type === 'url' || link.page_type === 'embed'
+      ? link.url ?? ''
+      : link.page_type === 'image'
+        ? link.image_url ?? ''
+        : link.content
+          ? link.content.replace(/<[^>]*>/g, '').slice(0, 60) + (link.content.length > 60 ? '…' : '')
+          : ''
+
   return (
     <div
       ref={setNodeRef}
@@ -94,15 +124,18 @@ function SortableRow({
         <GripVertical className="h-4 w-4" />
       </button>
 
-      {/* Globe icon */}
+      {/* Type icon */}
       <div className="w-8 h-8 rounded-lg bg-brand-blue/10 flex items-center justify-center shrink-0">
-        <Globe className="h-4 w-4 text-brand-blue" />
+        {typeIcon(link.page_type)}
       </div>
 
-      {/* Title + URL */}
+      {/* Title + subtitle */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold truncate">{link.title}</p>
-        <p className="text-xs text-muted-foreground truncate">{link.url}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-semibold truncate">{link.title}</p>
+          <span className="text-[10px] text-muted-foreground border rounded px-1 shrink-0">{typeLabel(link.page_type)}</span>
+        </div>
+        <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
       </div>
 
       {/* Status badge */}
@@ -114,16 +147,18 @@ function SortableRow({
         {link.isActive ? 'Active' : 'Inactive'}
       </Badge>
 
-      {/* Open link */}
-      <a
-        href={link.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="shrink-0 text-muted-foreground hover:text-brand-blue transition-colors opacity-0 group-hover:opacity-100"
-        title="Open link"
-      >
-        <ExternalLink className="h-3.5 w-3.5" />
-      </a>
+      {/* Open link — only for url/embed types */}
+      {(link.page_type === 'url' || link.page_type === 'embed') && link.url && (
+        <a
+          href={link.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 text-muted-foreground hover:text-brand-blue transition-colors opacity-0 group-hover:opacity-100"
+          title="Open link"
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+        </a>
+      )}
 
       {/* Edit */}
       <Button
@@ -160,79 +195,185 @@ function FormDialog({
   open: boolean
   onOpenChange: (v: boolean) => void
   initial?: CustomLink | null
-  onSave: (data: { title: string; url: string; isActive: boolean }) => Promise<void>
+  onSave: (data: Omit<CustomLink, 'id' | 'order'>) => Promise<void>
   saving: boolean
 }) {
-  const t = useTranslations('publicPages')
+  const [pageType, setPageType] = React.useState<CustomPageType>('url')
   const [title, setTitle] = React.useState('')
   const [url, setUrl] = React.useState('')
+  const [content, setContent] = React.useState('')
+  const [imageUrl, setImageUrl] = React.useState('')
   const [isActive, setIsActive] = React.useState(true)
   const [urlError, setUrlError] = React.useState('')
 
   React.useEffect(() => {
     if (open) {
+      setPageType(initial?.page_type ?? 'url')
       setTitle(initial?.title ?? '')
       setUrl(initial?.url ?? '')
+      setContent(initial?.content ?? '')
+      setImageUrl(initial?.image_url ?? '')
       setIsActive(initial?.isActive ?? true)
       setUrlError('')
     }
   }, [open, initial])
 
   const validateUrl = (val: string) => {
-    try {
-      new URL(val)
-      return ''
-    } catch {
-      return t('invalidUrl')
-    }
+    try { new URL(val); return '' } catch { return 'Please enter a valid URL (e.g. https://example.com)' }
   }
+
+  const isValid = React.useMemo(() => {
+    if (!title.trim()) return false
+    if (pageType === 'url' || pageType === 'embed') return !!url.trim()
+    if (pageType === 'text') return !!content.trim()
+    if (pageType === 'image') return !!imageUrl.trim()
+    return false
+  }, [pageType, title, url, content, imageUrl])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const err = validateUrl(url)
-    if (err) { setUrlError(err); return }
-    await onSave({ title: title.trim(), url: url.trim(), isActive })
+    if (pageType === 'url' || pageType === 'embed') {
+      const err = validateUrl(url)
+      if (err) { setUrlError(err); return }
+    }
+    if (pageType === 'image') {
+      const err = validateUrl(imageUrl)
+      if (err) { setUrlError(err); return }
+    }
+    await onSave({
+      title: title.trim(),
+      page_type: pageType,
+      url: (pageType === 'url' || pageType === 'embed') ? url.trim() : undefined,
+      content: pageType === 'text' ? content : undefined,
+      image_url: pageType === 'image' ? imageUrl.trim() : undefined,
+      isActive,
+    })
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className={pageType === 'text' ? 'max-w-3xl' : pageType === 'image' ? 'max-w-2xl' : 'max-w-md'}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Globe className="h-5 w-5 text-brand-blue" />
-            {initial ? t('editPage') : t('addPage')}
+            {initial ? 'Edit Custom Page' : 'Add Custom Page'}
           </DialogTitle>
           <DialogDescription>
-            {t('subtitle')}
+            Choose a content type and fill in the details.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+        <form onSubmit={handleSubmit} className="space-y-5 pt-1">
+
+          {/* Page type selector */}
+          <div className="space-y-2">
+            <Label>Content Type</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {PAGE_TYPES.map((t) => {
+                const Icon = t.icon
+                const active = pageType === t.value
+                return (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => { setPageType(t.value); setUrlError('') }}
+                    className={`flex items-start gap-2.5 p-3 rounded-lg border text-start transition-all ${
+                      active
+                        ? 'border-brand-blue bg-brand-blue/5 ring-1 ring-brand-blue'
+                        : 'border-border hover:border-muted-foreground/40 hover:bg-muted/30'
+                    }`}
+                  >
+                    <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${active ? 'text-brand-blue' : 'text-muted-foreground'}`} />
+                    <div>
+                      <p className={`text-xs font-semibold ${active ? 'text-brand-blue' : ''}`}>{t.label}</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{t.desc}</p>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Title */}
           <div className="space-y-1.5">
-            <Label htmlFor="page-title">{t('pageTitle')} *</Label>
+            <Label htmlFor="page-title">Tab Label *</Label>
             <Input
               id="page-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder={t('pageTitlePlaceholder')}
+              placeholder="e.g. School Website, Our Story, Upcoming Events…"
               required
               disabled={saving}
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="page-url">{t('pageUrl')} *</Label>
-            <Input
-              id="page-url"
-              value={url}
-              onChange={(e) => { setUrl(e.target.value); setUrlError('') }}
-              placeholder={t('pageUrlPlaceholder')}
-              required
-              disabled={saving}
-            />
-            {urlError && <p className="text-xs text-destructive">{urlError}</p>}
-          </div>
+          {/* URL — for url + embed */}
+          {(pageType === 'url' || pageType === 'embed') && (
+            <div className="space-y-1.5">
+              <Label htmlFor="page-url">
+                {pageType === 'embed' ? 'Website URL to Embed *' : 'External URL *'}
+              </Label>
+              <Input
+                id="page-url"
+                value={url}
+                onChange={(e) => { setUrl(e.target.value); setUrlError('') }}
+                placeholder="https://example.com"
+                required
+                disabled={saving}
+              />
+              {pageType === 'embed' && (
+                <p className="text-[11px] text-muted-foreground">
+                  The website will be displayed inside an embedded frame. Note: some sites block embedding.
+                </p>
+              )}
+              {urlError && <p className="text-xs text-destructive">{urlError}</p>}
+            </div>
+          )}
 
+          {/* Content — for text */}
+          {pageType === 'text' && (
+            <div className="space-y-1.5">
+              <Label>Content *</Label>
+              <RichTextEditor
+                value={content}
+                onChange={setContent}
+              />
+            </div>
+          )}
+
+          {/* Image URL — for image/poster */}
+          {pageType === 'image' && (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="page-image">Image / Poster URL *</Label>
+                <Input
+                  id="page-image"
+                  value={imageUrl}
+                  onChange={(e) => { setImageUrl(e.target.value); setUrlError('') }}
+                  placeholder="https://example.com/poster.jpg"
+                  required
+                  disabled={saving}
+                />
+                {urlError && <p className="text-xs text-destructive">{urlError}</p>}
+              </div>
+              {imageUrl && (
+                <div className="rounded-lg border overflow-hidden bg-muted max-h-48">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imageUrl}
+                    alt="Preview"
+                    className="w-full h-full object-contain max-h-48"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                  />
+                </div>
+              )}
+              <p className="text-[11px] text-muted-foreground">
+                Use a direct image URL (JPG, PNG, WebP, GIF). Upload to any image host first if needed.
+              </p>
+            </div>
+          )}
+
+          {/* Active toggle */}
           <div className="flex items-center gap-3 py-1">
             <Switch
               id="page-active"
@@ -240,7 +381,7 @@ function FormDialog({
               onCheckedChange={setIsActive}
               disabled={saving}
             />
-            <Label htmlFor="page-active" className="cursor-pointer">{t('pageActive')}</Label>
+            <Label htmlFor="page-active" className="cursor-pointer">Active (visible on login page)</Label>
           </div>
 
           <DialogFooter>
@@ -254,11 +395,11 @@ function FormDialog({
             </Button>
             <Button
               type="submit"
-              disabled={saving || !title.trim() || !url.trim()}
+              disabled={saving || !isValid}
               className="gradient-blue text-white border-0"
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin me-2" />}
-              {initial ? t('editPage') : t('addPage')}
+              {initial ? 'Save Changes' : 'Add Page'}
             </Button>
           </DialogFooter>
         </form>
@@ -283,7 +424,6 @@ export default function PublicPagesSettingsPage() {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   )
 
-  // Load
   React.useEffect(() => {
     setLoading(true)
     getGlobalCustomLinks()
@@ -292,7 +432,6 @@ export default function PublicPagesSettingsPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  // Drag end — reorder
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
     if (!over || active.id === over.id) return
@@ -303,8 +442,7 @@ export default function PublicPagesSettingsPage() {
     await reorderGlobalCustomLinks(reordered.map((l) => l.id)).catch(() => {})
   }
 
-  // Save (add or edit)
-  const handleSave = async (data: { title: string; url: string; isActive: boolean }) => {
+  const handleSave = async (data: Omit<CustomLink, 'id' | 'order'>) => {
     setSaving(true)
     try {
       if (editing) {
@@ -328,7 +466,6 @@ export default function PublicPagesSettingsPage() {
     }
   }
 
-  // Toggle active inline
   const handleToggle = async (link: CustomLink) => {
     const res = await updateGlobalCustomLink(link.id, { isActive: !link.isActive })
     if (res.success && res.data) {
@@ -336,7 +473,6 @@ export default function PublicPagesSettingsPage() {
     }
   }
 
-  // Delete
   const handleDelete = async () => {
     if (!deleting) return
     setSaving(true)
@@ -374,8 +510,9 @@ export default function PublicPagesSettingsPage() {
       <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800 px-4 py-3">
         <Globe className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
         <p className="text-sm text-blue-700 dark:text-blue-400">
-          These links appear as clickable tabs on the school login page. Only <strong>Active</strong> pages are visible to users.
-          Drag rows to change the display order.
+          These tabs appear on the school login page. Each page can be an <strong>external link</strong>, an <strong>embedded website</strong>,
+          a <strong>text/HTML block</strong>, or an <strong>image poster</strong>.
+          Only <strong>Active</strong> pages are visible. Drag rows to reorder.
         </p>
       </div>
 
@@ -450,7 +587,6 @@ export default function PublicPagesSettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Preview note */}
       {links.length > 0 && (
         <p className="text-xs text-muted-foreground text-center">
           These tabs will appear on the login page for all users automatically.

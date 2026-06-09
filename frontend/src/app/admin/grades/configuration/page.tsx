@@ -13,12 +13,12 @@ import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
 import * as gradesApi from "@/lib/api/grades";
-import type { GradebookConfig } from "@/lib/api/grades";
+import type { GradebookConfig, GroupedMarkingPeriods, MarkingPeriodFull } from "@/lib/api/grades";
 import { useTranslations } from "next-intl";
 
 export default function GradebookConfigurationPage() {
-  const t = useTranslations("school.grades_module.configuration")
-  const tc = useTranslations("school.grades_module.common")
+  const t = useTranslations("school.grades_module.configuration");
+  const tc = useTranslations("school.grades_module.common");
   const { user } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
@@ -27,7 +27,7 @@ export default function GradebookConfigurationPage() {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
 
-  // ── Configuration state ───────────────────────────────────────
+  // ── Basic config state ────────────────────────────────────────
   const [assignmentSorting, setAssignmentSorting] =
     useState<GradebookConfig["assignment_sorting"]>("due_date");
   const [autoSaveFinalGrades, setAutoSaveFinalGrades] = useState(true);
@@ -35,17 +35,33 @@ export default function GradebookConfigurationPage() {
   const [weightAssignments, setWeightAssignments] = useState(true);
   const [defaultAssignedDate, setDefaultAssignedDate] = useState(true);
   const [defaultDueDate, setDefaultDueDate] = useState(true);
+  const [hideLeterGrades, setHideLetterGrades] = useState(false);
+  const [hidePrevQuarters, setHidePrevQuarters] = useState(false);
   const [anomalousMax, setAnomalousMax] = useState("100");
   const [latency, setLatency] = useState("");
 
-  // ── Load config ───────────────────────────────────────────────
+  // ── Eligibility ───────────────────────────────────────────────
+  const [eligibilityCumulative, setEligibilityCumulative] = useState(false);
+
+  // ── Final Grading Percentages ─────────────────────────────────
+  const [groupedPeriods, setGroupedPeriods] = useState<GroupedMarkingPeriods | null>(null);
+  // weights keyed by config key e.g. "SEM-{qtr_id}" or "FY-{mp_id}"
+  const [mpWeights, setMpWeights] = useState<Record<string, string>>({});
+
+  const mark = () => setDirty(true);
+
+  // ── Load ──────────────────────────────────────────────────────
   const loadConfig = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
-      const res = await gradesApi.getGradebookConfig(selectedCampus?.id);
-      if (res.success && res.data) {
-        const c = res.data;
+      const [configRes, periodsRes] = await Promise.all([
+        gradesApi.getGradebookConfig(selectedCampus?.id),
+        gradesApi.getGroupedMarkingPeriods(selectedCampus?.id),
+      ]);
+
+      if (configRes.success && configRes.data) {
+        const c = configRes.data;
         setAssignmentSorting(c.assignment_sorting || "due_date");
         setAutoSaveFinalGrades(c.auto_save_final_grades ?? true);
         setWeightAssignmentTypes(c.weight_assignment_types ?? true);
@@ -54,6 +70,25 @@ export default function GradebookConfigurationPage() {
         setDefaultDueDate(c.default_due_date ?? true);
         setAnomalousMax(String(c.anomalous_max ?? 100));
         setLatency(c.latency != null ? String(c.latency) : "");
+
+        // Load extra flags from raw config (returned as extra keys)
+        const raw = c as any;
+        setHideLetterGrades(raw.LETTER_GRADE_ALL === "Y");
+        setHidePrevQuarters(raw.HIDE_PREVIOUS_ASSIGNMENT_TYPES === "Y");
+        setEligibilityCumulative(raw.ELIGIBILITY_CUMULITIVE === "Y");
+
+        // Extract MP weight keys (SEM-* and FY-*)
+        const weights: Record<string, string> = {};
+        Object.entries(raw).forEach(([k, v]) => {
+          if (k.startsWith("SEM-") || k.startsWith("FY-")) {
+            weights[k] = String(v ?? "");
+          }
+        });
+        setMpWeights(weights);
+      }
+
+      if (periodsRes.success && periodsRes.data) {
+        setGroupedPeriods(periodsRes.data);
       }
     } catch {
       toast.error("Failed to load configuration");
@@ -69,36 +104,193 @@ export default function GradebookConfigurationPage() {
 
   // ── Save ──────────────────────────────────────────────────────
   const handleSave = async () => {
+    // Validate all graded rows sum to 100
+    if (groupedPeriods) {
+      for (const sem of groupedPeriods.SEM.filter((s) => s.does_grades)) {
+        const qtrs = groupedPeriods.QTR.filter((q) => q.parent_id === sem.id);
+        const total = qtrs.reduce((sum, q) => sum + (parseFloat(mpWeights[`SEM-${q.id}`] || "0") || 0), 0);
+        if (qtrs.length > 0 && Math.abs(total - 100) > 0.01) {
+          toast.error(`"${sem.title}" — ${t("total_error")}`);
+          return;
+        }
+      }
+      const fy = groupedPeriods.FY[0];
+      if (fy?.does_grades) {
+        let fyTotal = 0;
+        for (const sem of groupedPeriods.SEM) {
+          const qtrs = groupedPeriods.QTR.filter((q) => q.parent_id === sem.id);
+          qtrs.forEach((q) => { fyTotal += parseFloat(mpWeights[`FY-${q.id}`] || "0") || 0; });
+          if (sem.does_grades) fyTotal += parseFloat(mpWeights[`FY-${sem.id}`] || "0") || 0;
+        }
+        if (Math.abs(fyTotal - 100) > 0.01) {
+          toast.error(`"${fy.title}" — ${t("total_error")}`);
+          return;
+        }
+      }
+    }
+
     setSaving(true);
     try {
-      const res = await gradesApi.saveGradebookConfig(
-        {
-          assignment_sorting: assignmentSorting,
-          auto_save_final_grades: autoSaveFinalGrades,
-          weight_assignment_types: weightAssignmentTypes,
-          weight_assignments: weightAssignments,
-          default_assigned_date: defaultAssignedDate,
-          default_due_date: defaultDueDate,
-          anomalous_max: parseInt(anomalousMax) || 100,
-          latency: latency ? parseInt(latency) : null,
-        },
-        selectedCampus?.id
-      );
+      // Build batch config array
+      const configs: Array<{ key: string; value: string }> = [
+        { key: "ASSIGNMENT_SORTING", value: assignmentSorting },
+        { key: "AUTO_SAVE_FINAL_GRADES", value: autoSaveFinalGrades ? "Y" : "N" },
+        { key: "WEIGHT", value: weightAssignmentTypes ? "Y" : "N" },
+        { key: "WEIGHT_ASSIGNMENTS", value: weightAssignments ? "Y" : "N" },
+        { key: "DEFAULT_ASSIGNED", value: defaultAssignedDate ? "Y" : "N" },
+        { key: "DEFAULT_DUE", value: defaultDueDate ? "Y" : "N" },
+        { key: "LETTER_GRADE_ALL", value: hideLeterGrades ? "Y" : "N" },
+        { key: "HIDE_PREVIOUS_ASSIGNMENT_TYPES", value: hidePrevQuarters ? "Y" : "N" },
+        { key: "ANOMALOUS_MAX", value: anomalousMax || "100" },
+        { key: "ELIGIBILITY_CUMULITIVE", value: eligibilityCumulative ? "Y" : "N" },
+        ...(latency ? [{ key: "LATENCY", value: latency }] : []),
+        // MP weights
+        ...Object.entries(mpWeights)
+          .filter(([, v]) => v !== "")
+          .map(([k, v]) => ({ key: k, value: v })),
+      ];
+
+      const res = await gradesApi.saveBatchGradebookConfig(configs, selectedCampus?.id);
       if (res.success) {
-        toast.success("Configuration saved");
+        toast.success(t("config_saved"));
         setDirty(false);
       } else {
-        toast.error(res.error || "Failed to save");
+        toast.error(t("config_save_failed"));
       }
     } catch {
-      toast.error("Failed to save configuration");
+      toast.error(t("config_save_failed"));
     } finally {
       setSaving(false);
     }
   };
 
-  // ── Dirty setter wrapper ──────────────────────────────────────
-  const mark = () => setDirty(true);
+  const setWeight = (key: string, value: string) => {
+    setMpWeights((prev) => ({ ...prev, [key]: value }));
+    mark();
+  };
+
+  // ── Helpers ───────────────────────────────────────────────────
+  const rowTotal = (keys: string[]) =>
+    keys.reduce((sum, k) => sum + (parseFloat(mpWeights[k] || "0") || 0), 0);
+
+  const TotalBadge = ({ keys }: { keys: string[] }) => {
+    const total = rowTotal(keys);
+    const ok = Math.abs(total - 100) < 0.01;
+    return (
+      <span className={`text-sm font-semibold ${ok ? "text-green-600" : "text-red-600"}`}>
+        {ok ? t("total_ok") : `${t("total_label")} = ${total.toFixed(1)}% — ${t("total_error")}`}
+      </span>
+    );
+  };
+
+  const renderFinalGradingSection = () => {
+    if (!groupedPeriods) return null;
+
+    const fy = groupedPeriods.FY[0];
+    const gradedSems = groupedPeriods.SEM.filter((s) => s.does_grades);
+    const hasAny = gradedSems.length > 0 || fy?.does_grades;
+
+    if (!hasAny) {
+      return (
+        <p className="text-sm text-muted-foreground italic">{t("no_graded_periods")}</p>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {/* Per-Semester rows */}
+        {gradedSems.map((sem) => {
+          const qtrs = groupedPeriods.QTR.filter((q) => q.parent_id === sem.id)
+            .sort((a, b) => a.sort_order - b.sort_order);
+          const keys = qtrs.map((q) => `SEM-${q.id}`);
+
+          return (
+            <div key={sem.id} className="border rounded-md p-3 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="font-semibold text-sm">{sem.title}</span>
+                {keys.length > 0 && <TotalBadge keys={keys} />}
+              </div>
+              {qtrs.length === 0 ? (
+                <p className="text-xs text-muted-foreground">{t("no_quarters")}</p>
+              ) : (
+                <div className="flex flex-wrap gap-4">
+                  {qtrs.map((qtr) => (
+                    <div key={qtr.id} className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">{qtr.title}</Label>
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step={0.01}
+                          value={mpWeights[`SEM-${qtr.id}`] ?? ""}
+                          onChange={(e) => setWeight(`SEM-${qtr.id}`, e.target.value)}
+                          className="h-8 w-20 text-center"
+                        />
+                        <span className="text-sm text-muted-foreground">%</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Full Year row */}
+        {fy?.does_grades && (() => {
+          const fyKeys: string[] = [];
+          const fyColumns: Array<{ key: string; mp: MarkingPeriodFull }> = [];
+
+          for (const sem of groupedPeriods.SEM.sort((a, b) => a.sort_order - b.sort_order)) {
+            const qtrs = groupedPeriods.QTR.filter((q) => q.parent_id === sem.id)
+              .sort((a, b) => a.sort_order - b.sort_order);
+            qtrs.forEach((q) => {
+              fyKeys.push(`FY-${q.id}`);
+              fyColumns.push({ key: `FY-${q.id}`, mp: q });
+            });
+            if (sem.does_grades) {
+              fyKeys.push(`FY-${sem.id}`);
+              fyColumns.push({ key: `FY-${sem.id}`, mp: sem });
+            }
+          }
+
+          return (
+            <div className="border rounded-md p-3 space-y-3 border-blue-200 bg-blue-50/40">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="font-semibold text-sm">{fy.title}</span>
+                {fyKeys.length > 0 && <TotalBadge keys={fyKeys} />}
+              </div>
+              <div className="flex flex-wrap gap-4">
+                {fyColumns.map(({ key, mp }) => (
+                  <div key={key} className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">
+                      {mp.title}
+                      {mp.mp_type === "SEM" && (
+                        <span className="ml-1 text-[10px] bg-blue-100 text-blue-700 px-1 rounded">SEM</span>
+                      )}
+                    </Label>
+                    <div className="flex items-center gap-1">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.01}
+                        value={mpWeights[key] ?? ""}
+                        onChange={(e) => setWeight(key, e.target.value)}
+                        className="h-8 w-20 text-center"
+                      />
+                      <span className="text-sm text-muted-foreground">%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+    );
+  };
 
   if (loading) {
     return (
@@ -120,9 +312,7 @@ export default function GradebookConfigurationPage() {
           <p className="text-muted-foreground mt-2">
             {t("subtitle")}
             {selectedCampus && (
-              <span className="ml-1 font-medium">
-                — {selectedCampus.name}
-              </span>
+              <span className="ml-1 font-medium">— {selectedCampus.name}</span>
             )}
           </p>
         </div>
@@ -131,208 +321,115 @@ export default function GradebookConfigurationPage() {
           disabled={saving || !dirty}
           className="bg-[#0369a1] hover:bg-[#025d8c] text-white gap-2"
         >
-          {saving ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="h-4 w-4" />
-          )}
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           {tc("save")}
         </Button>
       </div>
 
-      {/* Configuration Card */}
       <Card>
         <CardContent className="pt-6 space-y-6">
-          {/* ── Assignments section ─────────────────────── */}
+
+          {/* ── Assignments ─────────────────────────────────────── */}
           <fieldset className="border rounded-md p-4 space-y-4">
             <legend className="text-sm font-semibold px-2">{t("assignments_section")}</legend>
 
-            {/* Sorting */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">
-                {t("sort_by")}
-              </Label>
+              <Label className="text-sm font-medium">{t("sort_by")}</Label>
               <RadioGroup
                 value={assignmentSorting}
-                onValueChange={(v) => {
-                  setAssignmentSorting(
-                    v as GradebookConfig["assignment_sorting"]
-                  );
-                  mark();
-                }}
+                onValueChange={(v) => { setAssignmentSorting(v as GradebookConfig["assignment_sorting"]); mark(); }}
                 className="flex flex-wrap gap-4"
               >
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="due_date" id="sort-due" />
-                  <Label htmlFor="sort-due" className="text-sm cursor-pointer">
-                    {t("sort_due_date")}
-                  </Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="assigned_date" id="sort-assigned" />
-                  <Label
-                    htmlFor="sort-assigned"
-                    className="text-sm cursor-pointer"
-                  >
-                    {t("sort_assigned_date")}
-                  </Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="title" id="sort-title" />
-                  <Label
-                    htmlFor="sort-title"
-                    className="text-sm cursor-pointer"
-                  >
-                    {t("sort_title")}
-                  </Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="points" id="sort-points" />
-                  <Label
-                    htmlFor="sort-points"
-                    className="text-sm cursor-pointer"
-                  >
-                    {t("sort_points")}
-                  </Label>
-                </div>
+                {(["due_date", "assigned_date", "title", "points"] as const).map((v) => (
+                  <div key={v} className="flex items-center gap-2">
+                    <RadioGroupItem value={v} id={`sort-${v}`} />
+                    <Label htmlFor={`sort-${v}`} className="text-sm cursor-pointer">
+                      {t(`sort_${v}` as any)}
+                    </Label>
+                  </div>
+                ))}
               </RadioGroup>
             </div>
 
             <Separator />
 
-            {/* Boolean toggles */}
             <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  id="auto-save"
-                  checked={autoSaveFinalGrades}
-                  onCheckedChange={(c) => {
-                    setAutoSaveFinalGrades(c === true);
-                    mark();
-                  }}
-                />
-                <Label htmlFor="auto-save" className="text-sm cursor-pointer">
-                  {t("auto_save_final")}
-                </Label>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  id="weight-types"
-                  checked={weightAssignmentTypes}
-                  onCheckedChange={(c) => {
-                    setWeightAssignmentTypes(c === true);
-                    mark();
-                  }}
-                />
-                <Label
-                  htmlFor="weight-types"
-                  className="text-sm cursor-pointer"
-                >
-                  {t("weight_types")}
-                </Label>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  id="weight-assignments"
-                  checked={weightAssignments}
-                  onCheckedChange={(c) => {
-                    setWeightAssignments(c === true);
-                    mark();
-                  }}
-                />
-                <Label
-                  htmlFor="weight-assignments"
-                  className="text-sm cursor-pointer"
-                >
-                  {t("weight_assignments")}
-                </Label>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  id="default-assigned"
-                  checked={defaultAssignedDate}
-                  onCheckedChange={(c) => {
-                    setDefaultAssignedDate(c === true);
-                    mark();
-                  }}
-                />
-                <Label
-                  htmlFor="default-assigned"
-                  className="text-sm cursor-pointer"
-                >
-                  {t("default_assigned_today")}
-                </Label>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  id="default-due"
-                  checked={defaultDueDate}
-                  onCheckedChange={(c) => {
-                    setDefaultDueDate(c === true);
-                    mark();
-                  }}
-                />
-                <Label
-                  htmlFor="default-due"
-                  className="text-sm cursor-pointer"
-                >
-                  {t("default_due_today")}
-                </Label>
-              </div>
+              {[
+                { id: "auto-save", checked: autoSaveFinalGrades, set: setAutoSaveFinalGrades, label: t("auto_save_final") },
+                { id: "weight-types", checked: weightAssignmentTypes, set: setWeightAssignmentTypes, label: t("weight_types") },
+                { id: "weight-assignments", checked: weightAssignments, set: setWeightAssignments, label: t("weight_assignments") },
+                { id: "default-assigned", checked: defaultAssignedDate, set: setDefaultAssignedDate, label: t("default_assigned_today") },
+                { id: "default-due", checked: defaultDueDate, set: setDefaultDueDate, label: t("default_due_today") },
+                { id: "hide-letter", checked: hideLeterGrades, set: setHideLetterGrades, label: t("hide_letter_grades") },
+                { id: "hide-prev", checked: hidePrevQuarters, set: setHidePrevQuarters, label: t("hide_prev_quarters") },
+              ].map(({ id, checked, set, label }) => (
+                <div key={id} className="flex items-center gap-3">
+                  <Checkbox
+                    id={id}
+                    checked={checked}
+                    onCheckedChange={(c) => { set(c === true); mark(); }}
+                  />
+                  <Label htmlFor={id} className="text-sm cursor-pointer">{label}</Label>
+                </div>
+              ))}
             </div>
 
             <Separator />
 
-            {/* Numeric fields */}
             <div className="flex flex-wrap gap-6">
               <div className="space-y-1.5">
-                <Label htmlFor="anomalous-max" className="text-sm font-medium">
-                  {t("anomalous_max")}
-                </Label>
+                <Label htmlFor="anomalous-max" className="text-sm font-medium">{t("anomalous_max")}</Label>
                 <Input
                   id="anomalous-max"
                   type="number"
                   min={1}
                   max={99999}
                   value={anomalousMax}
-                  onChange={(e) => {
-                    setAnomalousMax(e.target.value);
-                    mark();
-                  }}
-                  className="h-9 w-[120px]"
+                  onChange={(e) => { setAnomalousMax(e.target.value); mark(); }}
+                  className="h-9 w-30"
                 />
-                <p className="text-xs text-muted-foreground">
-                  {t("anomalous_max_help")}
-                </p>
+                <p className="text-xs text-muted-foreground">{t("anomalous_max_help")}</p>
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="latency" className="text-sm font-medium">
-                  {t("latency")}
-                </Label>
+                <Label htmlFor="latency" className="text-sm font-medium">{t("latency")}</Label>
                 <Input
                   id="latency"
                   type="number"
                   min={0}
                   max={9999}
                   value={latency}
-                  onChange={(e) => {
-                    setLatency(e.target.value);
-                    mark();
-                  }}
+                  onChange={(e) => { setLatency(e.target.value); mark(); }}
                   placeholder={t("latency_none")}
-                  className="h-9 w-[120px]"
+                  className="h-9 w-30"
                 />
-                <p className="text-xs text-muted-foreground">
-                  {t("latency_help")}
-                </p>
+                <p className="text-xs text-muted-foreground">{t("latency_help")}</p>
               </div>
             </div>
           </fieldset>
+
+          {/* ── Eligibility ─────────────────────────────────────── */}
+          <fieldset className="border rounded-md p-4 space-y-3">
+            <legend className="text-sm font-semibold px-2">{t("eligibility_section")}</legend>
+            <div className="flex items-center gap-3">
+              <Checkbox
+                id="eligibility-cumulative"
+                checked={eligibilityCumulative}
+                onCheckedChange={(c) => { setEligibilityCumulative(c === true); mark(); }}
+              />
+              <Label htmlFor="eligibility-cumulative" className="text-sm cursor-pointer">
+                {t("eligibility_cumulative")}
+              </Label>
+            </div>
+          </fieldset>
+
+          {/* ── Final Grading Percentages ────────────────────────── */}
+          <fieldset className="border rounded-md p-4 space-y-4">
+            <legend className="text-sm font-semibold px-2">{t("final_grading_section")}</legend>
+            <p className="text-xs text-muted-foreground">{t("final_grading_help")}</p>
+            {renderFinalGradingSection()}
+          </fieldset>
+
         </CardContent>
       </Card>
 
@@ -343,12 +440,8 @@ export default function GradebookConfigurationPage() {
           disabled={saving || !dirty}
           className="bg-[#0369a1] hover:bg-[#025d8c] text-white gap-2"
         >
-          {saving ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="h-4 w-4" />
-          )}
-          Save
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          {tc("save")}
         </Button>
       </div>
     </div>

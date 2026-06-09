@@ -34,6 +34,7 @@ import { useProfileView } from "@/context/ProfileViewContext";
 import { UserQRCode } from "@/components/shared/UserQRCode";
 import { type Parent } from "@/lib/api/parents";
 import { useParents } from "@/hooks/useParents";
+import { getLastLogin } from "@/lib/api/auth";
 import { format } from "date-fns";
 import { useTranslations } from "next-intl";
 
@@ -74,6 +75,7 @@ export default function ParentDetailsPage() {
 
   const [currentParent, setCurrentParent] = useState<Parent | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lastLogin, setLastLogin] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("personal");
 
   // Fetch all parents for navigation
@@ -92,6 +94,13 @@ export default function ParentDetailsPage() {
         const parent = parents.find((p) => p.id === parentId);
         if (parent) {
           setCurrentParent(parent);
+
+          if (parent.profile_id) {
+            getLastLogin(parent.profile_id).then((res) => {
+              if (res.success && res.data) setLastLogin(res.data.last_sign_in);
+            }).catch(() => {});
+          }
+
           // Update profile view context for sidebar indicator
           const parentFullName = `${parent.profile?.first_name || ""} ${parent.profile?.last_name || ""}`.trim() || "Parent";
           setViewedProfile({
@@ -436,9 +445,6 @@ export default function ParentDetailsPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <InfoRow label={t("system.parentId")} value={currentParent.id} />
-                <InfoRow label={t("system.profileId")} value={currentParent.profile_id} />
-                <InfoRow label={t("system.schoolId")} value={currentParent.school_id} />
                 <InfoRow
                   label={t("table.status")}
                   value={
@@ -455,6 +461,11 @@ export default function ParentDetailsPage() {
                 <InfoRow
                   label={t("system.lastUpdated")}
                   value={formatDate(t, currentParent.updated_at)}
+                  icon={Clock}
+                />
+                <InfoRow
+                  label={t("system.lastLogin")}
+                  value={lastLogin ? formatDate(t, lastLogin) : t("never")}
                   icon={Clock}
                 />
               </div>

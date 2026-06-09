@@ -103,6 +103,9 @@ router.get('/config', gradebookController.getConfig)
 // POST /gradebook/config (admin)
 router.post('/config', requireAdmin, gradebookController.setConfig)
 
+// POST /gradebook/config/batch (admin — save multiple keys at once)
+router.post('/config/batch', requireAdmin, gradebookController.setBatchConfig)
+
 // PUT /gradebook/config (teacher — per-CP overrides only, ownership enforced)
 router.put('/config', requireTeacher, gradebookController.setConfigAsTeacher)
 

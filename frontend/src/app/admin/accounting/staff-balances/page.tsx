@@ -358,13 +358,33 @@ export default function StaffBalancesPage() {
                                         </TableCell>
                                         <TableCell>
                                             {sb.balance <= 0 ? (
-                                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">{t('status_paid')}</Badge>
+                                                <Badge
+                                                    variant="outline"
+                                                    className="bg-green-50 text-green-700 border-green-200 dark:bg-green-950/20 dark:text-green-300 dark:border-green-700"
+                                                >
+                                                    {t('status_paid')}
+                                                </Badge>
                                             ) : sb.total_salary_paid > 0 || sb.manual_payments > 0 ? (
-                                                <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">{t('status_partial')}</Badge>
+                                                <Badge
+                                                    variant="outline"
+                                                    className="bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950/20 dark:text-yellow-300 dark:border-yellow-600"
+                                                >
+                                                    {t('status_partial')}
+                                                </Badge>
                                             ) : sb.salary_count > 0 ? (
-                                                <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">{t('status_pending')}</Badge>
+                                                <Badge
+                                                    variant="outline"
+                                                    className="bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-300 dark:border-red-700"
+                                                >
+                                                    {t('status_pending')}
+                                                </Badge>
                                             ) : (
-                                                <Badge variant="outline" className="bg-gray-50 text-gray-500 border-gray-200">{t('status_no_salary')}</Badge>
+                                                <Badge
+                                                    variant="outline"
+                                                    className="bg-gray-50 text-gray-500 border-gray-200 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700"
+                                                >
+                                                    {t('status_no_salary')}
+                                                </Badge>
                                             )}
                                         </TableCell>
                                     </TableRow>
