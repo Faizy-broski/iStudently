@@ -398,25 +398,6 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     sidebarInjections: [],
   },
 
-  // ── Parent Agreement ─────────────────────────────────────────────────────
-  {
-    id: 'parent_agreement',
-    name: 'Parent Agreement',
-    description:
-      'Requires parents to accept a school agreement each academic year before accessing the parent portal. Students with linked parents are blocked until their parent accepts. Students without parents are unaffected. Agreement title and content are configurable per campus.',
-    icon: FileText,
-    category: 'Compliance',
-    settingsHref: '/admin/settings/parent-agreement',
-    sidebarInjections: [
-      {
-        parentTitle: 'settings',
-        items: [
-          { title: 'agreement', href: '/admin/settings/parent-agreement', icon: FileText },
-        ],
-      },
-    ],
-  },
-
   {
     id: 'custom_menu',
     name: 'Custom Menu',
@@ -484,29 +465,41 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     id: 'vlaby',
     name: 'Virtual Labs',
     description:
-      'Browse and run interactive virtual lab experiments (Biology, Chemistry, Physics) from VLaby.com directly inside the portal. Each role uses their own VLaby credentials. Available in English, Arabic, French, German & Indonesian.',
+      'Browse and run interactive virtual lab experiments (Biology, Chemistry, Physics) directly inside the portal. Each role uses their own Virtual Labs credentials. Available in English, Arabic, French, German & Indonesian.',
     icon: FlaskConical,
     category: 'Resources',
-    settingsHref: '/admin/resources/vlaby',
+    settingsHref: '/admin/resources/virtual-labs',
     sidebarInjections: [
       {
         parentTitle: 'resources',
-        items: [{ title: 'vlaby', href: '/admin/resources/vlaby', icon: FlaskConical }],
+        items: [
+          { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
+          { title: 'vlaby', href: '/admin/resources/virtual-labs', icon: FlaskConical }
+        ],
         roles: ['admin'],
       },
       {
         parentTitle: 'resources',
-        items: [{ title: 'vlaby', href: '/teacher/resources/vlaby', icon: FlaskConical }],
+        items: [
+          { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
+          { title: 'vlaby', href: '/teacher/resources/virtual-labs', icon: FlaskConical }
+        ],
         roles: ['teacher'],
       },
       {
         parentTitle: 'resources',
-        items: [{ title: 'vlaby', href: '/student/resources/vlaby', icon: FlaskConical }],
+        items: [
+          { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
+          { title: 'vlaby', href: '/student/resources/virtual-labs', icon: FlaskConical }
+        ],
         roles: ['student'],
       },
       {
         parentTitle: 'resources',
-        items: [{ title: 'vlaby', href: '/parent/resources/vlaby', icon: FlaskConical }],
+        items: [
+          { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
+          { title: 'vlaby', href: '/parent/resources/virtual-labs', icon: FlaskConical }
+        ],
         roles: ['parent'],
       },
     ],
@@ -524,22 +517,34 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     sidebarInjections: [
       {
         parentTitle: 'resources',
-        items: [{ title: 'periodic_table', href: '/admin/resources/zperiod', icon: FlaskConical }],
+        items: [
+          { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
+          { title: 'periodic_table', href: '/admin/resources/zperiod', icon: FlaskConical }
+        ],
         roles: ['admin'],
       },
       {
         parentTitle: 'resources',
-        items: [{ title: 'periodic_table', href: '/teacher/resources/zperiod', icon: FlaskConical }],
+        items: [
+          { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
+          { title: 'periodic_table', href: '/teacher/resources/zperiod', icon: FlaskConical }
+        ],
         roles: ['teacher'],
       },
       {
         parentTitle: 'resources',
-        items: [{ title: 'periodic_table', href: '/student/resources/zperiod', icon: FlaskConical }],
+        items: [
+          { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
+          { title: 'periodic_table', href: '/student/resources/zperiod', icon: FlaskConical }
+        ],
         roles: ['student'],
       },
       {
         parentTitle: 'resources',
-        items: [{ title: 'periodic_table', href: '/parent/resources/zperiod', icon: FlaskConical }],
+        items: [
+          { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
+          { title: 'periodic_table', href: '/parent/resources/zperiod', icon: FlaskConical }
+        ],
         roles: ['parent'],
       },
     ],
@@ -584,6 +589,51 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
         items: [
           { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
           { title: 'physics_virtual_labs', href: '/parent/resources/physics-virtual-labs', icon: FlaskConical },
+        ],
+        roles: ['parent'],
+      },
+    ],
+  },
+
+  // ── Chemistry IGCSE + A-Level Virtual Labs ───────────────────────────────
+  {
+    id: 'chemistry_virtual_labs',
+    name: 'Chemistry IGCSE + A-Level Virtual Labs',
+    description:
+      'Embeds the Nobook Chemistry interactive virtual lab (IGCSE + A-Level) directly inside the portal. Students, teachers, parents, and admins can access chemistry simulations without leaving the system.',
+    icon: FlaskConical,
+    category: 'Resources',
+    settingsHref: '/admin/resources/chemistry-virtual-labs',
+    sidebarInjections: [
+      {
+        parentTitle: 'resources',
+        items: [
+          { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
+          { title: 'chemistry_virtual_labs', href: '/admin/resources/chemistry-virtual-labs', icon: FlaskConical },
+        ],
+        roles: ['admin'],
+      },
+      {
+        parentTitle: 'resources',
+        items: [
+          { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
+          { title: 'chemistry_virtual_labs', href: '/teacher/resources/chemistry-virtual-labs', icon: FlaskConical },
+        ],
+        roles: ['teacher'],
+      },
+      {
+        parentTitle: 'resources',
+        items: [
+          { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
+          { title: 'chemistry_virtual_labs', href: '/student/resources/chemistry-virtual-labs', icon: FlaskConical },
+        ],
+        roles: ['student'],
+      },
+      {
+        parentTitle: 'resources',
+        items: [
+          { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
+          { title: 'chemistry_virtual_labs', href: '/parent/resources/chemistry-virtual-labs', icon: FlaskConical },
         ],
         roles: ['parent'],
       },

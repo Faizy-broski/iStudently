@@ -1,11 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, FlaskConical, Loader2, ExternalLink, AlertCircle } from 'lucide-react'
+import { ArrowLeft, FlaskConical, Loader2, AlertCircle, Maximize2, Minimize2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { toast } from 'sonner'
 import {
   getVLabyExperiment,
   type VLabyExperimentDetail,
@@ -13,7 +12,6 @@ import {
 
 interface VLabyExperimentViewerProps {
   experimentId: string | number
-  /** Back href, e.g. /admin/resources/vlaby */
   backPath: string
 }
 
@@ -27,33 +25,43 @@ export default function VLabyExperimentViewer({
   const [error, setError] = useState<string | null>(null)
   const [noAccount, setNoAccount] = useState(false)
   const [tokenExpired, setTokenExpired] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let cancelled = false
-
     const load = async () => {
       const res = await getVLabyExperiment(experimentId)
       if (cancelled) return
       setLoading(false)
-
       if (!res.success) {
         const code = (res as any).code
-        if (code === 'VLABY_TOKEN_REQUIRED') {
-          setNoAccount(true)
-        } else if (code === 'VLABY_TOKEN_EXPIRED') {
-          setTokenExpired(true)
-        } else {
-          setError(res.error || 'Failed to load experiment')
-        }
+        if (code === 'VLABY_TOKEN_REQUIRED') setNoAccount(true)
+        else if (code === 'VLABY_TOKEN_EXPIRED') setTokenExpired(true)
+        else setError(res.error || 'Failed to load experiment')
         return
       }
-
       setExperiment(res.data?.experiment ?? null)
     }
-
     load()
     return () => { cancelled = true }
   }, [experimentId])
+
+  // Track fullscreen state changes (e.g. user presses Esc)
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
+
+  const toggleFullscreen = useCallback(async () => {
+    if (!containerRef.current) return
+    if (!document.fullscreenElement) {
+      await containerRef.current.requestFullscreen()
+    } else {
+      await document.exitFullscreen()
+    }
+  }, [])
 
   if (loading) {
     return (
@@ -69,9 +77,9 @@ export default function VLabyExperimentViewer({
       <div className="flex flex-col items-center justify-center min-h-[30vh] gap-4 text-center px-4">
         <AlertCircle size={40} className="text-amber-400" />
         <div>
-          <p className="font-semibold text-gray-800 dark:text-gray-100 mb-1">No VLaby account connected</p>
+          <p className="font-semibold text-gray-800 dark:text-gray-100 mb-1">No Virtual Labs account connected</p>
           <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm">
-            Ask your school administrator to connect the school's VLaby account so experiments can be opened.
+            Ask your school administrator to connect the school's Virtual Labs account so experiments can be opened.
           </p>
         </div>
         <Button variant="outline" onClick={() => router.push(backPath)}>
@@ -86,9 +94,9 @@ export default function VLabyExperimentViewer({
       <div className="flex flex-col items-center justify-center min-h-[30vh] gap-4 text-center px-4">
         <AlertCircle size={40} className="text-orange-400" />
         <div>
-          <p className="font-semibold text-gray-800 dark:text-gray-100 mb-1">VLaby session expired</p>
+          <p className="font-semibold text-gray-800 dark:text-gray-100 mb-1">Virtual Labs session expired</p>
           <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm">
-            The school's VLaby session has expired. Ask your administrator to reconnect the VLaby account in Settings.
+            The school's Virtual Labs session has expired. Ask your administrator to reconnect the account in Settings.
           </p>
         </div>
         <Button variant="outline" onClick={() => router.push(backPath)}>
@@ -132,21 +140,25 @@ export default function VLabyExperimentViewer({
         <span>{experiment.country_name}</span>
         <span>·</span>
         <span>{experiment.level_name} — {experiment.level_class_name} — {experiment.semester_name}</span>
-        {experiment.file && (
-          <a
-            href={experiment.file}
-            target="_blank"
-            rel="noopener noreferrer"
+        {hasIframe && (
+          <button
+            onClick={toggleFullscreen}
             className="ml-auto flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:underline text-xs"
+            title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
           >
-            Open in new tab <ExternalLink size={12} />
-          </a>
+            {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+            {isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+          </button>
         )}
       </div>
 
       {/* Iframe */}
       {hasIframe ? (
-        <div className="rounded-xl overflow-hidden border dark:border-gray-800 shadow-sm" style={{ height: 'calc(100vh - 260px)', minHeight: 480 }}>
+        <div
+          ref={containerRef}
+          className="rounded-xl overflow-hidden border dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900"
+          style={{ height: isFullscreen ? '100vh' : 'calc(100vh - 260px)', minHeight: 480 }}
+        >
           <iframe
             src={experiment.file}
             title={experiment.title}
@@ -163,10 +175,10 @@ export default function VLabyExperimentViewer({
 
       {/* Description */}
       {experiment.description && (
-       <div
-  className="prose prose-sm max-w-none text-gray-600 dark:text-gray-300 border dark:border-gray-800 rounded-xl p-4 bg-white dark:bg-gray-900"
-  dangerouslySetInnerHTML={{ __html: experiment.description }}
-/>
+        <div
+          className="prose prose-sm max-w-none text-gray-600 dark:text-gray-300 border dark:border-gray-800 rounded-xl p-4 bg-white dark:bg-gray-900"
+          dangerouslySetInnerHTML={{ __html: experiment.description }}
+        />
       )}
     </div>
   )

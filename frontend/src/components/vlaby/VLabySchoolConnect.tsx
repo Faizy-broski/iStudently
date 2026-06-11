@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import useSWR from 'swr'
 import { FlaskConical, LogIn, LogOut, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,20 +15,20 @@ import {
 import { format } from 'date-fns'
 
 export function VLabySchoolConnect() {
-  const [config, setConfig] = useState<VlabySchoolConfig | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { data: config, mutate } = useSWR<VlabySchoolConfig | null>(
+    'vlaby-school-config',
+    async () => {
+      const res = await getVlabySchoolConfig()
+      return res.success && res.data ? res.data : null
+    },
+    { revalidateOnFocus: false }
+  )
+  const loading = config === undefined
   const [showForm, setShowForm] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const now = useState(() => Date.now())[0]
-
-  useEffect(() => {
-    getVlabySchoolConfig().then(res => {
-      if (res.success && res.data) setConfig(res.data)
-      setLoading(false)
-    })
-  }, [])
 
   const handleConnect = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -35,14 +36,14 @@ export function VLabySchoolConnect() {
     const res = await connectVlabySchool(email, password)
     setSubmitting(false)
     if (!res.success || !res.data) {
-      toast.error(res.error || 'Failed to connect VLaby account')
+      toast.error(res.error || 'Failed to connect Virtual Labs account')
       return
     }
-    setConfig(res.data)
+    mutate(res.data, false)
     setShowForm(false)
     setEmail('')
     setPassword('')
-    toast.success('VLaby school account connected')
+    toast.success('Virtual Labs school account connected')
   }
 
   const handleDisconnect = async () => {
@@ -50,8 +51,8 @@ export function VLabySchoolConnect() {
     const res = await disconnectVlabySchool()
     setSubmitting(false)
     if (!res.success) { toast.error(res.error || 'Failed to disconnect'); return }
-    setConfig({ connected: false, email: null, connected_at: null })
-    toast.success('VLaby account disconnected')
+    mutate({ connected: false, email: null, connected_at: null }, false)
+    toast.success('Virtual Labs account disconnected')
   }
 
   if (loading) return null
@@ -60,7 +61,7 @@ export function VLabySchoolConnect() {
     <div className="border rounded-xl p-4 bg-gray-50/60 flex flex-col gap-3">
       <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
         <FlaskConical size={15} className="text-indigo-600" />
-        School VLaby Account
+        School Virtual Labs Account
       </div>
 
       {config?.connected && !showForm ? (
@@ -116,9 +117,9 @@ export function VLabySchoolConnect() {
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="VLaby email"
+              placeholder="Virtual Labs email"
               required
-              className="h-8 text-sm flex-1 min-w-[160px]"
+              className="h-8 text-sm flex-1 min-w-40"
               autoFocus
             />
             <Input
@@ -127,7 +128,7 @@ export function VLabySchoolConnect() {
               onChange={e => setPassword(e.target.value)}
               placeholder="Password"
               required
-              className="h-8 text-sm flex-1 min-w-[140px]"
+              className="h-8 text-sm flex-1 min-w-35"
             />
             <Button type="submit" size="sm" disabled={submitting} className="h-8 gap-1.5 text-xs">
               {submitting ? <Loader2 size={12} className="animate-spin" /> : <LogIn size={12} />}
@@ -145,7 +146,7 @@ export function VLabySchoolConnect() {
             Not connected — students cannot open experiments
           </div>
           <Button size="sm" className="gap-1.5 text-xs h-7" onClick={() => setShowForm(true)}>
-            <LogIn size={12} /> Connect VLaby Account
+            <LogIn size={12} /> Connect Virtual Labs Account
           </Button>
         </div>
       )}

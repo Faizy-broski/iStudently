@@ -48,6 +48,16 @@ const formatDate = (t: (key: string, values?: Record<string, any>) => string, da
   }
 };
 
+// Helper to format date + time
+const formatDateTime = (t: (key: string, values?: Record<string, any>) => string, dateString: string | null | undefined) => {
+  if (!dateString) return t("notProvided");
+  try {
+    return format(new Date(dateString), "MMMM d, yyyy h:mm a");
+  } catch {
+    return dateString;
+  }
+};
+
 // Helper to get initials
 const getInitials = (firstName?: string | null, lastName?: string | null) => {
   return `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase() || "NA";
@@ -465,7 +475,7 @@ export default function ParentDetailsPage() {
                 />
                 <InfoRow
                   label={t("system.lastLogin")}
-                  value={lastLogin ? formatDate(t, lastLogin) : t("never")}
+                  value={lastLogin ? formatDateTime(t, lastLogin) : t("never")}
                   icon={Clock}
                 />
               </div>

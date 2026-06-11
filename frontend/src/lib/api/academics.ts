@@ -59,6 +59,7 @@ export interface Subject {
   created_at: string
   updated_at: string
   created_by: string | null
+  sort_order?: number
   grade_name?: string
   grade_order?: number
 }
@@ -104,6 +105,7 @@ export interface UpdateSubjectDTO {
   code?: string
   subject_type?: SubjectType
   is_active?: boolean
+  sort_order?: number
 }
 
 // ============================================================================

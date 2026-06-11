@@ -32,7 +32,7 @@ import {
 import { getMarkingPeriods, type MarkingPeriod } from "@/lib/api/marking-periods"
 import { getClassList, type ClassListResponse } from "@/lib/api/scheduling"
 import { getAllTeachers, type Staff } from "@/lib/api/teachers"
-import { CalendarDays, Plus, Pencil, Trash2, Loader2, ArrowUp, ArrowDown, ArrowUpDown, Info } from "lucide-react"
+import { CalendarDays, Plus, Pencil, Trash2, Loader2, Info, GripVertical } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -85,10 +85,10 @@ export function Courses() {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null)
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
 
-  // ── Sort state ───────────────────────────────────────────────────────
-  const [subjectSort, setSubjectSort] = useState<'asc' | 'desc'>('asc')
-  const [courseSort, setCourseSort] = useState<'asc' | 'desc'>('asc')
-  const [cpSort, setCpSort] = useState<'asc' | 'desc'>('asc')
+  // ── Drag state ───────────────────────────────────────────────────────
+  const [drag, setDrag] = useState<{ panel: 'subject' | 'course' | 'cp'; id: string } | null>(null)
+  const [dragOver, setDragOver] = useState<{ panel: 'subject' | 'course' | 'cp'; id: string } | null>(null)
+  const [savingSort, setSavingSort] = useState(false)
 
   // ── Dialog state ────────────────────────────────────────────────────
   const [subjectDialog, setSubjectDialog] = useState<{ open: boolean; mode: "add" | "edit"; subject?: Subject }>({
@@ -182,11 +182,14 @@ export function Courses() {
       }
     })
     return [...list].sort((a, b) => {
+      const ao = a.sort_order ?? 0
+      const bo = b.sort_order ?? 0
+      if (ao !== bo) return ao - bo
       const aTitle = a.title || a.short_name || ''
       const bTitle = b.title || b.short_name || ''
-      return cpSort === 'asc' ? aTitle.localeCompare(bTitle) : bTitle.localeCompare(aTitle)
+      return aTitle.localeCompare(bTitle)
     })
-  }, [cpsRes, seatMap, cpSort])
+  }, [cpsRes, seatMap])
 
   // Fetch seats for each CP when course is selected
   useSWR(
@@ -250,15 +253,25 @@ export function Courses() {
 
   const subjects = useMemo<Subject[]>(() => {
     const list = [...(subjectsRes?.data || [])]
-    list.sort((a, b) => subjectSort === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name))
+    list.sort((a, b) => {
+      const ao = a.sort_order ?? 0
+      const bo = b.sort_order ?? 0
+      if (ao !== bo) return ao - bo
+      return a.name.localeCompare(b.name)
+    })
     return list
-  }, [subjectsRes, subjectSort])
+  }, [subjectsRes])
 
   const filteredCourses = useMemo<Course[]>(() => {
     if (!selectedSubjectId) return []
     const all = (coursesRes?.data || []).filter((c) => c.subject_id === selectedSubjectId)
-    return [...all].sort((a, b) => courseSort === 'asc' ? a.title.localeCompare(b.title) : b.title.localeCompare(a.title))
-  }, [coursesRes, selectedSubjectId, courseSort])
+    return [...all].sort((a, b) => {
+      const ao = a.sort_order ?? 0
+      const bo = b.sort_order ?? 0
+      if (ao !== bo) return ao - bo
+      return a.title.localeCompare(b.title)
+    })
+  }, [coursesRes, selectedSubjectId])
 
   const teachers = useMemo<Staff[]>(() => teachersData?.data || [], [teachersData])
   const gradeLevels = useMemo(() => gradesRes?.data || [], [gradesRes])
@@ -538,10 +551,87 @@ export function Courses() {
     return ""
   }
 
-  const SortIcon = ({ dir }: { dir: 'asc' | 'desc' | null }) => {
-    if (dir === 'asc') return <ArrowUp className="h-3 w-3 inline-block ml-1" />
-    if (dir === 'desc') return <ArrowDown className="h-3 w-3 inline-block ml-1" />
-    return <ArrowUpDown className="h-3 w-3 inline-block ml-1 opacity-40" />
+  // ── Drag-and-drop helpers ────────────────────────────────────────────
+
+  const handleDragStart = (panel: 'subject' | 'course' | 'cp', id: string) =>
+    setDrag({ panel, id })
+
+  const handleDragOver = (e: React.DragEvent, panel: 'subject' | 'course' | 'cp', id: string) => {
+    e.preventDefault()
+    setDragOver({ panel, id })
+  }
+
+  const handleDragEnd = () => {
+    setDrag(null)
+    setDragOver(null)
+  }
+
+  const reorderAndSave = async <T extends { id: string; sort_order?: number }>(
+    panel: 'subject' | 'course' | 'cp',
+    toId: string,
+    items: T[],
+    updateFn: (id: string, order: number) => Promise<void>,
+    mutateKey: unknown[] | null,
+    buildUpdated: (items: T[]) => unknown[]
+  ) => {
+    if (!drag || drag.panel !== panel || drag.id === toId) return
+    const fromIdx = items.findIndex(i => i.id === drag.id)
+    const toIdx   = items.findIndex(i => i.id === toId)
+    if (fromIdx === -1 || toIdx === -1) return
+
+    const reordered = [...items]
+    const [moved] = reordered.splice(fromIdx, 1)
+    reordered.splice(toIdx, 0, moved)
+
+    // Assign sort_orders as multiples of 10
+    const withNewOrder = reordered.map((item, idx) => ({ ...item, sort_order: (idx + 1) * 10 }))
+
+    // Optimistic update
+    globalMutate(mutateKey, { data: buildUpdated(withNewOrder) }, false)
+
+    setSavingSort(true)
+    try {
+      await Promise.all(
+        withNewOrder
+          .filter((item, idx) => item.sort_order !== items[idx]?.sort_order)
+          .map(item => updateFn(item.id, item.sort_order!))
+      )
+    } finally {
+      setSavingSort(false)
+      globalMutate(mutateKey)
+    }
+  }
+
+  const handleDropSubject = async (toId: string) => {
+    await reorderAndSave(
+      'subject', toId, subjects,
+      (id, order) => updateSubject(id, { sort_order: order }).then(() => {}),
+      subjectsCacheKey,
+      (items) => items
+    )
+    setDrag(null); setDragOver(null)
+  }
+
+  const handleDropCourse = async (toId: string) => {
+    await reorderAndSave(
+      'course', toId, filteredCourses,
+      (id, order) => updateCourse(id, { sort_order: order }).then(() => {}),
+      coursesCacheKey,
+      (items) => (coursesRes?.data || []).map(c =>
+        items.find(i => i.id === c.id) || c
+      )
+    )
+    setDrag(null); setDragOver(null)
+  }
+
+  const handleDropCP = async (toId: string) => {
+    await reorderAndSave(
+      'cp', toId, coursePeriods,
+      (id, order) => updateCoursePeriod(selectedCourseId!, id, { sort_order: order }).then(() => {}),
+      cpsCacheKey,
+      (items) => items
+    )
+    setDrag(null); setDragOver(null)
   }
 
   return (
@@ -571,13 +661,11 @@ export function Courses() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
-                <th
-                  className="px-3 py-2 text-left text-xs font-semibold uppercase text-teal-700 cursor-pointer select-none hover:text-teal-900"
-                  onClick={() => setSubjectSort(s => s === 'asc' ? 'desc' : 'asc')}
-                >
+                <th className="w-5"></th>
+                <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-teal-700">
                   {t("th_subject")}
-                  <SortIcon dir={subjectSort} />
                 </th>
+                <th className="w-7 text-center text-xs text-muted-foreground">#</th>
                 <th className="w-16"></th>
               </tr>
             </thead>
@@ -585,60 +673,51 @@ export function Courses() {
               {subjectsLoading ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <tr key={i} className="border-b">
-                    <td className="px-3 py-2" colSpan={2}>
-                      <Skeleton className="h-4 w-full" />
-                    </td>
+                    <td className="px-3 py-2" colSpan={4}><Skeleton className="h-4 w-full" /></td>
                   </tr>
                 ))
               ) : (
-                subjects.map((sub) => (
-                  <tr
-                    key={sub.id}
-                    className={`border-b cursor-pointer hover:bg-muted/50 transition-colors ${selectedSubjectId === sub.id ? "bg-primary/10 font-medium" : ""
-                      }`}
-                    onClick={() => handleSelectSubject(sub.id)}
-                  >
-                    <td className="px-3 py-2 text-primary hover:underline">
-                      {sub.name}
-                    </td>
-                    <td className="px-1 py-2 text-right">
-                      <div className="flex gap-0.5 justify-end">
-                        <button
-                          className="p-1 text-muted-foreground hover:text-primary"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            openEditSubject(sub)
-                          }}
-                          title={t("btn_edit")}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          className="p-1 text-muted-foreground hover:text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setDeleteConfirm({
-                              open: true,
-                              type: "subject",
-                              id: sub.id,
-                              label: sub.name,
-                            })
-                          }}
-                          title={t("btn_delete")}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                subjects.map((sub, idx) => {
+                  const isOver = dragOver?.panel === 'subject' && dragOver.id === sub.id
+                  const isDragging = drag?.panel === 'subject' && drag.id === sub.id
+                  return (
+                    <tr
+                      key={sub.id}
+                      draggable
+                      onDragStart={() => handleDragStart('subject', sub.id)}
+                      onDragOver={(e) => handleDragOver(e, 'subject', sub.id)}
+                      onDragEnd={handleDragEnd}
+                      onDrop={() => handleDropSubject(sub.id)}
+                      className={`border-b cursor-pointer hover:bg-muted/50 transition-colors
+                        ${selectedSubjectId === sub.id ? "bg-primary/10 font-medium" : ""}
+                        ${isOver ? "border-t-2 border-t-primary" : ""}
+                        ${isDragging ? "opacity-40" : ""}`}
+                      onClick={() => handleSelectSubject(sub.id)}
+                    >
+                      <td className="pl-1 py-2 cursor-grab text-muted-foreground hover:text-foreground" onClick={e => e.stopPropagation()}>
+                        <GripVertical className="h-3.5 w-3.5" />
+                      </td>
+                      <td className="px-3 py-2 text-primary hover:underline">{sub.name}</td>
+                      <td className="py-2 text-center text-xs text-muted-foreground tabular-nums select-none">
+                        {sub.sort_order ?? (idx + 1) * 10}
+                      </td>
+                      <td className="px-1 py-2 text-right">
+                        <div className="flex gap-0.5 justify-end">
+                          <button className="p-1 text-muted-foreground hover:text-primary" onClick={(e) => { e.stopPropagation(); openEditSubject(sub) }} title={t("btn_edit")}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button className="p-1 text-muted-foreground hover:text-destructive" onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ open: true, type: "subject", id: sub.id, label: sub.name }) }} title={t("btn_delete")}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
               )}
               {/* Add row */}
-              <tr
-                className="border-b cursor-pointer hover:bg-muted/50"
-                onClick={openAddSubject}
-              >
-                <td className="px-3 py-2" colSpan={2}>
+              <tr className="border-b cursor-pointer hover:bg-muted/50" onClick={openAddSubject}>
+                <td className="px-3 py-2" colSpan={4}>
                   <Plus className="h-4 w-4 text-muted-foreground" />
                 </td>
               </tr>
@@ -659,13 +738,11 @@ export function Courses() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b">
-                  <th
-                    className="px-3 py-2 text-left text-xs font-semibold uppercase text-teal-700 cursor-pointer select-none hover:text-teal-900"
-                    onClick={() => setCourseSort(s => s === 'asc' ? 'desc' : 'asc')}
-                  >
+                  <th className="w-5"></th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-teal-700">
                     {t("th_course")}
-                    <SortIcon dir={courseSort} />
                   </th>
+                  <th className="w-7 text-center text-xs text-muted-foreground">#</th>
                   <th className="w-16"></th>
                 </tr>
               </thead>
@@ -673,60 +750,51 @@ export function Courses() {
                 {coursesLoading ? (
                   Array.from({ length: 2 }).map((_, i) => (
                     <tr key={i} className="border-b">
-                      <td className="px-3 py-2" colSpan={2}>
-                        <Skeleton className="h-4 w-full" />
-                      </td>
+                      <td className="px-3 py-2" colSpan={4}><Skeleton className="h-4 w-full" /></td>
                     </tr>
                   ))
                 ) : (
-                  filteredCourses.map((course) => (
-                    <tr
-                      key={course.id}
-                      className={`border-b cursor-pointer hover:bg-muted/50 transition-colors ${selectedCourseId === course.id ? "bg-primary/10 font-medium" : ""
-                        }`}
-                      onClick={() => handleSelectCourse(course.id)}
-                    >
-                      <td className="px-3 py-2 text-primary hover:underline">
-                        {course.title}
-                      </td>
-                      <td className="px-1 py-2 text-right">
-                        <div className="flex gap-0.5 justify-end">
-                          <button
-                            className="p-1 text-muted-foreground hover:text-primary"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              openEditCourse(course)
-                            }}
-                            title={t("btn_edit")}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            className="p-1 text-muted-foreground hover:text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setDeleteConfirm({
-                                open: true,
-                                type: "course",
-                                id: course.id,
-                                label: course.title,
-                              })
-                            }}
-                            title={t("btn_delete")}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                  filteredCourses.map((course, idx) => {
+                    const isOver = dragOver?.panel === 'course' && dragOver.id === course.id
+                    const isDragging = drag?.panel === 'course' && drag.id === course.id
+                    return (
+                      <tr
+                        key={course.id}
+                        draggable
+                        onDragStart={() => handleDragStart('course', course.id)}
+                        onDragOver={(e) => handleDragOver(e, 'course', course.id)}
+                        onDragEnd={handleDragEnd}
+                        onDrop={() => handleDropCourse(course.id)}
+                        className={`border-b cursor-pointer hover:bg-muted/50 transition-colors
+                          ${selectedCourseId === course.id ? "bg-primary/10 font-medium" : ""}
+                          ${isOver ? "border-t-2 border-t-primary" : ""}
+                          ${isDragging ? "opacity-40" : ""}`}
+                        onClick={() => handleSelectCourse(course.id)}
+                      >
+                        <td className="pl-1 py-2 cursor-grab text-muted-foreground hover:text-foreground" onClick={e => e.stopPropagation()}>
+                          <GripVertical className="h-3.5 w-3.5" />
+                        </td>
+                        <td className="px-3 py-2 text-primary hover:underline">{course.title}</td>
+                        <td className="py-2 text-center text-xs text-muted-foreground tabular-nums select-none">
+                          {course.sort_order ?? (idx + 1) * 10}
+                        </td>
+                        <td className="px-1 py-2 text-right">
+                          <div className="flex gap-0.5 justify-end">
+                            <button className="p-1 text-muted-foreground hover:text-primary" onClick={(e) => { e.stopPropagation(); openEditCourse(course) }} title={t("btn_edit")}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button className="p-1 text-muted-foreground hover:text-destructive" onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ open: true, type: "course", id: course.id, label: course.title }) }} title={t("btn_delete")}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
                 )}
                 {/* Add row */}
-                <tr
-                  className="border-b cursor-pointer hover:bg-muted/50"
-                  onClick={openAddCourse}
-                >
-                  <td className="px-3 py-2" colSpan={2}>
+                <tr className="border-b cursor-pointer hover:bg-muted/50" onClick={openAddCourse}>
+                  <td className="px-3 py-2" colSpan={4}>
                     <Plus className="h-4 w-4 text-muted-foreground" />
                   </td>
                 </tr>
@@ -748,13 +816,11 @@ export function Courses() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b">
-                  <th
-                    className="px-3 py-2 text-left text-xs font-semibold uppercase text-teal-700 cursor-pointer select-none hover:text-teal-900"
-                    onClick={() => setCpSort(s => s === 'asc' ? 'desc' : 'asc')}
-                  >
+                  <th className="w-5"></th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-teal-700">
                     {t("th_course_period")}
-                    <SortIcon dir={cpSort} />
                   </th>
+                  <th className="w-7 text-center text-xs text-muted-foreground">#</th>
                   <th className="px-3 py-2 text-right text-xs font-semibold uppercase text-teal-700">
                     {t("th_available_seats")}
                   </th>
@@ -765,28 +831,36 @@ export function Courses() {
                 {cpsLoading ? (
                   Array.from({ length: 2 }).map((_, i) => (
                     <tr key={i} className="border-b">
-                      <td className="px-3 py-2" colSpan={3}>
-                        <Skeleton className="h-4 w-full" />
-                      </td>
+                      <td className="px-3 py-2" colSpan={5}><Skeleton className="h-4 w-full" /></td>
                     </tr>
                   ))
                 ) : (
-                  coursePeriods.map((cp) => {
+                  coursePeriods.map((cp, idx) => {
                     const teacherName = getTeacherName(cp)
                     const displayTitle =
-                      [
-                        cp.marking_period?.title,
-                        cp.period?.period_name,
-                        selectedCourse?.title,
-                        teacherName || null,
-                      ]
-                        .filter(Boolean)
-                        .join(" - ") || cp.title || "—"
+                      [cp.marking_period?.title, cp.period?.period_name, selectedCourse?.title, teacherName || null]
+                        .filter(Boolean).join(" - ") || cp.title || "—"
+                    const isOver = dragOver?.panel === 'cp' && dragOver.id === cp.id
+                    const isDragging = drag?.panel === 'cp' && drag.id === cp.id
 
                     return (
-                      <tr key={cp.id} className="border-b hover:bg-muted/50">
-                        <td className="px-3 py-2 text-primary">
-                          {displayTitle}
+                      <tr
+                        key={cp.id}
+                        draggable
+                        onDragStart={() => handleDragStart('cp', cp.id)}
+                        onDragOver={(e) => handleDragOver(e, 'cp', cp.id)}
+                        onDragEnd={handleDragEnd}
+                        onDrop={() => handleDropCP(cp.id)}
+                        className={`border-b hover:bg-muted/50 transition-colors
+                          ${isOver ? "border-t-2 border-t-primary" : ""}
+                          ${isDragging ? "opacity-40" : ""}`}
+                      >
+                        <td className="pl-1 py-2 cursor-grab text-muted-foreground hover:text-foreground">
+                          <GripVertical className="h-3.5 w-3.5" />
+                        </td>
+                        <td className="px-3 py-2 text-primary">{displayTitle}</td>
+                        <td className="py-2 text-center text-xs text-muted-foreground tabular-nums select-none">
+                          {cp.sort_order ?? (idx + 1) * 10}
                         </td>
                         <td className="px-3 py-2 text-right font-medium text-amber-600">
                           {cp.available_seats != null
@@ -797,26 +871,10 @@ export function Courses() {
                         </td>
                         <td className="px-1 py-2 text-right">
                           <div className="flex gap-0.5 justify-end">
-                            <button
-                              className="p-1 text-muted-foreground hover:text-primary"
-                              onClick={() => openEditCP(cp)}
-                              title={t("btn_edit")}
-                            >
+                            <button className="p-1 text-muted-foreground hover:text-primary" onClick={() => openEditCP(cp)} title={t("btn_edit")}>
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
-                            <button
-                              className="p-1 text-muted-foreground hover:text-destructive"
-                              onClick={() =>
-                                setDeleteConfirm({
-                                  open: true,
-                                  type: "cp",
-                                  id: cp.id,
-                                  courseId: selectedCourseId!,
-                                  label: displayTitle || t("type_cp").toLowerCase(),
-                                })
-                              }
-                              title={t("btn_delete")}
-                            >
+                            <button className="p-1 text-muted-foreground hover:text-destructive" onClick={() => setDeleteConfirm({ open: true, type: "cp", id: cp.id, courseId: selectedCourseId!, label: displayTitle || t("type_cp").toLowerCase() })} title={t("btn_delete")}>
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           </div>
@@ -830,7 +888,7 @@ export function Courses() {
                   className="border-b cursor-pointer hover:bg-muted/50"
                   onClick={openAddCP}
                 >
-                  <td className="px-3 py-2" colSpan={3}>
+                  <td className="px-3 py-2" colSpan={5}>
                     <Plus className="h-4 w-4 text-muted-foreground" />
                   </td>
                 </tr>
@@ -1129,7 +1187,7 @@ export function Courses() {
             {/* Meeting Days */}
             <div className="space-y-2 col-span-2">
               <Label>{t("label_meeting_days")}</Label>
-              <div className="flex gap-1.5 flex-shrink-0">
+              <div className="flex gap-1.5 shrink-0">
                 {(["M", "T", "W", "R", "F", "S", "U"] as const).map((day) => {
                   const dayLabels: Record<string, string> = { 
                     M: t("days.M"), 

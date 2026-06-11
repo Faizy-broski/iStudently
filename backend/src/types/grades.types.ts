@@ -130,6 +130,7 @@ export interface UpdateCourseDTO {
   credit_hours?: number
   is_active?: boolean
   campus_id?: string
+  sort_order?: number
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -170,6 +171,7 @@ export interface CoursePeriod {
   days?: string | null
   gender_restriction?: string | null
   parent_id?: string | null
+  sort_order?: number
   // Joined
   course?: Course
   teacher?: any
@@ -229,6 +231,7 @@ export interface UpdateCoursePeriodDTO {
   room?: string | null
   days?: string | null
   gender_restriction?: string | null
+  sort_order?: number
 }
 
 // ────────────────────────────────────────────────────────────────────────────

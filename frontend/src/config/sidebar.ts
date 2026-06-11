@@ -55,6 +55,8 @@ import {
   UserCircle,
   Paintbrush,
   Globe,
+  FlaskConical,
+  Table2,
   type LucideIcon,
 } from "lucide-react";
 import { UserRole } from "@/types";
@@ -251,6 +253,14 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "settings", href: "/admin/staff/settings", icon: Settings },
     ],
   },
+  // {
+  //   title: "id_card_designer",
+  //   href: "/admin/id-card",
+  //   icon: CreditCard,
+  //   subItems: [
+  //     { title: "id_card_designer", href: "/admin/id-card", icon: CreditCard },
+  //   ],
+  // },
   {
     title: "user_management",
     href: "/admin/signup-links",
@@ -391,6 +401,7 @@ const adminMenuItems: SidebarMenuItem[] = [
     subItems: [
       { title: "overview", href: "/admin/library", icon: BookOpen },
       { title: "books", href: "/admin/library/books", icon: BookOpen },
+      { title: "e_library", href: "/admin/library/e-library", icon: BookMarked },
       { title: "loan_directory", href: "/admin/library/loans", icon: ClipboardList },
       { title: "fines", href: "/admin/library/fines", icon: DollarSign },
       { title: "setup", href: "#", icon: Settings, isLabel: true },
@@ -461,8 +472,8 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "sidebar_theme", href: "/admin/settings/sidebar-theme", icon: Paintbrush },
       { title: "academic_years", href: "/admin/settings/academic-years", icon: Calendar },
       { title: "services", href: "/admin/settings/services", icon: Settings },
-      // email_reminders, email_smtp, public_pages, parent_agreement are injected
-      // by their respective plugins — see config/plugins.ts sidebarInjections
+      { title: "user_agreements", href: "/admin/settings/user-agreements", icon: FileText },
+      // email_reminders, email_smtp, public_pages are injected by their plugins — see config/plugins.ts
       { title: "profile", href: "/admin/profile", icon: UserCircle },
     ],
   },
@@ -718,6 +729,8 @@ const studentMenuItems: SidebarMenuItem[] = [
       { title: "learning_materials", href: "/student/materials", icon: Library },
       { title: "premium_resources", href: "#", icon: Star, isLabel: true },
       { title: "physics_virtual_labs", href: "/student/resources/physics-virtual-labs", icon: Globe },
+      { title: "virtual_labs", href: "/student/resources/virtual-labs", icon: FlaskConical },
+      { title: "periodic_table", href: "/student/resources/zperiod", icon: Table2 },
     ],
   },
   {

@@ -1,7 +1,2 @@
-import VLabyPortal from '@/components/vlaby/VLabyPortal'
-
-export const metadata = { title: 'Virtual Labs' }
-
-export default function ParentVLabyPage() {
-  return <VLabyPortal basePath="/parent/resources/vlaby" />
-}
+import { redirect } from 'next/navigation'
+export default function Page() { redirect('/parent/resources/virtual-labs') }

@@ -17,7 +17,13 @@
     "contact_admin": "Contact your administrator for account access",
     "err_inactive": "Your account is inactive. Please contact your administrator.",
     "err_unauthorized": "You don't have permission to access that area.",
-    "err_role": "Your role is not yet supported in the system. Please contact support."
+    "err_role": "Your role is not yet supported in the system. Please contact support.",
+    "err_agreement_rejected": "Your account was deactivated because you rejected the school agreement.",
+    "err_agreement_reactivate_link": "Click here to restore your access and review the agreement again."
+  },
+  "agreement": {
+    "user_agreements": "User Agreements",
+    "sidebar_label": "User Agreements"
   },
   "common": {
     "students": "Students",
@@ -336,6 +342,7 @@
     "bulk_import": "Bulk Import",
     "custom_fields": "Custom Fields",
     "student_id_card": "Student ID Card",
+    "id_card_designer": "ID Card Designer",
     "certificate": "Certificate",
     "print_student_info": "Print Student Info",
     "print_letters": "Print Letters",
@@ -478,6 +485,7 @@
     "email_smtp": "Email SMTP",
     "public_pages": "Public Pages",
     "agreement": "Agreement",
+    "user_agreements": "User Agreements",
     "profile": "My Profile",
     "school_information": "School Information",
     "associated_parents": "Associated Parents",
@@ -520,6 +528,7 @@
     "embedded_resources": "Embedded Resources",
     "premium_resources": "Premium Resources",
     "physics_virtual_labs": "Physics IGCSE + A-Level Virtual Labs",
+    "chemistry_virtual_labs": "Chemistry IGCSE + A-Level Virtual Labs",
     "attendance_summary": "Attendance Summary",
     "print_attendance_sheets": "Print Attendance Sheets",
     "take_missing_attendance": "Take Missing Attendance",
@@ -8001,11 +8010,13 @@
       "embedded_resources_name": "Embedded Resources",
       "embedded_resources_desc": "Embed external websites directly inside the portal. Admins add links with optional grade-level restrictions from the Resources menu.",
       "vlaby_name": "Virtual Labs",
-      "vlaby_desc": "Browse and run interactive virtual lab experiments (Biology, Chemistry, Physics) from VLaby.com directly inside the portal. Available in English, Arabic, French, German & Indonesian.",
+      "vlaby_desc": "Browse and run interactive virtual lab experiments (Biology, Chemistry, Physics) directly inside the portal. Available in English, Arabic, French, German & Indonesian.",
       "periodic_table_name": "J Periodic Table",
       "periodic_table_desc": "Interactive periodic table with 118 elements, 3D atom models, chemical equation balancer, molar mass calculator, and worksheet generator — all self-contained with no login required.",
       "physics_virtual_labs_name": "Physics IGCSE + A-Level Virtual Labs",
-      "physics_virtual_labs_desc": "Embeds the Nobook Physics interactive virtual lab (IGCSE + A-Level) directly inside the portal. Students, teachers, parents, and admins can access physics simulations without leaving the system."
+      "physics_virtual_labs_desc": "Embeds the Nobook Physics interactive virtual lab (IGCSE + A-Level) directly inside the portal. Students, teachers, parents, and admins can access physics simulations without leaving the system.",
+      "chemistry_virtual_labs_name": "Chemistry IGCSE + A-Level Virtual Labs",
+      "chemistry_virtual_labs_desc": "Embeds the Nobook Chemistry interactive virtual lab (IGCSE + A-Level) directly inside the portal. Students, teachers, parents, and admins can access chemistry simulations without leaving the system."
     }
   },
   "studentPortal": {
@@ -8447,13 +8458,13 @@
     "loading": "Loading…",
     "filters_btn": "Filters",
     "login": {
-      "title": "Sign in to VLaby",
-      "description": "A VLaby account is required to open the interactive experiment. You can browse without an account.",
+      "title": "Sign in to Virtual Labs",
+      "description": "A Virtual Labs account is required to open the interactive experiment. You can browse without an account.",
       "email": "Email",
       "password": "Password",
       "sign_in": "Sign in",
       "no_account": "No account?",
-      "register": "Register at vlaby.com"
+      "register": "Register for Virtual Labs"
     },
     "filters": {
       "title": "Filters",
@@ -8485,7 +8496,7 @@
       "no_results": "No experiments match your filters",
       "experiments_found": "{count} experiments found",
       "experiment_found": "1 experiment found",
-      "logout": "Logout of VLaby",
+      "logout": "Logout of Virtual Labs",
       "sign_in_prompt": "Sign in to open experiments",
       "pts": "pts",
       "page_of": "Page {page} of {lastPage}"

@@ -121,6 +121,13 @@ export const authenticate = async (
 
     // Check if user is active
     if (!profile.is_active) {
+      if (profile.agreement_status === 'rejected') {
+        return res.status(403).json({
+          success: false,
+          error: 'Your account was deactivated because you rejected the school agreement. Visit the reactivation page to restore access.',
+          code: 'AGREEMENT_REJECTED',
+        })
+      }
       return res.status(403).json({
         success: false,
         error: 'Account is inactive. Please contact administrator.'

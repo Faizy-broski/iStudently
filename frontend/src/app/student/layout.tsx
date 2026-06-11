@@ -3,7 +3,6 @@
 import { DashboardLayout } from '@/components/layouts'
 import { AuthLoadingGuard } from '@/components/auth/AuthLoadingGuard'
 import { RoleGuard } from '@/components/auth/RoleGuard'
-import { ParentAgreementGuard } from '@/components/auth/ParentAgreementGuard'
 import { SchoolSettingsProvider } from '@/context/SchoolSettingsContext'
 import { CampusProvider } from '@/context/CampusContext'
 
@@ -17,11 +16,9 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
       <RoleGuard allowedRoles={['student']}>
         <CampusProvider>
           <SchoolSettingsProvider>
-            <ParentAgreementGuard role="student">
-              <DashboardLayout role="student">
-                {children}
-              </DashboardLayout>
-            </ParentAgreementGuard>
+            <DashboardLayout role="student">
+              {children}
+            </DashboardLayout>
           </SchoolSettingsProvider>
         </CampusProvider>
       </RoleGuard>

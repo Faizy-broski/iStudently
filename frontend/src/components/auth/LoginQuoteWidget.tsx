@@ -22,6 +22,10 @@ export function LoginQuoteWidget({ locale = "en" }: LoginQuoteWidgetProps) {
   const text = isArabic ? quote.text_ar : quote.text_en;
   if (!text?.trim()) return null;
 
+  const fontFamily = isArabic 
+    ? "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" 
+    : "Georgia, 'Times New Roman', serif";
+
   return (
     <div
       dir={isArabic ? "rtl" : "ltr"}
@@ -39,7 +43,7 @@ export function LoginQuoteWidget({ locale = "en" }: LoginQuoteWidgetProps) {
         style={{
           position: "absolute",
           top: 0,
-          [isArabic ? "right" : "left"]: 0,
+          insetInlineStart: 0,
           width: "4px",
           height: "100%",
           background: "linear-gradient(180deg, #022172 0%, #57A3CC 100%)",
@@ -49,28 +53,28 @@ export function LoginQuoteWidget({ locale = "en" }: LoginQuoteWidgetProps) {
 
       <span
         style={{
-          fontFamily: "Georgia, 'Times New Roman', serif",
+          fontFamily: fontFamily,
           fontSize: "64px",
           lineHeight: "0.6",
           color: "rgba(1,45,110,0.18)",
           display: "block",
           marginBottom: "0.5rem",
-          fontStyle: "italic",
-          textAlign: isArabic ? "right" : "left",
+          fontStyle: isArabic ? "normal" : "italic",
+          textAlign: "start",
         }}
       >
-        {isArabic ? "،،" : "\u201C"}
+        {isArabic ? "”" : "\u201C"}
       </span>
 
       <p
         style={{
-          fontFamily: "Georgia, 'Times New Roman', serif",
-          fontSize: "15px",
-          fontStyle: "italic",
+          fontFamily: fontFamily,
+          fontSize: isArabic ? "16px" : "15px",
+          fontStyle: isArabic ? "normal" : "italic",
           lineHeight: "1.75",
           color: "#1a2f5a",
           margin: "0 0 0.75rem 0",
-          textAlign: isArabic ? "right" : "left",
+          textAlign: "start",
         }}
       >
         {text}
@@ -81,7 +85,6 @@ export function LoginQuoteWidget({ locale = "en" }: LoginQuoteWidgetProps) {
           display: "flex",
           alignItems: "center",
           gap: "10px",
-          flexDirection: isArabic ? "row-reverse" : "row",
         }}
       >
         <div

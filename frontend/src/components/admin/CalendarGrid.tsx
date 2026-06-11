@@ -482,7 +482,7 @@ export function CalendarGrid({
                       )}
                       onClick={(e) => handleDayNumberClick(e, day.date, dayEvents)}
                     >
-                      {formatNumber(day.dayNumber, useArabic)}
+                      {isHijriMode ? String(day.dayNumber) : formatNumber(day.dayNumber, isArabic)}
                     </span>
                     {hasEvents && (
                       <Badge

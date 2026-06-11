@@ -68,18 +68,17 @@ async function fetchWithdrawals(params: {
   campusId?: string
   academicYearId: string
 }): Promise<{ end_date: string | null; updated_at: string }[]> {
-  let query = supabase
+  // student_enrollment.school_id stores the campus_id when records belong to a campus.
+  // Use campusId directly as school_id when provided; fall back to the admin's school_id.
+  const effectiveSchoolId = params.campusId ?? params.schoolId
+
+  const { data, error } = await supabase
     .from('student_enrollment')
     .select('end_date, updated_at')
-    .eq('school_id', params.schoolId)
+    .eq('school_id', effectiveSchoolId)
     .eq('academic_year_id', params.academicYearId)
     .in('rollover_status', ['dropped', 'transferred'])
 
-  if (params.campusId) {
-    query = (query as any).eq('campus_id', params.campusId)
-  }
-
-  const { data, error } = await query
   if (error) throw error
   return data ?? []
 }
@@ -201,6 +200,7 @@ export async function getWithdrawalSummary(params: {
   }
 
   // Compare with previous academic year
+  // Academic years are stored under the parent school_id (not the campus_id)
   const { data: prevAy } = await supabase
     .from('academic_years')
     .select('id')

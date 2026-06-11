@@ -70,6 +70,7 @@ export interface Subject {
   created_at: string;
   updated_at: string;
   created_by: string | null;
+  sort_order?: number;
   // Joined data
   grade_name?: string;
   grade_order?: number;

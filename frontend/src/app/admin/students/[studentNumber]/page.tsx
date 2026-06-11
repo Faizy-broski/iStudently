@@ -97,6 +97,15 @@ export default function StudentDetailsPage() {
     }
   };
 
+  const formatDateTime = (dateString: string | null | undefined) => {
+    if (!dateString) return t("not_provided");
+    try {
+      return format(new Date(dateString), "MMMM d, yyyy h:mm a");
+    } catch {
+      return dateString;
+    }
+  };
+
   const InfoRow = ({ label, value, icon: Icon }: { label: string; value: React.ReactNode; icon?: LucideIcon }) => (
     <div className="flex flex-col gap-1">
       <span className="text-sm text-muted-foreground flex items-center gap-2">
@@ -669,7 +678,7 @@ export default function StudentDetailsPage() {
                 />
                 <InfoRow
                   label={t("last_login")}
-                  value={lastLogin ? formatDate(lastLogin) : t("never")}
+                  value={lastLogin ? formatDateTime(lastLogin) : t("never")}
                   icon={Clock}
                 />
               </div>

@@ -18,15 +18,7 @@ export default function AdminPhysicsVirtualLabsPage() {
             Physics IGCSE + A-Level Virtual Labs
           </span>
         </div>
-        <a
-          href={LAB_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 transition-colors"
-        >
-          <ExternalLink className="h-3.5 w-3.5" />
-          Open in new tab
-        </a>
+
       </div>
 
       {iframeError ? (

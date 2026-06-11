@@ -18,6 +18,7 @@ import { LayoutDashboard } from 'lucide-react'
 import { UnsavedChangesProvider } from '@/components/unsaved-changes/UnsavedChangesProvider'
 import { TourAssistantPanel } from '@/components/setup-assistant/TourAssistantPanel'
 import { SidebarThemeProvider } from '@/context/SidebarThemeContext'
+import { AgreementGate } from '@/components/agreement/AgreementGate'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -192,11 +193,13 @@ export function DashboardLayout({ children, className, role }: DashboardLayoutPr
   return (
     <SidebarThemeProvider>
       <SidebarProvider>
-        <UnsavedChangesGuard>
-          <DashboardContent className={className} role={role}>
-            {children}
-          </DashboardContent>
-        </UnsavedChangesGuard>
+        <AgreementGate>
+          <UnsavedChangesGuard>
+            <DashboardContent className={className} role={role}>
+              {children}
+            </DashboardContent>
+          </UnsavedChangesGuard>
+        </AgreementGate>
         <Toaster />
       </SidebarProvider>
     </SidebarThemeProvider>

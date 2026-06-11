@@ -358,6 +358,17 @@ function LoginForm() {
                 <p className="text-sm text-white">{t('err_inactive')}</p>
               </div>
             )}
+            {error === 'agreement_rejected' && (
+              <div className={`p-3 rounded-lg bg-amber-500/20 border border-amber-400/30 ${anim('delay-150')}`}>
+                <p className="text-sm text-white font-medium">{t('err_agreement_rejected')}</p>
+                <a
+                  href="/agreement/reactivate"
+                  className="text-xs text-amber-200 underline underline-offset-2 mt-1 inline-block hover:text-white"
+                >
+                  {t('err_agreement_reactivate_link')}
+                </a>
+              </div>
+            )}
             {error === 'unauthorized' && (
               <div className={`p-3 rounded-lg bg-red-500/20 border border-red-400/30 ${anim('delay-150')}`}>
                 <p className="text-sm text-white">{t('err_unauthorized')}</p>

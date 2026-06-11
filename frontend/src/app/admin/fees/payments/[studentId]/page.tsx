@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback, use, useEffect } from 'react'
+import { useState, useRef, useCallback, use, useEffect, useMemo } from 'react'
 import { useCampus } from '@/context/CampusContext'
 import { useAuth } from '@/context/AuthContext'
 import { useSchoolSettings } from '@/hooks/useSchoolSettings'
@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { IconLoader, IconPlus, IconTrash, IconCalendar, IconUpload, IconPencil, IconCheck, IconX, IconBell } from '@tabler/icons-react'
+import { IconLoader, IconPlus, IconTrash, IconCalendar, IconUpload, IconPencil, IconCheck, IconX, IconBell, IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
 import useSWR from 'swr'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -64,6 +64,17 @@ interface NewPayment {
     is_lunch_payment: boolean
     payment_method: PaymentMethodOption
     file?: File | null
+}
+
+async function fetchStudentList(schoolId: string): Promise<{ id: string; student_number: string; profiles: { first_name: string; last_name: string } }[]> {
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch(`${API_BASE}/api/fees/payments/students?school_id=${schoolId}&limit=500`, {
+        headers: { 'Authorization': `Bearer ${session?.access_token}` }
+    })
+    const json = await res.json()
+    if (!json.success) throw new Error(json.error)
+    return json.data
 }
 
 async function fetchStudentPayments(studentId: string, schoolId: string): Promise<PaymentResponse> {
@@ -201,6 +212,23 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
         payment_method: defaultPaymentMethod,
         file: null
     }])
+
+    // Fetch student list for prev/next navigation
+    const { data: studentList } = useSWR(
+        schoolId ? ['payment-students-list', schoolId] : null,
+        () => fetchStudentList(schoolId!),
+        { revalidateOnFocus: false }
+    )
+
+    const { prevStudentId, nextStudentId } = useMemo(() => {
+        if (!studentList || studentList.length === 0) return { prevStudentId: null, nextStudentId: null }
+        const idx = studentList.findIndex(s => s.id === studentId)
+        if (idx === -1) return { prevStudentId: null, nextStudentId: null }
+        return {
+            prevStudentId: idx > 0 ? studentList[idx - 1].id : null,
+            nextStudentId: idx < studentList.length - 1 ? studentList[idx + 1].id : null,
+        }
+    }, [studentList, studentId])
 
     // Fetch payments (includes studentInfo)
     const { data: paymentData, isLoading: paymentsLoading, mutate: mutatePayments } = useSWR<PaymentResponse>(
@@ -546,10 +574,28 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
             {/* Divider */}
             <hr className="border-gray-300 dark:border-gray-700" />
 
-            {/* Student Name Header */}
+            {/* Student Name Header with Prev/Next */}
             {student && (
-                <div className="bg-gray-100 dark:bg-gray-800 p-3 text-sm font-medium text-gray-700 dark:text-gray-200">
-                    {formatStudentName()} | {student.student_number}
+                <div className="bg-gray-100 dark:bg-gray-800 p-3 flex items-center justify-between">
+                    <Button
+                        size="sm"
+                        className="h-7 w-7 p-0 bg-[#3d8fb5] hover:bg-[#3480a3] text-white disabled:opacity-30"
+                        disabled={!prevStudentId}
+                        onClick={() => prevStudentId && (window.location.href = `/admin/fees/payments/${prevStudentId}`)}
+                    >
+                        <IconChevronLeft className="h-4 w-4 rtl:rotate-180" />
+                    </Button>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                        {formatStudentName()} | {student.student_number}
+                    </span>
+                    <Button
+                        size="sm"
+                        className="h-7 w-7 p-0 bg-[#3d8fb5] hover:bg-[#3480a3] text-white disabled:opacity-30"
+                        disabled={!nextStudentId}
+                        onClick={() => nextStudentId && (window.location.href = `/admin/fees/payments/${nextStudentId}`)}
+                    >
+                        <IconChevronRight className="h-4 w-4 rtl:rotate-180" />
+                    </Button>
                 </div>
             )}
 
@@ -596,10 +642,10 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                         className={index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800'}
                                     >
                                         <TableCell></TableCell>
-                                        <TableCell>{payment.receipt_number || '-'}</TableCell>
+                                        <TableCell className="text-center">{payment.receipt_number || '-'}</TableCell>
 
                                         {/* Amount */}
-                                        <TableCell>
+                                        <TableCell className="text-center">
                                             {isEditing ? (
                                                 <Input
                                                     type="number"
@@ -612,7 +658,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                         </TableCell>
 
                                         {/* Payment Date */}
-                                        <TableCell>
+                                        <TableCell className="text-center">
                                             {isEditing ? (
                                                 <input
                                                     type="date"
@@ -624,7 +670,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                         </TableCell>
 
                                         {/* Comment */}
-                                        <TableCell>
+                                        <TableCell className="text-center">
                                             {isEditing ? (
                                                 <Input
                                                     value={editingValues.comment}
@@ -635,7 +681,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                         </TableCell>
 
                                         {/* Method */}
-                                        <TableCell>
+                                        <TableCell className="text-center">
                                             {isEditing ? (
                                                 <Select
                                                     value={editingValues.payment_method}
@@ -699,13 +745,13 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
 
                                         {viewMode === 'expanded' && (
                                             <>
-                                                <TableCell>
+                                                <TableCell className="text-center">
                                                     {payment.created_by_profile
                                                         ? `${payment.created_by_profile.first_name} ${payment.created_by_profile.last_name}`
                                                         : '-'
                                                     }
                                                 </TableCell>
-                                                <TableCell>{formatDate(payment.created_at)}</TableCell>
+                                                <TableCell className="text-center">{formatDate(payment.created_at)}</TableCell>
                                             </>
                                         )}
 
@@ -768,7 +814,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                                 <IconPlus className="h-4 w-4" />
                                             </Button>
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="text-center">
                                             <Input
                                                 value={payment.receipt_number ?? ''}
                                                 readOnly
@@ -777,7 +823,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                                 title={t('receiptAutoGenerated')}
                                             />
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="text-center">
                                             <Input
                                                 type="number"
                                                 step="0.01"
@@ -787,7 +833,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                                 className="w-24 h-8"
                                             />
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="text-center">
                                             <div className="flex items-center gap-1">
                                                 <Select
                                                     value={payment.month}
@@ -852,7 +898,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                                 </Popover>
                                             </div>
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="text-center">
                                             <Input
                                                 placeholder=""
                                                 value={payment.comment}
@@ -860,7 +906,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                                 className="w-full h-8"
                                             />
                                         </TableCell>
-                                        <TableCell>
+                                        <TableCell className="text-center">
                                             <Select
                                                 value={payment.payment_method}
                                                 onValueChange={(v) => updatePaymentRow(index, 'payment_method', v)}
@@ -903,8 +949,8 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                         </TableCell>
                                         {viewMode === 'expanded' && (
                                             <>
-                                                <TableCell>-</TableCell>
-                                                <TableCell>-</TableCell>
+                                                <TableCell className="text-center">-</TableCell>
+                                                <TableCell className="text-center">-</TableCell>
                                             </>
                                         )}
                                         <TableCell>

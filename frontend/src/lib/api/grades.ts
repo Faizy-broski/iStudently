@@ -119,6 +119,7 @@ export interface CoursePeriod {
   credits?: number | null
   affects_class_rank?: boolean
   parent_course_period_id?: string | null
+  sort_order?: number
   teacher?: { first_name?: string; last_name?: string; profile?: { first_name?: string; last_name?: string } }
   first_name: string
   last_name: string
@@ -738,6 +739,7 @@ export interface UpdateCoursePeriodDTO {
   room?: string | null
   days?: string | null
   gender_restriction?: string | null
+  sort_order?: number
 }
 
 export async function createCoursePeriod(courseId: string, data: CreateCoursePeriodDTO) {

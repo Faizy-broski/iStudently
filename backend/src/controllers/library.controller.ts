@@ -24,7 +24,8 @@ export class LibraryController {
       if (!schoolId) {
         return res.status(400).json({ error: 'School ID is required' });
       }
-      const books = await libraryService.getELibraryBooks(schoolId);
+      const userRole = req.profile?.role;
+      const books = await libraryService.getELibraryBooks(schoolId, userRole);
       res.json({ success: true, data: books });
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message });

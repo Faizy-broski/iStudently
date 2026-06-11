@@ -91,6 +91,8 @@ function getISOWeek(date: Date) {
   return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
 }
 
+const HIJRI_OFFSET_KEY = 'studently_global_hijri_offset'
+
 // --- Sidebar Header: campus logo + admin name + live date/time ---
 function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
   const { profile } = useAuth()
@@ -103,6 +105,19 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
   React.useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(timer)
+  }, [])
+
+  const [hijriOffset, setHijriOffset] = React.useState<number>(() => {
+    if (typeof window === 'undefined') return 0
+    return parseInt(localStorage.getItem(HIJRI_OFFSET_KEY) || '0', 10) || 0
+  })
+  React.useEffect(() => {
+    const handler = (e: Event) => {
+      const offset = (e as CustomEvent<number>).detail
+      if (typeof offset === 'number') setHijriOffset(offset)
+    }
+    window.addEventListener('hijri-offset-changed', handler)
+    return () => window.removeEventListener('hijri-offset-changed', handler)
   }, [])
 
   // Campus initials fallback
@@ -131,8 +146,11 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
     ? getISOWeek(now).toLocaleString('ar-SA')
     : getISOWeek(now)
 
-  // Hijri
-  const h = toHijri(now)
+  // Hijri (apply global offset so it matches the calendar)
+  const hijriBase = hijriOffset !== 0
+    ? new Date(now.getTime() + hijriOffset * 86400000)
+    : now
+  const h = toHijri(hijriBase)
   const hijriMonths = isAr ? HIJRI_MONTHS_AR : HIJRI_MONTHS_EN
   const hijriDay = isAr ? h.day.toLocaleString('ar-SA') : h.day
   const hijriYear = isAr ? h.year.toLocaleString('ar-SA') : h.year
@@ -176,7 +194,7 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
       <p className="text-white/50 text-xs mt-0.5 truncate w-full">{selectedCampus?.name || 'No Campus'}</p>
 
       {/* Date / time */}
-      <div className="mt-3 w-full bg-white/10 rounded-lg px-3 py-2.5 space-y-1.5">
+      <div className="mt-3 w-full bg-white/10 rounded-lg px-3 py-2.5 space-y-1.5 text-center rtl:text-center">
         <p className="text-white font-semibold text-sm">
           {dayName}, {dayNum} {monthShort} {year}
         </p>

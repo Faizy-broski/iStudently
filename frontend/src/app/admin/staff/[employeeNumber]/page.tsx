@@ -48,6 +48,16 @@ const formatDate = (dateString: string | null | undefined, notProvidedLabel: str
   }
 };
 
+// Helper to format date + time
+const formatDateTime = (dateString: string | null | undefined, notProvidedLabel: string) => {
+  if (!dateString) return notProvidedLabel;
+  try {
+    return format(new Date(dateString), "MMMM d, yyyy h:mm a");
+  } catch {
+    return dateString;
+  }
+};
+
 // Helper to get initials
 const getInitials = (firstName?: string | null, lastName?: string | null) => {
   return `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase() || "NA";
@@ -429,7 +439,7 @@ export default function StaffDetailsPage() {
                 />
                 <InfoRow
                   label={t("fields.lastLogin")}
-                  value={lastLogin ? formatDate(lastLogin, t("notProvided")) : t("never")}
+                  value={lastLogin ? formatDateTime(lastLogin, t("notProvided")) : t("never")}
                   icon={Clock}
                   fallbackLabel={t("notProvided")}
                 />

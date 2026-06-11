@@ -1,20 +1,18 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/context/AuthContext'
-import { getParentAgreementConfig } from '@/lib/api/parent-agreement'
+import { getMyAgreement } from '@/lib/api/user-agreement'
 import { ParentDashboardLayout } from '@/components/parent/ParentDashboardLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { FileText, Loader2 } from 'lucide-react'
 
 export default function ParentAgreementPage() {
-  const { profile } = useAuth()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getParentAgreementConfig(profile?.school_id ?? null)
+    getMyAgreement()
       .then((res) => {
         if (res.success && res.data) {
           setTitle(res.data.title || 'School Agreement')
@@ -22,7 +20,7 @@ export default function ParentAgreementPage() {
         }
       })
       .finally(() => setLoading(false))
-  }, [profile?.school_id])
+  }, [])
 
   return (
     <ParentDashboardLayout hideStats={true}>

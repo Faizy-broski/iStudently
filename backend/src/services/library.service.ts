@@ -37,16 +37,26 @@ export class LibraryService {
 
   /**
    * Get all books that have a file_url (digital/e-library books) for the given school/campus.
-   * Used by the student E-Library browsing page.
+   * Admin at a parent school sees books across all campuses (same logic as getBooks).
    */
-  async getELibraryBooks(schoolId: string) {
-    const { data, error } = await supabase
+  async getELibraryBooks(schoolId: string, userRole?: string) {
+    const isParentSchool = !(await isCampus(schoolId));
+    const shouldShowAllCampuses = userRole === 'admin' && isParentSchool;
+
+    let query = supabase
       .from('library_books')
       .select('id, title, author, cover_image_url, file_url, description, category_id, document_type, publisher, publication_year')
-      .eq('school_id', schoolId)
       .not('file_url', 'is', null)
       .order('title');
 
+    if (shouldShowAllCampuses) {
+      const campusIds = await getAllCampusIds(schoolId);
+      query = query.in('school_id', campusIds);
+    } else {
+      query = query.eq('school_id', schoolId);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
     return data as Partial<Book>[];
   }
