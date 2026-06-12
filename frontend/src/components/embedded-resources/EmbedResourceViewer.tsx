@@ -4,12 +4,16 @@ import { useState, useEffect } from 'react'
 import { ExternalLink, AlertTriangle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import * as embeddedApi from '@/lib/api/embedded-resources'
+import { useCampus } from '@/context/CampusContext'
 
 interface Props {
   id: string
 }
 
 export default function EmbedResourceViewer({ id }: Props) {
+  const campusCtx = useCampus()
+  const campusId = campusCtx?.selectedCampus?.id
+
   const [resource, setResource] = useState<embeddedApi.EmbeddedResource | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -18,7 +22,7 @@ export default function EmbedResourceViewer({ id }: Props) {
   useEffect(() => {
     const load = async () => {
       setLoading(true)
-      const res = await embeddedApi.getEmbeddedResourceById(id)
+      const res = await embeddedApi.getEmbeddedResourceById(id, campusId)
       if (res.success && res.data) {
         setResource(res.data)
       } else {
@@ -27,7 +31,7 @@ export default function EmbedResourceViewer({ id }: Props) {
       setLoading(false)
     }
     load()
-  }, [id])
+  }, [id, campusId])
 
   if (loading) {
     return (

@@ -1,22 +1,20 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { getMyAgreement } from '@/lib/api/user-agreement'
+import { getMyAgreement, type AgreementItem } from '@/lib/api/user-agreement'
 import { ParentDashboardLayout } from '@/components/parent/ParentDashboardLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { FileText, Loader2 } from 'lucide-react'
 
 export default function ParentAgreementPage() {
-  const [title, setTitle] = useState('')
-  const [content, setContent] = useState('')
+  const [agreements, setAgreements] = useState<AgreementItem[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     getMyAgreement()
       .then((res) => {
-        if (res.success && res.data) {
-          setTitle(res.data.title || 'School Agreement')
-          setContent(res.data.content || '')
+        if (res.success && res.data?.agreements) {
+          setAgreements(res.data.agreements)
         }
       })
       .finally(() => setLoading(false))
@@ -33,25 +31,31 @@ export default function ParentAgreementPage() {
           </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{loading ? '…' : title}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
-            ) : content ? (
-              <div
-                className="prose prose-sm dark:prose-invert max-w-none"
-                dangerouslySetInnerHTML={{ __html: content }}
-              />
-            ) : (
-              <p className="text-muted-foreground text-center py-8">No agreement has been configured by the administrator.</p>
-            )}
-          </CardContent>
-        </Card>
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : agreements.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-muted-foreground">No agreement has been configured by the administrator.</p>
+            </CardContent>
+          </Card>
+        ) : (
+          agreements.map((item) => (
+            <Card key={item.id}>
+              <CardHeader>
+                <CardTitle>{item.title || 'School Agreement'}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div
+                  className="prose prose-sm dark:prose-invert max-w-none"
+                  dangerouslySetInnerHTML={{ __html: item.content }}
+                />
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
     </ParentDashboardLayout>
   )

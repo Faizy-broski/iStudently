@@ -115,8 +115,6 @@ export const getAllTeachers = async (
     const total = teachers.length
     const totalPages = Math.ceil(total / limit)
 
-    console.log('✅ Found teachers:', { total, page, totalPages })
-
     return {
       success: true,
       data: {
@@ -301,7 +299,7 @@ export const createTeacher = async (dto: CreateStaffDTO): Promise<ApiResponse<St
         department: dto.department,
         qualifications: dto.qualifications,
         specialization: dto.specialization,
-        date_of_joining: dto.date_of_joining,
+        date_of_joining: dto.date_of_joining || null,
         employment_type: dto.employment_type || 'full_time',
         payment_type: dto.payment_type || 'fixed_salary',
         permissions: dto.permissions || {},
@@ -386,7 +384,7 @@ export const updateTeacher = async (
     if (dto.department !== undefined) staffUpdate.department = dto.department
     if (dto.qualifications !== undefined) staffUpdate.qualifications = dto.qualifications
     if (dto.specialization !== undefined) staffUpdate.specialization = dto.specialization
-    if (dto.date_of_joining !== undefined) staffUpdate.date_of_joining = dto.date_of_joining
+    if (dto.date_of_joining !== undefined) staffUpdate.date_of_joining = dto.date_of_joining || null
     if (dto.employment_type !== undefined) staffUpdate.employment_type = dto.employment_type
     if (dto.payment_type !== undefined) staffUpdate.payment_type = dto.payment_type
     if (dto.role !== undefined) staffUpdate.role = dto.role

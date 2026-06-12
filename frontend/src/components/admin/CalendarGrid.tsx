@@ -128,16 +128,13 @@ export function CalendarGrid({
     ? ["أحد", "إثن", "ثلا", "أرب", "خمي", "جمع", "سبت"]
     : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-  // Hijri calendar always uses Arabic names — it IS the Arabic calendar
   const WEEK_DAYS_AR_FULL = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
   const WEEK_DAYS_AR_SHORT = ["أحد", "إثن", "ثلا", "أرب", "خمي", "جمع", "سبت"];
 
   const isHijriMode = calendarType === "hijri";
-  // In Hijri mode, always treat as Arabic for formatting
-  const useArabic = isArabic || isHijriMode;
+  const useArabic = isArabic;
 
-  // Hijri months: always Arabic in Hijri mode since it's the Arabic calendar
-  const HIJRI_MONTHS_LOCALIZED = (isArabic || isHijriMode) ? HIJRI_MONTHS_AR : HIJRI_MONTHS;
+  const HIJRI_MONTHS_LOCALIZED = isArabic ? HIJRI_MONTHS_AR : HIJRI_MONTHS;
 
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
   const [globalHijriOffset, setGlobalHijriOffset] = useState<number>(0);
@@ -423,13 +420,13 @@ export function CalendarGrid({
       <Card className="transition-all duration-200">
         <CardContent className="p-4">
           <div className="grid grid-cols-7 gap-1 md:gap-2 mb-2">
-            {(isHijriMode ? WEEK_DAYS_AR_FULL : WEEK_DAYS_FULL).map((day, idx) => (
+            {(isHijriMode && isArabic ? WEEK_DAYS_AR_FULL : WEEK_DAYS_FULL).map((day, idx) => (
               <div
                 key={idx}
                 className="text-center text-[10px] md:text-sm font-semibold py-2"
               >
                 <span className="hidden md:inline">{day}</span>
-                <span className="md:hidden">{(isHijriMode ? WEEK_DAYS_AR_SHORT : WEEK_DAYS_SHORT)[idx]}</span>
+                <span className="md:hidden">{(isHijriMode && isArabic ? WEEK_DAYS_AR_SHORT : WEEK_DAYS_SHORT)[idx]}</span>
               </div>
             ))}
           </div>

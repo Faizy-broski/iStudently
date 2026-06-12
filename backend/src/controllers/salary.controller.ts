@@ -345,6 +345,103 @@ export class SalaryController {
     }
 
     // ==========================================
+    // SALARY POLICY GROUPS
+    // ==========================================
+
+    async getPolicyGroups(req: Request, res: Response) {
+        try {
+            const schoolId = req.query.school_id as string
+            const campusId = req.query.campus_id as string | undefined
+            if (!schoolId) return res.status(400).json({ success: false, error: 'school_id is required' })
+
+            const groups = await salaryService.getPolicyGroups(schoolId, campusId ?? null)
+            return res.json({ success: true, data: groups })
+        } catch (error: any) {
+            return res.status(500).json({ success: false, error: error.message })
+        }
+    }
+
+    async getPolicyGroupWithTeachers(req: Request, res: Response) {
+        try {
+            const { id } = req.params
+            const group = await salaryService.getPolicyGroupWithTeachers(id)
+            return res.json({ success: true, data: group })
+        } catch (error: any) {
+            return res.status(500).json({ success: false, error: error.message })
+        }
+    }
+
+    async createPolicyGroup(req: Request, res: Response) {
+        try {
+            const { school_id, ...data } = req.body
+            if (!school_id) return res.status(400).json({ success: false, error: 'school_id is required' })
+            const group = await salaryService.createPolicyGroup(school_id, data)
+            return res.status(201).json({ success: true, data: group })
+        } catch (error: any) {
+            return res.status(500).json({ success: false, error: error.message })
+        }
+    }
+
+    async updatePolicyGroup(req: Request, res: Response) {
+        try {
+            const { id } = req.params
+            const { school_id, ...data } = req.body
+            if (!school_id) return res.status(400).json({ success: false, error: 'school_id is required' })
+            const group = await salaryService.updatePolicyGroup(id, school_id, data)
+            return res.json({ success: true, data: group })
+        } catch (error: any) {
+            return res.status(500).json({ success: false, error: error.message })
+        }
+    }
+
+    async deletePolicyGroup(req: Request, res: Response) {
+        try {
+            const { id } = req.params
+            const { school_id } = req.query
+            if (!school_id) return res.status(400).json({ success: false, error: 'school_id is required' })
+            await salaryService.deletePolicyGroup(id, school_id as string)
+            return res.json({ success: true })
+        } catch (error: any) {
+            return res.status(500).json({ success: false, error: error.message })
+        }
+    }
+
+    async assignTeachersToPolicy(req: Request, res: Response) {
+        try {
+            const { id } = req.params
+            const { school_id, staff_ids } = req.body
+            if (!school_id || !Array.isArray(staff_ids))
+                return res.status(400).json({ success: false, error: 'school_id and staff_ids[] required' })
+            await salaryService.assignTeachersToPolicy(id, school_id, staff_ids)
+            return res.json({ success: true })
+        } catch (error: any) {
+            return res.status(500).json({ success: false, error: error.message })
+        }
+    }
+
+    async removeTeacherFromPolicy(req: Request, res: Response) {
+        try {
+            const { id, staffId } = req.params
+            await salaryService.removeTeacherFromPolicy(staffId, id)
+            return res.json({ success: true })
+        } catch (error: any) {
+            return res.status(500).json({ success: false, error: error.message })
+        }
+    }
+
+    async getTeachersWithPolicyInfo(req: Request, res: Response) {
+        try {
+            const schoolId = req.query.school_id as string
+            const campusId = req.query.campus_id as string | undefined
+            if (!schoolId) return res.status(400).json({ success: false, error: 'school_id is required' })
+            const teachers = await salaryService.getTeachersWithPolicyInfo(schoolId, campusId ?? null)
+            return res.json({ success: true, data: teachers })
+        } catch (error: any) {
+            return res.status(500).json({ success: false, error: error.message })
+        }
+    }
+
+    // ==========================================
     // DASHBOARD
     // ==========================================
 

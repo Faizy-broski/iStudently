@@ -54,14 +54,20 @@ async function apiRequest<T = unknown>(
 
 export type AgreementRole = 'teacher' | 'student' | 'parent' | 'staff' | 'librarian' | 'counselor'
 
-export interface RoleAgreementConfig {
+export interface AgreementItem {
+  id: string
   title: string
   content: string
+  enabled: boolean
+}
+
+export interface RoleAgreementConfig {
   enabled: boolean
   /** 'manual' = once accepted stays accepted. 'annual' = resets every new academic year. */
   reset_mode?: 'manual' | 'annual'
   /** Parent role only: if true, linked students are blocked until parent accepts. */
   block_linked_students?: boolean
+  agreements: AgreementItem[]
 }
 
 export type RoleAgreementConfigs = Partial<Record<AgreementRole, RoleAgreementConfig>>
@@ -109,7 +115,7 @@ export async function resetAgreementAcceptances(role: AgreementRole) {
 // ─── User API ─────────────────────────────────────────────────────────────────
 
 export async function getMyAgreement() {
-  return apiRequest<{ title: string; content: string } | null>('/user-agreements/my-agreement')
+  return apiRequest<{ agreements: AgreementItem[] } | null>('/user-agreements/my-agreement')
 }
 
 export async function checkUserAgreement() {

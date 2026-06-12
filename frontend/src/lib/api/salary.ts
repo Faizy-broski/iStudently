@@ -317,6 +317,138 @@ export async function getSalaryDashboardStats(
     return json.data
 }
 
+// ─── Salary Policy Groups ───────────────────────────────────────────────────
+
+export interface SalaryPolicyGroup {
+    id: string
+    school_id: string
+    campus_id?: string | null
+    name: string
+    description: string
+    grace_late_count: number
+    late_threshold_minutes: number
+    deduction_type: 'percentage' | 'fixed' | 'per_minute'
+    deduction_value: number
+    absence_deduction_percent: number
+    attendance_bonus_enabled: boolean
+    attendance_bonus_amount: number
+    monthly_bonus_enabled: boolean
+    monthly_bonus_amount: number
+    monthly_bonus_reason: string
+    monthly_deduction_enabled: boolean
+    monthly_deduction_amount: number
+    monthly_deduction_reason: string
+    max_advance_percent: number
+    expected_check_in: string
+    working_days_per_month: number
+    created_at: string
+    updated_at: string
+}
+
+export interface SalaryPolicyGroupWithTeachers extends SalaryPolicyGroup {
+    assigned_teachers: {
+        staff_id: string
+        assigned_at: string
+        staff: {
+            id: string
+            employee_number: string
+            title: string | null
+            profile: { first_name: string; last_name: string; email: string; profile_photo_url?: string }
+        }
+    }[]
+}
+
+export interface StaffWithPolicy {
+    id: string
+    employee_number: string
+    title: string | null
+    profile: { first_name: string; last_name: string; email: string; profile_photo_url?: string }
+    assigned_policy: { policy_group_id: string; policy_name: string } | null
+}
+
+export async function getPolicyGroups(schoolId: string, campusId?: string): Promise<SalaryPolicyGroup[]> {
+    const headers = await getHeaders()
+    const params = new URLSearchParams({ school_id: schoolId })
+    if (campusId) params.append('campus_id', campusId)
+    const res = await fetch(`${API_BASE}/api/salary/policies?${params}`, { headers })
+    const json = await res.json()
+    if (!json.success) throw new Error(json.error)
+    return json.data
+}
+
+export async function getPolicyGroupWithTeachers(groupId: string): Promise<SalaryPolicyGroupWithTeachers> {
+    const headers = await getHeaders()
+    const res = await fetch(`${API_BASE}/api/salary/policies/${groupId}`, { headers })
+    const json = await res.json()
+    if (!json.success) throw new Error(json.error)
+    return json.data
+}
+
+export async function createPolicyGroup(schoolId: string, data: Omit<SalaryPolicyGroup, 'id' | 'school_id' | 'created_at' | 'updated_at'>): Promise<SalaryPolicyGroup> {
+    const headers = await getHeaders()
+    const res = await fetch(`${API_BASE}/api/salary/policies`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ school_id: schoolId, ...data })
+    })
+    const json = await res.json()
+    if (!json.success) throw new Error(json.error)
+    return json.data
+}
+
+export async function updatePolicyGroup(groupId: string, schoolId: string, data: Partial<SalaryPolicyGroup>): Promise<SalaryPolicyGroup> {
+    const headers = await getHeaders()
+    const res = await fetch(`${API_BASE}/api/salary/policies/${groupId}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ school_id: schoolId, ...data })
+    })
+    const json = await res.json()
+    if (!json.success) throw new Error(json.error)
+    return json.data
+}
+
+export async function deletePolicyGroup(groupId: string, schoolId: string): Promise<void> {
+    const headers = await getHeaders()
+    const res = await fetch(`${API_BASE}/api/salary/policies/${groupId}?school_id=${schoolId}`, {
+        method: 'DELETE',
+        headers
+    })
+    const json = await res.json()
+    if (!json.success) throw new Error(json.error)
+}
+
+export async function assignTeachersToPolicy(groupId: string, schoolId: string, staffIds: string[]): Promise<void> {
+    const headers = await getHeaders()
+    const res = await fetch(`${API_BASE}/api/salary/policies/${groupId}/assign`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ school_id: schoolId, staff_ids: staffIds })
+    })
+    const json = await res.json()
+    if (!json.success) throw new Error(json.error)
+}
+
+export async function removeTeacherFromPolicy(groupId: string, staffId: string): Promise<void> {
+    const headers = await getHeaders()
+    const res = await fetch(`${API_BASE}/api/salary/policies/${groupId}/teachers/${staffId}`, {
+        method: 'DELETE',
+        headers
+    })
+    const json = await res.json()
+    if (!json.success) throw new Error(json.error)
+}
+
+export async function getTeachersWithPolicyInfo(schoolId: string, campusId?: string): Promise<StaffWithPolicy[]> {
+    const headers = await getHeaders()
+    const params = new URLSearchParams({ school_id: schoolId })
+    if (campusId) params.append('campus_id', campusId)
+    const res = await fetch(`${API_BASE}/api/salary/policies/teachers?${params}`, { headers })
+    const json = await res.json()
+    if (!json.success) throw new Error(json.error)
+    return json.data
+}
+
 // Helper to format month/year
 export function formatMonthYear(month: number, year: number): string {
     const date = new Date(year, month - 1)

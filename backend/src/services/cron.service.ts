@@ -24,11 +24,8 @@ class CronService {
    */
   init() {
     if (this.isInitialized) {
-      console.log("⏰ Cron service already initialized");
       return;
     }
-
-    console.log("⏰ Initializing automated cron jobs...");
 
     // Auto-Attendance: check every 5 minutes.
     // For each school/campus, generate attendance once per day after its
@@ -49,7 +46,6 @@ class CronService {
     cron.schedule(
       "0 2 1 * *",
       async () => {
-        console.log("🔄 [CRON] Starting monthly salary generation...");
         await this.generateMonthlySalariesForAllSchools();
       },
       {
@@ -63,7 +59,6 @@ class CronService {
     cron.schedule(
       "0 9 * * *",
       async () => {
-        console.log("🔔 [CRON] Checking pending salary approvals...");
         await this.sendPendingApprovalReminders();
       },
       {
@@ -77,7 +72,6 @@ class CronService {
     cron.schedule(
       "0 3 5 * *",
       async () => {
-        console.log("🔄 [CRON] Running backup salary generation check...");
         await this.retryFailedGenerations();
       },
       {
@@ -90,9 +84,6 @@ class CronService {
     cron.schedule(
       "0 2 * * *",
       async () => {
-        console.log(
-          "🏠 [CRON] Removing inactive students from hostel rooms...",
-        );
         await this.removeInactiveHostelStudents();
       },
       {
@@ -106,7 +97,6 @@ class CronService {
     cron.schedule(
       "0 7 * * *",
       async () => {
-        console.log("📓 [CRON] Checking for missing class diary entries...");
         await this.sendDiaryReminders();
       },
       {
@@ -133,7 +123,6 @@ class CronService {
     cron.schedule(
       "30 3 * * *",
       async () => {
-        console.log("🗑️  [CRON] Entry/Exit: running nightly old-record cleanup...");
         await AutomaticRecordsService.runNightlyCleanupAllSchools();
       },
       {
@@ -143,18 +132,6 @@ class CronService {
     );
 
     this.isInitialized = true;
-    console.log("✅ Cron service initialized successfully");
-    console.log("📅 Scheduled jobs:");
-    console.log("   - Auto Attendance Check: Every 5 minutes (per-school configurable hour)");
-    console.log(
-      "   - Monthly Salary Generation: 1st of every month at 2:00 AM",
-    );
-    console.log("   - Daily Approval Reminders: Every day at 9:00 AM");
-    console.log("   - Backup Generation: 5th of every month at 3:00 AM");
-    console.log("   - Hostel Inactive Cleanup: Every day at 2:00 AM");
-    console.log("   - Class Diary Reminders: Every day at 7:00 AM");
-    console.log("   - Entry/Exit Automatic Records: Every minute");
-    console.log("   - Entry/Exit Record Cleanup: Every day at 3:30 AM");
   }
 
   /**
@@ -181,12 +158,7 @@ class CronService {
           currentTime,
           today,
         );
-        if (results.length > 0) {
-          console.log(
-            `🚪 [CRON] Entry/Exit auto-records applied for school ${school.id}:`,
-            results.map((r: any) => `rule=${r.rule_id} inserted=${r.inserted}`).join(", "),
-          );
-        }
+        // results applied silently
       }
     } catch (error: any) {
       console.error("❌ [CRON] Entry/Exit automatic records error:", error.message);
@@ -243,11 +215,6 @@ class CronService {
             .eq("school_id", s.school_id);
 
           if (result.success && result.data) {
-            console.log(
-              `📋 [AutoAttendance] school=${s.school_id} ` +
-              `generated=${result.data.generated_count} ` +
-              `classes=${result.data.timetable_entries_processed}`
-            );
             await this.logAutomationRun("daily_attendance_generation", {
               date: today,
               school_id: s.school_id,
@@ -287,8 +254,6 @@ class CronService {
     const year = now.getFullYear();
 
     try {
-      console.log(`📊 Generating salaries for all schools - ${month}/${year}`);
-
       // Get all active schools
       const { data: schools, error } = await supabase
         .from("schools")
@@ -300,12 +265,7 @@ class CronService {
         return;
       }
 
-      if (!schools || schools.length === 0) {
-        console.log("⚠️  No active schools found");
-        return;
-      }
-
-      console.log(`🏫 Found ${schools.length} active school(s)`);
+      if (!schools || schools.length === 0) return;
 
       let totalSuccess = 0;
       let totalFailed = 0;
@@ -314,8 +274,6 @@ class CronService {
       // Process each school
       for (const school of schools) {
         try {
-          console.log(`\n📝 Processing: ${school.name}`);
-
           const result = await salaryService.generateBulkSalaries(
             school.id,
             month,
@@ -333,14 +291,6 @@ class CronService {
             errors: result.errors,
           });
 
-          console.log(
-            `   ✅ Success: ${result.success}, ❌ Failed: ${result.failed}`,
-          );
-
-          if (result.errors.length > 0) {
-            console.log("   ⚠️  Errors:");
-            result.errors.forEach((err) => console.log(`      - ${err}`));
-          }
         } catch (schoolError: any) {
           console.error(
             `   ❌ Failed to process ${school.name}:`,
@@ -355,16 +305,6 @@ class CronService {
           });
         }
       }
-
-      // Log final summary
-      console.log("\n" + "=".repeat(60));
-      console.log("📊 MONTHLY SALARY GENERATION SUMMARY");
-      console.log("=".repeat(60));
-      console.log(`📅 Month/Year: ${month}/${year}`);
-      console.log(`🏫 Schools Processed: ${schools.length}`);
-      console.log(`✅ Total Salaries Generated: ${totalSuccess}`);
-      console.log(`❌ Total Failed: ${totalFailed}`);
-      console.log("=".repeat(60));
 
       // Store automation log
       await this.logAutomationRun("monthly_salary_generation", {
@@ -406,10 +346,7 @@ class CronService {
         return;
       }
 
-      if (!pendingRecords || pendingRecords.length === 0) {
-        console.log("✅ No pending salary approvals");
-        return;
-      }
+      if (!pendingRecords || pendingRecords.length === 0) return;
 
       // Group by school
       const schoolGroups = pendingRecords.reduce((acc: any, record: any) => {
@@ -422,15 +359,6 @@ class CronService {
         acc[record.school_id].count++;
         return acc;
       }, {});
-
-      console.log("🔔 Pending Salary Approvals:");
-      Object.entries(schoolGroups).forEach(
-        ([_schoolId, data]: [string, any]) => {
-          console.log(
-            `   - ${data.school_name}: ${data.count} pending approval(s)`,
-          );
-        },
-      );
 
       // TODO: Implement email/notification sending here
       // For now, just logging
@@ -448,8 +376,6 @@ class CronService {
     const year = now.getFullYear();
 
     try {
-      console.log(`🔄 Checking for missing salary records - ${month}/${year}`);
-
       // Get all active schools
       const { data: schools } = await supabase
         .from("schools")
@@ -489,19 +415,7 @@ class CronService {
         }
 
         if (structuresWithoutSalary && structuresWithoutSalary.length > 0) {
-          console.log(
-            `   ⚠️  ${school.name}: ${structuresWithoutSalary.length} missing salary record(s)`,
-          );
-          console.log(`   🔄 Regenerating...`);
-
-          const result = await salaryService.generateBulkSalaries(
-            school.id,
-            month,
-            year,
-          );
-          console.log(
-            `   ✅ Regenerated: ${result.success}, ❌ Failed: ${result.failed}`,
-          );
+          await salaryService.generateBulkSalaries(school.id, month, year);
         }
       }
     } catch (error: any) {
@@ -512,14 +426,8 @@ class CronService {
   /**
    * Store automation log in database
    */
-  private async logAutomationRun(jobName: string, _details: any) {
-    try {
-      // You can create an automation_logs table to track all automated runs
-      // For now, just console logging
-      console.log(`\n📝 Automation log stored for: ${jobName}`);
-    } catch (error: any) {
-      console.error("Failed to log automation run:", error.message);
-    }
+  private async logAutomationRun(_jobName: string, _details: any) {
+    // TODO: persist to automation_logs table
   }
 
   /**
@@ -531,9 +439,6 @@ class CronService {
     const year = now.getFullYear();
 
     if (schoolId) {
-      console.log(
-        `🔧 Manual trigger: Generating salaries for school ${schoolId}`,
-      );
       const result = await salaryService.generateBulkSalaries(
         schoolId,
         month,
@@ -541,7 +446,6 @@ class CronService {
       );
       return result;
     } else {
-      console.log(`🔧 Manual trigger: Generating salaries for all schools`);
       await this.generateMonthlySalariesForAllSchools();
       return { message: "Batch generation started" };
     }
@@ -553,9 +457,6 @@ class CronService {
    */
   async manualTriggerDailyAttendance(date?: string) {
     const targetDate = date || new Date().toISOString().split("T")[0];
-    console.log(
-      `🔧 Manual trigger: Generating daily attendance for ${targetDate}`,
-    );
     await this.generateDailyAttendanceForAllSchools();
     return { message: `Attendance generation triggered for ${targetDate}` };
   }
@@ -566,9 +467,6 @@ class CronService {
   async removeInactiveHostelStudents() {
     try {
       const result = await HostelService.removeInactiveStudents();
-      console.log(
-        `🏠 Hostel cleanup: Released ${result.released} inactive student(s)`,
-      );
       await this.logAutomationRun("hostel_inactive_cleanup", result);
     } catch (error: any) {
       console.error("❌ Error in hostel inactive cleanup:", error.message);
@@ -585,15 +483,6 @@ class CronService {
       const totalNotified = results.reduce((sum, r) => sum + r.teachers_notified, 0);
       const totalEmails = results.reduce((sum, r) => sum + r.emails_sent, 0);
       const totalErrors = results.reduce((sum, r) => sum + r.errors.length, 0);
-
-      console.log("\n" + "=".repeat(60));
-      console.log("📓 CLASS DIARY REMINDER SUMMARY");
-      console.log("=".repeat(60));
-      console.log(`🏫 Schools Processed: ${results.length}`);
-      console.log(`👨‍🏫 Teachers Notified: ${totalNotified}`);
-      console.log(`✉️ Emails Sent: ${totalEmails}`);
-      if (totalErrors > 0) console.log(`❌ Errors: ${totalErrors}`);
-      console.log("=".repeat(60));
 
       await this.logAutomationRun("diary_email_reminders", {
         schools_processed: results.length,

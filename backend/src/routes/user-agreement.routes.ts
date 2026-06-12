@@ -1,7 +1,7 @@
 import { Router, Response } from 'express'
 import { authenticate, AuthRequest } from '../middlewares/auth.middleware'
 import { requireRole } from '../middlewares/role.middleware'
-import { userAgreementService, AGREEMENT_ROLES, AgreementRole } from '../services/user-agreement.service'
+import { userAgreementService, AGREEMENT_ROLES, AgreementRole, type AgreementItem } from '../services/user-agreement.service'
 
 const router = Router()
 
@@ -136,12 +136,13 @@ router.get('/my-agreement', async (req: AuthRequest, res: Response) => {
     const configs = await userAgreementService.getConfig(profile.school_id, profile.campus_id ?? null)
     const cfg = configs[profile.role as AgreementRole]
 
-    if (!cfg || !cfg.enabled) {
+    const activeAgreements = (cfg?.agreements ?? []).filter((a: AgreementItem) => a.enabled)
+    if (!cfg || !cfg.enabled || !activeAgreements.length) {
       res.json({ success: true, data: null })
       return
     }
 
-    res.json({ success: true, data: { title: cfg.title, content: cfg.content } })
+    res.json({ success: true, data: { agreements: activeAgreements } })
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message })
   }

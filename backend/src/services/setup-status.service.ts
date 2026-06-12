@@ -190,66 +190,97 @@ class SetupStatusService {
      */
     async getCampusStats(campusId: string): Promise<{
         total_students: number
+        boys_count: number
+        girls_count: number
         total_teachers: number
         total_staff: number
+        male_staff: number
+        female_staff: number
         total_parents: number
         total_grade_levels: number
         total_sections: number
+        present_today: number
+        attendance_percentage_today: number
     }> {
-        // Campus membership for these tables is stored in school_id, not campus_id.
-        // The selected campus is represented by a school row in the schools table.
-        const { count: studentCount } = await supabase
+        const today = new Date().toISOString().split('T')[0]
+
+        // Students with gender breakdown via profiles join
+        const { data: studentRows } = await supabase
             .from('students')
-            .select('*', { count: 'exact', head: true })
+            .select('profile:profiles!students_profile_id_fkey(gender)')
             .eq('school_id', campusId)
 
-        // Get teacher count from the staff table, because teachers are stored as staff rows
-        // with role='teacher' in this schema.
+        const totalStudents = studentRows?.length || 0
+        const boysCount = studentRows?.filter((s: any) => s.profile?.gender === 'Male').length || 0
+        const girlsCount = studentRows?.filter((s: any) => s.profile?.gender === 'Female').length || 0
+
+        // Teachers
         const { count: teacherCount } = await supabase
             .from('staff')
             .select('*', { count: 'exact', head: true })
             .eq('school_id', campusId)
             .eq('role', 'teacher')
 
-        // Get non-teacher staff count: admin, librarian, counselor, and general staff
-        const { count: staffCount } = await supabase
+        // Staff with gender breakdown via profiles join
+        const { data: staffRows } = await supabase
             .from('staff')
-            .select('*', { count: 'exact', head: true })
+            .select('profile:profiles!staff_profile_id_fkey(gender)')
             .eq('school_id', campusId)
             .in('role', ['staff', 'librarian', 'admin', 'counselor'])
 
-        // Get parent count (parents don't have campus_id, so count all for the school)
+        const staffCount = staffRows?.length || 0
+        const maleStaff = staffRows?.filter((s: any) => s.profile?.gender === 'Male').length || 0
+        const femaleStaff = staffRows?.filter((s: any) => s.profile?.gender === 'Female').length || 0
+
+        // Parent count (parents belong to parent school)
         const { data: campusData } = await supabase
             .from('schools')
             .select('parent_school_id')
             .eq('id', campusId)
             .single()
-        
+
         const schoolId = campusData?.parent_school_id || campusId
         const { count: parentCount } = await supabase
             .from('parents')
             .select('*', { count: 'exact', head: true })
             .eq('school_id', schoolId)
 
-        // Get grade level count
+        // Grade level count
         const { count: gradeLevelCount } = await supabase
             .from('grade_levels')
             .select('*', { count: 'exact', head: true })
             .eq('school_id', campusId)
 
-        // Get section count
+        // Section count
         const { count: sectionCount } = await supabase
             .from('sections')
             .select('*', { count: 'exact', head: true })
             .eq('school_id', campusId)
 
+        // Today's attendance
+        const { data: todayAttendance } = await supabase
+            .from('attendance_records')
+            .select('status')
+            .eq('school_id', campusId)
+            .eq('attendance_date', today)
+
+        const presentToday = todayAttendance?.filter(r => r.status === 'present').length || 0
+        const totalToday = todayAttendance?.length || 0
+        const attendancePct = totalToday > 0 ? parseFloat(((presentToday / totalToday) * 100).toFixed(1)) : 0
+
         return {
-            total_students: studentCount || 0,
+            total_students: totalStudents,
+            boys_count: boysCount,
+            girls_count: girlsCount,
             total_teachers: teacherCount || 0,
-            total_staff: staffCount || 0,
+            total_staff: staffCount,
+            male_staff: maleStaff,
+            female_staff: femaleStaff,
             total_parents: parentCount || 0,
             total_grade_levels: gradeLevelCount || 0,
             total_sections: sectionCount || 0,
+            present_today: presentToday,
+            attendance_percentage_today: attendancePct,
         }
     }
 }

@@ -8,11 +8,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import type { LinkedStudent } from '@/lib/api/user-agreement'
+import type { AgreementItem, LinkedStudent } from '@/lib/api/user-agreement'
 
 interface AgreementModalProps {
-  title: string
-  content: string
+  agreements: AgreementItem[]
   /** Parent role only: list of children this acceptance covers */
   studentsNeedingAcceptance?: LinkedStudent[]
   onAccept: () => Promise<void>
@@ -20,8 +19,7 @@ interface AgreementModalProps {
 }
 
 export function AgreementModal({
-  title,
-  content,
+  agreements,
   studentsNeedingAcceptance,
   onAccept,
   onReject,
@@ -43,6 +41,11 @@ export function AgreementModal({
   }
 
   const hasStudents = (studentsNeedingAcceptance?.length ?? 0) > 0
+  const multiple = agreements.length > 1
+
+  const headerTitle = multiple
+    ? `Review Agreements (${agreements.length})`
+    : (agreements[0]?.title || 'School Agreement')
 
   return (
     <>
@@ -56,8 +59,12 @@ export function AgreementModal({
               <FileText className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h2>
-              <p className="text-xs text-muted-foreground">Please read the agreement before proceeding</p>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{headerTitle}</h2>
+              <p className="text-xs text-muted-foreground">
+                {multiple
+                  ? 'Please read all agreements carefully before proceeding'
+                  : 'Please read the agreement before proceeding'}
+              </p>
             </div>
           </div>
 
@@ -68,7 +75,7 @@ export function AgreementModal({
                 <Users className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                    This agreement applies to {studentsNeedingAcceptance!.length === 1 ? 'your child' : 'your children'}:
+                    {multiple ? 'These agreements apply' : 'This agreement applies'} to {studentsNeedingAcceptance!.length === 1 ? 'your child' : 'your children'}:
                   </p>
                   <ul className="mt-1 space-y-0.5">
                     {studentsNeedingAcceptance!.map(s => (
@@ -78,7 +85,7 @@ export function AgreementModal({
                     ))}
                   </ul>
                   <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                    Accepting this agreement will grant {studentsNeedingAcceptance!.length === 1 ? 'them' : 'all of them'} access to the student portal.
+                    Accepting will grant {studentsNeedingAcceptance!.length === 1 ? 'them' : 'all of them'} access to the student portal.
                   </p>
                 </div>
               </div>
@@ -86,11 +93,28 @@ export function AgreementModal({
           )}
 
           {/* Scrollable agreement body */}
-          <div className="flex-1 overflow-y-auto px-6 py-5">
-            <div
-              className="prose prose-sm dark:prose-invert max-w-none"
-              dangerouslySetInnerHTML={{ __html: content }}
-            />
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+            {agreements.map((item, idx) => (
+              <div key={item.id}>
+                {multiple && (
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white text-xs font-bold shrink-0">
+                      {idx + 1}
+                    </span>
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {item.title || `Agreement ${idx + 1}`}
+                    </h3>
+                  </div>
+                )}
+                <div
+                  className="prose prose-sm dark:prose-invert max-w-none"
+                  dangerouslySetInnerHTML={{ __html: item.content }}
+                />
+                {multiple && idx < agreements.length - 1 && (
+                  <hr className="mt-6 border-gray-200 dark:border-gray-700" />
+                )}
+              </div>
+            ))}
           </div>
 
           {/* Footer */}
@@ -104,7 +128,9 @@ export function AgreementModal({
                 className="mt-0.5"
               />
               <span className="text-sm text-gray-700 dark:text-gray-300">
-                I have read and understand the agreement above
+                {multiple
+                  ? 'I have read and understand all the agreements above'
+                  : 'I have read and understand the agreement above'}
               </span>
             </label>
 
@@ -143,7 +169,7 @@ export function AgreementModal({
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-sm text-muted-foreground">
                 <p>
-                  If you reject this agreement, your account will be{' '}
+                  If you reject {multiple ? 'these agreements' : 'this agreement'}, your account will be{' '}
                   <strong className="text-foreground">immediately deactivated</strong> and you will be signed out.
                 </p>
                 {hasStudents && (

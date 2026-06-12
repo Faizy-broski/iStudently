@@ -327,14 +327,15 @@ function LoginForm() {
       </div>
 
       {/* RIGHT: Form */}
-      <div className="w-full lg:w-1/2 relative flex items-center justify-center min-h-[600px] lg:min-h-screen">
+      <div className="w-full lg:w-1/2 relative flex items-center justify-center min-h-[600px] lg:min-h-screen overflow-hidden">
 
         {/* Animated background bubble */}
         <div
           className="absolute inset-0 gradient-blue shadow-2xl"
           style={{
             clipPath: isExpanded ? 'circle(150% at 100% 50%)' : 'circle(0% at 100% 50%)',
-            transition: 'clip-path 1.2s cubic-bezier(0.77, 0, 0.175, 1)',
+            WebkitClipPath: isExpanded ? 'circle(150% at 100% 50%)' : 'circle(0% at 100% 50%)',
+            transition: 'clip-path 1.2s cubic-bezier(0.77, 0, 0.175, 1), -webkit-clip-path 1.2s cubic-bezier(0.77, 0, 0.175, 1)',
           }}
         />
 

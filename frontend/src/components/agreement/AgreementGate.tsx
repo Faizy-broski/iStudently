@@ -105,8 +105,7 @@ export function AgreementGate({ children }: AgreementGateProps) {
       <>
         {children}
         <AgreementModal
-          title={gate.agreement.title}
-          content={gate.agreement.content}
+          agreements={gate.agreement.agreements ?? []}
           studentsNeedingAcceptance={gate.students}
           onAccept={handleAccept}
           onReject={handleReject}

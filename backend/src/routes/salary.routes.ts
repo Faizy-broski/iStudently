@@ -50,4 +50,14 @@ router.put('/records/:id/paid', (req, res) => salaryController.markSalaryPaid(re
 // Dashboard
 router.get('/dashboard', (req, res) => salaryController.getDashboardStats(req, res))
 
+// Salary Policy Groups
+router.get('/policies', (req, res) => salaryController.getPolicyGroups(req, res))
+router.post('/policies', (req, res) => salaryController.createPolicyGroup(req, res))
+router.get('/policies/teachers', (req, res) => salaryController.getTeachersWithPolicyInfo(req, res))
+router.get('/policies/:id', (req, res) => salaryController.getPolicyGroupWithTeachers(req, res))
+router.put('/policies/:id', (req, res) => salaryController.updatePolicyGroup(req, res))
+router.delete('/policies/:id', (req, res) => salaryController.deletePolicyGroup(req, res))
+router.post('/policies/:id/assign', (req, res) => salaryController.assignTeachersToPolicy(req, res))
+router.delete('/policies/:id/teachers/:staffId', (req, res) => salaryController.removeTeacherFromPolicy(req, res))
+
 export default router

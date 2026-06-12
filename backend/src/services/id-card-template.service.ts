@@ -451,13 +451,25 @@ export class IdCardTemplateService {
       .eq('id', campus.parent_school_id)
       .single() : { data: campus };
 
-    // Fetch parent info
-    const { data: parentRelation } = await supabase
-      .from('student_parent_relations')
-      .select('parents(*, profiles(*))')
+    // Fetch parent info via parent_student_links (active links only)
+    const { data: parentLinks } = await supabase
+      .from('parent_student_links')
+      .select(`
+        parent:parents!inner(
+          profile:profiles!inner(first_name, last_name, phone)
+        )
+      `)
       .eq('student_id', studentId)
-      .eq('is_primary', true)
-      .single();
+      .eq('is_active', true)
+      .limit(1);
+
+    const firstParentProfile = (parentLinks?.[0] as any)?.parent?.profile;
+
+    // DOB: custom_fields takes priority (where the student form stores it), fallback to profile
+    const dateOfBirth =
+      (student.custom_fields as any)?.personal?.date_of_birth ||
+      profile?.date_of_birth ||
+      '';
 
     // Prepare data object for substitution
     const userData = {
@@ -465,9 +477,9 @@ export class IdCardTemplateService {
       last_name: profile?.last_name || '',
       email: profile?.email || '',
       phone: profile?.phone || '',
-      date_of_birth: profile?.date_of_birth || '',
-      gender: profile?.gender || '',
-      address: profile?.address || '',
+      date_of_birth: dateOfBirth,
+      gender: (student.custom_fields as any)?.personal?.gender || profile?.gender || '',
+      address: (student.custom_fields as any)?.personal?.address || profile?.address || '',
       photo_url: profile?.photo_url || '',
       student_id: student.student_id || '',
       admission_number: student.admission_number || '',
@@ -476,20 +488,10 @@ export class IdCardTemplateService {
       grade_level: section?.grade_levels?.name || '',
       roll_number: student.roll_number || '',
       blood_group: student.blood_group || '',
-      parent_name: (() => {
-        const parents = parentRelation?.parents;
-        if (Array.isArray(parents) && parents.length > 0 && parents[0]?.profiles) {
-          return `${parents[0].profiles.first_name} ${parents[0].profiles.last_name}`;
-        }
-        return '';
-      })(),
-      parent_phone: (() => {
-        const parents = parentRelation?.parents;
-        if (Array.isArray(parents) && parents.length > 0 && parents[0]?.profiles) {
-          return parents[0].profiles.phone || '';
-        }
-        return '';
-      })(),
+      parent_name: firstParentProfile
+        ? `${firstParentProfile.first_name || ''} ${firstParentProfile.last_name || ''}`.trim()
+        : '',
+      parent_phone: firstParentProfile?.phone || '',
       emergency_contact: student.emergency_contact || '',
       campus_name: campus?.name || '',
       campus_address: campus?.address || '',

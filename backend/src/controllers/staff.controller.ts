@@ -26,11 +26,6 @@ export const getAllStaff = async (req: Request, res: Response) => {
         // Use campus_id if provided (for campus filtering), otherwise use admin's school_id
         const effectiveSchoolId = campus_id ? campus_id as string : adminSchoolId
 
-        console.log('📋 GET ALL STAFF REQUEST:')
-        console.log('  - Admin School ID:', adminSchoolId)
-        console.log('  - Requested Campus ID:', campus_id)
-        console.log('  - Effective School ID (filtering by):', effectiveSchoolId)
-
         const result = await StaffService.getAllStaff(effectiveSchoolId, {
             page: Number(page),
             limit: Number(limit),
@@ -82,20 +77,11 @@ export const createStaff = async (req: Request, res: Response) => {
         const creatorId = (req as any).profile!.id  // Fixed: use profile.id instead of user.id
         const data: CreateStaffDTO = req.body
 
-        console.log('👤 CREATE STAFF REQUEST:')
-        console.log('  - Admin School ID:', adminSchoolId)
-        console.log('  - Creator ID:', creatorId)
-        console.log('  - Request Body:', JSON.stringify(req.body, null, 2))
-        console.log('  - Campus ID from request:', req.body.campus_id)
-        console.log('  - School ID from request:', req.body.school_id)
-
         // Get the effective school ID (campus) to use
         const effectiveSchoolId = await getEffectiveSchoolId(
             adminSchoolId,
             req.body.campus_id || req.body.school_id
         )
-
-        console.log('  - Effective School ID (will be used):', effectiveSchoolId)
 
         // 1. Determine Role
         // If title is 'Librarian' (case insensitive), role is 'librarian', else 'staff'
@@ -105,7 +91,6 @@ export const createStaff = async (req: Request, res: Response) => {
         }
 
         // 2. Create Auth User
-        console.log('🔐 Creating auth user with email:', data.email)
         const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
             email: data.email,
             password: data.password || 'TempPass123!', // Should be provided or generated
@@ -128,10 +113,7 @@ export const createStaff = async (req: Request, res: Response) => {
             return res.status(500).json({ success: false, error: 'Failed to create auth user' })
         }
 
-        console.log('✅ Auth user created:', authUser.user.id)
-
         // 3. Create Staff Record via Service
-        console.log('📝 Creating staff record...')
         const newStaff = await StaffService.createStaffRecord(
             effectiveSchoolId,
             authUser.user.id,
@@ -139,7 +121,6 @@ export const createStaff = async (req: Request, res: Response) => {
             creatorId
         )
 
-        console.log('✅ Staff created successfully:', newStaff.id)
         return res.status(201).json({ success: true, data: newStaff })
 
     } catch (error: any) {

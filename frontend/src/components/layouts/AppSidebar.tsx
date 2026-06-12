@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { Menu, X, ChevronLeft, ChevronRight, ChevronDown, Calendar, GraduationCap, User, BookOpen } from 'lucide-react'
-import { useTranslations, useLocale } from 'next-intl'
+import { useTranslations, useMessages, useLocale } from 'next-intl'
 import { cn } from '@/lib/utils'
 import { SidebarMenuItem } from '@/config/sidebar'
 import { Button } from '@/components/ui/button'
@@ -152,8 +152,8 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
     : now
   const h = toHijri(hijriBase)
   const hijriMonths = isAr ? HIJRI_MONTHS_AR : HIJRI_MONTHS_EN
-  const hijriDay = isAr ? h.day.toLocaleString('ar-SA') : h.day
-  const hijriYear = isAr ? h.year.toLocaleString('ar-SA') : h.year
+  const hijriDay = isAr ? h.day.toLocaleString('ar-SA', { useGrouping: false }) : h.day
+  const hijriYear = isAr ? h.year.toLocaleString('ar-SA', { useGrouping: false }) : h.year
   const hijriStr = `${hijriDay} ${hijriMonths[h.month - 1]} ${hijriYear}`
 
   if (isCollapsed) {
@@ -175,7 +175,7 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
   }
 
   return (
-    <div className="px-4 pt-6 pb-5 mb-1 border-b border-white/10 flex flex-col items-center rtl:items-end text-center rtl:text-right">
+    <div className="px-4 pt-6 pb-5 mb-1 border-b border-white/10 flex flex-col items-center text-center">
       {/* Campus logo — centered, square/rectangle */}
       <div className="w-28 h-20 rounded-xl overflow-hidden ring-2 ring-white/30 shadow-lg mb-3 bg-white">
         {!selectedCampus ? (
@@ -827,6 +827,9 @@ function SidebarItem({
 }) {
   const pathname = usePathname()
   const t = useTranslations('sidebar')
+  const messages = useMessages()
+  const sidebarMessages = (messages?.sidebar ?? {}) as Record<string, string>
+  const label = (key: string): string => key in sidebarMessages ? t(key as any) : key
 
   const Icon = item.icon
   const hasSubItems = item.subItems && item.subItems.length > 0
@@ -861,7 +864,7 @@ function SidebarItem({
             )}
           />
           <span className="text-sm truncate z-20 relative font-medium flex-1">
-            {t(item.title)}
+            {label(item.title)}
           </span>
           <ChevronDown
             className={cn(
@@ -892,7 +895,7 @@ function SidebarItem({
                     <div className="flex items-center gap-2 pb-1 border-b border-[#EEA831]/50">
                       <SubIcon className="h-3.5 w-3.5 shrink-0 text-[#EEA831]" />
                       <span className="text-xs font-semibold text-[#EEA831] uppercase tracking-wider">
-                        {t(subItem.title)}
+                        {label(subItem.title)}
                       </span>
                     </div>
                   </div>
@@ -911,7 +914,7 @@ function SidebarItem({
                   )}
                 >
                   <SubIcon className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{t(subItem.title)}</span>
+                  <span className="truncate">{label(subItem.title)}</span>
                   {subItemActive && (
                     <div className="ms-auto w-1.5 h-1.5 bg-[#EEA831] rounded-full" />
                   )}
@@ -942,7 +945,7 @@ function SidebarItem({
 
       {!isCollapsed && (
         <span className="text-sm truncate z-20 relative font-medium">
-          {t(item.title)}
+          {label(item.title)}
         </span>
       )}
 

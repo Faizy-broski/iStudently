@@ -12,10 +12,12 @@ import { UserRole } from '@/types'
 import { Toaster } from '@/components/ui/sonner'
 import { getSetupStatus } from '@/lib/api/setup-status'
 import { getDashboards } from '@/lib/api/dashboards'
+import { getEmbeddedResourcesForUser, getEmbeddedResources } from '@/lib/api/embedded-resources'
 import { useSchoolSettings } from '@/context/SchoolSettingsContext'
 import { PLUGIN_REGISTRY } from '@/config/plugins'
-import { LayoutDashboard } from 'lucide-react'
+import { LayoutDashboard, Globe, Star } from 'lucide-react'
 import { UnsavedChangesProvider } from '@/components/unsaved-changes/UnsavedChangesProvider'
+import { useCampus } from '@/context/CampusContext'
 import { TourAssistantPanel } from '@/components/setup-assistant/TourAssistantPanel'
 import { SidebarThemeProvider } from '@/context/SidebarThemeContext'
 import { AgreementGate } from '@/components/agreement/AgreementGate'
@@ -34,9 +36,15 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
   const setupCheckedRef = React.useRef(false)
   const checkingSetupRef = React.useRef(false)
   const [dynamicDashboards, setDynamicDashboards] = React.useState<SidebarMenuItemType[]>([])
+  const [dynamicEmbeddedItems, setDynamicEmbeddedItems] = React.useState<SidebarMenuItemType[]>([])
+  const [dynamicAdminEmbeddedItems, setDynamicAdminEmbeddedItems] = React.useState<SidebarMenuItemType[]>([])
 
   // Use override role if provided, otherwise use profile role
   const effectiveRole = overrideRole || profile?.role
+
+  // Campus context — used to scope admin resource fetches to the selected campus
+  const campusCtx = useCampus()
+  const selectedCampusId = campusCtx?.selectedCampus?.id ?? null
 
   // Redirect to change-password page if admin has set force_password_change flag
   React.useEffect(() => {
@@ -59,6 +67,40 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
         icon: LayoutDashboard,
       }))
       setDynamicDashboards(items)
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [profile, effectiveRole])
+
+  // Fetch all embedded resources for admin to inject into sidebar
+  React.useEffect(() => {
+    if (!profile || effectiveRole !== 'admin') return
+    let cancelled = false
+    getEmbeddedResources(selectedCampusId ?? undefined).then((res) => {
+      if (cancelled || !res.success || !res.data) return
+      const items: SidebarMenuItemType[] = res.data.map((r) => ({
+        title: r.title,
+        href: `/admin/resources/embedded/${r.id}`,
+        icon: Globe,
+      }))
+      setDynamicAdminEmbeddedItems(items)
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [profile, effectiveRole, selectedCampusId])
+
+  // Fetch embedded resources for non-admin users to inject into sidebar
+  React.useEffect(() => {
+    if (!profile || !effectiveRole) return
+    if (!['student', 'teacher', 'parent'].includes(effectiveRole)) return
+    let cancelled = false
+    getEmbeddedResourcesForUser().then((res) => {
+      if (cancelled || !res.success || !res.data) return
+      const rolePrefix = `/${effectiveRole}/resources/embedded`
+      const items: SidebarMenuItemType[] = res.data.map((r) => ({
+        title: r.title,
+        href: `${rolePrefix}/${r.id}`,
+        icon: Globe,
+      }))
+      setDynamicEmbeddedItems(items)
     }).catch(() => {})
     return () => { cancelled = true }
   }, [profile, effectiveRole])
@@ -117,6 +159,8 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
     // 2. Inject sidebar items for each active plugin.
     // Injections with no `roles` field default to admin-only (legacy behaviour).
     // Injections with a `roles` array are applied to each listed role.
+    // NOTE: plugin injection runs before dynamic embedded items so the plain
+    // "Embedded Resources" management link lands above the Premium Resources label.
     if (effectiveRole) {
       for (const plugin of PLUGIN_REGISTRY) {
         if (!isPluginActive(plugin.id)) continue
@@ -138,7 +182,33 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
       }
     }
 
-    // 3. Apply custom menu order (if plugin active & order saved for this role)
+    // 3. Inject dynamic embedded resources under Premium Resources (after plugins so the
+    //    plain "Embedded Resources" management link is already in position above the label)
+    const injectEmbedItems = (embed: SidebarMenuItemType[]) => {
+      items = items.map((item) => {
+        if (item.title === 'resources' && item.subItems) {
+          const existingHrefs = new Set(item.subItems.map(s => s.href))
+          const newItems = embed.filter(d => !existingHrefs.has(d.href))
+          if (newItems.length === 0) return item
+          const alreadyHasPremiumLabel = item.subItems.some(s => s.title === 'premium_resources' && s.isLabel)
+          const toAppend: SidebarMenuItemType[] = []
+          if (!alreadyHasPremiumLabel) {
+            toAppend.push({ title: 'premium_resources', href: '#', icon: Star, isLabel: true })
+          }
+          toAppend.push(...newItems)
+          return { ...item, subItems: [...item.subItems, ...toAppend] }
+        }
+        return item
+      })
+    }
+    if (dynamicAdminEmbeddedItems.length > 0 && effectiveRole === 'admin') {
+      injectEmbedItems(dynamicAdminEmbeddedItems)
+    }
+    if (dynamicEmbeddedItems.length > 0 && effectiveRole && ['student', 'teacher', 'parent'].includes(effectiveRole)) {
+      injectEmbedItems(dynamicEmbeddedItems)
+    }
+
+    // 4. Apply custom menu order (if plugin active & order saved for this role)
     if (effectiveRole && isPluginActive('custom_menu')) {
       const roleOrder = settings?.custom_menu_order?.[effectiveRole]
       if (roleOrder && roleOrder.length > 0) {
@@ -160,7 +230,7 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
     }
 
     return items
-  }, [baseMenuItems, dynamicDashboards, effectiveRole, isPluginActive, settings])
+  }, [baseMenuItems, dynamicDashboards, dynamicAdminEmbeddedItems, dynamicEmbeddedItems, effectiveRole, isPluginActive, settings])
 
   // Render dashboard immediately - no loading screens after auth
   // Setup check happens in background and redirects if needed

@@ -3,14 +3,20 @@ import { supabase } from '../config/supabase'
 export const AGREEMENT_ROLES = ['teacher', 'student', 'parent', 'staff', 'librarian', 'counselor'] as const
 export type AgreementRole = typeof AGREEMENT_ROLES[number]
 
-export interface RoleAgreementConfig {
+export interface AgreementItem {
+  id: string
   title: string
   content: string
+  enabled: boolean
+}
+
+export interface RoleAgreementConfig {
   enabled: boolean
   /** 'manual' = stays accepted until admin resets. 'annual' = resets each new academic year. */
   reset_mode?: 'manual' | 'annual'
   /** Parent role only: if true, linked students are blocked until parent accepts. */
   block_linked_students?: boolean
+  agreements: AgreementItem[]
 }
 
 export type RoleAgreementConfigs = Partial<Record<AgreementRole, RoleAgreementConfig>>
@@ -116,11 +122,13 @@ export class UserAgreementService {
     }
 
     // ── Fetch the role's agreement config ─────────────────────────────────────
-    const config = await this._getConfigForRole(schoolId, campusId ?? null, role as AgreementRole)
+    let config = await this._getConfigForRole(schoolId, campusId ?? null, role as AgreementRole)
 
-    if (!config || !config.enabled || !config.title || !config.content) {
+    const activeAgreements = (config?.agreements ?? []).filter(a => a.enabled)
+    if (!config || !config.enabled || !activeAgreements.length) {
       return { must_accept: false, blocked: false }
     }
+    config = { ...config, agreements: activeAgreements }
 
     // ── Check if user has already accepted ────────────────────────────────────
     const { data: profile } = await supabase
@@ -253,8 +261,8 @@ export class UserAgreementService {
         .eq('campus_id', campusId)
         .maybeSingle()
 
-      const campusConfigs = campusRow?.role_agreement_configs as RoleAgreementConfigs | null
-      if (campusConfigs?.[role]) return campusConfigs[role]!
+      const campusConfigs = campusRow?.role_agreement_configs as any
+      if (campusConfigs?.[role]) return this._normalizeConfig(campusConfigs[role])
     }
 
     const { data: schoolRow } = await supabase
@@ -264,8 +272,24 @@ export class UserAgreementService {
       .is('campus_id', null)
       .maybeSingle()
 
-    const schoolConfigs = schoolRow?.role_agreement_configs as RoleAgreementConfigs | null
-    return schoolConfigs?.[role] ?? null
+    const schoolConfigs = schoolRow?.role_agreement_configs as any
+    return schoolConfigs?.[role] ? this._normalizeConfig(schoolConfigs[role]) : null
+  }
+
+  /**
+   * Migrate legacy single-agreement configs (title+content) to the new agreements[] format.
+   * Stored data created before the multi-agreement change will still have top-level title/content.
+   */
+  private _normalizeConfig(raw: any): RoleAgreementConfig {
+    if (!raw) return raw
+    if (!raw.agreements && (raw.title || raw.content)) {
+      const { title, content, ...rest } = raw
+      return {
+        ...rest,
+        agreements: [{ id: 'legacy', title: title || '', content: content || '', enabled: true }],
+      }
+    }
+    return raw as RoleAgreementConfig
   }
 
   /** Fetch the current academic year ID for a school. Returns null if none set. */

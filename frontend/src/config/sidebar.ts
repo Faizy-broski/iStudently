@@ -253,14 +253,14 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "settings", href: "/admin/staff/settings", icon: Settings },
     ],
   },
-  // {
-  //   title: "id_card_designer",
-  //   href: "/admin/id-card",
-  //   icon: CreditCard,
-  //   subItems: [
-  //     { title: "id_card_designer", href: "/admin/id-card", icon: CreditCard },
-  //   ],
-  // },
+  {
+    title: "id_card_designer",
+    href: "/admin/id-card",
+    icon: CreditCard,
+    subItems: [
+      { title: "id_card_designer", href: "/admin/id-card", icon: CreditCard },
+    ],
+  },
   {
     title: "user_management",
     href: "/admin/signup-links",

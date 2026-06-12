@@ -23,15 +23,22 @@ import {
   Edit,
   Save,
   X,
+  ThumbsUp,
 } from "lucide-react"
 
 interface CampusStats {
   total_students: number
+  boys_count: number
+  girls_count: number
   total_teachers: number
   total_staff: number
+  male_staff: number
+  female_staff: number
   total_parents: number
   total_grade_levels: number
   total_sections: number
+  present_today: number
+  attendance_percentage_today: number
 }
 
 interface CampusFormData {
@@ -445,67 +452,75 @@ export default function SchoolDetailsPage() {
           </Card>
 
           {/* Campus Statistics */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-[#022172]" />
-                {t("stats_title")}
-              </CardTitle>
-              <CardDescription>{t("stats_overview", { name: selectedCampus.name })}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+              {/* Total Students */}
+              <div className="flex rounded-xl overflow-hidden shadow-sm">
+                <div className="bg-[#2E7D32] flex items-center justify-center w-20 shrink-0">
+                  <GraduationCap className="h-10 w-10 text-white" />
                 </div>
-              ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                  <div className="text-center p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                    <GraduationCap className="h-6 w-6 mx-auto text-blue-600 mb-2" />
-                    <p className="text-2xl font-bold text-blue-600">
-                      {stats?.total_students ?? 0}
+                <div className="bg-[#388E3C] flex-1 p-4 text-white">
+                  <p className="text-xs font-bold uppercase tracking-wider opacity-90">{t("students")}</p>
+                  <p className="text-3xl font-bold my-1">{stats?.total_students ?? 0}</p>
+                  <div className="border-t border-white/30 pt-2 mt-1">
+                    <p className="text-xs opacity-90">
+                      {t("boys")}: {stats?.boys_count ?? 0}&nbsp;&nbsp;{t("girls")}: {stats?.girls_count ?? 0}
                     </p>
-                    <p className="text-xs text-muted-foreground">{t("students")}</p>
-                  </div>
-                  <div className="text-center p-4 bg-green-50 dark:bg-green-950 rounded-lg">
-                    <Users className="h-6 w-6 mx-auto text-green-600 mb-2" />
-                    <p className="text-2xl font-bold text-green-600">
-                      {stats?.total_teachers ?? 0}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{t("teachers")}</p>
-                  </div>
-                  <div className="text-center p-4 bg-purple-50 dark:bg-purple-950 rounded-lg">
-                    <Users className="h-6 w-6 mx-auto text-purple-600 mb-2" />
-                    <p className="text-2xl font-bold text-purple-600">
-                      {stats?.total_staff ?? 0}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{t("staff")}</p>
-                  </div>
-                  <div className="text-center p-4 bg-orange-50 dark:bg-orange-950 rounded-lg">
-                    <Users className="h-6 w-6 mx-auto text-orange-600 mb-2" />
-                    <p className="text-2xl font-bold text-orange-600">
-                      {stats?.total_parents ?? 0}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{t("parents")}</p>
-                  </div>
-                  <div className="text-center p-4 bg-cyan-50 dark:bg-cyan-950 rounded-lg">
-                    <GraduationCap className="h-6 w-6 mx-auto text-cyan-600 mb-2" />
-                    <p className="text-2xl font-bold text-cyan-600">
-                      {stats?.total_grade_levels ?? 0}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{t("grade_levels")}</p>
-                  </div>
-                  <div className="text-center p-4 bg-pink-50 dark:bg-pink-950 rounded-lg">
-                    <Users className="h-6 w-6 mx-auto text-pink-600 mb-2" />
-                    <p className="text-2xl font-bold text-pink-600">
-                      {stats?.total_sections ?? 0}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{t("sections")}</p>
                   </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </div>
+
+              {/* Parents */}
+              <div className="flex rounded-xl overflow-hidden shadow-sm">
+                <div className="bg-[#B71C1C] flex items-center justify-center w-20 shrink-0">
+                  <Users className="h-10 w-10 text-white" />
+                </div>
+                <div className="bg-[#C62828] flex-1 p-4 text-white">
+                  <p className="text-xs font-bold uppercase tracking-wider opacity-90">{t("parents")}</p>
+                  <p className="text-3xl font-bold my-1">{stats?.total_parents ?? 0}</p>
+                  <div className="border-t border-white/30 pt-2 mt-1">
+                    <p className="text-xs opacity-90">{t("total_registered_parents")}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Staff */}
+              <div className="flex rounded-xl overflow-hidden shadow-sm">
+                <div className="bg-[#00838F] flex items-center justify-center w-20 shrink-0">
+                  <Users className="h-10 w-10 text-white" />
+                </div>
+                <div className="bg-[#00ACC1] flex-1 p-4 text-white">
+                  <p className="text-xs font-bold uppercase tracking-wider opacity-90">{t("staff")}</p>
+                  <p className="text-3xl font-bold my-1">{stats?.total_staff ?? 0}</p>
+                  <div className="border-t border-white/30 pt-2 mt-1">
+                    <p className="text-xs opacity-90">
+                      {t("male")}: {stats?.male_staff ?? 0}&nbsp;&nbsp;{t("female")}: {stats?.female_staff ?? 0}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Present Today */}
+              <div className="flex rounded-xl overflow-hidden shadow-sm">
+                <div className="bg-[#1565C0] flex items-center justify-center w-20 shrink-0">
+                  <ThumbsUp className="h-10 w-10 text-white" />
+                </div>
+                <div className="bg-[#1976D2] flex-1 p-4 text-white">
+                  <p className="text-xs font-bold uppercase tracking-wider opacity-90">{t("present_students_today")}</p>
+                  <p className="text-3xl font-bold my-1">{stats?.present_today ?? 0}</p>
+                  <div className="border-t border-white/30 pt-2 mt-1">
+                    <p className="text-xs opacity-90">
+                      {t("attendance_percentage")}: {stats?.attendance_percentage_today ?? 0}%
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

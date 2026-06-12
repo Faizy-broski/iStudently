@@ -705,6 +705,150 @@ class SalaryService {
     // DASHBOARD STATS
     // ==========================================
 
+    // ==========================================
+    // SALARY POLICY GROUPS
+    // ==========================================
+
+    async getPolicyGroups(schoolId: string, campusId?: string | null): Promise<any[]> {
+        let query = supabase
+            .from('salary_policy_groups')
+            .select('*')
+            .eq('school_id', schoolId)
+            .order('created_at', { ascending: true })
+
+        if (campusId) {
+            query = query.eq('campus_id', campusId)
+        }
+
+        const { data, error } = await query
+        if (error) throw new Error(`Failed to get policy groups: ${error.message}`)
+        return data || []
+    }
+
+    async getPolicyGroupWithTeachers(policyGroupId: string): Promise<any> {
+        const { data: group, error } = await supabase
+            .from('salary_policy_groups')
+            .select('*')
+            .eq('id', policyGroupId)
+            .single()
+
+        if (error) throw new Error(`Policy group not found: ${error.message}`)
+
+        const { data: assignments } = await supabase
+            .from('staff_salary_policy_assignments')
+            .select(`
+                staff_id,
+                assigned_at,
+                staff!inner(
+                    id, employee_number, title,
+                    profile:profiles!staff_profile_id_fkey(first_name, last_name, email, profile_photo_url)
+                )
+            `)
+            .eq('policy_group_id', policyGroupId)
+
+        return { ...group, assigned_teachers: assignments || [] }
+    }
+
+    async createPolicyGroup(schoolId: string, data: any): Promise<any> {
+        const { data: group, error } = await supabase
+            .from('salary_policy_groups')
+            .insert({ ...data, school_id: schoolId, updated_at: new Date().toISOString() })
+            .select()
+            .single()
+
+        if (error) throw new Error(`Failed to create policy group: ${error.message}`)
+        return group
+    }
+
+    async updatePolicyGroup(groupId: string, schoolId: string, data: any): Promise<any> {
+        const { data: group, error } = await supabase
+            .from('salary_policy_groups')
+            .update({ ...data, updated_at: new Date().toISOString() })
+            .eq('id', groupId)
+            .eq('school_id', schoolId)
+            .select()
+            .single()
+
+        if (error) throw new Error(`Failed to update policy group: ${error.message}`)
+        return group
+    }
+
+    async deletePolicyGroup(groupId: string, schoolId: string): Promise<void> {
+        const { error } = await supabase
+            .from('salary_policy_groups')
+            .delete()
+            .eq('id', groupId)
+            .eq('school_id', schoolId)
+
+        if (error) throw new Error(`Failed to delete policy group: ${error.message}`)
+    }
+
+    async assignTeachersToPolicy(policyGroupId: string, schoolId: string, staffIds: string[]): Promise<void> {
+        if (!staffIds.length) return
+
+        const rows = staffIds.map(staffId => ({
+            staff_id: staffId,
+            policy_group_id: policyGroupId,
+            school_id: schoolId,
+            assigned_at: new Date().toISOString()
+        }))
+
+        // upsert so re-assigning a teacher moves them from old policy automatically
+        const { error } = await supabase
+            .from('staff_salary_policy_assignments')
+            .upsert(rows, { onConflict: 'staff_id' })
+
+        if (error) throw new Error(`Failed to assign teachers: ${error.message}`)
+    }
+
+    async removeTeacherFromPolicy(staffId: string, policyGroupId: string): Promise<void> {
+        const { error } = await supabase
+            .from('staff_salary_policy_assignments')
+            .delete()
+            .eq('staff_id', staffId)
+            .eq('policy_group_id', policyGroupId)
+
+        if (error) throw new Error(`Failed to remove teacher from policy: ${error.message}`)
+    }
+
+    async getTeachersWithPolicyInfo(schoolId: string, campusId?: string | null): Promise<any[]> {
+        // Returns all staff with their policy assignment (if any)
+        let staffQuery = supabase
+            .from('staff')
+            .select(`
+                id, employee_number, title, school_id,
+                profile:profiles!staff_profile_id_fkey(first_name, last_name, email, profile_photo_url)
+            `)
+            .eq('is_active', true)
+
+        if (campusId) {
+            staffQuery = staffQuery.eq('school_id', campusId)
+        } else {
+            staffQuery = staffQuery.eq('school_id', schoolId)
+        }
+
+        const { data: staffList, error: staffError } = await staffQuery
+        if (staffError) throw new Error(`Failed to get staff: ${staffError.message}`)
+
+        const { data: assignments } = await supabase
+            .from('staff_salary_policy_assignments')
+            .select('staff_id, policy_group_id, salary_policy_groups(name)')
+            .eq('school_id', schoolId)
+
+        const assignmentMap: Record<string, { policy_group_id: string; policy_name: string }> = {}
+        for (const a of assignments || []) {
+            assignmentMap[a.staff_id] = {
+                policy_group_id: a.policy_group_id,
+                policy_name: (a.salary_policy_groups as any)?.name || ''
+            }
+        }
+
+        return (staffList || []).map((s: any) => ({
+            ...s,
+            assigned_policy: assignmentMap[s.id] || null
+        }))
+    }
+
     async getSalaryDashboardStats(schoolId: string, month?: number, year?: number): Promise<any> {
         const currentMonth = month || new Date().getMonth() + 1
         const currentYear = year || new Date().getFullYear()
