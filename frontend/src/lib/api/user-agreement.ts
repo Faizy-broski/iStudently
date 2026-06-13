@@ -90,6 +90,17 @@ export interface AgreementCheckResult {
   students_needing_acceptance?: LinkedStudent[]
 }
 
+// ─── Types ─────────────────────────────────────────────────────────────────────
+
+export interface AgreementReportRow {
+  id: string
+  name: string
+  email: string
+  status: 'accepted' | 'rejected' | null
+  is_active: boolean
+  updated_at: string | null
+}
+
 // ─── Admin API ────────────────────────────────────────────────────────────────
 
 export async function getUserAgreementConfig(campusId?: string | null) {
@@ -110,6 +121,11 @@ export async function updateUserAgreementConfig(
 
 export async function resetAgreementAcceptances(role: AgreementRole) {
   return apiRequest<{ message: string }>(`/user-agreements/reset/${role}`, { method: 'POST' })
+}
+
+export async function getAgreementReport(role: AgreementRole, campusId?: string | null) {
+  const qs = campusId ? `?campus_id=${encodeURIComponent(campusId)}` : ''
+  return apiRequest<AgreementReportRow[]>(`/user-agreements/report/${role}${qs}`)
 }
 
 // ─── User API ─────────────────────────────────────────────────────────────────

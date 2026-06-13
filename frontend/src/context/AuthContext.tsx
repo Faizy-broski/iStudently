@@ -196,6 +196,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profileFetchPending, setProfileFetchPending] = useState(false)
   // True when the user's profile has force_password_change = true
   const [mustChangePassword, setMustChangePassword] = useState(false)
+  // 2FA interstitial states
+  const [mustCompleteTwoFA, setMustCompleteTwoFA] = useState(false)
+  const [twoFASetupRequired, setTwoFASetupRequired] = useState(false)
   // Store raw access token to use for API calls
   const [accessToken, setAccessToken] = useState<string | null>(null)
 
@@ -412,6 +415,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isInitialized = true
     }
 
+    // Proactively check 2FA status before unlocking the UI (before setLoading(false)).
+    // This prevents any dashboard from rendering when 2FA is required.
+    const checkTwoFABeforeUnlock = async (token: string): Promise<void> => {
+      if (!token || isOnAuthPage()) return
+      try {
+        const res = await fetch(`${API_URL}/two-fa/status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!res.ok) return
+        const body = await res.json()
+        if (!body.success || !body.data) return
+        const { required, enabled, skip_until, session_verified } = body.data
+        if (!required) return
+        const inGrace = skip_until && new Date(skip_until) > new Date()
+        if (inGrace) return
+        if (!enabled) {
+          setTwoFASetupRequired(true)
+        } else if (!session_verified) {
+          setMustCompleteTwoFA(true)
+        }
+      } catch {
+        // fail open — never block login on 2FA check errors
+      }
+    }
+
     const getUser = async () => {
       try {
         // First try to get the session
@@ -493,6 +521,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (isMounted) {
             setProfile(profileCache.profile)
             setProfileFetchPending(false) // Profile loaded from cache, clear pending flag
+            await checkTwoFABeforeUnlock(session?.access_token ?? '')
             setLoading(false) // Profile from cache, loading complete
             clearLoadingTimeout()
           }
@@ -560,6 +589,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 userId: user.id
               }
               setProfile(retryProfile)
+              await checkTwoFABeforeUnlock(session?.access_token ?? '')
               setLoading(false)
               clearLoadingTimeout()
             }
@@ -618,7 +648,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               // Cache the profile with timestamp
               profileCache = { profile, userId: user.id, timestamp: now }
 
-              // CRITICAL: Only set loading false after profile is loaded
+              // CRITICAL: Only set loading false after profile is loaded (and 2FA checked)
+              await checkTwoFABeforeUnlock(session?.access_token ?? '')
               setLoading(false)
               clearLoadingTimeout()
             }
@@ -1088,6 +1119,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setMustChangePassword(profile?.force_password_change === true)
   }, [profile])
 
+  // Listen for 2FA events dispatched by apiRequest() in schools.ts
+  useEffect(() => {
+    const onRequired = () => { if (!isOnAuthPage()) setMustCompleteTwoFA(true) }
+    const onSetupRequired = () => { if (!isOnAuthPage()) setTwoFASetupRequired(true) }
+    window.addEventListener('studently:two_fa_required', onRequired)
+    window.addEventListener('studently:two_fa_setup_required', onSetupRequired)
+    return () => {
+      window.removeEventListener('studently:two_fa_required', onRequired)
+      window.removeEventListener('studently:two_fa_setup_required', onSetupRequired)
+    }
+  }, [])
+
   const signIn = async (emailOrUsername: string, password: string) => {
     let email = emailOrUsername.trim()
 
@@ -1159,6 +1202,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const completeTwoFA = () => {
+    setMustCompleteTwoFA(false)
+    setTwoFASetupRequired(false)
+  }
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -1166,6 +1214,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       profileFetchPending,
       mustChangePassword,
+      mustCompleteTwoFA,
+      twoFASetupRequired,
+      completeTwoFA,
       access_token: accessToken,
       signIn,
       signOut,

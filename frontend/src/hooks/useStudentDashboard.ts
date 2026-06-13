@@ -39,7 +39,7 @@ export const useStudentDashboard = () => {
       errorRetryInterval: 1000,
       shouldRetryOnError: (err) => {
         const msg = err?.message || '';
-        return !msg.includes('401') && !msg.includes('Session expired');
+        return !msg.includes('401') && !msg.includes('Session expired') && !msg.includes('__2FA_');
       },
     }
   )

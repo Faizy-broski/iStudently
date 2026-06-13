@@ -222,7 +222,7 @@ export default function EmailSmtpSettingsPage() {
             <Info className="h-4 w-4 mt-0.5 shrink-0" />
             <div className="space-y-1">
               <p className="font-medium">{t("studently_server_title")}</p>
-              <p>{t("studently_server_details", { host: <code className="text-xs bg-blue-100 dark:bg-blue-900 px-1 rounded">mail.istudent.ly</code>, port: <code className="text-xs bg-blue-100 dark:bg-blue-900 px-1 rounded">465</code>, user: <code className="text-xs bg-blue-100 dark:bg-blue-900 px-1 rounded">info@istudent.ly</code> })}</p>
+              <p>{t.rich("studently_server_details", { host: () => <code className="text-xs bg-blue-100 dark:bg-blue-900 px-1 rounded">mail.istudent.ly</code>, port: () => <code className="text-xs bg-blue-100 dark:bg-blue-900 px-1 rounded">465</code>, user: () => <code className="text-xs bg-blue-100 dark:bg-blue-900 px-1 rounded">info@istudent.ly</code> })}</p>
             </div>
           </div>
         </CardContent>

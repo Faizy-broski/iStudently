@@ -71,6 +71,8 @@ export default function StudentDashboardPage() {
   }
 
   if (dashboardError) {
+    const msg = dashboardError.message || ''
+    if (msg.includes('__2FA_')) return null  // AuthContext is handling the redirect
     return (
       <div className="p-8">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">

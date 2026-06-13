@@ -41,6 +41,7 @@ import {
   Sparkles,
   AlertTriangle,
   FlaskConical,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react'
 import type { SidebarMenuItem } from './sidebar'
@@ -336,6 +337,25 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     category: 'Security',
     settingsHref: '/admin/settings/force-password-change',
     sidebarInjections: [],
+  },
+
+  // ── Two-Factor Authentication ─────────────────────────────────────────────
+  {
+    id: 'two_factor_auth',
+    name: 'Two-Factor Authentication (2FA)',
+    description:
+      'Require users of selected roles to verify their identity with a TOTP authenticator app (Google Authenticator, Authy, etc.) on every login. Includes QR-code setup wizard, recovery code for lost devices, and per-user reset from the admin panel.',
+    icon: ShieldCheck,
+    category: 'Security',
+    settingsHref: '/admin/settings/two-factor-auth',
+    sidebarInjections: [
+      {
+        parentTitle: 'settings',
+        items: [
+          { title: 'two_factor_auth', href: '/admin/settings/two-factor-auth', icon: ShieldCheck },
+        ],
+      },
+    ],
   },
 
   // ── Tutor Report Card Comments ───────────────────────────────────────────

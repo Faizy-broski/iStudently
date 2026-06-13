@@ -12,7 +12,7 @@ interface RoleGuardProps {
 }
 
 export function RoleGuard({ children, allowedRoles, redirectTo }: RoleGuardProps) {
-  const { profile, loading, profileFetchPending, mustChangePassword } = useAuth()
+  const { profile, loading, profileFetchPending, mustChangePassword, mustCompleteTwoFA, twoFASetupRequired } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
@@ -27,6 +27,16 @@ export function RoleGuard({ children, allowedRoles, redirectTo }: RoleGuardProps
       // If password change is required, send to change-password page
       if (profile && mustChangePassword) {
         router.replace('/auth/change-password')
+        return
+      }
+
+      // 2FA interstitial redirects
+      if (profile && twoFASetupRequired) {
+        router.replace('/auth/2fa/setup')
+        return
+      }
+      if (profile && mustCompleteTwoFA) {
+        router.replace('/auth/2fa')
         return
       }
 
@@ -57,7 +67,7 @@ export function RoleGuard({ children, allowedRoles, redirectTo }: RoleGuardProps
         }
       }
     }
-  }, [profile, loading, profileFetchPending, mustChangePassword, allowedRoles, redirectTo, router])
+  }, [profile, loading, profileFetchPending, mustChangePassword, mustCompleteTwoFA, twoFASetupRequired, allowedRoles, redirectTo, router])
 
   // Show minimal loading state while checking authentication or profile fetch pending
   if (loading || profileFetchPending) {
@@ -68,8 +78,10 @@ export function RoleGuard({ children, allowedRoles, redirectTo }: RoleGuardProps
     )
   }
 
-  // Must change password — block all protected content
+  // Must change password / 2FA — block all protected content
   if (profile && mustChangePassword) return null
+  if (profile && twoFASetupRequired) return null
+  if (profile && mustCompleteTwoFA) return null
 
   // If user doesn't have permission, redirect immediately
   if (profile && !allowedRoles.includes(profile.role)) {

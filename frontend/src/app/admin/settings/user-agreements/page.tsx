@@ -6,8 +6,10 @@ import {
   getUserAgreementConfig,
   updateUserAgreementConfig,
   resetAgreementAcceptances,
+  getAgreementReport,
   type AgreementRole,
   type AgreementItem,
+  type AgreementReportRow,
   type RoleAgreementConfigs,
   type RoleAgreementConfig,
 } from '@/lib/api/user-agreement'
@@ -22,7 +24,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { toast } from 'sonner'
 import {
   FileText, Save, Loader2, Info, RefreshCw, CalendarClock, ToggleRight, Users,
-  Plus, Trash2, GripVertical,
+  Plus, Trash2, GripVertical, Download, BarChart3, CheckCircle2, XCircle, Clock,
 } from 'lucide-react'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -64,6 +66,48 @@ export default function UserAgreementsSettingsPage() {
   const [saving, setSaving]     = useState(false)
   const [resetting, setResetting] = useState<AgreementRole | null>(null)
   const [activeTab, setActiveTab] = useState<AgreementRole>('student')
+
+  // Report state
+  const [reportRows, setReportRows] = useState<AgreementReportRow[]>([])
+  const [reportLoading, setReportLoading] = useState(false)
+  const [reportRole, setReportRole] = useState<AgreementRole>('student')
+
+  const fetchReport = useCallback(async (role: AgreementRole) => {
+    setReportLoading(true)
+    try {
+      const res = await getAgreementReport(role, campusId)
+      if (res.success && res.data) setReportRows(res.data)
+      else setReportRows([])
+    } finally {
+      setReportLoading(false)
+    }
+  }, [campusId])
+
+  const handleReportRoleChange = (role: AgreementRole) => {
+    setReportRole(role)
+    fetchReport(role)
+  }
+
+  useEffect(() => { fetchReport('student') }, [fetchReport])
+
+  const downloadCSV = () => {
+    const headers = [t('report_name'), t('report_email'), t('report_status'), t('report_active'), t('report_date')]
+    const rows = reportRows.map(r => [
+      r.name,
+      r.email,
+      r.status === 'accepted' ? t('status_accepted') : r.status === 'rejected' ? t('status_rejected') : t('status_pending'),
+      r.is_active ? t('account_active') : t('account_inactive'),
+      r.updated_at ? new Date(r.updated_at).toLocaleDateString() : '-',
+    ])
+    const csv = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `agreement-report-${reportRole}-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   const fetchConfig = useCallback(async () => {
     setLoading(true)
@@ -440,6 +484,131 @@ export default function UserAgreementsSettingsPage() {
           )
         })}
       </Tabs>
+
+      {/* ── Advanced Report ──────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <CardTitle className="text-base">{t('report_title')}</CardTitle>
+                <CardDescription>{t('report_desc', { role: ROLES.find(r => r.id === reportRole)?.label ?? reportRole })}</CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Role selector */}
+              <div className="flex rounded-lg border overflow-hidden text-sm">
+                {ROLES.map(r => (
+                  <button
+                    key={r.id}
+                    onClick={() => handleReportRoleChange(r.id)}
+                    className={`px-3 py-1.5 transition-colors ${
+                      reportRole === r.id
+                        ? 'bg-[#022172] text-white'
+                        : 'hover:bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={downloadCSV}
+                disabled={reportLoading || reportRows.length === 0}
+              >
+                <Download className="h-3.5 w-3.5" />
+                {t('download_csv')}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {/* Summary badges */}
+          {!reportLoading && reportRows.length > 0 && (() => {
+            const accepted = reportRows.filter(r => r.status === 'accepted').length
+            const rejected = reportRows.filter(r => r.status === 'rejected').length
+            const pending  = reportRows.filter(r => !r.status).length
+            return (
+              <div className="flex gap-3 flex-wrap mb-4">
+                <div className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full bg-muted">
+                  <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="font-medium">{t('total_users')}:</span> {reportRows.length}
+                </div>
+                <div className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <span className="font-medium">{t('accepted_count')}:</span> {accepted}
+                </div>
+                <div className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400">
+                  <XCircle className="h-3.5 w-3.5" />
+                  <span className="font-medium">{t('rejected_count')}:</span> {rejected}
+                </div>
+                <div className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400">
+                  <Clock className="h-3.5 w-3.5" />
+                  <span className="font-medium">{t('pending_count')}:</span> {pending}
+                </div>
+              </div>
+            )
+          })()}
+
+          {reportLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-sm text-muted-foreground">{t('loading_report')}</span>
+            </div>
+          ) : reportRows.length === 0 ? (
+            <div className="text-center py-12 text-sm text-muted-foreground">{t('no_users')}</div>
+          ) : (
+            <div className="rounded-lg border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t('report_name')}</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden md:table-cell">{t('report_email')}</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">{t('report_status')}</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden sm:table-cell">{t('report_active')}</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">{t('report_date')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {reportRows.map(row => (
+                    <tr key={row.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-2.5 font-medium">{row.name || '—'}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground hidden md:table-cell">{row.email || '—'}</td>
+                      <td className="px-4 py-2.5">
+                        {row.status === 'accepted' ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-400">
+                            <CheckCircle2 className="h-3 w-3" />{t('status_accepted')}
+                          </span>
+                        ) : row.status === 'rejected' ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400">
+                            <XCircle className="h-3 w-3" />{t('status_rejected')}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400">
+                            <Clock className="h-3 w-3" />{t('status_pending')}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 hidden sm:table-cell">
+                        <span className={`text-xs font-medium ${row.is_active ? 'text-green-600 dark:text-green-400' : 'text-red-500'}`}>
+                          {row.is_active ? t('account_active') : t('account_inactive')}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-muted-foreground text-xs hidden lg:table-cell">
+                        {row.updated_at ? new Date(row.updated_at).toLocaleDateString() : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

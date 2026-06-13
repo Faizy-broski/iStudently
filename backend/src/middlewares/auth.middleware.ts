@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express'
 import { supabaseAuth, supabase } from '../config/supabase'
+import { twoFAService } from '../services/two-fa.service'
 
 export interface AuthRequest extends Request {
   user?: any
@@ -204,6 +205,49 @@ export const authenticate = async (
     req.user = user
     req.profile = profile
 
+    // ── 2FA enforcement ──────────────────────────────────────────────────────
+    // Integrated here so it runs for every authenticated route without modifying
+    // individual route files. Skipped for 2FA action paths and other excluded paths.
+    try {
+      const path = req.originalUrl.split('?')[0]  // full path, no query string
+      const skipPaths = ['/two-fa/', '/auth/change-password', '/auth/language',
+        '/user-agreements/check', '/user-agreements/accept', '/user-agreements/reject']
+      const should2FACheck = !skipPaths.some(p => path.includes(p))
+
+      if (should2FACheck) {
+        const isRequired = await twoFAService.isTwoFARequiredForRole(
+          profile.role, profile.school_id, profile.campus_id ?? null
+        )
+
+        if (isRequired) {
+          // Check skip grace period
+          const skipUntil = profile.totp_skip_until ? new Date(profile.totp_skip_until) : null
+          const inGrace = skipUntil && skipUntil > new Date()
+
+          if (!inGrace) {
+            if (!profile.totp_enabled) {
+              return res.status(403).json({ success: false, code: 'TWO_FA_SETUP_REQUIRED', error: '2FA setup is required' })
+            }
+
+            const bearerToken = (req.headers.authorization || '').replace('Bearer ', '')
+            const sessionId = twoFAService.extractSessionId(bearerToken)
+            if (!sessionId) {
+              return res.status(403).json({ success: false, code: 'TWO_FA_REQUIRED', error: '2FA verification required' })
+            }
+
+            const verified = await twoFAService.isSessionVerified(profile.id, sessionId)
+            if (!verified) {
+              return res.status(403).json({ success: false, code: 'TWO_FA_REQUIRED', error: '2FA verification required' })
+            }
+          }
+        }
+      }
+    } catch (twoFAErr) {
+      // Fail open — don't block authenticated requests on 2FA lookup errors
+      console.error('⚠️ 2FA check error (failing open):', twoFAErr)
+    }
+    // ── End 2FA enforcement ──────────────────────────────────────────────────
+
     return next()
   } catch (error) {
     console.error('Authentication error:', error)
@@ -211,5 +255,83 @@ export const authenticate = async (
       success: false,
       error: 'Authentication failed'
     })
+  }
+}
+
+// Paths excluded from 2FA enforcement
+const TWO_FA_SKIP_PATHS = [
+  '/api/two-fa/',
+  '/two-fa/',
+  '/api/auth/change-password',
+  '/auth/change-password',
+  '/api/auth/language',
+  '/auth/language',
+  '/api/user-agreements/check',
+  '/user-agreements/check',
+  '/api/user-agreements/accept',
+  '/user-agreements/accept',
+  '/api/user-agreements/reject',
+  '/user-agreements/reject',
+  '/api/public',
+  '/public',
+  '/api/health',
+  '/health',
+  '/api/status',
+]
+
+/**
+ * Global 2FA enforcement middleware.
+ * Applied after authenticate() — only runs if profile exists and 2FA is required for their role.
+ * Returns 403 with code TWO_FA_REQUIRED or TWO_FA_SETUP_REQUIRED.
+ * Add to app.ts after all route registration but before the 404 handler.
+ */
+export const requireTwoFA = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const profile = (req as AuthRequest).profile
+    // No profile = unauthenticated route — let the route's own auth handle it
+    if (!profile) { next(); return }
+
+    // Skip 2FA check for excluded paths
+    if (TWO_FA_SKIP_PATHS.some(p => req.path.startsWith(p))) { next(); return }
+
+    const isRequired = await twoFAService.isTwoFARequiredForRole(
+      profile.role,
+      profile.school_id,
+      profile.campus_id ?? null
+    )
+    if (!isRequired) { next(); return }
+
+    // Check skip grace period
+    if (profile.totp_skip_until) {
+      const skipUntil = new Date(profile.totp_skip_until)
+      if (skipUntil > new Date()) { next(); return }
+    }
+
+    if (!profile.totp_enabled) {
+      res.status(403).json({ success: false, code: 'TWO_FA_SETUP_REQUIRED', error: '2FA setup required' })
+      return
+    }
+
+    const token = req.headers.authorization || ''
+    const sessionId = twoFAService.extractSessionId(token)
+    if (!sessionId) {
+      res.status(403).json({ success: false, code: 'TWO_FA_REQUIRED', error: '2FA verification required' })
+      return
+    }
+
+    const verified = await twoFAService.isSessionVerified(profile.id, sessionId)
+    if (!verified) {
+      res.status(403).json({ success: false, code: 'TWO_FA_REQUIRED', error: '2FA verification required' })
+      return
+    }
+
+    next()
+  } catch (error) {
+    console.error('requireTwoFA error:', error)
+    next() // fail open — don't block requests on internal errors
   }
 }

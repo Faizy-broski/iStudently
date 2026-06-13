@@ -27,12 +27,26 @@ export async function apiRequest<T = unknown>(
       timeout: 30000,
     });
 
-    const data = await response.json();
     if (response.status === 401) {
       await handleSessionExpiry();
       return { success: false, error: "Session expired" };
     }
 
+    // Handle 403 — dispatch 2FA events so AuthContext can redirect immediately
+    if (response.status === 403) {
+      const data = await response.json().catch(() => ({}));
+      if (data.code === 'TWO_FA_SETUP_REQUIRED') {
+        window.dispatchEvent(new CustomEvent('studently:two_fa_setup_required'));
+        return { success: false, error: '__2FA_SETUP_REQUIRED__', code: 'TWO_FA_SETUP_REQUIRED' } as any;
+      }
+      if (data.code === 'TWO_FA_REQUIRED') {
+        window.dispatchEvent(new CustomEvent('studently:two_fa_required'));
+        return { success: false, error: '__2FA_REQUIRED__', code: 'TWO_FA_REQUIRED' } as any;
+      }
+      return { success: false, error: data?.error || 'Permission denied' };
+    }
+
+    const data = await response.json();
     if (!response.ok) {
       return { success: false, error: data?.error || "Request failed" };
     }

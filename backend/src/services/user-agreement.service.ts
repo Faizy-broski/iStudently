@@ -27,6 +27,15 @@ export interface LinkedStudent {
   last_name: string
 }
 
+export interface AgreementReportRow {
+  id: string
+  name: string
+  email: string
+  status: 'accepted' | 'rejected' | null
+  is_active: boolean
+  updated_at: string | null
+}
+
 export interface UserAgreementCheckResult {
   must_accept: boolean
   blocked: boolean
@@ -409,6 +418,34 @@ export class UserAgreementService {
       blocked: true,
       message: 'Your parent or guardian must accept the school agreement before you can access the system. Please ask them to log in and accept.',
     }
+  }
+
+  // ── Admin: agreement report ───────────────────────────────────────────────
+
+  async getAgreementReport(
+    schoolId: string,
+    role: AgreementRole,
+    campusId?: string | null
+  ): Promise<AgreementReportRow[]> {
+    let query = supabase
+      .from('profiles')
+      .select('id, first_name, last_name, email, agreement_status, is_active, updated_at')
+      .eq('school_id', schoolId)
+      .eq('role', role)
+
+    if (campusId) query = query.eq('campus_id', campusId)
+
+    const { data, error } = await query.order('last_name', { ascending: true })
+    if (error) throw error
+
+    return (data || []).map((p: any) => ({
+      id: p.id,
+      name: `${p.first_name || ''} ${p.last_name || ''}`.trim(),
+      email: p.email || '',
+      status: (p.agreement_status as 'accepted' | 'rejected' | null) ?? null,
+      is_active: p.is_active ?? true,
+      updated_at: p.updated_at,
+    }))
   }
 }
 

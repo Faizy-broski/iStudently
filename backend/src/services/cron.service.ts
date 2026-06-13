@@ -5,6 +5,7 @@ import { generateDailyAttendance } from "./attendance.service";
 import { HostelService } from "./hostel.service";
 import { diaryReminderService } from "./diary-reminder.service";
 import { AutomaticRecordsService } from "./automaticRecords.service";
+import { twoFAService } from "./two-fa.service";
 
 /**
  * AUTOMATED CRON SERVICE
@@ -124,6 +125,18 @@ class CronService {
       "30 3 * * *",
       async () => {
         await AutomaticRecordsService.runNightlyCleanupAllSchools();
+      },
+      {
+        scheduled: true,
+        timezone: "Asia/Karachi",
+      },
+    );
+
+    // 2FA sessions — sweep expired rows (3:15 AM daily)
+    cron.schedule(
+      "15 3 * * *",
+      async () => {
+        await twoFAService.sweepExpiredSessions();
       },
       {
         scheduled: true,

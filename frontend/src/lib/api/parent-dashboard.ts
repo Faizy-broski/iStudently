@@ -28,8 +28,17 @@ async function apiRequest<T = unknown>(endpoint: string): Promise<T> {
       throw new Error('Session expired')
     }
 
-    // Handle 403 Forbidden - permission error
+    // Handle 403 — dispatch 2FA events so AuthContext can redirect immediately
     if (response.status === 403) {
+      const data = await response.json().catch(() => ({}))
+      if (data.code === 'TWO_FA_SETUP_REQUIRED') {
+        window.dispatchEvent(new CustomEvent('studently:two_fa_setup_required'))
+        throw new Error('__2FA_SETUP_REQUIRED__')
+      }
+      if (data.code === 'TWO_FA_REQUIRED') {
+        window.dispatchEvent(new CustomEvent('studently:two_fa_required'))
+        throw new Error('__2FA_REQUIRED__')
+      }
       throw new Error('Permission denied')
     }
 
@@ -45,7 +54,12 @@ async function apiRequest<T = unknown>(endpoint: string): Promise<T> {
 
     return result.data
   } catch (error) {
-    if (error instanceof Error && (error.message === 'Session expired' || error.message === 'Permission denied')) {
+    if (error instanceof Error && (
+      error.message === 'Session expired' ||
+      error.message === 'Permission denied' ||
+      error.message === '__2FA_REQUIRED__' ||
+      error.message === '__2FA_SETUP_REQUIRED__'
+    )) {
       throw error
     }
     throw new Error('Network error')

@@ -1,7 +1,7 @@
 import { Router, Response } from 'express'
 import { authenticate, AuthRequest } from '../middlewares/auth.middleware'
 import { requireRole } from '../middlewares/role.middleware'
-import { userAgreementService, AGREEMENT_ROLES, AgreementRole, type AgreementItem } from '../services/user-agreement.service'
+import { userAgreementService, AGREEMENT_ROLES, AgreementRole, type AgreementItem, type AgreementReportRow } from '../services/user-agreement.service'
 
 const router = Router()
 
@@ -113,6 +113,33 @@ router.post('/reset/:role', requireRole('admin', 'super_admin'), async (req: Aut
 
     const result = await userAgreementService.resetAcceptances(schoolId, role)
     res.json({ success: true, message: `Reset ${result.count} acceptance(s) for role: ${role}` })
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+/**
+ * GET /api/user-agreements/report/:role
+ * Admin: list all users for a role with their agreement acceptance status.
+ * Query param: campus_id (optional)
+ */
+router.get('/report/:role', requireRole('admin', 'super_admin'), async (req: AuthRequest, res: Response) => {
+  try {
+    const schoolId = req.profile?.school_id
+    if (!schoolId) {
+      res.status(403).json({ success: false, error: 'No school associated' })
+      return
+    }
+
+    const role = req.params.role as AgreementRole
+    if (!AGREEMENT_ROLES.includes(role)) {
+      res.status(400).json({ success: false, error: 'Invalid role' })
+      return
+    }
+
+    const campusId = (req.query.campus_id as string) || null
+    const rows: AgreementReportRow[] = await userAgreementService.getAgreementReport(schoolId, role, campusId)
+    res.json({ success: true, data: rows })
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message })
   }

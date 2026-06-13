@@ -196,6 +196,12 @@ export interface AuthContextType {
   profileFetchPending: boolean
   // True when the user must change their password before accessing any page
   mustChangePassword: boolean
+  // True when the user must complete 2FA before accessing any page
+  mustCompleteTwoFA: boolean
+  // True when the user must set up 2FA before accessing any page
+  twoFASetupRequired: boolean
+  // Called by the 2FA page once verification is complete
+  completeTwoFA: () => void
   // Access token for authenticated API calls (optional)
   access_token?: string | null
   signIn: (email: string, password: string) => Promise<void>

@@ -8,6 +8,7 @@ interface ApiResponse<T = unknown> {
   data?: T
   error?: string
   message?: string
+  code?: string
 }
 
 export interface School {
@@ -78,8 +79,16 @@ async function apiRequest<T = unknown>(
       }
     }
 
-    // Handle 403 Forbidden - insufficient permissions
+    // Handle 403 — distinguish 2FA codes from generic permission errors
     if (response.status === 403) {
+      if (data.code === 'TWO_FA_REQUIRED') {
+        window.dispatchEvent(new CustomEvent('studently:two_fa_required'))
+        return { success: false, error: '2FA verification required', code: 'TWO_FA_REQUIRED' }
+      }
+      if (data.code === 'TWO_FA_SETUP_REQUIRED') {
+        window.dispatchEvent(new CustomEvent('studently:two_fa_setup_required'))
+        return { success: false, error: '2FA setup required', code: 'TWO_FA_SETUP_REQUIRED' }
+      }
       return {
         success: false,
         error: 'You do not have permission to perform this action'
