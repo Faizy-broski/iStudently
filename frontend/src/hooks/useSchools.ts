@@ -67,12 +67,14 @@ export const useSchools = () => {
     return data ?? []
   }, [data])
 
-  // Calculate stats
+  // Calculate stats (root schools only, excluding campuses)
+  const rootSchools = useMemo(() => schools.filter(s => !s.parent_school_id), [schools])
+
   const stats = useMemo(() => ({
-    total: schools.length,
-    active: schools.filter(s => s.status === 'active').length,
-    suspended: schools.filter(s => s.status === 'suspended').length,
-  }), [schools])
+    total: rootSchools.length,
+    active: rootSchools.filter(s => s.status === 'active').length,
+    suspended: rootSchools.filter(s => s.status === 'suspended').length,
+  }), [rootSchools])
 
   // Loading state - only true on initial load when no data exists
   const loading = authLoading || (isLoading && !data)

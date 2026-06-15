@@ -5,6 +5,7 @@ import { getEffectiveSchoolId } from '../utils/campus-validation'
 import { randomUUID } from 'crypto'
 
 const BUCKET = 'media-recordings'
+const IMAGE_BUCKET = 'school-assets'
 
 // Allowed MIME types for audio / video recordings from WebRTC
 const ALLOWED_TYPES: Record<string, string> = {
@@ -94,6 +95,86 @@ export const uploadMediaRecording = async (
     })
   } catch (error: any) {
     console.error('[MediaUpload] Unexpected error:', error)
+    res.status(500).json({ success: false, error: error.message || 'Upload failed' })
+  }
+}
+
+const ALLOWED_IMAGE_TYPES: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/jpg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+}
+
+const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024 // 10 MB
+
+/**
+ * POST /api/media/upload-image
+ *
+ * Accepts a multipart form-data upload with field name "file".
+ * Stores the image in Supabase Storage under:
+ *   school-assets/{school_id}/public-pages/{uuid}.{ext}
+ *
+ * Returns the public URL.
+ */
+export const uploadImageAsset = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const adminSchoolId = req.profile?.school_id
+    if (!adminSchoolId) {
+      res.status(401).json({ success: false, error: 'Unauthorized' })
+      return
+    }
+
+    const file = (req as any).file as Express.Multer.File | undefined
+    if (!file) {
+      res.status(400).json({ success: false, error: 'No file uploaded' })
+      return
+    }
+
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      res.status(413).json({ success: false, error: 'File too large (max 10 MB)' })
+      return
+    }
+
+    const mimeBase = file.mimetype.split(';')[0].trim().toLowerCase()
+    const ext = ALLOWED_IMAGE_TYPES[mimeBase]
+    if (!ext) {
+      res.status(415).json({ success: false, error: `Unsupported image type: ${file.mimetype}. Use JPG, PNG, WebP, or GIF.` })
+      return
+    }
+
+    const fileName = `${adminSchoolId}/public-pages/${randomUUID()}.${ext}`
+
+    const { error: uploadError } = await supabase.storage
+      .from(IMAGE_BUCKET)
+      .upload(fileName, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false,
+      })
+
+    if (uploadError) {
+      console.error('[ImageUpload] Supabase storage error:', uploadError)
+      res.status(500).json({ success: false, error: 'Storage upload failed: ' + uploadError.message })
+      return
+    }
+
+    const { data: urlData } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(fileName)
+
+    res.status(201).json({
+      success: true,
+      data: {
+        url: urlData.publicUrl,
+        mime_type: file.mimetype,
+        size: file.size,
+        path: fileName,
+      },
+    })
+  } catch (error: any) {
+    console.error('[ImageUpload] Unexpected error:', error)
     res.status(500).json({ success: false, error: error.message || 'Upload failed' })
   }
 }

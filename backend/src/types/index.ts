@@ -1804,3 +1804,62 @@ export interface UpdateEmbeddedResourceDTO {
   visible_to_student_ids?: string[];
   is_active?: boolean;
 }
+
+// ─── Performance & Efficiency Module ─────────────────────────────────────────
+
+export interface PerformanceActionLookup {
+  id: string
+  school_id: string
+  action_name_ar: string
+  action_name_en: string
+  action_type: 'violation_demerit' | 'reward_redemption'
+  escalation_stage: 'none' | 'verbal_alert' | 'written_warning' | 'final_warning'
+  default_points: number
+  default_fine: number
+  is_active: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface StaffPerformanceLog {
+  id: string
+  school_id: string
+  campus_id?: string | null
+  staff_id: string
+  action_id: string
+  academic_year_id?: string | null
+  custom_points?: number | null
+  custom_fine?: number | null
+  notes?: string | null
+  status: 'active' | 'redeemed' | 'archived'
+  letter_generated: boolean
+  salary_adjusted: boolean
+  created_by: string
+  created_at: string
+  updated_at: string
+  action?: PerformanceActionLookup
+  staff?: {
+    id: string
+    employee_number: string
+    profile?: { first_name: string; last_name: string; profile_photo_url?: string | null }
+  }
+}
+
+export interface PerformanceScore {
+  score: number
+  total_demerit: number
+  total_redemption: number
+  log_count: number
+  breakdown: {
+    log_id: string
+    date: string
+    name_ar: string
+    name_en: string
+    type: 'violation_demerit' | 'reward_redemption'
+    escalation_stage: string
+    effective_points: number
+    effective_fine: number
+  }[]
+}
+

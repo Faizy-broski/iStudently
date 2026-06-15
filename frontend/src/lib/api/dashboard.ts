@@ -104,4 +104,15 @@ export const dashboardApi = {
   getRecentSchools: async (limit: number = 4) => {
     return apiRequest<any[]>(`/dashboard/recent-schools?limit=${limit}`)
   },
+
+  getPlatformSettings: async () => {
+    return apiRequest<Record<string, any>>('/dashboard/platform-settings')
+  },
+
+  updatePlatformSettings: async (settings: Record<string, any>) => {
+    return apiRequest<Record<string, any>>('/dashboard/platform-settings', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    })
+  },
 }

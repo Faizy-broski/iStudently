@@ -204,15 +204,15 @@ class SetupStatusService {
     }> {
         const today = new Date().toISOString().split('T')[0]
 
-        // Students with gender breakdown via profiles join
+        // Students with gender breakdown directly from students table
         const { data: studentRows } = await supabase
             .from('students')
-            .select('profile:profiles!students_profile_id_fkey(gender)')
+            .select('gender')
             .eq('school_id', campusId)
 
         const totalStudents = studentRows?.length || 0
-        const boysCount = studentRows?.filter((s: any) => s.profile?.gender === 'Male').length || 0
-        const girlsCount = studentRows?.filter((s: any) => s.profile?.gender === 'Female').length || 0
+        const boysCount = studentRows?.filter((s: any) => s.gender?.toLowerCase() === 'male').length || 0
+        const girlsCount = studentRows?.filter((s: any) => s.gender?.toLowerCase() === 'female').length || 0
 
         // Teachers
         const { count: teacherCount } = await supabase
@@ -229,8 +229,8 @@ class SetupStatusService {
             .in('role', ['staff', 'librarian', 'admin', 'counselor'])
 
         const staffCount = staffRows?.length || 0
-        const maleStaff = staffRows?.filter((s: any) => s.profile?.gender === 'Male').length || 0
-        const femaleStaff = staffRows?.filter((s: any) => s.profile?.gender === 'Female').length || 0
+        const maleStaff = staffRows?.filter((s: any) => s.profile?.gender?.toLowerCase() === 'male').length || 0
+        const femaleStaff = staffRows?.filter((s: any) => s.profile?.gender?.toLowerCase() === 'female').length || 0
 
         // Parent count (parents belong to parent school)
         const { data: campusData } = await supabase

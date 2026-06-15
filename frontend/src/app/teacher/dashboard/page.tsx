@@ -21,6 +21,9 @@ import {
   SkipForward,
   LayoutGrid,
   UserCheck,
+  BarChart3,
+  TrendingDown,
+  TrendingUp,
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useAcademic } from "@/context/AcademicContext"
@@ -28,6 +31,7 @@ import { ProfilePhoto } from "@/components/shared/ProfilePhoto"
 import * as timetableApi from "@/lib/api/timetable"
 import * as coursesApi from "@/lib/api/courses"
 import useSWR from "swr"
+import { getMyScore, type PerformanceScore } from "@/lib/api/performance"
 
 // ─── local types ─────────────────────────────────────────────────────────────
 
@@ -116,6 +120,12 @@ export default function TeacherDashboard() {
     profile?.staff_id ? `teacher-overview-${profile.staff_id}-${todayDate}` : null,
     () => timetableApi.getTeacherAttendanceOverview(profile!.staff_id!, todayDate),
     { revalidateOnFocus: false }
+  )
+
+  const { data: perfScore } = useSWR<PerformanceScore>(
+    profile?.staff_id ? `my-perf-score` : null,
+    () => getMyScore(),
+    { revalidateOnFocus: false, shouldRetryOnError: false }
   )
 
   // ── Processed today's classes ──
@@ -309,6 +319,61 @@ export default function TeacherDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Performance Widget ── */}
+      {perfScore && (
+        <Card className="border-[#022172]/20">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-4">
+                {/* Mini circular meter */}
+                <div className="relative h-16 w-16 shrink-0">
+                  <svg viewBox="0 0 100 100" className="-rotate-90">
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" strokeWidth="14" />
+                    <circle
+                      cx="50" cy="50" r="40" fill="none"
+                      stroke={perfScore.score >= 80 ? "#16a34a" : perfScore.score >= 60 ? "#d97706" : "#dc2626"}
+                      strokeWidth="14"
+                      strokeDasharray={`${(perfScore.score / 100) * 251.2} 251.2`}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-sm font-bold">{perfScore.score}</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4 text-[#022172]" />
+                    <p className="font-semibold text-[#022172]">My Performance</p>
+                  </div>
+                  <p className={`text-sm font-medium ${perfScore.score >= 80 ? "text-green-600" : perfScore.score >= 60 ? "text-amber-600" : "text-red-600"}`}>
+                    {perfScore.score >= 80 ? "Excellent" : perfScore.score >= 60 ? "Good" : "Needs Improvement"}
+                  </p>
+                  <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
+                    {perfScore.total_demerit > 0 && (
+                      <span className="flex items-center gap-1 text-red-500">
+                        <TrendingDown className="h-3 w-3" />
+                        -{perfScore.total_demerit} pts
+                      </span>
+                    )}
+                    {perfScore.total_redemption > 0 && (
+                      <span className="flex items-center gap-1 text-green-500">
+                        <TrendingUp className="h-3 w-3" />
+                        +{perfScore.total_redemption} pts
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => router.push("/teacher/performance")}>
+                View Details
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── Student Roster (driven by sidebar course period selection) ── */}
       <Card className="border-[#022172]/20">

@@ -34,10 +34,12 @@ import BillingPlanFormModal from "@/components/super-admin/BillingPlanFormModal"
 import { PaginationWrapper } from "@/components/ui/pagination";
 import { billingRecordsApi, billingPlansApi, BillingRecord, BillingPlan } from "@/lib/api/billing";
 import { useBilling } from "@/hooks/useBilling";
+import { usePlatformSettings } from "@/hooks/usePlatformSettings";
 
 export default function BillingStatusPage() {
   // Use SWR hook for efficient data fetching
   const { records: billingRecords, plans: billingPlans, stats, loading, error, refreshBilling, mutate, isValidating } = useBilling();
+  const { currencySymbol } = usePlatformSettings();
   
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "paid" | "unpaid" | "overdue" | "pending">("all");
@@ -320,13 +322,13 @@ export default function BillingStatusPage() {
                   <span style="color: #666; font-size: 14px;">School Management System Subscription</span>
                 </td>
                 <td>${record.billing_cycle}</td>
-                <td style="text-align: right; font-weight: bold;">$${record.amount.toLocaleString()}</td>
+                <td style="text-align: right; font-weight: bold;">${currencySymbol}${record.amount.toLocaleString()}</td>
               </tr>
             </tbody>
           </table>
           
           <div class="total">
-            Total Amount: $${record.amount.toLocaleString()}
+            Total Amount: ${currencySymbol}${record.amount.toLocaleString()}
           </div>
           
           <div class="footer">
@@ -375,7 +377,7 @@ export default function BillingStatusPage() {
           record.invoice_number,
           record.subscription_plan,
           record.billing_cycle,
-          `$${record.amount}`,
+          `${currencySymbol}${record.amount}`,
           record.due_date,
           record.payment_status,
           record.payment_date || "N/A"
@@ -461,7 +463,7 @@ export default function BillingStatusPage() {
             <div className="flex items-center justify-between mb-3">
               <DollarSign className="h-8 w-8 text-white/80" />
             </div>
-            <div className="text-3xl font-bold">${statsCalculated.totalRevenue.toLocaleString()}</div>
+            <div className="text-3xl font-bold">{currencySymbol}{statsCalculated.totalRevenue.toLocaleString()}</div>
             <p className="text-white/80 text-sm mt-1">Total Revenue (Paid)</p>
           </CardContent>
         </Card>
@@ -470,7 +472,7 @@ export default function BillingStatusPage() {
             <div className="flex items-center justify-between mb-3">
               <TrendingUp className="h-8 w-8 text-white/80" />
             </div>
-            <div className="text-3xl font-bold">${statsCalculated.pendingRevenue.toLocaleString()}</div>
+            <div className="text-3xl font-bold">{currencySymbol}{statsCalculated.pendingRevenue.toLocaleString()}</div>
             <p className="text-white/80 text-sm mt-1">Pending Revenue</p>
           </CardContent>
         </Card>
@@ -630,7 +632,7 @@ export default function BillingStatusPage() {
                             </Badge>
                           </TableCell>
                           <TableCell>{record.billing_cycle}</TableCell>
-                          <TableCell className="font-bold text-green-600">${record.amount}</TableCell>
+                          <TableCell className="font-bold text-green-600">{currencySymbol}{record.amount}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1 text-sm">
                               <Calendar className="h-4 w-4 text-gray-400" />
@@ -781,13 +783,13 @@ export default function BillingStatusPage() {
                             {plan.description}
                           </TableCell>
                           <TableCell className="font-bold text-green-600">
-                            ${plan.monthly_price}
+                            {currencySymbol}{plan.monthly_price}
                           </TableCell>
                           <TableCell className="font-bold text-green-600">
-                            ${plan.quarterly_price}
+                            {currencySymbol}{plan.quarterly_price}
                           </TableCell>
                           <TableCell className="font-bold text-green-600">
-                            ${plan.yearly_price}
+                            {currencySymbol}{plan.yearly_price}
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1">
@@ -849,7 +851,7 @@ export default function BillingStatusPage() {
         title="Mark as Paid?"
         description={
           selectedRecord
-            ? `Are you sure you want to mark invoice ${selectedRecord.invoice_number} for "${selectedRecord.school_name}" as paid? Amount: $${selectedRecord.amount}`
+            ? `Are you sure you want to mark invoice ${selectedRecord.invoice_number} for "${selectedRecord.school_name}" as paid? Amount: ${currencySymbol}${selectedRecord.amount}`
             : ""
         }
         confirmText="Mark as Paid"

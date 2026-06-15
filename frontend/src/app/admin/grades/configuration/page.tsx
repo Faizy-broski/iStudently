@@ -106,11 +106,18 @@ export default function GradebookConfigurationPage() {
   const handleSave = async () => {
     // Validate all graded rows sum to 100
     if (groupedPeriods) {
-      for (const sem of groupedPeriods.SEM.filter((s) => s.does_grades)) {
-        const qtrs = groupedPeriods.QTR.filter((q) => q.parent_id === sem.id);
-        const total = qtrs.reduce((sum, q) => sum + (parseFloat(mpWeights[`SEM-${q.id}`] || "0") || 0), 0);
-        if (qtrs.length > 0 && Math.abs(total - 100) > 0.01) {
-          toast.error(`"${sem.title}" — ${t("total_error")}`);
+      const gradedSems = groupedPeriods.SEM.filter((s) => s.does_grades);
+      if (gradedSems.length > 0) {
+        // All quarters across ALL semesters must collectively sum to 100%
+        // (e.g. Q1 30% + Q2 30% + Q3 20% + Q4 20% = 100%, not each semester independently)
+        const allSemKeys: string[] = [];
+        for (const sem of gradedSems) {
+          const qtrs = groupedPeriods.QTR.filter((q) => q.parent_id === sem.id);
+          qtrs.forEach((q) => allSemKeys.push(`SEM-${q.id}`));
+        }
+        const semTotal = allSemKeys.reduce((sum, k) => sum + (parseFloat(mpWeights[k] || "0") || 0), 0);
+        if (allSemKeys.length > 0 && Math.abs(semTotal - 100) > 0.01) {
+          toast.error(t("total_error"));
           return;
         }
       }
@@ -196,46 +203,62 @@ export default function GradebookConfigurationPage() {
       );
     }
 
+    // Compute all SEM quarter keys across ALL semesters for the global total badge
+    const allSemKeys: string[] = [];
+    for (const sem of gradedSems) {
+      const qtrs = groupedPeriods.QTR.filter((q) => q.parent_id === sem.id);
+      qtrs.forEach((q) => allSemKeys.push(`SEM-${q.id}`));
+    }
+
     return (
       <div className="space-y-4">
-        {/* Per-Semester rows */}
-        {gradedSems.map((sem) => {
-          const qtrs = groupedPeriods.QTR.filter((q) => q.parent_id === sem.id)
-            .sort((a, b) => a.sort_order - b.sort_order);
-          const keys = qtrs.map((q) => `SEM-${q.id}`);
-
-          return (
-            <div key={sem.id} className="border rounded-md p-3 space-y-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <span className="font-semibold text-sm">{sem.title}</span>
-                {keys.length > 0 && <TotalBadge keys={keys} />}
-              </div>
-              {qtrs.length === 0 ? (
-                <p className="text-xs text-muted-foreground">{t("no_quarters")}</p>
-              ) : (
-                <div className="flex flex-wrap gap-4">
-                  {qtrs.map((qtr) => (
-                    <div key={qtr.id} className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">{qtr.title}</Label>
-                      <div className="flex items-center gap-1">
-                        <Input
-                          type="number"
-                          min={0}
-                          max={100}
-                          step={0.01}
-                          value={mpWeights[`SEM-${qtr.id}`] ?? ""}
-                          onChange={(e) => setWeight(`SEM-${qtr.id}`, e.target.value)}
-                          className="h-8 w-20 text-center"
-                        />
-                        <span className="text-sm text-muted-foreground">%</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+        {/* All periods across all semesters — single combined section */}
+        {gradedSems.length > 0 && (
+          <div className="border rounded-md p-3 space-y-3">
+            {/* Global total badge across ALL semesters */}
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <span className="font-semibold text-sm">
+                {gradedSems.map((s) => s.title).join(" + ")}
+              </span>
+              {allSemKeys.length > 0 && <TotalBadge keys={allSemKeys} />}
             </div>
-          );
-        })}
+            <p className="text-xs text-muted-foreground">
+              {t("final_grading_help")}
+            </p>
+            {/* Render quarters grouped by semester label, but weights contribute to ONE 100% total */}
+            {gradedSems.map((sem) => {
+              const qtrs = groupedPeriods.QTR.filter((q) => q.parent_id === sem.id)
+                .sort((a, b) => a.sort_order - b.sort_order);
+              if (qtrs.length === 0) return null;
+              return (
+                <div key={sem.id} className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    {sem.title}
+                  </p>
+                  <div className="flex flex-wrap gap-4">
+                    {qtrs.map((qtr) => (
+                      <div key={qtr.id} className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">{qtr.title}</Label>
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            step={0.01}
+                            value={mpWeights[`SEM-${qtr.id}`] ?? ""}
+                            onChange={(e) => setWeight(`SEM-${qtr.id}`, e.target.value)}
+                            className="h-8 w-20 text-center"
+                          />
+                          <span className="text-sm text-muted-foreground">%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Full Year row */}
         {fy?.does_grades && (() => {

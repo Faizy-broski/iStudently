@@ -95,4 +95,24 @@ export class DashboardController {
       })
     }
   }
+
+  async getPlatformSettings(req: AuthRequest, res: Response) {
+    try {
+      const settings = await dashboardService.getPlatformSettings()
+      res.json({ success: true, data: settings })
+    } catch (error: any) {
+      console.error('Get platform settings error:', error)
+      res.status(500).json({ success: false, error: error.message || 'Failed to fetch platform settings' })
+    }
+  }
+
+  async updatePlatformSettings(req: AuthRequest, res: Response) {
+    try {
+      const settings = await dashboardService.updatePlatformSettings(req.body)
+      res.json({ success: true, data: settings, message: 'Platform settings updated' })
+    } catch (error: any) {
+      console.error('Update platform settings error:', error)
+      res.status(500).json({ success: false, error: error.message || 'Failed to update platform settings' })
+    }
+  }
 }

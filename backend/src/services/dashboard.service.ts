@@ -27,10 +27,11 @@ export class DashboardService {
    * Get aggregated dashboard statistics
    */
   async getDashboardStats(): Promise<DashboardStats> {
-    // Get school stats
+    // Get school stats (root schools only, excluding campuses)
     const { data: schools } = await supabase
       .from('schools')
       .select('status')
+      .is('parent_school_id', null)
 
     const totalSchools = schools?.length || 0
     const activeSchools = schools?.filter(s => s.status === 'active').length || 0
@@ -68,10 +69,11 @@ export class DashboardService {
   async getSchoolGrowth(year: number): Promise<MonthlyGrowth[]> {
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
     
-    // Get all schools with their creation dates
+    // Get all root schools (excluding campuses) with their creation dates
     const { data: allSchools } = await supabase
       .from('schools')
       .select('created_at')
+      .is('parent_school_id', null)
       .order('created_at', { ascending: true })
 
     if (!allSchools || allSchools.length === 0) {
@@ -146,9 +148,47 @@ export class DashboardService {
     const { data: schools } = await supabase
       .from('schools')
       .select('*')
+      .is('parent_school_id', null)
       .order('created_at', { ascending: false })
       .limit(limit)
 
     return schools || []
+  }
+
+  /**
+   * Get platform-wide settings (super admin)
+   */
+  async getPlatformSettings(): Promise<Record<string, any>> {
+    const { data, error } = await supabase
+      .from('platform_settings')
+      .select('value')
+      .eq('key', 'general')
+      .single()
+
+    if (error || !data) {
+      return { currency: 'USD', support_email: 'support@studently.com', max_schools: 1000 }
+    }
+
+    return data.value as Record<string, any>
+  }
+
+  /**
+   * Update platform-wide settings (super admin)
+   */
+  async updatePlatformSettings(updates: Record<string, any>): Promise<Record<string, any>> {
+    const current = await this.getPlatformSettings()
+    const merged = { ...current, ...updates }
+
+    const { data, error } = await supabase
+      .from('platform_settings')
+      .upsert({ key: 'general', value: merged, updated_at: new Date().toISOString() })
+      .select('value')
+      .single()
+
+    if (error) {
+      throw new Error(`Failed to update platform settings: ${error.message}`)
+    }
+
+    return data?.value as Record<string, any>
   }
 }

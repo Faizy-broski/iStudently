@@ -254,6 +254,15 @@ const adminMenuItems: SidebarMenuItem[] = [
     ],
   },
   {
+    title: "performance_efficiency",
+    href: "/admin/performance",
+    icon: BarChart3,
+    subItems: [
+      { title: "incidents_log", href: "/admin/performance", icon: ClipboardList },
+      { title: "catalog", href: "/admin/performance/catalog", icon: Settings },
+    ],
+  },
+  {
     title: "id_card_designer",
     href: "/admin/id-card",
     icon: CreditCard,
@@ -567,6 +576,11 @@ const teacherMenuItems: SidebarMenuItem[] = [
       { title: "add_referral", href: "/teacher/discipline/add-referral", icon: Plus },
       { title: "referrals", href: "/teacher/discipline/referrals", icon: ClipboardList },
     ],
+  },
+  {
+    title: "performance_efficiency",
+    href: "/teacher/performance",
+    icon: BarChart3,
   },
   {
     title: "accounting",

@@ -7,6 +7,7 @@ import { Spinner } from '@/components/ui/spinner'
 import Link from 'next/link'
 import { useMemo } from 'react'
 import { useSuperAdminDashboard } from '@/hooks/useSuperAdminDashboard'
+import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 import {
   AreaChart,
   Area,
@@ -48,14 +49,7 @@ export default function SuperAdminDashboard() {
     isValidating
   } = useSuperAdminDashboard()
 
-  const formatCurrency = (amount: number) => {
-    if (amount >= 1000000) {
-      return `$${(amount / 1000000).toFixed(1)}M`
-    } else if (amount >= 1000) {
-      return `$${(amount / 1000).toFixed(0)}K`
-    }
-    return `$${amount}`
-  }
+  const { formatCurrency, currencySymbol } = usePlatformSettings()
 
   // Calculate percentage changes from growth data
   const calculateGrowth = (current: number, previous: number): { change: string; trend: 'up' | 'down' } => {
@@ -259,11 +253,11 @@ export default function SuperAdminDashboard() {
                   axisLine={false}
                   tickLine={false}
                   tick={{ fill: '#6b7280', fontSize: 12 }}
-                  tickFormatter={(value) => `$${value / 1000}k`}
+                  tickFormatter={(value) => `${currencySymbol}${value / 1000}k`}
                 />
-                <ChartTooltip 
+                <ChartTooltip
                   content={<ChartTooltipContent />}
-                  formatter={(value: number) => [`$${value.toLocaleString()}`, 'Revenue']}
+                  formatter={(value: number) => [`${currencySymbol}${value.toLocaleString()}`, 'Revenue']}
                 />
                 <Bar 
                   dataKey="revenue" 

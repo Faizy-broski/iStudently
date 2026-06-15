@@ -16,4 +16,8 @@ router.get('/school-growth', (req, res) => dashboardController.getSchoolGrowth(r
 router.get('/revenue', (req, res) => dashboardController.getRevenue(req, res))
 router.get('/recent-schools', (req, res) => dashboardController.getRecentSchools(req, res))
 
+// Platform settings
+router.get('/platform-settings', (req, res) => dashboardController.getPlatformSettings(req, res))
+router.put('/platform-settings', (req, res) => dashboardController.updatePlatformSettings(req, res))
+
 export default router

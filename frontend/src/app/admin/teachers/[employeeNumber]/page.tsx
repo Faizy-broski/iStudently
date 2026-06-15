@@ -27,6 +27,10 @@ import {
   Clock,
   BookOpen,
   LucideIcon,
+  BarChart3,
+  TrendingDown,
+  TrendingUp,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useProfileView } from "@/context/ProfileViewContext";
@@ -37,6 +41,7 @@ import { useTeachers } from "@/hooks/useTeachers";
 import { getLastLogin } from "@/lib/api/auth";
 import { format } from "date-fns";
 import { useTranslations } from "next-intl";
+import { getStaffScore, getLogs, type PerformanceScore, type StaffPerformanceLog } from "@/lib/api/performance";
 
 // Helper to format dates
 const formatDate = (dateString: string | null | undefined, notProvidedLabel: string) => {
@@ -93,6 +98,9 @@ export default function TeacherDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [lastLogin, setLastLogin] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("personal");
+  const [perfScore, setPerfScore] = useState<PerformanceScore | null>(null);
+  const [perfLogs,  setPerfLogs]  = useState<StaffPerformanceLog[]>([]);
+  const [perfLoading, setPerfLoading] = useState(false);
 
   // Fetch all teachers for navigation
   const { teachers, total, loading: teachersLoading } = useTeachers(1, 1000);
@@ -142,6 +150,19 @@ export default function TeacherDetailsPage() {
       clearViewedProfile();
     };
   }, [employeeNumber, teachers, setViewedProfile, clearViewedProfile]);
+
+  // Fetch performance data when Performance tab is active
+  useEffect(() => {
+    if (activeTab !== "performance" || !currentTeacher?.id) return;
+    setPerfLoading(true);
+    Promise.all([
+      getStaffScore(currentTeacher.id),
+      getLogs({ staffId: currentTeacher.id, limit: 50 }),
+    ]).then(([score, logsResult]) => {
+      setPerfScore(score);
+      setPerfLogs(logsResult.data);
+    }).catch(() => {}).finally(() => setPerfLoading(false));
+  }, [activeTab, currentTeacher?.id]);
 
   // Navigate using employee_number for readable URLs
   const navigateToTeacher = (teacher: Staff) => {
@@ -299,7 +320,7 @@ export default function TeacherDetailsPage() {
 
       {/* Detailed Information Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
           <TabsTrigger value="personal" className="gap-2">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">{t("tabs.personal")}</span>
@@ -315,6 +336,10 @@ export default function TeacherDetailsPage() {
           <TabsTrigger value="qualifications" className="gap-2">
             <GraduationCap className="h-4 w-4" />
             <span className="hidden sm:inline">{t("tabs.qualifications")}</span>
+          </TabsTrigger>
+          <TabsTrigger value="performance" className="gap-2">
+            <BarChart3 className="h-4 w-4" />
+            <span className="hidden sm:inline">Performance</span>
           </TabsTrigger>
           <TabsTrigger value="system" className="gap-2">
             <Settings className="h-4 w-4" />
@@ -434,6 +459,141 @@ export default function TeacherDetailsPage() {
             <p className="text-sm text-muted-foreground text-center py-8">
               {t("profileIdNotAvailable")}
             </p>
+          )}
+        </TabsContent>
+
+        {/* Performance Tab */}
+        <TabsContent value="performance" className="mt-6">
+          {perfLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {perfScore && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <Card className="flex flex-col items-center justify-center py-6 col-span-1">
+                    <CardContent className="flex flex-col items-center gap-3">
+                      <div className="relative h-28 w-28">
+                        <svg viewBox="0 0 100 100" className="-rotate-90">
+                          <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" strokeWidth="12" />
+                          <circle
+                            cx="50" cy="50" r="40" fill="none"
+                            stroke={perfScore.score >= 80 ? "#16a34a" : perfScore.score >= 60 ? "#d97706" : "#dc2626"}
+                            strokeWidth="12"
+                            strokeDasharray={`${(perfScore.score / 100) * 251.2} 251.2`}
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className="text-2xl font-bold">{perfScore.score}</span>
+                          <span className="text-xs text-muted-foreground">/ 100</span>
+                        </div>
+                      </div>
+                      <p className={`text-sm font-semibold ${perfScore.score >= 80 ? "text-green-600" : perfScore.score >= 60 ? "text-amber-600" : "text-red-600"}`}>
+                        {perfScore.score >= 80 ? "Excellent" : perfScore.score >= 60 ? "Good" : "Needs Improvement"}
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card className="col-span-1">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center gap-2 mb-1">
+                        <TrendingDown className="h-4 w-4 text-red-500" />
+                        <span className="text-sm text-muted-foreground">Total Demerit</span>
+                      </div>
+                      <p className="text-2xl font-bold text-red-600">-{perfScore.total_demerit}</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="col-span-1">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center gap-2 mb-1">
+                        <TrendingUp className="h-4 w-4 text-green-500" />
+                        <span className="text-sm text-muted-foreground">Total Redemption</span>
+                      </div>
+                      <p className="text-2xl font-bold text-green-600">+{perfScore.total_redemption}</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="col-span-1">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center gap-2 mb-1">
+                        <BarChart3 className="h-4 w-4 text-blue-500" />
+                        <span className="text-sm text-muted-foreground">Total Incidents</span>
+                      </div>
+                      <p className="text-2xl font-bold text-blue-600">{perfScore.log_count}</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">Incident Log</CardTitle>
+                    <button
+                      className="text-sm text-[#022172] hover:underline"
+                      onClick={() => router.push(`/admin/performance?staff=${currentTeacher?.id}`)}
+                    >
+                      View all →
+                    </button>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left px-4 py-2 text-muted-foreground font-medium">Date</th>
+                        <th className="text-left px-4 py-2 text-muted-foreground font-medium">Action</th>
+                        <th className="text-center px-4 py-2 text-muted-foreground font-medium">Type</th>
+                        <th className="text-center px-4 py-2 text-muted-foreground font-medium">Pts</th>
+                        <th className="text-left px-4 py-2 text-muted-foreground font-medium">Notes</th>
+                        <th className="px-4 py-2" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {perfLogs.map(log => {
+                        const pts = log.custom_points ?? log.action?.default_points ?? 0;
+                        const isDemerit = log.action?.action_type === "violation_demerit";
+                        return (
+                          <tr key={log.id} className="border-b hover:bg-muted/30">
+                            <td className="px-4 py-2 whitespace-nowrap text-muted-foreground">
+                              {log.created_at ? format(new Date(log.created_at), "MMM d, yyyy") : "—"}
+                            </td>
+                            <td className="px-4 py-2">
+                              <p className="font-medium">{log.action?.action_name_en}</p>
+                              <p className="text-xs text-muted-foreground" dir="rtl">{log.action?.action_name_ar}</p>
+                            </td>
+                            <td className="px-4 py-2 text-center">
+                              <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${isDemerit ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
+                                {isDemerit ? <TrendingDown className="h-3 w-3" /> : <TrendingUp className="h-3 w-3" />}
+                                {isDemerit ? "Violation" : "Reward"}
+                              </span>
+                            </td>
+                            <td className={`px-4 py-2 text-center font-semibold ${isDemerit ? "text-red-600" : "text-green-600"}`}>
+                              {isDemerit ? pts : `+${pts}`}
+                            </td>
+                            <td className="px-4 py-2 text-muted-foreground max-w-xs truncate">
+                              {log.notes || "—"}
+                            </td>
+                            <td className="px-4 py-2">
+                              {log.letter_generated && (
+                                <FileText className="h-4 w-4 text-orange-500" title="Disciplinary letter" />
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {perfLogs.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="text-center py-10 text-muted-foreground">
+                            No incidents recorded
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+            </div>
           )}
         </TabsContent>
 

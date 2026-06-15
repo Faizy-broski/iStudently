@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import {
   GripVertical, Plus, Pencil, Trash2, ExternalLink,
   Loader2, Globe, Link2, AlignLeft, Image as ImageIcon, Code2,
+  Upload, X as XIcon,
 } from 'lucide-react'
 import {
   DndContext,
@@ -205,6 +206,9 @@ function FormDialog({
   const [imageUrl, setImageUrl] = React.useState('')
   const [isActive, setIsActive] = React.useState(true)
   const [urlError, setUrlError] = React.useState('')
+  const [uploading, setUploading] = React.useState(false)
+  const [uploadError, setUploadError] = React.useState('')
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   React.useEffect(() => {
     if (open) {
@@ -215,8 +219,39 @@ function FormDialog({
       setImageUrl(initial?.image_url ?? '')
       setIsActive(initial?.isActive ?? true)
       setUrlError('')
+      setUploadError('')
     }
   }, [open, initial])
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadError('')
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const { getAuthToken } = await import('@/lib/api/schools')
+      const token = await getAuthToken()
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/media/upload-image`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+      const data = await res.json()
+      if (data.success) {
+        setImageUrl(data.data.url)
+        setUrlError('')
+      } else {
+        setUploadError(data.error ?? 'Upload failed')
+      }
+    } catch {
+      setUploadError('Upload failed. Please try again.')
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
 
   const validateUrl = (val: string) => {
     try { new URL(val); return '' } catch { return 'Please enter a valid URL (e.g. https://example.com)' }
@@ -344,32 +379,83 @@ function FormDialog({
           {/* Image URL — for image/poster */}
           {pageType === 'image' && (
             <div className="space-y-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="page-image">Image / Poster URL *</Label>
-                <Input
-                  id="page-image"
-                  value={imageUrl}
-                  onChange={(e) => { setImageUrl(e.target.value); setUrlError('') }}
-                  placeholder="https://example.com/poster.jpg"
-                  required
-                  disabled={saving}
+              {/* Upload area */}
+              <div>
+                <Label className="mb-1.5 block">Image / Poster *</Label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                  disabled={saving || uploading}
                 />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={saving || uploading}
+                  className="w-full flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-lg py-6 hover:border-brand-blue hover:bg-brand-blue/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">Uploading…</p>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-6 w-6 text-muted-foreground" />
+                      <p className="text-sm font-medium">Click to upload from device</p>
+                      <p className="text-[11px] text-muted-foreground">JPG, PNG, WebP, GIF · max 10 MB</p>
+                    </>
+                  )}
+                </button>
+                {uploadError && <p className="text-xs text-destructive mt-1">{uploadError}</p>}
+              </div>
+
+              {/* Divider */}
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-[11px] text-muted-foreground">or paste URL</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+
+              {/* URL input */}
+              <div className="space-y-1.5">
+                <div className="flex gap-2">
+                  <Input
+                    id="page-image"
+                    value={imageUrl}
+                    onChange={(e) => { setImageUrl(e.target.value); setUrlError('') }}
+                    placeholder="https://example.com/poster.jpg"
+                    disabled={saving || uploading}
+                    className="flex-1"
+                  />
+                  {imageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setImageUrl('')}
+                      className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                      title="Clear"
+                    >
+                      <XIcon className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
                 {urlError && <p className="text-xs text-destructive">{urlError}</p>}
               </div>
+
+              {/* Preview */}
               {imageUrl && (
-                <div className="rounded-lg border overflow-hidden bg-muted max-h-48">
+                <div className="rounded-lg border overflow-hidden bg-muted">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={imageUrl}
                     alt="Preview"
-                    className="w-full h-full object-contain max-h-48"
+                    className="w-full object-contain max-h-52"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
                   />
                 </div>
               )}
-              <p className="text-[11px] text-muted-foreground">
-                Use a direct image URL (JPG, PNG, WebP, GIF). Upload to any image host first if needed.
-              </p>
             </div>
           )}
 
@@ -395,7 +481,7 @@ function FormDialog({
             </Button>
             <Button
               type="submit"
-              disabled={saving || !isValid}
+              disabled={saving || uploading || !isValid}
               className="gradient-blue text-white border-0"
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin me-2" />}

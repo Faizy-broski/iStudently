@@ -434,10 +434,11 @@ export class SchoolService {
    * Get school statistics
    */
   async getSchoolStats(schoolId?: string): Promise<SchoolStats> {
-    // Total schools
+    // Total schools (exclude campuses which have a parent_school_id)
     let totalQuery = supabase
       .from('schools')
       .select('*', { count: 'exact', head: true })
+      .is('parent_school_id', null)
 
     if (schoolId) {
       totalQuery = totalQuery.eq('id', schoolId)
@@ -445,10 +446,11 @@ export class SchoolService {
 
     const { count: totalSchools } = await totalQuery
 
-    // Active schools
+    // Active schools (exclude campuses)
     let activeQuery = supabase
       .from('schools')
       .select('*', { count: 'exact', head: true })
+      .is('parent_school_id', null)
       .eq('status', 'active')
 
     if (schoolId) {

@@ -19,6 +19,7 @@ import {
 import ConfirmationDialog from "@/components/super-admin/ConfirmationDialog";
 import BillingPlanFormModal from "@/components/super-admin/BillingPlanFormModal";
 import { billingPlansApi, BillingPlan } from "@/lib/api/billing";
+import { usePlatformSettings } from "@/hooks/usePlatformSettings";
 
 export default function BillingPlansPage() {
   const [plans, setPlans] = useState<BillingPlan[]>([]);
@@ -29,6 +30,7 @@ export default function BillingPlansPage() {
   const [editingPlan, setEditingPlan] = useState<BillingPlan | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<BillingPlan | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const { currencySymbol } = usePlatformSettings();
 
   useEffect(() => {
     // Only fetch on initial mount, not on every remount
@@ -183,7 +185,7 @@ export default function BillingPlansPage() {
               <DollarSign className="h-8 w-8 text-white/80" />
             </div>
             <div className="text-3xl font-bold">
-              ${plans.length > 0 ? Math.min(...plans.map(p => p.monthly_price)) : 0}
+              {currencySymbol}{plans.length > 0 ? Math.min(...plans.map(p => p.monthly_price)) : 0}
             </div>
             <p className="text-white/80 text-sm mt-1">Starting From (Monthly)</p>
           </CardContent>
@@ -253,13 +255,13 @@ export default function BillingPlansPage() {
                         {plan.description || "—"}
                       </TableCell>
                       <TableCell className="font-bold text-green-600">
-                        ${plan.monthly_price}
+                        {currencySymbol}{plan.monthly_price}
                       </TableCell>
                       <TableCell className="font-bold text-green-600">
-                        ${plan.quarterly_price}
+                        {currencySymbol}{plan.quarterly_price}
                       </TableCell>
                       <TableCell className="font-bold text-green-600">
-                        ${plan.yearly_price}
+                        {currencySymbol}{plan.yearly_price}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">

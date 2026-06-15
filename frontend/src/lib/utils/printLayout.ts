@@ -620,7 +620,7 @@ window.addEventListener('DOMContentLoaded', function() {
 
     var headerEl = document.querySelector('.pdf-header');
     var footerEl = document.querySelector('.pdf-footer');
-    var pageEls  = Array.from(document.querySelectorAll('.class-page, .schedule-page, .statement-page, .print-page'));
+    var pageEls  = Array.from(document.querySelectorAll('.class-page, .schedule-page, .statement-page, .print-page, .invoice, .receipt'));
     if (pageEls.length === 0) {
       pageEls = [document.querySelector('.print-body-content') || document.body];
     }

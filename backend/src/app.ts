@@ -61,6 +61,7 @@ import disciplineRoutes from "./routes/discipline.routes";
 import activitiesRoutes from "./routes/activities.routes";
 import staffAbsencesRoutes from "./routes/staff-absences.routes";
 import humanResourcesRoutes from "./routes/human-resources.routes";
+import performanceRoutes from "./routes/performance.routes";
 import quizRoutes from "./routes/quiz.routes";
 import icalRoutes from "./routes/ical.routes";
 import publicPagesRoutes from "./routes/public-pages.routes";
@@ -79,6 +80,7 @@ import pendingSignupsRoutes from "./routes/pending-signups.routes";
 import publicSignupRoutes from "./routes/public-signup.routes";
 import credentialsRoutes from "./routes/credentials.routes";
 import withdrawalAnalyticsRoutes from "./routes/withdrawal-analytics.routes";
+import advancedReportRoutes from "./routes/advanced-report.routes";
 
 const app = express();
 
@@ -289,6 +291,7 @@ registerRoutes("/public-signup", publicSignupRoutes);
 registerRoutes("/credentials", credentialsRoutes);
 registerRoutes("/analytics/withdrawal", withdrawalAnalyticsRoutes);
 registerRoutes("/attendance-calendars", attendanceCalendarsRoutes);
+registerRoutes("/advanced-report", advancedReportRoutes);
 
 // Grades module routes
 registerRoutes("/grading-scales", gradingScalesRoutes);
@@ -311,6 +314,7 @@ registerRoutes("/", disciplineRoutes);
 registerRoutes("/", activitiesRoutes);
 registerRoutes("/staff-absences", staffAbsencesRoutes);
 registerRoutes("/human-resources", humanResourcesRoutes);
+registerRoutes("/performance", performanceRoutes);
 registerRoutes("/quiz", quizRoutes);
 
 // 404 handler

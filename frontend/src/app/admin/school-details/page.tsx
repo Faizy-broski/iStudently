@@ -514,7 +514,7 @@ export default function SchoolDetailsPage() {
                   <p className="text-3xl font-bold my-1">{stats?.present_today ?? 0}</p>
                   <div className="border-t border-white/30 pt-2 mt-1">
                     <p className="text-xs opacity-90">
-                      {t("attendance_percentage")}: {stats?.attendance_percentage_today ?? 0}%
+                      {t("attendance_percentage")}: {stats ? parseFloat(stats.attendance_percentage_today.toFixed(1)) : 0}%
                     </p>
                   </div>
                 </div>
