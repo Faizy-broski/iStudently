@@ -4,7 +4,7 @@
  * Reusable TipTap rich-text editor with full toolbar.
  * Mirrors the editor used in PDF Header / Footer settings.
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
@@ -328,6 +328,8 @@ interface RichTextEditorProps {
 }
 
 export function RichTextEditor({ value, onChange, campusId, showEditorPlugins }: RichTextEditorProps) {
+  const isMounted = useRef(false)
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -348,8 +350,15 @@ export function RichTextEditor({ value, onChange, campusId, showEditorPlugins }:
     },
   })
 
-  // Sync external value changes (e.g. after load from API)
+  // Sync external value changes (e.g. after load from API).
+  // Skip the very first run — the editor is already initialised with `value`
+  // from the `content` option above, so calling setContent immediately would
+  // trigger a redundant re-render that can swallow sibling button clicks.
   useEffect(() => {
+    if (!isMounted.current) {
+      isMounted.current = true
+      return
+    }
     if (editor && value !== editor.getHTML()) {
       editor.commands.setContent(value || '', false)
     }
