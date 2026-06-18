@@ -16,8 +16,9 @@ import {
   AlignLeft, AlignCenter, AlignRight, Bold, Italic,
   Type, ImageIcon, Palette, Ruler,
   Users, GraduationCap, BookOpen, UserCheck, UserCircle, Settings,
-  FileText, Layers,
+  FileText, Layers, QrCode,
 } from 'lucide-react'
+import QRCode from 'react-qr-code'
 import { getStudents } from '@/lib/api/students'
 import { getAllTeachers } from '@/lib/api/teachers'
 import { getAllStaff } from '@/lib/api/staff'
@@ -224,7 +225,7 @@ const CARD_PRESETS: { label: string; width: number; height: number; unit: Unit }
 
 // ─── Token Definitions ────────────────────────────────────────────────────────
 
-const TOKENS: Record<UserType, Record<string, { label: string; category: string; isImage?: boolean }>> = {
+const TOKENS: Record<UserType, Record<string, { label: string; category: string; isImage?: boolean; isQR?: boolean; isCustomText?: boolean }>> = {
   student: {
     '{{photo_url}}': { label: 'Photo', category: 'Basic', isImage: true },
     '{{school_logo}}': { label: 'School Logo', category: 'Basic', isImage: true },
@@ -253,6 +254,8 @@ const TOKENS: Record<UserType, Record<string, { label: string; category: string;
     '{{valid_until}}': { label: 'Valid Until', category: 'Validity' },
     '{{issue_date}}': { label: 'Issue Date', category: 'Validity' },
     '{{current_date}}': { label: 'Today Date', category: 'Validity' },
+    '{{custom_text}}': { label: 'Free Text Line', category: 'Decoration', isCustomText: true },
+    '{{qr_code}}': { label: 'QR Code', category: 'QR Code', isQR: true },
   },
   teacher: {
     '{{photo_url}}': { label: 'Photo', category: 'Basic', isImage: true },
@@ -278,6 +281,8 @@ const TOKENS: Record<UserType, Record<string, { label: string; category: string;
     '{{school_name}}': { label: 'School Name', category: 'School' },
     '{{valid_until}}': { label: 'Valid Until', category: 'Validity' },
     '{{issue_date}}': { label: 'Issue Date', category: 'Validity' },
+    '{{custom_text}}': { label: 'Free Text Line', category: 'Decoration', isCustomText: true },
+    '{{qr_code}}': { label: 'QR Code', category: 'QR Code', isQR: true },
   },
   staff: {
     '{{photo_url}}': { label: 'Photo', category: 'Basic', isImage: true },
@@ -301,6 +306,8 @@ const TOKENS: Record<UserType, Record<string, { label: string; category: string;
     '{{school_name}}': { label: 'School Name', category: 'School' },
     '{{valid_until}}': { label: 'Valid Until', category: 'Validity' },
     '{{issue_date}}': { label: 'Issue Date', category: 'Validity' },
+    '{{custom_text}}': { label: 'Free Text Line', category: 'Decoration', isCustomText: true },
+    '{{qr_code}}': { label: 'QR Code', category: 'QR Code', isQR: true },
   },
   librarian: {
     '{{photo_url}}': { label: 'Photo', category: 'Basic', isImage: true },
@@ -320,6 +327,8 @@ const TOKENS: Record<UserType, Record<string, { label: string; category: string;
     '{{school_name}}': { label: 'School Name', category: 'School' },
     '{{valid_until}}': { label: 'Valid Until', category: 'Validity' },
     '{{issue_date}}': { label: 'Issue Date', category: 'Validity' },
+    '{{custom_text}}': { label: 'Free Text Line', category: 'Decoration', isCustomText: true },
+    '{{qr_code}}': { label: 'QR Code', category: 'QR Code', isQR: true },
   },
   parent: {
     '{{photo_url}}': { label: 'Photo', category: 'Basic', isImage: true },
@@ -340,6 +349,8 @@ const TOKENS: Record<UserType, Record<string, { label: string; category: string;
     '{{school_name}}': { label: 'School Name', category: 'School' },
     '{{valid_until}}': { label: 'Valid Until', category: 'Validity' },
     '{{issue_date}}': { label: 'Issue Date', category: 'Validity' },
+    '{{custom_text}}': { label: 'Free Text Line', category: 'Decoration', isCustomText: true },
+    '{{qr_code}}': { label: 'QR Code', category: 'QR Code', isQR: true },
   },
 }
 
@@ -396,11 +407,11 @@ function uniqueId() {
   return Math.random().toString(36).slice(2, 9)
 }
 
-function groupTokens(tokens: Record<string, { label: string; category: string; isImage?: boolean }>) {
-  const groups: Record<string, { token: string; label: string; isImage?: boolean }[]> = {}
+function groupTokens(tokens: Record<string, { label: string; category: string; isImage?: boolean; isQR?: boolean; isCustomText?: boolean }>) {
+  const groups: Record<string, { token: string; label: string; isImage?: boolean; isQR?: boolean; isCustomText?: boolean }[]> = {}
   for (const [token, meta] of Object.entries(tokens)) {
     if (!groups[meta.category]) groups[meta.category] = []
-    groups[meta.category].push({ token, label: meta.label, isImage: meta.isImage })
+    groups[meta.category].push({ token, label: meta.label, isImage: meta.isImage, isQR: meta.isQR, isCustomText: meta.isCustomText })
   }
   return groups
 }
@@ -507,11 +518,13 @@ function CanvasField({
   }
 
   const isImage = field.type === 'image'
+  const isQRField = field.type === 'qrcode'
 
   return (
     <div
       id={`field-${field.id}`}
       onMouseDown={handleMouseDown}
+      onClick={(e) => e.stopPropagation()}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -595,6 +608,10 @@ function CanvasField({
           style={{ fontSize: field.fontSize * scale * 0.6 }}>
           <ImageIcon style={{ width: field.height * scale * 0.4, height: field.height * scale * 0.4 }} />
         </div>
+      ) : isQRField ? (
+        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', borderRadius: field.borderRadius, padding: 4 }}>
+          <QrCode style={{ width: '80%', height: '80%', color: '#374151' }} />
+        </div>
       ) : field.type === 'labeled' ? (
         // Two-line label+value box (designer shows placeholder value)
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, padding: '2px 4px', boxSizing: 'border-box' }}>
@@ -657,6 +674,12 @@ export default function IdCardDesignerPage() {
   const [mobilePanel, setMobilePanel] = useState<'fields' | 'canvas' | 'style'>('canvas')
   const [printListOpen, setPrintListOpen] = useState(true)
 
+  // ── Templates ──
+  const [templateName, setTemplateName] = useState('')
+  const [savedTemplates, setSavedTemplates] = useState<{ name: string; userType: UserType; fields: DesignField[]; bgColor: string; bgGradient: string; borderColor: string; cardThemeId: string; borderWidth: number; borderRadius: number; dims: CardDimensions }[]>(() => {
+    try { return JSON.parse(localStorage.getItem('id_card_templates') ?? '[]') } catch { return [] }
+  })
+
   // ── Canvas auto-scale based on container width ──
   const canvasContainerRef = useRef<HTMLDivElement>(null)
   const [containerW, setContainerW] = useState(0)
@@ -713,6 +736,7 @@ export default function IdCardDesignerPage() {
       case '{{parent_phone}}':      return p('parent_phone')
       case '{{children_names}}':    return p('children_names')
       case '{{children_grades}}':   return p('children_grades')
+      case '{{qr_code}}':           return u.student_number ?? u.employee_number ?? u.id ?? ''
       default:                      return ''
     }
   }
@@ -772,60 +796,64 @@ export default function IdCardDesignerPage() {
   const addField = (token: string) => {
     const meta = TOKENS[userType][token]
     const isImage = meta?.isImage ?? false
+    const isQR = meta?.isQR ?? false
+    const isCustomText = meta?.isCustomText ?? false
     // Info-box style for tokens that carry data values (not name/logo/school text)
-    const plainCategories = ['Basic', 'School']
-    const isLabeled = !isImage && !plainCategories.includes(meta?.category ?? '')
+    const plainCategories = ['Basic', 'School', 'Decoration']
+    const isLabeled = !isImage && !isQR && !isCustomText && !plainCategories.includes(meta?.category ?? '')
 
-    const fw = isImage ? 60 : 92
-    const fh = isImage ? 70 : isLabeled ? 30 : 22
-
-    // Smart placement: for half-width labeled fields, try to fill an empty column slot
-    // beside an existing half-width field before falling back to below-all placement.
-    const halfW = cardWidthPx / 2          // ~102 for 204px card
-    const colL = 8                          // left column x
-    const colR = Math.round(halfW + 2)      // right column x (~104)
-    const isHalfWidth = fw <= halfW - 4     // labeled fields are 92px ≤ 98px
+    const fw = isImage ? 60 : isQR ? 56 : 92
+    const fh = isImage ? 70 : isQR ? 56 : isLabeled ? 30 : 22
 
     let bestX = Math.round((cardWidthPx - fw) / 2)
     let bestY = fields.reduce((m, f) => Math.max(m, f.y + f.height), 0)
     bestY = Math.max(10, Math.min(bestY + 6, cardHeightPx - fh - 8))
 
-    if (isHalfWidth) {
-      // Scan existing rows (group fields by approximate Y band, ±6px)
-      const rows: { y: number; fields: DesignField[] }[] = []
-      for (const f of fields) {
-        const row = rows.find(r => Math.abs(r.y - f.y) <= 8)
-        if (row) row.fields.push(f)
-        else rows.push({ y: f.y, fields: [f] })
-      }
-      // Find the last row that has a half-width field on only one side
-      const candidateRow = [...rows].reverse().find(row => {
-        const halfFields = row.fields.filter(f => f.width <= halfW - 4)
-        if (halfFields.length !== 1) return false
-        const f = halfFields[0]
-        const onLeft  = f.x < halfW
-        const onRight = f.x >= halfW - 4
-        // There must be no other field occupying the opposite side
-        const oppX = onLeft ? colR : colL
-        return !row.fields.some(f2 => Math.abs(f2.x - oppX) < 20 && f2.id !== f.id)
-      })
+    // QR code: always place at card center — skip column-pairing logic
+    if (isQR) {
+      bestX = Math.round((cardWidthPx - fw) / 2)
+      bestY = Math.round((cardHeightPx - fh) / 2)
+    }
 
-      if (candidateRow) {
-        const occupiedField = candidateRow.fields.find(f => f.width <= halfW - 4)!
-        const onLeft = occupiedField.x < halfW
-        bestX = onLeft ? colR : colL
-        bestY = candidateRow.y
-      } else {
-        // No partial row — start a new row with left-column alignment
-        bestX = colL
+    if (!isQR) {
+      // Smart placement: for half-width labeled fields, try to fill an empty column slot
+      const halfW = cardWidthPx / 2
+      const colL = 8
+      const colR = Math.round(halfW + 2)
+      const isHalfWidth = fw <= halfW - 4
+
+      if (isHalfWidth) {
+        const rows: { y: number; fields: DesignField[] }[] = []
+        for (const f of fields) {
+          const row = rows.find(r => Math.abs(r.y - f.y) <= 8)
+          if (row) row.fields.push(f)
+          else rows.push({ y: f.y, fields: [f] })
+        }
+        const candidateRow = [...rows].reverse().find(row => {
+          const halfFields = row.fields.filter(f => f.width <= halfW - 4)
+          if (halfFields.length !== 1) return false
+          const f = halfFields[0]
+          const onLeft  = f.x < halfW
+          const oppX = onLeft ? colR : colL
+          return !row.fields.some(f2 => Math.abs(f2.x - oppX) < 20 && f2.id !== f.id)
+        })
+
+        if (candidateRow) {
+          const occupiedField = candidateRow.fields.find(f => f.width <= halfW - 4)!
+          const onLeft = occupiedField.x < halfW
+          bestX = onLeft ? colR : colL
+          bestY = candidateRow.y
+        } else {
+          bestX = colL
+        }
       }
     }
 
     const newField: DesignField = {
       id: uniqueId(),
       token,
-      label: meta?.label ?? token,
-      type: isImage ? 'image' : isLabeled ? 'labeled' : 'text',
+      label: isCustomText ? 'Your Text Here' : (meta?.label ?? token),
+      type: isImage ? 'image' : isQR ? 'qrcode' : isLabeled ? 'labeled' : 'text',
       x: bestX,
       y: bestY,
       width: fw,
@@ -835,7 +863,7 @@ export default function IdCardDesignerPage() {
       fontStyle: 'normal',
       color: '#1f2937',
       align: 'center',
-      borderRadius: isImage ? 4 : isLabeled ? 6 : 0,
+      borderRadius: isImage ? 4 : isQR ? 4 : isLabeled ? 6 : 0,
       bgColor: isLabeled ? '#d1fae5' : 'transparent',
       opacity: 1,
     }
@@ -873,6 +901,44 @@ export default function IdCardDesignerPage() {
     if (!selectedId) return
     setFields(prev => prev.filter(f => f.id !== selectedId))
     setSelectedId(null)
+  }
+
+  // ── Template save / load ──
+  const saveTemplate = () => {
+    const name = templateName.trim()
+    if (!name) { toast.error('Enter a template name first'); return }
+    const tpl = { name, userType, fields, bgColor, bgGradient, borderColor, cardThemeId, borderWidth, borderRadius, dims }
+    setSavedTemplates(prev => {
+      const updated = prev.filter(t => t.name !== name).concat(tpl)
+      localStorage.setItem('id_card_templates', JSON.stringify(updated))
+      return updated
+    })
+    toast.success(`Template "${name}" saved`)
+  }
+
+  const loadTemplate = (name: string) => {
+    const tpl = savedTemplates.find(t => t.name === name)
+    if (!tpl) return
+    setUserType(tpl.userType)
+    setFields(tpl.fields)
+    setBgColor(tpl.bgColor)
+    setBgGradient(tpl.bgGradient)
+    setBorderColor(tpl.borderColor)
+    setCardThemeId(tpl.cardThemeId)
+    setBorderWidth(tpl.borderWidth)
+    setBorderRadius(tpl.borderRadius)
+    setDims(tpl.dims)
+    setSelectedId(null)
+    toast.success(`Template "${name}" loaded`)
+  }
+
+  const deleteTemplate = (name: string) => {
+    setSavedTemplates(prev => {
+      const updated = prev.filter(t => t.name !== name)
+      localStorage.setItem('id_card_templates', JSON.stringify(updated))
+      return updated
+    })
+    toast.success(`Template "${name}" deleted`)
   }
 
   // ── Load users for print ──
@@ -1122,13 +1188,13 @@ export default function IdCardDesignerPage() {
                       {category}
                     </p>
                     <div className="space-y-0.5">
-                      {tokens.map(({ token, label, isImage }) => (
+                      {tokens.map(({ token, label, isImage, isQR, isCustomText }) => (
                         <button
                           key={token}
                           onClick={() => addField(token)}
                           className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-primary/10 hover:text-primary flex items-center gap-1.5 transition-colors"
                         >
-                          {isImage ? <ImageIcon className="h-3 w-3 shrink-0 text-muted-foreground" /> : <Type className="h-3 w-3 shrink-0 text-muted-foreground" />}
+                          {isImage ? <ImageIcon className="h-3 w-3 shrink-0 text-muted-foreground" /> : isQR ? <QrCode className="h-3 w-3 shrink-0 text-muted-foreground" /> : isCustomText ? <FileText className="h-3 w-3 shrink-0 text-muted-foreground" /> : <Type className="h-3 w-3 shrink-0 text-muted-foreground" />}
                           {label}
                         </button>
                       ))}
@@ -1166,7 +1232,11 @@ export default function IdCardDesignerPage() {
               </div>
               {fields.map(field => {
                 const available = Object.entries(TOKENS[userType])
-                  .filter(([_, meta]) => (meta.isImage ?? false) === (field.type === 'image'))
+                  .filter(([_, meta]) => {
+                    if (field.type === 'image') return meta.isImage ?? false
+                    if (field.type === 'qrcode') return meta.isQR ?? false
+                    return !(meta.isImage ?? false) && !(meta.isQR ?? false)
+                  })
                   .map(([token, meta]) => ({ token, label: meta.label }))
 
                 return (
@@ -1184,13 +1254,15 @@ export default function IdCardDesignerPage() {
                     onReplace={(token) => {
                       const meta = TOKENS[userType][token]
                       if (meta) {
-                        setFields(prev => prev.map(f => f.id === field.id ? { ...f, token, label: meta.label } : f))
+                        const newLabel = meta.isCustomText ? 'Your Text Here' : meta.label
+                        setFields(prev => prev.map(f => f.id === field.id ? { ...f, token, label: newLabel } : f))
                       }
                     }}
                     availableTokens={available}
                   />
                 )
               })}
+
             </div>
             <p className="text-[10px] text-muted-foreground mt-3">
               Click a field to select · Drag to reposition · Use right panel to style
@@ -1400,7 +1472,7 @@ export default function IdCardDesignerPage() {
                           value={selectedField.token}
                           onValueChange={v => {
                             const meta = TOKENS[userType][v]
-                            if (meta) updateFieldBatch({ token: v, label: meta.label })
+                            if (meta) updateFieldBatch({ token: v, label: meta.isCustomText ? 'Your Text Here' : meta.label })
                           }}
                         >
                           <SelectTrigger className="flex-1 h-7 text-xs">
@@ -1408,7 +1480,11 @@ export default function IdCardDesignerPage() {
                           </SelectTrigger>
                           <SelectContent>
                             {Object.entries(TOKENS[userType])
-                              .filter(([_, meta]) => (meta.isImage ?? false) === (selectedField.type === 'image'))
+                              .filter(([_, meta]) => {
+                                if (selectedField.type === 'image') return meta.isImage ?? false
+                                if (selectedField.type === 'qrcode') return meta.isQR ?? false
+                                return !(meta.isImage ?? false) && !(meta.isQR ?? false)
+                              })
                               .map(([token, meta]) => (
                                 <SelectItem key={token} value={token} className="text-xs">
                                   <span className="text-muted-foreground text-[9px] mr-1">[{meta.category}]</span> {meta.label}
@@ -1419,8 +1495,21 @@ export default function IdCardDesignerPage() {
                         </Select>
                       </div>
 
+                      {/* Free text content editor — only for custom_text fields */}
+                      {selectedField.token === '{{custom_text}}' && (
+                        <div className="flex items-center gap-2">
+                          <Label className="text-[10px] w-16 shrink-0">Text</Label>
+                          <Input
+                            value={selectedField.label}
+                            onChange={e => updateField('label', e.target.value)}
+                            placeholder="Type your text…"
+                            className="h-7 text-xs flex-1"
+                          />
+                        </div>
+                      )}
+
                       {/* Display style toggle (text vs labeled info box) */}
-                      {selectedField.type !== 'image' && selectedField.type !== 'shape' && selectedField.type !== 'qrcode' && (
+                      {selectedField.type !== 'image' && selectedField.type !== 'shape' && selectedField.type !== 'qrcode' && selectedField.token !== '{{custom_text}}' && (
                         <div className="flex items-center gap-2">
                           <Label className="text-[10px] w-16 shrink-0">Display</Label>
                           <div className="flex gap-1 flex-1">
@@ -1563,12 +1652,56 @@ export default function IdCardDesignerPage() {
                         onClick={() => setSelectedId(f.id)}
                         className={`w-full text-left text-xs px-2 py-1.5 rounded flex items-center gap-2 transition-colors ${selectedId === f.id ? 'bg-primary/10 text-primary' : 'hover:bg-muted'}`}
                       >
-                        {f.type === 'image' ? <ImageIcon className="h-3 w-3 shrink-0" /> : <Type className="h-3 w-3 shrink-0" />}
+                        {f.type === 'image' ? <ImageIcon className="h-3 w-3 shrink-0" /> : f.type === 'qrcode' ? <QrCode className="h-3 w-3 shrink-0" /> : <Type className="h-3 w-3 shrink-0" />}
                         <span className="truncate">{f.label}</span>
                         <span className="ml-auto text-[9px] text-muted-foreground font-mono truncate">{f.token.replace(/[{}]/g, '')}</span>
                       </button>
                     ))}
                   </div>
+                </div>
+
+                <Separator />
+
+                {/* Templates */}
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1">
+                    <Layers className="h-3 w-3" /> Templates
+                  </p>
+                  <div className="flex gap-1 mb-2">
+                    <Input
+                      value={templateName}
+                      onChange={e => setTemplateName(e.target.value)}
+                      placeholder="Template name…"
+                      className="h-7 text-xs flex-1"
+                    />
+                    <Button size="sm" variant="outline" className="h-7 px-2 text-xs shrink-0" onClick={saveTemplate}>
+                      Save
+                    </Button>
+                  </div>
+                  {savedTemplates.length === 0 ? (
+                    <p className="text-[10px] text-muted-foreground px-1">No templates saved yet</p>
+                  ) : (
+                    <div className="space-y-0.5">
+                      {savedTemplates.map(t => (
+                        <div key={t.name} className="flex items-center gap-1 px-1">
+                          <button
+                            onClick={() => loadTemplate(t.name)}
+                            className="flex-1 text-left text-xs py-1 hover:text-primary truncate"
+                          >
+                            {t.name}
+                            <span className="ml-1 text-[9px] text-muted-foreground">({USER_TYPE_META[t.userType]?.label})</span>
+                          </button>
+                          <button
+                            onClick={() => deleteTemplate(t.name)}
+                            className="text-destructive hover:text-destructive/80 p-0.5 shrink-0"
+                            title="Delete template"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
               </div>
@@ -1714,6 +1847,7 @@ export default function IdCardDesignerPage() {
                       {fields.map(field => {
                         const isImage = field.type === 'image'
                         const isLabeled = field.type === 'labeled'
+                        const isQRField = field.type === 'qrcode'
                         const printScale = 2
                         const boxStyle: React.CSSProperties = {
                           position: 'absolute',
@@ -1727,6 +1861,17 @@ export default function IdCardDesignerPage() {
                           overflow: 'visible',
                           boxSizing: 'border-box',
                           zIndex: 1,
+                        }
+
+                        // ── QR code type ──
+                        if (isQRField) {
+                          const qrValue = resolveToken(field.token, u) || u.id || 'N/A'
+                          const qrSize = Math.min(field.width * printScale, field.height * printScale) - 8
+                          return (
+                            <div key={field.id} style={{ ...boxStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff', padding: 4, overflow: 'hidden' }}>
+                              <QRCode value={qrValue} size={qrSize} bgColor="#ffffff" fgColor="#000000" />
+                            </div>
+                          )
                         }
 
                         // ── labeled type: header + value two-line box ──
@@ -1771,7 +1916,7 @@ export default function IdCardDesignerPage() {
                               })()
                             ) : (
                               <span style={{ width: '100%', whiteSpace: 'nowrap', overflow: 'visible' }}>
-                                {resolveToken(field.token, u)}
+                                {field.token === '{{custom_text}}' ? field.label : resolveToken(field.token, u)}
                               </span>
                             )}
                           </div>

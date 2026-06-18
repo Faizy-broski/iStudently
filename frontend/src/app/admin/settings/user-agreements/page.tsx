@@ -211,7 +211,8 @@ export default function UserAgreementsSettingsPage() {
         <Button
           onClick={handleSave}
           disabled={saving}
-          className="gap-2 bg-linear-to-r from-[#57A3CC] to-[#022172] text-white hover:opacity-90"
+          className="gap-2 text-white hover:opacity-90"
+          style={{ background: 'linear-gradient(to right, #57A3CC, #022172)' }}
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           {saving ? t('saving') : t('save_all')}
