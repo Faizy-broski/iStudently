@@ -404,6 +404,8 @@ export async function addGlobalCustomLink(
     content?: string
     image_url?: string
     isActive: boolean
+    target_roles?: string[]
+    expires_at?: string | null
   }
 ): Promise<CustomLink> {
   const schoolId = await getPrimarySchoolId()
@@ -420,6 +422,8 @@ export async function updateGlobalCustomLink(
     content: string
     image_url: string
     isActive: boolean
+    target_roles: string[]
+    expires_at: string | null
   }>
 ): Promise<CustomLink> {
   const schoolId = await getPrimarySchoolId()
