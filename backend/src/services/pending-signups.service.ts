@@ -273,6 +273,7 @@ export async function approvePendingSignup(
 
   } else if (row.role === 'student') {
     const studentNumber = `STU-${Date.now().toString().slice(-8)}`
+    const extra = (row.extra_data ?? {}) as Record<string, unknown>
 
     const { error: studentError } = await supabase
       .from('students')
@@ -280,6 +281,8 @@ export async function approvePendingSignup(
         profile_id: profileId,
         school_id: campusId,
         student_number: studentNumber,
+        ...(extra.grade_level_id ? { grade_level_id: extra.grade_level_id } : {}),
+        ...(extra.grade_level ? { grade_level: extra.grade_level } : {}),
         medical_info: {},
         custom_fields: {},
       })

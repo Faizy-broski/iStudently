@@ -7,7 +7,7 @@ export default function AdminZperiodPage() {
         src="/zperiod/index.html"
         allow="fullscreen"
         className="w-full flex-1 border-none"
-        title="Zperiod Interactive Periodic Table"
+        title="J Periodic Table"
       />
     </div>
   )

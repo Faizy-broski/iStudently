@@ -14,6 +14,7 @@ export interface SignupLink {
   created_by: string
   created_at: string
   updated_at: string
+  prefill_data: Record<string, unknown>
   // joined
   campus_name?: string | null
   creator_name?: string | null
@@ -27,6 +28,7 @@ export interface CreateSignupLinkDTO {
   maxUses: number | null
   expiresAt: Date | null
   createdBy: string
+  prefillData?: Record<string, unknown>
 }
 
 export async function generateSignupLink(dto: CreateSignupLinkDTO): Promise<SignupLink> {
@@ -40,6 +42,7 @@ export async function generateSignupLink(dto: CreateSignupLinkDTO): Promise<Sign
       max_uses: dto.maxUses,
       expires_at: dto.expiresAt?.toISOString() ?? null,
       created_by: dto.createdBy,
+      prefill_data: dto.prefillData ?? {},
     })
     .select()
     .single()

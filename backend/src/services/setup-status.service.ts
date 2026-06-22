@@ -129,7 +129,16 @@ class SetupStatusService {
     async updateCampus(campusId: string, updates: {
         name?: string
         address?: string
+        city?: string
+        state?: string
+        zip_code?: string
+        phone?: string
         contact_email?: string
+        principal_name?: string
+        short_name?: string
+        school_number?: string
+        logo_url?: string | null
+        principal_signature_url?: string | null
     }): Promise<any> {
         const { data, error } = await supabase
             .from('schools')

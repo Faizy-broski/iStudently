@@ -16,6 +16,8 @@ export interface CustomLink {
   image_url?: string
   order: number
   isActive: boolean
+  target_roles?: string[]   // empty / undefined = visible to all roles
+  expires_at?: string | null // ISO date string; null/undefined = never expires
 }
 
 export interface PublicPagesConfig {
@@ -269,6 +271,8 @@ export async function addCustomLink(
     content?: string
     image_url?: string
     isActive: boolean
+    target_roles?: string[]
+    expires_at?: string | null
   }
 ): Promise<CustomLink> {
   const { id: rowId, config } = await getRawSettingsRow(schoolId)
@@ -282,6 +286,8 @@ export async function addCustomLink(
     ...(data.image_url !== undefined ? { image_url: data.image_url.trim() } : {}),
     isActive: data.isActive,
     order: links.length,
+    target_roles: data.target_roles ?? [],
+    expires_at: data.expires_at ?? null,
   }
   config.custom_links = [...links, newLink]
   await persistConfig(schoolId, rowId, config)
@@ -298,6 +304,8 @@ export async function updateCustomLink(
     content: string
     image_url: string
     isActive: boolean
+    target_roles: string[]
+    expires_at: string | null
   }>
 ): Promise<CustomLink> {
   const { id: rowId, config } = await getRawSettingsRow(schoolId)
@@ -314,11 +322,27 @@ export async function updateCustomLink(
     ...(data.content !== undefined ? { content: data.content } : {}),
     ...(data.image_url !== undefined ? { image_url: data.image_url.trim() } : {}),
     ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+    ...(data.target_roles !== undefined ? { target_roles: data.target_roles } : {}),
+    ...(data.expires_at !== undefined ? { expires_at: data.expires_at } : {}),
   }
   links[idx] = updated
   config.custom_links = links
   await persistConfig(schoolId, rowId, config)
   return updated
+}
+
+/** Returns active, non-expired custom links visible to a given role. */
+export async function getCustomLinksForRole(role: string): Promise<CustomLink[]> {
+  const schoolId = await getPrimarySchoolId()
+  if (!schoolId) return []
+  const links = await getCustomLinks(schoolId)
+  const now = new Date()
+  return links.filter(l => {
+    if (!l.isActive) return false
+    if (l.expires_at && new Date(l.expires_at) < now) return false
+    if (!l.target_roles || l.target_roles.length === 0) return true
+    return l.target_roles.includes(role) || l.target_roles.includes('all')
+  })
 }
 
 export async function deleteCustomLink(schoolId: string, pageId: string): Promise<void> {

@@ -77,7 +77,11 @@ function studentName(r: DisciplineReferral): string {
     const name = parts.join(" ").trim();
     return name || r.students.student_number;
   }
-  return r.student_id;
+  if (r.staff?.profile) {
+    const { first_name, last_name } = r.staff.profile;
+    return `${first_name ?? ''} ${last_name ?? ''}`.trim() || r.staff.employee_number;
+  }
+  return r.student_id ?? r.staff_id ?? '—';
 }
 
 // ---------------------------------------------------------------------------
@@ -383,9 +387,12 @@ export default function DisciplineReferralsPage() {
                             <p className="font-medium text-sm">
                               {studentName(referral)}
                             </p>
-                            {referral.students?.student_number && (
+                            {(referral.students?.student_number || referral.staff?.employee_number) && (
                               <p className="text-xs text-muted-foreground">
-                                {referral.students.student_number}
+                                {referral.students?.student_number ?? referral.staff?.employee_number}
+                                {referral.person_type && referral.person_type !== 'student' && (
+                                  <span className="ml-1 capitalize">· {referral.person_type}</span>
+                                )}
                               </p>
                             )}
                           </div>

@@ -38,6 +38,7 @@ export interface StaffPerformanceLog {
   staff?: {
     id: string
     employee_number: string
+    role?: string | null
     profiles?: { first_name: string; last_name: string; profile_photo_url?: string | null }
   }
 }

@@ -94,7 +94,7 @@ export async function getLogs(params: {
     .select(`
       *,
       action:performance_actions_lookup(*),
-      staff:staff(id, employee_number, profiles:profiles!staff_profile_id_fkey(first_name, last_name, profile_photo_url))
+      staff:staff(id, employee_number, role, profiles:profiles!staff_profile_id_fkey(first_name, last_name, profile_photo_url))
     `, { count: 'exact' })
     .eq('school_id', schoolId)
     .order('created_at', { ascending: false })
@@ -115,7 +115,7 @@ export async function getLogById(id: string): Promise<StaffPerformanceLog | null
     .select(`
       *,
       action:performance_actions_lookup(*),
-      staff:staff(id, employee_number, profiles:profiles!staff_profile_id_fkey(first_name, last_name, profile_photo_url))
+      staff:staff(id, employee_number, role, profiles:profiles!staff_profile_id_fkey(first_name, last_name, profile_photo_url))
     `)
     .eq('id', id)
     .maybeSingle()

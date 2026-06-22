@@ -57,6 +57,7 @@ import {
   Globe,
   FlaskConical,
   Table2,
+  Mic,
   type LucideIcon,
 } from "lucide-react";
 import { UserRole } from "@/types";
@@ -497,6 +498,7 @@ const teacherMenuItems: SidebarMenuItem[] = [
     icon: School,
     subItems: [
       { title: "school_information", href: "/teacher/school-information", icon: Building2 },
+      { title: "school_pages", href: "/teacher/school-pages", icon: Globe },
       { title: "calendar", href: "/teacher/events", icon: Calendar },
       { title: "marking_periods", href: "/teacher/marking-periods", icon: Layers },
       { title: "periods", href: "/teacher/periods", icon: Clock },
@@ -634,6 +636,7 @@ const teacherMenuItems: SidebarMenuItem[] = [
       { title: "submissions", href: "/teacher/submissions", icon: CheckSquare },
       { title: "exams_grading", href: "/teacher/exams", icon: Award },
       { title: "quizzes", href: "/teacher/quiz", icon: HelpCircle },
+      { title: "reading_logs", href: "/teacher/reading-logs", icon: Mic },
     ],
   },
   { title: "id_card", href: "/teacher/id-card", icon: CreditCard },
@@ -650,6 +653,7 @@ const studentMenuItems: SidebarMenuItem[] = [
     icon: School,
     subItems: [
       { title: "school_information", href: "/student/school-information", icon: Building2 },
+      { title: "school_pages", href: "/student/school-pages", icon: Globe },
       { title: "calendar", href: "/student/events", icon: Calendar },
       { title: "marking_periods", href: "/student/marking-periods", icon: Layers },
     ],
@@ -729,6 +733,7 @@ const studentMenuItems: SidebarMenuItem[] = [
     subItems: [
       { title: "my_loans", href: "/student/library", icon: BookOpen },
       { title: "e_library", href: "/student/e-library", icon: BookOpen },
+      { title: "reading_logs", href: "/student/reading", icon: Mic },
     ],
   },
   { title: "hostel", href: "/student/hostel", icon: BedDouble },
@@ -744,7 +749,7 @@ const studentMenuItems: SidebarMenuItem[] = [
       { title: "premium_resources", href: "#", icon: Star, isLabel: true },
       { title: "physics_virtual_labs", href: "/student/resources/physics-virtual-labs", icon: Globe },
       { title: "virtual_labs", href: "/student/resources/virtual-labs", icon: FlaskConical },
-      { title: "periodic_table", href: "/student/resources/zperiod", icon: Table2 },
+      { title: "periodic_table", href: "/student/resources/jperiod", icon: Table2 },
     ],
   },
   {
@@ -769,6 +774,7 @@ const parentMenuItems: SidebarMenuItem[] = [
     icon: School,
     subItems: [
       { title: "school_information", href: "/parent/school-information", icon: Building2 },
+      { title: "school_pages", href: "/parent/school-pages", icon: Globe },
       { title: "calendar", href: "/parent/events", icon: Calendar },
       { title: "marking_periods", href: "/parent/marking-periods", icon: Layers },
     ],

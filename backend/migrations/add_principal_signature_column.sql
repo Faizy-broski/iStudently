@@ -1,0 +1,2 @@
+ALTER TABLE schools
+ADD COLUMN IF NOT EXISTS principal_signature_url TEXT DEFAULT NULL;

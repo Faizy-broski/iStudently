@@ -26,14 +26,14 @@ import Image from "@tiptap/extension-image"
 
 // ── Substitution variables ─────────────────────────────────────────────────────
 const SUBSTITUTIONS = [
-  { label: "School Logo",    token: "{school_logo}" },
-  { label: "School Name",    token: "{school_name}" },
-  { label: "School Address", token: "{school_address}" },
-  { label: "School Phone",   token: "{school_phone}" },
-  { label: "School Email",   token: "{school_email}" },
-  { label: "Current Date",   token: "{date}" },
-  { label: "Page Number",    token: "{page_number}" },
-  { label: "Total Pages",    token: "{total_pages}" },
+  { label: "School Logo",           token: "{school_logo}" },
+  { label: "School Name",           token: "{school_name}" },
+  { label: "School Address",        token: "{school_address}" },
+  { label: "School Phone",          token: "{school_phone}" },
+  { label: "School Email",          token: "{school_email}" },
+  { label: "Current Date",          token: "{date}" },
+  { label: "Page Number",           token: "{page_number}" },
+  { label: "Total Pages",           token: "{total_pages}" },
 ]
 
 const DEFAULT: PdfHeaderFooterSettings = {

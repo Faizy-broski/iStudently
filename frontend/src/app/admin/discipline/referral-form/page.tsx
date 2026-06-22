@@ -20,6 +20,7 @@ import {
   Loader2,
   GripVertical,
   Info,
+  Minus,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCampus } from '@/context/CampusContext';
@@ -59,8 +60,9 @@ const OPTIONS_TYPES: DisciplineFieldType[] = ['select', 'multiple_radio', 'multi
 interface FieldFormState {
   name: string;
   field_type: DisciplineFieldType;
-  options_text: string; // one option per line
+  options_text: string; // one option per line (penalty marker excluded)
   sort_order: string;
+  point_deduction: string; // positive number, stored as negative first option
 }
 
 const emptyForm = (): FieldFormState => ({
@@ -68,7 +70,22 @@ const emptyForm = (): FieldFormState => ({
   field_type: 'text',
   options_text: '',
   sort_order: '0',
+  point_deduction: '',
 });
+
+function isPenaltyMarker(opt: string) {
+  return !isNaN(parseFloat(opt)) && parseFloat(opt) < 0;
+}
+
+function buildOptions(form: FieldFormState): string[] | null {
+  const lines = form.options_text.split('\n').map((l) => l.trim()).filter(Boolean);
+  if (lines.length === 0) return null;
+  const deduction = parseFloat(form.point_deduction);
+  if (!isNaN(deduction) && deduction > 0) {
+    return [String(-deduction), ...lines];
+  }
+  return lines;
+}
 
 export default function ReferralFormPage() {
   const t = useTranslations('discipline');
@@ -121,18 +138,16 @@ export default function ReferralFormPage() {
   }
 
   function openEdit(field: DisciplineField) {
+    const opts = field.options ?? [];
+    const hasMarker = opts.length > 0 && isPenaltyMarker(opts[0]);
     setEditField(field);
     setEditForm({
       name: field.name,
       field_type: field.field_type,
-      options_text: (field.options ?? []).join('\n'),
+      options_text: (hasMarker ? opts.slice(1) : opts).join('\n'),
       sort_order: String(field.sort_order),
+      point_deduction: hasMarker ? String(Math.abs(parseFloat(opts[0]))) : '',
     });
-  }
-
-  function parseOptions(text: string): string[] | null {
-    const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
-    return lines.length > 0 ? lines : null;
   }
 
   async function handleAdd() {
@@ -146,7 +161,7 @@ export default function ReferralFormPage() {
         school_id: schoolId,
         name: addForm.name.trim(),
         field_type: addForm.field_type,
-        options: OPTIONS_TYPES.includes(addForm.field_type) ? parseOptions(addForm.options_text) : null,
+        options: OPTIONS_TYPES.includes(addForm.field_type) ? buildOptions(addForm) : null,
         sort_order: parseInt(addForm.sort_order, 10) || 0,
       });
       if (res.error) {
@@ -174,7 +189,7 @@ export default function ReferralFormPage() {
       const res = await updateDisciplineField(editField.id, {
         name: editForm.name.trim(),
         field_type: editForm.field_type,
-        options: OPTIONS_TYPES.includes(editForm.field_type) ? parseOptions(editForm.options_text) : null,
+        options: OPTIONS_TYPES.includes(editForm.field_type) ? buildOptions(editForm) : null,
         sort_order: parseInt(editForm.sort_order, 10) || 0,
       });
       if (res.error) {
@@ -283,6 +298,12 @@ export default function ReferralFormPage() {
                         >
                           {t(`fieldTypes.${field.field_type}`)}
                         </Badge>
+                        {field.options && field.options.length > 0 && isPenaltyMarker(field.options[0]) && (
+                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 gap-1">
+                            <Minus className="h-3 w-3" />
+                            {Math.abs(parseFloat(field.options[0]))} pts
+                          </Badge>
+                        )}
                         {!field.is_active && (
                           <Badge variant="outline" className="bg-gray-100 text-gray-500">
                             {t('inactive')}
@@ -291,7 +312,7 @@ export default function ReferralFormPage() {
                       </div>
                       {field.options && field.options.length > 0 && (
                         <p className="text-xs text-muted-foreground mt-1 truncate">
-                          {t('options')}: {field.options.join(', ')}
+                          {t('options')}: {(isPenaltyMarker(field.options[0]) ? field.options.slice(1) : field.options).join(', ')}
                         </p>
                       )}
                       <p className="text-xs text-muted-foreground mt-0.5">
@@ -427,15 +448,44 @@ function FieldForm({ form, onChange, onSubmit, onCancel, saving, submitLabel }: 
       </div>
 
       {needsOptions && (
-        <div className="space-y-1.5">
-          <Label>{t('options')} <span className="text-xs text-muted-foreground">({t('onePerLine')})</span></Label>
-          <Textarea
-            value={form.options_text}
-            onChange={(e) => onChange({ ...form, options_text: e.target.value })}
-            placeholder={'Skipping Class\nFighting\nInsubordination\nOther'}
-            rows={5}
-          />
-        </div>
+        <>
+          <div className="space-y-1.5">
+            <Label className="flex items-center gap-1.5">
+              <Minus className="h-3.5 w-3.5 text-red-500" />
+              {t('pointDeduction')}
+              <span className="text-xs text-muted-foreground font-normal">({t('pointDeductionHint')})</span>
+            </Label>
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground font-semibold text-base select-none">−</span>
+              <Input
+                type="number"
+                min={0}
+                step={1}
+                value={form.point_deduction}
+                onChange={(e) => onChange({ ...form, point_deduction: e.target.value })}
+                placeholder="0"
+                className="w-28"
+              />
+              <span className="text-sm text-muted-foreground">{t('points')}</span>
+            </div>
+            {form.point_deduction && parseFloat(form.point_deduction) > 0 && (
+              <p className="text-xs text-red-600 flex items-center gap-1">
+                <Minus className="h-3 w-3" />
+                {t('pointDeductionWarning', { n: form.point_deduction })}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>{t('options')} <span className="text-xs text-muted-foreground">({t('onePerLine')})</span></Label>
+            <Textarea
+              value={form.options_text}
+              onChange={(e) => onChange({ ...form, options_text: e.target.value })}
+              placeholder={'Skipping Class\nFighting\nInsubordination\nOther'}
+              rows={5}
+            />
+          </div>
+        </>
       )}
 
       <div className="space-y-1.5">
