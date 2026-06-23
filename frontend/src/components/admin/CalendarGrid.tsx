@@ -244,8 +244,8 @@ export function CalendarGrid({
           if (globalHijriOffset !== 0) hd.add(globalHijriOffset, 'days');
           const dayNum = hd.iDate();
           const monthName = HIJRI_MONTHS_LOCALIZED[hd.iMonth()];
-          const formattedNum = useArabic ? toArabicNumerals(dayNum) : String(dayNum);
-          return useArabic ? `${formattedNum} ${monthName}` : `${formattedNum} ${monthName}`;
+          const formattedNum = String(dayNum);
+          return `${formattedNum} ${monthName}`;
         })(),
       });
       day.add(1, "day");
@@ -292,7 +292,7 @@ export function CalendarGrid({
         dayNumber: hijriDay.iDate(),
         isCurrentMonth: isCurrentHijriMonth,
         isToday: day.isSame(moment(), "day"),
-        gregorianDate: `${hijriDayNum} ${hijriMonthName}`,
+        gregorianDate: `${useArabic ? toArabicNumerals(hijriDayNum) : hijriDayNum} ${hijriMonthName}`,
       });
       day.add(1, "day");
     }
@@ -477,7 +477,7 @@ export function CalendarGrid({
                       )}
                       onClick={(e) => handleDayNumberClick(e, day.date, dayEvents)}
                     >
-                      {isHijriMode ? String(day.dayNumber) : formatNumber(day.dayNumber, isArabic)}
+                      {isHijriMode && isArabic ? toArabicNumerals(day.dayNumber) : String(day.dayNumber)}
                     </span>
                     {hasEvents && (
                       <Badge

@@ -305,11 +305,11 @@ function DynamicFieldInput({
 
   if (field_type === 'multiple_radio') {
     return (
-      <div className="flex flex-wrap gap-4">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
         {visibleOptions.map((opt) => (
-          <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer">
-            <input type="radio" name={`radio-${field.id}`} value={opt} checked={value === opt} onChange={() => onChange(opt)} className="accent-primary" />
-            {opt}
+          <label key={opt} className="flex items-center gap-2.5 text-sm cursor-pointer">
+            <input type="radio" name={`radio-${field.id}`} value={opt} checked={value === opt} onChange={() => onChange(opt)} className="accent-primary h-4 w-4 shrink-0" />
+            <span>{opt}</span>
           </label>
         ))}
       </div>
@@ -319,16 +319,17 @@ function DynamicFieldInput({
   if (field_type === 'multiple_checkbox') {
     const selected: string[] = Array.isArray(value) ? value : [];
     return (
-      <div className="flex flex-wrap gap-4">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
         {visibleOptions.map((opt) => (
-          <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer">
+          <label key={opt} className="flex items-center gap-2.5 text-sm cursor-pointer">
             <Checkbox
+              className="shrink-0"
               checked={selected.includes(opt)}
               onCheckedChange={(checked) => {
                 onChange(checked ? [...selected, opt] : selected.filter((v) => v !== opt));
               }}
             />
-            {opt}
+            <span>{opt}</span>
           </label>
         ))}
       </div>
@@ -495,8 +496,8 @@ export default function AddReferralPage() {
       <div className="max-w-2xl mx-auto space-y-6">
 
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
+        <div className="mb-2">
+          <h1 className="text-3xl font-bold flex items-center gap-2 text-[#022172] dark:text-white">
             <AlertCircle className="h-7 w-7 text-destructive" />
             {t('add')}
           </h1>
@@ -529,10 +530,10 @@ export default function AddReferralPage() {
         )}
 
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t('referralDetails')}</CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-semibold text-[#022172] dark:text-white">{t('referralDetails')}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-5">
+          <CardContent className="space-y-5 pt-4">
 
             {/* Person type toggle */}
             <div className="space-y-1.5">
@@ -675,10 +676,10 @@ export default function AddReferralPage() {
             ) : (
               fields.map((field, idx) => (
                 <div key={field.id}>
-                  {idx > 0 && <hr className="my-4 border-t" />}
-                  <div className="space-y-1.5">
+                  {idx > 0 && <hr className="my-6 border-t" />}
+                  <div className="space-y-3">
                     <div className="flex items-center gap-2">
-                      <Label>{field.name}</Label>
+                      <Label className="text-sm font-medium">{field.name}</Label>
                       <PenaltyBadge options={field.options} />
                     </div>
                     <DynamicFieldInput
