@@ -383,8 +383,7 @@ export async function getReferralById(req: Request, res: Response): Promise<void
 
 /**
  * POST /api/discipline/referrals
- * Body: { school_id, campus_id?, student_id?, staff_id?, person_type?, reporter_id?, incident_date?, field_values?, academic_year_id? }
- * person_type: 'student' (default) | 'staff' | 'teacher'
+ * Body: { school_id, campus_id?, student_id, reporter_id?, incident_date?, field_values?, academic_year_id? }
  */
 export async function createReferral(req: Request, res: Response): Promise<void> {
   try {
@@ -410,20 +409,14 @@ export async function createReferral(req: Request, res: Response): Promise<void>
     const {
       // campus_id,
       student_id,
-      staff_id,
-      person_type = 'student',
       reporter_id,
       incident_date,
       field_values,
       academic_year_id,
     } = req.body;
 
-    if (person_type === 'student' && !student_id) {
-      res.status(400).json({ error: 'student_id is required for student incidents' });
-      return;
-    }
-    if ((person_type === 'staff' || person_type === 'teacher') && !staff_id) {
-      res.status(400).json({ error: 'staff_id is required for staff/teacher incidents' });
+    if (!student_id) {
+      res.status(400).json({ error: 'student_id is required' });
       return;
     }
 
@@ -432,9 +425,7 @@ export async function createReferral(req: Request, res: Response): Promise<void>
       .insert({
         school_id: schoolId,
         campus_id: campus_id || null,
-        student_id: person_type === 'student' ? student_id : null,
-        staff_id: (person_type === 'staff' || person_type === 'teacher') ? staff_id : null,
-        person_type,
+        student_id,
         reporter_id: reporter_id || null,
         incident_date: incident_date || new Date().toISOString().slice(0, 10),
         field_values: field_values || {},
@@ -443,7 +434,6 @@ export async function createReferral(req: Request, res: Response): Promise<void>
       .select(`
         *,
         students ( id, student_number, profile:profiles(first_name, father_name, grandfather_name, last_name) ),
-        staff ( id, employee_number, profile:profiles(first_name, last_name) ),
         reporter:profiles!discipline_referrals_reporter_id_fkey ( id, first_name, last_name )
       `)
       .single();

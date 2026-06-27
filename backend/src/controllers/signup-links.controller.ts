@@ -13,7 +13,7 @@ export const generateLink = async (req: AuthRequest, res: Response): Promise<voi
     const schoolId = req.profile?.school_id
     if (!schoolId) { res.status(403).json({ success: false, error: 'No school associated' } as ApiResponse); return }
 
-    const { role, label, max_uses, expires_at, campus_id, prefill_data } = req.body
+    const { role, label, max_uses, expires_at, campus_id } = req.body
 
     if (!role || !VALID_ROLES.includes(role)) {
       res.status(400).json({ success: false, error: `role must be one of: ${VALID_ROLES.join(', ')}` } as ApiResponse)
@@ -28,7 +28,6 @@ export const generateLink = async (req: AuthRequest, res: Response): Promise<voi
       maxUses: max_uses != null ? Number(max_uses) : null,
       expiresAt: expires_at ? new Date(expires_at) : null,
       createdBy: req.profile!.id,
-      prefillData: prefill_data && typeof prefill_data === 'object' ? prefill_data : {},
     })
 
     res.status(201).json({ success: true, data: link } as ApiResponse)

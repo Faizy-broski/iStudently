@@ -24,7 +24,6 @@ import {
   updateGlobalCustomLink,
   deleteGlobalCustomLink,
   reorderGlobalCustomLinks,
-  getCustomLinksForRole,
   type CustomPageType,
 } from '../services/public-pages.service'
 
@@ -233,24 +232,6 @@ router.get('/login-links', async (_req: Request, res: Response) => {
 })
 
 // ============================================================================
-// AUTHENTICATED USER — GET PAGES RELEVANT TO THEIR ROLE
-// ============================================================================
-
-router.get(
-  '/my-pages',
-  authenticate,
-  async (req: AuthRequest, res: Response) => {
-    try {
-      const role = req.profile?.role ?? ''
-      const pages = await getCustomLinksForRole(role)
-      res.json({ success: true, data: pages })
-    } catch (err: any) {
-      res.status(500).json({ success: false, error: err.message })
-    }
-  }
-)
-
-// ============================================================================
 // SUPER ADMIN GLOBAL CUSTOM PAGES (no school context — single management panel)
 // ============================================================================
 
@@ -274,18 +255,13 @@ router.post(
   requireRole('super_admin'),
   async (req: Request, res: Response) => {
     try {
-      const { title, page_type = 'url', url, content, image_url, isActive = true, target_roles, expires_at } = req.body
+      const { title, page_type = 'url', url, content, image_url, isActive = true } = req.body
       if (!title?.trim()) return res.status(400).json({ success: false, error: 'title is required' })
       if (!VALID_PAGE_TYPES.includes(page_type)) return res.status(400).json({ success: false, error: `page_type must be one of: ${VALID_PAGE_TYPES.join(', ')}` })
       if ((page_type === 'url' || page_type === 'embed') && !url?.trim()) return res.status(400).json({ success: false, error: 'url is required for this page type' })
       if (page_type === 'text' && !content?.trim()) return res.status(400).json({ success: false, error: 'content is required for text pages' })
       if (page_type === 'image' && !image_url?.trim()) return res.status(400).json({ success: false, error: 'image_url is required for image pages' })
-      const link = await addGlobalCustomLink({
-        title, page_type, url, content, image_url,
-        isActive: Boolean(isActive),
-        target_roles: Array.isArray(target_roles) ? target_roles : [],
-        expires_at: expires_at ?? null,
-      })
+      const link = await addGlobalCustomLink({ title, page_type, url, content, image_url, isActive: Boolean(isActive) })
       res.status(201).json({ success: true, data: link })
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message })
@@ -316,7 +292,7 @@ router.put(
   async (req: Request, res: Response) => {
     try {
       const { pageId } = req.params
-      const { title, page_type, url, content, image_url, isActive, target_roles, expires_at } = req.body
+      const { title, page_type, url, content, image_url, isActive } = req.body
       if (page_type !== undefined && !VALID_PAGE_TYPES.includes(page_type)) {
         return res.status(400).json({ success: false, error: `page_type must be one of: ${VALID_PAGE_TYPES.join(', ')}` })
       }
@@ -327,8 +303,6 @@ router.put(
         ...(content !== undefined ? { content } : {}),
         ...(image_url !== undefined ? { image_url } : {}),
         ...(isActive !== undefined ? { isActive: Boolean(isActive) } : {}),
-        ...(target_roles !== undefined ? { target_roles: Array.isArray(target_roles) ? target_roles : [] } : {}),
-        ...(expires_at !== undefined ? { expires_at: expires_at ?? null } : {}),
       })
       res.json({ success: true, data: link })
     } catch (err: any) {

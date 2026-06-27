@@ -123,14 +123,11 @@ export const uploadImageAsset = async (
   res: Response
 ): Promise<void> => {
   try {
-    const profile = req.profile
-    if (!profile) {
+    const adminSchoolId = req.profile?.school_id
+    if (!adminSchoolId) {
       res.status(401).json({ success: false, error: 'Unauthorized' })
       return
     }
-
-    // Superadmins have no school_id — use 'global' as their folder prefix
-    const folderPrefix = profile.school_id ?? 'global'
 
     const file = (req as any).file as Express.Multer.File | undefined
     if (!file) {
@@ -150,7 +147,7 @@ export const uploadImageAsset = async (
       return
     }
 
-    const fileName = `${folderPrefix}/public-pages/${randomUUID()}.${ext}`
+    const fileName = `${adminSchoolId}/public-pages/${randomUUID()}.${ext}`
 
     const { error: uploadError } = await supabase.storage
       .from(IMAGE_BUCKET)

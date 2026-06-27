@@ -50,7 +50,6 @@ export const getSignupLinkInfo = async (req: Request, res: Response): Promise<vo
         school_name: school?.name ?? 'School',
         school_logo_url: school?.logo_url ?? null,
         campus_name: campusName,
-        prefill_data: (result.link as any).prefill_data ?? {},
       },
     } as ApiResponse)
   } catch (error: any) {
@@ -61,7 +60,7 @@ export const getSignupLinkInfo = async (req: Request, res: Response): Promise<vo
 // POST /public-signup/submit — public, no auth
 export const submitSignup = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { token, first_name, last_name, email, phone, password, confirm_password, extra_fields } = req.body
+    const { token, first_name, last_name, email, phone, password, confirm_password } = req.body
 
     // Validate required fields
     const errors: string[] = []
@@ -102,11 +101,6 @@ export const submitSignup = async (req: Request, res: Response): Promise<void> =
     // Encrypt password (AES-256 — reversible, so we can create the auth account on approval)
     const encryptedPassword = encryptPassword(password)
 
-    // Merge link's prefill_data with user-submitted extra fields (user input takes precedence)
-    const linkPrefill = (typeof (link as any).prefill_data === 'object' && (link as any).prefill_data) ? (link as any).prefill_data : {}
-    const userExtra = (extra_fields && typeof extra_fields === 'object' && !Array.isArray(extra_fields)) ? extra_fields : {}
-    const extraData: Record<string, unknown> = { ...linkPrefill, ...userExtra }
-
     // Create pending signup
     const pendingSignup = await createPendingSignup({
       schoolId: link.school_id,
@@ -118,7 +112,7 @@ export const submitSignup = async (req: Request, res: Response): Promise<void> =
       email: email.toLowerCase().trim(),
       phone: phone?.trim() || null,
       encryptedPassword,
-      extraData,
+      extraData: {},
     })
 
     res.status(201).json({
