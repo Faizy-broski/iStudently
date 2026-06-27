@@ -620,7 +620,7 @@ class FeesService {
             .order('student_number', { ascending: true })
 
         if (gradeLevelId && gradeLevelId !== 'all') {
-            query = query.eq('grade_level', gradeLevelId)
+            query = query.eq('grade_level_id', gradeLevelId)
         }
 
         if (search) {
@@ -682,7 +682,7 @@ class FeesService {
             .order('student_number')
 
         if (gradeId && gradeId !== 'all') {
-            studentsQuery = studentsQuery.eq('grade_level', gradeId) as any
+            studentsQuery = studentsQuery.eq('grade_level_id', gradeId) as any
         }
         if (sectionId && sectionId !== 'all') {
             studentsQuery = studentsQuery.eq('section_id', sectionId) as any

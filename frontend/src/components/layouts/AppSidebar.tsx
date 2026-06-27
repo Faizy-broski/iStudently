@@ -131,30 +131,22 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
     ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
     : ''
 
-  // Gregorian
+  // Gregorian — always use Western Arabic numerals (0-9), Arabic text only for names
   const bcp = isAr ? 'ar-SA' : 'en-US'
   const dayName = now.toLocaleDateString(bcp, { weekday: 'long' })
-  const dayNum = isAr
-    ? now.toLocaleDateString('ar-SA', { day: 'numeric' })
-    : now.getDate()
+  const dayNum = now.getDate()
   const monthShort = now.toLocaleDateString(bcp, { month: 'short' })
-  const year = isAr
-    ? now.toLocaleDateString('ar-SA', { year: 'numeric' })
-    : now.getFullYear()
-  const timeStr = now.toLocaleTimeString(bcp, { hour: '2-digit', minute: '2-digit', hour12: true })
-  const weekNum = isAr
-    ? getISOWeek(now).toLocaleString('ar-SA')
-    : getISOWeek(now)
+  const year = now.getFullYear()
+  const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+  const weekNum = getISOWeek(now)
 
-  // Hijri (apply global offset so it matches the calendar)
+  // Hijri — month name in Arabic, digits stay Western Arabic
   const hijriBase = hijriOffset !== 0
     ? new Date(now.getTime() + hijriOffset * 86400000)
     : now
   const h = toHijri(hijriBase)
   const hijriMonths = isAr ? HIJRI_MONTHS_AR : HIJRI_MONTHS_EN
-  const hijriDay = isAr ? h.day.toLocaleString('ar-SA', { useGrouping: false }) : h.day
-  const hijriYear = isAr ? h.year.toLocaleString('ar-SA', { useGrouping: false }) : h.year
-  const hijriStr = `${hijriDay} ${hijriMonths[h.month - 1]} ${hijriYear}`
+  const hijriStr = `${h.day} ${hijriMonths[h.month - 1]} ${h.year}`
 
   if (isCollapsed) {
     return (

@@ -933,3 +933,146 @@ export const deletePeriod = async (periodId: string): Promise<ApiResponse<void>>
     }
   }
 }
+
+// ============================================================================
+// BULK IMPORT — TEACHERS
+// ============================================================================
+
+export interface BulkImportTeachersResult {
+  success_count: number
+  error_count: number
+  errors: Array<{ row: number; email?: string; error: string }>
+}
+
+const VALID_EMPLOYMENT_TYPES_TEACHER = ['full_time', 'part_time', 'contract'] as const
+const VALID_PAYMENT_TYPES_TEACHER = ['fixed_salary', 'hourly'] as const
+const EMAIL_REGEX_TEACHER = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+/**
+ * Bulk import teachers (role is always 'teacher').
+ * Phase 1: validate all rows
+ * Phase 2: batch 3 at a time with Promise.allSettled → createTeacher()
+ */
+export const bulkImportTeachers = async (
+  teachersData: Array<Record<string, any>>,
+  schoolId: string
+): Promise<BulkImportTeachersResult> => {
+  const results: BulkImportTeachersResult = {
+    success_count: 0,
+    error_count: 0,
+    errors: []
+  }
+
+  const seenEmails = new Set<string>()
+  const seenEmployeeNumbers = new Set<string>()
+
+  interface ValidRow { row: number; data: CreateStaffDTO }
+  const validRows: ValidRow[] = []
+
+  for (let i = 0; i < teachersData.length; i++) {
+    const rowNum = i + 2
+    const raw = teachersData[i]
+
+    const missing: string[] = []
+    if (!raw.first_name?.toString().trim()) missing.push('first_name')
+    if (!raw.last_name?.toString().trim())  missing.push('last_name')
+    if (!raw.email?.toString().trim())      missing.push('email')
+
+    if (missing.length > 0) {
+      results.errors.push({ row: rowNum, email: raw.email?.toString().trim(), error: `Missing required fields: ${missing.join(', ')}` })
+      results.error_count++
+      continue
+    }
+
+    const email = raw.email.toString().trim().toLowerCase()
+    if (!EMAIL_REGEX_TEACHER.test(email)) {
+      results.errors.push({ row: rowNum, email, error: `Invalid email format: ${email}` })
+      results.error_count++
+      continue
+    }
+
+    if (seenEmails.has(email)) {
+      results.errors.push({ row: rowNum, email, error: 'Duplicate email within this file' })
+      results.error_count++
+      continue
+    }
+    seenEmails.add(email)
+
+    const empNum = raw.employee_number?.toString().trim()
+    if (empNum && seenEmployeeNumbers.has(empNum)) {
+      results.errors.push({ row: rowNum, email, error: `Duplicate employee_number "${empNum}" within this file` })
+      results.error_count++
+      continue
+    }
+    if (empNum) seenEmployeeNumbers.add(empNum)
+
+    const empType = raw.employment_type?.toString().trim().toLowerCase()
+    if (empType && !VALID_EMPLOYMENT_TYPES_TEACHER.includes(empType as any)) {
+      results.errors.push({ row: rowNum, email, error: `Invalid employment_type "${empType}". Must be one of: ${VALID_EMPLOYMENT_TYPES_TEACHER.join(', ')}` })
+      results.error_count++
+      continue
+    }
+
+    const payType = raw.payment_type?.toString().trim().toLowerCase()
+    if (payType && !VALID_PAYMENT_TYPES_TEACHER.includes(payType as any)) {
+      results.errors.push({ row: rowNum, email, error: `Invalid payment_type "${payType}". Must be one of: ${VALID_PAYMENT_TYPES_TEACHER.join(', ')}` })
+      results.error_count++
+      continue
+    }
+
+    const rawSalary = raw.base_salary?.toString().trim()
+    const baseSalary = rawSalary && rawSalary !== '' ? Number(rawSalary) : undefined
+    if (baseSalary !== undefined && (isNaN(baseSalary) || baseSalary < 0)) {
+      results.errors.push({ row: rowNum, email, error: `Invalid base_salary "${raw.base_salary}" — must be a non-negative number` })
+      results.error_count++
+      continue
+    }
+
+    validRows.push({
+      row: rowNum,
+      data: {
+        school_id:       schoolId,
+        first_name:      raw.first_name.toString().trim(),
+        last_name:       raw.last_name.toString().trim(),
+        email,
+        phone:           raw.phone?.toString().trim()           || undefined,
+        password:        raw.password?.toString().trim()        || undefined,
+        employee_number: empNum                                 || undefined,
+        title:           raw.title?.toString().trim()           || undefined,
+        department:      raw.department?.toString().trim()      || undefined,
+        qualifications:  raw.qualifications?.toString().trim()  || undefined,
+        specialization:  raw.specialization?.toString().trim()  || undefined,
+        date_of_joining: raw.date_of_joining?.toString().trim() || undefined,
+        employment_type: (empType as any)                       || 'full_time',
+        payment_type:    (payType as any)                       || 'fixed_salary',
+        base_salary:     baseSalary
+      }
+    })
+  }
+
+  if (validRows.length === 0) return results
+
+  for (let i = 0; i < validRows.length; i += 3) {
+    const batch = validRows.slice(i, i + 3)
+    const batchResults = await Promise.allSettled(
+      batch.map(({ data }) => createTeacher(data))
+    )
+
+    batchResults.forEach((result, idx) => {
+      const { row, data } = batch[idx]
+      if (result.status === 'fulfilled') {
+        if (result.value.success) {
+          results.success_count++
+        } else {
+          results.error_count++
+          results.errors.push({ row, email: data.email, error: result.value.error || 'Failed to create teacher' })
+        }
+      } else {
+        results.error_count++
+        results.errors.push({ row, email: data.email, error: result.reason?.message || 'Failed to create teacher' })
+      }
+    })
+  }
+
+  return results
+}

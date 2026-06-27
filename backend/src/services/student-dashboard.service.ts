@@ -1550,7 +1550,7 @@ export class StudentDashboardService {
   async getStudentInfo(studentId: string) {
     const { data: student, error } = await supabase
       .from('students')
-      .select('id, student_number, grade_level, section_id, school_id, profile_id, created_at')
+      .select('id, student_number, grade_level, section_id, school_id, profile_id, created_at, custom_fields')
       .eq('id', studentId)
       .single()
 
@@ -1558,7 +1558,7 @@ export class StudentDashboardService {
 
     const [profileRes, sectionRes, schoolRes] = await Promise.all([
       supabase.from('profiles')
-        .select('first_name, father_name, grandfather_name, last_name, email, phone, date_of_birth, gender, address, profile_photo_url')
+        .select('first_name, father_name, grandfather_name, last_name, email, phone, profile_photo_url')
         .eq('id', student.profile_id)
         .single(),
       supabase.from('sections')
@@ -1585,10 +1585,17 @@ export class StudentDashboardService {
     const section = sectionRes.data
     const school = schoolRes.data
 
+    const customFields = student.custom_fields as any
+    const personalInfo = customFields?.personal || {}
+    
+    const dobString = personalInfo.date_of_birth
+    const gender = personalInfo.gender || null
+    const address = personalInfo.address || null
+
     const now = new Date()
     let age: string | null = null
-    if (profile?.date_of_birth) {
-      const dob = new Date(profile.date_of_birth)
+    if (dobString) {
+      const dob = new Date(dobString)
       const years = now.getFullYear() - dob.getFullYear()
       const months = now.getMonth() - dob.getMonth()
       const days = now.getDate() - dob.getDate()
@@ -1612,11 +1619,11 @@ export class StudentDashboardService {
       last_name: profile?.last_name || null,
       email: profile?.email || null,
       phone: profile?.phone || null,
-      date_of_birth: profile?.date_of_birth || null,
+      date_of_birth: dobString || null,
       age,
-      gender: profile?.gender || null,
-      address: profile?.address || null,
-      profile_photo_url: profile?.profile_photo_url || null,
+      gender,
+      address,
+      profile_photo_url: profile?.profile_photo_url || personalInfo.student_photo || null,
       section_name: section?.name || null,
       grade_level_name: gradeLevelName,
       school_name: school?.name || null,

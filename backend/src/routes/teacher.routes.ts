@@ -46,6 +46,8 @@ router.put('/setup/comment-codes/:id', requireTeacher, reportCardsController.upd
 router.delete('/setup/comment-codes/:id', requireTeacher, reportCardsController.deleteTeacherCode)
 
 // TEACHER CRUD ROUTES (must come after specific routes)
+router.get('/import-template', requireAdmin, teacherController.getTeacherImportTemplate)
+router.post('/bulk-import',    requireAdmin, teacherController.bulkImportTeachers)
 router.get('/', requireTeacher, teacherController.getAllTeachers)
 router.get('/:id', requireTeacher, teacherController.getTeacherById)
 router.post('/', requireAdmin, teacherController.createTeacher)

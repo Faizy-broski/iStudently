@@ -1044,8 +1044,10 @@ export default function IdCardDesignerPage() {
         format: [wIn, hIn],
       })
 
-      // html2canvas can't parse modern CSS color functions (oklch/lab) used by Tailwind.
-      // The card divs use only inline styles, so stripping external sheets is safe.
+      // html2canvas can't parse modern CSS color functions (oklch/lab) used by Tailwind v4.
+      // Tailwind v4 defines colors as CSS custom properties (--color-x: lab(...)) so even
+      // rules using var() trigger the warning. Strip ALL sheets/styles since card elements
+      // use only inline styles. Preserve @font-face rules so text renders correctly.
       const stripTailwindColors = (clonedDoc: Document) => {
         let fontFaces = '';
         try {
@@ -1064,9 +1066,7 @@ export default function IdCardDesignerPage() {
         const computedFont = window.getComputedStyle(document.body).fontFamily;
 
         clonedDoc.querySelectorAll('link[rel="stylesheet"]').forEach(el => el.remove())
-        clonedDoc.querySelectorAll('style').forEach(el => {
-          if (el.textContent?.includes('oklch') || el.textContent?.includes('lab(')) el.remove()
-        })
+        clonedDoc.querySelectorAll('style').forEach(el => el.remove())
 
         const style = clonedDoc.createElement('style')
         style.textContent = fontFaces + `\n* { font-family: ${computedFont} !important; }`

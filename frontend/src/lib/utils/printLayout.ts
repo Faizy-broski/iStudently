@@ -290,9 +290,15 @@ export function buildPdfLayoutCss(
 ): string {
   return `
 @page { margin-top:${marginTop}mm; margin-bottom:${marginBottom}mm; margin-left:12mm; margin-right:12mm; }
-.pdf-header { position:fixed; top:0; left:0; right:0; z-index:100; }
-.pdf-footer { position:fixed; bottom:0; left:0; right:0; z-index:100; }
-${excludePrint ? "@media print { .pdf-header, .pdf-footer { display:none !important; } }" : ""}
+/* Screen preview: header/footer flow naturally so they don't overlap content */
+.pdf-header { position:relative; width:100%; }
+.pdf-footer { position:relative; width:100%; margin-top:24px; }
+/* Print: fix header/footer so they repeat on every page */
+@media print {
+  .pdf-header { position:fixed; top:0; left:0; right:0; z-index:100; }
+  .pdf-footer { position:fixed; bottom:0; left:0; right:0; z-index:100; margin-top:0; }
+  ${excludePrint ? ".pdf-header, .pdf-footer { display:none !important; }" : ""}
+}
 `
 }
 
@@ -477,11 +483,10 @@ const PREVIEW_TOOLBAR_STYLES = `
   font-size: 13px; font-weight: 600; cursor: pointer;
   transition: background 0.15s;
 }
-.print-toolbar .btn-download {
+.print-toolbar .btn-print {
   background: #1e3a5f; color: #fff;
 }
-.print-toolbar .btn-download:hover { background: #15304f; }
-.print-toolbar .btn-download:disabled { background: #6b7280; cursor: not-allowed; }
+.print-toolbar .btn-print:hover { background: #15304f; }
 .print-toolbar .btn-close {
   background: #e2e8f0; color: #334155;
 }
@@ -493,51 +498,11 @@ const PREVIEW_TOOLBAR_STYLES = `
 
 function PREVIEW_TOOLBAR_HTML(title: string): string {
   const safeTitle = escapeHtml(title)
-  const filenameTitle = title.replace(/[^a-z0-9_\-\s]/gi, '').trim() || 'document'
   return `<div class="print-toolbar">
   <span class="toolbar-title">${safeTitle}</span>
-  <button class="btn-download" id="btn-pdf-download">Download PDF</button>
+  <button class="btn-print" onclick="window.print()">Print / Save as PDF</button>
   <button class="btn-close" onclick="window.close()">Close</button>
-</div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"><\/script>
-<script>
-document.getElementById('btn-pdf-download').addEventListener('click', function() {
-  var btn = this;
-  var toolbar = document.querySelector('.print-toolbar');
-  btn.disabled = true;
-  btn.textContent = 'Generating\u2026';
-  toolbar.style.display = 'none';
-  html2canvas(document.body, { scale: 2, useCORS: true, logging: false }).then(function(canvas) {
-    toolbar.style.display = '';
-    btn.disabled = false;
-    btn.textContent = 'Download PDF';
-    var jsPDF = window.jspdf.jsPDF;
-    var pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    var pageW = pdf.internal.pageSize.getWidth();
-    var pageH = pdf.internal.pageSize.getHeight();
-    var imgW = pageW;
-    var imgH = (canvas.height * imgW) / canvas.width;
-    var imgData = canvas.toDataURL('image/jpeg', 0.92);
-    var position = 0;
-    var remaining = imgH;
-    pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH);
-    remaining -= pageH;
-    while (remaining > 0) {
-      position -= pageH;
-      pdf.addPage();
-      pdf.addImage(imgData, 'JPEG', 0, position, imgW, imgH);
-      remaining -= pageH;
-    }
-    pdf.save('${filenameTitle}.pdf');
-  }).catch(function(err) {
-    toolbar.style.display = '';
-    btn.disabled = false;
-    btn.textContent = 'Download PDF';
-    alert('Failed to generate PDF: ' + err.message);
-  });
-});
-<\/script>`
+</div>`
 }
 
 /**

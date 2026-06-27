@@ -300,11 +300,11 @@ export const runScheduler = async (
         // Get student gender
         const { data: student } = await supabase
           .from('students')
-          .select('profile:profiles!students_profile_id_fkey(gender)')
+          .select('custom_fields')
           .eq('id', req.student_id)
           .single()
 
-        const gender = (student as any)?.profile?.gender
+        const gender = (student as any)?.custom_fields?.personal?.gender
         if (gender) {
           filtered = filtered.filter((cp: any) =>
             cp.gender_restriction === 'N' || cp.gender_restriction === gender.charAt(0).toUpperCase())

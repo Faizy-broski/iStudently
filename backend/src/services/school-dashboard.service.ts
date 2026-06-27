@@ -9,6 +9,12 @@ interface SchoolDashboardStats {
   libraryBooks: number
   borrowedBooks: number
   attendanceRate: number
+  todayPresentStudents: number
+  totalParents: number
+  maleStudents: number
+  femaleStudents: number
+  maleStaff: number
+  femaleStaff: number
 }
 
 interface AttendanceData {
@@ -108,13 +114,14 @@ export class SchoolDashboardService {
         console.error('Transactions query error:', transactionsError)
       }
 
-      // Calculate attendance rate (last 30 days)
+      // Calculate attendance rate (last 30 days) and today's present count
       const thirtyDaysAgo = new Date()
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      const todayStr = new Date().toISOString().split('T')[0]
 
       const { data: attendanceRecords, error: attendanceError } = await supabase
         .from('attendance_records')
-        .select('status')
+        .select('status, attendance_date')
         .eq('school_id', schoolId)
         .gte('attendance_date', thirtyDaysAgo.toISOString().split('T')[0])
 
@@ -125,6 +132,45 @@ export class SchoolDashboardService {
       const presentCount = attendanceRecords?.filter(r => r.status === 'present').length || 0
       const totalRecords = attendanceRecords?.length || 1
       const attendanceRate = (presentCount / totalRecords) * 100
+      const todayPresentStudents = attendanceRecords?.filter(
+        r => r.status === 'present' && r.attendance_date === todayStr
+      ).length || 0
+
+      // Get student gender breakdown
+      const { data: studentCustomFields, error: studentGenderError } = await supabase
+        .from('students')
+        .select('custom_fields')
+        .eq('school_id', schoolId)
+
+      if (studentGenderError) {
+        console.error('Student gender query error:', studentGenderError)
+      }
+
+      const maleStudents = studentCustomFields?.filter((s: any) => s.custom_fields?.personal?.gender === 'male').length || 0
+      const femaleStudents = studentCustomFields?.filter((s: any) => s.custom_fields?.personal?.gender === 'female').length || 0
+
+      // Get staff gender breakdown
+      const { data: staffProfiles, error: staffGenderError } = await supabase
+        .from('staff')
+        .select('profile:profiles!staff_profile_id_fkey(gender)')
+        .eq('school_id', schoolId)
+
+      if (staffGenderError) {
+        console.error('Staff gender query error:', staffGenderError)
+      }
+
+      const maleStaff = staffProfiles?.filter((s: any) => s.profile?.gender === 'male').length || 0
+      const femaleStaff = staffProfiles?.filter((s: any) => s.profile?.gender === 'female').length || 0
+
+      // Get total parents count
+      const { count: totalParents, error: parentsError } = await supabase
+        .from('parents')
+        .select('*', { count: 'exact', head: true })
+        .eq('school_id', schoolId)
+
+      if (parentsError) {
+        console.error('Parents query error:', parentsError)
+      }
 
       const result = {
         totalStudents: totalStudents || 0,
@@ -134,7 +180,13 @@ export class SchoolDashboardService {
         activeEvents: activeEvents || 0,
         libraryBooks: libraryBooks || 0,
         borrowedBooks: borrowedBooks || 0,
-        attendanceRate: parseFloat(attendanceRate.toFixed(1))
+        attendanceRate: parseFloat(attendanceRate.toFixed(1)),
+        todayPresentStudents,
+        totalParents: totalParents || 0,
+        maleStudents,
+        femaleStudents,
+        maleStaff,
+        femaleStaff
       }
 
       return result

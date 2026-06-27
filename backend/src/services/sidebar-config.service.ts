@@ -101,6 +101,22 @@ export async function upsertSchoolConfig(
     })
     .select()
     .single()
+
+  // Race condition / duplicate: another request just inserted — retry as update
+  if (error?.code === '23505') {
+    const retry = await getSchoolConfig(schoolId)
+    if (retry) {
+      const { data: updated, error: updateErr } = await supabase
+        .from('sidebar_configs')
+        .update({ ...dto, updated_at: new Date().toISOString() })
+        .eq('id', retry.id)
+        .select()
+        .single()
+      if (updateErr) throw updateErr
+      return updated
+    }
+  }
+
   if (error) throw error
   return data
 }
@@ -146,6 +162,22 @@ export async function upsertCampusConfig(
     })
     .select()
     .single()
+
+  // Race condition / duplicate: another request just inserted — retry as update
+  if (error?.code === '23505') {
+    const retry = await getCampusConfig(campusId)
+    if (retry) {
+      const { data: updated, error: updateErr } = await supabase
+        .from('sidebar_configs')
+        .update({ ...dto, updated_at: new Date().toISOString() })
+        .eq('id', retry.id)
+        .select()
+        .single()
+      if (updateErr) throw updateErr
+      return updated
+    }
+  }
+
   if (error) throw error
   return data
 }

@@ -618,6 +618,14 @@ export const bulkImportStaff = async (
             continue
         }
 
+        // Validate payment_type (optional, defaults to fixed_salary)
+        const payType = raw.payment_type?.toString().trim().toLowerCase()
+        if (payType && !['fixed_salary', 'hourly'].includes(payType as any)) {
+            results.errors.push({ row: rowNum, email, error: `Invalid payment_type "${payType}". Must be one of: fixed_salary, hourly` })
+            results.error_count++
+            continue
+        }
+
         // Validate base_salary (optional, must be positive number)
         const rawSalary = raw.base_salary?.toString().trim()
         const baseSalary = rawSalary && rawSalary !== '' ? Number(rawSalary) : undefined
@@ -653,6 +661,7 @@ export const bulkImportStaff = async (
                 specialization: raw.specialization?.toString().trim() || undefined,
                 date_of_joining: raw.date_of_joining?.toString().trim() || undefined,
                 employment_type: (empType as any) || 'full_time',
+                payment_type: (payType as any) || 'fixed_salary',
                 base_salary: baseSalary
             }
         })

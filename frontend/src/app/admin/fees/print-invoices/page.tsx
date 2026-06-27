@@ -15,7 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { IconLoader, IconSearch, IconFileText, IconFilter, IconRefresh, IconDownload } from '@tabler/icons-react'
 import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
-import { openPdfDownload } from '@/lib/utils/printLayout'
+import { openPrintPreview } from '@/lib/utils/printLayout'
 import { useTranslations } from 'next-intl'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
@@ -71,11 +71,11 @@ async function fetchGrades(schoolId: string): Promise<GradeLevel[]> {
     return json.success ? json.data : []
 }
 
-async function fetchSections(gradeId: string): Promise<Section[]> {
+async function fetchSections(gradeId: string, schoolId: string): Promise<Section[]> {
     const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
-    
-    const res = await fetch(`${API_BASE}/api/academics/sections?grade_level_id=${gradeId}`, {
+
+    const res = await fetch(`${API_BASE}/api/academics/sections?grade_id=${gradeId}&school_id=${schoolId}`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
     })
     const json = await res.json()
@@ -133,8 +133,8 @@ export default function PrintInvoicesPage() {
     )
 
     const { data: sections } = useSWR<Section[]>(
-        gradeId && gradeId !== 'all' ? `sections-invoices-${gradeId}` : null,
-        () => fetchSections(gradeId)
+        gradeId && gradeId !== 'all' && schoolId ? `sections-invoices-${gradeId}-${schoolId}` : null,
+        () => fetchSections(gradeId, schoolId!)
     )
 
     const { data: fees, isLoading } = useSWR<StudentFee[]>(
@@ -206,16 +206,21 @@ export default function PrintInvoicesPage() {
 
     const feesToPrint = filteredFees.filter(f => selectedFees.has(f.id))
 
-    const handlePrint = useCallback(async () => {
+    const handlePrint = useCallback(() => {
         const printContent = printRef.current
         if (!printContent) return
 
         const bodyHtml = printContent.innerHTML
         const bodyStyles = `
-            .invoice { border: 2px solid #333; padding: 24px; margin-bottom: 32px; page-break-after: always; }
+            .invoice { border: 2px solid #333; padding: 24px; margin-bottom: 32px; break-after: page; page-break-after: always; }
+            .invoice:last-child { break-after: auto; page-break-after: auto; }
             .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 16px; margin-bottom: 16px; }
-            .header h1 { font-size: 24px; margin-bottom: 4px; }
-            .header p { color: #666; }
+            .header .invoice-date { font-size: 12px; color: #888; margin-bottom: 10px; }
+            .header .logo-wrap { display: block; margin: 0 auto 10px; }
+            .header .logo-wrap img { height: 64px; width: auto; object-fit: contain; display: block; margin: 0 auto; }
+            .header .logo-wrap .logo-initial { height: 64px; width: 64px; display: flex; align-items: center; justify-content: center; background: #1e3a5f; border-radius: 8px; color: #fff; font-size: 28px; font-weight: 800; margin: 0 auto; }
+            .header h1 { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+            .header .invoice-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #888; margin-top: 4px; }
             .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
             .info-grid .right { text-align: right; }
             table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
@@ -225,7 +230,10 @@ export default function PrintInvoicesPage() {
             .font-bold { font-weight: bold; }
             .text-red { color: #dc2626; }
             .footer { text-align: center; font-size: 12px; color: #666; border-top: 1px solid #333; padding-top: 16px; }
-            .invoice:last-child { page-break-after: auto; }
+            @media print {
+              .invoice { break-after: page; page-break-after: always; }
+              .invoice:last-child { break-after: auto; page-break-after: auto; }
+            }
         `
 
         const school = {
@@ -235,17 +243,14 @@ export default function PrintInvoicesPage() {
             logo_url: selectedCampus?.logo_url,
         }
 
-        await openPdfDownload(
-            {
-                title: t('title'),
-                bodyHtml,
-                bodyStyles,
-                school,
-                pdfSettings,
-                pluginActive: isPluginActive('pdf_header_footer'),
-            },
-            'fee-invoices',
-        )
+        openPrintPreview({
+            title: t('title'),
+            bodyHtml,
+            bodyStyles,
+            school,
+            // Invoice branding is embedded in each card header — no outer PDF header needed
+            pluginActive: false,
+        })
     }, [pdfSettings, selectedCampus, isPluginActive, t])
 
     if (campusLoading) {
@@ -455,8 +460,15 @@ export default function PrintInvoicesPage() {
                     {feesToPrint.map((fee) => (
                         <div key={fee.id} className="invoice">
                             <div className="header">
+                                <p className="invoice-date">{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+                                <div className="logo-wrap">
+                                    {selectedCampus?.logo_url
+                                        ? <img src={selectedCampus.logo_url} alt="" />
+                                        : <div className="logo-initial">{(selectedCampus?.name || 'S').charAt(0).toUpperCase()}</div>
+                                    }
+                                </div>
                                 <h1>{selectedCampus?.name || 'School Name'}</h1>
-                                <p>{t('invoiceVoucher')}</p>
+                                <p className="invoice-label">{t('invoiceVoucher')}</p>
                             </div>
 
                             <div className="info-grid">

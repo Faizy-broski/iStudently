@@ -13,6 +13,70 @@ interface AuthRequest extends Request {
 }
 
 // ============================================================================
+// BULK IMPORT (must be defined before CRUD exports to be imported by routes)
+// ============================================================================
+
+export const getTeacherImportTemplate = (_req: Request, res: Response): void => {
+  const headers = [
+    'employee_number', 'first_name', 'last_name', 'email', 'phone', 'password',
+    'title', 'department', 'qualifications', 'specialization',
+    'date_of_joining', 'employment_type', 'payment_type', 'base_salary'
+  ]
+  const notes = [
+    '# role is always "teacher" — do NOT include a role column',
+    '# employment_type values: full_time | part_time | contract',
+    '# payment_type values: fixed_salary | hourly',
+    '# date_of_joining format: YYYY-MM-DD'
+  ]
+  const examples = [
+    ['TCH001', 'John', 'Smith', 'john.smith@school.com', '+1234567890', 'Pass@1234',
+      'Mathematics Teacher', 'Mathematics', 'B.Ed', 'Algebra', '2024-01-15', 'full_time', 'fixed_salary', '5000'],
+    ['TCH002', 'Jane', 'Doe', 'jane.doe@school.com', '+1234567891', 'Pass@1234',
+      'Science Teacher', 'Science', 'M.Sc', 'Physics', '2024-02-01', 'full_time', 'fixed_salary', '5500'],
+    ['TCH003', 'Mike', 'Lee', 'mike.lee@school.com', '+1234567892', 'Pass@1234',
+      'English Teacher', 'English', 'B.A', 'Literature', '2024-03-01', 'part_time', 'hourly', '30']
+  ]
+  const rows = [notes.join('\n'), headers.join(','), ...examples.map(e => e.join(','))].join('\n')
+  res.setHeader('Content-Type', 'text/csv')
+  res.setHeader('Content-Disposition', 'attachment; filename="teacher_import_template.csv"')
+  res.send(rows)
+}
+
+export const bulkImportTeachers = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const adminSchoolId = (req as AuthRequest).profile?.school_id
+    if (!adminSchoolId) {
+      res.status(403).json({ success: false, error: 'No school associated with your account' })
+      return
+    }
+
+    const { teachers, campus_id } = req.body
+
+    if (!Array.isArray(teachers) || teachers.length === 0) {
+      res.status(400).json({ success: false, error: 'teachers array is required and must not be empty' })
+      return
+    }
+
+    if (teachers.length > 500) {
+      res.status(400).json({ success: false, error: 'Maximum 500 teachers per import batch' })
+      return
+    }
+
+    const effectiveSchoolId = await getEffectiveSchoolId(adminSchoolId, campus_id)
+    const result = await teacherService.bulkImportTeachers(teachers, effectiveSchoolId)
+
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: `Imported ${result.success_count} teacher(s) with ${result.error_count} error(s)`
+    })
+  } catch (error: any) {
+    console.error('Bulk import teachers error:', error)
+    res.status(500).json({ success: false, error: error.message || 'Bulk import failed' })
+  }
+}
+
+// ============================================================================
 // TEACHER / STAFF CONTROLLER
 // ============================================================================
 

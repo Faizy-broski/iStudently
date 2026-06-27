@@ -719,3 +719,79 @@ export async function getGlobalPeriods(campusId?: string): Promise<GlobalPeriod[
   // Sort by sort_order
   return result.data.sort((a, b) => a.sort_order - b.sort_order)
 }
+
+// ============================================================================
+// TEACHER BULK IMPORT
+// ============================================================================
+
+export interface BulkImportTeacherRow {
+  employee_number?: string
+  first_name: string
+  last_name: string
+  email: string
+  phone?: string
+  password?: string
+  title?: string
+  department?: string
+  qualifications?: string
+  specialization?: string
+  date_of_joining?: string
+  employment_type?: 'full_time' | 'part_time' | 'contract'
+  payment_type?: 'fixed_salary' | 'hourly'
+  base_salary?: number
+}
+
+export interface BulkImportTeacherError {
+  row: number
+  email?: string
+  error: string
+}
+
+export interface BulkImportTeacherResult {
+  success_count: number
+  error_count: number
+  errors: BulkImportTeacherError[]
+}
+
+export async function bulkImportTeachers(
+  teachers: BulkImportTeacherRow[],
+  campusId?: string
+): Promise<{ success: boolean; data?: BulkImportTeacherResult; error?: string; message?: string }> {
+  const token = await getAuthToken()
+  const response = await fetch(`${API_URL}/teachers/bulk-import`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ teachers, campus_id: campusId })
+  })
+  return response.json()
+}
+
+export function downloadTeacherImportTemplate() {
+  const headers = [
+    'employee_number', 'first_name', 'last_name', 'email', 'phone', 'password',
+    'title', 'department', 'qualifications', 'specialization',
+    'date_of_joining', 'employment_type', 'payment_type', 'base_salary'
+  ]
+  const notes = [
+    '# role is always "teacher" — do NOT include a role column',
+    '# employment_type values: full_time | part_time | contract',
+    '# payment_type values: fixed_salary | hourly',
+    '# date_of_joining format: YYYY-MM-DD'
+  ]
+  const examples = [
+    ['TCH001', 'John', 'Smith', 'john.smith@school.com', '+1234567890', 'Pass@1234', 'Mathematics Teacher', 'Mathematics', 'B.Ed', 'Algebra', '2024-01-15', 'full_time', 'fixed_salary', '5000'],
+    ['TCH002', 'Jane', 'Doe', 'jane.doe@school.com', '+1234567891', 'Pass@1234', 'Science Teacher', 'Science', 'M.Sc', 'Physics', '2024-02-01', 'full_time', 'fixed_salary', '5500'],
+    ['TCH003', 'Mike', 'Lee', 'mike.lee@school.com', '+1234567892', 'Pass@1234', 'English Teacher', 'English', 'B.A', 'Literature', '2024-03-01', 'part_time', 'hourly', '30']
+  ]
+  const csv = [notes.join('\n'), headers.join(','), ...examples.map(r => r.join(','))].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'teacher_import_template.csv'
+  a.click()
+  URL.revokeObjectURL(url)
+}

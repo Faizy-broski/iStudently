@@ -2,7 +2,7 @@
 
 import { useMemo, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, BookOpen, Calendar, TrendingUp, GraduationCap, Bookmark, RefreshCw } from "lucide-react";
+import { Users, BookOpen, Calendar, GraduationCap, Bookmark, RefreshCw, ThumbsUp } from "lucide-react";
 import { useSchoolDashboard } from "@/hooks/useSchoolDashboard";
 import { Spinner } from "@/components/ui/spinner";
 import { useTranslations } from "next-intl";
@@ -49,30 +49,32 @@ export default function AdminDashboard() {
 
     return [
       {
-        label: t('stats.total_students'),
-        value: stats.totalStudents,
+        title: t('stats.today_present'),
+        value: stats.todayPresentStudents,
+        icon: ThumbsUp,
+        bgColor: '#1976D2',
+        subtitle: t('stats.attendance_rate_label', { rate: stats.attendanceRate })
+      },
+      {
+        title: t('stats.total_staff'),
+        value: stats.totalStaff,
         icon: Users,
-        gradientClass: 'gradient-blue',
-        showTrend: true
+        bgColor: '#00ACC1',
+        subtitle: `${t('stats.male_label', { count: stats.maleStaff })}  ${t('stats.female_label', { count: stats.femaleStaff })}`
       },
       {
-        label: t('stats.total_teachers'),
-        value: stats.totalTeachers,
+        title: t('stats.total_parents'),
+        value: stats.totalParents,
+        icon: Users,
+        bgColor: '#C62828',
+        subtitle: t('stats.total_parents_registered')
+      },
+      {
+        title: t('stats.total_students'),
+        value: stats.totalStudents,
         icon: GraduationCap,
-        gradientClass: 'gradient-teal'
-      },
-      {
-        label: t('stats.active_courses'),
-        value: stats.activeCourses,
-        icon: BookOpen,
-        gradientClass: 'gradient-orange'
-      },
-      {
-        label: t('stats.attendance_rate'),
-        value: `${stats.attendanceRate}%`,
-        icon: Calendar,
-        gradientClass: 'gradient-blue',
-        showTrendIcon: stats.attendanceRate >= 90
+        bgColor: '#2E7D32',
+        subtitle: `${t('stats.male_label', { count: stats.maleStudents })}  ${t('stats.female_label', { count: stats.femaleStudents })}`
       }
     ];
   }, [stats, t]);
@@ -124,17 +126,23 @@ export default function AdminDashboard() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {statsCards.map((stat, index) => (
-          <Card key={index} className={`${stat.gradientClass} text-white`}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-3">
-                <stat.icon className="h-8 w-8 text-white/80" />
-                {stat.showTrend && <TrendingUp className="h-5 w-5 text-white/80" />}
-                {stat.showTrendIcon && <TrendingUp className="h-5 w-5 text-white/80" />}
-              </div>
-              <div className="text-3xl font-bold">{stat.value}</div>
-              <p className="text-white/80 text-sm mt-1">{stat.label}</p>
-            </CardContent>
-          </Card>
+          <div
+            key={index}
+            className="rounded-2xl text-white overflow-hidden shadow-md"
+            style={{ backgroundColor: stat.bgColor }}
+          >
+            <div className="px-5 pt-4 pb-2">
+              <p className="text-white/90 text-sm font-semibold">{stat.title}</p>
+            </div>
+            <div className="border-t border-white/20 mx-5" />
+            <div className="px-5 pt-3 pb-4 flex items-center justify-between">
+              <span className="text-5xl font-bold leading-none">{stat.value}</span>
+              <stat.icon className="h-16 w-16 text-white/30" strokeWidth={1.5} />
+            </div>
+            <div className="px-5 pb-4">
+              <p className="text-white/80 text-xs">{stat.subtitle}</p>
+            </div>
+          </div>
         ))}
       </div>
 

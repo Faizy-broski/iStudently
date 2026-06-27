@@ -14,6 +14,7 @@ import {
   getMySidebarConfig,
   getSuperadminSidebarConfig,
   getCampusSidebarConfig,
+  getSchoolSidebarConfig,
   type SidebarConfig,
 } from '@/lib/api/sidebar-config'
 
@@ -112,9 +113,19 @@ export function SidebarThemeProvider({
         }
       }
 
-      // No campus config — fall back to school config (backend handles the cascade)
-      const result = await getMySidebarConfig()
-      if (result.success) setConfig(result.data ?? null)
+      // No campus config — fall back to the school-wide config directly.
+      // Using getSchoolSidebarConfig(schoolId) instead of getMySidebarConfig() avoids
+      // a bug where the backend resolves the campus from the user's *profile* (not the
+      // currently selected campus in the UI), which could return a different campus's
+      // theme when the selected campus has no custom config.
+      const schoolId = profile.school_id
+      if (schoolId) {
+        const result = await getSchoolSidebarConfig(schoolId)
+        if (result.success) setConfig(result.data ?? null)
+      } else {
+        const result = await getMySidebarConfig()
+        if (result.success) setConfig(result.data ?? null)
+      }
     } catch {
       // Silent fail — sidebar keeps cached/default gradient
     } finally {

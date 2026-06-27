@@ -19,35 +19,24 @@ import {
   AlertTriangle, ArrowLeft, ArrowRight, Loader2, Users
 } from "lucide-react"
 import {
-  bulkImportStaff,
-  downloadStaffImportTemplate,
-  type BulkImportStaffRow,
-  type BulkImportStaffError,
-  type StaffBulkRole
-} from "@/lib/api/staff"
+  bulkImportTeachers,
+  downloadTeacherImportTemplate,
+  type BulkImportTeacherRow,
+  type BulkImportTeacherError
+} from "@/lib/api/teachers"
 import { useCampus } from "@/context/CampusContext"
 import { useTranslations } from "next-intl"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const VALID_ROLES: StaffBulkRole[] = ["teacher", "librarian", "staff", "admin", "counselor"]
 const VALID_EMP_TYPES = ["full_time", "part_time", "contract"] as const
 const VALID_PAY_TYPES = ["fixed_salary", "hourly"] as const
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const DASHBOARD_ROLES: StaffBulkRole[] = ["teacher", "librarian", "admin", "counselor"]
-
-const ROLE_BADGE_VARIANT: Record<StaffBulkRole, "default" | "secondary" | "destructive" | "outline"> = {
-  teacher:   "default",
-  librarian: "secondary",
-  admin:     "destructive",
-  counselor: "outline",
-  staff:     "outline"
-}
 
 // ─── Field definitions ────────────────────────────────────────────────────────
 
 interface FieldDef {
-  key: keyof BulkImportStaffRow
+  key: keyof BulkImportTeacherRow
   label: string
   required: boolean
   hint?: string
@@ -60,8 +49,7 @@ const FIELD_DEFS: FieldDef[] = [
   { key: "employee_number",  label: "Employee Number",   required: false, hint: "Auto-generated if blank" },
   { key: "phone",            label: "Phone",             required: false },
   { key: "password",         label: "Password",          required: false, hint: "Auto-generated if blank" },
-  { key: "title",            label: "Job Title",         required: false, hint: "Used for role auto-detection" },
-  { key: "role",             label: "Role",              required: false, hint: "teacher / librarian / staff / admin / counselor" },
+  { key: "title",            label: "Job Title",         required: false },
   { key: "department",       label: "Department",        required: false },
   { key: "qualifications",   label: "Qualifications",    required: false },
   { key: "specialization",   label: "Specialization",    required: false },
@@ -73,7 +61,7 @@ const FIELD_DEFS: FieldDef[] = [
 
 // ─── Auto-detect mapping ──────────────────────────────────────────────────────
 
-const AUTO_DETECT_MAP: Record<string, keyof BulkImportStaffRow> = {
+const AUTO_DETECT_MAP: Record<string, keyof BulkImportTeacherRow> = {
   // first_name
   first_name: "first_name", firstname: "first_name", "first name": "first_name",
   given_name: "first_name", fname: "first_name",
@@ -94,8 +82,6 @@ const AUTO_DETECT_MAP: Record<string, keyof BulkImportStaffRow> = {
   password: "password", pass: "password", pwd: "password",
   // title
   title: "title", job_title: "title", jobtitle: "title", "job title": "title", position: "title",
-  // role
-  role: "role", staff_role: "role", staffrole: "role", type: "role", staff_type: "role",
   // department
   department: "department", dept: "department", division: "department",
   // qualifications
@@ -120,7 +106,7 @@ const AUTO_DETECT_MAP: Record<string, keyof BulkImportStaffRow> = {
 }
 
 function autoDetectMappings(csvColumns: string[]): Record<string, string> {
-  const mapping: Partial<Record<keyof BulkImportStaffRow, string>> = {}
+  const mapping: Partial<Record<keyof BulkImportTeacherRow, string>> = {}
   for (const col of csvColumns) {
     const normalized = col.toLowerCase().trim()
     const fieldKey = AUTO_DETECT_MAP[normalized]
@@ -131,25 +117,11 @@ function autoDetectMappings(csvColumns: string[]): Record<string, string> {
   return mapping as Record<string, string>
 }
 
-// ─── Role resolution (mirrors backend logic) ──────────────────────────────────
-
-function resolveRole(role?: string, title?: string): StaffBulkRole {
-  const r = role?.trim().toLowerCase()
-  if (r && VALID_ROLES.includes(r as StaffBulkRole)) return r as StaffBulkRole
-  const t = title?.trim().toLowerCase() || ""
-  if (t.includes("librarian")) return "librarian"
-  if (t.includes("admin") || t.includes("principal") || t.includes("director")) return "admin"
-  if (t.includes("teacher") || t.includes("instructor") || t.includes("professor") || t.includes("lecturer")) return "teacher"
-  if (t.includes("counselor") || t.includes("counsellor")) return "counselor"
-  return "staff"
-}
-
 // ─── Validation ───────────────────────────────────────────────────────────────
 
-interface ParsedRow extends BulkImportStaffRow {
+interface ParsedRow extends BulkImportTeacherRow {
   _rowIndex: number
   _clientErrors: string[]
-  _resolvedRole: StaffBulkRole
 }
 
 const SKIP = "__skip__"
@@ -177,7 +149,6 @@ function applyMappingAndValidate(
     const phone         = get("phone")
     const password      = get("password")
     const title         = get("title")
-    const rawRole       = get("role").toLowerCase()
     const department    = get("department")
     const qualifications = get("qualifications")
     const specialization = get("specialization")
@@ -192,9 +163,6 @@ function applyMappingAndValidate(
     else if (!EMAIL_RE.test(email)) errors.push(`Invalid email: ${email}`)
     else if (seenEmails.has(email)) errors.push("Duplicate email in file")
 
-    if (rawRole && !VALID_ROLES.includes(rawRole as StaffBulkRole)) {
-      errors.push(`Invalid role "${rawRole}" — must be: ${VALID_ROLES.join(", ")}`)
-    }
     if (empType && !VALID_EMP_TYPES.includes(empType as any)) {
       errors.push(`Invalid employment_type "${empType}" — must be: ${VALID_EMP_TYPES.join(", ")}`)
     }
@@ -211,12 +179,9 @@ function applyMappingAndValidate(
     if (EMAIL_RE.test(email)) seenEmails.add(email)
     if (empNum) seenEmpNums.add(empNum)
 
-    const resolvedRole = resolveRole(rawRole || undefined, title)
-
     return {
       _rowIndex: i + 2,
       _clientErrors: errors,
-      _resolvedRole: resolvedRole,
       employee_number: empNum        || undefined,
       first_name: firstName,
       last_name:  lastName,
@@ -224,7 +189,6 @@ function applyMappingAndValidate(
       phone:          phone          || undefined,
       password:       password       || undefined,
       title:          title          || undefined,
-      role:           rawRole ? (rawRole as StaffBulkRole) : undefined,
       department:     department     || undefined,
       qualifications: qualifications || undefined,
       specialization: specialization || undefined,
@@ -238,7 +202,7 @@ function applyMappingAndValidate(
 
 // ─── Error report download ────────────────────────────────────────────────────
 
-function downloadErrorReport(errors: BulkImportStaffError[]) {
+function downloadErrorReport(errors: BulkImportTeacherError[]) {
   const header = "row,email,error"
   const lines = errors.map(e => `${e.row},${e.email || ""},${JSON.stringify(e.error)}`)
   const csv = [header, ...lines].join("\n")
@@ -246,7 +210,7 @@ function downloadErrorReport(errors: BulkImportStaffError[]) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement("a")
   a.href = url
-  a.download = "staff_import_errors.csv"
+  a.download = "teacher_import_errors.csv"
   a.click()
   URL.revokeObjectURL(url)
 }
@@ -258,7 +222,7 @@ type Step = 1 | 2 | 3 | 4 | 5
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function StaffBulkImport() {
+export function TeacherBulkImport() {
   const t = useTranslations('staff')
   const bi = (key: string, params?: any) => t(`bulkImport.${key}` as any, params)
 
@@ -271,7 +235,7 @@ export function StaffBulkImport() {
   const [fileName, setFileName] = useState("")
   const [mapping, setMapping] = useState<Record<string, string>>({})
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([])
-  const [importErrors, setImportErrors] = useState<BulkImportStaffError[]>([])
+  const [importErrors, setImportErrors] = useState<BulkImportTeacherError[]>([])
   const [successCount, setSuccessCount] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
@@ -349,10 +313,10 @@ export function StaffBulkImport() {
     setStep(4)
 
     try {
-      const payload: BulkImportStaffRow[] = validRows.map(
-        ({ _rowIndex, _clientErrors, _resolvedRole, ...rest }) => rest
+      const payload: BulkImportTeacherRow[] = validRows.map(
+        ({ _rowIndex, _clientErrors, ...rest }) => rest
       )
-      const result = await bulkImportStaff(payload, campusId)
+      const result = await bulkImportTeachers(payload, campusId)
 
       if (!result.success || !result.data) {
         toast.error(result.error || bi('errors.importFailed'))
@@ -383,17 +347,6 @@ export function StaffBulkImport() {
 
   const validCount   = parsedRows.filter(r => r._clientErrors.length === 0).length
   const invalidCount = parsedRows.filter(r => r._clientErrors.length > 0).length
-
-  const roleSummary = parsedRows
-    .filter(r => r._clientErrors.length === 0)
-    .reduce<Record<string, number>>((acc, r) => {
-      acc[r._resolvedRole] = (acc[r._resolvedRole] || 0) + 1
-      return acc
-    }, {})
-
-  const dashboardCount = parsedRows
-    .filter(r => r._clientErrors.length === 0 && DASHBOARD_ROLES.includes(r._resolvedRole))
-    .length
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -447,17 +400,13 @@ export function StaffBulkImport() {
             </div>
 
             <div className="rounded-md bg-muted/50 p-4 space-y-2 text-sm">
-              <p className="font-medium text-xs">{bi('roleValuesTitle')}</p>
-              <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
-                <span><code>teacher</code> — {bi('roleValueDescriptions.teacher')}</span>
-                <span><code>librarian</code> — {bi('roleValueDescriptions.librarian')}</span>
-                <span><code>admin</code> — {bi('roleValueDescriptions.admin')}</span>
-                <span><code>counselor</code> — {bi('roleValueDescriptions.counselor')}</span>
-                <span><code>staff</code> — {bi('roleValueDescriptions.staff')}</span>
+              <p className="font-medium text-xs">Note: Role is automatically set to "teacher"</p>
+              <div className="grid grid-cols-1 gap-1 text-xs text-muted-foreground">
+                <span>Teachers will automatically have dashboard access with the teacher role.</span>
               </div>
             </div>
 
-            <Button variant="outline" size="sm" onClick={downloadStaffImportTemplate} className="gap-2">
+            <Button variant="outline" size="sm" onClick={downloadTeacherImportTemplate} className="gap-2">
               <Download className="h-4 w-4" /> {bi('downloadTemplate')}
             </Button>
           </CardContent>
@@ -557,11 +506,6 @@ export function StaffBulkImport() {
             <div className="flex gap-2 flex-wrap">
               <Badge variant="default" className="gap-1"><CheckCircle2 className="h-3 w-3" /> {bi('validCount', { count: validCount })}</Badge>
               {invalidCount > 0 && <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> {bi('invalidCount', { count: invalidCount })}</Badge>}
-              {Object.entries(roleSummary).map(([role, count]) => (
-                <Badge key={role} variant={ROLE_BADGE_VARIANT[role as StaffBulkRole] || "outline"} className="gap-1">
-                  {count} {bi(`roles.${role}`)}
-                </Badge>
-              ))}
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => setStep(2)} className="gap-2">
@@ -572,13 +516,6 @@ export function StaffBulkImport() {
               </Button>
             </div>
           </div>
-
-          {dashboardCount > 0 && (
-            <div className="flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-              <span dangerouslySetInnerHTML={{ __html: bi('dashboardCredentialWarning', { count: dashboardCount }) }} />
-            </div>
-          )}
 
           {invalidCount > 0 && (
             <Card className="border-destructive/50">
@@ -608,7 +545,7 @@ export function StaffBulkImport() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b">
-                      {(['row','employeeNumber','firstName','lastName','email','role','title','department','dashboard','status'] as const).map(k => (
+                      {(['row','employeeNumber','firstName','lastName','email','title','department','status'] as const).map(k => (
                         <th key={k} className="text-left py-1 px-2 font-medium text-muted-foreground whitespace-nowrap">{bi(`previewHeaders.${k}`)}</th>
                       ))}
                     </tr>
@@ -621,22 +558,8 @@ export function StaffBulkImport() {
                         <td className="py-1 px-2">{row.first_name}</td>
                         <td className="py-1 px-2">{row.last_name}</td>
                         <td className="py-1 px-2">{row.email}</td>
-                        <td className="py-1 px-2">
-                          {row._clientErrors.length === 0 && (
-                            <Badge variant={ROLE_BADGE_VARIANT[row._resolvedRole] || "outline"} className="text-xs">
-                              {bi(`roles.${row._resolvedRole}`)}
-                            </Badge>
-                          )}
-                        </td>
                         <td className="py-1 px-2">{row.title || "—"}</td>
                         <td className="py-1 px-2">{row.department || "—"}</td>
-                        <td className="py-1 px-2">
-                          {row._clientErrors.length === 0 && (
-                            DASHBOARD_ROLES.includes(row._resolvedRole)
-                              ? <span className="text-green-600">{bi('yes')}</span>
-                              : <span className="text-muted-foreground">—</span>
-                          )}
-                        </td>
                         <td className="py-1 px-2">
                           {row._clientErrors.length > 0
                             ? <span className="text-destructive flex items-center gap-1"><XCircle className="h-3 w-3" /> {row._clientErrors[0]}</span>
@@ -722,7 +645,7 @@ export function StaffBulkImport() {
               <Upload className="h-4 w-4" /> {bi('importMore')}
             </Button>
             <Button asChild>
-              <a href="/admin/staff">{bi('viewStaff')}</a>
+              <a href="/admin/teachers">{bi('viewTeachers')}</a>
             </Button>
           </div>
         </div>

@@ -85,7 +85,7 @@ export function AddDropReport() {
     if (!dateStr) return ""
     const [y, m, d] = dateStr.substring(0, 10).split("-")
     const date = new Date(Number(y), Number(m) - 1, Number(d))
-    return date.toLocaleDateString(locale === "ar" ? "ar-SA" : "en-US", { year: "numeric", month: "long", day: "2-digit" })
+    return date.toLocaleDateString(locale === "ar" ? "ar-u-nu-latn" : "en-US", { year: "numeric", month: "long", day: "2-digit" })
   }
 
   const days31 = Array.from({ length: 31 }, (_, i) => String(i + 1))

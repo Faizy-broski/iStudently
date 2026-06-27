@@ -57,6 +57,7 @@ import {
   Globe,
   FlaskConical,
   Table2,
+  Gauge,
   type LucideIcon,
 } from "lucide-react";
 import { UserRole } from "@/types";
@@ -217,6 +218,15 @@ const adminMenuItems: SidebarMenuItem[] = [
     ],
   },
   {
+    title: "speed_reading",
+    href: "/admin/speed-reading",
+    icon: Gauge,
+    subItems: [
+      { title: "overview", href: "/admin/speed-reading", icon: LayoutDashboard },
+      { title: "manage_texts", href: "/admin/speed-reading/texts", icon: BookOpen },
+    ],
+  },
+  {
     title: "staff_absences",
     href: "/admin/staff-absences",
     icon: CalendarOff,
@@ -237,6 +247,7 @@ const adminMenuItems: SidebarMenuItem[] = [
     subItems: [
       { title: "all_teachers", href: "/admin/teachers", icon: Users },
       { title: "add_teacher", href: "/admin/teachers/add", icon: Plus },
+      { title: "bulk_import", href: "/admin/teachers/bulk-import", icon: Upload },
       { title: "workload", href: "/admin/teachers/workload", icon: ClipboardList },
       { title: "custom_fields", href: "/admin/teachers/custom-fields", icon: Settings },
     ],
@@ -722,6 +733,7 @@ const studentMenuItems: SidebarMenuItem[] = [
     ],
   },
   { title: "activities", href: "/student/activities", icon: Star },
+  { title: "speed_reading", href: "/student/speed-reading", icon: Gauge },
   {
     title: "library",
     href: "/student/library",

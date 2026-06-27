@@ -4,40 +4,61 @@ import * as React from 'react'
 import { Paintbrush, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/context/AuthContext'
+import { useCampus } from '@/context/CampusContext'
 import { useSidebarTheme } from '@/context/SidebarThemeContext'
 import { SidebarConfigEditor } from '@/components/sidebar/SidebarConfigEditor'
 import {
   getSchoolSidebarConfig,
   updateSchoolSidebarConfig,
   resetSchoolSidebarConfig,
+  getCampusSidebarConfig,
+  updateCampusSidebarConfig,
+  resetCampusSidebarConfig,
   type SidebarConfig,
   type UpdateSidebarConfigDTO,
 } from '@/lib/api/sidebar-config'
 
 export default function SidebarThemePage() {
   const { profile } = useAuth()
+  const campusCtx = useCampus()
   const { refresh: refreshTheme } = useSidebarTheme()
+
   const schoolId = profile?.school_id ?? null
+  const selectedCampus = campusCtx?.selectedCampus ?? null
+  const isEditingCampus = selectedCampus !== null
 
   const [config, setConfig] = React.useState<SidebarConfig | null>(null)
   const [loadingConfig, setLoadingConfig] = React.useState(true)
   const [isSaving, setIsSaving] = React.useState(false)
 
   React.useEffect(() => {
-    if (!schoolId) return
+    setConfig(null)
     setLoadingConfig(true)
-    getSchoolSidebarConfig(schoolId)
-      .then((result) => {
-        if (result.success) setConfig(result.data ?? null)
-      })
-      .finally(() => setLoadingConfig(false))
-  }, [schoolId])
+
+    if (isEditingCampus) {
+      getCampusSidebarConfig(selectedCampus.id)
+        .then((result) => {
+          if (result.success) setConfig(result.data ?? null)
+        })
+        .finally(() => setLoadingConfig(false))
+    } else if (schoolId) {
+      getSchoolSidebarConfig(schoolId)
+        .then((result) => {
+          if (result.success) setConfig(result.data ?? null)
+        })
+        .finally(() => setLoadingConfig(false))
+    } else {
+      setLoadingConfig(false)
+    }
+  }, [selectedCampus?.id, schoolId, isEditingCampus])
 
   const handleSave = async (dto: UpdateSidebarConfigDTO) => {
-    if (!schoolId) return
     setIsSaving(true)
     try {
-      const result = await updateSchoolSidebarConfig(schoolId, dto)
+      const result = isEditingCampus
+        ? await updateCampusSidebarConfig(selectedCampus.id, dto)
+        : await updateSchoolSidebarConfig(schoolId!, dto)
+
       if (result.success) {
         setConfig(result.data ?? null)
         toast.success('Sidebar theme saved')
@@ -53,10 +74,12 @@ export default function SidebarThemePage() {
   }
 
   const handleReset = async () => {
-    if (!schoolId) return
     setIsSaving(true)
     try {
-      const result = await resetSchoolSidebarConfig(schoolId)
+      const result = isEditingCampus
+        ? await resetCampusSidebarConfig(selectedCampus.id)
+        : await resetSchoolSidebarConfig(schoolId!)
+
       if (result.success) {
         setConfig(result.data ?? null)
         toast.success('Sidebar theme reset to defaults')
@@ -76,15 +99,24 @@ export default function SidebarThemePage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent">
-          Sidebar Theme
+          {isEditingCampus
+            ? `Sidebar Theme — ${selectedCampus.name}`
+            : 'Sidebar Theme'}
         </h1>
         <p className="text-sm md:text-base text-muted-foreground mt-2">
-          Customize the sidebar background color and image for your school. Campus-specific themes
-          override this and can be set from the{' '}
-          <a href="/admin/settings/campuses" className="underline text-[#57A3CC]">
-            Campuses
-          </a>{' '}
-          settings page.
+          {isEditingCampus ? (
+            <>
+              Customizing the sidebar theme for <strong>{selectedCampus.name}</strong> only.
+              This overrides the school-wide default for this campus. To edit the school-wide
+              default, switch to{' '}
+              <span className="text-[#57A3CC] font-medium">All Campuses</span> in the header.
+            </>
+          ) : (
+            <>
+              Customize the sidebar background color and image for your school. Campus-specific
+              themes override this and can be set by selecting a campus from the header dropdown.
+            </>
+          )}
         </p>
       </div>
 
@@ -102,11 +134,16 @@ export default function SidebarThemePage() {
       ) : (
         <SidebarConfigEditor
           initialConfig={config}
-          uploadScope={schoolId}
+          uploadScope={isEditingCampus ? selectedCampus.id : schoolId}
           onSave={handleSave}
           onReset={handleReset}
           isSaving={isSaving}
           showResetButton
+          infoAlert={
+            isEditingCampus
+              ? undefined
+              : 'This is the school-wide default. Select a specific campus from the header to customize per-campus.'
+          }
         />
       )}
     </div>

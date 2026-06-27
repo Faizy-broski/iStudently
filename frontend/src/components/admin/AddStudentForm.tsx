@@ -1525,7 +1525,7 @@ customFields.forEach((field) => {
                         <p className="text-xs text-muted-foreground mt-1">
                           {tAdd("upcoming_month_msg")}:
                           <span className="font-medium ml-1 rtl:mr-1 rtl:ml-0">
-                            {new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toLocaleDateString(locale === 'ar' ? 'ar-SA' : 'en-US', { month: 'long', year: 'numeric' })}
+                            {new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toLocaleDateString(locale === 'ar' ? 'ar-u-nu-latn' : 'en-US', { month: 'long', year: 'numeric' })}
                           </span>
                         </p>
                       </div>

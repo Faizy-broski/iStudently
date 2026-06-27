@@ -1,0 +1,130 @@
+import { Response } from 'express'
+import { AuthRequest } from '../middlewares/auth.middleware'
+import { speedReadingService } from '../services/speed-reading.service'
+
+class SpeedReadingController {
+  async getTexts(req: AuthRequest, res: Response) {
+    try {
+      const schoolId = (req.query.school_id as string) || req.profile?.school_id
+      if (!schoolId) return res.status(400).json({ success: false, error: 'school_id is required' })
+      const data = await speedReadingService.getTexts(schoolId)
+      return res.json({ success: true, data })
+    } catch (error: any) {
+      console.error('speed-reading getTexts error:', error)
+      return res.status(500).json({ success: false, error: error.message })
+    }
+  }
+
+  async getText(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params
+      const data = await speedReadingService.getText(id)
+      if (!data) return res.status(404).json({ success: false, error: 'Text not found' })
+      return res.json({ success: true, data })
+    } catch (error: any) {
+      console.error('speed-reading getText error:', error)
+      return res.status(500).json({ success: false, error: error.message })
+    }
+  }
+
+  async createText(req: AuthRequest, res: Response) {
+    try {
+      const schoolId = req.profile?.school_id
+      const createdBy = req.profile?.id
+      if (!schoolId) return res.status(400).json({ success: false, error: 'school_id not found in token' })
+      const { title, language, content, quiz_questions } = req.body
+      if (!title || !content) return res.status(400).json({ success: false, error: 'title and content are required' })
+      const data = await speedReadingService.createText(schoolId, createdBy, { title, language: language || 'en', content, quiz_questions })
+      return res.status(201).json({ success: true, data })
+    } catch (error: any) {
+      console.error('speed-reading createText error:', error)
+      return res.status(500).json({ success: false, error: error.message })
+    }
+  }
+
+  async updateText(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params
+      const { title, language, content, quiz_questions } = req.body
+      const data = await speedReadingService.updateText(id, { title, language, content, quiz_questions })
+      return res.json({ success: true, data })
+    } catch (error: any) {
+      console.error('speed-reading updateText error:', error)
+      return res.status(500).json({ success: false, error: error.message })
+    }
+  }
+
+  async deleteText(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params
+      await speedReadingService.deleteText(id)
+      return res.json({ success: true })
+    } catch (error: any) {
+      console.error('speed-reading deleteText error:', error)
+      return res.status(500).json({ success: false, error: error.message })
+    }
+  }
+
+  async submitLog(req: AuthRequest, res: Response) {
+    try {
+      const schoolId = req.profile?.school_id
+      const studentId = req.profile?.id
+      if (!schoolId || !studentId) return res.status(401).json({ success: false, error: 'Unauthorized' })
+      const { text_id, target_wpm, correct_words, incorrect_words, accuracy_percentage, comprehension_bonus, grading_mode } = req.body
+      if (!text_id || target_wpm == null) return res.status(400).json({ success: false, error: 'text_id and target_wpm are required' })
+      const data = await speedReadingService.submitLog(schoolId, studentId, {
+        text_id,
+        target_wpm: Number(target_wpm),
+        correct_words: Number(correct_words ?? 0),
+        incorrect_words: Number(incorrect_words ?? 0),
+        accuracy_percentage: Number(accuracy_percentage ?? 0),
+        comprehension_bonus: Boolean(comprehension_bonus),
+        grading_mode: grading_mode || 'voice',
+      })
+      return res.status(201).json({ success: true, data })
+    } catch (error: any) {
+      console.error('speed-reading submitLog error:', error)
+      return res.status(500).json({ success: false, error: error.message })
+    }
+  }
+
+  async getLeaderboard(req: AuthRequest, res: Response) {
+    try {
+      const schoolId = (req.query.school_id as string) || req.profile?.school_id
+      if (!schoolId) return res.status(400).json({ success: false, error: 'school_id is required' })
+      const limit = Number(req.query.limit ?? 20)
+      const data = await speedReadingService.getLeaderboard(schoolId, limit)
+      return res.json({ success: true, data })
+    } catch (error: any) {
+      console.error('speed-reading getLeaderboard error:', error)
+      return res.status(500).json({ success: false, error: error.message })
+    }
+  }
+
+  async getMyStats(req: AuthRequest, res: Response) {
+    try {
+      const schoolId = req.profile?.school_id
+      const studentId = req.profile?.id
+      if (!schoolId || !studentId) return res.status(401).json({ success: false, error: 'Unauthorized' })
+      const data = await speedReadingService.getStudentStats(schoolId, studentId)
+      return res.json({ success: true, data })
+    } catch (error: any) {
+      console.error('speed-reading getMyStats error:', error)
+      return res.status(500).json({ success: false, error: error.message })
+    }
+  }
+
+  async getDashboardStats(req: AuthRequest, res: Response) {
+    try {
+      const schoolId = (req.query.school_id as string) || req.profile?.school_id
+      if (!schoolId) return res.status(400).json({ success: false, error: 'school_id is required' })
+      const data = await speedReadingService.getDashboardStats(schoolId)
+      return res.json({ success: true, data })
+    } catch (error: any) {
+      console.error('speed-reading getDashboardStats error:', error)
+      return res.status(500).json({ success: false, error: error.message })
+    }
+  }
+}
+
+export const speedReadingController = new SpeedReadingController()

@@ -165,8 +165,10 @@ export interface BulkImportStaffRow {
     role?: StaffBulkRole
     department?: string
     qualifications?: string
+    specialization?: string
     date_of_joining?: string
     employment_type?: 'full_time' | 'part_time' | 'contract'
+    payment_type?: 'fixed_salary' | 'hourly'
     base_salary?: number
 }
 
@@ -202,14 +204,20 @@ export async function bulkImportStaff(
 export function downloadStaffImportTemplate() {
     const headers = [
         'employee_number', 'first_name', 'last_name', 'email', 'phone', 'password',
-        'title', 'role', 'department', 'qualifications', 'date_of_joining',
-        'employment_type', 'base_salary'
+        'title', 'role', 'department', 'qualifications', 'specialization', 'date_of_joining',
+        'employment_type', 'payment_type', 'base_salary'
+    ]
+    const notes = [
+        '# role values: teacher | librarian | staff | admin | counselor (leave blank to auto-detect from title)',
+        '# employment_type values: full_time | part_time | contract',
+        '# payment_type values: fixed_salary | hourly',
+        '# date_of_joining format: YYYY-MM-DD'
     ]
     const examples = [
-        ['TCH001', 'John', 'Smith', 'john.smith@school.com', '+1234567890', 'Pass@1234', 'Mathematics Teacher', 'teacher', 'Mathematics', 'B.Ed', '2024-01-15', 'full_time', '5000'],
-        ['LIB001', 'Jane', 'Doe', 'jane.doe@school.com', '+1234567891', 'Pass@1234', 'Head Librarian', 'librarian', 'Library', 'MLS', '2024-01-15', 'full_time', '4000'],
-        ['STF001', 'Mike', 'Johnson', 'mike.j@school.com', '+1234567892', 'Pass@1234', 'Accountant', 'staff', 'Finance', '', '2024-02-01', 'full_time', '3500'],
-        ['CSL001', 'Sara', 'Lee', 'sara.lee@school.com', '+1234567893', 'Pass@1234', 'School Counselor', 'counselor', 'Counseling', 'M.Sc Psychology', '2024-02-01', 'full_time', '4500']
+        ['TCH001', 'John', 'Smith', 'john.smith@school.com', '+1234567890', 'Pass@1234', 'Mathematics Teacher', 'teacher', 'Mathematics', 'B.Ed', 'Algebra', '2024-01-15', 'full_time', 'fixed_salary', '5000'],
+        ['LIB001', 'Jane', 'Doe', 'jane.doe@school.com', '+1234567891', 'Pass@1234', 'Head Librarian', 'librarian', 'Library', 'MLS', '', '2024-01-15', 'full_time', 'fixed_salary', '4000'],
+        ['STF001', 'Mike', 'Johnson', 'mike.j@school.com', '+1234567892', 'Pass@1234', 'Accountant', 'staff', 'Finance', '', '', '2024-02-01', 'full_time', 'fixed_salary', '3500'],
+        ['CSL001', 'Sara', 'Lee', 'sara.lee@school.com', '+1234567893', 'Pass@1234', 'School Counselor', 'counselor', 'Counseling', 'M.Sc Psychology', 'Child Psychology', '2024-02-01', 'full_time', 'fixed_salary', '4500']
     ]
     const csv = [headers.join(','), ...examples.map(r => r.join(','))].join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })

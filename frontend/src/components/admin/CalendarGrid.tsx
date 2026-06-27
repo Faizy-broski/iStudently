@@ -49,14 +49,11 @@ const currentYear = new Date().getFullYear();
 const GREGORIAN_YEARS = Array.from({ length: 21 }, (_, i) => currentYear - 10 + i);
 const HIJRI_YEARS = Array.from({ length: 21 }, (_, i) => momentHijri().iYear() - 10 + i);
 
-const toArabicNumerals = (num: number): string =>
-  String(num).replace(/[0-9]/g, (d) => String.fromCharCode(0x0660 + parseInt(d)));
-
 const toWesternNumerals = (str: string): string =>
   str.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660));
 
-const formatNumber = (num: number, isArabic: boolean): string =>
-  isArabic ? toArabicNumerals(num) : String(num);
+// Always use Western Arabic numerals (0-9) regardless of locale
+const formatNumber = (num: number, _isArabic: boolean): string => String(num);
 
 interface DayInfo {
   date: Date;
@@ -244,8 +241,7 @@ export function CalendarGrid({
           if (globalHijriOffset !== 0) hd.add(globalHijriOffset, 'days');
           const dayNum = hd.iDate();
           const monthName = HIJRI_MONTHS_LOCALIZED[hd.iMonth()];
-          const formattedNum = useArabic ? toArabicNumerals(dayNum) : String(dayNum);
-          return useArabic ? `${formattedNum} ${monthName}` : `${formattedNum} ${monthName}`;
+          return `${dayNum} ${monthName}`;
         })(),
       });
       day.add(1, "day");
@@ -394,7 +390,7 @@ export function CalendarGrid({
                 <SelectContent>
                   {HIJRI_YEARS.map((year) => (
                     <SelectItem key={year} value={year.toString()}>
-                      {year}
+                      {formatNumber(year, isArabic)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -477,7 +473,7 @@ export function CalendarGrid({
                       )}
                       onClick={(e) => handleDayNumberClick(e, day.date, dayEvents)}
                     >
-                      {isHijriMode ? String(day.dayNumber) : formatNumber(day.dayNumber, isArabic)}
+                      {formatNumber(day.dayNumber, isArabic)}
                     </span>
                     {hasEvents && (
                       <Badge

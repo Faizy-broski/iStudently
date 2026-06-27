@@ -48,6 +48,16 @@ export default async function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
+              // Polyfill Promise.withResolvers — required by pdfjs-dist v4+ (react-pdf v10+).
+              // Chrome 119+, Firefox 121+, Safari 17.4+ have it natively; older browsers do not.
+              if (typeof Promise.withResolvers !== 'function') {
+                Promise.withResolvers = function() {
+                  var resolve, reject;
+                  var promise = new Promise(function(res, rej) { resolve = res; reject = rej; });
+                  return { promise: promise, resolve: resolve, reject: reject };
+                };
+              }
+
               (function() {
                 function getCookie(name) {
                   const value = '; ' + document.cookie;

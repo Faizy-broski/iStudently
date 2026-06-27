@@ -36,7 +36,7 @@ import { toast } from "sonner";
 import { useProfileView } from "@/context/ProfileViewContext";
 import { QualificationsTab } from "@/components/admin/QualificationsTab";
 import { UserQRCode } from "@/components/shared/UserQRCode";
-import { type Staff } from "@/lib/api/teachers";
+import { type Staff, getTeacherById } from "@/lib/api/teachers";
 import { useTeachers } from "@/hooks/useTeachers";
 import { getLastLogin } from "@/lib/api/auth";
 import { format } from "date-fns";
@@ -70,8 +70,8 @@ const getInitials = (firstName?: string | null, lastName?: string | null) => {
 
 // Helper to format currency
 const formatCurrency = (amount: number | null | undefined, notSetLabel: string) => {
-  if (!amount) return notSetLabel;
-  return amount.toLocaleString();
+  if (amount == null || amount === 0) return notSetLabel;
+  return Number(amount).toLocaleString();
 };
 
 // Info Row Component
@@ -117,7 +117,14 @@ export default function TeacherDetailsPage() {
       try {
         const teacher = teachers.find((t) => t.employee_number === employeeNumber);
         if (teacher) {
+          // Set list data immediately so the page renders while the full fetch loads
           setCurrentTeacher(teacher);
+
+          // Fetch full details (includes base_salary from salary_structures join)
+          // List query omits the salary join for performance, so we need a separate call
+          getTeacherById(teacher.id).then((full) => {
+            setCurrentTeacher(full);
+          }).catch(() => {});
 
           if (teacher.profile_id) {
             getLastLogin(teacher.profile_id).then((res) => {

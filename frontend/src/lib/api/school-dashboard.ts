@@ -66,6 +66,12 @@ export interface SchoolDashboardStats {
   libraryBooks: number
   borrowedBooks: number
   attendanceRate: number
+  todayPresentStudents: number
+  totalParents: number
+  maleStudents: number
+  femaleStudents: number
+  maleStaff: number
+  femaleStaff: number
 }
 
 export interface AttendanceData {

@@ -12,13 +12,13 @@ router.get('/superadmin', requireSuperAdmin, sidebarConfigController.getSuperadm
 router.put('/superadmin', requireSuperAdmin, sidebarConfigController.updateSuperadminConfig)
 router.post('/superadmin/reset', requireSuperAdmin, sidebarConfigController.resetSuperadminConfig)
 
-// School-level routes — super_admin or school admin (ownership verified in controller)
-router.get('/school/:schoolId', requireAdmin, sidebarConfigController.getSchoolConfig)
+// School-level routes — GET is readable by any authenticated user (all roles load sidebar theme)
+router.get('/school/:schoolId', sidebarConfigController.getSchoolConfig)
 router.put('/school/:schoolId', requireAdmin, sidebarConfigController.updateSchoolConfig)
 router.post('/school/:schoolId/reset', requireAdmin, sidebarConfigController.resetSchoolConfig)
 
-// Campus-level routes — super_admin or school admin (campus ownership verified in controller)
-router.get('/campus/:campusId', requireAdmin, sidebarConfigController.getCampusConfig)
+// Campus-level routes — GET readable by any authenticated user
+router.get('/campus/:campusId', sidebarConfigController.getCampusConfig)
 router.put('/campus/:campusId', requireAdmin, sidebarConfigController.updateCampusConfig)
 router.post('/campus/:campusId/reset', requireAdmin, sidebarConfigController.resetCampusConfig)
 

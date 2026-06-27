@@ -75,6 +75,7 @@ import setupAssistantRoutes from "./routes/setup-assistant.routes";
 import embeddedResourcesRoutes from "./routes/embedded-resources.routes";
 import vlabyRoutes from "./routes/vlaby.routes";
 import sidebarConfigRoutes from "./routes/sidebar-config.routes";
+import speedReadingRoutes from "./routes/speed-reading.routes";
 import signupLinksRoutes from "./routes/signup-links.routes";
 import pendingSignupsRoutes from "./routes/pending-signups.routes";
 import publicSignupRoutes from "./routes/public-signup.routes";
@@ -316,6 +317,7 @@ registerRoutes("/staff-absences", staffAbsencesRoutes);
 registerRoutes("/human-resources", humanResourcesRoutes);
 registerRoutes("/performance", performanceRoutes);
 registerRoutes("/quiz", quizRoutes);
+registerRoutes("/speed-reading", speedReadingRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

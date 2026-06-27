@@ -490,9 +490,9 @@ export default function AddReferralPage() {
             ) : (
               fields.map((field, idx) => (
                 <div key={field.id}>
-                  {idx > 0 && <hr className="my-4 border-t" />}
-                  <div className="space-y-1.5">
-                    <Label>{field.name}</Label>
+                  {idx > 0 && <hr className="my-5 border-t" />}
+                  <div className="space-y-3">
+                    <p className="text-base font-semibold text-blue-700">{field.name}</p>
                     <DynamicFieldInput
                       field={field}
                       value={fieldValues[field.id]}
