@@ -58,6 +58,7 @@ import {
   FlaskConical,
   Table2,
   Gauge,
+  Mic,
   type LucideIcon,
 } from "lucide-react";
 import { UserRole } from "@/types";
