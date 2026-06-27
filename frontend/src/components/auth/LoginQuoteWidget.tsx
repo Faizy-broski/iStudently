@@ -22,10 +22,6 @@ export function LoginQuoteWidget({ locale = "en" }: LoginQuoteWidgetProps) {
   const text = isArabic ? quote.text_ar : quote.text_en;
   if (!text?.trim()) return null;
 
-  const fontFamily = isArabic 
-    ? "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" 
-    : "Georgia, 'Times New Roman', serif";
-
   return (
     <div
       dir={isArabic ? "rtl" : "ltr"}
@@ -36,9 +32,9 @@ export function LoginQuoteWidget({ locale = "en" }: LoginQuoteWidgetProps) {
         borderRadius: "16px",
         background: "linear-gradient(135deg, rgba(1,45,110,0.06) 0%, rgba(1,45,110,0.02) 100%)",
         border: "1px solid rgba(1,45,110,0.18)",
-        overflow: "hidden",
       }}
     >
+      {/* Vertical accent bar */}
       <div
         style={{
           position: "absolute",
@@ -51,35 +47,40 @@ export function LoginQuoteWidget({ locale = "en" }: LoginQuoteWidgetProps) {
         }}
       />
 
+      {/* Opening quote mark */}
       <span
         style={{
-          fontFamily: fontFamily,
+          fontFamily: "Georgia, 'Times New Roman', serif",
           fontSize: "64px",
           lineHeight: "0.6",
           color: "rgba(1,45,110,0.18)",
           display: "block",
           marginBottom: "0.5rem",
-          fontStyle: isArabic ? "normal" : "italic",
           textAlign: "start",
         }}
       >
-        {isArabic ? "”" : "\u201C"}
+        {isArabic ? "“" : "“"}
       </span>
 
+      {/* Quote text */}
       <p
         style={{
-          fontFamily: fontFamily,
-          fontSize: isArabic ? "16px" : "15px",
+          fontFamily: isArabic
+            ? "'Cairo', 'Noto Sans Arabic', system-ui, sans-serif"
+            : "Georgia, 'Times New Roman', serif",
+          fontSize: "15px",
           fontStyle: isArabic ? "normal" : "italic",
           lineHeight: "1.75",
           color: "#1a2f5a",
           margin: "0 0 0.75rem 0",
           textAlign: "start",
+          wordBreak: "break-word",
         }}
       >
         {text}
       </p>
 
+      {/* Footer divider + label */}
       <div
         style={{
           display: "flex",

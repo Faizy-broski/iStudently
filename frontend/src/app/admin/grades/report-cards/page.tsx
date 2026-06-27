@@ -229,7 +229,7 @@ export default function ReportCardsPage() {
       if (res.success) {
         const cards = res.data?.report_cards || res.data?.data?.report_cards || [];
         if (cards.length > 0) {
-          printReportCards("Report Card", cards as ReportCardData[], pdfSettings, selectedCampus?.name, selectedCampus ?? undefined, isPluginActive('pdf_header_footer'), twoCopiesLandscape);
+          printReportCards("Report Card", cards as ReportCardData[], pdfSettings, selectedCampus?.name, selectedCampus ?? undefined, isPluginActive('pdf_header_footer'), twoCopiesLandscape, selectedCampus?.principal_signature_url);
         } else {
           toast.success(
             `Report cards generated for ${selectedStudentIds.length} student(s)`

@@ -6,6 +6,7 @@ import { HostelService } from "./hostel.service";
 import { diaryReminderService } from "./diary-reminder.service";
 import { AutomaticRecordsService } from "./automaticRecords.service";
 import { twoFAService } from "./two-fa.service";
+import { readingLogsService } from "./reading-logs.service";
 
 /**
  * AUTOMATED CRON SERVICE
@@ -137,6 +138,18 @@ class CronService {
       "15 3 * * *",
       async () => {
         await twoFAService.sweepExpiredSessions();
+      },
+      {
+        scheduled: true,
+        timezone: "Asia/Karachi",
+      },
+    );
+
+    // Reading Logs — delete audio files older than 14 days (3:45 AM daily)
+    cron.schedule(
+      "45 3 * * *",
+      async () => {
+        await this.cleanupReadingLogAudio();
       },
       {
         scheduled: true,
@@ -433,6 +446,19 @@ class CronService {
       }
     } catch (error: any) {
       console.error("❌ Error in retry generation:", error.message);
+    }
+  }
+
+  /**
+   * Delete audio recordings from Supabase Storage for reading logs older than 14 days,
+   * then null their audio_file_path so the UI shows the "Audio Expired" badge.
+   */
+  async cleanupReadingLogAudio() {
+    try {
+      const result = await readingLogsService.cleanup14DayAudio();
+      console.log(`✅ [ReadingLogs] Audio cleanup done — cleaned: ${result.cleaned}, errors: ${result.errors}`);
+    } catch (error: any) {
+      console.error('❌ [ReadingLogs] Audio cleanup error:', error.message);
     }
   }
 

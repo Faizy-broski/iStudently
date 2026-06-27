@@ -46,6 +46,7 @@ import {
   type SignupLink,
 } from '@/lib/api/signup-links'
 import { getPendingCount } from '@/lib/api/pending-signups'
+import { getGradeLevels, type GradeLevel } from '@/lib/api/academics'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 
 const ROLES = ['teacher', 'student', 'parent', 'staff', 'librarian'] as const
@@ -80,6 +81,7 @@ export default function SignupLinksPage() {
   const [deleteTarget, setDeleteTarget] = React.useState<SignupLink | null>(null)
   const [generatedLink, setGeneratedLink] = React.useState<SignupLink | null>(null)
   const [copiedId, setCopiedId] = React.useState<string | null>(null)
+  const [gradeLevels, setGradeLevels] = React.useState<GradeLevel[]>([])
 
   // Generate form state
   const [form, setForm] = React.useState({
@@ -91,7 +93,12 @@ export default function SignupLinksPage() {
     expires_at: '',
     campus_id: campusId ?? '',
   })
+  const [prefillFields, setPrefillFields] = React.useState<Record<string, string>>({})
   const [generating, setGenerating] = React.useState(false)
+
+  // List filters
+  const [filterRole, setFilterRole] = React.useState<string>('all')
+  const [filterDays, setFilterDays] = React.useState<string>('all')
 
   const fetchData = React.useCallback(async () => {
     setLoading(true)
@@ -108,6 +115,12 @@ export default function SignupLinksPage() {
   }, [campusId])
 
   React.useEffect(() => { fetchData() }, [fetchData])
+
+  React.useEffect(() => {
+    if (showGenerateDialog) {
+      getGradeLevels().then(res => { if (res.success) setGradeLevels(res.data ?? []) }).catch(() => {})
+    }
+  }, [showGenerateDialog])
 
   const handleCopy = async (link: SignupLink) => {
     const url = buildSignupUrl(link.token)
@@ -141,12 +154,22 @@ export default function SignupLinksPage() {
   const handleGenerate = async () => {
     setGenerating(true)
     try {
+      const prefillData: Record<string, unknown> = {}
+      for (const [k, v] of Object.entries(prefillFields)) {
+        if (v.trim()) prefillData[k] = v.trim()
+      }
+      // For student grade_level, also store the grade name from the grade level object
+      if (prefillData.grade_level_id && gradeLevels.length > 0) {
+        const gl = gradeLevels.find(g => g.id === prefillData.grade_level_id)
+        if (gl) prefillData.grade_level = gl.name
+      }
       const res = await generateSignupLink({
         role: form.role,
         label: form.label || null,
         max_uses: form.unlimited ? null : parseInt(form.max_uses, 10) || null,
         expires_at: form.neverExpires ? null : (form.expires_at || null),
         campus_id: form.campus_id || null,
+        prefill_data: Object.keys(prefillData).length > 0 ? prefillData : undefined,
       })
       if (res.success && res.data) {
         setGeneratedLink(res.data)
@@ -161,12 +184,22 @@ export default function SignupLinksPage() {
 
   const resetGenerateForm = () => {
     setForm({ role: 'teacher', label: '', unlimited: true, max_uses: '', neverExpires: true, expires_at: '', campus_id: campusId ?? '' })
+    setPrefillFields({})
     setGeneratedLink(null)
     setShowGenerateDialog(false)
   }
 
   const activeCount = links.filter(l => getLinkStatus(l) === 'active').length
   const totalUses = links.reduce((sum, l) => sum + l.use_count, 0)
+
+  const filteredLinks = React.useMemo(() => {
+    const cutoff = filterDays === 'all' ? null : new Date(Date.now() - Number(filterDays) * 86400_000)
+    return links.filter(l => {
+      if (filterRole !== 'all' && l.role !== filterRole) return false
+      if (cutoff && new Date(l.created_at) < cutoff) return false
+      return true
+    })
+  }, [links, filterRole, filterDays])
 
   return (
     <div className="space-y-6" dir={isAr ? 'rtl' : 'ltr'}>
@@ -211,6 +244,59 @@ export default function SignupLinksPage() {
         ))}
       </div>
 
+      {/* Filters */}
+      {!loading && links.length > 0 && (
+        <div className="flex flex-wrap gap-2 items-center">
+          {/* Role filter */}
+          <div className="flex gap-1 flex-wrap">
+            {(['all', 'student', 'teacher', 'parent', 'staff', 'librarian'] as const).map(r => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => setFilterRole(r)}
+                className={cn(
+                  'px-3 py-1 rounded-full text-xs font-medium border transition-colors capitalize',
+                  filterRole === r
+                    ? 'bg-[#022172] text-white border-[#022172]'
+                    : 'border-gray-200 text-muted-foreground hover:border-[#57A3CC]'
+                )}
+              >
+                {r === 'all' ? 'All Roles' : r}
+              </button>
+            ))}
+          </div>
+          <div className="w-px h-5 bg-border hidden sm:block" />
+          {/* Time filter */}
+          <div className="flex gap-1">
+            {([
+              { value: 'all', label: 'All Time' },
+              { value: '7',   label: 'Last 7d' },
+              { value: '30',  label: 'Last 30d' },
+              { value: '90',  label: 'Last 90d' },
+            ] as const).map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setFilterDays(opt.value)}
+                className={cn(
+                  'px-3 py-1 rounded-full text-xs font-medium border transition-colors',
+                  filterDays === opt.value
+                    ? 'bg-[#022172] text-white border-[#022172]'
+                    : 'border-gray-200 text-muted-foreground hover:border-[#57A3CC]'
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {(filterRole !== 'all' || filterDays !== 'all') && (
+            <span className="text-xs text-muted-foreground ml-1">
+              {filteredLinks.length} of {links.length} links
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Links List */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
@@ -230,9 +316,13 @@ export default function SignupLinksPage() {
             </Button>
           </CardContent>
         </Card>
+      ) : filteredLinks.length === 0 ? (
+        <div className="text-center py-10 text-muted-foreground text-sm">
+          No links match the selected filters.
+        </div>
       ) : (
         <div className="space-y-3">
-          {links.map((link) => {
+          {filteredLinks.map((link) => {
             const status = getLinkStatus(link)
             const url = buildSignupUrl(link.token)
             return (
@@ -334,7 +424,7 @@ export default function SignupLinksPage() {
                     <button
                       key={r}
                       type="button"
-                      onClick={() => setForm(f => ({ ...f, role: r }))}
+                      onClick={() => { setForm(f => ({ ...f, role: r })); setPrefillFields({}) }}
                       className={cn(
                         'py-2 px-3 rounded-lg text-sm font-medium border transition-all capitalize',
                         form.role === r
@@ -407,6 +497,109 @@ export default function SignupLinksPage() {
                     min={new Date().toISOString().split('T')[0]}
                     onChange={(e) => setForm(f => ({ ...f, expires_at: e.target.value }))}
                   />
+                )}
+              </div>
+
+              {/* Pre-fill Fields — shared personal fields + role-specific */}
+              <div className="space-y-3 border-t pt-4">
+                <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Pre-fill Fields (optional)
+                </Label>
+                <p className="text-xs text-muted-foreground -mt-1">
+                  Fields filled here will be pre-populated on the signup form for convenience.
+                </p>
+
+                {/* Personal info — all roles */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-sm">First Name</Label>
+                    <Input
+                      placeholder="e.g. Ahmed"
+                      value={prefillFields.first_name ?? ''}
+                      onChange={e => setPrefillFields(f => ({ ...f, first_name: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-sm">Last Name</Label>
+                    <Input
+                      placeholder="e.g. Al-Rashid"
+                      value={prefillFields.last_name ?? ''}
+                      onChange={e => setPrefillFields(f => ({ ...f, last_name: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-sm">Father Name</Label>
+                    <Input
+                      placeholder="e.g. Mohammed"
+                      value={prefillFields.father_name ?? ''}
+                      onChange={e => setPrefillFields(f => ({ ...f, father_name: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-sm">Gender</Label>
+                    <Select
+                      value={prefillFields.gender ?? ''}
+                      onValueChange={v => setPrefillFields(f => ({ ...f, gender: v }))}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Select (optional)" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">— None —</SelectItem>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Student-specific: grade level */}
+                {form.role === 'student' && (
+                  <div className="space-y-1">
+                    <Label className="text-sm">Grade Level</Label>
+                    {gradeLevels.length > 0 ? (
+                      <Select
+                        value={prefillFields.grade_level_id ?? ''}
+                        onValueChange={v => setPrefillFields(f => ({ ...f, grade_level_id: v }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select grade (optional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">— None —</SelectItem>
+                          {gradeLevels.filter(g => g.is_active).map(g => (
+                            <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        placeholder="e.g. Grade 5 (optional)"
+                        value={prefillFields.grade_level ?? ''}
+                        onChange={e => setPrefillFields(f => ({ ...f, grade_level: e.target.value }))}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* Staff/Teacher/etc: department & job title */}
+                {['teacher', 'staff', 'librarian', 'counselor'].includes(form.role) && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-sm">Department</Label>
+                      <Input
+                        placeholder="e.g. Mathematics"
+                        value={prefillFields.department ?? ''}
+                        onChange={e => setPrefillFields(f => ({ ...f, department: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-sm">Job Title</Label>
+                      <Input
+                        placeholder="e.g. Math Teacher"
+                        value={prefillFields.job_title ?? ''}
+                        onChange={e => setPrefillFields(f => ({ ...f, job_title: e.target.value }))}
+                      />
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

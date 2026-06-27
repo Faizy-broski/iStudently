@@ -205,10 +205,15 @@ function FormDialog({
   const [content, setContent] = React.useState('')
   const [imageUrl, setImageUrl] = React.useState('')
   const [isActive, setIsActive] = React.useState(true)
+  const [targetRoles, setTargetRoles] = React.useState<string[]>([])
+  const [expiresAt, setExpiresAt] = React.useState('')
+  const [neverExpires, setNeverExpires] = React.useState(true)
   const [urlError, setUrlError] = React.useState('')
   const [uploading, setUploading] = React.useState(false)
   const [uploadError, setUploadError] = React.useState('')
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+  const ALL_ROLES = ['student', 'teacher', 'staff', 'parent', 'librarian']
 
   React.useEffect(() => {
     if (open) {
@@ -218,6 +223,10 @@ function FormDialog({
       setContent(initial?.content ?? '')
       setImageUrl(initial?.image_url ?? '')
       setIsActive(initial?.isActive ?? true)
+      setTargetRoles(initial?.target_roles ?? [])
+      const exp = initial?.expires_at ?? null
+      setNeverExpires(!exp)
+      setExpiresAt(exp ? exp.slice(0, 10) : '')
       setUrlError('')
       setUploadError('')
     }
@@ -282,213 +291,289 @@ function FormDialog({
       content: pageType === 'text' ? content : undefined,
       image_url: pageType === 'image' ? imageUrl.trim() : undefined,
       isActive,
+      target_roles: targetRoles,
+      expires_at: neverExpires ? null : (expiresAt || null),
     })
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={pageType === 'text' ? 'max-w-3xl' : pageType === 'image' ? 'max-w-2xl' : 'max-w-md'}>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Globe className="h-5 w-5 text-brand-blue" />
+      <DialogContent className={`w-full mx-auto ${pageType === 'text' ? 'max-w-3xl' : pageType === 'image' ? 'max-w-2xl' : 'max-w-lg'} max-h-[90dvh] flex flex-col p-0`}>
+        {/* Fixed header */}
+        <DialogHeader className="px-4 sm:px-6 pt-5 pb-3 shrink-0 border-b">
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Globe className="h-5 w-5 text-brand-blue shrink-0" />
             {initial ? 'Edit Custom Page' : 'Add Custom Page'}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs sm:text-sm">
             Choose a content type and fill in the details.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-5 pt-1">
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
+          <form id="page-form" onSubmit={handleSubmit} className="space-y-5">
 
-          {/* Page type selector */}
-          <div className="space-y-2">
-            <Label>Content Type</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {PAGE_TYPES.map((t) => {
-                const Icon = t.icon
-                const active = pageType === t.value
-                return (
-                  <button
-                    key={t.value}
-                    type="button"
-                    onClick={() => { setPageType(t.value); setUrlError('') }}
-                    className={`flex items-start gap-2.5 p-3 rounded-lg border text-start transition-all ${
-                      active
-                        ? 'border-brand-blue bg-brand-blue/5 ring-1 ring-brand-blue'
-                        : 'border-border hover:border-muted-foreground/40 hover:bg-muted/30'
-                    }`}
-                  >
-                    <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${active ? 'text-brand-blue' : 'text-muted-foreground'}`} />
-                    <div>
-                      <p className={`text-xs font-semibold ${active ? 'text-brand-blue' : ''}`}>{t.label}</p>
-                      <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{t.desc}</p>
-                    </div>
-                  </button>
-                )
-              })}
+            {/* Page type selector — 2-col on mobile, 4-col on sm+ for compact layout */}
+            <div className="space-y-2">
+              <Label>Content Type</Label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {PAGE_TYPES.map((t) => {
+                  const Icon = t.icon
+                  const active = pageType === t.value
+                  return (
+                    <button
+                      key={t.value}
+                      type="button"
+                      onClick={() => { setPageType(t.value); setUrlError('') }}
+                      className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border text-center transition-all ${
+                        active
+                          ? 'border-brand-blue bg-brand-blue/5 ring-1 ring-brand-blue'
+                          : 'border-border hover:border-muted-foreground/40 hover:bg-muted/30'
+                      }`}
+                    >
+                      <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-brand-blue' : 'text-muted-foreground'}`} />
+                      <p className={`text-xs font-semibold leading-tight ${active ? 'text-brand-blue' : ''}`}>{t.label}</p>
+                    </button>
+                  )
+                })}
+              </div>
+              {/* Description of selected type */}
+              <p className="text-[11px] text-muted-foreground">
+                {PAGE_TYPES.find(t => t.value === pageType)?.desc}
+              </p>
             </div>
-          </div>
 
-          {/* Title */}
-          <div className="space-y-1.5">
-            <Label htmlFor="page-title">Tab Label *</Label>
-            <Input
-              id="page-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. School Website, Our Story, Upcoming Events…"
-              required
-              disabled={saving}
-            />
-          </div>
-
-          {/* URL — for url + embed */}
-          {(pageType === 'url' || pageType === 'embed') && (
+            {/* Title */}
             <div className="space-y-1.5">
-              <Label htmlFor="page-url">
-                {pageType === 'embed' ? 'Website URL to Embed *' : 'External URL *'}
-              </Label>
+              <Label htmlFor="page-title">Tab Label *</Label>
               <Input
-                id="page-url"
-                value={url}
-                onChange={(e) => { setUrl(e.target.value); setUrlError('') }}
-                placeholder="https://example.com"
+                id="page-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. School Website, Our Story, Upcoming Events…"
                 required
                 disabled={saving}
               />
-              {pageType === 'embed' && (
-                <p className="text-[11px] text-muted-foreground">
-                  The website will be displayed inside an embedded frame. Note: some sites block embedding.
-                </p>
-              )}
-              {urlError && <p className="text-xs text-destructive">{urlError}</p>}
             </div>
-          )}
 
-          {/* Content — for text */}
-          {pageType === 'text' && (
-            <div className="space-y-1.5">
-              <Label>Content *</Label>
-              <RichTextEditor
-                value={content}
-                onChange={setContent}
-              />
-            </div>
-          )}
-
-          {/* Image URL — for image/poster */}
-          {pageType === 'image' && (
-            <div className="space-y-3">
-              {/* Upload area */}
-              <div>
-                <Label className="mb-1.5 block">Image / Poster *</Label>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  className="hidden"
-                  onChange={handleFileUpload}
-                  disabled={saving || uploading}
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={saving || uploading}
-                  className="w-full flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-lg py-6 hover:border-brand-blue hover:bg-brand-blue/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {uploading ? (
-                    <>
-                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">Uploading…</p>
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-6 w-6 text-muted-foreground" />
-                      <p className="text-sm font-medium">Click to upload from device</p>
-                      <p className="text-[11px] text-muted-foreground">JPG, PNG, WebP, GIF · max 10 MB</p>
-                    </>
-                  )}
-                </button>
-                {uploadError && <p className="text-xs text-destructive mt-1">{uploadError}</p>}
-              </div>
-
-              {/* Divider */}
-              <div className="flex items-center gap-2">
-                <div className="flex-1 h-px bg-border" />
-                <span className="text-[11px] text-muted-foreground">or paste URL</span>
-                <div className="flex-1 h-px bg-border" />
-              </div>
-
-              {/* URL input */}
+            {/* URL — for url + embed */}
+            {(pageType === 'url' || pageType === 'embed') && (
               <div className="space-y-1.5">
-                <div className="flex gap-2">
-                  <Input
-                    id="page-image"
-                    value={imageUrl}
-                    onChange={(e) => { setImageUrl(e.target.value); setUrlError('') }}
-                    placeholder="https://example.com/poster.jpg"
-                    disabled={saving || uploading}
-                    className="flex-1"
-                  />
-                  {imageUrl && (
-                    <button
-                      type="button"
-                      onClick={() => setImageUrl('')}
-                      className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
-                      title="Clear"
-                    >
-                      <XIcon className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
+                <Label htmlFor="page-url">
+                  {pageType === 'embed' ? 'Website URL to Embed *' : 'External URL *'}
+                </Label>
+                <Input
+                  id="page-url"
+                  value={url}
+                  onChange={(e) => { setUrl(e.target.value); setUrlError('') }}
+                  placeholder="https://example.com"
+                  required
+                  disabled={saving}
+                />
+                {pageType === 'embed' && (
+                  <p className="text-[11px] text-muted-foreground">
+                    The website will be displayed inside an embedded frame. Note: some sites block embedding.
+                  </p>
+                )}
                 {urlError && <p className="text-xs text-destructive">{urlError}</p>}
               </div>
+            )}
 
-              {/* Preview */}
-              {imageUrl && (
-                <div className="rounded-lg border overflow-hidden bg-muted">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={imageUrl}
-                    alt="Preview"
-                    className="w-full object-contain max-h-52"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+            {/* Content — for text */}
+            {pageType === 'text' && (
+              <div className="space-y-1.5">
+                <Label>Content *</Label>
+                <RichTextEditor
+                  value={content}
+                  onChange={setContent}
+                />
+              </div>
+            )}
+
+            {/* Image — for image/poster */}
+            {pageType === 'image' && (
+              <div className="space-y-3">
+                <div>
+                  <Label className="mb-1.5 block">Image / Poster *</Label>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                    disabled={saving || uploading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={saving || uploading}
+                    className="w-full flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-lg py-8 hover:border-brand-blue hover:bg-brand-blue/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {uploading ? (
+                      <>
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">Uploading…</p>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-6 w-6 text-muted-foreground" />
+                        <p className="text-sm font-medium">Tap to upload from device</p>
+                        <p className="text-[11px] text-muted-foreground">JPG, PNG, WebP, GIF · max 10 MB</p>
+                      </>
+                    )}
+                  </button>
+                  {uploadError && <p className="text-xs text-destructive mt-1">{uploadError}</p>}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-[11px] text-muted-foreground">or paste URL</span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex gap-2">
+                    <Input
+                      id="page-image"
+                      value={imageUrl}
+                      onChange={(e) => { setImageUrl(e.target.value); setUrlError('') }}
+                      placeholder="https://example.com/poster.jpg"
+                      disabled={saving || uploading}
+                      className="flex-1 min-w-0"
+                    />
+                    {imageUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setImageUrl('')}
+                        className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                        title="Clear"
+                      >
+                        <XIcon className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                  {urlError && <p className="text-xs text-destructive">{urlError}</p>}
+                </div>
+
+                {imageUrl && (
+                  <div className="rounded-lg border overflow-hidden bg-muted">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={imageUrl}
+                      alt="Preview"
+                      className="w-full object-contain max-h-48 sm:max-h-64"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Visible to (role filter) */}
+            <div className="space-y-1.5">
+              <Label className="text-sm">Visible to</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {ALL_ROLES.map(role => {
+                  const selected = targetRoles.includes(role)
+                  return (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => setTargetRoles(prev =>
+                        selected ? prev.filter(r => r !== role) : [...prev, role]
+                      )}
+                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors capitalize ${
+                        selected
+                          ? 'bg-brand-blue text-white border-brand-blue'
+                          : 'border-border text-muted-foreground hover:border-brand-blue'
+                      }`}
+                    >
+                      {role}
+                    </button>
+                  )
+                })}
+                {targetRoles.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setTargetRoles([])}
+                    className="px-2 py-1 rounded-full text-xs text-muted-foreground hover:text-destructive"
+                  >
+                    Clear (all roles)
+                  </button>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {targetRoles.length === 0 ? 'No filter — shown to everyone.' : `Shown only to: ${targetRoles.join(', ')}.`}
+              </p>
+            </div>
+
+            {/* Expiry */}
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="never-expires"
+                  checked={neverExpires}
+                  onCheckedChange={v => { setNeverExpires(v); if (v) setExpiresAt('') }}
+                  disabled={saving}
+                />
+                <Label htmlFor="never-expires" className="cursor-pointer text-sm">
+                  No expiry <span className="text-muted-foreground font-normal">(always visible)</span>
+                </Label>
+              </div>
+              {!neverExpires && (
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Expires on</Label>
+                  <input
+                    type="date"
+                    title="Expiry date"
+                    value={expiresAt}
+                    min={new Date().toISOString().split('T')[0]}
+                    onChange={e => setExpiresAt(e.target.value)}
+                    disabled={saving}
+                    className="border border-input rounded-md px-3 py-1.5 text-sm bg-background w-44"
                   />
                 </div>
               )}
             </div>
-          )}
 
-          {/* Active toggle */}
-          <div className="flex items-center gap-3 py-1">
-            <Switch
-              id="page-active"
-              checked={isActive}
-              onCheckedChange={setIsActive}
-              disabled={saving}
-            />
-            <Label htmlFor="page-active" className="cursor-pointer">Active (visible on login page)</Label>
-          </div>
+            {/* Active toggle */}
+            <div className="flex items-center gap-3 py-1">
+              <Switch
+                id="page-active"
+                checked={isActive}
+                onCheckedChange={setIsActive}
+                disabled={saving}
+              />
+              <Label htmlFor="page-active" className="cursor-pointer text-sm">
+                Active <span className="text-muted-foreground font-normal">(visible on login page)</span>
+              </Label>
+            </div>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={saving}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={saving || uploading || !isValid}
-              className="gradient-blue text-white border-0"
-            >
-              {saving && <Loader2 className="h-4 w-4 animate-spin me-2" />}
-              {initial ? 'Save Changes' : 'Add Page'}
-            </Button>
-          </DialogFooter>
-        </form>
+          </form>
+        </div>
+
+        {/* Fixed footer */}
+        <div className="shrink-0 border-t px-4 sm:px-6 py-3 flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={saving}
+            className="w-full sm:w-auto"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="page-form"
+            disabled={saving || uploading || !isValid}
+            className="gradient-blue text-white border-0 w-full sm:w-auto"
+          >
+            {saving && <Loader2 className="h-4 w-4 animate-spin me-2" />}
+            {initial ? 'Save Changes' : 'Add Page'}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   )

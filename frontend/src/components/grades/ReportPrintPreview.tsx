@@ -82,7 +82,7 @@ function getStudentName(
     .join(" ");
 }
 
-function buildCardHtml(card: ReportCardData, title: string): string {
+function buildCardHtml(card: ReportCardData, title: string, principalSignatureUrl?: string | null): string {
   const student = card.student;
   const school = card.school || student?.school;
   const mp = card.marking_period;
@@ -173,6 +173,16 @@ function buildCardHtml(card: ReportCardData, title: string): string {
     html += `</div>`;
   }
 
+  // Principal signature block
+  if (principalSignatureUrl) {
+    html += `<div class="signature-section">`;
+    html += `<div class="sig-block">`;
+    html += `<img src="${principalSignatureUrl}" class="sig-img" alt="Principal Signature" />`;
+    html += `<div class="sig-line"></div>`;
+    html += `<div class="sig-label">Principal</div>`;
+    html += `</div></div>`;
+  }
+
   html += `</div>`;
   return html;
 }
@@ -200,6 +210,11 @@ const REPORT_BODY_STYLES = `
   .comments-section { margin-top: 8px; font-size: 11px; }
   .comments-section h4 { font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #555; }
   .no-grades { font-size: 12px; color: #999; padding: 12px 0; }
+  .signature-section { display: flex; justify-content: flex-start; margin-top: 24px; padding-top: 8px; }
+  .sig-block { text-align: center; min-width: 160px; }
+  .sig-img { max-height: 56px; max-width: 160px; object-fit: contain; display: block; margin: 0 auto 4px; }
+  .sig-line { border-top: 1.5px solid #333; width: 160px; margin: 0 auto; }
+  .sig-label { font-size: 11px; color: #555; margin-top: 3px; }
 `;
 
 // ─── Two-copies landscape styles ─────────────────────────────────────────────
@@ -244,6 +259,7 @@ export async function printReportCards(
   school?: PrintSchool,
   pluginActive?: boolean,
   twoCopies?: boolean,
+  principalSignatureUrl?: string | null,
 ): Promise<void> {
   const validCards = reportCards.filter((c) => !c.error);
   if (validCards.length === 0) return;
@@ -261,7 +277,7 @@ export async function printReportCards(
     // Mirrors the RosarioSIS two-copies plugin: __REPORT_CARD__ × 2 in a table.
     const bodyHtml = validCards
       .map((card) => {
-        const cardHtml = buildCardHtml(card, title);
+        const cardHtml = buildCardHtml(card, title, principalSignatureUrl);
         return `<div class="two-copies-row">
   <div class="copy-cell">${cardHtml}</div>
   <div class="copy-divider"></div>
@@ -282,7 +298,7 @@ export async function printReportCards(
   } else {
     // ── Standard portrait mode ──────────────────────────────────────────────
     const bodyHtml = validCards
-      .map((card) => buildCardHtml(card, title))
+      .map((card) => buildCardHtml(card, title, principalSignatureUrl))
       .join("\n");
 
     await openPdfDownload({

@@ -14,6 +14,7 @@ export interface SignupLink {
   created_by: string
   created_at: string
   updated_at: string
+  prefill_data?: Record<string, unknown>
   campus_name?: string | null
   creator_name?: string | null
 }
@@ -24,6 +25,7 @@ export interface GenerateSignupLinkDTO {
   max_uses?: number | null
   expires_at?: string | null
   campus_id?: string | null
+  prefill_data?: Record<string, unknown>
 }
 
 export async function generateSignupLink(data: GenerateSignupLinkDTO) {

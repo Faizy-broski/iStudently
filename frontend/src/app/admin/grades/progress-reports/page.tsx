@@ -158,7 +158,7 @@ export default function ProgressReportsPage() {
       if (res.success) {
         const cards = res.data?.progress_reports || res.data?.data?.progress_reports || [];
         if (cards.length > 0) {
-          printReportCards("Progress Report", cards as ReportCardData[], pdfSettings, selectedCampus?.name, selectedCampus ?? undefined, isPluginActive('pdf_header_footer'));
+          printReportCards("Progress Report", cards as ReportCardData[], pdfSettings, selectedCampus?.name, selectedCampus ?? undefined, isPluginActive('pdf_header_footer'), false, selectedCampus?.principal_signature_url);
         } else {
           toast.success(
             `Progress reports generated for ${selectedStudentIds.length} student(s)`

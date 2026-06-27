@@ -28,11 +28,15 @@ export interface DisciplineField {
   updated_at: string;
 }
 
+export type DisciplinePersonType = 'student' | 'staff' | 'teacher';
+
 export interface DisciplineReferral {
   id: string;
   school_id: string;
   campus_id: string | null;
-  student_id: string;
+  student_id: string | null;
+  staff_id: string | null;
+  person_type: DisciplinePersonType;
   academic_year_id: string | null;
   reporter_id: string | null;
   incident_date: string;
@@ -47,6 +51,11 @@ export interface DisciplineReferral {
     student_number: string;
     grade_level?: string | null;
     section_id?: string | null;
+  } | null;
+  staff?: {
+    id: string;
+    employee_number: string;
+    profile?: { first_name: string | null; last_name: string | null } | null;
   } | null;
   reporter?: {
     id: string;
@@ -193,7 +202,9 @@ export async function getDisciplineReferralById(
 export async function createDisciplineReferral(data: {
   school_id: string;
   campus_id?: string | null;
-  student_id: string;
+  student_id?: string | null;
+  staff_id?: string | null;
+  person_type?: DisciplinePersonType;
   reporter_id?: string | null;
   incident_date?: string;
   field_values?: Record<string, any>;

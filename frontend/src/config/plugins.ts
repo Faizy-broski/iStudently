@@ -533,13 +533,13 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
       'Interactive periodic table with 118 elements, 3D atom models, chemical equation balancer, molar mass calculator, and worksheet generator — all self-contained with no login required.',
     icon: FlaskConical,
     category: 'Resources',
-    settingsHref: '/admin/resources/zperiod',
+    settingsHref: '/admin/resources/jperiod',
     sidebarInjections: [
       {
         parentTitle: 'resources',
         items: [
           { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
-          { title: 'periodic_table', href: '/admin/resources/zperiod', icon: FlaskConical }
+          { title: 'periodic_table', href: '/admin/resources/jperiod', icon: FlaskConical }
         ],
         roles: ['admin'],
       },
@@ -547,7 +547,7 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
         parentTitle: 'resources',
         items: [
           { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
-          { title: 'periodic_table', href: '/teacher/resources/zperiod', icon: FlaskConical }
+          { title: 'periodic_table', href: '/teacher/resources/jperiod', icon: FlaskConical }
         ],
         roles: ['teacher'],
       },
@@ -555,7 +555,7 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
         parentTitle: 'resources',
         items: [
           { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
-          { title: 'periodic_table', href: '/student/resources/zperiod', icon: FlaskConical }
+          { title: 'periodic_table', href: '/student/resources/jperiod', icon: FlaskConical }
         ],
         roles: ['student'],
       },
@@ -563,7 +563,7 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
         parentTitle: 'resources',
         items: [
           { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
-          { title: 'periodic_table', href: '/parent/resources/zperiod', icon: FlaskConical }
+          { title: 'periodic_table', href: '/parent/resources/jperiod', icon: FlaskConical }
         ],
         roles: ['parent'],
       },

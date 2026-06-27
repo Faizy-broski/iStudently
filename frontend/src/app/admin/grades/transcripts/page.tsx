@@ -178,7 +178,7 @@ export default function TranscriptsPage() {
       if (res.success) {
         const cards = res.data?.transcripts || res.data?.data?.transcripts || [];
         if (cards.length > 0) {
-          printReportCards("Transcript", cards as ReportCardData[], pdfSettings, selectedCampus?.name, selectedCampus ?? undefined, isPluginActive('pdf_header_footer'));
+          printReportCards("Transcript", cards as ReportCardData[], pdfSettings, selectedCampus?.name, selectedCampus ?? undefined, isPluginActive('pdf_header_footer'), false, selectedCampus?.principal_signature_url);
         } else {
           toast.success(
             t("toast_generated_count", { count: selectedStudentIds.length })

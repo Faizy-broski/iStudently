@@ -199,6 +199,8 @@ export interface CustomLink {
   image_url?: string
   order: number
   isActive: boolean
+  target_roles?: string[]    // empty = visible to everyone
+  expires_at?: string | null // ISO date; null = never expires
 }
 
 /** Public — no auth. Used by login page to render external link tabs. */
@@ -253,6 +255,11 @@ export async function getGlobalCustomLinks() {
   return authFetch<CustomLink[]>('/public/superadmin/global-pages')
 }
 
+/** Authenticated users — returns pages visible to their role. */
+export async function getMyPages() {
+  return authFetch<CustomLink[]>('/public/my-pages')
+}
+
 export async function addGlobalCustomLink(data: {
   title: string
   page_type: CustomPageType
@@ -260,6 +267,8 @@ export async function addGlobalCustomLink(data: {
   content?: string
   image_url?: string
   isActive: boolean
+  target_roles?: string[]
+  expires_at?: string | null
 }) {
   return authFetch<CustomLink>('/public/superadmin/global-pages', {
     method: 'POST',
@@ -269,7 +278,7 @@ export async function addGlobalCustomLink(data: {
 
 export async function updateGlobalCustomLink(
   pageId: string,
-  data: Partial<{ title: string; page_type: CustomPageType; url: string; content: string; image_url: string; isActive: boolean }>
+  data: Partial<{ title: string; page_type: CustomPageType; url: string; content: string; image_url: string; isActive: boolean; target_roles: string[]; expires_at: string | null }>
 ) {
   return authFetch<CustomLink>(`/public/superadmin/global-pages/${pageId}`, {
     method: 'PUT',

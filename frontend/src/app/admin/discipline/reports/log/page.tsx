@@ -38,12 +38,20 @@ import {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function studentFullName(r: DisciplineReferral): string {
+function personFullName(r: DisciplineReferral): string {
   if (r.students) {
     const { first_name, last_name } = r.students;
     return `${first_name ?? ''} ${last_name ?? ''}`.trim() || r.students.student_number;
   }
-  return r.student_id;
+  if (r.staff?.profile) {
+    const { first_name, last_name } = r.staff.profile;
+    return `${first_name ?? ''} ${last_name ?? ''}`.trim() || r.staff.employee_number;
+  }
+  return r.student_id ?? r.staff_id ?? '—';
+}
+
+function studentFullName(r: DisciplineReferral): string {
+  return personFullName(r);
 }
 
 function formatFieldValue(val: unknown): string {
@@ -58,7 +66,7 @@ function formatFieldValue(val: unknown): string {
 function groupByStudent(referrals: DisciplineReferral[]): Map<string, DisciplineReferral[]> {
   const map = new Map<string, DisciplineReferral[]>();
   for (const r of referrals) {
-    const key = r.student_id;
+    const key = r.student_id ?? r.staff_id ?? r.id;
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(r);
   }
@@ -174,7 +182,7 @@ export default function DisciplineLogPage() {
     if (
       studentSearch.trim() &&
       !studentFullName(r).toLowerCase().includes(studentSearch.toLowerCase()) &&
-      !(r.students?.student_number ?? '').includes(studentSearch)
+      !(r.students?.student_number ?? r.staff?.employee_number ?? '').includes(studentSearch)
     ) {
       return false;
     }
@@ -349,8 +357,8 @@ export default function DisciplineLogPage() {
               Array.from(grouped.entries()).map(([studentId, studentReferrals]) => {
                 const first = studentReferrals[0];
                 const name = studentFullName(first);
-                const studentNum = first.students?.student_number;
-                const gradeLevel = first.students?.grade_level;
+                const studentNum = first.students?.student_number ?? first.staff?.employee_number;
+                const gradeLevel = first.students?.grade_level ?? (first.person_type === 'teacher' ? 'Teacher' : first.person_type === 'staff' ? 'Staff' : undefined);
 
                 return (
                   <Card key={studentId} className="print:shadow-none print:border">

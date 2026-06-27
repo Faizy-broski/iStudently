@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -84,6 +84,8 @@ export default function StudentInfoPage() {
   const tCommon = useTranslations("common");
   const locale = useLocale();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pendingEditId = useRef(searchParams.get('edit'));
   const { user } = useAuth();
   const campusContext = useCampus();
   const schoolId = user?.school_id || '';
@@ -121,6 +123,18 @@ export default function StudentInfoPage() {
         : undefined,
     section_id: studentFilters.sectionId || undefined,
   });
+
+  // Open edit form when navigated here with ?edit=<studentId>
+  useEffect(() => {
+    if (!pendingEditId.current || students.length === 0) return;
+    const student = students.find(s => s.id === pendingEditId.current);
+    if (student) {
+      pendingEditId.current = null;
+      setSelectedStudent(student);
+      setShowEditForm(true);
+      router.replace('/admin/students/student-info');
+    }
+  }, [students]);
 
   // Show error toast if there's an error, but only for persistent errors
   // Skip transient errors during component mount/remount
