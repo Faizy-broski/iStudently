@@ -21,13 +21,6 @@ import { useCampus } from '@/context/CampusContext'
 import { TourAssistantPanel } from '@/components/setup-assistant/TourAssistantPanel'
 import { SidebarThemeProvider } from '@/context/SidebarThemeContext'
 import { AgreementGate } from '@/components/agreement/AgreementGate'
-import { getLoginLinks, type CustomLink } from '@/lib/api/public-pages'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -42,8 +35,6 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
   const { profile, loading, mustChangePassword } = useAuth()
   const setupCheckedRef = React.useRef(false)
   const checkingSetupRef = React.useRef(false)
-  const posterCheckedRef = React.useRef(false)
-  const [loginPoster, setLoginPoster] = React.useState<CustomLink | null>(null)
   const [dynamicDashboards, setDynamicDashboards] = React.useState<SidebarMenuItemType[]>([])
   const [dynamicEmbeddedItems, setDynamicEmbeddedItems] = React.useState<SidebarMenuItemType[]>([])
   const [dynamicAdminEmbeddedItems, setDynamicAdminEmbeddedItems] = React.useState<SidebarMenuItemType[]>([])
@@ -54,21 +45,6 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
   // Campus context — used to scope admin resource fetches to the selected campus
   const campusCtx = useCampus()
   const selectedCampusId = campusCtx?.selectedCampus?.id ?? null
-
-  // Show image poster popup once per login session
-  React.useEffect(() => {
-    if (!profile?.id || posterCheckedRef.current) return
-    posterCheckedRef.current = true
-    getLoginLinks().then(res => {
-      if (!res.success || !res.data) return
-      const poster = res.data.find(l =>
-        l.page_type === 'image' &&
-        l.isActive &&
-        (!l.target_roles?.length || l.target_roles.includes(profile.role))
-      )
-      if (poster) setLoginPoster(poster)
-    }).catch(() => {})
-  }, [profile?.id, profile?.role])
 
   // Redirect to change-password page if admin has set force_password_change flag
   React.useEffect(() => {
@@ -279,25 +255,6 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
 
       {/* Tour Assistant — fixed overlay, persists across all pages */}
       <TourAssistantPanel />
-
-      {/* Post-login image poster popup */}
-      <Dialog open={!!loginPoster} onOpenChange={(open) => { if (!open) setLoginPoster(null) }}>
-        <DialogContent className="max-w-2xl p-0 overflow-hidden">
-          <DialogHeader className="px-5 py-4 border-b">
-            <DialogTitle>{loginPoster?.title}</DialogTitle>
-          </DialogHeader>
-          {loginPoster?.image_url && (
-            <div className="flex items-center justify-center p-4 bg-muted/30">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={loginPoster.image_url}
-                alt={loginPoster.title}
-                className="max-w-full max-h-[75vh] object-contain rounded-lg shadow"
-              />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

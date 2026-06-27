@@ -126,7 +126,6 @@ const SUBSTITUTION_TOKENS: Record<string, string> = {
   "__SCHOOL_LOGO__": "School Logo",
   "__SCHOOL_WEBSITE__": "School Website",
   "__SCHOOL_MOTTO__": "School Motto",
-  "__PRINCIPAL_SIGNATURE__": "Principal Signature",
   "__CURRENT_DATE__": "Current Date",
   "__CURRENT_YEAR__": "Current Year",
   "__ISSUE_DATE__": "Issue Date",
@@ -178,7 +177,6 @@ const TOKEN_CATEGORIES: Record<string, string[]> = {
     "__CAMPUS_CODE__", "__CAMPUS_EMAIL__", "__SCHOOL_NAME__",
     "__SCHOOL_ADDRESS__", "__SCHOOL_PHONE__", "__SCHOOL_EMAIL__",
     "__SCHOOL_LOGO__", "__SCHOOL_WEBSITE__", "__SCHOOL_MOTTO__",
-    "__PRINCIPAL_SIGNATURE__",
   ],
   "Dates": [
     "__CURRENT_DATE__", "__CURRENT_YEAR__", "__ISSUE_DATE__",
@@ -201,8 +199,7 @@ const DEFAULT_CERTIFICATE_HTML = `<div style="text-align: center; font-family: '
   <p style="font-size: 16px; margin-bottom: 30px;">for the Academic Year __ACADEMIC_YEAR__</p>
   <div style="display: flex; justify-content: space-between; margin-top: 50px; padding: 0 60px;">
     <div style="text-align: center;">
-      __PRINCIPAL_SIGNATURE__
-      <div style="border-top: 1px solid #333; width: 200px; margin-top: 5px; padding-top: 5px;">Principal</div>
+      <div style="border-top: 1px solid #333; width: 200px; margin-top: 40px; padding-top: 5px;">Principal</div>
     </div>
     <div style="text-align: center;">
       <p style="margin-bottom: 0;">__CURRENT_DATE__</p>
@@ -392,9 +389,6 @@ export default function HonorRollPage() {
       "__CURRENT_DATE__": new Date().toLocaleDateString(),
       "__CURRENT_YEAR__": new Date().getFullYear().toString(),
       "__ISSUE_DATE__": new Date().toLocaleDateString(),
-      "__PRINCIPAL_SIGNATURE__": (selectedCampus as any)?.principal_signature_url
-        ? `<img src="${(selectedCampus as any).principal_signature_url}" alt="Principal Signature" style="max-height:56px;max-width:160px;object-fit:contain;display:block;margin:0 auto 4px;"/>`
-        : "",
     };
 
     Object.entries(replacements).forEach(([token, value]) => {

@@ -179,7 +179,6 @@ export interface PrintSchool {
   phone?: string
   contact_email?: string
   logo_url?: string | null
-  principal_name?: string
 }
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────

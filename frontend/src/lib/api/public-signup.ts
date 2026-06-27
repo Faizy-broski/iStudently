@@ -8,7 +8,6 @@ export interface SignupLinkInfo {
   school_name: string
   school_logo_url: string | null
   campus_name: string | null
-  prefill_data?: Record<string, unknown>
 }
 
 export interface SignupSubmitDTO {
@@ -19,7 +18,6 @@ export interface SignupSubmitDTO {
   phone?: string
   password: string
   confirm_password: string
-  extra_fields?: Record<string, unknown>
 }
 
 interface ApiResponse<T = unknown> {

@@ -60,7 +60,6 @@ export default function SignupPage() {
     password: '',
     confirm_password: '',
   })
-  const [extraFields, setExtraFields] = React.useState<Record<string, string>>({})
   const [showPassword, setShowPassword] = React.useState(false)
   const [showConfirm, setShowConfirm] = React.useState(false)
   const [errors, setErrors] = React.useState<Partial<typeof form>>({})
@@ -75,14 +74,6 @@ export default function SignupPage() {
     getSignupLinkInfo(token).then((res) => {
       if (res.success && res.data) {
         setLinkInfo(res.data)
-        // Pre-fill extra fields from admin-specified prefill_data
-        if (res.data.prefill_data && typeof res.data.prefill_data === 'object') {
-          const prefill: Record<string, string> = {}
-          for (const [k, v] of Object.entries(res.data.prefill_data)) {
-            if (v !== null && v !== undefined) prefill[k] = String(v)
-          }
-          setExtraFields(prefill)
-        }
         setPageState('form')
       } else {
         setInvalidReason(res.error ?? 'invalid_link')
@@ -108,9 +99,6 @@ export default function SignupPage() {
 
     setSubmitting(true)
     try {
-      const submittedExtra = Object.fromEntries(
-        Object.entries(extraFields).filter(([, v]) => v.trim() !== '')
-      )
       const res = await submitSignup({
         token,
         first_name: form.first_name.trim(),
@@ -119,7 +107,6 @@ export default function SignupPage() {
         phone: form.phone.trim() || undefined,
         password: form.password,
         confirm_password: form.confirm_password,
-        extra_fields: Object.keys(submittedExtra).length > 0 ? submittedExtra : undefined,
       })
 
       if (res.success) {
@@ -302,49 +289,6 @@ export default function SignupPage() {
                 disabled={submitting}
               />
             </div>
-
-            {/* Role-specific extra fields */}
-            {linkInfo?.role === 'student' && (
-              <div className="space-y-1.5">
-                <label className="block text-sm font-semibold text-gray-800">
-                  Grade Level
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Grade 5"
-                  value={extraFields.grade_level ?? ''}
-                  onChange={e => setExtraFields(f => ({ ...f, grade_level: e.target.value }))}
-                  disabled={submitting}
-                  className="flex h-9 w-full rounded-md border border-gray-300 bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus:border-[#57A3CC] focus:outline-none focus:ring-1 focus:ring-[#57A3CC] placeholder:text-gray-400 text-gray-900"
-                />
-              </div>
-            )}
-            {['teacher', 'staff', 'librarian', 'counselor'].includes(linkInfo?.role ?? '') && (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-gray-800">Department</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Mathematics"
-                    value={extraFields.department ?? ''}
-                    onChange={e => setExtraFields(f => ({ ...f, department: e.target.value }))}
-                    disabled={submitting}
-                    className="flex h-9 w-full rounded-md border border-gray-300 bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus:border-[#57A3CC] focus:outline-none focus:ring-1 focus:ring-[#57A3CC] placeholder:text-gray-400 text-gray-900"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-semibold text-gray-800">Job Title</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Math Teacher"
-                    value={extraFields.job_title ?? ''}
-                    onChange={e => setExtraFields(f => ({ ...f, job_title: e.target.value }))}
-                    disabled={submitting}
-                    className="flex h-9 w-full rounded-md border border-gray-300 bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus:border-[#57A3CC] focus:outline-none focus:ring-1 focus:ring-[#57A3CC] placeholder:text-gray-400 text-gray-900"
-                  />
-                </div>
-              </div>
-            )}
 
             {/* Password */}
             <div className="space-y-1.5">

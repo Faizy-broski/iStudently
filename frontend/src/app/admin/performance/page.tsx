@@ -73,12 +73,10 @@ export default function PerformanceAdminPage() {
   // Filters
   const [searchStaff, setSearchStaff] = useState("")
   const [filterType,  setFilterType]  = useState("all")
-  const [filterRole,  setFilterRole]  = useState<'all' | 'staff' | 'teacher'>('all')
 
   // Staff search for record dialog — scope to active campus
   const [staffSearch, setStaffSearch] = useState("")
-  const [staffRoleFilter, setStaffRoleFilter] = useState<'all' | 'staff' | 'teacher'>('all')
-  const { staff: staffList, isLoading: staffLoading } = useStaff(1, 50, staffSearch || undefined, staffRoleFilter, activeCampusId)
+  const { staff: staffList, isLoading: staffLoading } = useStaff(1, 50, staffSearch || undefined, 'all', activeCampusId)
 
   // Dialog
   const [dialogOpen, setDialogOpen]         = useState(false)
@@ -123,7 +121,7 @@ export default function PerformanceAdminPage() {
   const openRecordDialog = () => {
     setSelectedStaff(null); setSelectedAction(null)
     setCustomPoints(""); setCustomFine(""); setNotes("")
-    setStaffSearch(""); setStaffRoleFilter('all'); setDialogOpen(true)
+    setStaffSearch(""); setDialogOpen(true)
   }
 
   const handleRecord = async () => {
@@ -174,8 +172,7 @@ export default function PerformanceAdminPage() {
         (log.staff?.employee_number || "").toLowerCase().includes(searchStaff.toLowerCase())
       : true
     const typeMatch = filterType === "all" || log.action?.action_type === filterType
-    const roleMatch = filterRole === "all" || log.staff?.role === filterRole
-    return nameMatch && typeMatch && roleMatch
+    return nameMatch && typeMatch
   })
 
   const totalPages = Math.ceil(total / LIMIT)
@@ -203,47 +200,24 @@ export default function PerformanceAdminPage() {
       </div>
 
       {/* Filters */}
-      <div className="space-y-2">
-        <div className="flex gap-3 flex-wrap">
-          <div className="relative flex-1 min-w-48">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              className="pl-9" placeholder="Search staff name or number…"
-              value={searchStaff} onChange={e => setSearchStaff(e.target.value)}
-            />
-          </div>
-          <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="All types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="violation_demerit">Violations only</SelectItem>
-              <SelectItem value="reward_redemption">Rewards only</SelectItem>
-            </SelectContent>
-          </Select>
+      <div className="flex gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-48">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            className="pl-9" placeholder="Search staff name or number…"
+            value={searchStaff} onChange={e => setSearchStaff(e.target.value)}
+          />
         </div>
-        {/* Role filter chips */}
-        <div className="flex gap-1.5">
-          {([
-            { value: 'all',     label: 'All Staff' },
-            { value: 'staff',   label: 'Staff only' },
-            { value: 'teacher', label: 'Teachers only' },
-          ] as const).map(opt => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => setFilterRole(opt.value)}
-              className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                filterRole === opt.value
-                  ? 'bg-[#022172] text-white border-[#022172]'
-                  : 'border-gray-200 text-muted-foreground hover:border-[#57A3CC]'
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
+        <Select value={filterType} onValueChange={setFilterType}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="All types" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="violation_demerit">Violations only</SelectItem>
+            <SelectItem value="reward_redemption">Rewards only</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Table */}
@@ -383,27 +357,6 @@ export default function PerformanceAdminPage() {
             {/* Staff picker */}
             <div className="space-y-2">
               <Label>Staff Member *</Label>
-              {/* Role filter */}
-              <div className="flex gap-1.5">
-                {([
-                  { value: 'all',     label: 'All' },
-                  { value: 'staff',   label: 'Staff' },
-                  { value: 'teacher', label: 'Teachers' },
-                ] as const).map(opt => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => { setStaffRoleFilter(opt.value); setSelectedStaff(null) }}
-                    className={`px-3 py-1 rounded-md text-xs font-medium border transition-colors ${
-                      staffRoleFilter === opt.value
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-background border-border text-muted-foreground hover:bg-muted'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input

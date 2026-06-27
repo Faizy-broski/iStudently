@@ -114,7 +114,6 @@ const GROUPED_FIELDS = (t: any) => {
     // Media
     { id: '__PHOTO__', label: t('photo'), category: 'media' },
     { id: '__SCHOOL_LOGO__', label: t('school_logo'), category: 'media' },
-    { id: '__PRINCIPAL_SIGNATURE__', label: t('principal_signature'), category: 'media' },
     
     // System
     { id: '__DATE__', label: t('current_date'), category: 'system' },
@@ -710,8 +709,7 @@ export default function CertificateEnrollmentPage() {
       .replace(/__DATE__/g, new Date().toLocaleDateString())
       .replace(/__VALID_UNTIL__/g, validUntil)
       .replace(/__PHOTO__/g, `<img src="${getPhotoUrl(student)}" alt="${getFullName(student) || getStudentName(student)}" style="max-width:100%;height:auto;"/>`)
-      .replace(/__SCHOOL_LOGO__/g, campusAny?.logo_url ? `<img src="${campusAny.logo_url}" alt="${selectedCampus?.name}" style="max-width:100%;height:auto;"/>` : '')
-      .replace(/__PRINCIPAL_SIGNATURE__/g, campusAny?.principal_signature_url ? `<img src="${campusAny.principal_signature_url}" alt="Principal Signature" style="max-height:60px;max-width:160px;object-fit:contain;display:block;"/>` : '');
+      .replace(/__SCHOOL_LOGO__/g, campusAny?.logo_url ? `<img src="${campusAny.logo_url}" alt="${selectedCampus?.name}" style="max-width:100%;height:auto;"/>` : '');
     
     return replacedContent;
   };

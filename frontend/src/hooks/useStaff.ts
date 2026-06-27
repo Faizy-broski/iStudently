@@ -5,7 +5,7 @@ export function useStaff(
     page = 1,
     limit = 10,
     search?: string,
-    role: 'staff' | 'librarian' | 'teacher' | 'all' = 'all',
+    role: 'staff' | 'librarian' | 'all' = 'all',
     campusId?: string
 ) {
     // Include campusId in cache key to auto-refresh when campus changes

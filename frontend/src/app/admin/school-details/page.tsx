@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -11,7 +11,6 @@ import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { useCampus } from "@/context/CampusContext"
 import { getAuthToken } from "@/lib/api/schools"
-import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import {
   Building2,
@@ -25,9 +24,6 @@ import {
   Save,
   X,
   ThumbsUp,
-  PenLine,
-  Upload,
-  Trash2,
 } from "lucide-react"
 
 interface CampusStats {
@@ -65,13 +61,6 @@ export default function SchoolDetailsPage() {
   const [stats, setStats] = useState<CampusStats | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-
-  // Principal signature
-  const signatureInputRef = useRef<HTMLInputElement>(null)
-  const [signaturePreview, setSignaturePreview] = useState<string | null>(null)
-  const [signatureFile, setSignatureFile] = useState<File | null>(null)
-  const [isSavingSignature, setIsSavingSignature] = useState(false)
-
   const [formData, setFormData] = useState<CampusFormData>({
     name: "",
     address: "",
@@ -103,8 +92,6 @@ export default function SchoolDetailsPage() {
         short_name: selectedCampus.short_name || "",
         school_number: selectedCampus.school_number || "",
       })
-      setSignaturePreview(selectedCampus.principal_signature_url || null)
-      setSignatureFile(null)
     }
   }, [selectedCampus])
 
@@ -200,74 +187,6 @@ export default function SchoolDetailsPage() {
     }
     setIsEditing(false)
     toast.info("Edit cancelled")
-  }
-
-  const handleSaveSignature = async () => {
-    if (!selectedCampus?.id) return
-    const token = await getAuthToken()
-    if (!token) return
-
-    setIsSavingSignature(true)
-    try {
-      let signatureUrl: string | null = selectedCampus.principal_signature_url || null
-
-      if (signatureFile) {
-        const supabase = createClient()
-        const ext = signatureFile.name.split('.').pop()
-        const fileName = `signature-${selectedCampus.id}-${Date.now()}.${ext}`
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('school-logos')
-          .upload(fileName, signatureFile, { cacheControl: '3600', upsert: false })
-        if (uploadError) throw new Error(uploadError.message)
-        const { data: urlData } = supabase.storage.from('school-logos').getPublicUrl(uploadData.path)
-        signatureUrl = urlData.publicUrl
-      }
-
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/setup/campuses/${selectedCampus.id}`,
-        {
-          method: 'PUT',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ principal_signature_url: signatureUrl }),
-        }
-      )
-      if (!res.ok) throw new Error()
-      toast.success(t("signature_saved"))
-      setSignatureFile(null)
-      campusContext?.refreshCampuses()
-    } catch {
-      toast.error(t("signature_save_error"))
-    } finally {
-      setIsSavingSignature(false)
-    }
-  }
-
-  const handleRemoveSignature = async () => {
-    if (!selectedCampus?.id) return
-    const token = await getAuthToken()
-    if (!token) return
-
-    setIsSavingSignature(true)
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/setup/campuses/${selectedCampus.id}`,
-        {
-          method: 'PUT',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ principal_signature_url: null }),
-        }
-      )
-      if (!res.ok) throw new Error()
-      setSignaturePreview(null)
-      setSignatureFile(null)
-      if (signatureInputRef.current) signatureInputRef.current.value = ""
-      toast.success(t("signature_removed"))
-      campusContext?.refreshCampuses()
-    } catch {
-      toast.error(t("signature_save_error"))
-    } finally {
-      setIsSavingSignature(false)
-    }
   }
 
   const selectedCampusName = selectedCampus?.name || "All Campuses"
@@ -532,159 +451,74 @@ export default function SchoolDetailsPage() {
             </CardContent>
           </Card>
 
-          {/* Principal Signature */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <PenLine className="h-5 w-5 text-[#022172]" />
-                {t("principal_signature")}
-              </CardTitle>
-              <CardDescription>{t("principal_signature_desc")}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col sm:flex-row items-start gap-6">
-                {/* Preview box */}
-                <div className="shrink-0 w-64 h-28 rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 flex items-center justify-center overflow-hidden">
-                  {signaturePreview ? (
-                    <img
-                      src={signaturePreview}
-                      alt="Principal signature"
-                      className="max-h-full max-w-full object-contain p-2"
-                    />
-                  ) : (
-                    <div className="text-center text-muted-foreground text-xs p-4">
-                      <PenLine className="h-8 w-8 mx-auto mb-1 opacity-30" />
-                      {t("no_signature")}
-                    </div>
-                  )}
-                </div>
-
-                {/* Controls */}
-                <div className="flex flex-col gap-3">
-                  <p className="text-sm text-muted-foreground">{t("signature_hint")}</p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => signatureInputRef.current?.click()}
-                      disabled={isSavingSignature}
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      {t("upload_signature")}
-                    </Button>
-                    {signatureFile && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={handleSaveSignature}
-                        disabled={isSavingSignature}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                      >
-                        {isSavingSignature
-                          ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          : <Save className="h-4 w-4 mr-2" />}
-                        {t("save_signature")}
-                      </Button>
-                    )}
-                    {signaturePreview && !signatureFile && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleRemoveSignature}
-                        disabled={isSavingSignature}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        {isSavingSignature
-                          ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          : <Trash2 className="h-4 w-4 mr-2" />}
-                        {t("remove_signature")}
-                      </Button>
-                    )}
-                  </div>
-                  {signatureFile && (
-                    <p className="text-xs text-muted-foreground">
-                      {signatureFile.name} — {t("click_save_to_apply")}
-                    </p>
-                  )}
-                  <input
-                    ref={signatureInputRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/svg+xml"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (!file) return
-                      setSignatureFile(file)
-                      setSignaturePreview(URL.createObjectURL(file))
-                    }}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Campus Statistics */}
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
               {/* Total Students */}
-              <Card className="gradient-teal text-white">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <GraduationCap className="h-8 w-8 text-white/80" />
+              <div className="flex rounded-xl overflow-hidden shadow-sm">
+                <div className="bg-[#2E7D32] flex items-center justify-center w-20 shrink-0">
+                  <GraduationCap className="h-10 w-10 text-white" />
+                </div>
+                <div className="bg-[#388E3C] flex-1 p-4 text-white">
+                  <p className="text-xs font-bold uppercase tracking-wider opacity-90">{t("students")}</p>
+                  <p className="text-3xl font-bold my-1">{stats?.total_students ?? 0}</p>
+                  <div className="border-t border-white/30 pt-2 mt-1">
+                    <p className="text-xs opacity-90">
+                      {t("boys")}: {stats?.boys_count ?? 0}&nbsp;&nbsp;{t("girls")}: {stats?.girls_count ?? 0}
+                    </p>
                   </div>
-                  <div className="text-3xl font-bold">{stats?.total_students ?? 0}</div>
-                  <p className="text-white/80 text-sm mt-1">{t("students")}</p>
-                  <p className="text-white/60 text-xs mt-1">
-                    {t("boys")}: {stats?.boys_count ?? 0}&nbsp;&nbsp;{t("girls")}: {stats?.girls_count ?? 0}
-                  </p>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
               {/* Parents */}
-              <Card className="gradient-orange text-white">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <Users className="h-8 w-8 text-white/80" />
+              <div className="flex rounded-xl overflow-hidden shadow-sm">
+                <div className="bg-[#B71C1C] flex items-center justify-center w-20 shrink-0">
+                  <Users className="h-10 w-10 text-white" />
+                </div>
+                <div className="bg-[#C62828] flex-1 p-4 text-white">
+                  <p className="text-xs font-bold uppercase tracking-wider opacity-90">{t("parents")}</p>
+                  <p className="text-3xl font-bold my-1">{stats?.total_parents ?? 0}</p>
+                  <div className="border-t border-white/30 pt-2 mt-1">
+                    <p className="text-xs opacity-90">{t("total_registered_parents")}</p>
                   </div>
-                  <div className="text-3xl font-bold">{stats?.total_parents ?? 0}</div>
-                  <p className="text-white/80 text-sm mt-1">{t("parents")}</p>
-                  <p className="text-white/60 text-xs mt-1">{t("total_registered_parents")}</p>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
               {/* Staff */}
-              <Card className="gradient-blue text-white">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <Users className="h-8 w-8 text-white/80" />
+              <div className="flex rounded-xl overflow-hidden shadow-sm">
+                <div className="bg-[#00838F] flex items-center justify-center w-20 shrink-0">
+                  <Users className="h-10 w-10 text-white" />
+                </div>
+                <div className="bg-[#00ACC1] flex-1 p-4 text-white">
+                  <p className="text-xs font-bold uppercase tracking-wider opacity-90">{t("staff")}</p>
+                  <p className="text-3xl font-bold my-1">{stats?.total_staff ?? 0}</p>
+                  <div className="border-t border-white/30 pt-2 mt-1">
+                    <p className="text-xs opacity-90">
+                      {t("male")}: {stats?.male_staff ?? 0}&nbsp;&nbsp;{t("female")}: {stats?.female_staff ?? 0}
+                    </p>
                   </div>
-                  <div className="text-3xl font-bold">{stats?.total_staff ?? 0}</div>
-                  <p className="text-white/80 text-sm mt-1">{t("staff")}</p>
-                  <p className="text-white/60 text-xs mt-1">
-                    {t("male")}: {stats?.male_staff ?? 0}&nbsp;&nbsp;{t("female")}: {stats?.female_staff ?? 0}
-                  </p>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
               {/* Present Today */}
-              <Card className="gradient-blue text-white">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <ThumbsUp className="h-8 w-8 text-white/80" />
+              <div className="flex rounded-xl overflow-hidden shadow-sm">
+                <div className="bg-[#1565C0] flex items-center justify-center w-20 shrink-0">
+                  <ThumbsUp className="h-10 w-10 text-white" />
+                </div>
+                <div className="bg-[#1976D2] flex-1 p-4 text-white">
+                  <p className="text-xs font-bold uppercase tracking-wider opacity-90">{t("present_students_today")}</p>
+                  <p className="text-3xl font-bold my-1">{stats?.present_today ?? 0}</p>
+                  <div className="border-t border-white/30 pt-2 mt-1">
+                    <p className="text-xs opacity-90">
+                      {t("attendance_percentage")}: {stats ? parseFloat(stats.attendance_percentage_today.toFixed(1)) : 0}%
+                    </p>
                   </div>
-                  <div className="text-3xl font-bold">{stats?.present_today ?? 0}</div>
-                  <p className="text-white/80 text-sm mt-1">{t("present_students_today")}</p>
-                  <p className="text-white/60 text-xs mt-1">
-                    {t("attendance_percentage")}: {stats ? parseFloat(stats.attendance_percentage_today.toFixed(1)) : 0}%
-                  </p>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
           )}
         </>

@@ -76,7 +76,6 @@ export interface Campus {
     school_number?: string
     website?: string | null
     logo_url?: string | null
-    principal_signature_url?: string | null
     status: string
     parent_school_id: string
     created_at: string

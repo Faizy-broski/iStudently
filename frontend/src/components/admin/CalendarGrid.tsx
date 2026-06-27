@@ -288,7 +288,7 @@ export function CalendarGrid({
         dayNumber: hijriDay.iDate(),
         isCurrentMonth: isCurrentHijriMonth,
         isToday: day.isSame(moment(), "day"),
-        gregorianDate: `${useArabic ? toArabicNumerals(hijriDayNum) : hijriDayNum} ${hijriMonthName}`,
+        gregorianDate: `${hijriDayNum} ${hijriMonthName}`,
       });
       day.add(1, "day");
     }

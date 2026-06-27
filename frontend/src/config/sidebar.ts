@@ -58,7 +58,6 @@ import {
   FlaskConical,
   Table2,
   Gauge,
-  Mic,
   type LucideIcon,
 } from "lucide-react";
 import { UserRole } from "@/types";
@@ -157,7 +156,7 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "print_letters", href: "/admin/students/print-letters", icon: FileText },
       { title: "student_breakdown", href: "/admin/students/breakdown", icon: BarChart3 },
       { title: "withdrawal_chart", href: "/admin/students/withdrawal-chart", icon: TrendingDown },
-      // { title: "advanced_report", href: "/admin/students/advanced-report", icon: FileText },
+      { title: "advanced_report", href: "/admin/students/advanced-report", icon: FileText },
       { title: "email_students", href: "#", icon: Mail, isLabel: true },
       { title: "send_email", href: "/admin/email/students", icon: Mail },
     ],
@@ -197,11 +196,11 @@ const adminMenuItems: SidebarMenuItem[] = [
     subItems: [
       { title: "add_referral", href: "/admin/discipline/add-referral", icon: Plus },
       { title: "referrals", href: "/admin/discipline", icon: ClipboardList },
-      // { title: "reports", href: "#", icon: BarChart3, isLabel: true },
-      // { title: "category_breakdown", href: "/admin/discipline/reports/category-breakdown", icon: BarChart3 },
-      // { title: "breakdown_over_time", href: "/admin/discipline/reports/category-breakdown-time", icon: TrendingUp },
-      // { title: "breakdown_by_student_field", href: "/admin/discipline/reports/breakdown-student-field", icon: Users },
-      // { title: "discipline_log", href: "/admin/discipline/reports/log", icon: FileText },
+      { title: "reports", href: "#", icon: BarChart3, isLabel: true },
+      { title: "category_breakdown", href: "/admin/discipline/reports/category-breakdown", icon: BarChart3 },
+      { title: "breakdown_over_time", href: "/admin/discipline/reports/category-breakdown-time", icon: TrendingUp },
+      { title: "breakdown_by_student_field", href: "/admin/discipline/reports/breakdown-student-field", icon: Users },
+      { title: "discipline_log", href: "/admin/discipline/reports/log", icon: FileText },
       { title: "setup", href: "#", icon: Settings, isLabel: true },
       { title: "referral_form", href: "/admin/discipline/referral-form", icon: Settings },
     ],
@@ -272,21 +271,16 @@ const adminMenuItems: SidebarMenuItem[] = [
     subItems: [
       { title: "incidents_log", href: "/admin/performance", icon: ClipboardList },
       { title: "catalog", href: "/admin/performance/catalog", icon: Settings },
-            { title: "reports", href: "#", icon: BarChart3, isLabel: true },
-      { title: "category_breakdown", href: "/admin/discipline/reports/category-breakdown", icon: BarChart3 },
-      { title: "breakdown_over_time", href: "/admin/discipline/reports/category-breakdown-time", icon: TrendingUp },
-      { title: "breakdown_by_student_field", href: "/admin/discipline/reports/breakdown-student-field", icon: Users },
-      { title: "discipline_log", href: "/admin/discipline/reports/log", icon: FileText },
     ],
   },
-  // {
-  //   title: "id_card_designer",
-  //   href: "/admin/id-card",
-  //   icon: CreditCard,
-  //   subItems: [
-  //     { title: "id_card_designer", href: "/admin/id-card", icon: CreditCard },
-  //   ],
-  // },
+  {
+    title: "id_card_designer",
+    href: "/admin/id-card",
+    icon: CreditCard,
+    subItems: [
+      { title: "id_card_designer", href: "/admin/id-card", icon: CreditCard },
+    ],
+  },
   {
     title: "user_management",
     href: "/admin/signup-links",
@@ -499,8 +493,6 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "academic_years", href: "/admin/settings/academic-years", icon: Calendar },
       { title: "services", href: "/admin/settings/services", icon: Settings },
       { title: "user_agreements", href: "/admin/settings/user-agreements", icon: FileText },
-      { title: "advanced_report", href: "/admin/students/advanced-report", icon: FileText },
-      { title: "id_card_designer", href: "/admin/id-card", icon: CreditCard },
       // email_reminders, email_smtp, public_pages are injected by their plugins — see config/plugins.ts
       { title: "profile", href: "/admin/profile", icon: UserCircle },
     ],
@@ -516,7 +508,6 @@ const teacherMenuItems: SidebarMenuItem[] = [
     icon: School,
     subItems: [
       { title: "school_information", href: "/teacher/school-information", icon: Building2 },
-      { title: "school_pages", href: "/teacher/school-pages", icon: Globe },
       { title: "calendar", href: "/teacher/events", icon: Calendar },
       { title: "marking_periods", href: "/teacher/marking-periods", icon: Layers },
       { title: "periods", href: "/teacher/periods", icon: Clock },
@@ -654,7 +645,6 @@ const teacherMenuItems: SidebarMenuItem[] = [
       { title: "submissions", href: "/teacher/submissions", icon: CheckSquare },
       { title: "exams_grading", href: "/teacher/exams", icon: Award },
       { title: "quizzes", href: "/teacher/quiz", icon: HelpCircle },
-      { title: "reading_logs", href: "/teacher/reading-logs", icon: Mic },
     ],
   },
   { title: "id_card", href: "/teacher/id-card", icon: CreditCard },
@@ -671,7 +661,6 @@ const studentMenuItems: SidebarMenuItem[] = [
     icon: School,
     subItems: [
       { title: "school_information", href: "/student/school-information", icon: Building2 },
-      { title: "school_pages", href: "/student/school-pages", icon: Globe },
       { title: "calendar", href: "/student/events", icon: Calendar },
       { title: "marking_periods", href: "/student/marking-periods", icon: Layers },
     ],
@@ -752,7 +741,6 @@ const studentMenuItems: SidebarMenuItem[] = [
     subItems: [
       { title: "my_loans", href: "/student/library", icon: BookOpen },
       { title: "e_library", href: "/student/e-library", icon: BookOpen },
-      { title: "reading_logs", href: "/student/reading", icon: Mic },
     ],
   },
   { title: "hostel", href: "/student/hostel", icon: BedDouble },
@@ -768,7 +756,7 @@ const studentMenuItems: SidebarMenuItem[] = [
       { title: "premium_resources", href: "#", icon: Star, isLabel: true },
       { title: "physics_virtual_labs", href: "/student/resources/physics-virtual-labs", icon: Globe },
       { title: "virtual_labs", href: "/student/resources/virtual-labs", icon: FlaskConical },
-      { title: "periodic_table", href: "/student/resources/jperiod", icon: Table2 },
+      { title: "periodic_table", href: "/student/resources/zperiod", icon: Table2 },
     ],
   },
   {
@@ -793,7 +781,6 @@ const parentMenuItems: SidebarMenuItem[] = [
     icon: School,
     subItems: [
       { title: "school_information", href: "/parent/school-information", icon: Building2 },
-      { title: "school_pages", href: "/parent/school-pages", icon: Globe },
       { title: "calendar", href: "/parent/events", icon: Calendar },
       { title: "marking_periods", href: "/parent/marking-periods", icon: Layers },
     ],

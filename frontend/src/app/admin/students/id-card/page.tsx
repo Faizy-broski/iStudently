@@ -2097,31 +2097,23 @@ export default function StudentIdCardPage() {
             width: 100% !important;
             height: auto !important;
           }
-
-          /* Ensure all print area children are visible without breaking layout */
-          .id-card-print-area * {
-            visibility: visible !important;
-          }
-
-          /* Wrapper inside print area */
-          .id-card-print-area > div {
+          
+          /* Ensure all print area children are visible */
+          .id-card-print-area *,
+          .id-card-print-area *::before,
+          .id-card-print-area *::after {
             display: block !important;
+            visibility: visible !important;
+            position: static !important;
           }
-
-          /* ID card specific styles — one card per page */
+          
+          /* ID card specific styles */
           .id-card-item {
-            page-break-after: always !important;
-            break-after: page !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
-            display: flex !important;
+            margin-bottom: 20px !important;
+            display: block !important;
             visibility: visible !important;
-            margin-bottom: 0 !important;
-          }
-
-          .id-card-item:last-child {
-            page-break-after: avoid !important;
-            break-after: avoid !important;
           }
           
           /* Page setup */
