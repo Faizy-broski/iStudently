@@ -357,6 +357,20 @@ export default function StaffDetailsPage() {
                 <InfoRow label={t("fields.lastName")} value={currentStaff.profile?.last_name} fallbackLabel={t("notProvided")} />
                 <InfoRow label={t("fields.email")} value={currentStaff.profile?.email} icon={Mail} fallbackLabel={t("notProvided")} />
                 <InfoRow label={t("fields.phone")} value={currentStaff.profile?.phone} icon={Phone} fallbackLabel={t("notProvided")} />
+                <InfoRow
+                  label="Gender"
+                  value={(currentStaff.profile as any)?.gender
+                    ? ((currentStaff.profile as any).gender as string).charAt(0).toUpperCase() + ((currentStaff.profile as any).gender as string).slice(1)
+                    : undefined}
+                  icon={User}
+                  fallbackLabel={t("notProvided")}
+                />
+                <InfoRow
+                  label="Date of Birth"
+                  value={formatDate((currentStaff.profile as any)?.date_of_birth, '')}
+                  icon={Calendar}
+                  fallbackLabel={t("notProvided")}
+                />
                 <InfoRow label={t("fields.username")} value={currentStaff.profile?.username} icon={User} fallbackLabel={t("notProvided")} />
               </div>
             </CardContent>

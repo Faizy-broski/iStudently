@@ -21,7 +21,25 @@ import {
   CreditCard,
   UserCircle,
   Users,
+  Tag,
 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+const OCCASION_LABELS: Record<string, string> = {
+  general: 'General',
+  sports_day: 'Sports Day',
+  graduation: 'Graduation',
+  field_trip: 'Field Trip',
+  exam: 'Exam',
+  formal_event: 'Formal Event',
+  open_day: 'Open Day',
+}
 import {
   getTemplates,
   deleteTemplate,
@@ -46,6 +64,7 @@ export default function IdCardTemplatesPage() {
   const [templates, setTemplates] = useState<IdCardTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [occasionFilter, setOccasionFilter] = useState('');
 
   useEffect(() => {
     fetchTemplates();
@@ -99,7 +118,9 @@ export default function IdCardTemplatesPage() {
     }
   };
 
-  const filteredTemplates = templates.filter((t) => t.user_type === activeTab);
+  const filteredTemplates = templates.filter(
+    (t) => t.user_type === activeTab && (occasionFilter === 'all' || !occasionFilter || t.occasion === occasionFilter)
+  );
 
   return (
     <div className="space-y-6">
@@ -111,13 +132,26 @@ export default function IdCardTemplatesPage() {
             Design customizable ID cards for students, teachers, and staff
           </p>
         </div>
-        <Button
-          onClick={() => router.push(`/admin/id-card-templates/builder?type=${activeTab}`)}
-          className="gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Build New Template
-        </Button>
+        <div className="flex items-center gap-3">
+          <Select value={occasionFilter} onValueChange={setOccasionFilter}>
+            <SelectTrigger className="w-44">
+              <SelectValue placeholder="All occasions" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All occasions</SelectItem>
+              {Object.entries(OCCASION_LABELS).map(([val, label]) => (
+                <SelectItem key={val} value={val}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            onClick={() => router.push(`/admin/id-card-templates/builder?type=${activeTab}`)}
+            className="gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Build New Template
+          </Button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -182,6 +216,12 @@ export default function IdCardTemplatesPage() {
                               </Badge>
                             )}
                           </CardTitle>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="outline" className="gap-1 text-xs">
+                              <Tag className="h-3 w-3" />
+                              {OCCASION_LABELS[template.occasion] ?? template.occasion ?? 'General'}
+                            </Badge>
+                          </div>
                           {template.description && (
                             <CardDescription className="mt-1.5 line-clamp-2">
                               {template.description}

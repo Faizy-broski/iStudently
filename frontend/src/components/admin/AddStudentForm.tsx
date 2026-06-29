@@ -45,6 +45,26 @@ import {
 // Zod Validation Schema
   // Validation Schema moved inside component to use translations
 
+// Helper: Calculate exact age in years, months and days from a Date object
+function calculateAge(birthDate: Date): { years: number; months: number; days: number } | null {
+  if (!birthDate || isNaN(birthDate.getTime())) return null;
+  const today = new Date();
+  let years = today.getFullYear() - birthDate.getFullYear();
+  let months = today.getMonth() - birthDate.getMonth();
+  let days = today.getDate() - birthDate.getDate();
+
+  if (days < 0) {
+    months -= 1;
+    const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+    days += prevMonth.getDate();
+  }
+  if (months < 0) {
+    years -= 1;
+    months += 12;
+  }
+  return { years, months, days };
+}
+
 // Standard Field Definitions with Sort Orders for Students
 const STANDARD_FIELDS = [
   // PERSONAL INFORMATION (Category: personal)
@@ -963,11 +983,25 @@ customFields.forEach((field) => {
             </SelectContent>
           </Select>
         ) : field.type === 'date' ? (
-          <DatePicker
-            value={value || undefined}
-            onChange={(date) => handleChange(date || null)}
-            placeholder={tCommon("select_item", { item: fieldDisplayLabel.toLowerCase() })}
-          />
+          <div className="space-y-1.5">
+            <DatePicker
+              value={value || undefined}
+              onChange={(date) => handleChange(date || null)}
+              placeholder={tCommon("select_item", { item: fieldDisplayLabel.toLowerCase() })}
+            />
+            {field.id === 'dateOfBirth' && value instanceof Date && (() => {
+              const age = calculateAge(value);
+              return age ? (
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#022172]/8 dark:bg-[#57A3CC]/15 px-2.5 py-0.5 text-xs font-medium text-[#022172] dark:text-[#57A3CC] border border-[#022172]/15 dark:border-[#57A3CC]/25">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="8" r="4" /><path strokeLinecap="round" strokeLinejoin="round" d="M4 20c0-4 3.6-7 8-7s8 3 8 7" /></svg>
+                    {age.years}y {age.months}m {age.days}d
+                  </span>
+                  <span className="text-xs text-muted-foreground">{tAdd("age_label")}</span>
+                </div>
+              ) : null;
+            })()}
+          </div>
         ) : field.type === 'checkbox' ? (
           <div className="flex items-center space-x-2 pt-2">
             <Checkbox checked={!!value} onCheckedChange={handleChange} id={field.id} />

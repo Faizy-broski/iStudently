@@ -442,3 +442,29 @@ export const useDigitalIdCard = () => {
     refresh: mutate
   }
 }
+
+/**
+ * Hook for overall performance metrics
+ */
+export const usePerformanceMetrics = () => {
+  const { user, loading: authLoading } = useAuth()
+  
+  const swrKey = user && !authLoading ? ['student-performance-metrics', user.id] : null
+  
+  const { data, error, isLoading, mutate } = useSWR(
+    swrKey,
+    async () => {
+      const response = await studentDashboardApi.getPerformanceMetrics()
+      if (!response.success) throw new Error(response.error)
+      return response.data
+    },
+    { revalidateOnFocus: false, dedupingInterval: 60000 }
+  )
+  
+  return {
+    metrics: data || null,
+    isLoading: authLoading || isLoading,
+    error,
+    refresh: mutate
+  }
+}

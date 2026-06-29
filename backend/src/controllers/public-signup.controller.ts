@@ -42,6 +42,11 @@ export const getSignupLinkInfo = async (req: Request, res: Response): Promise<vo
       campusName = campus?.name ?? null
     }
 
+    // Compute available seats
+    const availableSeats = result.link.max_uses != null
+      ? Math.max(0, result.link.max_uses - result.link.use_count)
+      : null
+
     res.json({
       success: true,
       data: {
@@ -50,6 +55,11 @@ export const getSignupLinkInfo = async (req: Request, res: Response): Promise<vo
         school_name: school?.name ?? 'School',
         school_logo_url: school?.logo_url ?? null,
         campus_name: campusName,
+        expires_at: result.link.expires_at,
+        max_uses: result.link.max_uses,
+        use_count: result.link.use_count,
+        available_seats: availableSeats,
+        meta: result.link.meta ?? {},
       },
     } as ApiResponse)
   } catch (error: any) {
@@ -60,7 +70,7 @@ export const getSignupLinkInfo = async (req: Request, res: Response): Promise<vo
 // POST /public-signup/submit — public, no auth
 export const submitSignup = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { token, first_name, last_name, email, phone, password, confirm_password } = req.body
+    const { token, first_name, last_name, email, phone, password, confirm_password, extra_fields } = req.body
 
     // Validate required fields
     const errors: string[] = []
@@ -88,6 +98,19 @@ export const submitSignup = async (req: Request, res: Response): Promise<void> =
 
     const link = validation.link
 
+    // Validate required custom fields defined in meta
+    const customFields = link.meta?.custom_fields ?? []
+    const extraFieldErrors: string[] = []
+    for (const field of customFields) {
+      if (field.required && (!extra_fields || !extra_fields[field.id] || String(extra_fields[field.id]).trim() === '')) {
+        extraFieldErrors.push(`${field.label} is required`)
+      }
+    }
+    if (extraFieldErrors.length > 0) {
+      res.status(400).json({ success: false, error: extraFieldErrors.join('; ') } as ApiResponse)
+      return
+    }
+
     // Check email uniqueness for this school
     const emailUsed = await isEmailAlreadyUsed(email.toLowerCase().trim(), link.school_id)
     if (emailUsed) {
@@ -112,7 +135,7 @@ export const submitSignup = async (req: Request, res: Response): Promise<void> =
       email: email.toLowerCase().trim(),
       phone: phone?.trim() || null,
       encryptedPassword,
-      extraData: {},
+      extraData: extra_fields ?? {},
     })
 
     res.status(201).json({

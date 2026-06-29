@@ -22,6 +22,37 @@ interface SchoolSettingsContextType {
 const SchoolSettingsContext = createContext<SchoolSettingsContextType | undefined>(undefined)
 
 // ─────────────────────────────────────────────────────────────────────────────
+// sessionStorage cache helpers (5-minute TTL, campus-scoped)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SETTINGS_CACHE_KEY = 'studently_settings_cache'
+const SETTINGS_CACHE_TTL = 5 * 60 * 1000
+
+function getSettingsCache(campusId: string | null): SchoolSettings | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = sessionStorage.getItem(SETTINGS_CACHE_KEY)
+    if (!raw) return null
+    const c = JSON.parse(raw)
+    if (c.campusId !== campusId) return null
+    if (Date.now() - c.timestamp > SETTINGS_CACHE_TTL) return null
+    return c.settings
+  } catch { return null }
+}
+
+function setSettingsCache(settings: SchoolSettings, campusId: string | null): void {
+  if (typeof window === 'undefined') return
+  try {
+    sessionStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify({ settings, campusId, timestamp: Date.now() }))
+  } catch { /**/ }
+}
+
+function clearSettingsCache(): void {
+  if (typeof window === 'undefined') return
+  try { sessionStorage.removeItem(SETTINGS_CACHE_KEY) } catch { /**/ }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Provider
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -34,8 +65,15 @@ export function SchoolSettingsProvider({ children }: { children: React.ReactNode
   const campusId =
     campusContext?.selectedCampus?.id ??
     (!isAdminRole ? ((profile as any)?.campus_id ?? profile?.school_id ?? null) : null)
-  const [settings, setSettings] = useState<SchoolSettings | null>(null)
-  const [loading, setLoading] = useState(true)
+  // Synchronously warm state from cache on first render (avoids loading flash)
+  const [settings, setSettings] = useState<SchoolSettings | null>(() => {
+    const id = typeof window !== 'undefined' ? localStorage.getItem('selectedCampusId') : null
+    return getSettingsCache(id)
+  })
+  const [loading, setLoading] = useState(() => {
+    const id = typeof window !== 'undefined' ? localStorage.getItem('selectedCampusId') : null
+    return getSettingsCache(id) === null
+  })
   // Track which campusId we last fetched for so we can re-fetch on switch
   const lastFetchedCampusRef = useRef<string | null | undefined>(undefined)
 
@@ -44,6 +82,7 @@ export function SchoolSettingsProvider({ children }: { children: React.ReactNode
       const result = await getSchoolSettings(cId)
       if (result.success && result.data) {
         setSettings(result.data)
+        setSettingsCache(result.data, cId)
       }
     } catch {
       // Silently fail — sidebar falls back to base items
@@ -54,14 +93,27 @@ export function SchoolSettingsProvider({ children }: { children: React.ReactNode
 
   useEffect(() => {
     if (authLoading || !profile) return
-    // Re-fetch when campus changes (or on first load)
     if (lastFetchedCampusRef.current === campusId) return
+    const prev = lastFetchedCampusRef.current
     lastFetchedCampusRef.current = campusId
+
+    // Invalidate cache when user explicitly switches campus
+    if (prev !== undefined && prev !== campusId) clearSettingsCache()
+
+    // Cache hit — skip network fetch
+    const cached = getSettingsCache(campusId)
+    if (cached) {
+      setSettings(cached)
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     void fetchSettings(campusId)
   }, [authLoading, profile, campusId, fetchSettings])
 
   const refreshSettings = useCallback(async () => {
+    clearSettingsCache()
     setLoading(true)
     lastFetchedCampusRef.current = undefined // force re-fetch
     await fetchSettings(campusId)

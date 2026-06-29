@@ -56,8 +56,8 @@ export function FinancialWidget({ fees, isLoading, feesPageHref }: FinancialWidg
         </CardHeader>
         <CardContent>
           <div className="space-y-3 animate-pulse">
-            <div className="h-10 bg-gray-100 rounded-lg" />
-            <div className="h-10 bg-gray-100 rounded-lg" />
+            <div className="h-10 bg-gray-100 dark:bg-slate-800 rounded-lg" />
+            <div className="h-10 bg-gray-100 dark:bg-slate-800 rounded-lg" />
           </div>
         </CardContent>
       </Card>
@@ -76,7 +76,7 @@ export function FinancialWidget({ fees, isLoading, feesPageHref }: FinancialWidg
         <CardContent>
           <div className="flex flex-col items-center justify-center py-6 text-center">
             <CheckCircle className="w-10 h-10 text-green-500 mb-2" />
-            <p className="text-sm font-semibold text-green-700">All fees paid</p>
+            <p className="text-sm font-semibold text-green-700 dark:text-green-400">All fees paid</p>
             <p className="text-xs text-muted-foreground mt-1">No outstanding balance</p>
           </div>
         </CardContent>
@@ -86,7 +86,7 @@ export function FinancialWidget({ fees, isLoading, feesPageHref }: FinancialWidg
 
   return (
     <Card className="border-none shadow-sm overflow-hidden">
-      <CardHeader className="pb-3 bg-white border-b border-gray-100">
+      <CardHeader className="pb-3 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <CreditCard className="w-4 h-4 text-orange-500" />
@@ -94,7 +94,7 @@ export function FinancialWidget({ fees, isLoading, feesPageHref }: FinancialWidg
           </CardTitle>
           <Link
             href={feesPageHref}
-            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
+            className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
           >
             View All <ChevronRight className="w-3 h-3" />
           </Link>
@@ -102,20 +102,20 @@ export function FinancialWidget({ fees, isLoading, feesPageHref }: FinancialWidg
       </CardHeader>
       <CardContent className="p-4 space-y-4">
         {/* Summary Row */}
-        <div className="flex items-center justify-between p-3 rounded-xl bg-orange-50 border border-orange-100">
+        <div className="flex items-center justify-between p-3 rounded-xl bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-900/50">
           <div>
-            <p className="text-xs text-orange-700 font-semibold uppercase tracking-wide">Total Outstanding</p>
-            <p className="text-2xl font-bold text-orange-600 mt-0.5">{formatCurrency(totalOutstanding)}</p>
+            <p className="text-xs text-orange-700 dark:text-orange-400 font-semibold uppercase tracking-wide">Total Outstanding</p>
+            <p className="text-2xl font-bold text-orange-600 dark:text-orange-500 mt-0.5">{formatCurrency(totalOutstanding)}</p>
           </div>
           <div className="flex flex-col items-end gap-1">
             {overdueCount > 0 && (
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-full px-2 py-0.5">
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-full px-2 py-0.5">
                 <AlertTriangle className="w-3 h-3" />
                 {overdueCount} overdue
               </span>
             )}
             {dueTodayCount > 0 && (
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-yellow-600 bg-yellow-50 border border-yellow-200 rounded-full px-2 py-0.5">
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900/50 rounded-full px-2 py-0.5">
                 <Clock className="w-3 h-3" />
                 {dueTodayCount} due today
               </span>
@@ -128,10 +128,10 @@ export function FinancialWidget({ fees, isLoading, feesPageHref }: FinancialWidg
           {sorted.slice(0, 4).map(fee => (
             <div
               key={fee.id}
-              className="flex items-center justify-between p-3 rounded-lg border border-gray-100 bg-white hover:bg-gray-50 transition-colors"
+              className="flex items-center justify-between p-3 rounded-lg border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors"
             >
               <div className="flex-1 min-w-0 pr-3">
-                <p className="text-sm font-medium truncate">{fee.fee_name}</p>
+                <p className="text-sm font-medium truncate text-gray-900 dark:text-slate-100">{fee.fee_name}</p>
                 {fee.due_date && (
                   <p className="text-xs text-muted-foreground mt-0.5">
                     Due {format(parseISO(fee.due_date), 'MMM d, yyyy')}
@@ -139,7 +139,7 @@ export function FinancialWidget({ fees, isLoading, feesPageHref }: FinancialWidg
                 )}
               </div>
               <div className="flex flex-col items-end gap-1 shrink-0">
-                <span className="text-sm font-bold text-gray-800">{formatCurrency(fee.balance)}</span>
+                <span className="text-sm font-bold text-gray-800 dark:text-slate-200">{formatCurrency(fee.balance)}</span>
                 <FeeDueDateBadge dueDate={fee.due_date} status={fee.status} />
               </div>
             </div>
@@ -149,7 +149,7 @@ export function FinancialWidget({ fees, isLoading, feesPageHref }: FinancialWidg
         {sorted.length > 4 && (
           <Link
             href={feesPageHref}
-            className="block text-center text-xs text-blue-600 hover:underline font-medium pt-1"
+            className="block text-center text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium pt-1"
           >
             +{sorted.length - 4} more fee{sorted.length - 4 > 1 ? 's' : ''} — view all
           </Link>

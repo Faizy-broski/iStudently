@@ -60,7 +60,7 @@ export default function AdminDashboard() {
         value: stats.totalStaff,
         icon: Users,
         bgColor: '#00ACC1',
-        subtitle: `${t('stats.male_label', { count: stats.maleStaff })}  ${t('stats.female_label', { count: stats.femaleStaff })}`
+        subtitle: `${t('stats.teachers_label', { count: stats.totalTeachers })}  ${t('stats.employees_label', { count: stats.totalStaff - stats.totalTeachers })}\n${t('stats.male_label', { count: stats.maleStaff })}  ${t('stats.female_label', { count: stats.femaleStaff })}`
       },
       {
         title: t('stats.total_parents'),
@@ -140,7 +140,7 @@ export default function AdminDashboard() {
               <stat.icon className="h-16 w-16 text-white/30" strokeWidth={1.5} />
             </div>
             <div className="px-5 pb-4">
-              <p className="text-white/80 text-xs">{stat.subtitle}</p>
+              <p className="text-white/80 text-xs whitespace-pre-line">{stat.subtitle}</p>
             </div>
           </div>
         ))}

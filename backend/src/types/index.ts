@@ -250,6 +250,8 @@ export interface Profile {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  // Populated at runtime by auth middleware for staff roles
+  user_profile_id?: string | null;
 }
 
 export interface School {
@@ -656,6 +658,8 @@ export interface CreateStaffDTO {
   password?: string;
   // Salary (optional - creates salary_structure entry)
   base_salary?: number;
+  gender?: string;
+  date_of_birth?: string;
 }
 
 export interface UpdateStaffDTO {
@@ -681,6 +685,8 @@ export interface UpdateStaffDTO {
   password?: string; // Optional password update
   base_salary?: number; // Optional base salary update
   profile_photo_url?: string;
+  gender?: string;
+  date_of_birth?: string;
 }
 
 export interface AcademicYear {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -84,6 +84,7 @@ export default function StudentInfoPage() {
   const tCommon = useTranslations("common");
   const locale = useLocale();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const campusContext = useCampus();
   const schoolId = user?.school_id || '';
@@ -144,6 +145,17 @@ export default function StudentInfoPage() {
     }
   }, [error, hasInitialized, tCommon]);
 
+  // Auto-open edit form when navigated from detail page with ?edit=<uuid>
+  useEffect(() => {
+    const editId = searchParams.get('edit');
+    if (!editId || students.length === 0) return;
+    const student = students.find(s => s.id === editId);
+    if (student) {
+      setSelectedStudent(student);
+      setShowEditForm(true);
+    }
+  }, [searchParams, students]);
+
   const handleViewDetails = (student: Student) => {
     // Navigate to the full details page using student number for readable URLs
     router.push(`/admin/students/${encodeURIComponent(student.student_number)}`);
@@ -157,13 +169,13 @@ export default function StudentInfoPage() {
   const handleEditSuccess = () => {
     setShowEditForm(false);
     setSelectedStudent(null);
-    // Refresh the students list
-    // Note: SWR will automatically revalidate
+    router.replace('/admin/students/student-info');
   };
 
   const handleEditCancel = () => {
     setShowEditForm(false);
     setSelectedStudent(null);
+    router.replace('/admin/students/student-info');
   };
 
   const handleToggleStudentStatus = async (student: Student) => {

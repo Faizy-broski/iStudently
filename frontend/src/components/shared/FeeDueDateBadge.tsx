@@ -30,7 +30,7 @@ export function FeeDueDateBadge({ dueDate, status }: FeeDueDateBadgeProps) {
 
   if (diff > 0) {
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-900/50">
         <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
         Days Remaining: {diff}
       </span>
@@ -39,7 +39,7 @@ export function FeeDueDateBadge({ dueDate, status }: FeeDueDateBadgeProps) {
 
   if (diff === 0) {
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700 border border-yellow-200 animate-pulse">
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-900/50 animate-pulse">
         <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 inline-block" />
         Due Today
       </span>
@@ -47,7 +47,7 @@ export function FeeDueDateBadge({ dueDate, status }: FeeDueDateBadgeProps) {
   }
 
   return (
-    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">
+    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/50">
       <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />
       {Math.abs(diff)} Days Overdue
     </span>

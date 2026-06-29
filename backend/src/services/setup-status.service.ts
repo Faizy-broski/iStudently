@@ -193,6 +193,8 @@ class SetupStatusService {
         boys_count: number
         girls_count: number
         total_teachers: number
+        male_teachers: number
+        female_teachers: number
         total_staff: number
         male_staff: number
         female_staff: number
@@ -214,12 +216,16 @@ class SetupStatusService {
         const boysCount = studentRows?.filter((s: any) => s.custom_fields?.personal?.gender?.toLowerCase() === 'male').length || 0
         const girlsCount = studentRows?.filter((s: any) => s.custom_fields?.personal?.gender?.toLowerCase() === 'female').length || 0
 
-        // Teachers
-        const { count: teacherCount } = await supabase
+        // Teachers with gender breakdown via custom_fields
+        const { data: teacherRows } = await supabase
             .from('staff')
-            .select('*', { count: 'exact', head: true })
+            .select('custom_fields')
             .eq('school_id', campusId)
             .eq('role', 'teacher')
+
+        const teacherCount = teacherRows?.length || 0
+        const maleTeachers = teacherRows?.filter((s: any) => s.custom_fields?.personal?.gender?.toLowerCase() === 'male').length || 0
+        const femaleTeachers = teacherRows?.filter((s: any) => s.custom_fields?.personal?.gender?.toLowerCase() === 'female').length || 0
 
         // Staff with gender breakdown via custom_fields
         const { data: staffRows } = await supabase
@@ -272,7 +278,9 @@ class SetupStatusService {
             total_students: totalStudents,
             boys_count: boysCount,
             girls_count: girlsCount,
-            total_teachers: teacherCount || 0,
+            total_teachers: teacherCount,
+            male_teachers: maleTeachers,
+            female_teachers: femaleTeachers,
             total_staff: staffCount,
             male_staff: maleStaff,
             female_staff: femaleStaff,

@@ -1082,16 +1082,6 @@ function MobileSidebar({ menuItems }: AppSidebarProps) {
 
   return (
     <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
-      <SheetTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="lg:hidden fixed top-4 start-4 z-50 bg-white shadow-md hover:bg-gray-100 rounded-full"
-        >
-          <Menu className="h-5 w-5 text-[#022172]" />
-          <span className="sr-only">Toggle Menu</span>
-        </Button>
-      </SheetTrigger>
       <SheetContent
         side="left"
         className={cn('w-72 p-0 border-r-0', !theme?.bg_color ? 'sidebar-gradient' : '')}

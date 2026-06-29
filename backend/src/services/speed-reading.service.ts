@@ -8,6 +8,8 @@ export interface ReadingText {
   language: 'en' | 'ar'
   content: string
   word_count: number
+  grade_level_id?: string | null
+  grade_level_name?: string | null
   created_by?: string | null
   is_active: boolean
   created_at: string
@@ -30,6 +32,7 @@ export interface CreateTextDto {
   title: string
   language: 'en' | 'ar'
   content: string
+  grade_level_id?: string | null
   quiz_questions?: Omit<QuizQuestion, 'id' | 'text_id'>[]
 }
 
@@ -64,30 +67,47 @@ function computePoints(correctWords: number, targetWpm: number, comprehensionBon
 }
 
 class SpeedReadingService {
-  async getTexts(schoolId: string): Promise<ReadingText[]> {
-    // Resolve to root school, then include all campus IDs so texts from
-    // any admin in the school network are visible to all users.
+  async getTexts(schoolId: string, gradeLevelId?: string, campusId?: string): Promise<ReadingText[]> {
     const rootId = await getEffectiveSchoolId(schoolId)
     const allIds = await getAllCampusIds(rootId)
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('reading_texts')
-      .select('*')
-      .in('school_id', allIds)
+      .select('*, grade_levels(name), reading_text_quizzes(id, question, option_a, option_b, option_c, option_d, correct_ans)')
       .eq('is_active', true)
       .order('created_at', { ascending: false })
+
+    if (campusId && campusId !== rootId) {
+      // Admin view: show texts for this campus + root-level texts (backward compat)
+      query = query.in('school_id', [campusId, rootId])
+    } else {
+      // Student/shared view or root-level admin: all campuses in the school network
+      query = query.in('school_id', allIds)
+    }
+
+    if (gradeLevelId) query = query.eq('grade_level_id', gradeLevelId)
+
+    const { data, error } = await query
     if (error) throw error
-    return data as ReadingText[]
+
+    return (data as any[]).map(row => ({
+      ...row,
+      grade_level_name: row.grade_levels?.name ?? null,
+      grade_levels: undefined,
+      quiz_questions: row.reading_text_quizzes ?? [],
+      reading_text_quizzes: undefined,
+    })) as ReadingText[]
   }
 
   async getText(id: string): Promise<ReadingText | null> {
-    const { data: text, error } = await supabase
+    const { data: raw, error } = await supabase
       .from('reading_texts')
-      .select('*')
+      .select('*, grade_levels(name)')
       .eq('id', id)
       .eq('is_active', true)
       .single()
     if (error) return null
+    const text = { ...raw, grade_level_name: (raw as any).grade_levels?.name ?? null, grade_levels: undefined }
 
     const { data: quiz } = await supabase
       .from('reading_text_quizzes')
@@ -109,6 +129,7 @@ class SpeedReadingService {
         language: dto.language,
         content: dto.content,
         word_count: wordCount,
+        grade_level_id: dto.grade_level_id ?? null,
         created_by: createdBy,
         is_active: true,
       }])
@@ -133,6 +154,7 @@ class SpeedReadingService {
       updates.content = dto.content
       updates.word_count = computeWordCount(dto.content)
     }
+    if ('grade_level_id' in dto) updates.grade_level_id = dto.grade_level_id ?? null
 
     const { data: text, error } = await supabase
       .from('reading_texts')

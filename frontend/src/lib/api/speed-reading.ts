@@ -7,6 +7,8 @@ export interface ReadingText {
   language: 'en' | 'ar'
   content: string
   word_count: number
+  grade_level_id?: string | null
+  grade_level_name?: string | null
   created_by?: string | null
   is_active: boolean
   created_at: string
@@ -85,9 +87,13 @@ export function getBadge(bestWpm: number): { label: string; emoji: string } {
   return { label: 'Beginner', emoji: '📖' }
 }
 
-export async function getTexts(token: string, schoolId?: string): Promise<ApiResponse<ReadingText[]>> {
-  const params = schoolId ? `?school_id=${schoolId}` : ''
-  const res = await fetch(`${API_URL}/speed-reading/texts${params}`, {
+export async function getTexts(token: string, schoolId?: string, gradeLevelId?: string, campusId?: string): Promise<ApiResponse<ReadingText[]>> {
+  const p = new URLSearchParams()
+  if (schoolId) p.set('school_id', schoolId)
+  if (gradeLevelId) p.set('grade_level_id', gradeLevelId)
+  if (campusId) p.set('campus_id', campusId)
+  const qs = p.toString() ? `?${p.toString()}` : ''
+  const res = await fetch(`${API_URL}/speed-reading/texts${qs}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
   return res.json()
@@ -101,7 +107,7 @@ export async function getText(id: string, token: string): Promise<ApiResponse<Re
 }
 
 export async function createText(
-  payload: { title: string; language: 'en' | 'ar'; content: string; quiz_questions?: Omit<QuizQuestion, 'id' | 'text_id'>[] },
+  payload: { title: string; language: 'en' | 'ar'; content: string; grade_level_id?: string | null; quiz_questions?: Omit<QuizQuestion, 'id' | 'text_id'>[]; campus_id?: string | null },
   token: string
 ): Promise<ApiResponse<ReadingText>> {
   const res = await fetch(`${API_URL}/speed-reading/texts`, {
@@ -114,7 +120,7 @@ export async function createText(
 
 export async function updateText(
   id: string,
-  payload: { title?: string; language?: 'en' | 'ar'; content?: string; quiz_questions?: Omit<QuizQuestion, 'id' | 'text_id'>[] },
+  payload: { title?: string; language?: 'en' | 'ar'; content?: string; grade_level_id?: string | null; quiz_questions?: Omit<QuizQuestion, 'id' | 'text_id'>[] },
   token: string
 ): Promise<ApiResponse<ReadingText>> {
   const res = await fetch(`${API_URL}/speed-reading/texts/${id}`, {

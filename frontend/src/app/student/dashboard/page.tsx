@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { SetupAssistantPanel } from '@/components/setup-assistant/SetupAssistantPanel'
 import { useStudentDashboard, useStudentInfo, useStudentFees } from '@/hooks/useStudentDashboard'
 import { FinancialWidget } from '@/components/shared/FinancialWidget'
+import { PerformanceMeter } from '@/components/student/PerformanceMeter'
 import { ProfilePhoto } from '@/components/shared/ProfilePhoto'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
@@ -108,7 +109,7 @@ export default function StudentDashboardPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-[#F8FAFC] min-h-screen">
+    <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-slate-950 min-h-screen">
       {/* Premium Profile Header */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#022172] to-[#0535B2] p-8 text-white shadow-lg">
         <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
@@ -167,17 +168,17 @@ export default function StudentDashboardPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Today's Schedule */}
           <Card className="border-none shadow-sm overflow-hidden">
-            <CardHeader className="bg-white border-b border-gray-100 flex flex-row items-center justify-between py-4 px-6">
+            <CardHeader className="bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 flex flex-row items-center justify-between py-4 px-6">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-blue-50 rounded-lg">
-                  <CalendarIcon className="w-5 h-5 text-[#022172]" />
+                <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <CalendarIcon className="w-5 h-5 text-[#022172] dark:text-blue-400" />
                 </div>
                 <div>
                   <CardTitle className="text-lg">{t('schedule.title')}</CardTitle>
-                  <p className="text-xs text-gray-500 font-medium">{format(new Date(), 'EEEE, MMMM d')}</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 font-medium">{format(new Date(), 'EEEE, MMMM d')}</p>
                 </div>
               </div>
-              <Badge variant="outline" className="text-[#022172] border-blue-100">
+              <Badge variant="outline" className="text-[#022172] dark:text-blue-400 border-blue-100 dark:border-blue-900/50">
                 {t('schedule.classes', { count: overview?.todayTimetable.length || 0 })}
               </Badge>
             </CardHeader>
@@ -189,25 +190,25 @@ export default function StudentDashboardPage() {
                     return (
                       <div 
                         key={classItem.id}
-                        className={`group relative p-4 rounded-xl border border-gray-100 transition-all hover:shadow-md ${
+                        className={`group relative p-4 rounded-xl border border-gray-100 dark:border-slate-800 transition-all hover:shadow-md ${
                           timeStatus.status === 'current' 
-                            ? 'bg-blue-50/50 border-blue-200 ring-1 ring-blue-100' 
-                            : 'bg-white'
+                            ? 'bg-blue-50/50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 ring-1 ring-blue-100 dark:ring-blue-900' 
+                            : 'bg-white dark:bg-slate-900'
                         }`}
                       >
                         {timeStatus.status === 'current' && (
-                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-12 bg-[#022172] rounded-r-full" />
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-12 bg-[#022172] dark:bg-blue-500 rounded-r-full" />
                         )}
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-4">
                             <div className={`p-3 rounded-xl ${
-                              timeStatus.status === 'current' ? 'bg-[#022172] text-white' : 'bg-gray-100 text-gray-500'
+                              timeStatus.status === 'current' ? 'bg-[#022172] text-white' : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400'
                             }`}>
                               <BookOpen className="w-5 h-5" />
                             </div>
                             <div>
-                              <h3 className="font-bold text-gray-900">{classItem.subject.name}</h3>
-                              <div className="flex items-center gap-2 text-sm text-gray-500 mt-0.5">
+                              <h3 className="font-bold text-gray-900 dark:text-slate-100">{classItem.subject.name}</h3>
+                              <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-slate-400 mt-0.5">
                                 <span className="flex items-center gap-1">
                                   <Clock className="w-3.5 h-3.5" />
                                   {classItem.start_time} - {classItem.end_time}
@@ -224,12 +225,12 @@ export default function StudentDashboardPage() {
                             <Badge className={
                               timeStatus.status === 'current' ? 'bg-green-500 hover:bg-green-600 border-none' :
                               timeStatus.status === 'soon' ? 'bg-[#EEA831] text-[#022172] hover:bg-[#EEA831]/90 border-none' :
-                              timeStatus.status === 'past' ? 'bg-gray-100 text-gray-500 hover:bg-gray-200 border-none' :
-                              'bg-blue-100 text-blue-700 hover:bg-blue-200 border-none'
+                              timeStatus.status === 'past' ? 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700 border-none' :
+                              'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 border-none'
                             }>
                               {timeStatus.text}
                             </Badge>
-                            <p className="text-xs text-gray-400 mt-1.5 font-medium">
+                            <p className="text-xs text-gray-400 dark:text-slate-500 mt-1.5 font-medium">
                               {classItem.teacher.profile.first_name} {classItem.teacher.profile.last_name}
                             </p>
                           </div>
@@ -240,20 +241,23 @@ export default function StudentDashboardPage() {
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <CalendarIcon className="w-8 h-8 text-gray-300" />
+                  <div className="w-16 h-16 bg-gray-50 dark:bg-slate-800/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CalendarIcon className="w-8 h-8 text-gray-300 dark:text-slate-600" />
                   </div>
-                  <h3 className="font-semibold text-gray-900">{t('schedule.no_classes')}</h3>
-                  <p className="text-sm text-gray-500 mt-1">{t('schedule.free_time')}</p>
+                  <h3 className="font-semibold text-gray-900 dark:text-slate-100">{t('schedule.no_classes')}</h3>
+                  <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{t('schedule.free_time')}</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
+          {/* Performance Meter Component */}
+          <PerformanceMeter />
+
           {/* Academic Hierarchy (Marking Periods) */}
           <Card className="border-none shadow-sm overflow-hidden">
-            <CardHeader className="bg-white border-b border-gray-100 py-4 px-6">
-              <CardTitle className="text-lg flex items-center gap-2 text-[#022172]">
+            <CardHeader className="bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 py-4 px-6">
+              <CardTitle className="text-lg flex items-center gap-2 text-[#022172] dark:text-blue-400">
                 <GraduationCap className="w-5 h-5" />
                 {t('academic.hierarchy')}
               </CardTitle>
@@ -262,13 +266,13 @@ export default function StudentDashboardPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Year */}
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-widest">
+                  <div className="flex items-center gap-2 text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">
                     <Building2 className="w-3.5 h-3.5" />
                     {t('academic.year')}
                   </div>
-                  <div className="p-4 rounded-xl bg-blue-50 border border-blue-100">
-                    <h4 className="font-bold text-[#022172]">{currentYear?.name || t('academic.session')}</h4>
-                    <p className="text-[10px] text-blue-600 mt-1 font-medium">
+                  <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/50">
+                    <h4 className="font-bold text-[#022172] dark:text-blue-400">{currentYear?.name || t('academic.session')}</h4>
+                    <p className="text-[10px] text-blue-600 dark:text-blue-500 mt-1 font-medium">
                       {currentYear?.start_date && format(parseISO(currentYear.start_date), 'MMM yyyy')} - {currentYear?.end_date && format(parseISO(currentYear.end_date), 'MMM yyyy')}
                     </p>
                   </div>
@@ -276,13 +280,13 @@ export default function StudentDashboardPage() {
 
                 {/* Quarter */}
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-widest">
+                  <div className="flex items-center gap-2 text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">
                     <TrendingUp className="w-3.5 h-3.5" />
                     {t('academic.quarter')}
                   </div>
                   <div className="p-4 rounded-xl bg-[#EEA831]/10 border border-[#EEA831]/20">
-                    <h4 className="font-bold text-[#022172]">{currentQuarter?.title || t('academic.no_quarter')}</h4>
-                    <p className="text-[10px] text-[#022172]/60 mt-1 font-medium">
+                    <h4 className="font-bold text-[#022172] dark:text-[#EEA831]">{currentQuarter?.title || t('academic.no_quarter')}</h4>
+                    <p className="text-[10px] text-[#022172]/60 dark:text-[#EEA831]/70 mt-1 font-medium">
                       {currentQuarter?.start_date && format(parseISO(currentQuarter.start_date), 'MMM d')} - {currentQuarter?.end_date && format(parseISO(currentQuarter.end_date), 'MMM d')}
                     </p>
                   </div>
@@ -322,16 +326,16 @@ export default function StudentDashboardPage() {
             <CardContent className="p-0">
               <div className="p-6 space-y-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-xl bg-gray-50 flex items-center justify-center overflow-hidden border p-2">
+                  <div className="w-14 h-14 rounded-xl bg-gray-50 dark:bg-slate-800 flex items-center justify-center overflow-hidden border dark:border-slate-700 p-2">
                     {campus?.logo_url ? (
                       <img src={campus.logo_url} alt="Campus Logo" className="w-full h-full object-contain" />
                     ) : (
-                      <Building2 className="w-8 h-8 text-gray-300" />
+                      <Building2 className="w-8 h-8 text-gray-300 dark:text-slate-600" />
                     )}
                   </div>
                   <div>
-                    <h4 className="font-bold text-gray-900 leading-tight">{campus?.name || studentInfo?.school_name}</h4>
-                    <Badge variant="outline" className="mt-1.5 text-[9px] font-bold py-0 h-4 border-blue-100 text-blue-700 bg-blue-50/50">
+                    <h4 className="font-bold text-gray-900 dark:text-slate-100 leading-tight">{campus?.name || studentInfo?.school_name}</h4>
+                    <Badge variant="outline" className="mt-1.5 text-[9px] font-bold py-0 h-4 border-blue-100 dark:border-blue-900/50 text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/20">
                       {campus?.short_name || t('campus.active_campus')}
                     </Badge>
                   </div>
@@ -341,54 +345,54 @@ export default function StudentDashboardPage() {
                 
                 <div className="space-y-3">
                   <div className="flex items-start gap-3">
-                    <div className="p-1.5 bg-blue-50 rounded-lg shrink-0">
-                      <MapPin className="w-3.5 h-3.5 text-blue-600" />
+                    <div className="p-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg shrink-0">
+                      <MapPin className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t('campus.address')}</p>
-                      <p className="text-[11px] text-gray-600 leading-relaxed font-medium mt-0.5">
+                      <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">{t('campus.address')}</p>
+                      <p className="text-[11px] text-gray-600 dark:text-slate-400 leading-relaxed font-medium mt-0.5">
                         {campus?.address || studentInfo?.school_address || t('campus.not_provided')}
                       </p>
                     </div>
                   </div>
                   
                   <div className="flex items-center gap-3">
-                    <div className="p-1.5 bg-green-50 rounded-lg shrink-0">
-                      <Phone className="w-3.5 h-3.5 text-green-600" />
+                    <div className="p-1.5 bg-green-50 dark:bg-green-900/20 rounded-lg shrink-0">
+                      <Phone className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t('campus.contact')}</p>
-                      <p className="text-[11px] text-gray-600 font-medium mt-0.5">{campus?.phone || studentInfo?.school_phone || t('campus.not_provided')}</p>
+                      <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">{t('campus.contact')}</p>
+                      <p className="text-[11px] text-gray-600 dark:text-slate-400 font-medium mt-0.5">{campus?.phone || studentInfo?.school_phone || t('campus.not_provided')}</p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <div className="p-1.5 bg-purple-50 rounded-lg shrink-0">
-                      <Mail className="w-3.5 h-3.5 text-purple-600" />
+                    <div className="p-1.5 bg-purple-50 dark:bg-purple-900/20 rounded-lg shrink-0">
+                      <Mail className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t('campus.email')}</p>
-                      <p className="text-[11px] text-gray-600 font-medium mt-0.5 truncate">{campus?.contact_email || 'contact@istudents.ly'}</p>
+                      <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">{t('campus.email')}</p>
+                      <p className="text-[11px] text-gray-600 dark:text-slate-400 font-medium mt-0.5 truncate">{campus?.contact_email || 'contact@istudents.ly'}</p>
                     </div>
                   </div>
                 </div>
               </div>
-              <div className="bg-gray-50 px-6 py-3 border-t border-gray-100 flex items-center justify-between">
+              <div className="bg-gray-50 dark:bg-slate-900/50 px-6 py-3 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-[10px] font-bold text-gray-500">{t('campus.principal')}: {campus?.principal_name || 'N/A'}</span>
+                  <span className="text-[10px] font-bold text-gray-500 dark:text-slate-400">{t('campus.principal')}: {campus?.principal_name || 'N/A'}</span>
                 </div>
-                <Info className="w-3 h-3 text-gray-300" />
+                <Info className="w-3 h-3 text-gray-300 dark:text-slate-600" />
               </div>
             </CardContent>
           </Card>
 
           {/* Due Soon Assignments */}
           <Card className="border-none shadow-sm overflow-hidden">
-            <CardHeader className="bg-white border-b border-gray-100 py-4 flex flex-row items-center justify-between px-6">
+            <CardHeader className="bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 py-4 flex flex-row items-center justify-between px-6">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-orange-50 rounded-lg">
-                  <AlertCircle className="w-5 h-5 text-orange-600" />
+                <div className="p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                  <AlertCircle className="w-5 h-5 text-orange-600 dark:text-orange-400" />
                 </div>
                 <CardTitle className="text-lg">{t('assignments.due_soon')}</CardTitle>
               </div>
@@ -401,24 +405,24 @@ export default function StudentDashboardPage() {
                     return (
                       <div 
                         key={assignment.id}
-                        className="p-4 rounded-xl border border-gray-100 bg-white hover:shadow-md transition-all flex flex-col justify-between"
+                        className="p-4 rounded-xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:shadow-md transition-all flex flex-col justify-between"
                       >
                         <div>
                           <div className="flex justify-between items-start mb-3">
                             <Badge className={
-                              urgency.color === 'red' ? 'bg-red-100 text-red-700 border-none' :
-                              urgency.color === 'orange' ? 'bg-orange-100 text-orange-700 border-none' :
-                              'bg-blue-100 text-blue-700 border-none'
+                              urgency.color === 'red' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-none' :
+                              urgency.color === 'orange' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-none' :
+                              'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-none'
                             }>
                               {urgency.label}
                             </Badge>
-                            <span className="text-xs font-bold text-gray-400">{assignment.max_score} pts</span>
+                            <span className="text-xs font-bold text-gray-400 dark:text-slate-500">{assignment.max_score} pts</span>
                           </div>
-                          <h4 className="font-bold text-gray-900 line-clamp-1">{assignment.title}</h4>
-                          <p className="text-xs text-gray-500 mt-1 font-medium">{assignment.subject.name}</p>
+                          <h4 className="font-bold text-gray-900 dark:text-slate-100 line-clamp-1">{assignment.title}</h4>
+                          <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 font-medium">{assignment.subject.name}</p>
                         </div>
-                        <div className="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between text-xs">
-                          <span className="text-gray-400">{format(new Date(assignment.due_date), 'MMM d, h:mm a')}</span>
+                        <div className="mt-4 pt-4 border-t border-gray-50 dark:border-slate-800/50 flex items-center justify-between text-xs">
+                          <span className="text-gray-400 dark:text-slate-500">{format(new Date(assignment.due_date), 'MMM d, h:mm a')}</span>
                           {assignment.submission ? (
                             <span className="text-green-600 font-bold flex items-center gap-1">
                               <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
@@ -437,11 +441,11 @@ export default function StudentDashboardPage() {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <BookOpen className="w-6 h-6 text-gray-300" />
+                  <div className="w-12 h-12 bg-gray-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <BookOpen className="w-6 h-6 text-gray-300 dark:text-slate-600" />
                   </div>
-                  <h3 className="font-semibold text-gray-900 text-sm">{t('assignments.caught_up')}</h3>
-                  <p className="text-xs text-gray-500 mt-1">{t('assignments.no_assignments')}</p>
+                  <h3 className="font-semibold text-gray-900 dark:text-slate-100 text-sm">{t('assignments.caught_up')}</h3>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{t('assignments.no_assignments')}</p>
                 </div>
               )}
             </CardContent>

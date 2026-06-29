@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Maximize2, Minimize2, Mic, MicOff, Play, Square, CheckCircle2 } from 'lucide-react'
+import { Maximize2, Minimize2, Mic, MicOff, Play, Square, CheckCircle2, Pause } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
@@ -56,6 +56,7 @@ export default function TeleprompterPage() {
   const animationRef = useRef<Animation | null>(null)
   const teleprompterRef = useRef<HTMLDivElement>(null)
   const scrollWrapRef = useRef<HTMLDivElement>(null)
+  const [isPaused, setIsPaused] = useState(false)
 
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
@@ -120,10 +121,10 @@ export default function TeleprompterPage() {
     if (phase !== 'reading' || !scrollWrapRef.current || !text) return
     const el = scrollWrapRef.current
     const duration = Math.round((text.word_count / wpm) * 60 * 1000)
-    // Start from 0 (text immediately visible at top) and scroll up out of view
+    // Start below the container and scroll up through the visible window (teleprompter)
     const anim = el.animate(
-      [{ transform: 'translateY(0%)' }, { transform: 'translateY(-100%)' }],
-      { duration, easing: 'linear', fill: 'forwards' }
+      [{ transform: 'translateY(100%)' }, { transform: 'translateY(-100%)' }],
+      { duration: duration * 2, easing: 'linear', fill: 'forwards' }
     )
     animationRef.current = anim
     anim.onfinish = () => {
@@ -133,9 +134,24 @@ export default function TeleprompterPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase])
 
+  const togglePause = useCallback(() => {
+    const anim = animationRef.current
+    if (!anim) return
+    if (anim.playState === 'paused') {
+      anim.play()
+      if (gradingMode === 'voice') startRecognition()
+      setIsPaused(false)
+    } else {
+      anim.pause()
+      if (gradingMode === 'voice') stopRecognition()
+      setIsPaused(true)
+    }
+  }, [gradingMode, startRecognition, stopRecognition])
+
   const stopEarly = useCallback(() => {
     animationRef.current?.cancel()
     stopRecognition()
+    setIsPaused(false)
     handleScrollEnd()
   }, [stopRecognition])
 
@@ -317,11 +333,25 @@ export default function TeleprompterPage() {
             </Badge>
           </div>
           <div className="flex items-center gap-2">
-            {isListening && (
+            {isListening && !isPaused && (
               <span className="flex items-center gap-1 text-green-400 text-xs animate-pulse">
                 <Mic className="h-3 w-3" /> {t('listeningActive')}
               </span>
             )}
+            {isPaused && (
+              <span className="flex items-center gap-1 text-yellow-400 text-xs">
+                <Pause className="h-3 w-3" /> Paused
+              </span>
+            )}
+            <button
+              onClick={togglePause}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm rounded-md border border-yellow-400 text-yellow-400 hover:bg-yellow-400/10 transition-colors"
+            >
+              {isPaused
+                ? <><Play className="h-4 w-4" /> Resume</>
+                : <><Pause className="h-4 w-4" /> Pause</>
+              }
+            </button>
             <button
               onClick={stopEarly}
               className="flex items-center gap-1 px-3 py-1.5 text-sm rounded-md border border-red-400 text-red-400 hover:bg-red-400/10 transition-colors"

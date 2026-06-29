@@ -37,6 +37,8 @@ export interface CreateStaffDTO {
     password?: string
     profile_photo_url?: string
     base_salary?: number
+    gender?: 'male' | 'female' | 'other' | ''
+    date_of_birth?: string
 }
 
 export interface UpdateStaffDTO {

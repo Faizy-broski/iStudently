@@ -19,6 +19,24 @@ import { useTranslations } from "next-intl";
 import { useGradeLevels } from "@/hooks/useAcademics";
 import { StudentPhotoUpload } from "@/components/ui/student-photo-upload";
 
+// Helper: Calculate exact age in years, months and days from a date string (YYYY-MM-DD)
+function calculateAge(dateStr: string): { years: number; months: number; days: number } | null {
+  if (!dateStr) return null;
+  const birthDate = new Date(dateStr);
+  if (isNaN(birthDate.getTime())) return null;
+  const today = new Date();
+  let years = today.getFullYear() - birthDate.getFullYear();
+  let months = today.getMonth() - birthDate.getMonth();
+  let days = today.getDate() - birthDate.getDate();
+  if (days < 0) {
+    months -= 1;
+    const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+    days += prevMonth.getDate();
+  }
+  if (months < 0) { years -= 1; months += 12; }
+  return { years, months, days };
+}
+
 interface EditStudentFormProps {
   student: Student;
   onSuccess: () => void;
@@ -315,6 +333,18 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
                     value={formData.dateOfBirth}
                     onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
                   />
+                  {formData.dateOfBirth && (() => {
+                    const age = calculateAge(formData.dateOfBirth);
+                    return age ? (
+                      <div className="flex items-center gap-1.5 mt-1.5">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[#022172]/8 dark:bg-[#57A3CC]/15 px-2.5 py-0.5 text-xs font-medium text-[#022172] dark:text-[#57A3CC] border border-[#022172]/15 dark:border-[#57A3CC]/25">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="8" r="4" /><path strokeLinecap="round" strokeLinejoin="round" d="M4 20c0-4 3.6-7 8-7s8 3 8 7" /></svg>
+                          {age.years} {t("years")} {age.months} {t("months")} {age.days} {t("days")}
+                        </span>
+                        <span className="text-xs text-muted-foreground">{t("age")}</span>
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
                 <div className="md:col-span-2">
                   <Label htmlFor="address">{tFields("address")}</Label>

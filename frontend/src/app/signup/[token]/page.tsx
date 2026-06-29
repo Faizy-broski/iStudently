@@ -8,6 +8,13 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { toast } from 'sonner'
 import {
   getSignupLinkInfo,
@@ -59,6 +66,7 @@ export default function SignupPage() {
     phone: '',
     password: '',
     confirm_password: '',
+    extra_fields: {} as Record<string, any>,
   })
   const [showPassword, setShowPassword] = React.useState(false)
   const [showConfirm, setShowConfirm] = React.useState(false)
@@ -83,13 +91,25 @@ export default function SignupPage() {
   }, [token])
 
   const validate = (): boolean => {
-    const errs: Partial<typeof form> = {}
+    const errs: Partial<typeof form> & { extra_fields?: Record<string, string> } = {}
     if (!form.first_name.trim() || form.first_name.trim().length < 2) errs.first_name = t('firstName') + ' is required'
     if (!form.last_name.trim() || form.last_name.trim().length < 2) errs.last_name = t('lastName') + ' is required'
     if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = t('email') + ' is invalid'
     if (!form.password || form.password.length < 8) errs.password = t('passwordHint')
     if (form.password !== form.confirm_password) errs.confirm_password = t('passwordMismatch')
-    setErrors(errs)
+
+    // Validate custom fields
+    if (linkInfo?.meta?.custom_fields) {
+      const extraErrs: Record<string, string> = {}
+      for (const field of linkInfo.meta.custom_fields) {
+        if (field.required && !form.extra_fields[field.id]) {
+          extraErrs[field.id] = `${field.label} is required`
+        }
+      }
+      if (Object.keys(extraErrs).length > 0) errs.extra_fields = extraErrs
+    }
+
+    setErrors(errs as any)
     return Object.keys(errs).length === 0
   }
 
@@ -107,6 +127,7 @@ export default function SignupPage() {
         phone: form.phone.trim() || undefined,
         password: form.password,
         confirm_password: form.confirm_password,
+        extra_fields: form.extra_fields,
       })
 
       if (res.success) {
@@ -185,15 +206,58 @@ export default function SignupPage() {
   }
 
   // ── FORM ─────────────────────────────────────────────────────────────────────
+  const hasPoster = !!linkInfo?.meta?.poster_url
+
   return (
     <div
-      className="min-h-screen flex items-center justify-center bg-gray-50 p-4 py-8"
+      className={cn(
+        "min-h-screen bg-gray-50",
+        hasPoster ? "flex" : "flex items-center justify-center p-4 py-8"
+      )}
       dir={isAr ? 'rtl' : 'ltr'}
     >
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+      {/* Poster Side */}
+      {hasPoster && (
+        <div className="hidden lg:flex lg:w-1/2 relative bg-gray-900 border-e border-gray-200">
+          <img 
+            src={linkInfo.meta!.poster_url!} 
+            alt="Signup Poster" 
+            className="absolute inset-0 w-full h-full object-cover opacity-90"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+          <div className="absolute bottom-12 left-12 right-12 text-white">
+            <h2 className="text-4xl font-bold mb-2">{linkInfo.school_name}</h2>
+            {linkInfo.meta?.description && (
+              <p className="text-lg text-white/80 max-w-lg">{linkInfo.meta.description}</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Form Side */}
+      <div className={cn(
+        "w-full",
+        hasPoster ? "lg:w-1/2 flex items-center justify-center p-6 sm:p-12" : "max-w-md"
+      )}>
+        <div className={cn(
+          "bg-white overflow-hidden",
+          hasPoster ? "w-full max-w-lg shadow-sm rounded-2xl border border-gray-100" : "rounded-2xl shadow-lg border border-gray-100"
+        )}>
           {/* Header band */}
-          <div className="bg-gradient-to-r from-[#57A3CC] to-[#022172] p-6 text-center">
+          <div className="bg-gradient-to-r from-[#57A3CC] to-[#022172] p-6 text-center relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 flex flex-col items-end gap-1">
+              {linkInfo?.expires_at && (
+                <div className="bg-white/20 text-white text-[10px] font-semibold px-2 py-0.5 rounded backdrop-blur-sm">
+                  {t('expires')}: {new Date(linkInfo.expires_at).toLocaleDateString()}
+                </div>
+              )}
+              {linkInfo?.available_seats !== null && linkInfo?.available_seats !== undefined && (
+                <div className="bg-orange-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded shadow-sm">
+                  {linkInfo.available_seats} {t('seatsLeft', { fallback: 'seats left' })}
+                </div>
+              )}
+            </div>
+
             {linkInfo?.school_logo_url ? (
               <img
                 src={linkInfo.school_logo_url}
@@ -256,6 +320,40 @@ export default function SignupPage() {
                 {errors.last_name && <p className="text-xs text-red-500">{errors.last_name}</p>}
               </div>
             </div>
+
+            {/* Custom Fields */}
+            {linkInfo?.meta?.custom_fields?.map(field => (
+              <div key={field.id} className="space-y-1.5">
+                <label htmlFor={field.id} className="block text-sm font-semibold text-gray-800">
+                  {field.label} {field.required && <span className="text-red-500">*</span>}
+                </label>
+                {field.type === 'select' ? (
+                  <Select
+                    value={form.extra_fields[field.id] || ''}
+                    onValueChange={(val) => setForm(f => ({ ...f, extra_fields: { ...f.extra_fields, [field.id]: val } }))}
+                  >
+                    <SelectTrigger className={cn('w-full border-gray-300 focus:ring-[#57A3CC]', (errors as any).extra_fields?.[field.id] ? 'border-red-400' : '')}>
+                      <SelectValue placeholder={field.placeholder || 'Select...'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {field.options?.map(opt => (
+                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id={field.id}
+                    placeholder={field.placeholder}
+                    value={form.extra_fields[field.id] || ''}
+                    onChange={(e) => setForm(f => ({ ...f, extra_fields: { ...f.extra_fields, [field.id]: e.target.value } }))}
+                    className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900!', (errors as any).extra_fields?.[field.id] ? 'border-red-400' : '')}
+                    disabled={submitting}
+                  />
+                )}
+                {(errors as any).extra_fields?.[field.id] && <p className="text-xs text-red-500">{(errors as any).extra_fields[field.id]}</p>}
+              </div>
+            ))}
 
             {/* Email */}
             <div className="space-y-1.5">

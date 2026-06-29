@@ -372,7 +372,7 @@
     "breakdown_by_student_field": "Breakdown by Student Field",
     "discipline_log": "Discipline Log",
     "referral_form": "Referral Form",
-    "quiz": "Question Bank",
+    "quiz": "Quiz",
     "quizzes": "Quizzes",
     "questions": "Questions",
     "premium": "Premium",
@@ -455,8 +455,6 @@
     "staff_balances": "Staff Balances",
     "categories": "Categories",
     "library": "Library",
-    "reading_logs": "Reading Logs",
-    "log_reading_session": "Log Reading Session",
     "document_categories": "Document Categories",
     "document_fields": "Document Fields",
     "calculations": "Calculations",
@@ -493,9 +491,9 @@
     "two_factor_auth": "Two-Factor Auth",
     "agreement": "Agreement",
     "user_agreements": "User Agreements",
+    "user_profiles": "User Profiles",
     "profile": "Profile",
     "school_information": "School Information",
-    "school_pages": "School Pages",
     "associated_parents": "Associated Parents",
     "print_student_labels": "Print Student Labels",
     "schedule": "Schedule",
@@ -622,7 +620,9 @@
       "attendance_rate_label": "Attendance Rate: {rate}%",
       "total_parents_registered": "Total registered parents",
       "male_label": "Male: {count}",
-      "female_label": "Female: {count}"
+      "female_label": "Female: {count}",
+      "teachers_label": "Teachers: {count}",
+      "employees_label": "Others: {count}"
     },
     "charts": {
       "enrollment_title": "Student Enrollment ({year})",
@@ -2031,17 +2031,6 @@
       "sections": "Sections",
       "update_success": "Campus updated successfully",
       "update_error": "Failed to update campus",
-      "principal_signature": "Principal Signature",
-      "principal_signature_desc": "Upload the principal's signature image to appear on printed documents",
-      "no_signature": "No signature uploaded",
-      "signature_hint": "Upload a PNG, JPG, or SVG image. A transparent PNG works best.",
-      "upload_signature": "Upload Signature",
-      "save_signature": "Save Signature",
-      "remove_signature": "Remove Signature",
-      "click_save_to_apply": "Click Save to apply",
-      "signature_saved": "Signature saved successfully",
-      "signature_removed": "Signature removed",
-      "signature_save_error": "Failed to save signature",
       "boys": "Boys",
       "girls": "Girls",
       "male": "Male",
@@ -3729,7 +3718,8 @@
         "placeholder_phone": "Phone number",
         "placeholder_username_example": "e.g. john.doe",
         "msg_enroll_success": "Student enrolled successfully",
-        "msg_enroll_error": "Failed to enroll student"
+        "msg_enroll_error": "Failed to enroll student",
+        "age_label": "Age"
       },
       "student_details": {
         "title": "Student Details",
@@ -3790,7 +3780,11 @@
         "never": "Never",
         "profile_id": "Profile ID",
         "record_id": "Student Record ID",
-        "subscribed_services": "Subscribed Services"
+        "subscribed_services": "Subscribed Services",
+        "age": "Age",
+        "years": "Years",
+        "months": "Months",
+        "days": "Days"
       },
       "edit_student": {
         "title": "Edit Student",
@@ -3816,7 +3810,11 @@
         "emergency_name_placeholder": "Emergency contact name",
         "emergency_relation_placeholder": "e.g., Father, Mother, Guardian",
         "emergency_phone_placeholder": "Emergency contact phone",
-        "emergency_address_placeholder": "Emergency contact address"
+        "emergency_address_placeholder": "Emergency contact address",
+        "age": "Age",
+        "years": "Years",
+        "months": "Months",
+        "days": "Days"
       },
       "bulk_import": {
         "title": "Bulk Import Students",
@@ -4006,7 +4004,6 @@
           "campus_phone": "Campus Phone",
           "academic_year": "Academic Year",
           "school_logo": "School Logo",
-          "school_principal": "School Principal",
           "current_date": "Current Date",
           "valid_until": "Valid Until"
         }
@@ -5413,6 +5410,35 @@
       "accepted_count": "Accepted",
       "rejected_count": "Rejected",
       "pending_count": "Pending"
+    },
+    "user_profiles": {
+      "title": "User Profiles",
+      "profiles_panel": "Profiles",
+      "roles_panel": "Roles",
+      "new_role": "New Role",
+      "permissions_panel": "Permissions",
+      "add_profile": "Add a User Profile",
+      "profile_name": "Role Name",
+      "profile_name_placeholder": "e.g. Class Teacher",
+      "base_role": "Base Role",
+      "can_use": "Can Use",
+      "can_edit": "Can Edit",
+      "save_permissions": "Save Permissions",
+      "saving": "Saving...",
+      "saved": "Permissions saved",
+      "save_failed": "Failed to save permissions",
+      "delete_confirm": "Are you sure you want to delete this role?",
+      "delete_success": "Role deleted",
+      "delete_failed": "Failed to delete role",
+      "system_protected": "System roles cannot be deleted.",
+      "no_profile": "Default (Full Access)",
+      "no_profiles": "No roles yet. Create one to get started.",
+      "select_profile_hint": "Select a role to configure its permissions",
+      "check_all": "All",
+      "assign_profile": "User Role",
+      "user_role": "User Role",
+      "default_full_access": "Default (Full Access)",
+      "access_denied": "You do not have permission to access that page."
     }
   },
   "attendance": {
@@ -7143,10 +7169,6 @@
     "titleLabel": "Title",
     "titlePlaceholder": "e.g. Violation, Detention Assigned",
     "onePerLine": "one per line",
-    "pointDeduction": "Point Deduction",
-    "pointDeductionHint": "optional, per referral",
-    "points": "points",
-    "pointDeductionWarning": "Each referral using this field will deduct {n} point(s) from the student's score.",
     "saveChanges": "Save Changes",
     "noFieldsConfigured": "No fields configured yet. Click",
     "toGetStarted": "to get started.",

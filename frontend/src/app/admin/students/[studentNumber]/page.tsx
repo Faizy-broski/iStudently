@@ -106,6 +106,23 @@ export default function StudentDetailsPage() {
     }
   };
 
+  const calculateAge = (dateString: string | null | undefined): string | null => {
+    if (!dateString) return null;
+    const birthDate = new Date(dateString);
+    if (isNaN(birthDate.getTime())) return null;
+    const today = new Date();
+    let years = today.getFullYear() - birthDate.getFullYear();
+    let months = today.getMonth() - birthDate.getMonth();
+    let days = today.getDate() - birthDate.getDate();
+    if (days < 0) {
+      months -= 1;
+      const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+      days += prevMonth.getDate();
+    }
+    if (months < 0) { years -= 1; months += 12; }
+    return `${years} ${t("years")} ${months} ${t("months")} ${days} ${t("days")}`;
+  };
+
   const InfoRow = ({ label, value, icon: Icon }: { label: string; value: React.ReactNode; icon?: LucideIcon }) => (
     <div className="flex flex-col gap-1">
       <span className="text-sm text-muted-foreground flex items-center gap-2">
@@ -410,6 +427,11 @@ export default function StudentDetailsPage() {
                   label={tFields("date_of_birth")}
                   value={formatDate(currentStudent.custom_fields?.personal?.date_of_birth)}
                   icon={Calendar}
+                />
+                <InfoRow
+                  label={t("age")}
+                  value={calculateAge(currentStudent.custom_fields?.personal?.date_of_birth)}
+                  icon={User}
                 />
                 <InfoRow
                   label={tFields("gender")}

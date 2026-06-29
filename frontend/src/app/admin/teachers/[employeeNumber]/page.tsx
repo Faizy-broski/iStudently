@@ -369,6 +369,20 @@ export default function TeacherDetailsPage() {
                 <InfoRow label={t("fields.lastName")} value={currentTeacher.profile?.last_name} fallbackLabel={t("notProvided")} />
                 <InfoRow label={t("fields.email")} value={currentTeacher.profile?.email} icon={Mail} fallbackLabel={t("notProvided")} />
                 <InfoRow label={t("fields.phoneNumber")} value={currentTeacher.profile?.phone} icon={Phone} fallbackLabel={t("notProvided")} />
+                <InfoRow
+                  label="Gender"
+                  value={(currentTeacher.profile as any)?.gender
+                    ? ((currentTeacher.profile as any).gender as string).charAt(0).toUpperCase() + ((currentTeacher.profile as any).gender as string).slice(1)
+                    : undefined}
+                  icon={User}
+                  fallbackLabel={t("notProvided")}
+                />
+                <InfoRow
+                  label="Date of Birth"
+                  value={formatDate((currentTeacher.profile as any)?.date_of_birth, '')}
+                  icon={Calendar}
+                  fallbackLabel={t("notProvided")}
+                />
                 <InfoRow label={t("fields.username")} value={currentTeacher.profile?.username} icon={User} fallbackLabel={t("notProvided")} />
               </div>
             </CardContent>

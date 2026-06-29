@@ -3,12 +3,14 @@
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
-import { Gauge, BookOpen, Trophy, Globe } from 'lucide-react'
+import { Gauge, BookOpen, Trophy, Globe, GraduationCap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+
 import { getAuthToken } from '@/lib/api/schools'
 import {
   getTexts, getLeaderboard, getMyStats,
@@ -16,6 +18,7 @@ import {
   type ReadingText, type LeaderboardEntry, type StudentStats,
 } from '@/lib/api/speed-reading'
 import { useAuth } from '@/context/AuthContext'
+
 import { useCampus } from '@/context/CampusContext'
 
 export default function StudentSpeedReadingPage() {
@@ -29,6 +32,17 @@ export default function StudentSpeedReadingPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [myStats, setMyStats] = useState<StudentStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [gradeFilter, setGradeFilter] = useState('all')
+
+  // Derive grade levels from loaded texts — students can't call /academics/grades
+  const gradeLevels = texts
+    .filter(t => t.grade_level_id && t.grade_level_name)
+    .reduce<{ id: string; name: string }[]>((acc, t) => {
+      if (!acc.find(g => g.id === t.grade_level_id)) {
+        acc.push({ id: t.grade_level_id!, name: t.grade_level_name! })
+      }
+      return acc
+    }, [])
 
   useEffect(() => {
     if (!schoolId) return
@@ -89,41 +103,63 @@ export default function StudentSpeedReadingPage() {
 
       {/* Available Texts */}
       <div>
-        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-          <BookOpen className="h-5 w-5 text-muted-foreground" />
-          Available Texts
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <BookOpen className="h-5 w-5 text-muted-foreground" />
+            Available Texts
+          </h2>
+          <Select value={gradeFilter} onValueChange={setGradeFilter}>
+            <SelectTrigger className="w-44">
+              <SelectValue placeholder="All grades" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All grades</SelectItem>
+              {gradeLevels.map(g => (
+                <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32" />)}
           </div>
-        ) : texts.length === 0 ? (
-          <p className="text-muted-foreground text-sm py-8 text-center">{t('noTexts')}</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {texts.map(text => (
-              <Card key={text.id} className="hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => router.push(`/student/speed-reading/${text.id}/read`)}>
-                <CardContent className="pt-5 space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold leading-tight">{text.title}</h3>
-                    <Badge variant="outline" className="shrink-0 gap-1 text-xs">
-                      <Globe className="h-3 w-3" />
-                      {text.language === 'ar' ? t('languageAr') : t('languageEn')}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground">{text.word_count} words</p>
-                  {text.quiz_questions && text.quiz_questions.length > 0 && (
-                    <Badge className="text-xs">+ Comprehension Quiz</Badge>
-                  )}
-                  <Button size="sm" className="w-full mt-1">
-                    {t('startReading')}
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+        ) : (() => {
+          const filtered = texts.filter(t => gradeFilter === 'all' || !gradeFilter || t.grade_level_id === gradeFilter)
+          return filtered.length === 0 ? (
+            <p className="text-muted-foreground text-sm py-8 text-center">{t('noTexts')}</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filtered.map(text => (
+                <Card key={text.id} className="hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => router.push(`/student/speed-reading/${text.id}/read`)}>
+                  <CardContent className="pt-5 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-semibold leading-tight">{text.title}</h3>
+                      <Badge variant="outline" className="shrink-0 gap-1 text-xs">
+                        <Globe className="h-3 w-3" />
+                        {text.language === 'ar' ? t('languageAr') : t('languageEn')}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{text.word_count} words</p>
+                    {text.grade_level_name && (
+                      <Badge variant="secondary" className="gap-1 text-xs">
+                        <GraduationCap className="h-3 w-3" />
+                        {text.grade_level_name}
+                      </Badge>
+                    )}
+                    {text.quiz_questions && text.quiz_questions.length > 0 && (
+                      <Badge className="text-xs">+ Comprehension Quiz</Badge>
+                    )}
+                    <Button size="sm" className="w-full mt-1">
+                      {t('startReading')}
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )
+        })()}
       </div>
 
       {/* Leaderboard */}

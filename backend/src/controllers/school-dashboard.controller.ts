@@ -21,10 +21,7 @@ export class SchoolDashboardController {
         })
       }
 
-      // Use campus_id if provided, otherwise use admin's school_id
-      const effectiveSchoolId = campus_id || schoolId
-
-      const stats = await schoolDashboardService.getSchoolStats(effectiveSchoolId)
+      const stats = await schoolDashboardService.getSchoolStats(schoolId, campus_id || undefined)
 
       return res.json({
         success: true,

@@ -1,5 +1,21 @@
 import { supabase } from '../config/supabase'
 
+// ─── Custom field definition stored in meta ────────────────────────────────
+export interface SignupCustomField {
+  id: string          // e.g. "grade_level", "phone", "address"
+  label: string
+  type: 'text' | 'select' | 'textarea'
+  required: boolean
+  options?: string[]  // for type === 'select'
+  placeholder?: string
+}
+
+export interface SignupLinkMeta {
+  poster_url?: string | null
+  description?: string | null
+  custom_fields?: SignupCustomField[]
+}
+
 export interface SignupLink {
   id: string
   school_id: string
@@ -11,6 +27,7 @@ export interface SignupLink {
   use_count: number
   expires_at: string | null
   is_active: boolean
+  meta: SignupLinkMeta
   created_by: string
   created_at: string
   updated_at: string
@@ -27,6 +44,7 @@ export interface CreateSignupLinkDTO {
   maxUses: number | null
   expiresAt: Date | null
   createdBy: string
+  meta?: SignupLinkMeta
 }
 
 export async function generateSignupLink(dto: CreateSignupLinkDTO): Promise<SignupLink> {
@@ -40,6 +58,7 @@ export async function generateSignupLink(dto: CreateSignupLinkDTO): Promise<Sign
       max_uses: dto.maxUses,
       expires_at: dto.expiresAt?.toISOString() ?? null,
       created_by: dto.createdBy,
+      meta: dto.meta ?? {},
     })
     .select()
     .single()
@@ -66,6 +85,7 @@ export async function getSignupLinks(schoolId: string, campusId?: string): Promi
 
   return (data || []).map((row: any) => ({
     ...row,
+    meta: row.meta ?? {},
     campus_name: row.campus?.name ?? null,
     creator_name: row.creator
       ? `${row.creator.first_name ?? ''} ${row.creator.last_name ?? ''}`.trim()
@@ -91,6 +111,7 @@ export async function getSignupLinkByToken(token: string): Promise<SignupLink | 
 
   return {
     ...data,
+    meta: (data as any).meta ?? {},
     campus_name: (data as any).campus?.name ?? null,
     campus: undefined,
   }
@@ -128,6 +149,7 @@ export async function validateSignupToken(token: string): Promise<ValidateTokenR
     valid: true,
     link: {
       ...data,
+      meta: (data as any).meta ?? {},
       campus_name: (data as any).campus?.name ?? null,
       campus: undefined,
     } as any,

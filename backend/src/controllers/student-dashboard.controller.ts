@@ -200,6 +200,25 @@ export class StudentDashboardController {
   }
 
   /**
+   * GET /api/student-dashboard/performance
+   * Get student's overall performance metrics
+   */
+  async getPerformanceMetrics(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const studentId = this.getStudentId(req)
+      if (!studentId) {
+        this.sendMissingStudentProfile(res)
+        return
+      }
+      const data = await dashboardService.getStudentPerformanceMetrics(studentId)
+      res.json({ success: true, data })
+    } catch (error: any) {
+      console.error('Get performance metrics error:', error)
+      res.status(500).json({ success: false, error: error.message || 'Failed to fetch performance metrics' })
+    }
+  }
+
+  /**
    * GET /api/student-dashboard/feedback/recent
    * Get recent feedback/grades from teachers
    */

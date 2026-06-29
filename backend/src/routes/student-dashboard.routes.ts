@@ -143,4 +143,7 @@ router.get('/scheduling/lesson-plans', (req, res) => controller.getLessonPlans(r
 router.get('/grades/final', (req, res) => controller.getStudentFinalGrades(req, res))
 router.get('/grades/gpa-rank', (req, res) => controller.getStudentGpaRank(req, res))
 
+// Performance
+router.get('/performance', (req, res) => controller.getPerformanceMetrics(req, res))
+
 export default router

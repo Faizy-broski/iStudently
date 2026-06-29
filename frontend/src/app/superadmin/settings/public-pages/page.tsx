@@ -205,10 +205,21 @@ function FormDialog({
   const [content, setContent] = React.useState('')
   const [imageUrl, setImageUrl] = React.useState('')
   const [isActive, setIsActive] = React.useState(true)
+  const [isTemplate, setIsTemplate] = React.useState(false)
+  const [startDate, setStartDate] = React.useState('')
+  const [endDate, setEndDate] = React.useState('')
   const [urlError, setUrlError] = React.useState('')
   const [uploading, setUploading] = React.useState(false)
   const [uploadError, setUploadError] = React.useState('')
   const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+  // Format date to datetime-local friendly string (YYYY-MM-DDThh:mm)
+  const formatForInput = (iso?: string) => {
+    if (!iso) return ''
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return ''
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+  }
 
   React.useEffect(() => {
     if (open) {
@@ -218,6 +229,9 @@ function FormDialog({
       setContent(initial?.content ?? '')
       setImageUrl(initial?.image_url ?? '')
       setIsActive(initial?.isActive ?? true)
+      setIsTemplate(initial?.is_template ?? false)
+      setStartDate(formatForInput(initial?.start_date))
+      setEndDate(formatForInput(initial?.end_date))
       setUrlError('')
       setUploadError('')
     }
@@ -282,6 +296,9 @@ function FormDialog({
       content: pageType === 'text' ? content : undefined,
       image_url: pageType === 'image' ? imageUrl.trim() : undefined,
       isActive,
+      is_template: isTemplate,
+      start_date: startDate ? new Date(startDate).toISOString() : undefined,
+      end_date: endDate ? new Date(endDate).toISOString() : undefined,
     })
   }
 
@@ -467,10 +484,53 @@ function FormDialog({
               onCheckedChange={setIsActive}
               disabled={saving}
             />
-            <Label htmlFor="page-active" className="cursor-pointer">Active (visible on login page)</Label>
+            <Label htmlFor="page-active" className="cursor-pointer font-medium">Active (visible on login page)</Label>
           </div>
 
-          <DialogFooter>
+          <div className="flex flex-col gap-4 border-t pt-4">
+            <p className="text-sm font-semibold">Advanced / Scheduling</p>
+            
+            <div className="flex items-center gap-3">
+              <Switch
+                id="page-template"
+                checked={isTemplate}
+                onCheckedChange={setIsTemplate}
+                disabled={saving}
+              />
+              <Label htmlFor="page-template" className="cursor-pointer">
+                Save as Template <span className="text-muted-foreground font-normal">(Hidden from public, keep as draft)</span>
+              </Label>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="start-date" className="text-xs">Show After (Optional)</Label>
+                <Input
+                  id="start-date"
+                  type="datetime-local"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  disabled={saving || isTemplate}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="end-date" className="text-xs">Hide After (Optional)</Label>
+                <Input
+                  id="end-date"
+                  type="datetime-local"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  disabled={saving || isTemplate}
+                />
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-tight">
+              If dates are set, the page will only be visible on the login screen during this schedule. 
+              Leave empty to show indefinitely. Templates are never shown.
+            </p>
+          </div>
+
+          <DialogFooter className="pt-2 border-t">
             <Button
               type="button"
               variant="outline"

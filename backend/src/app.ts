@@ -82,6 +82,7 @@ import publicSignupRoutes from "./routes/public-signup.routes";
 import credentialsRoutes from "./routes/credentials.routes";
 import withdrawalAnalyticsRoutes from "./routes/withdrawal-analytics.routes";
 import advancedReportRoutes from "./routes/advanced-report.routes";
+import userProfilesRoutes from "./routes/user-profiles.routes";
 
 const app = express();
 
@@ -291,6 +292,7 @@ registerRoutes("/pending-signups", pendingSignupsRoutes);
 registerRoutes("/public-signup", publicSignupRoutes);
 registerRoutes("/credentials", credentialsRoutes);
 registerRoutes("/analytics/withdrawal", withdrawalAnalyticsRoutes);
+registerRoutes("/user-profiles", userProfilesRoutes);
 registerRoutes("/attendance-calendars", attendanceCalendarsRoutes);
 registerRoutes("/advanced-report", advancedReportRoutes);
 

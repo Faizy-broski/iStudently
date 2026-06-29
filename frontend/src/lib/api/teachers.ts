@@ -53,6 +53,13 @@ export interface Staff {
   assigned_subjects?: TeacherSubjectAssignment[]
   custom_fields?: Record<string, any>
   base_salary?: number // From salary_settings table (may not always be loaded)
+  user_profile_id?: string | null
+  user_profile?: {
+    id: string
+    name: string
+    role_id: string | null
+    base_role: string
+  } | null
 }
 
 export interface CreateStaffDTO {
@@ -79,6 +86,9 @@ export interface CreateStaffDTO {
   // Salary (optional)
   base_salary?: number
   custom_fields?: Record<string, any>
+  gender?: 'male' | 'female' | 'other' | ''
+  date_of_birth?: string
+  profile_photo_url?: string
 }
 
 export interface UpdateStaffDTO {

@@ -361,7 +361,7 @@
     "breakdown_by_student_field": "تحليل حسب بيانات الطالب",
     "discipline_log": "سجل الانضباط",
     "referral_form": "نموذج الإحالة",
-    "quiz": "بنك الأسئلة",
+    "quiz": "الاختبارات",
     "quizzes": "الاختبارات",
     "questions": "الأسئلة",
     "premium": "مميز",
@@ -444,8 +444,6 @@
     "staff_balances": "أرصدة الموظفين",
     "categories": "الفئات",
     "library": "المكتبة",
-    "reading_logs": "سجلات القراءة",
-    "log_reading_session": "تسجيل جلسة قراءة",
     "document_categories": "فئات الوثائق",
     "document_fields": "حقول الوثائق",
     "calculations": "الحسابات",
@@ -483,7 +481,6 @@
     "agreement": "اتفاقية",
     "profile": "الملف الشخصي",
     "school_information": "معلومات المدرسة",
-    "school_pages": "صفحات المدرسة",
     "associated_parents": "أولياء الأمور المرتبطون",
     "print_student_labels": "طباعة ملصقات الطلاب",
     "schedule": "الجدول",
@@ -530,6 +527,7 @@
     "pdf_header_footer": "رأس وتذييل PDF",
     "fines": "الغرامات",
     "user_agreements": "اتفاقيات المستخدم",
+    "user_profiles": "ملفات المستخدمين",
     "chemistry_virtual_labs": "مختبرات الكيمياء الافتراضية IGCSE + A-Level"
   },
   "dashboard": {
@@ -611,7 +609,9 @@
       "attendance_rate_label": "نسبة الحضور: {rate}%",
       "total_parents_registered": "إجمالي أولياء الأمور المسجلين",
       "male_label": "ذكر: {count}",
-      "female_label": "أنثى: {count}"
+      "female_label": "أنثى: {count}",
+      "teachers_label": "المعلمون: {count}",
+      "employees_label": "الموظفون: {count}"
     },
     "charts": {
       "enrollment_title": "تسجيل الطلاب ({year})",
@@ -2020,17 +2020,6 @@
       "sections": "الفصول",
       "update_success": "تم تحديث الفرع بنجاح",
       "update_error": "فشل في تحديث الفرع",
-      "principal_signature": "توقيع المدير",
-      "principal_signature_desc": "ارفع صورة توقيع المدير لتظهر على المستندات المطبوعة",
-      "no_signature": "لم يتم رفع توقيع",
-      "signature_hint": "ارفع صورة PNG أو JPG أو SVG. يُفضَّل استخدام PNG بخلفية شفافة.",
-      "upload_signature": "رفع التوقيع",
-      "save_signature": "حفظ التوقيع",
-      "remove_signature": "حذف التوقيع",
-      "click_save_to_apply": "انقر على حفظ للتطبيق",
-      "signature_saved": "تم حفظ التوقيع بنجاح",
-      "signature_removed": "تم حذف التوقيع",
-      "signature_save_error": "فشل في حفظ التوقيع",
       "boys": "ذكور",
       "girls": "إناث",
       "male": "ذكر",
@@ -3718,7 +3707,8 @@
         "placeholder_phone": "رقم الهاتف",
         "placeholder_username_example": "مثال: ahmed.ali",
         "msg_enroll_success": "تم تسجيل الطالب بنجاح",
-        "msg_enroll_error": "فشل تسجيل الطالب"
+        "msg_enroll_error": "فشل تسجيل الطالب",
+        "age_label": "العمر"
       },
       "student_details": {
         "title": "تفاصيل الطالب",
@@ -3779,7 +3769,11 @@
         "never": "لم يسجل دخولاً بعد",
         "profile_id": "معرف الملف الشخصي",
         "record_id": "معرف سجل الطالب",
-        "subscribed_services": "الخدمات المشترك بها"
+        "subscribed_services": "الخدمات المشترك بها",
+        "age": "العمر",
+        "years": "سنة",
+        "months": "شهر",
+        "days": "يوم"
       },
       "edit_student": {
         "title": "تعديل بيانات الطالب",
@@ -3805,7 +3799,11 @@
         "emergency_name_placeholder": "اسم جهة الاتصال للطوارئ",
         "emergency_relation_placeholder": "مثلاً: الأب، الأم، ولي الأمر",
         "emergency_phone_placeholder": "هاتف جهة الاتصال للطوارئ",
-        "emergency_address_placeholder": "عنوان جهة الاتصال للطوارئ"
+        "emergency_address_placeholder": "عنوان جهة الاتصال للطوارئ",
+        "age": "العمر",
+        "years": "سنة",
+        "months": "شهر",
+        "days": "يوم"
       },
       "bulk_import": {
         "title": "استيراد الطلاب مجمّعاً",
@@ -3997,7 +3995,6 @@
           "campus_phone": "هاتف الحرم",
           "academic_year": "العام الدراسي",
           "school_logo": "شعار المدرسة",
-          "school_principal": "مدير المدرسة",
           "current_date": "التاريخ الحالي",
           "valid_until": "صالح حتى"
         }
@@ -5421,6 +5418,35 @@
       "accepted_count": "مقبول",
       "rejected_count": "مرفوض",
       "pending_count": "في الانتظار"
+    },
+    "user_profiles": {
+      "title": "ملفات المستخدمين",
+      "profiles_panel": "الملفات",
+      "roles_panel": "الأدوار",
+      "new_role": "دور جديد",
+      "permissions_panel": "الصلاحيات",
+      "add_profile": "إضافة ملف مستخدم",
+      "profile_name": "اسم الدور",
+      "profile_name_placeholder": "مثال: معلم الفصل",
+      "base_role": "الدور الأساسي",
+      "can_use": "يمكن الاستخدام",
+      "can_edit": "يمكن التعديل",
+      "save_permissions": "حفظ الصلاحيات",
+      "saving": "جارٍ الحفظ...",
+      "saved": "تم حفظ الصلاحيات",
+      "save_failed": "فشل حفظ الصلاحيات",
+      "delete_confirm": "هل أنت متأكد من حذف هذا الدور؟",
+      "delete_success": "تم حذف الدور",
+      "delete_failed": "فشل حذف الدور",
+      "system_protected": "لا يمكن حذف الأدوار النظامية.",
+      "no_profile": "افتراضي (وصول كامل)",
+      "no_profiles": "لا توجد أدوار بعد. أنشئ واحداً للبدء.",
+      "select_profile_hint": "اختر دوراً لضبط صلاحياته",
+      "check_all": "الكل",
+      "assign_profile": "دور المستخدم",
+      "user_role": "دور المستخدم",
+      "default_full_access": "افتراضي (وصول كامل)",
+      "access_denied": "ليس لديك صلاحية للوصول إلى هذه الصفحة."
     }
   },
   "attendance": {
@@ -7151,10 +7177,6 @@
     "titleLabel": "العنوان",
     "titlePlaceholder": "مثال: المخالفة، تم تعيين احتجاز",
     "onePerLine": "خيار في كل سطر",
-    "pointDeduction": "خصم النقاط",
-    "pointDeductionHint": "اختياري، لكل إحالة",
-    "points": "نقاط",
-    "pointDeductionWarning": "كل إحالة تستخدم هذا الحقل ستخصم {n} نقطة من رصيد الطالب.",
     "saveChanges": "حفظ التغييرات",
     "noFieldsConfigured": "لا توجد حقول مكوّنة بعد. انقر",
     "toGetStarted": "للبدء.",

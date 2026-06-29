@@ -262,6 +262,8 @@ export const createTeacher = async (dto: CreateStaffDTO): Promise<ApiResponse<St
           phone: dto.phone,
           username: finalUsername || null,
           profile_photo_url: dto.profile_photo_url || null,
+          gender: dto.gender || null,
+          date_of_birth: dto.date_of_birth || null,
         }, {
           onConflict: 'id'
         })
@@ -416,14 +418,16 @@ export const updateTeacher = async (
     }
 
     // Update profile if any profile fields are provided
-    if (dto.first_name || dto.last_name || dto.email || dto.phone || dto.profile_photo_url !== undefined) {
-      const profileUpdate: any = {}
-      if (dto.first_name !== undefined) profileUpdate.first_name = dto.first_name
-      if (dto.last_name !== undefined) profileUpdate.last_name = dto.last_name
-      if (dto.email !== undefined) profileUpdate.email = dto.email
-      if (dto.phone !== undefined) profileUpdate.phone = dto.phone
-      if (dto.profile_photo_url !== undefined) profileUpdate.profile_photo_url = dto.profile_photo_url || null
+    const profileUpdate: any = {}
+    if (dto.first_name !== undefined) profileUpdate.first_name = dto.first_name
+    if (dto.last_name !== undefined) profileUpdate.last_name = dto.last_name
+    if (dto.email !== undefined) profileUpdate.email = dto.email
+    if (dto.phone !== undefined) profileUpdate.phone = dto.phone
+    if (dto.profile_photo_url !== undefined) profileUpdate.profile_photo_url = dto.profile_photo_url || null
+    if (dto.gender !== undefined) profileUpdate.gender = dto.gender || null
+    if (dto.date_of_birth !== undefined) profileUpdate.date_of_birth = dto.date_of_birth || null
 
+    if (Object.keys(profileUpdate).length > 0) {
       const { error: profileError } = await supabase
         .from('profiles')
         .update(profileUpdate)

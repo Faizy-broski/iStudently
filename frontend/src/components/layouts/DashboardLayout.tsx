@@ -21,6 +21,7 @@ import { useCampus } from '@/context/CampusContext'
 import { TourAssistantPanel } from '@/components/setup-assistant/TourAssistantPanel'
 import { SidebarThemeProvider } from '@/context/SidebarThemeContext'
 import { AgreementGate } from '@/components/agreement/AgreementGate'
+import { PermissionsProvider, usePermissions } from '@/context/PermissionsContext'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -135,6 +136,32 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
   // Plugin injection: only for admin role, uses SchoolSettingsContext
   const { isPluginActive, settings } = useSchoolSettings()
 
+  // Permissions — null means no profile assigned (full access)
+  const { permissions, canUse, loading: permissionsLoading } = usePermissions()
+
+  // Route guard: block direct URL navigation to restricted pages
+  React.useEffect(() => {
+    if (permissionsLoading || permissions === null) return
+    if (!pathname) return
+    // Dashboard root and user-profile management are always accessible
+    const alwaysAllowed = [
+      '/admin/dashboard',
+      '/admin/settings/user-profiles',
+      '/admin/profile',
+      '/teacher/dashboard',
+      '/student/dashboard',
+      '/parent/dashboard',
+    ]
+    if (alwaysAllowed.some((p) => pathname.startsWith(p))) return
+    // Allow if any module key exactly matches or is a prefix of the current path
+    const hasAccess = permissions.some(
+      (p) => p.can_use && (pathname === p.module_key || pathname.startsWith(p.module_key + '/'))
+    )
+    if (!hasAccess) {
+      router.replace('/admin/dashboard?access=denied')
+    }
+  }, [pathname, permissions, permissionsLoading, router])
+
   const menuItems = React.useMemo(() => {
     let items = baseMenuItems
 
@@ -229,8 +256,27 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
       }
     }
 
+    // 5. Filter items by user profile permissions (only when a profile is assigned)
+    if (permissions !== null) {
+      items = items
+        .map((item) => {
+          if (!item.subItems || item.subItems.length === 0) return item
+          const filteredSubs = item.subItems.filter(
+            (sub) => sub.isLabel || sub.href === '#' || canUse(sub.href)
+          )
+          return { ...item, subItems: filteredSubs }
+        })
+        .filter((item) => {
+          if (item.subItems) {
+            const nonLabels = item.subItems.filter((s) => !s.isLabel && s.href !== '#')
+            return nonLabels.length > 0
+          }
+          return canUse(item.href)
+        })
+    }
+
     return items
-  }, [baseMenuItems, dynamicDashboards, dynamicAdminEmbeddedItems, dynamicEmbeddedItems, effectiveRole, isPluginActive, settings])
+  }, [baseMenuItems, dynamicDashboards, dynamicAdminEmbeddedItems, dynamicEmbeddedItems, effectiveRole, isPluginActive, settings, permissions, canUse])
 
   // Render dashboard immediately - no loading screens after auth
   // Setup check happens in background and redirects if needed
@@ -265,9 +311,11 @@ export function DashboardLayout({ children, className, role }: DashboardLayoutPr
       <SidebarProvider>
         <AgreementGate>
           <UnsavedChangesGuard>
-            <DashboardContent className={className} role={role}>
-              {children}
-            </DashboardContent>
+            <PermissionsProvider>
+              <DashboardContent className={className} role={role}>
+                {children}
+              </DashboardContent>
+            </PermissionsProvider>
           </UnsavedChangesGuard>
         </AgreementGate>
         <Toaster />

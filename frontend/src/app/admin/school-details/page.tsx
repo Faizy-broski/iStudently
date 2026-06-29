@@ -31,6 +31,8 @@ interface CampusStats {
   boys_count: number
   girls_count: number
   total_teachers: number
+  male_teachers: number
+  female_teachers: number
   total_staff: number
   male_staff: number
   female_staff: number
@@ -457,7 +459,7 @@ export default function SchoolDetailsPage() {
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
               {/* Total Students */}
               <div className="flex rounded-xl overflow-hidden shadow-sm">
                 <div className="bg-[#2E7D32] flex items-center justify-center w-20 shrink-0">
@@ -484,6 +486,22 @@ export default function SchoolDetailsPage() {
                   <p className="text-3xl font-bold my-1">{stats?.total_parents ?? 0}</p>
                   <div className="border-t border-white/30 pt-2 mt-1">
                     <p className="text-xs opacity-90">{t("total_registered_parents")}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Teachers */}
+              <div className="flex rounded-xl overflow-hidden shadow-sm">
+                <div className="bg-[#E65100] flex items-center justify-center w-20 shrink-0">
+                  <Users className="h-10 w-10 text-white" />
+                </div>
+                <div className="bg-[#F57C00] flex-1 p-4 text-white">
+                  <p className="text-xs font-bold uppercase tracking-wider opacity-90">{t("teachers", { fallback: "Teachers" })}</p>
+                  <p className="text-3xl font-bold my-1">{stats?.total_teachers ?? 0}</p>
+                  <div className="border-t border-white/30 pt-2 mt-1">
+                    <p className="text-xs opacity-90">
+                      {t("male")}: {stats?.male_teachers ?? 0}&nbsp;&nbsp;{t("female")}: {stats?.female_teachers ?? 0}
+                    </p>
                   </div>
                 </div>
               </div>

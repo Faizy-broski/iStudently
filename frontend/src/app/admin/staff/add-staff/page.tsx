@@ -74,6 +74,8 @@ export default function AddStaffPage() {
         last_name: '',
         email: '',
         phone: '',
+        gender: '',
+        date_of_birth: '',
         title: '',
         department: '',
         employment_type: 'full_time',
@@ -405,6 +407,34 @@ export default function AddStaffPage() {
                                         onChange={e => handleChange('phone', e.target.value.replace(/[^0-9+\-() ]/g, ''))}
                                         className="pl-10 rtl:pr-10 rtl:pl-3"
                                         placeholder={t('placeholders.phone')}
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Gender</Label>
+                                <Select
+                                    value={formData.gender || ''}
+                                    onValueChange={v => handleChange('gender', v)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select gender" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="male">Male</SelectItem>
+                                        <SelectItem value="female">Female</SelectItem>
+                                        <SelectItem value="other">Other</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Date of Birth</Label>
+                                <div className="relative">
+                                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 rtl:right-3 rtl:left-auto" />
+                                    <Input
+                                        type="date"
+                                        value={formData.date_of_birth || ''}
+                                        onChange={e => handleChange('date_of_birth', e.target.value)}
+                                        className="pl-10 rtl:pr-10 rtl:pl-3"
                                     />
                                 </div>
                             </div>

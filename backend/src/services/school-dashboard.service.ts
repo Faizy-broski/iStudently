@@ -33,13 +33,16 @@ export class SchoolDashboardService {
   /**
    * Get dashboard statistics for a specific school
    */
-  async getSchoolStats(schoolId: string): Promise<SchoolDashboardStats> {
+  async getSchoolStats(schoolId: string, campusId?: string): Promise<SchoolDashboardStats> {
+    // Campus-scoped tables use campusId when provided; school-wide tables always use schoolId
+    const effectiveId = campusId || schoolId
+
     try {
       // Get student count
       const { count: totalStudents, error: studentsError } = await supabase
         .from('students')
         .select('*', { count: 'exact', head: true })
-        .eq('school_id', schoolId)
+        .eq('school_id', effectiveId)
 
       if (studentsError) {
         console.error('Students query error:', studentsError)
@@ -49,7 +52,7 @@ export class SchoolDashboardService {
       const { count: totalStaff, error: staffError } = await supabase
         .from('staff')
         .select('*', { count: 'exact', head: true })
-        .eq('school_id', schoolId)
+        .eq('school_id', effectiveId)
 
       if (staffError) {
         console.error('Staff query error:', staffError)
@@ -62,7 +65,7 @@ export class SchoolDashboardService {
           id,
           profile:profiles!staff_profile_id_fkey(role)
         `)
-        .eq('school_id', schoolId)
+        .eq('school_id', effectiveId)
 
       if (teachersError) {
         console.error('Teachers query error:', teachersError)
@@ -77,7 +80,7 @@ export class SchoolDashboardService {
       const { count: activeCourses, error: coursesError } = await supabase
         .from('sections')
         .select('*', { count: 'exact', head: true })
-        .eq('school_id', schoolId)
+        .eq('school_id', effectiveId)
 
       if (coursesError) {
         console.error('Sections query error:', coursesError)
@@ -87,7 +90,7 @@ export class SchoolDashboardService {
       const { count: activeEvents, error: eventsError } = await supabase
         .from('events')
         .select('*', { count: 'exact', head: true })
-        .eq('school_id', schoolId)
+        .eq('school_id', effectiveId)
         .gte('end_date', new Date().toISOString())
 
       if (eventsError) {
@@ -98,7 +101,7 @@ export class SchoolDashboardService {
       const { count: libraryBooks, error: booksError } = await supabase
         .from('books')
         .select('*', { count: 'exact', head: true })
-        .eq('school_id', schoolId)
+        .eq('school_id', effectiveId)
 
       if (booksError) {
         console.error('Books query error:', booksError)
@@ -107,7 +110,7 @@ export class SchoolDashboardService {
       const { count: borrowedBooks, error: transactionsError } = await supabase
         .from('book_transactions')
         .select('*', { count: 'exact', head: true })
-        .eq('school_id', schoolId)
+        .eq('school_id', effectiveId)
         .eq('status', 'borrowed')
 
       if (transactionsError) {
@@ -122,7 +125,7 @@ export class SchoolDashboardService {
       const { data: attendanceRecords, error: attendanceError } = await supabase
         .from('attendance_records')
         .select('status, attendance_date')
-        .eq('school_id', schoolId)
+        .eq('school_id', effectiveId)
         .gte('attendance_date', thirtyDaysAgo.toISOString().split('T')[0])
 
       if (attendanceError) {
@@ -140,7 +143,7 @@ export class SchoolDashboardService {
       const { data: studentCustomFields, error: studentGenderError } = await supabase
         .from('students')
         .select('custom_fields')
-        .eq('school_id', schoolId)
+        .eq('school_id', effectiveId)
 
       if (studentGenderError) {
         console.error('Student gender query error:', studentGenderError)
@@ -152,24 +155,44 @@ export class SchoolDashboardService {
       // Get staff gender breakdown
       const { data: staffProfiles, error: staffGenderError } = await supabase
         .from('staff')
-        .select('profile:profiles!staff_profile_id_fkey(gender)')
-        .eq('school_id', schoolId)
+        .select('custom_fields, profile:profiles!staff_profile_id_fkey(gender)')
+        .eq('school_id', effectiveId)
 
       if (staffGenderError) {
         console.error('Staff gender query error:', staffGenderError)
       }
 
-      const maleStaff = staffProfiles?.filter((s: any) => s.profile?.gender === 'male').length || 0
-      const femaleStaff = staffProfiles?.filter((s: any) => s.profile?.gender === 'female').length || 0
+      const maleStaff = staffProfiles?.filter((s: any) =>
+        (s.profile?.gender || s.custom_fields?.personal?.gender) === 'male'
+      ).length || 0
+      const femaleStaff = staffProfiles?.filter((s: any) =>
+        (s.profile?.gender || s.custom_fields?.personal?.gender) === 'female'
+      ).length || 0
 
-      // Get total parents count
-      const { count: totalParents, error: parentsError } = await supabase
-        .from('parents')
-        .select('*', { count: 'exact', head: true })
-        .eq('school_id', schoolId)
+      // Get total parents count — parents belong to the main school, so when a campus is
+      // selected we count via their linked students' campus rather than querying school_id directly.
+      let totalParents = 0
+      if (campusId) {
+        const { data: links, error: parentsError } = await supabase
+          .from('parent_student_links')
+          .select('parent_id, student:students!inner(school_id)')
+          .eq('student.school_id', campusId)
 
-      if (parentsError) {
-        console.error('Parents query error:', parentsError)
+        if (parentsError) {
+          console.error('Parents (campus) query error:', parentsError)
+        }
+        const uniqueParents = new Set((links ?? []).map((l: any) => l.parent_id))
+        totalParents = uniqueParents.size
+      } else {
+        const { count, error: parentsError } = await supabase
+          .from('parents')
+          .select('*', { count: 'exact', head: true })
+          .eq('school_id', schoolId)
+
+        if (parentsError) {
+          console.error('Parents query error:', parentsError)
+        }
+        totalParents = count || 0
       }
 
       const result = {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { UniversalFilter, type FilterState } from '@/components/filters/UniversalFilter'
 import { ProfilePhoto } from '@/components/shared/ProfilePhoto'
@@ -58,6 +58,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { useStaff } from '@/hooks/useStaff'
 import { deleteStaff, updateStaff, UpdateStaffDTO, Staff, getStaffById } from '@/lib/api/staff'
+import { getUserRoles, cloneRoleForStaff, removeStaffProfile, type UserProfile } from '@/lib/api/user-profiles'
 import { toast } from 'sonner'
 import { EditCredentialsModal } from '@/components/admin/EditCredentialsModal'
 import { useAuth } from '@/context/AuthContext'
@@ -65,6 +66,7 @@ import { useCampus } from '@/context/CampusContext'
 
 export default function StaffPage() {
     const router = useRouter()
+    const searchParams = useSearchParams()
     const t = useTranslations('staff')
     const [page, setPage] = useState(1)
     const [staffFilters, setStaffFilters] = useState<FilterState>({})
@@ -85,9 +87,36 @@ export default function StaffPage() {
         return staff.filter(s => s.is_active !== false)
     }, [staff, showInactive])
 
+    // User Role state for edit modal
+    const [availableRoles, setAvailableRoles] = useState<UserProfile[]>([])
+    const [selectedRoleId, setSelectedRoleId] = useState<string>('')
+    const [originalRoleId, setOriginalRoleId] = useState<string>('')
+
     // Credentials modal state
     const [credentialsModalOpen, setCredentialsModalOpen] = useState(false)
     const [credentialsStaff, setCredentialsStaff] = useState<Staff | null>(null)
+
+    // Auto-open edit dialog when ?edit=<id> is in the URL (from detail page)
+    useEffect(() => {
+        const editId = searchParams.get('edit')
+        if (!editId || isLoading || editDialogOpen) return
+        const found = staff.find(s => s.id === editId)
+        if (found) {
+            setEditingStaff(found)
+            setEditDialogOpen(true)
+            // Clean the URL so the param doesn't linger
+            router.replace('/admin/staff', { scroll: false })
+        } else {
+            // Not on this page — fetch directly
+            getStaffById(editId).then(res => {
+                if (res.success && res.data) {
+                    setEditingStaff(res.data)
+                    setEditDialogOpen(true)
+                    router.replace('/admin/staff', { scroll: false })
+                }
+            })
+        }
+    }, [searchParams, staff, isLoading])
 
     // Populate form when editing staff is selected
     useEffect(() => {
@@ -108,7 +137,9 @@ export default function StaffPage() {
                 specialization: staffData.specialization || '',
                 employment_type: staffData.employment_type || 'full_time',
                 is_active: staffData.is_active,
-                base_salary: staffData.base_salary || 0
+                base_salary: staffData.base_salary || 0,
+                gender: staffData.profile?.gender || staffData.gender || '',
+                date_of_birth: staffData.profile?.date_of_birth || staffData.date_of_birth || '',
             }
 
             console.log('🔄 useEffect - Setting formData to:', newFormData)
@@ -133,6 +164,20 @@ export default function StaffPage() {
         console.log('🎯 handleEdit - Fresh staff data loaded:', freshStaff)
         console.log('🎯 handleEdit - base_salary from fresh data:', freshStaff.base_salary)
 
+        // Load available roles matching this staff member's system role
+        try {
+            const roles = await getUserRoles()
+            const staffRole = freshStaff.profile?.role || freshStaff.role || 'staff'
+            setAvailableRoles(roles.filter((r: UserProfile) => r.base_role === staffRole))
+        } catch {
+            setAvailableRoles([])
+        }
+
+        // Pre-fill role from existing user_profile ('default' = no custom role)
+        const currentRoleId = freshStaff.user_profile?.role_id || 'default'
+        setSelectedRoleId(currentRoleId)
+        setOriginalRoleId(currentRoleId)
+
         setEditingStaff(freshStaff)
         setEditDialogOpen(true)
     }
@@ -145,6 +190,16 @@ export default function StaffPage() {
             // Extract staff data if it's wrapped in API response
             const staffData = (editingStaff as any).data || editingStaff
             await updateStaff(staffData.id, formData)
+
+            // Handle role assignment change ('default' = no custom role)
+            if (selectedRoleId !== originalRoleId) {
+                if (selectedRoleId && selectedRoleId !== 'default') {
+                    await cloneRoleForStaff(selectedRoleId, staffData.id)
+                } else {
+                    await removeStaffProfile(staffData.id)
+                }
+            }
+
             toast.success(t('toasts.updated'))
             setEditDialogOpen(false)
             setEditingStaff(null)
@@ -400,6 +455,27 @@ export default function StaffPage() {
                             </div>
                         </div>
 
+                        {/* User Role assignment */}
+                        <div className="space-y-2">
+                            <Label>User Role</Label>
+                            <Select value={selectedRoleId} onValueChange={setSelectedRoleId}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Default (Full Access)" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="default">Default (Full Access)</SelectItem>
+                                    {availableRoles.map((role) => (
+                                        <SelectItem key={role.id} value={role.id}>
+                                            {role.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                                Limits which sidebar modules this staff member can access.
+                            </p>
+                        </div>
+
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label>{t('employmentType')}</Label>
@@ -450,6 +526,34 @@ export default function StaffPage() {
                                 onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
                                 placeholder={t('placeholders.specialization')}
                             />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Gender</Label>
+                                <Select
+                                    value={(formData as any).gender || 'not_specified'}
+                                    onValueChange={(val) => setFormData({ ...formData, gender: val === 'not_specified' ? '' : val } as any)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select gender" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="not_specified">Not specified</SelectItem>
+                                        <SelectItem value="male">Male</SelectItem>
+                                        <SelectItem value="female">Female</SelectItem>
+                                        <SelectItem value="other">Other</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Date of Birth</Label>
+                                <Input
+                                    type="date"
+                                    value={(formData as any).date_of_birth || ''}
+                                    onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value } as any)}
+                                />
+                            </div>
                         </div>
 
                         <div className="space-y-2">

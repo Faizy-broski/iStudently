@@ -16,6 +16,9 @@ export interface CustomLink {
   image_url?: string
   order: number
   isActive: boolean
+  is_template?: boolean
+  start_date?: string
+  end_date?: string
 }
 
 export interface PublicPagesConfig {
@@ -269,6 +272,9 @@ export async function addCustomLink(
     content?: string
     image_url?: string
     isActive: boolean
+    is_template?: boolean
+    start_date?: string
+    end_date?: string
   }
 ): Promise<CustomLink> {
   const { id: rowId, config } = await getRawSettingsRow(schoolId)
@@ -281,6 +287,9 @@ export async function addCustomLink(
     ...(data.content !== undefined ? { content: data.content } : {}),
     ...(data.image_url !== undefined ? { image_url: data.image_url.trim() } : {}),
     isActive: data.isActive,
+    is_template: data.is_template ?? false,
+    start_date: data.start_date,
+    end_date: data.end_date,
     order: links.length,
   }
   config.custom_links = [...links, newLink]
@@ -298,6 +307,9 @@ export async function updateCustomLink(
     content: string
     image_url: string
     isActive: boolean
+    is_template: boolean
+    start_date: string | null
+    end_date: string | null
   }>
 ): Promise<CustomLink> {
   const { id: rowId, config } = await getRawSettingsRow(schoolId)
@@ -314,7 +326,14 @@ export async function updateCustomLink(
     ...(data.content !== undefined ? { content: data.content } : {}),
     ...(data.image_url !== undefined ? { image_url: data.image_url.trim() } : {}),
     ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+    ...(data.is_template !== undefined ? { is_template: data.is_template } : {}),
+    ...(data.start_date !== undefined ? { start_date: data.start_date || undefined } : {}),
+    ...(data.end_date !== undefined ? { end_date: data.end_date || undefined } : {}),
   }
+  // Remove start_date/end_date if null was passed
+  if (data.start_date === null) delete updated.start_date
+  if (data.end_date === null) delete updated.end_date
+
   links[idx] = updated
   config.custom_links = links
   await persistConfig(schoolId, rowId, config)
@@ -358,7 +377,15 @@ export async function getLoginLinks(): Promise<CustomLink[]> {
   const schoolId = await getPrimarySchoolId()
   if (!schoolId) return []
   const links = await getCustomLinks(schoolId)
-  return links.filter((l) => l.isActive)
+  
+  const now = new Date()
+  return links.filter((l) => {
+    if (!l.isActive) return false
+    if (l.is_template) return false
+    if (l.start_date && new Date(l.start_date) > now) return false
+    if (l.end_date && new Date(l.end_date) < now) return false
+    return true
+  })
 }
 
 // ============================================================================
@@ -380,6 +407,9 @@ export async function addGlobalCustomLink(
     content?: string
     image_url?: string
     isActive: boolean
+    is_template?: boolean
+    start_date?: string
+    end_date?: string
   }
 ): Promise<CustomLink> {
   const schoolId = await getPrimarySchoolId()
@@ -396,6 +426,9 @@ export async function updateGlobalCustomLink(
     content: string
     image_url: string
     isActive: boolean
+    is_template: boolean
+    start_date: string | null
+    end_date: string | null
   }>
 ): Promise<CustomLink> {
   const schoolId = await getPrimarySchoolId()

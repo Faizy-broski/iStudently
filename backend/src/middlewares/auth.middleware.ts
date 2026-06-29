@@ -177,13 +177,14 @@ export const authenticate = async (
     if (profile.role === 'librarian' || profile.role === 'teacher' || profile.role === 'staff') {
       const { data: staffRecord } = await supabase
         .from('staff')
-        .select('id, school_id')
+        .select('id, school_id, user_profile_id')
         .eq('profile_id', profile.id)
         .single()
 
       if (staffRecord?.school_id) {
         profile.campus_id = staffRecord.school_id
         profile.staff_id = staffRecord.id
+        profile.user_profile_id = staffRecord.user_profile_id ?? null
 
         // Resolve parent school so that getCampuses(profile.school_id) works.
         // If the profile already has the parent school_id, skip this lookup.

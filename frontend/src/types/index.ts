@@ -139,6 +139,7 @@ export interface Profile {
   parent_id?: string // For parents
   section_id?: string // For students - their assigned class section
   campus_id?: string // For students - their campus
+  user_profile_id?: string | null // Assigned permission profile (for staff roles)
 }
 
 export interface School {

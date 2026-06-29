@@ -2,12 +2,32 @@ import { API_URL } from '@/config/api'
 
 // These endpoints are PUBLIC — no auth token is sent.
 
+export interface SignupCustomField {
+  id: string
+  label: string
+  type: 'text' | 'select' | 'textarea'
+  required: boolean
+  options?: string[]
+  placeholder?: string
+}
+
+export interface SignupLinkMeta {
+  poster_url?: string | null
+  description?: string | null
+  custom_fields?: SignupCustomField[]
+}
+
 export interface SignupLinkInfo {
   role: string
   label: string | null
   school_name: string
   school_logo_url: string | null
   campus_name: string | null
+  expires_at?: string | null
+  max_uses?: number | null
+  use_count?: number
+  available_seats?: number | null
+  meta?: SignupLinkMeta
 }
 
 export interface SignupSubmitDTO {
@@ -18,6 +38,7 @@ export interface SignupSubmitDTO {
   phone?: string
   password: string
   confirm_password: string
+  extra_fields?: Record<string, any>
 }
 
 interface ApiResponse<T = unknown> {

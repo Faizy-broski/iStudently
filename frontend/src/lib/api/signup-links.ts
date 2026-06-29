@@ -1,5 +1,20 @@
 import { apiRequest } from './index'
 
+export interface SignupCustomField {
+  id: string
+  label: string
+  type: 'text' | 'select' | 'textarea'
+  required: boolean
+  options?: string[]
+  placeholder?: string
+}
+
+export interface SignupLinkMeta {
+  poster_url?: string | null
+  description?: string | null
+  custom_fields?: SignupCustomField[]
+}
+
 export interface SignupLink {
   id: string
   school_id: string
@@ -11,6 +26,7 @@ export interface SignupLink {
   use_count: number
   expires_at: string | null
   is_active: boolean
+  meta?: SignupLinkMeta
   created_by: string
   created_at: string
   updated_at: string
@@ -24,6 +40,7 @@ export interface GenerateSignupLinkDTO {
   max_uses?: number | null
   expires_at?: string | null
   campus_id?: string | null
+  meta?: SignupLinkMeta
 }
 
 export async function generateSignupLink(data: GenerateSignupLinkDTO) {

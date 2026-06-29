@@ -82,9 +82,20 @@ export default function TemplateBuilderPage() {
   const userType = (searchParams?.get('type') || 'student') as 'student' | 'teacher' | 'staff';
   const editId = searchParams?.get('edit');
 
+  const OCCASION_OPTIONS = [
+    { value: 'general', label: 'General' },
+    { value: 'sports_day', label: 'Sports Day' },
+    { value: 'graduation', label: 'Graduation' },
+    { value: 'field_trip', label: 'Field Trip' },
+    { value: 'exam', label: 'Exam' },
+    { value: 'formal_event', label: 'Formal Event' },
+    { value: 'open_day', label: 'Open Day' },
+  ]
+
   // Template metadata
   const [templateName, setTemplateName] = useState('');
   const [templateDescription, setTemplateDescription] = useState('');
+  const [templateOccasion, setTemplateOccasion] = useState('general');
 
   // Layout settings
   const [layout, setLayout] = useState({
@@ -161,6 +172,7 @@ export default function TemplateBuilderPage() {
       
       setTemplateName(template.name);
       setTemplateDescription(template.description || '');
+      setTemplateOccasion(template.occasion || 'general');
       setLayout(template.template_config.layout);
       setDesign(template.template_config.design);
       setFields(template.template_config.fields);
@@ -316,6 +328,7 @@ export default function TemplateBuilderPage() {
         await updateTemplate(editId, {
           name: templateName,
           description: templateDescription,
+          occasion: templateOccasion,
           template_config: config,
         });
         toast.success('Template updated successfully');
@@ -324,6 +337,7 @@ export default function TemplateBuilderPage() {
           name: templateName,
           description: templateDescription,
           user_type: userType,
+          occasion: templateOccasion,
           template_config: config,
         });
         toast.success('Template created successfully');
@@ -387,6 +401,19 @@ export default function TemplateBuilderPage() {
                   placeholder="Optional description"
                   rows={3}
                 />
+              </div>
+              <div>
+                <Label>Occasion</Label>
+                <Select value={templateOccasion} onValueChange={setTemplateOccasion}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select occasion" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {OCCASION_OPTIONS.map(o => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label>User Type</Label>

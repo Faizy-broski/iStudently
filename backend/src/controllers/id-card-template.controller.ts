@@ -78,7 +78,7 @@ export class IdCardTemplateController {
       // For admins, school_id is the campus they're managing
       const campusId = req.profile?.school_id || req.profile?.campus_id;
       const userId = req.profile?.id;
-      const { name, description, user_type, template_config } = req.body;
+      const { name, description, user_type, template_config, occasion } = req.body;
 
       if (!campusId) {
         return res.status(400).json({ error: 'School/Campus ID not found in profile' });
@@ -102,7 +102,8 @@ export class IdCardTemplateController {
         description,
         user_type,
         template_config,
-        userId
+        userId,
+        occasion
       );
 
       res.status(201).json({ template, message: 'Template created successfully' });
@@ -118,11 +119,12 @@ export class IdCardTemplateController {
   async updateTemplate(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
-      const { name, description, template_config } = req.body;
+      const { name, description, template_config, occasion } = req.body;
 
       const updates: any = {};
       if (name) updates.name = name;
       if (description !== undefined) updates.description = description;
+      if (occasion !== undefined) updates.occasion = occasion;
       if (template_config) updates.template_config = template_config;
 
       const template = await templateService.updateTemplate(id, updates);

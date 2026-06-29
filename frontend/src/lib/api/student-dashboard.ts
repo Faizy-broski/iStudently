@@ -603,3 +603,19 @@ export async function submitAssignment(dto: SubmitAssignmentDTO) {
     body: JSON.stringify(dto)
   })
 }
+
+// ============================================================================
+// PERFORMANCE METRICS
+// ============================================================================
+
+export interface PerformanceMetrics {
+  overall: number
+  attendance: number
+  gradeAverage: number
+  behavior: number
+  assignments: number
+}
+
+export async function getPerformanceMetrics() {
+  return apiRequest<PerformanceMetrics>('/student-dashboard/performance')
+}

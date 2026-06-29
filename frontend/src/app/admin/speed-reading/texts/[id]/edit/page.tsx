@@ -13,6 +13,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getAuthToken } from '@/lib/api/schools'
 import { getText, updateText, type QuizQuestion } from '@/lib/api/speed-reading'
+import { getGradeLevels, type GradeLevel } from '@/lib/api/academics'
+import { useAuth } from '@/context/AuthContext'
+import { useCampus } from '@/context/CampusContext'
 
 interface QuizRow {
   question: string
@@ -37,9 +40,15 @@ export default function EditTextPage() {
   const router = useRouter()
   const params = useParams()
   const id = params.id as string
+  const { profile } = useAuth()
+  const campusContext = useCampus()
+  const selectedCampus = campusContext?.selectedCampus
+  const campusId = selectedCampus?.id ?? profile?.school_id
 
   const [title, setTitle] = useState('')
   const [language, setLanguage] = useState<'en' | 'ar'>('en')
+  const [gradeLevelId, setGradeLevelId] = useState('all')
+  const [gradeLevels, setGradeLevels] = useState<GradeLevel[]>([])
   const [content, setContent] = useState('')
   const [quizRows, setQuizRows] = useState<QuizRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -54,6 +63,7 @@ export default function EditTextPage() {
         const d = res.data
         setTitle(d.title)
         setLanguage(d.language)
+        setGradeLevelId(d.grade_level_id ?? 'all')
         setContent(d.content)
         setQuizRows((d.quiz_questions ?? []).map(toRow))
       }
@@ -61,6 +71,13 @@ export default function EditTextPage() {
     }
     load()
   }, [id])
+
+  useEffect(() => {
+    if (!campusId) return
+    getGradeLevels(campusId).then(res => {
+      if (res.success && res.data) setGradeLevels(res.data)
+    })
+  }, [campusId])
 
   const handleSave = async () => {
     if (!title.trim() || !content.trim()) {
@@ -78,7 +95,7 @@ export default function EditTextPage() {
         option_d: option_d || undefined,
         correct_ans,
       }))
-    const res = await updateText(id, { title, language, content, quiz_questions }, token)
+    const res = await updateText(id, { title, language, content, grade_level_id: (gradeLevelId && gradeLevelId !== 'all') ? gradeLevelId : null, quiz_questions }, token)
     setSaving(false)
     if (res.success) {
       router.push('/admin/speed-reading/texts')
@@ -107,7 +124,7 @@ export default function EditTextPage() {
       </div>
 
       <div className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label>Title</Label>
             <Input value={title} onChange={e => setTitle(e.target.value)} />
@@ -119,6 +136,18 @@ export default function EditTextPage() {
               <SelectContent>
                 <SelectItem value="en">{t('languageEn')}</SelectItem>
                 <SelectItem value="ar">{t('languageAr')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Grade Level</Label>
+            <Select value={gradeLevelId} onValueChange={setGradeLevelId}>
+              <SelectTrigger><SelectValue placeholder="All levels" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All levels</SelectItem>
+                {gradeLevels.map(g => (
+                  <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

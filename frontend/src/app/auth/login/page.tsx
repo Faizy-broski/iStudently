@@ -2,6 +2,8 @@
 
 import { useState, useEffect, FormEvent, Suspense, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import { getCampuses } from '@/lib/api/setup-status'
+import { getSchoolSettings } from '@/lib/api/school-settings'
 import Image from 'next/image'
 import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/button'
@@ -134,7 +136,6 @@ function LoginForm() {
   const [justLoggedIn, setJustLoggedIn] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const [redirecting, setRedirecting] = useState(false)
-  const [countdown, setCountdown] = useState(3)
 
   // Social login
   const [socialConfig, setSocialConfig] = useState<SocialLoginConfig | null>(null)
@@ -227,24 +228,48 @@ function LoginForm() {
 
       const dashboardUrl = dashboardMap[profile.role] || '/auth/login?error=role_not_supported'
       setRedirecting(true)
-      setCountdown(3)
 
       toast.success('Welcome To iStudent.ly!', {
         description: 'Redirecting to your dashboard...',
-        duration: 3000,
+        duration: 2000,
       })
 
-      let count = 3
-      const interval = setInterval(() => {
-        count -= 1
-        setCountdown(count)
-        if (count <= 0) {
-          clearInterval(interval)
-          router.push(dashboardUrl)
-        }
-      }, 1000)
+      // Fire-and-forget: warm campus + settings caches before providers mount
+      if (profile.school_id) {
+        getCampuses()
+          .then((campuses) => {
+            if (!campuses?.length) return
+            try {
+              sessionStorage.setItem('studently_campus_cache', JSON.stringify({
+                campuses,
+                timestamp: Date.now(),
+                schoolId: profile.school_id,
+              }))
+            } catch { /* storage unavailable */ }
+            if (!localStorage.getItem('selectedCampusId') && campuses[0]) {
+              try { localStorage.setItem('selectedCampusId', campuses[0].id) } catch { /**/ }
+            }
+            const campusId = localStorage.getItem('selectedCampusId') || campuses[0]?.id || null
+            getSchoolSettings(campusId)
+              .then((res) => {
+                if (res.success && res.data) {
+                  try {
+                    sessionStorage.setItem('studently_settings_cache', JSON.stringify({
+                      settings: res.data,
+                      campusId,
+                      timestamp: Date.now(),
+                    }))
+                  } catch { /**/ }
+                }
+              })
+              .catch(() => {})
+          })
+          .catch(() => {})
+      }
 
+      const timer = setTimeout(() => router.push(dashboardUrl), 300)
       setLoading(false)
+      return () => clearTimeout(timer)
     } else if (user && !profile) {
       const timeout = setTimeout(() => {
         if (!profile) {
@@ -450,7 +475,7 @@ function LoginForm() {
                 {redirecting ? (
                   <span className="flex items-center gap-2">
                     <Loader2 className="animate-spin" />
-                    {t('btn_redirecting', { count: countdown })}
+                    {t('btn_redirecting', { count: '' })}
                   </span>
                 ) : loading || authLoading ? (
                   <Loader2 className="animate-spin" />

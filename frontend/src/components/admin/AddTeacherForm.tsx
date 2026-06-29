@@ -27,6 +27,8 @@ const STANDARD_FIELDS = [
   { id: 'last_name', label: 'Last Name', type: 'text', category: 'personal', sort_order: 2, required: true, width: 'half' },
   { id: 'email', label: 'Email', type: 'email', category: 'personal', sort_order: 3, required: true, width: 'half' },
   { id: 'phone', label: 'Phone', type: 'tel', category: 'personal', sort_order: 4, required: false, width: 'half' },
+  { id: 'gender', label: 'Gender', type: 'select', category: 'personal', sort_order: 5, required: false, width: 'half', options: ['male', 'female', 'other'] },
+  { id: 'date_of_birth', label: 'Date of Birth', type: 'date', category: 'personal', sort_order: 6, required: false, width: 'half' },
 
   // PROFESSIONAL (Category: professional)
   { id: 'employment_type', label: 'Employment Type', type: 'select', category: 'professional', sort_order: 1, required: true, width: 'half', options: ['full_time', 'part_time', 'contract'] },
@@ -113,6 +115,8 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
     last_name: "",
     email: "",
     phone: "",
+    gender: "",
+    date_of_birth: "",
     username: "",
     password: Math.floor(10000000 + Math.random() * 90000000).toString(),
     role: "teacher",
@@ -201,6 +205,8 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
         last_name: profile?.last_name || "",
         email: profile?.email || "",
         phone: profile?.phone || "",
+        gender: (profile as any)?.gender || "",
+        date_of_birth: (profile as any)?.date_of_birth || "",
         username: profile?.username || "",
         password: "",
         role: "teacher",

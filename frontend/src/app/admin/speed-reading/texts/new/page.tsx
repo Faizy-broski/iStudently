@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { BookOpen, Plus, Trash2 } from 'lucide-react'
@@ -12,6 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { getAuthToken } from '@/lib/api/schools'
 import { createText } from '@/lib/api/speed-reading'
+import { getGradeLevels, type GradeLevel } from '@/lib/api/academics'
+import { useAuth } from '@/context/AuthContext'
+import { useCampus } from '@/context/CampusContext'
 
 interface QuizRow {
   question: string
@@ -29,13 +32,26 @@ const emptyQuiz = (): QuizRow => ({
 export default function NewTextPage() {
   const t = useTranslations('speedReading')
   const router = useRouter()
+  const { profile } = useAuth()
+  const campusContext = useCampus()
+  const selectedCampus = campusContext?.selectedCampus
+  const campusId = selectedCampus?.id ?? profile?.school_id
 
   const [title, setTitle] = useState('')
   const [language, setLanguage] = useState<'en' | 'ar'>('en')
+  const [gradeLevelId, setGradeLevelId] = useState('all')
+  const [gradeLevels, setGradeLevels] = useState<GradeLevel[]>([])
   const [content, setContent] = useState('')
   const [quizRows, setQuizRows] = useState<QuizRow[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!campusId) return
+    getGradeLevels(campusId).then(res => {
+      if (res.success && res.data) setGradeLevels(res.data)
+    })
+  }, [campusId])
 
   const handleSave = async () => {
     if (!title.trim() || !content.trim()) {
@@ -53,7 +69,7 @@ export default function NewTextPage() {
         option_d: option_d || undefined,
         correct_ans,
       }))
-    const res = await createText({ title, language, content, quiz_questions }, token)
+    const res = await createText({ title, language, content, grade_level_id: (gradeLevelId && gradeLevelId !== 'all') ? gradeLevelId : null, quiz_questions, campus_id: campusId }, token)
     setSaving(false)
     if (res.success) {
       router.push('/admin/speed-reading/texts')
@@ -74,7 +90,7 @@ export default function NewTextPage() {
       </div>
 
       <div className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label>Title</Label>
             <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Reading passage title" />
@@ -88,6 +104,20 @@ export default function NewTextPage() {
               <SelectContent>
                 <SelectItem value="en">{t('languageEn')}</SelectItem>
                 <SelectItem value="ar">{t('languageAr')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Grade Level</Label>
+            <Select value={gradeLevelId} onValueChange={setGradeLevelId}>
+              <SelectTrigger>
+                <SelectValue placeholder="All levels" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All levels</SelectItem>
+                {gradeLevels.map(g => (
+                  <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

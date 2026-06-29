@@ -47,6 +47,7 @@ import {
   CalendarPlus,
   ShieldX,
   ShieldPlus,
+  ShieldCheck,
   CalendarOff,
   HelpCircle,
   Mail,
@@ -493,6 +494,7 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "academic_years", href: "/admin/settings/academic-years", icon: Calendar },
       { title: "services", href: "/admin/settings/services", icon: Settings },
       { title: "user_agreements", href: "/admin/settings/user-agreements", icon: FileText },
+      { title: "user_profiles", href: "/admin/settings/user-profiles", icon: ShieldCheck },
       // email_reminders, email_smtp, public_pages are injected by their plugins — see config/plugins.ts
       { title: "profile", href: "/admin/profile", icon: UserCircle },
     ],

@@ -66,6 +66,7 @@ export interface IdCardTemplate {
   name: string;
   description: string;
   user_type: 'student' | 'teacher' | 'staff';
+  occasion: string;
   template_config: TemplateConfig;
   is_active: boolean;
   created_at: string;
@@ -98,6 +99,7 @@ export const createTemplate = async (data: {
   name: string;
   description?: string;
   user_type: 'student' | 'teacher' | 'staff';
+  occasion?: string;
   template_config: TemplateConfig;
 }) => {
   return apiRequest('/id-card-templates', {
@@ -112,6 +114,7 @@ export const updateTemplate = async (
   data: {
     name?: string;
     description?: string;
+    occasion?: string;
     template_config?: TemplateConfig;
   }
 ) => {

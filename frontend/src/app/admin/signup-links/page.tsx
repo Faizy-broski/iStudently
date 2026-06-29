@@ -25,6 +25,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { FileUpload } from '@/components/ui/file-upload'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,6 +49,7 @@ import {
   type SignupLink,
 } from '@/lib/api/signup-links'
 import { getPendingCount } from '@/lib/api/pending-signups'
+import { getGradeLevels, type GradeLevel } from '@/lib/api/academics'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 
 const ROLES = ['teacher', 'student', 'parent', 'staff', 'librarian'] as const
@@ -81,7 +85,7 @@ export default function SignupLinksPage() {
   const [generatedLink, setGeneratedLink] = React.useState<SignupLink | null>(null)
   const [copiedId, setCopiedId] = React.useState<string | null>(null)
 
-  // Generate form state
+  const [gradeLevels, setGradeLevels] = React.useState<GradeLevel[]>([])
   const [form, setForm] = React.useState({
     role: 'teacher' as string,
     label: '',
@@ -90,8 +94,19 @@ export default function SignupLinksPage() {
     neverExpires: true,
     expires_at: '',
     campus_id: campusId ?? '',
+    poster_url: '',
+    description: '',
+    require_grade_level: false,
   })
   const [generating, setGenerating] = React.useState(false)
+
+  React.useEffect(() => {
+    if (campusId) {
+      getGradeLevels(campusId).then(res => {
+        if (res.success && res.data) setGradeLevels(res.data)
+      })
+    }
+  }, [campusId])
 
   const fetchData = React.useCallback(async () => {
     setLoading(true)
@@ -111,7 +126,19 @@ export default function SignupLinksPage() {
 
   const handleCopy = async (link: SignupLink) => {
     const url = buildSignupUrl(link.token)
-    await navigator.clipboard.writeText(url)
+    try {
+      await navigator.clipboard.writeText(url)
+    } catch {
+      // Fallback for non-HTTPS environments (HTTP production servers)
+      const ta = document.createElement('textarea')
+      ta.value = url
+      ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none'
+      document.body.appendChild(ta)
+      ta.focus()
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
     setCopiedId(link.id)
     toast.success(t('copied'))
     setTimeout(() => setCopiedId(null), 2000)
@@ -141,12 +168,28 @@ export default function SignupLinksPage() {
   const handleGenerate = async () => {
     setGenerating(true)
     try {
+      const custom_fields = []
+      if (form.require_grade_level && gradeLevels.length > 0) {
+        custom_fields.push({
+          id: 'grade_level',
+          label: isAr ? 'الصف الدراسي' : 'Grade Level',
+          type: 'select',
+          required: true,
+          options: gradeLevels.map(g => g.name),
+        })
+      }
+
       const res = await generateSignupLink({
         role: form.role,
         label: form.label || null,
         max_uses: form.unlimited ? null : parseInt(form.max_uses, 10) || null,
         expires_at: form.neverExpires ? null : (form.expires_at || null),
         campus_id: form.campus_id || null,
+        meta: {
+          poster_url: form.poster_url || null,
+          description: form.description || null,
+          custom_fields,
+        },
       })
       if (res.success && res.data) {
         setGeneratedLink(res.data)
@@ -160,7 +203,10 @@ export default function SignupLinksPage() {
   }
 
   const resetGenerateForm = () => {
-    setForm({ role: 'teacher', label: '', unlimited: true, max_uses: '', neverExpires: true, expires_at: '', campus_id: campusId ?? '' })
+    setForm({ 
+      role: 'teacher', label: '', unlimited: true, max_uses: '', neverExpires: true, 
+      expires_at: '', campus_id: campusId ?? '', poster_url: '', description: '', require_grade_level: false 
+    })
     setGeneratedLink(null)
     setShowGenerateDialog(false)
   }
@@ -325,91 +371,130 @@ export default function SignupLinksPage() {
           </DialogHeader>
 
           {!generatedLink ? (
-            <div className="space-y-4 py-2">
-              {/* Role */}
-              <div className="space-y-1.5">
-                <Label>{t('fieldRole')}</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  {ROLES.map((r) => (
+            <Tabs defaultValue="basic" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="basic">{isAr ? 'أساسي' : 'Basic'}</TabsTrigger>
+                <TabsTrigger value="advanced">{isAr ? 'متقدم وتصميم' : 'Advanced & Design'}</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="basic" className="space-y-4 py-2">
+                {/* Role */}
+                <div className="space-y-1.5">
+                  <Label>{t('fieldRole')}</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {ROLES.map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, role: r }))}
+                        className={cn(
+                          'py-2 px-3 rounded-lg text-sm font-medium border transition-all capitalize',
+                          form.role === r
+                            ? 'border-[#022172] bg-[#022172] text-white'
+                            : 'border-gray-200 hover:border-[#57A3CC] hover:text-[#022172]'
+                        )}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Label */}
+                <div className="space-y-1.5">
+                  <Label>{t('fieldLabel')}</Label>
+                  <Input
+                    placeholder={t('fieldLabelPlaceholder')}
+                    value={form.label}
+                    onChange={(e) => setForm(f => ({ ...f, label: e.target.value }))}
+                  />
+                  <p className="text-xs text-muted-foreground">{t('fieldLabelHint')}</p>
+                </div>
+
+                {/* Max Uses */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label>{t('fieldMaxUses')}</Label>
                     <button
-                      key={r}
                       type="button"
-                      onClick={() => setForm(f => ({ ...f, role: r }))}
+                      onClick={() => setForm(f => ({ ...f, unlimited: !f.unlimited }))}
                       className={cn(
-                        'py-2 px-3 rounded-lg text-sm font-medium border transition-all capitalize',
-                        form.role === r
-                          ? 'border-[#022172] bg-[#022172] text-white'
-                          : 'border-gray-200 hover:border-[#57A3CC] hover:text-[#022172]'
+                        'text-xs px-2 py-0.5 rounded-full border transition-colors',
+                        form.unlimited ? 'bg-[#022172] text-white border-[#022172]' : 'border-gray-300'
                       )}
                     >
-                      {r}
+                      {t('fieldMaxUsesUnlimited')}
                     </button>
-                  ))}
+                  </div>
+                  {!form.unlimited && (
+                    <Input
+                      type="number"
+                      min={1}
+                      placeholder="e.g. 50"
+                      value={form.max_uses}
+                      onChange={(e) => setForm(f => ({ ...f, max_uses: e.target.value }))}
+                    />
+                  )}
                 </div>
-              </div>
 
-              {/* Label */}
-              <div className="space-y-1.5">
-                <Label>{t('fieldLabel')}</Label>
-                <Input
-                  placeholder={t('fieldLabelPlaceholder')}
-                  value={form.label}
-                  onChange={(e) => setForm(f => ({ ...f, label: e.target.value }))}
-                />
-                <p className="text-xs text-muted-foreground">{t('fieldLabelHint')}</p>
-              </div>
-
-              {/* Max Uses */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label>{t('fieldMaxUses')}</Label>
-                  <button
-                    type="button"
-                    onClick={() => setForm(f => ({ ...f, unlimited: !f.unlimited }))}
-                    className={cn(
-                      'text-xs px-2 py-0.5 rounded-full border transition-colors',
-                      form.unlimited ? 'bg-[#022172] text-white border-[#022172]' : 'border-gray-300'
-                    )}
-                  >
-                    {t('fieldMaxUsesUnlimited')}
-                  </button>
+                {/* Expiry */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label>{t('fieldExpiry')}</Label>
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, neverExpires: !f.neverExpires }))}
+                      className={cn(
+                        'text-xs px-2 py-0.5 rounded-full border transition-colors',
+                        form.neverExpires ? 'bg-[#022172] text-white border-[#022172]' : 'border-gray-300'
+                      )}
+                    >
+                      {t('fieldExpiryNever')}
+                    </button>
+                  </div>
+                  {!form.neverExpires && (
+                    <Input
+                      type="date"
+                      value={form.expires_at}
+                      min={new Date().toISOString().split('T')[0]}
+                      onChange={(e) => setForm(f => ({ ...f, expires_at: e.target.value }))}
+                    />
+                  )}
                 </div>
-                {!form.unlimited && (
-                  <Input
-                    type="number"
-                    min={1}
-                    placeholder="e.g. 50"
-                    value={form.max_uses}
-                    onChange={(e) => setForm(f => ({ ...f, max_uses: e.target.value }))}
+              </TabsContent>
+
+              <TabsContent value="advanced" className="space-y-4 py-2">
+                {/* Poster */}
+                <div className="space-y-1.5">
+                  <Label>{isAr ? 'صورة الغلاف / الملصق' : 'Cover Image / Poster'}</Label>
+                  <FileUpload
+                    value={form.poster_url}
+                    onChange={(url) => setForm(f => ({ ...f, poster_url: url }))}
+                    accept="image/*"
+                    label={isAr ? 'رفع ملصق' : 'Upload Poster'}
                   />
-                )}
-              </div>
-
-              {/* Expiry */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label>{t('fieldExpiry')}</Label>
-                  <button
-                    type="button"
-                    onClick={() => setForm(f => ({ ...f, neverExpires: !f.neverExpires }))}
-                    className={cn(
-                      'text-xs px-2 py-0.5 rounded-full border transition-colors',
-                      form.neverExpires ? 'bg-[#022172] text-white border-[#022172]' : 'border-gray-300'
-                    )}
-                  >
-                    {t('fieldExpiryNever')}
-                  </button>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {isAr ? 'سيظهر هذا الملصق في صفحة التسجيل.' : 'This image will be displayed on the public signup page.'}
+                  </p>
                 </div>
-                {!form.neverExpires && (
-                  <Input
-                    type="date"
-                    value={form.expires_at}
-                    min={new Date().toISOString().split('T')[0]}
-                    onChange={(e) => setForm(f => ({ ...f, expires_at: e.target.value }))}
-                  />
+
+                {/* Require Grade Level */}
+                {(form.role === 'student' || form.role === 'parent') && (
+                  <div className="flex items-center justify-between p-3 border rounded-lg bg-gray-50/50">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-semibold">{isAr ? 'طلب تحديد الصف الدراسي' : 'Require Grade Level'}</Label>
+                      <p className="text-xs text-muted-foreground">
+                        {isAr ? 'إضافة حقل الصف الدراسي لنموذج التسجيل' : 'Add a required Grade Level dropdown to the signup form'}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={form.require_grade_level}
+                      onCheckedChange={(c) => setForm(f => ({ ...f, require_grade_level: c }))}
+                    />
+                  </div>
                 )}
-              </div>
-            </div>
+              </TabsContent>
+            </Tabs>
           ) : (
             /* Success state */
             <div className="py-4 text-center space-y-4">

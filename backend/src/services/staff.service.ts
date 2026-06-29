@@ -120,6 +120,16 @@ export const getAllStaff = async (
     }
 }
 
+const fetchUserProfile = async (profileId: string | null | undefined) => {
+    if (!profileId) return null
+    const { data } = await supabase
+        .from('user_profiles')
+        .select('id, name, role_id, base_role')
+        .eq('id', profileId)
+        .single()
+    return data ?? null
+}
+
 export const getStaffById = async (id: string, schoolId?: string): Promise<ApiResponse<Staff>> => {
     try {
         // Try using the optimized RPC function first (without school_id filter)
@@ -132,6 +142,7 @@ export const getStaffById = async (id: string, schoolId?: string): Promise<ApiRe
             const rpcResult: any = rpcData
             const { data: authUser } = await supabase.auth.admin.getUserById(rpcResult.profile_id)
             rpcResult.last_sign_in = authUser?.user?.last_sign_in_at ?? null
+            rpcResult.user_profile = await fetchUserProfile(rpcResult.user_profile_id)
             return { success: true, data: rpcResult as Staff }
         }
 
@@ -168,7 +179,8 @@ export const getStaffById = async (id: string, schoolId?: string): Promise<ApiRe
 
         const staffWithSalary: any = {
             ...data,
-            base_salary: salaryData?.base_salary || 0
+            base_salary: salaryData?.base_salary || 0,
+            user_profile: await fetchUserProfile((data as any).user_profile_id),
         }
 
         const { data: authUser } = await supabase.auth.admin.getUserById(data.profile_id)
@@ -301,6 +313,8 @@ export const createStaffRecord = async (
             phone: data.phone || null,
             profile_photo_url: data.profile_photo_url || null,
             username: baseUsername || null,
+            gender: data.gender || null,
+            date_of_birth: data.date_of_birth || null,
         })
         .eq('id', profileId)
 
@@ -365,14 +379,17 @@ export const updateStaff = async (
     data: UpdateStaffDTO
 ): Promise<ApiResponse<Staff>> => {
     try {
-        // Update Profile if name/email changed or password provided
-        if (data.first_name || data.last_name || data.email || data.password) {
+        // Update Profile if any profile fields changed
+        if (data.first_name || data.last_name || data.email || data.password || data.phone !== undefined || data.gender !== undefined || data.date_of_birth !== undefined) {
             // Get profile_id
             const { data: staff } = await supabase.from('staff').select('profile_id').eq('id', id).single()
             if (staff) {
                 const profileUpdate: any = {}
                 if (data.first_name) profileUpdate.first_name = data.first_name
                 if (data.last_name) profileUpdate.last_name = data.last_name
+                if (data.phone !== undefined) profileUpdate.phone = data.phone || null
+                if (data.gender !== undefined) profileUpdate.gender = data.gender || null
+                if (data.date_of_birth !== undefined) profileUpdate.date_of_birth = data.date_of_birth || null
 
                 if (Object.keys(profileUpdate).length > 0) {
                     await supabase.from('profiles').update(profileUpdate).eq('id', staff.profile_id)

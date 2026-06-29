@@ -7,7 +7,9 @@ class SpeedReadingController {
     try {
       const schoolId = (req.query.school_id as string) || req.profile?.school_id
       if (!schoolId) return res.status(400).json({ success: false, error: 'school_id is required' })
-      const data = await speedReadingService.getTexts(schoolId)
+      const gradeLevelId = req.query.grade_level_id as string | undefined
+      const campusId = req.query.campus_id as string | undefined
+      const data = await speedReadingService.getTexts(schoolId, gradeLevelId, campusId)
       return res.json({ success: true, data })
     } catch (error: any) {
       console.error('speed-reading getTexts error:', error)
@@ -29,12 +31,12 @@ class SpeedReadingController {
 
   async createText(req: AuthRequest, res: Response) {
     try {
-      const schoolId = req.profile?.school_id
       const createdBy = req.profile?.id
+      const { title, language, content, grade_level_id, quiz_questions, campus_id } = req.body
+      const schoolId = campus_id || req.profile?.school_id
       if (!schoolId) return res.status(400).json({ success: false, error: 'school_id not found in token' })
-      const { title, language, content, quiz_questions } = req.body
       if (!title || !content) return res.status(400).json({ success: false, error: 'title and content are required' })
-      const data = await speedReadingService.createText(schoolId, createdBy, { title, language: language || 'en', content, quiz_questions })
+      const data = await speedReadingService.createText(schoolId, createdBy, { title, language: language || 'en', content, grade_level_id, quiz_questions })
       return res.status(201).json({ success: true, data })
     } catch (error: any) {
       console.error('speed-reading createText error:', error)
@@ -45,8 +47,10 @@ class SpeedReadingController {
   async updateText(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params
-      const { title, language, content, quiz_questions } = req.body
-      const data = await speedReadingService.updateText(id, { title, language, content, quiz_questions })
+      const { title, language, content, grade_level_id, quiz_questions } = req.body
+      const dto: Record<string, any> = { title, language, content, quiz_questions }
+      if ('grade_level_id' in req.body) dto.grade_level_id = grade_level_id
+      const data = await speedReadingService.updateText(id, dto)
       return res.json({ success: true, data })
     } catch (error: any) {
       console.error('speed-reading updateText error:', error)

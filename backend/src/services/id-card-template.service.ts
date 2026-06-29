@@ -275,7 +275,8 @@ export class IdCardTemplateService {
     description: string,
     userType: string,
     templateConfig: TemplateConfig,
-    createdBy: string
+    createdBy: string,
+    occasion?: string
   ) {
     // Validate template config
     this.validateTemplateConfig(templateConfig, userType);
@@ -288,6 +289,7 @@ export class IdCardTemplateService {
         description,
         user_type: userType,
         template_config: templateConfig,
+        occasion: occasion || 'general',
         is_active: false,
         created_by: createdBy,
       })
@@ -306,6 +308,7 @@ export class IdCardTemplateService {
     updates: {
       name?: string;
       description?: string;
+      occasion?: string;
       template_config?: TemplateConfig;
     }
   ) {

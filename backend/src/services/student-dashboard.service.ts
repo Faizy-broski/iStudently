@@ -1381,6 +1381,57 @@ export class StudentDashboardService {
   }
 
   /**
+   * Calculate overall academic performance metrics for the Performance Meter
+   */
+  async getStudentPerformanceMetrics(studentId: string) {
+    try {
+      // 1. Attendance (Total Present / Total School Days * 100)
+      const attendanceSummary = await this.getAttendanceSummary(studentId)
+      const attendanceScore = attendanceSummary.percentage || 100
+
+      // 2. Assignments (Submitted / Total Assigned * 100)
+      const assignmentsData = await this.getStudentAssignments(studentId)
+      const totalAssignments = assignmentsData.todo.length + assignmentsData.submitted.length + assignmentsData.graded.length
+      const completedAssignments = assignmentsData.submitted.length + assignmentsData.graded.length
+      const assignmentsScore = totalAssignments > 0 ? Math.round((completedAssignments / totalAssignments) * 100) : 100
+
+      // 3. Behavior (Calculated using positive/negative reward points module - approximated by referrals)
+      const discipline = await this.getStudentDisciplineReferrals(studentId)
+      const referralsCount = discipline?.length || 0
+      const behaviorScore = Math.max(0, 100 - (referralsCount * 5))
+
+      // 4. Grade Average (Weighted average from current term exams / gradebook)
+      const { data: grades } = await supabase
+        .from('gradebook_grades')
+        .select('points, assignment:gradebook_assignments(points)')
+        .eq('student_id', studentId)
+        .not('points', 'is', null)
+
+      let earned = 0
+      let max = 0
+      grades?.forEach((g: any) => {
+        earned += (g.points || 0)
+        max += (g.assignment?.points || 0)
+      })
+      const gradeAverageScore = max > 0 ? Math.round((earned / max) * 100) : 100
+
+      // Overall Average
+      const overallScore = Math.round((attendanceScore + assignmentsScore + behaviorScore + gradeAverageScore) / 4)
+
+      return {
+        overall: overallScore,
+        attendance: attendanceScore,
+        gradeAverage: gradeAverageScore,
+        behavior: behaviorScore,
+        assignments: assignmentsScore
+      }
+    } catch (err) {
+      console.error('Error calculating performance metrics:', err)
+      return { overall: 0, attendance: 0, gradeAverage: 0, behavior: 0, assignments: 0 }
+    }
+  }
+
+  /**
    * Get exam results for student grouped by subject (Final Grades view)
    */
   async getStudentFinalGrades(studentId: string) {
