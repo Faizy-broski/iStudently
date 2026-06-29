@@ -209,6 +209,11 @@ export async function getLoginLinks() {
   return publicFetch<CustomLink[]>('/public/login-links')
 }
 
+/** Authenticated — used by student/parent/teacher portals to render school custom pages. */
+export async function getMyPages() {
+  return authFetch<CustomLink[]>('/public/login-links')
+}
+
 /** Super Admin — get all custom link pages for a school (per-school, kept for compat). */
 export async function getSuperAdminCustomLinks(schoolId: string) {
   return authFetch<CustomLink[]>(`/public/superadmin/pages/${schoolId}`)
