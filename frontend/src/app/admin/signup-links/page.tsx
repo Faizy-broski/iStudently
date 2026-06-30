@@ -124,24 +124,40 @@ export default function SignupLinksPage() {
 
   React.useEffect(() => { fetchData() }, [fetchData])
 
-  const handleCopy = async (link: SignupLink) => {
+  const execCommandCopy = (url: string) => {
+    const ta = document.createElement('textarea')
+    ta.value = url
+    // Position off-screen but still reachable (opacity:0 can break focus in some browsers)
+    ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;'
+    document.body.appendChild(ta)
+    ta.focus()
+    ta.select()
+    const ok = document.execCommand('copy')
+    document.body.removeChild(ta)
+    return ok
+  }
+
+  const handleCopy = (link: SignupLink) => {
     const url = buildSignupUrl(link.token)
-    try {
-      await navigator.clipboard.writeText(url)
-    } catch {
-      // Fallback for non-HTTPS environments (HTTP production servers)
-      const ta = document.createElement('textarea')
-      ta.value = url
-      ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none'
-      document.body.appendChild(ta)
-      ta.focus()
-      ta.select()
-      document.execCommand('copy')
-      document.body.removeChild(ta)
+
+    const onSuccess = () => {
+      setCopiedId(link.id)
+      toast.success(t('copied'))
+      setTimeout(() => setCopiedId(null), 2000)
     }
-    setCopiedId(link.id)
-    toast.success(t('copied'))
-    setTimeout(() => setCopiedId(null), 2000)
+
+    // On HTTPS / localhost the Clipboard API is available; use it.
+    // On plain HTTP we must copy synchronously inside the user-gesture callback
+    // because execCommand('copy') loses the gesture context after an await/microtask.
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(url).then(onSuccess).catch(() => {
+        execCommandCopy(url)
+        onSuccess()
+      })
+    } else {
+      execCommandCopy(url)
+      onSuccess()
+    }
   }
 
   const handleToggle = async (link: SignupLink) => {

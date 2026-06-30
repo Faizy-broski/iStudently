@@ -1,6 +1,6 @@
 import { Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
-import { speedReadingService } from '../services/speed-reading.service'
+import { speedReadingService, WordResult } from '../services/speed-reading.service'
 
 class SpeedReadingController {
   async getTexts(req: AuthRequest, res: Response) {
@@ -74,7 +74,7 @@ class SpeedReadingController {
       const schoolId = req.profile?.school_id
       const studentId = req.profile?.id
       if (!schoolId || !studentId) return res.status(401).json({ success: false, error: 'Unauthorized' })
-      const { text_id, target_wpm, correct_words, incorrect_words, accuracy_percentage, comprehension_bonus, grading_mode } = req.body
+      const { text_id, target_wpm, correct_words, incorrect_words, accuracy_percentage, comprehension_bonus, grading_mode, audio_url, word_results } = req.body
       if (!text_id || target_wpm == null) return res.status(400).json({ success: false, error: 'text_id and target_wpm are required' })
       const data = await speedReadingService.submitLog(schoolId, studentId, {
         text_id,
@@ -84,10 +84,60 @@ class SpeedReadingController {
         accuracy_percentage: Number(accuracy_percentage ?? 0),
         comprehension_bonus: Boolean(comprehension_bonus),
         grading_mode: grading_mode || 'voice',
+        audio_url: audio_url || undefined,
+        word_results: Array.isArray(word_results) ? word_results as WordResult[] : undefined,
       })
       return res.status(201).json({ success: true, data })
     } catch (error: any) {
       console.error('speed-reading submitLog error:', error)
+      return res.status(500).json({ success: false, error: error.message })
+    }
+  }
+
+  async getSessionLog(req: AuthRequest, res: Response) {
+    try {
+      const schoolId = req.profile?.school_id
+      if (!schoolId) return res.status(401).json({ success: false, error: 'Unauthorized' })
+      const data = await speedReadingService.getSessionLog(req.params.id, schoolId)
+      if (!data) return res.status(404).json({ success: false, error: 'Session not found' })
+      return res.json({ success: true, data })
+    } catch (error: any) {
+      console.error('speed-reading getSessionLog error:', error)
+      return res.status(500).json({ success: false, error: error.message })
+    }
+  }
+
+  async listSessionLogs(req: AuthRequest, res: Response) {
+    try {
+      const schoolId = req.profile?.school_id
+      if (!schoolId) return res.status(401).json({ success: false, error: 'Unauthorized' })
+      const page = parseInt(req.query.page as string) || 1
+      const limit = parseInt(req.query.limit as string) || 20
+      const filters = {
+        student_id: req.query.student_id as string | undefined,
+        text_id: req.query.text_id as string | undefined,
+        date_from: req.query.date_from as string | undefined,
+        date_to: req.query.date_to as string | undefined,
+      }
+      const result = await speedReadingService.listSessionLogs(schoolId, filters, page, limit)
+      return res.json({ success: true, ...result })
+    } catch (error: any) {
+      console.error('speed-reading listSessionLogs error:', error)
+      return res.status(500).json({ success: false, error: error.message })
+    }
+  }
+
+  async getStudentLogs(req: AuthRequest, res: Response) {
+    try {
+      const schoolId = req.profile?.school_id
+      const studentId = req.profile?.id
+      if (!schoolId || !studentId) return res.status(401).json({ success: false, error: 'Unauthorized' })
+      const page = parseInt(req.query.page as string) || 1
+      const limit = parseInt(req.query.limit as string) || 20
+      const result = await speedReadingService.getStudentLogs(schoolId, studentId, page, limit)
+      return res.json({ success: true, ...result })
+    } catch (error: any) {
+      console.error('speed-reading getStudentLogs error:', error)
       return res.status(500).json({ success: false, error: error.message })
     }
   }

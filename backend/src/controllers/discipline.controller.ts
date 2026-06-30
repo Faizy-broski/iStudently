@@ -301,6 +301,8 @@ export async function getReferrals(req: Request, res: Response): Promise<void> {
       start_date,
       end_date,
       academic_year_id,
+      grade_level,
+      section_id,
       page = '1',
       limit = '50',
     } = req.query as Record<string, string>;
@@ -309,6 +311,25 @@ export async function getReferrals(req: Request, res: Response): Promise<void> {
     const pageNum = Math.max(1, parseInt(page, 10));
     const limitNum = isReport ? 5000 : Math.min(200, Math.max(1, parseInt(limit, 10)));
     const offset = isReport ? 0 : (pageNum - 1) * limitNum;
+
+    // Grade/section filter: resolve student IDs first (PostgREST can't filter
+    // parent rows by joined-table columns directly).
+    let filteredStudentIds: string[] | null = null;
+    if (grade_level || section_id) {
+      let studentQuery = supabase
+        .from('students')
+        .select('id')
+        .eq('school_id', schoolId);
+      if (grade_level) studentQuery = studentQuery.eq('grade_level', grade_level);
+      if (section_id) studentQuery = studentQuery.eq('section_id', section_id);
+      const { data: matchingStudents } = await studentQuery;
+      filteredStudentIds = (matchingStudents ?? []).map((s: any) => s.id);
+      // No matching students → return empty result immediately
+      if (filteredStudentIds.length === 0) {
+        res.json({ data: [], total: 0, page: pageNum, limit: limitNum });
+        return;
+      }
+    }
 
     let query = supabase
       .from('discipline_referrals')
@@ -326,6 +347,7 @@ export async function getReferrals(req: Request, res: Response): Promise<void> {
     if (academic_year_id) query = query.eq('academic_year_id', academic_year_id);
     if (start_date) query = query.gte('incident_date', start_date);
     if (end_date) query = query.lte('incident_date', end_date);
+    if (filteredStudentIds) query = query.in('student_id', filteredStudentIds);
 
     let { data, error, count } = await query;
     if (error) {

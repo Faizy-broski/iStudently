@@ -433,7 +433,42 @@ export class UserAgreementService {
       .eq('school_id', schoolId)
       .eq('role', role)
 
-    if (campusId) query = query.eq('campus_id', campusId)
+    if (campusId) {
+      if (['teacher', 'staff', 'librarian', 'counselor'].includes(role)) {
+        const { data: staffData } = await supabase
+          .from('staff')
+          .select('profile_id')
+          .eq('school_id', campusId)
+        
+        if (staffData && staffData.length > 0) {
+          query = query.in('id', staffData.map(s => s.profile_id))
+        } else {
+          return []
+        }
+      } else if (role === 'student') {
+        const { data: sectionsData } = await supabase
+          .from('sections')
+          .select('id')
+          .eq('campus_id', campusId)
+        
+        if (sectionsData && sectionsData.length > 0) {
+          const sectionIds = sectionsData.map(s => s.id)
+          const { data: studentData } = await supabase
+            .from('students')
+            .select('profile_id')
+            .in('section_id', sectionIds)
+          
+          if (studentData && studentData.length > 0) {
+            query = query.in('id', studentData.map(s => s.profile_id))
+          } else {
+            return []
+          }
+        } else {
+          return []
+        }
+      }
+      // For parent role, ignore campus filter since they belong to the main school
+    }
 
     const { data, error } = await query.order('last_name', { ascending: true })
     if (error) throw error

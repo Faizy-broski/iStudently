@@ -20,6 +20,8 @@ import {
   Loader2,
   GripVertical,
   Info,
+  TrendingDown,
+  Minus,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCampus } from '@/context/CampusContext';
@@ -44,14 +46,14 @@ const FIELD_TYPES: DisciplineFieldType[] = [
 ];
 
 const FIELD_TYPE_COLORS: Record<DisciplineFieldType, string> = {
-  select: 'bg-blue-100 text-blue-800',
-  multiple_radio: 'bg-purple-100 text-purple-800',
-  multiple_checkbox: 'bg-indigo-100 text-indigo-800',
-  text: 'bg-gray-100 text-gray-700',
-  textarea: 'bg-gray-100 text-gray-700',
-  checkbox: 'bg-green-100 text-green-800',
-  numeric: 'bg-orange-100 text-orange-800',
-  date: 'bg-cyan-100 text-cyan-800',
+  select: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800',
+  multiple_radio: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-800',
+  multiple_checkbox: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 dark:border-indigo-800',
+  text: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700',
+  textarea: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700',
+  checkbox: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 dark:border-green-800',
+  numeric: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-800',
+  date: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-300 dark:border-cyan-800',
 };
 
 const OPTIONS_TYPES: DisciplineFieldType[] = ['select', 'multiple_radio', 'multiple_checkbox'];
@@ -59,7 +61,8 @@ const OPTIONS_TYPES: DisciplineFieldType[] = ['select', 'multiple_radio', 'multi
 interface FieldFormState {
   name: string;
   field_type: DisciplineFieldType;
-  options_text: string; // one option per line
+  options_text: string; // one option per line (no penalty marker)
+  penalty: string;      // positive number; stored as first option "-N" in DB
   sort_order: string;
 }
 
@@ -67,6 +70,7 @@ const emptyForm = (): FieldFormState => ({
   name: '',
   field_type: 'text',
   options_text: '',
+  penalty: '',
   sort_order: '0',
 });
 
@@ -121,17 +125,30 @@ export default function ReferralFormPage() {
   }
 
   function openEdit(field: DisciplineField) {
+    const opts = field.options ?? [];
+    let penalty = '';
+    let visibleOpts = opts;
+    if (opts.length > 0 && !isNaN(parseFloat(opts[0])) && parseFloat(opts[0]) < 0) {
+      penalty = String(Math.abs(parseFloat(opts[0])));
+      visibleOpts = opts.slice(1);
+    }
     setEditField(field);
     setEditForm({
       name: field.name,
       field_type: field.field_type,
-      options_text: (field.options ?? []).join('\n'),
+      options_text: visibleOpts.join('\n'),
+      penalty,
       sort_order: String(field.sort_order),
     });
   }
 
-  function parseOptions(text: string): string[] | null {
-    const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+  function buildOptions(form: FieldFormState): string[] | null {
+    if (!OPTIONS_TYPES.includes(form.field_type)) return null;
+    const lines = form.options_text.split('\n').map((l) => l.trim()).filter(Boolean);
+    const penaltyVal = parseFloat(form.penalty);
+    if (!isNaN(penaltyVal) && penaltyVal > 0) {
+      lines.unshift(`-${penaltyVal}`);
+    }
     return lines.length > 0 ? lines : null;
   }
 
@@ -146,7 +163,7 @@ export default function ReferralFormPage() {
         school_id: schoolId,
         name: addForm.name.trim(),
         field_type: addForm.field_type,
-        options: OPTIONS_TYPES.includes(addForm.field_type) ? parseOptions(addForm.options_text) : null,
+        options: buildOptions(addForm),
         sort_order: parseInt(addForm.sort_order, 10) || 0,
       });
       if (res.error) {
@@ -174,7 +191,7 @@ export default function ReferralFormPage() {
       const res = await updateDisciplineField(editField.id, {
         name: editForm.name.trim(),
         field_type: editForm.field_type,
-        options: OPTIONS_TYPES.includes(editForm.field_type) ? parseOptions(editForm.options_text) : null,
+        options: buildOptions(editForm),
         sort_order: parseInt(editForm.sort_order, 10) || 0,
       });
       if (res.error) {
@@ -283,17 +300,33 @@ export default function ReferralFormPage() {
                         >
                           {t(`fieldTypes.${field.field_type}`)}
                         </Badge>
+                        {(() => {
+                          const first = field.options?.[0];
+                          if (first && !isNaN(parseFloat(first)) && parseFloat(first) < 0) {
+                            return (
+                              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800 flex items-center gap-1">
+                                <TrendingDown className="h-3 w-3" />
+                                {Math.abs(parseFloat(first))} pts
+                              </Badge>
+                            );
+                          }
+                          return null;
+                        })()}
                         {!field.is_active && (
-                          <Badge variant="outline" className="bg-gray-100 text-gray-500">
+                          <Badge variant="outline" className="bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700">
                             {t('inactive')}
                           </Badge>
                         )}
                       </div>
-                      {field.options && field.options.length > 0 && (
-                        <p className="text-xs text-muted-foreground mt-1 truncate">
-                          {t('options')}: {field.options.join(', ')}
-                        </p>
-                      )}
+                      {field.options && field.options.length > 0 && (() => {
+                        const hasPenalty = !isNaN(parseFloat(field.options[0])) && parseFloat(field.options[0]) < 0;
+                        const displayOpts = hasPenalty ? field.options.slice(1) : field.options;
+                        return displayOpts.length > 0 ? (
+                          <p className="text-xs text-muted-foreground mt-1 truncate">
+                            {t('options')}: {displayOpts.join(', ')}
+                          </p>
+                        ) : null;
+                      })()}
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {t('sort_order')}: {field.sort_order}
                       </p>
@@ -427,15 +460,59 @@ function FieldForm({ form, onChange, onSubmit, onCancel, saving, submitLabel }: 
       </div>
 
       {needsOptions && (
-        <div className="space-y-1.5">
-          <Label>{t('options')} <span className="text-xs text-muted-foreground">({t('onePerLine')})</span></Label>
-          <Textarea
-            value={form.options_text}
-            onChange={(e) => onChange({ ...form, options_text: e.target.value })}
-            placeholder={'Skipping Class\nFighting\nInsubordination\nOther'}
-            rows={5}
-          />
-        </div>
+        <>
+          <div className="space-y-1.5">
+            <Label>{t('options')} <span className="text-xs text-muted-foreground">({t('onePerLine')})</span></Label>
+            <Textarea
+              value={form.options_text}
+              onChange={(e) => onChange({ ...form, options_text: e.target.value })}
+              placeholder={'Skipping Class\nFighting\nInsubordination\nOther'}
+              rows={5}
+            />
+          </div>
+
+          {/* Point deduction — clearly separate from the choice options */}
+          <div className="rounded-lg border border-red-200 bg-red-50/50 dark:border-red-900/50 dark:bg-red-900/20 p-3 space-y-2">
+            <div className="flex items-center gap-1.5 text-red-700 dark:text-red-400">
+              <TrendingDown className="h-4 w-4 shrink-0" />
+              <span className="text-sm font-medium">Point Deduction (optional)</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Points deducted each time a student is assigned this referral field. Leave blank or 0 for no deduction.
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-red-600 dark:text-red-400 select-none">−</span>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="icon" 
+                className="h-8 w-8 rounded-r-none border-r-0" 
+                onClick={() => onChange({...form, penalty: String(Math.max(0, parseInt(form.penalty || '0') - 1))})}
+              >
+                <Minus className="h-3 w-3" />
+              </Button>
+              <Input
+                type="number"
+                min="0"
+                step="1"
+                className="w-16 h-8 text-sm text-center rounded-none focus-visible:z-10"
+                placeholder="0"
+                value={form.penalty}
+                onChange={(e) => onChange({ ...form, penalty: e.target.value })}
+              />
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="icon" 
+                className="h-8 w-8 rounded-l-none border-l-0" 
+                onClick={() => onChange({...form, penalty: String(parseInt(form.penalty || '0') + 1)})}
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+              <span className="text-sm text-muted-foreground ml-2">pts per selection</span>
+            </div>
+          </div>
+        </>
       )}
 
       <div className="space-y-1.5">

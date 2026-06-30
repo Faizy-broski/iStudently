@@ -198,9 +198,9 @@ export default function UserAgreementsSettingsPage() {
   return (
     <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-linear-to-r from-[#57A3CC] to-[#022172]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-linear-to-r from-[#57A3CC] to-[#022172] shrink-0">
             <FileText className="h-5 w-5 text-white" />
           </div>
           <div>
@@ -211,7 +211,7 @@ export default function UserAgreementsSettingsPage() {
         <Button
           onClick={handleSave}
           disabled={saving}
-          className="gap-2 text-white hover:opacity-90"
+          className="gap-2 text-white hover:opacity-90 w-full sm:w-auto"
           style={{ background: 'linear-gradient(to right, #57A3CC, #022172)' }}
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -272,9 +272,9 @@ export default function UserAgreementsSettingsPage() {
               {/* ── Enable / disable ───────────────────────────────────────── */}
               <Card>
                 <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <ToggleRight className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-start sm:items-center gap-2">
+                      <ToggleRight className="h-4 w-4 text-muted-foreground mt-1 sm:mt-0" />
                       <div>
                         <CardTitle className="text-base">{t('role_agreement_title', { role: r.label })}</CardTitle>
                         <CardDescription>
@@ -282,7 +282,7 @@ export default function UserAgreementsSettingsPage() {
                         </CardDescription>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 self-end sm:self-auto">
                       <Label htmlFor={`enable-${r.id}`} className="text-sm">
                         {cfg.enabled ? t('enabled') : t('disabled')}
                       </Label>
@@ -311,7 +311,7 @@ export default function UserAgreementsSettingsPage() {
                           className={`rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-4 ${!cfg.enabled ? 'opacity-50 pointer-events-none' : ''}`}
                         >
                           {/* Agreement header row */}
-                          <div className="flex items-center justify-between gap-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <div className="flex items-center gap-2">
                               <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
                               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
@@ -323,7 +323,7 @@ export default function UserAgreementsSettingsPage() {
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 self-end sm:self-auto">
                               <div className="flex items-center gap-2">
                                 <Label htmlFor={`item-enable-${item.id}`} className="text-xs text-muted-foreground cursor-pointer">
                                   {item.enabled ? t('enabled') : t('disabled')}
@@ -424,9 +424,9 @@ export default function UserAgreementsSettingsPage() {
               {isParent && (
                 <Card className={!cfg.enabled ? 'opacity-50 pointer-events-none' : ''}>
                   <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex items-start sm:items-center gap-2">
+                        <Users className="h-4 w-4 text-muted-foreground mt-1 sm:mt-0" />
                         <div>
                           <CardTitle className="text-base">{t('block_students_title')}</CardTitle>
                           <CardDescription>{t('block_students_desc')}</CardDescription>
@@ -434,6 +434,7 @@ export default function UserAgreementsSettingsPage() {
                       </div>
                       <Switch
                         id="block-students"
+                        className="self-end sm:self-auto"
                         checked={cfg.block_linked_students ?? false}
                         onCheckedChange={v => setRole(r.id, { block_linked_students: v })}
                         disabled={!cfg.enabled}
@@ -454,7 +455,7 @@ export default function UserAgreementsSettingsPage() {
               {cfg.enabled && (
                 <Card>
                   <CardContent className="pt-5">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
                         <p className="text-sm font-medium">{t('reset_acceptances')}</p>
                         <p className="text-xs text-muted-foreground">
@@ -463,7 +464,7 @@ export default function UserAgreementsSettingsPage() {
                       </div>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="sm" className="gap-2" disabled={resetting === r.id}>
+                          <Button variant="outline" size="sm" className="gap-2 self-start sm:self-auto" disabled={resetting === r.id}>
                             {resetting === r.id
                               ? <Loader2 className="h-3 w-3 animate-spin" />
                               : <RefreshCw className="h-3 w-3" />}
@@ -498,22 +499,22 @@ export default function UserAgreementsSettingsPage() {
       {/* ── Advanced Report ──────────────────────────────────────────────── */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-muted-foreground mt-1 sm:mt-0 shrink-0" />
               <div>
                 <CardTitle className="text-base">{t('report_title')}</CardTitle>
                 <CardDescription>{t('report_desc', { role: ROLES.find(r => r.id === reportRole)?.label ?? reportRole })}</CardDescription>
               </div>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
               {/* Role selector */}
-              <div className="flex rounded-lg border overflow-hidden text-sm">
+              <div className="flex rounded-lg border overflow-x-auto text-sm w-full sm:w-auto">
                 {ROLES.map(r => (
                   <button
                     key={r.id}
                     onClick={() => handleReportRoleChange(r.id)}
-                    className={`px-3 py-1.5 transition-colors ${
+                    className={`px-3 py-1.5 transition-colors whitespace-nowrap flex-1 sm:flex-none ${
                       reportRole === r.id
                         ? 'bg-[#022172] text-white'
                         : 'hover:bg-muted text-muted-foreground'

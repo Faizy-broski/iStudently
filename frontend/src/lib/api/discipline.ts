@@ -166,6 +166,8 @@ export interface GetReferralsParams {
   start_date?: string;
   end_date?: string;
   academic_year_id?: string;
+  grade_level?: string;
+  section_id?: string;
   page?: number;
   limit?: number;
 }
@@ -179,6 +181,8 @@ export async function getDisciplineReferrals(
   if (params.start_date) urlParams.append('start_date', params.start_date);
   if (params.end_date) urlParams.append('end_date', params.end_date);
   if (params.academic_year_id) urlParams.append('academic_year_id', params.academic_year_id);
+  if (params.grade_level) urlParams.append('grade_level', params.grade_level);
+  if (params.section_id) urlParams.append('section_id', params.section_id);
   if (params.page) urlParams.append('page', String(params.page));
   if (params.limit) urlParams.append('limit', String(params.limit));
   return apiRequest<DisciplineReferral[]>(`/discipline/referrals?${urlParams}`);

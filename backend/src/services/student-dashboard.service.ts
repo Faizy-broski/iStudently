@@ -985,10 +985,7 @@ export class StudentDashboardService {
         incident_date,
         field_values,
         created_at,
-        reporter:staff!reporter_id(
-          id,
-          profile:profiles!staff_profile_id_fkey(first_name, last_name)
-        )
+        reporter:profiles!discipline_referrals_reporter_id_fkey(id, first_name, last_name)
       `)
       .eq('student_id', studentId)
       .order('incident_date', { ascending: false })

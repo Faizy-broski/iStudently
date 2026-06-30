@@ -16,7 +16,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
 import { EditCredentialsModal } from "@/components/admin/EditCredentialsModal";
 import { EditStudentForm } from "@/components/admin";
-import { type Student } from "@/lib/api/students";
+import { type Student, getStudentById } from "@/lib/api/students";
 import { useStudents } from "@/hooks/useStudents";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { UniversalFilter, type FilterState } from "@/components/filters/UniversalFilter";
@@ -148,13 +148,22 @@ export default function StudentInfoPage() {
   // Auto-open edit form when navigated from detail page with ?edit=<uuid>
   useEffect(() => {
     const editId = searchParams.get('edit');
-    if (!editId || students.length === 0) return;
-    const student = students.find(s => s.id === editId);
-    if (student) {
-      setSelectedStudent(student);
+    if (!editId) return;
+    const fromList = students.find(s => s.id === editId);
+    if (fromList) {
+      setSelectedStudent(fromList);
       setShowEditForm(true);
+      return;
     }
-  }, [searchParams, students]);
+    // Student not in the current page — fetch directly by ID
+    getStudentById(editId).then((res) => {
+      if (res.data?.id) {
+        setSelectedStudent(res.data);
+        setShowEditForm(true);
+      }
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const handleViewDetails = (student: Student) => {
     // Navigate to the full details page using student number for readable URLs

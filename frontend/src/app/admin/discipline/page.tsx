@@ -156,11 +156,16 @@ export default function DisciplineReferralsPage() {
     if (!schoolId) return;
     setLoading(true);
     try {
+      const gradeName = gradeFilter !== "all"
+        ? gradeLevels.find((g) => g.id === gradeFilter)?.name
+        : undefined;
       const res = await getDisciplineReferrals({
         school_id: schoolId,
         campus_id: campusId,
         start_date: startDate || undefined,
         end_date: endDate || undefined,
+        grade_level: gradeName,
+        section_id: sectionFilter !== "all" ? sectionFilter : undefined,
         page,
         limit: LIMIT,
       });
@@ -171,7 +176,7 @@ export default function DisciplineReferralsPage() {
     } finally {
       setLoading(false);
     }
-  }, [schoolId, campusId, startDate, endDate, page]);
+  }, [schoolId, campusId, startDate, endDate, gradeFilter, sectionFilter, gradeLevels, page]);
 
   useEffect(() => {
     setPage(1);
@@ -200,16 +205,13 @@ export default function DisciplineReferralsPage() {
     }
   }
 
-  // Client-side filtering
-  const selectedGradeName = gradeLevels.find((g) => g.id === gradeFilter)?.name;
+  // Client-side search filter only (grade/section handled server-side)
   const displayed = referrals.filter((r) => {
     if (debouncedSearch) {
       const name = studentName(r).toLowerCase();
       const num = r.students?.student_number ?? "";
       if (!name.includes(debouncedSearch.toLowerCase()) && !num.includes(debouncedSearch)) return false;
     }
-    if (gradeFilter !== "all" && r.students?.grade_level !== selectedGradeName) return false;
-    if (sectionFilter !== "all" && r.students?.section_id !== sectionFilter) return false;
     return true;
   });
 
@@ -258,13 +260,13 @@ export default function DisciplineReferralsPage() {
 
               {/* Grade */}
               <div className="space-y-1">
-                <Label className="text-xs">Grade</Label>
+                <Label className="text-xs">{t("grade")}</Label>
                 <Select value={gradeFilter} onValueChange={setGradeFilter}>
                   <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="All Grades" />
+                    <SelectValue placeholder={t("allGrades")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Grades</SelectItem>
+                    <SelectItem value="all">{t("allGrades")}</SelectItem>
                     {gradeLevels.map((g) => (
                       <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
                     ))}
@@ -275,13 +277,13 @@ export default function DisciplineReferralsPage() {
               {/* Section */}
               {gradeFilter !== "all" && (
                 <div className="space-y-1">
-                  <Label className="text-xs">Section</Label>
+                  <Label className="text-xs">{t("section")}</Label>
                   <Select value={sectionFilter} onValueChange={setSectionFilter} disabled={sectionsLoading}>
                     <SelectTrigger className="h-8 text-sm">
-                      <SelectValue placeholder="All Sections" />
+                      <SelectValue placeholder={t("allSections")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Sections</SelectItem>
+                      <SelectItem value="all">{t("allSections")}</SelectItem>
                       {sections.map((s) => (
                         <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                       ))}

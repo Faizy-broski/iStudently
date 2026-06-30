@@ -87,6 +87,40 @@ export interface PaySlip extends SalaryRecord {
     deductions_breakdown: { deduction_type: string; description: string; amount: number; deduction_date?: string }[]
 }
 
+export interface PerformanceLogItem {
+    id: string
+    action_name: string
+    action_name_ar: string
+    action_type: 'violation_demerit' | 'reward_redemption'
+    fine: number
+    points: number
+    notes?: string
+    date: string
+}
+
+export interface CommissionItem {
+    description: string
+    hours: number
+    rate: number
+    amount: number
+    date: string
+}
+
+export interface PayslipByPeriod extends PaySlip {
+    performance_deductions?: number
+    performance_bonuses?: number
+    performance_log_items: PerformanceLogItem[]
+    commissions_breakdown: CommissionItem[]
+    staff?: {
+        id: string
+        title: string
+        department?: string
+        employee_number: string
+        payment_type?: string
+        profile: { first_name: string; last_name: string; email: string; role: string }
+    }
+}
+
 // API Functions
 export async function getPayrollSettings(schoolId: string, campusId?: string): Promise<PayrollSettings | null> {
     const headers = await getHeaders()
@@ -266,6 +300,22 @@ export async function getPaySlip(salaryRecordId: string, schoolId: string): Prom
     const res = await fetch(`${API_BASE}/api/salary/records/${salaryRecordId}/payslip?school_id=${schoolId}`, { headers })
     const json = await res.json()
     if (!json.success) throw new Error(json.error)
+    return json.data
+}
+
+export async function getPayslipByPeriod(
+    staffId: string,
+    month: number,
+    year: number,
+    schoolId: string,
+    campusId?: string
+): Promise<PayslipByPeriod> {
+    const headers = await getHeaders()
+    const params = new URLSearchParams({ staff_id: staffId, month: String(month), year: String(year), school_id: schoolId })
+    if (campusId) params.append('campus_id', campusId)
+    const res = await fetch(`${API_BASE}/api/salary/payslip/by-period?${params}`, { headers })
+    const json = await res.json()
+    if (!json.success) throw new Error(json.error || 'No salary record found for this period')
     return json.data
 }
 

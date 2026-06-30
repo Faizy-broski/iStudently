@@ -42,6 +42,7 @@ router.post('/automation/trigger', async (req, res) => {
 })
 
 // Salary Records
+router.get('/payslip/by-period', (req, res) => salaryController.getPaySlipByPeriod(req, res))
 router.get('/records', (req, res) => salaryController.getSalaryRecords(req, res))
 router.get('/records/:id/payslip', (req, res) => salaryController.getPaySlip(req, res))
 router.put('/records/:id/approve', (req, res) => salaryController.approveSalary(req, res))

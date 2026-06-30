@@ -3,16 +3,18 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Maximize2, Minimize2, Mic, MicOff, Play, Square, CheckCircle2, Pause } from 'lucide-react'
+import { Maximize2, Minimize2, Mic, MicOff, Play, Square, CheckCircle2, Pause, Headphones } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getAuthToken } from '@/lib/api/schools'
-import { getText, submitLog, getBadge, type ReadingText, type QuizQuestion } from '@/lib/api/speed-reading'
+import { getText, submitLog, getBadge, type ReadingText, type QuizQuestion, type WordResult as ApiWordResult } from '@/lib/api/speed-reading'
+import { uploadMediaRecording } from '@/lib/api/media-upload'
 
 type Phase = 'setup' | 'reading' | 'manual-grade' | 'quiz' | 'result'
+type WordResult = 'correct' | 'incorrect' | 'unread'
 
 declare global {
   interface Window {
@@ -38,6 +40,15 @@ export default function TeleprompterPage() {
   const [spokenWords, setSpokenWords] = useState<string[]>([])
   const [isListening, setIsListening] = useState(false)
   const recognitionRef = useRef<any>(null)
+
+  // Audio recording
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+  const audioBlobRef = useRef<Blob | null>(null)
+  const [audioUrl, setAudioUrl] = useState<string | null>(null)
+
+  // Word review (populated after session ends)
+  const [wordResults, setWordResults] = useState<WordResult[]>([])
 
   // Manual mode
   const [manualErrors, setManualErrors] = useState(0)
@@ -73,11 +84,54 @@ export default function TeleprompterPage() {
     load()
   }, [textId])
 
+  // Cleanup audio blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (audioUrl) URL.revokeObjectURL(audioUrl)
+    }
+  }, [audioUrl])
+
   const words = text?.content.trim().split(/\s+/).filter(Boolean) ?? []
-  const durationMs = text ? Math.round((text.word_count / wpm) * 60 * 1000) : 0 // used for display only
+  const durationMs = text ? Math.round((text.word_count / wpm) * 60 * 1000) : 0
 
   // Normalise a word for comparison (lowercase, strip punctuation)
   const normalise = (w: string) => w.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')
+
+  // ── AUDIO RECORDING ──────────────────────────────────────────────────────
+
+  const startRecordingAudio = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      audioChunksRef.current = []
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data)
+      }
+      recorder.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+        audioBlobRef.current = blob
+        setAudioUrl(URL.createObjectURL(blob))
+        stream.getTracks().forEach((t) => t.stop())
+      }
+      recorder.start(100) // collect data every 100 ms
+      mediaRecorderRef.current = recorder
+    } catch {
+      // Microphone permission denied or not available — recording simply won't be available
+    }
+  }, [])
+
+  const stopRecordingAudio = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop()
+    }
+    mediaRecorderRef.current = null
+  }, [])
+
+  // Keep a stable ref so the animation onfinish closure can call it
+  const stopRecordingAudioRef = useRef(stopRecordingAudio)
+  useEffect(() => { stopRecordingAudioRef.current = stopRecordingAudio }, [stopRecordingAudio])
+
+  // ── SPEECH RECOGNITION ───────────────────────────────────────────────────
 
   const startRecognition = useCallback(() => {
     if (!voiceSupported || !text) return
@@ -108,20 +162,21 @@ export default function TeleprompterPage() {
     setIsListening(false)
   }, [])
 
-  // Step 1: just flip the phase — the useEffect below starts the animation
-  // after React re-renders and scrollWrapRef.current is populated.
+  // ── SESSION CONTROL ───────────────────────────────────────────────────────
+
   const startReading = useCallback(() => {
     if (!text) return
-    if (gradingMode === 'voice') startRecognition()
+    if (gradingMode === 'voice') {
+      startRecognition()
+      startRecordingAudio()
+    }
     setPhase('reading')
-  }, [text, gradingMode, startRecognition])
+  }, [text, gradingMode, startRecognition, startRecordingAudio])
 
-  // Step 2: start animation once the reading DOM is mounted
   useEffect(() => {
     if (phase !== 'reading' || !scrollWrapRef.current || !text) return
     const el = scrollWrapRef.current
     const duration = Math.round((text.word_count / wpm) * 60 * 1000)
-    // Start below the container and scroll up through the visible window (teleprompter)
     const anim = el.animate(
       [{ transform: 'translateY(100%)' }, { transform: 'translateY(-100%)' }],
       { duration: duration * 2, easing: 'linear', fill: 'forwards' }
@@ -129,6 +184,7 @@ export default function TeleprompterPage() {
     animationRef.current = anim
     anim.onfinish = () => {
       stopRecognition()
+      stopRecordingAudioRef.current()
       handleScrollEnd()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -151,14 +207,14 @@ export default function TeleprompterPage() {
   const stopEarly = useCallback(() => {
     animationRef.current?.cancel()
     stopRecognition()
+    stopRecordingAudio()
     setIsPaused(false)
     handleScrollEnd()
-  }, [stopRecognition])
+  }, [stopRecognition, stopRecordingAudio])
 
   const handleScrollEnd = useCallback(() => {
     if (!text) return
     if (gradingMode === 'manual') {
-      // Teacher needs to count and enter incorrect words first
       setPhase('manual-grade')
     } else if (text.quiz_questions && text.quiz_questions.length > 0) {
       setPhase('quiz')
@@ -171,15 +227,19 @@ export default function TeleprompterPage() {
     if (!text) return
     const total = text.word_count
     let correct: number
+    let computedWordResults: WordResult[] = []
 
     if (gradingMode === 'voice') {
-      let matched = 0
-      spokenWords.forEach((spoken, i) => {
-        if (i < words.length && normalise(spoken) === normalise(words[i])) matched++
+      // Compute word-level results for the review panel
+      computedWordResults = words.map((word, i) => {
+        if (i >= spokenWords.length) return 'unread'
+        return normalise(spokenWords[i]) === normalise(word) ? 'correct' : 'incorrect'
       })
-      correct = matched
+      setWordResults(computedWordResults)
+      correct = computedWordResults.filter((r) => r === 'correct').length
     } else {
       correct = Math.max(0, total - manualErrors)
+      setWordResults([])
     }
 
     const incorrect = total - correct
@@ -195,9 +255,25 @@ export default function TeleprompterPage() {
     setComprehensionBonus(bonus)
     setPhase('result')
 
-    // Submit to backend
     try {
       const token = await getAuthToken()
+
+      // Upload audio blob if available (voice mode only)
+      let uploadedAudioUrl: string | undefined
+      const blob = audioBlobRef.current
+      if (gradingMode === 'voice' && blob && blob.size > 0) {
+        const uploadRes = await uploadMediaRecording(blob, 'audio/webm')
+        if (uploadRes.success && uploadRes.data?.url) {
+          uploadedAudioUrl = uploadRes.data.url
+        }
+      }
+
+      // Map local word result strings to API shape
+      const apiWordResults: ApiWordResult[] | undefined =
+        gradingMode === 'voice' && computedWordResults.length > 0
+          ? words.map((word, i) => ({ word, status: computedWordResults[i] ?? 'unread' }))
+          : undefined
+
       await submitLog({
         text_id: text.id,
         target_wpm: wpm,
@@ -206,6 +282,8 @@ export default function TeleprompterPage() {
         accuracy_percentage: accuracy,
         comprehension_bonus: bonus,
         grading_mode: gradingMode,
+        audio_url: uploadedAudioUrl,
+        word_results: apiWordResults,
       }, token)
     } catch (_) {}
   }, [text, gradingMode, spokenWords, words, manualErrors, wpm])
@@ -288,6 +366,11 @@ export default function TeleprompterPage() {
           </div>
           {!voiceSupported && (
             <p className="text-xs text-amber-600">{t('voiceNotSupported')}</p>
+          )}
+          {gradingMode === 'voice' && (
+            <p className="text-xs text-blue-600 bg-blue-50 dark:bg-blue-950/30 rounded px-3 py-2">
+              Your reading will be recorded so you can listen back after the session.
+            </p>
           )}
           {gradingMode === 'manual' && (
             <p className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 rounded px-3 py-2">
@@ -381,7 +464,6 @@ export default function TeleprompterPage() {
                     ? 'text-green-400 font-semibold'
                     : 'text-red-400'
                 } else if (gradingMode === 'voice' && i === spokenWords.length) {
-                  // current word being spoken — highlight it
                   color = 'text-yellow-300 underline'
                 }
                 return (
@@ -477,7 +559,7 @@ export default function TeleprompterPage() {
   const { emoji, label } = getBadge(wpm)
 
   return (
-    <div className="max-w-md mx-auto space-y-6 text-center">
+    <div className="max-w-lg mx-auto space-y-6 text-center">
       <div className="text-5xl">{comprehensionBonus ? '🎉' : '✅'}</div>
       <h2 className="text-2xl font-bold">{t('sessionComplete')}</h2>
 
@@ -500,6 +582,66 @@ export default function TeleprompterPage() {
         <Badge variant="outline" className="text-sm">{label}</Badge>
       </div>
 
+      {/* ── Listen to recording ── */}
+      {audioUrl && (
+        <div className="text-left bg-muted/40 border rounded-lg p-4 space-y-2">
+          <p className="text-sm font-semibold flex items-center gap-2">
+            <Headphones className="h-4 w-4 text-primary" />
+            Listen to your recording
+          </p>
+          <audio controls src={audioUrl} className="w-full h-10" />
+        </div>
+      )}
+
+      {/* ── Word-by-word review ── */}
+      {gradingMode === 'voice' && wordResults.length > 0 && (
+        <div className="text-left bg-muted/40 border rounded-lg p-4 space-y-3">
+          <p className="text-sm font-semibold">Word Review</p>
+          <p
+            className="text-sm leading-loose"
+            dir={text.language === 'ar' ? 'rtl' : 'ltr'}
+          >
+            {words.map((word, i) => {
+              const result = wordResults[i] ?? 'unread'
+              const cls =
+                result === 'correct'
+                  ? 'text-green-600 dark:text-green-400 font-medium'
+                  : result === 'incorrect'
+                  ? 'text-red-500 dark:text-red-400 font-medium'
+                  : 'text-muted-foreground'
+              return (
+                <span
+                  key={i}
+                  className={cls}
+                  title={
+                    result === 'correct' ? 'Correct' :
+                    result === 'incorrect' ? 'Mispronounced / incorrect' :
+                    'Not reached'
+                  }
+                >
+                  {word}{' '}
+                </span>
+              )
+            })}
+          </p>
+          {/* Legend */}
+          <div className="flex gap-4 text-xs pt-1 flex-wrap">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0" />
+              Correct ({wordResults.filter(r => r === 'correct').length})
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" />
+              Incorrect ({wordResults.filter(r => r === 'incorrect').length})
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-gray-400 shrink-0" />
+              Not reached ({wordResults.filter(r => r === 'unread').length})
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="flex gap-3 justify-center flex-wrap">
         <Button onClick={() => router.push('/student/speed-reading')}>
           {t('viewLeaderboard')}
@@ -509,6 +651,13 @@ export default function TeleprompterPage() {
           setSpokenWords([])
           setQuizAnswers({})
           setManualErrors(0)
+          setWordResults([])
+          if (audioUrl) {
+            URL.revokeObjectURL(audioUrl)
+            setAudioUrl(null)
+          }
+          audioChunksRef.current = []
+          audioBlobRef.current = null
         }}>
           {t('readAnother')}
         </Button>

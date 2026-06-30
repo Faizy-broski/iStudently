@@ -169,31 +169,16 @@ export class SchoolDashboardService {
         (s.profile?.gender || s.custom_fields?.personal?.gender) === 'female'
       ).length || 0
 
-      // Get total parents count — parents belong to the main school, so when a campus is
-      // selected we count via their linked students' campus rather than querying school_id directly.
-      let totalParents = 0
-      if (campusId) {
-        const { data: links, error: parentsError } = await supabase
-          .from('parent_student_links')
-          .select('parent_id, student:students!inner(school_id)')
-          .eq('student.school_id', campusId)
+      // Get total parents count — parents belong to the main school, so we count all registered parents
+      const { count, error: parentsError } = await supabase
+        .from('parents')
+        .select('*', { count: 'exact', head: true })
+        .eq('school_id', schoolId)
 
-        if (parentsError) {
-          console.error('Parents (campus) query error:', parentsError)
-        }
-        const uniqueParents = new Set((links ?? []).map((l: any) => l.parent_id))
-        totalParents = uniqueParents.size
-      } else {
-        const { count, error: parentsError } = await supabase
-          .from('parents')
-          .select('*', { count: 'exact', head: true })
-          .eq('school_id', schoolId)
-
-        if (parentsError) {
-          console.error('Parents query error:', parentsError)
-        }
-        totalParents = count || 0
+      if (parentsError) {
+        console.error('Parents query error:', parentsError)
       }
+      const totalParents = count || 0
 
       const result = {
         totalStudents: totalStudents || 0,

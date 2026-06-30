@@ -24,10 +24,10 @@ export class DefaultFieldOrderController {
       const campusId = req.query.campus_id as string | undefined;
 
       // Validate entity type
-      if (!['student', 'parent', 'teacher'].includes(entityType)) {
+      if (!['student', 'parent', 'teacher', 'staff'].includes(entityType)) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid entity type. Must be student, parent, or teacher'
+          message: 'Invalid entity type. Must be student, parent, teacher, or staff'
         });
       }
 
@@ -44,7 +44,7 @@ export class DefaultFieldOrderController {
 
       const fieldOrders = await DefaultFieldOrderService.getFieldOrders(
         effectiveSchoolId,
-        entityType as 'student' | 'parent' | 'teacher',
+        entityType as 'student' | 'parent' | 'teacher' | 'staff',
         categoryId
       );
 
@@ -72,7 +72,7 @@ export class DefaultFieldOrderController {
       const { fields, campus_id } = req.body;
 
       // Validate entity type
-      if (!['student', 'parent', 'teacher'].includes(entityType)) {
+      if (!['student', 'parent', 'teacher', 'staff'].includes(entityType)) {
         return res.status(400).json({
           success: false,
           message: 'Invalid entity type'
@@ -112,7 +112,7 @@ export class DefaultFieldOrderController {
 
       await DefaultFieldOrderService.saveFieldOrders(
         effectiveSchoolId,
-        entityType as 'student' | 'parent' | 'teacher',
+        entityType as 'student' | 'parent' | 'teacher' | 'staff',
         categoryId,
         fields
       );
@@ -140,7 +140,7 @@ export class DefaultFieldOrderController {
       const { entityType, categoryId } = req.params;
       const campusId = req.query.campus_id as string | undefined;
 
-      if (!['student', 'parent', 'teacher'].includes(entityType)) {
+      if (!['student', 'parent', 'teacher', 'staff'].includes(entityType)) {
         return res.status(400).json({
           success: false,
           message: 'Invalid entity type'
@@ -159,7 +159,7 @@ export class DefaultFieldOrderController {
 
       await DefaultFieldOrderService.deleteFieldOrders(
         effectiveSchoolId,
-        entityType as 'student' | 'parent' | 'teacher',
+        entityType as 'student' | 'parent' | 'teacher' | 'staff',
         categoryId
       );
 
@@ -186,7 +186,7 @@ export class DefaultFieldOrderController {
       const { entityType } = req.params;
       const campusId = req.query.campus_id as string | undefined;
 
-      if (!['student', 'parent', 'teacher'].includes(entityType)) {
+      if (!['student', 'parent', 'teacher', 'staff'].includes(entityType)) {
         return res.status(400).json({
           success: false,
           message: 'Invalid entity type'
@@ -205,7 +205,7 @@ export class DefaultFieldOrderController {
 
       await DefaultFieldOrderService.resetAllFieldOrders(
         effectiveSchoolId,
-        entityType as 'student' | 'parent' | 'teacher'
+        entityType as 'student' | 'parent' | 'teacher' | 'staff'
       );
 
       res.json({

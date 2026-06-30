@@ -1869,3 +1869,74 @@ export interface PerformanceScore {
   }[]
 }
 
+// ─── Training Center Module ───────────────────────────────────────────────────
+
+export type TrainingSessionStatus = 'open' | 'full' | 'closed'
+export type TrainingTargetAudience = 'internal' | 'external' | 'both'
+export type TrainingPaymentStatus = 'unpaid' | 'pending_verification' | 'paid' | 'expired'
+export type TrainingRegistrationStatus = 'confirmed' | 'waiting_list' | 'cancelled'
+
+export interface TrainingSession {
+  id: string
+  school_id: string
+  title: string
+  description: string | null
+  start_date: string
+  end_date: string
+  total_seats: number
+  registered_seats: number
+  course_fee: number
+  holding_timeout_hours: number
+  status: TrainingSessionStatus
+  target_audience: TrainingTargetAudience
+  public_token: string
+  created_at: string
+  updated_at: string
+  available_seats?: number
+  registration_counts?: {
+    confirmed: number
+    waiting_list: number
+    cancelled: number
+  }
+}
+
+export interface CourseRegistration {
+  id: string
+  session_id: string
+  student_type: 'internal' | 'external'
+  student_id: string | null
+  ext_student_name: string | null
+  ext_student_age: number | null
+  ext_parent_phone: string | null
+  ext_current_school: string | null
+  payment_status: TrainingPaymentStatus
+  registration_status: TrainingRegistrationStatus
+  qr_auth_token: string
+  attendance_status: boolean
+  created_at: string
+  display_name?: string
+}
+
+export interface CreateTrainingSessionDTO {
+  title: string
+  description?: string
+  start_date: string
+  end_date: string
+  total_seats: number
+  course_fee?: number
+  holding_timeout_hours?: number
+  status?: TrainingSessionStatus
+  target_audience?: TrainingTargetAudience
+}
+
+export interface UpdateTrainingSessionDTO extends Partial<CreateTrainingSessionDTO> {}
+
+export interface RegisterForTrainingDTO {
+  student_type: 'internal' | 'external'
+  student_id?: string
+  ext_student_name?: string
+  ext_student_age?: number
+  ext_parent_phone?: string
+  ext_current_school?: string
+}
+

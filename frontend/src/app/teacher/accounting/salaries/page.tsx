@@ -7,11 +7,33 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table'
-import { DownloadCloud, Loader2, Search } from 'lucide-react'
-import { format, parseISO } from 'date-fns'
+import { DownloadCloud, Loader2, Search, Printer } from 'lucide-react'
+import { format, parseISO, getMonth, getYear } from 'date-fns'
+import { getPayslipByPeriod, type PayslipByPeriod } from '@/lib/api/salary'
+import { useAuth } from '@/context/AuthContext'
+import { PayslipPreviewDialog } from '@/components/admin/PayslipDocument'
 
 export default function TeacherSalariesPage() {
   const [searchQuery, setSearchQuery] = useState('')
+  const { profile } = useAuth()
+  const [previewPayslip, setPreviewPayslip] = useState<PayslipByPeriod | null>(null)
+  const [printingId, setPrintingId] = useState<string | null>(null)
+
+  const handlePrintPayStub = async (salary: AccountingSalary) => {
+    if (!profile?.staff_id || !profile?.school_id) return
+    setPrintingId(salary.id)
+    try {
+      const d = parseISO(salary.assigned_date)
+      const month = getMonth(d) + 1 // 1-12
+      const year = getYear(d)
+      const payslip = await getPayslipByPeriod(profile.staff_id, month, year, profile.school_id, profile.campus_id || undefined)
+      setPreviewPayslip(payslip)
+    } catch (e: any) {
+      alert(e.message || 'Could not fetch pay stub.')
+    } finally {
+      setPrintingId(null)
+    }
+  }
 
   const { data: salariesRes, isLoading: loadingSalaries } = useSWR(
     'teacher-own-salaries',
@@ -80,18 +102,19 @@ export default function TeacherSalariesPage() {
               <TableHead className="text-brand-blue font-bold">DUE</TableHead>
               <TableHead className="text-brand-blue font-bold">COMMENT</TableHead>
               <TableHead className="text-brand-blue font-bold">FILE ATTACHED</TableHead>
+              <TableHead className="text-right text-brand-blue font-bold">ACTIONS</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loadingSalaries ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
                 </TableCell>
               </TableRow>
             ) : filteredSalaries.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                   No salaries were found.
                 </TableCell>
               </TableRow>
@@ -104,6 +127,17 @@ export default function TeacherSalariesPage() {
                   <TableCell>{salary.due_date ? format(parseISO(salary.due_date), 'MMMM d, yyyy') : '-'}</TableCell>
                   <TableCell>{salary.comments || '-'}</TableCell>
                   <TableCell>{salary.file_attached ? 'Yes' : ''}</TableCell>
+                  <TableCell className="text-right">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handlePrintPayStub(salary)} 
+                      title="Print Pay Stub"
+                      disabled={printingId === salary.id}
+                    >
+                      {printingId === salary.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4 text-brand-blue" />}
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))
             )}
@@ -137,6 +171,11 @@ export default function TeacherSalariesPage() {
            button, input { display: none !important; }
         }
       `}} />
+      <PayslipPreviewDialog 
+        payslip={previewPayslip} 
+        open={!!previewPayslip} 
+        onClose={() => setPreviewPayslip(null)} 
+      />
     </div>
   )
 }

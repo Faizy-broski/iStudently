@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -647,6 +648,7 @@ function CanvasField({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function IdCardDesignerPage() {
+  const t = useTranslations('idCard')
   // ── Designer state ──
   const [userType, setUserType] = useState<UserType>('student')
   const [fields, setFields] = useState<DesignField[]>(defaultFields)
@@ -906,14 +908,14 @@ export default function IdCardDesignerPage() {
   // ── Template save / load ──
   const saveTemplate = () => {
     const name = templateName.trim()
-    if (!name) { toast.error('Enter a template name first'); return }
+    if (!name) { toast.error(t('err_template_name')); return }
     const tpl = { name, userType, fields, bgColor, bgGradient, borderColor, cardThemeId, borderWidth, borderRadius, dims }
     setSavedTemplates(prev => {
       const updated = prev.filter(t => t.name !== name).concat(tpl)
       localStorage.setItem('id_card_templates', JSON.stringify(updated))
       return updated
     })
-    toast.success(`Template "${name}" saved`)
+    toast.success(t('toast_template_saved', { name }))
   }
 
   const loadTemplate = (name: string) => {
@@ -929,7 +931,7 @@ export default function IdCardDesignerPage() {
     setBorderRadius(tpl.borderRadius)
     setDims(tpl.dims)
     setSelectedId(null)
-    toast.success(`Template "${name}" loaded`)
+    toast.success(t('toast_template_loaded', { name }))
   }
 
   const deleteTemplate = (name: string) => {
@@ -938,7 +940,7 @@ export default function IdCardDesignerPage() {
       localStorage.setItem('id_card_templates', JSON.stringify(updated))
       return updated
     })
-    toast.success(`Template "${name}" deleted`)
+    toast.success(t('toast_template_deleted', { name }))
   }
 
   // ── Load users for print ──
@@ -995,7 +997,7 @@ export default function IdCardDesignerPage() {
         setPrintUsers(users)
       } catch (err) {
         console.error('[ID Card] Failed to load users:', err)
-        toast.error('Failed to load users')
+        toast.error(t('err_load_users'))
       } finally {
         setLoadingUsers(false)
       }
@@ -1018,23 +1020,23 @@ export default function IdCardDesignerPage() {
   // ── Export to PDF — capture each rendered card in the print tab ──
   const exportPDF = async () => {
     if (selectedUsers.size === 0) {
-      toast.warning('Go to the Print tab, select users, then export.')
+      toast.warning(t('warn_select_users_export'))
       setTab('print')
       return
     }
     if (tab !== 'print') {
       setTab('print')
-      toast.info('Switched to Print tab — click Export PDF again once cards appear.')
+      toast.info(t('info_switched_print_export'))
       return
     }
 
     const cardEls = printAreaRef.current?.querySelectorAll<HTMLElement>('[data-print-card]')
     if (!cardEls || cardEls.length === 0) {
-      toast.error('No card previews found. Try re-selecting users.')
+      toast.error(t('err_no_card_previews'))
       return
     }
 
-    toast.info(`Generating PDF for ${cardEls.length} card(s)…`)
+    toast.info(t('info_generating_pdf', { count: cardEls.length }))
     try {
       const wIn = cardWidthPx / PX_PER_INCH
       const hIn = cardHeightPx / PX_PER_INCH
@@ -1084,23 +1086,23 @@ export default function IdCardDesignerPage() {
       }
 
       pdf.save('id-cards.pdf')
-      toast.success(`PDF exported — ${cardEls.length} card(s)!`)
+      toast.success(t('toast_pdf_exported', { count: cardEls.length }))
     } catch (err) {
       console.error(err)
-      toast.error('PDF export failed')
+      toast.error(t('err_pdf_export'))
     }
   }
 
   // ── Print — opens browser print dialog targeting only the card area ──
   const handlePrint = () => {
     if (selectedUsers.size === 0) {
-      toast.warning('Select at least one user from the Print tab first.')
+      toast.warning(t('warn_select_users_print'))
       setTab('print')
       return
     }
     if (tab !== 'print') {
       setTab('print')
-      toast.info('Switched to Print tab — click Print again once cards appear.')
+      toast.info(t('info_switched_print_print'))
       return
     }
     window.print()
@@ -1116,7 +1118,7 @@ export default function IdCardDesignerPage() {
       <div className="flex items-center justify-between border-b bg-background px-3 py-2 gap-2 print:hidden flex-wrap">
         <div className="flex items-center gap-2 min-w-0">
           <CreditCard className="h-4 w-4 text-primary shrink-0" />
-          <h1 className="text-sm font-semibold whitespace-nowrap">ID Card Designer</h1>
+          <h1 className="text-sm font-semibold whitespace-nowrap">{t('page_title')}</h1>
           <Badge variant="secondary" className="text-[10px] hidden sm:flex shrink-0">
             {cardPx(dims.width, dims.unit).toFixed(0)}×{cardPx(dims.height, dims.unit).toFixed(0)} px
             &nbsp;·&nbsp;{dims.width.toFixed(2)}{dims.unit} × {dims.height.toFixed(2)}{dims.unit}
@@ -1146,23 +1148,23 @@ export default function IdCardDesignerPage() {
               className="rounded-none h-8 px-2 sm:px-3 text-xs"
               onClick={() => setTab('designer')}>
               <Layers className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline ml-1">Designer</span>
+              <span className="hidden sm:inline ml-1">{t('tab_designer')}</span>
             </Button>
             <Button size="sm" variant={tab === 'print' ? 'default' : 'ghost'}
               className="rounded-none h-8 px-2 sm:px-3 text-xs"
               onClick={() => setTab('print')}>
               <Printer className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline ml-1">Print</span>
+              <span className="hidden sm:inline ml-1">{t('tab_print')}</span>
             </Button>
           </div>
 
           <Button size="sm" variant="outline" className="h-8 px-2 sm:px-3 text-xs gap-1" onClick={exportPDF}>
             <Download className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Export PDF</span>
+            <span className="hidden sm:inline">{t('btn_export_pdf')}</span>
           </Button>
           <Button size="sm" className="h-8 px-2 sm:px-3 text-xs gap-1" onClick={handlePrint}>
             <Printer className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Print</span>
+            <span className="hidden sm:inline">{t('tab_print')}</span>
           </Button>
         </div>
       </div>
@@ -1176,9 +1178,9 @@ export default function IdCardDesignerPage() {
           <div className={`${mobilePanel === 'fields' ? 'flex' : 'hidden'} lg:flex w-full lg:w-52 border-r bg-background flex-col print:hidden`}>
             <div className="px-3 py-2 border-b">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                {USER_TYPE_META[userType].label} Fields
+                {USER_TYPE_META[userType].label} {t('fields_panel_title')}
               </p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Click to add to card</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{t('fields_panel_hint')}</p>
             </div>
             <ScrollArea className="flex-1">
               <div className="p-2 space-y-3">
@@ -1265,7 +1267,7 @@ export default function IdCardDesignerPage() {
 
             </div>
             <p className="text-[10px] text-muted-foreground mt-3">
-              Click a field to select · Drag to reposition · Use right panel to style
+              {t('canvas_hint')}
             </p>
           </div>
 
@@ -1277,7 +1279,7 @@ export default function IdCardDesignerPage() {
                 {/* Card Dimensions */}
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1">
-                    <Ruler className="h-3 w-3" /> Card Dimensions
+                    <Ruler className="h-3 w-3" /> {t('section_dimensions')}
                   </p>
 
                   {/* Unit selector */}
@@ -1304,7 +1306,7 @@ export default function IdCardDesignerPage() {
                     if (preset) applyPreset(preset)
                   }}>
                     <SelectTrigger className="h-7 text-xs mb-2">
-                      <SelectValue placeholder="Preset size…" />
+                      <SelectValue placeholder={t('preset_placeholder')} />
                     </SelectTrigger>
                     <SelectContent>
                       {CARD_PRESETS.map(p => (
@@ -1315,7 +1317,7 @@ export default function IdCardDesignerPage() {
 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <Label className="text-[10px]">Width ({unit})</Label>
+                      <Label className="text-[10px]">{t('label_width')} ({unit})</Label>
                       <Input
                         type="number" step="0.01" className="h-7 text-xs mt-0.5"
                         value={dims.width}
@@ -1323,7 +1325,7 @@ export default function IdCardDesignerPage() {
                       />
                     </div>
                     <div>
-                      <Label className="text-[10px]">Height ({unit})</Label>
+                      <Label className="text-[10px]">{t('label_height')} ({unit})</Label>
                       <Input
                         type="number" step="0.01" className="h-7 text-xs mt-0.5"
                         value={dims.height}
@@ -1338,7 +1340,7 @@ export default function IdCardDesignerPage() {
                 {/* Card Templates */}
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1">
-                    <Palette className="h-3 w-3" /> Card Template
+                    <Palette className="h-3 w-3" /> {t('section_template')}
                   </p>
                   <div className="grid grid-cols-3 gap-2">
                     {CARD_THEMES.map(theme => (
@@ -1372,11 +1374,11 @@ export default function IdCardDesignerPage() {
                 {/* Card Design */}
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1">
-                    <Palette className="h-3 w-3" /> Card Design
+                    <Palette className="h-3 w-3" /> {t('section_design')}
                   </p>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <Label className="text-[10px] w-20 shrink-0">Background</Label>
+                      <Label className="text-[10px] w-20 shrink-0">{t('label_background')}</Label>
                       <input type="color" value={bgColor}
                         onChange={e => { setBgColor(e.target.value); setBgGradient('') }}
                         className="h-7 w-10 rounded border cursor-pointer p-0.5" />
@@ -1385,26 +1387,26 @@ export default function IdCardDesignerPage() {
                         className="h-7 text-xs flex-1" />
                     </div>
                     <div className="flex items-center gap-2">
-                      <Label className="text-[10px] w-20 shrink-0">Border Color</Label>
+                      <Label className="text-[10px] w-20 shrink-0">{t('label_border_color')}</Label>
                       <input type="color" value={borderColor} onChange={e => setBorderColor(e.target.value)}
                         className="h-7 w-10 rounded border cursor-pointer p-0.5" />
                       <Input value={borderColor} onChange={e => setBorderColor(e.target.value)}
                         className="h-7 text-xs flex-1" />
                     </div>
                     <div className="flex items-center gap-2">
-                      <Label className="text-[10px] w-20 shrink-0">Border W (px)</Label>
+                      <Label className="text-[10px] w-20 shrink-0">{t('label_border_width')}</Label>
                       <Input type="number" min={0} max={20} value={borderWidth}
                         onChange={e => setBorderWidth(+e.target.value)}
                         className="h-7 text-xs" />
                     </div>
                     <div className="flex items-center gap-2">
-                      <Label className="text-[10px] w-20 shrink-0">Radius (px)</Label>
+                      <Label className="text-[10px] w-20 shrink-0">{t('label_radius')}</Label>
                       <Input type="number" min={0} max={60} value={borderRadius}
                         onChange={e => setBorderRadius(+e.target.value)}
                         className="h-7 text-xs" />
                     </div>
                     <div>
-                      <Label className="text-[10px]">Background Image URL</Label>
+                      <Label className="text-[10px]">{t('label_bg_image_url')}</Label>
                       <Input value={bgImage} onChange={e => { setBgImage(e.target.value); if (e.target.value) setBgGradient('') }}
                         placeholder="https://..." className="h-7 text-xs mt-0.5" />
                     </div>
@@ -1412,13 +1414,13 @@ export default function IdCardDesignerPage() {
                     {/* Gradient Themes */}
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <Label className="text-[10px]">Gradient Themes</Label>
+                        <Label className="text-[10px]">{t('label_gradient_themes')}</Label>
                         {bgGradient && (
                           <button
                             onClick={() => setBgGradient('')}
                             className="text-[10px] text-muted-foreground hover:text-destructive transition-colors"
                           >
-                            Clear
+                            {t('btn_clear')}
                           </button>
                         )}
                       </div>
@@ -1457,7 +1459,7 @@ export default function IdCardDesignerPage() {
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1">
-                        <Settings className="h-3 w-3" /> Field: {selectedField.label}
+                        <Settings className="h-3 w-3" /> {t('field_label_prefix')}: {selectedField.label}
                       </p>
                       <button onClick={deleteField} className="text-destructive hover:text-destructive/80 p-0.5 rounded">
                         <Trash2 className="h-3.5 w-3.5" />
@@ -1467,7 +1469,7 @@ export default function IdCardDesignerPage() {
                     <div className="space-y-2">
                       {/* Data Source (Token replacement) */}
                       <div className="flex items-center gap-2">
-                        <Label className="text-[10px] w-16 shrink-0">Data Source</Label>
+                        <Label className="text-[10px] w-16 shrink-0">{t('label_data_source')}</Label>
                         <Select
                           value={selectedField.token}
                           onValueChange={v => {
@@ -1498,7 +1500,7 @@ export default function IdCardDesignerPage() {
                       {/* Free text content editor — only for custom_text fields */}
                       {selectedField.token === '{{custom_text}}' && (
                         <div className="flex items-center gap-2">
-                          <Label className="text-[10px] w-16 shrink-0">Text</Label>
+                          <Label className="text-[10px] w-16 shrink-0">{t('label_text')}</Label>
                           <Input
                             value={selectedField.label}
                             onChange={e => updateField('label', e.target.value)}
@@ -1511,12 +1513,12 @@ export default function IdCardDesignerPage() {
                       {/* Display style toggle (text vs labeled info box) */}
                       {selectedField.type !== 'image' && selectedField.type !== 'shape' && selectedField.type !== 'qrcode' && selectedField.token !== '{{custom_text}}' && (
                         <div className="flex items-center gap-2">
-                          <Label className="text-[10px] w-16 shrink-0">Display</Label>
+                          <Label className="text-[10px] w-16 shrink-0">{t('label_display')}</Label>
                           <div className="flex gap-1 flex-1">
                             <button
                               onClick={() => updateField('type', 'text')}
                               className={`flex-1 h-7 text-[10px] rounded border transition-colors ${selectedField.type === 'text' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
-                            >Text</button>
+                            >{t('display_text')}</button>
                             <button
                               onClick={() => updateFieldBatch({
                                 type: 'labeled',
@@ -1525,7 +1527,7 @@ export default function IdCardDesignerPage() {
                                 height: selectedField.height < 28 ? 30 : selectedField.height,
                               })}
                               className={`flex-1 h-7 text-[10px] rounded border transition-colors ${selectedField.type === 'labeled' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
-                            >Info Box</button>
+                            >{t('display_info_box')}</button>
                           </div>
                         </div>
                       )}
@@ -1561,13 +1563,13 @@ export default function IdCardDesignerPage() {
                       {(selectedField.type === 'text' || selectedField.type === 'labeled') && (
                         <>
                           <div className="flex items-center gap-2">
-                            <Label className="text-[10px] w-16 shrink-0">Font size</Label>
+                            <Label className="text-[10px] w-16 shrink-0">{t('label_font_size')}</Label>
                             <Input type="number" min={6} max={72} className="h-7 text-xs"
                               value={selectedField.fontSize}
                               onChange={e => updateField('fontSize', +e.target.value)} />
                           </div>
                           <div className="flex items-center gap-1">
-                            <Label className="text-[10px] w-16 shrink-0">Style</Label>
+                            <Label className="text-[10px] w-16 shrink-0">{t('label_style')}</Label>
                             <button
                               onClick={() => updateField('fontWeight', selectedField.fontWeight === 'bold' ? 'normal' : 'bold')}
                               className={`p-1.5 rounded border text-xs ${selectedField.fontWeight === 'bold' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
@@ -1579,7 +1581,7 @@ export default function IdCardDesignerPage() {
                           </div>
                           {selectedField.type === 'text' && (
                             <div className="flex items-center gap-1">
-                              <Label className="text-[10px] w-16 shrink-0">Align</Label>
+                              <Label className="text-[10px] w-16 shrink-0">{t('label_align')}</Label>
                               {(['left', 'center', 'right'] as const).map(a => (
                                 <button key={a}
                                   onClick={() => updateField('align', a)}
@@ -1591,7 +1593,7 @@ export default function IdCardDesignerPage() {
                             </div>
                           )}
                           <div className="flex items-center gap-2">
-                            <Label className="text-[10px] w-16 shrink-0">Color</Label>
+                            <Label className="text-[10px] w-16 shrink-0">{t('label_color')}</Label>
                             <input type="color" value={selectedField.color}
                               onChange={e => updateField('color', e.target.value)}
                               className="h-7 w-10 rounded border cursor-pointer p-0.5" />
@@ -1603,7 +1605,7 @@ export default function IdCardDesignerPage() {
                       )}
 
                       <div className="flex items-center gap-2">
-                        <Label className="text-[10px] w-16 shrink-0">Bg Color</Label>
+                        <Label className="text-[10px] w-16 shrink-0">{t('label_bg_color')}</Label>
                         <input type="color" value={selectedField.bgColor === 'transparent' ? '#ffffff' : selectedField.bgColor}
                           onChange={e => updateField('bgColor', e.target.value)}
                           className="h-7 w-10 rounded border cursor-pointer p-0.5" />
@@ -1612,13 +1614,13 @@ export default function IdCardDesignerPage() {
                           className="h-7 text-xs flex-1" />
                       </div>
                       <div className="flex items-center gap-2">
-                        <Label className="text-[10px] w-16 shrink-0">Radius (px)</Label>
+                        <Label className="text-[10px] w-16 shrink-0">{t('label_radius')}</Label>
                         <Input type="number" min={0} max={50} className="h-7 text-xs"
                           value={selectedField.borderRadius}
                           onChange={e => updateField('borderRadius', +e.target.value)} />
                       </div>
                       <div className="flex items-center gap-2">
-                        <Label className="text-[10px] w-16 shrink-0">Opacity</Label>
+                        <Label className="text-[10px] w-16 shrink-0">{t('label_opacity')}</Label>
                         <input type="range" min={0} max={1} step={0.05}
                           value={selectedField.opacity}
                           onChange={e => updateField('opacity', +e.target.value)}
@@ -1626,7 +1628,7 @@ export default function IdCardDesignerPage() {
                         <span className="text-[10px] w-8 text-right">{Math.round(selectedField.opacity * 100)}%</span>
                       </div>
                       <div>
-                        <Label className="text-[10px]">Custom Label</Label>
+                        <Label className="text-[10px]">{t('label_custom_label')}</Label>
                         <Input className="h-7 text-xs mt-0.5"
                           value={selectedField.label}
                           onChange={e => updateField('label', e.target.value)} />
@@ -1635,7 +1637,7 @@ export default function IdCardDesignerPage() {
                   </div>
                 ) : (
                   <p className="text-[11px] text-muted-foreground text-center py-4">
-                    Select a field on the canvas to edit its properties
+                    {t('no_field_selected')}
                   </p>
                 )}
 
@@ -1644,7 +1646,7 @@ export default function IdCardDesignerPage() {
                 {/* Field list */}
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1">
-                    <FileText className="h-3 w-3" /> Fields ({fields.length})
+                    <FileText className="h-3 w-3" /> {t('section_fields')} ({fields.length})
                   </p>
                   <div className="space-y-0.5">
                     {fields.map(f => (
@@ -1665,21 +1667,21 @@ export default function IdCardDesignerPage() {
                 {/* Templates */}
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1">
-                    <Layers className="h-3 w-3" /> Templates
+                    <Layers className="h-3 w-3" /> {t('section_templates')}
                   </p>
                   <div className="flex gap-1 mb-2">
                     <Input
                       value={templateName}
                       onChange={e => setTemplateName(e.target.value)}
-                      placeholder="Template name…"
+                      placeholder={t('template_name_placeholder')}
                       className="h-7 text-xs flex-1"
                     />
                     <Button size="sm" variant="outline" className="h-7 px-2 text-xs shrink-0" onClick={saveTemplate}>
-                      Save
+                      {t('btn_save')}
                     </Button>
                   </div>
                   {savedTemplates.length === 0 ? (
-                    <p className="text-[10px] text-muted-foreground px-1">No templates saved yet</p>
+                    <p className="text-[10px] text-muted-foreground px-1">{t('no_templates')}</p>
                   ) : (
                     <div className="space-y-0.5">
                       {savedTemplates.map(t => (
@@ -1712,9 +1714,9 @@ export default function IdCardDesignerPage() {
         {/* ── Mobile bottom tab bar (lg and above: hidden) ── */}
         <div className="lg:hidden flex border-t bg-background shrink-0 print:hidden">
           {([
-            { id: 'fields',  icon: <Type className="h-4 w-4" />,       label: 'Fields'  },
-            { id: 'canvas',  icon: <CreditCard className="h-4 w-4" />, label: 'Canvas'  },
-            { id: 'style',   icon: <Palette className="h-4 w-4" />,    label: 'Style'   },
+            { id: 'fields',  icon: <Type className="h-4 w-4" />,       label: t('mobile_fields')  },
+            { id: 'canvas',  icon: <CreditCard className="h-4 w-4" />, label: t('mobile_canvas')  },
+            { id: 'style',   icon: <Palette className="h-4 w-4" />,    label: t('mobile_style')   },
           ] as const).map(({ id, icon, label }) => (
             <button
               key={id}
@@ -1739,7 +1741,7 @@ export default function IdCardDesignerPage() {
             className="lg:hidden flex items-center justify-between px-4 py-2 border-b bg-background text-xs font-semibold print:hidden"
             onClick={() => setPrintListOpen(v => !v)}
           >
-            <span>Select {USER_TYPE_META[userType].label}s ({selectedUsers.size} selected)</span>
+            <span>{t('select_users_mobile', { type: USER_TYPE_META[userType].label, count: selectedUsers.size })}</span>
             <span>{printListOpen ? '▲' : '▼'}</span>
           </button>
 
@@ -1747,10 +1749,10 @@ export default function IdCardDesignerPage() {
           <div className={`${printListOpen ? 'flex' : 'hidden'} lg:flex w-full lg:w-72 border-b lg:border-b-0 lg:border-r bg-background flex-col print:hidden max-h-56 lg:max-h-none`}>
             <div className="p-3 border-b space-y-2">
               <p className="text-xs font-semibold hidden lg:block">
-                Select {USER_TYPE_META[userType].label}s to print
+                {t('select_users_to_print', { type: USER_TYPE_META[userType].label })}
               </p>
               <Input
-                placeholder="Search by name…"
+                placeholder={t('search_placeholder')}
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 className="h-7 text-xs"
@@ -1758,19 +1760,19 @@ export default function IdCardDesignerPage() {
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" className="h-7 text-xs flex-1"
                   onClick={() => setSelectedUsers(new Set(filteredUsers.map((u: any) => u.id)))}>
-                  Select All
+                  {t('btn_select_all')}
                 </Button>
                 <Button size="sm" variant="outline" className="h-7 text-xs flex-1"
                   onClick={() => setSelectedUsers(new Set())}>
-                  Clear
+                  {t('btn_clear')}
                 </Button>
               </div>
             </div>
             <ScrollArea className="flex-1">
               {loadingUsers ? (
-                <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">Loading…</div>
+                <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">{t('loading')}</div>
               ) : filteredUsers.length === 0 ? (
-                <div className="text-center py-12 text-sm text-muted-foreground">No users found</div>
+                <div className="text-center py-12 text-sm text-muted-foreground">{t('no_users_found')}</div>
               ) : (
                 <div className="divide-y">
                   {filteredUsers.map((u: any) => {
@@ -1805,7 +1807,7 @@ export default function IdCardDesignerPage() {
               <Button className="w-full h-8 text-xs gap-1" onClick={handlePrint}
                 disabled={selectedUsers.size === 0}>
                 <Printer className="h-3.5 w-3.5" />
-                Print {selectedUsers.size > 0 ? `(${selectedUsers.size})` : ''} Cards
+                {t('btn_print_cards', { count: selectedUsers.size })}
               </Button>
             </div>
           </div>
@@ -1815,7 +1817,7 @@ export default function IdCardDesignerPage() {
             {selectedUsers.size === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
                 <CreditCard className="h-12 w-12 opacity-20" />
-                <p className="text-sm">Select users from the left to preview cards</p>
+                <p className="text-sm">{t('print_empty_hint')}</p>
               </div>
             ) : (
               <div className="flex flex-wrap gap-4 justify-center print:gap-4 min-w-max lg:min-w-0">

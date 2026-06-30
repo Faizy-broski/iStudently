@@ -84,7 +84,7 @@ export default function SpeedReadingAdminPage() {
                 <thead>
                   <tr className="border-b text-muted-foreground">
                     <th className="text-left rtl:text-right py-2 px-3 w-12">{t('rank')}</th>
-                    <th className="text-left rtl:text-right py-2 px-3">Name</th>
+                    <th className="text-left rtl:text-right py-2 px-3">{t('name')}</th>
                     <th className="text-left rtl:text-right py-2 px-3">{t('totalPoints')}</th>
                     <th className="text-left rtl:text-right py-2 px-3">{t('bestWpm')}</th>
                     <th className="text-left rtl:text-right py-2 px-3">{t('sessions')}</th>

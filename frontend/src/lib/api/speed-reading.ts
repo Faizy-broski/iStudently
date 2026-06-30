@@ -44,6 +44,11 @@ export interface StudentStats {
   recent_logs: ReadingLog[]
 }
 
+export interface WordResult {
+  word: string
+  status: 'correct' | 'incorrect' | 'unread'
+}
+
 export interface ReadingLog {
   id: string
   student_id: string
@@ -55,7 +60,18 @@ export interface ReadingLog {
   points_earned: number
   comprehension_bonus: boolean
   grading_mode: 'voice' | 'manual'
+  audio_url: string | null
+  word_results: WordResult[] | null
   created_at: string
+  // Joined (populated in list/detail views)
+  text_title?: string
+  student_name?: string
+}
+
+export interface SessionLog extends ReadingLog {
+  school_id: string
+  text_content?: string
+  text_language?: string
 }
 
 export interface DashboardStats {
@@ -72,6 +88,15 @@ export interface SubmitLogPayload {
   accuracy_percentage: number
   comprehension_bonus: boolean
   grading_mode: 'voice' | 'manual'
+  audio_url?: string
+  word_results?: WordResult[]
+}
+
+interface PaginatedResponse<T> {
+  success: boolean
+  data?: T[]
+  pagination?: { total: number; page: number; limit: number; totalPages: number }
+  error?: string
 }
 
 interface ApiResponse<T = any> {
@@ -166,6 +191,47 @@ export async function getMyStats(token: string): Promise<ApiResponse<StudentStat
 export async function getDashboardStats(token: string, schoolId?: string): Promise<ApiResponse<DashboardStats>> {
   const params = schoolId ? `?school_id=${schoolId}` : ''
   const res = await fetch(`${API_URL}/speed-reading/dashboard-stats${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  return res.json()
+}
+
+// ─── Session Log Review ───────────────────────────────────────────────────────
+
+export async function getSessionLog(id: string, token: string): Promise<ApiResponse<SessionLog>> {
+  const res = await fetch(`${API_URL}/speed-reading/logs/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  return res.json()
+}
+
+export async function listSessionLogs(
+  token: string,
+  params?: { student_id?: string; text_id?: string; date_from?: string; date_to?: string; page?: number; limit?: number }
+): Promise<PaginatedResponse<SessionLog>> {
+  const p = new URLSearchParams()
+  if (params?.student_id) p.set('student_id', params.student_id)
+  if (params?.text_id) p.set('text_id', params.text_id)
+  if (params?.date_from) p.set('date_from', params.date_from)
+  if (params?.date_to) p.set('date_to', params.date_to)
+  if (params?.page) p.set('page', String(params.page))
+  if (params?.limit) p.set('limit', String(params.limit))
+  const qs = p.toString() ? `?${p.toString()}` : ''
+  const res = await fetch(`${API_URL}/speed-reading/logs${qs}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  return res.json()
+}
+
+export async function getStudentLogs(
+  token: string,
+  params?: { page?: number; limit?: number }
+): Promise<PaginatedResponse<SessionLog>> {
+  const p = new URLSearchParams()
+  if (params?.page) p.set('page', String(params.page))
+  if (params?.limit) p.set('limit', String(params.limit))
+  const qs = p.toString() ? `?${p.toString()}` : ''
+  const res = await fetch(`${API_URL}/speed-reading/logs/student/me${qs}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
   return res.json()

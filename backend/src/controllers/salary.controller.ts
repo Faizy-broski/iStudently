@@ -310,6 +310,32 @@ export class SalaryController {
         }
     }
 
+    async getPaySlipByPeriod(req: Request, res: Response) {
+        try {
+            const { staff_id, month, year, school_id, campus_id } = req.query as Record<string, string>
+
+            if (!staff_id || !month || !year || !school_id) {
+                return res.status(400).json({ success: false, error: 'staff_id, month, year, and school_id are required' })
+            }
+
+            const targetSchoolId = campus_id || school_id;
+
+            const payslip = await salaryService.getPaySlipByPeriod(
+                staff_id,
+                parseInt(month, 10),
+                parseInt(year, 10),
+                targetSchoolId
+            )
+            return res.json({ success: true, data: payslip })
+        } catch (error: any) {
+            if (error.statusCode === 404) {
+                return res.status(404).json({ success: false, error: error.message })
+            }
+            console.error('Error getting pay slip by period:', error)
+            return res.status(500).json({ success: false, error: error.message })
+        }
+    }
+
     async approveSalary(req: Request, res: Response) {
         try {
             const { id } = req.params

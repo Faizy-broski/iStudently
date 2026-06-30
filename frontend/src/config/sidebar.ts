@@ -59,6 +59,7 @@ import {
   FlaskConical,
   Table2,
   Gauge,
+  Mic,
   type LucideIcon,
 } from "lucide-react";
 import { UserRole } from "@/types";
@@ -197,11 +198,6 @@ const adminMenuItems: SidebarMenuItem[] = [
     subItems: [
       { title: "add_referral", href: "/admin/discipline/add-referral", icon: Plus },
       { title: "referrals", href: "/admin/discipline", icon: ClipboardList },
-      { title: "reports", href: "#", icon: BarChart3, isLabel: true },
-      { title: "category_breakdown", href: "/admin/discipline/reports/category-breakdown", icon: BarChart3 },
-      { title: "breakdown_over_time", href: "/admin/discipline/reports/category-breakdown-time", icon: TrendingUp },
-      { title: "breakdown_by_student_field", href: "/admin/discipline/reports/breakdown-student-field", icon: Users },
-      { title: "discipline_log", href: "/admin/discipline/reports/log", icon: FileText },
       { title: "setup", href: "#", icon: Settings, isLabel: true },
       { title: "referral_form", href: "/admin/discipline/referral-form", icon: Settings },
     ],
@@ -225,6 +221,7 @@ const adminMenuItems: SidebarMenuItem[] = [
     subItems: [
       { title: "overview", href: "/admin/speed-reading", icon: LayoutDashboard },
       { title: "manage_texts", href: "/admin/speed-reading/texts", icon: BookOpen },
+      { title: "student_sessions", href: "/admin/speed-reading/sessions", icon: Mic },
     ],
   },
   {
@@ -261,6 +258,7 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "all_staff", href: "/admin/staff", icon: Users },
       { title: "add_staff", href: "/admin/staff/add-staff", icon: Plus },
       { title: "bulk_import", href: "/admin/staff/bulk-import", icon: Upload },
+      { title: "financial_statements", href: "/admin/staff/financial-statements", icon: FileText },
       { title: "custom_fields", href: "/admin/staff/custom-fields", icon: Settings },
       { title: "settings", href: "/admin/staff/settings", icon: Settings },
     ],
@@ -272,16 +270,14 @@ const adminMenuItems: SidebarMenuItem[] = [
     subItems: [
       { title: "incidents_log", href: "/admin/performance", icon: ClipboardList },
       { title: "catalog", href: "/admin/performance/catalog", icon: Settings },
+      { title: "reports", href: "#", icon: BarChart3, isLabel: true },
+      { title: "category_breakdown", href: "/admin/discipline/reports/category-breakdown", icon: BarChart3 },
+      { title: "breakdown_over_time", href: "/admin/discipline/reports/category-breakdown-time", icon: TrendingUp },
+      { title: "breakdown_by_student_field", href: "/admin/discipline/reports/breakdown-student-field", icon: Users },
+      { title: "discipline_log", href: "/admin/discipline/reports/log", icon: FileText },
     ],
   },
-  {
-    title: "id_card_designer",
-    href: "/admin/id-card",
-    icon: CreditCard,
-    subItems: [
-      { title: "id_card_designer", href: "/admin/id-card", icon: CreditCard },
-    ],
-  },
+
   {
     title: "user_management",
     href: "/admin/signup-links",
@@ -484,6 +480,15 @@ const adminMenuItems: SidebarMenuItem[] = [
     ],
   },
   {
+    title: "training",
+    href: "/admin/training",
+    icon: ClipboardList,
+    subItems: [
+      { title: "all_sessions", href: "/admin/training", icon: LayoutDashboard },
+      { title: "new_session", href: "/admin/training/create", icon: Plus },
+    ],
+  },
+  {
     title: "settings",
     href: "/admin/settings",
     icon: Settings,
@@ -495,6 +500,7 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "services", href: "/admin/settings/services", icon: Settings },
       { title: "user_agreements", href: "/admin/settings/user-agreements", icon: FileText },
       { title: "user_profiles", href: "/admin/settings/user-profiles", icon: ShieldCheck },
+      { title: "id_card_designer", href: "/admin/id-card", icon: CreditCard },
       // email_reminders, email_smtp, public_pages are injected by their plugins — see config/plugins.ts
       { title: "profile", href: "/admin/profile", icon: UserCircle },
     ],
@@ -735,7 +741,15 @@ const studentMenuItems: SidebarMenuItem[] = [
     ],
   },
   { title: "activities", href: "/student/activities", icon: Star },
-  { title: "speed_reading", href: "/student/speed-reading", icon: Gauge },
+  {
+    title: "speed_reading",
+    href: "/student/speed-reading",
+    icon: Gauge,
+    subItems: [
+      { title: "leaderboard", href: "/student/speed-reading", icon: LayoutDashboard },
+      { title: "my_history", href: "/student/speed-reading/history", icon: History },
+    ],
+  },
   {
     title: "library",
     href: "/student/library",

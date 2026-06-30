@@ -36,6 +36,11 @@ export interface CreateTextDto {
   quiz_questions?: Omit<QuizQuestion, 'id' | 'text_id'>[]
 }
 
+export interface WordResult {
+  word: string
+  status: 'correct' | 'incorrect' | 'unread'
+}
+
 export interface SubmitLogDto {
   text_id: string
   target_wpm: number
@@ -44,6 +49,30 @@ export interface SubmitLogDto {
   accuracy_percentage: number
   comprehension_bonus: boolean
   grading_mode: 'voice' | 'manual'
+  audio_url?: string
+  word_results?: WordResult[]
+}
+
+export interface SessionLog {
+  id: string
+  school_id: string
+  student_id: string
+  text_id: string
+  target_wpm: number
+  correct_words: number
+  incorrect_words: number
+  accuracy_percentage: number
+  points_earned: number
+  comprehension_bonus: boolean
+  grading_mode: string
+  audio_url: string | null
+  word_results: WordResult[] | null
+  created_at: string
+  // Joined fields
+  text_title?: string
+  text_content?: string
+  text_language?: string
+  student_name?: string
 }
 
 export interface LeaderboardEntry {
@@ -204,9 +233,127 @@ class SpeedReadingService {
         points_earned: pointsEarned,
         comprehension_bonus: dto.comprehension_bonus,
         grading_mode: dto.grading_mode,
+        audio_url: dto.audio_url ?? null,
+        word_results: dto.word_results ? JSON.stringify(dto.word_results) : null,
       }])
     if (error) throw error
     return { points_earned: pointsEarned }
+  }
+
+  async getSessionLog(logId: string, schoolId: string): Promise<SessionLog | null> {
+    const rootId = await getEffectiveSchoolId(schoolId)
+    const allIds = await getAllCampusIds(rootId)
+
+    const { data, error } = await supabase
+      .from('student_reading_logs')
+      .select(`
+        *,
+        reading_text:reading_texts (title, content, language),
+        student:profiles!student_reading_logs_student_id_fkey (first_name, last_name)
+      `)
+      .eq('id', logId)
+      .in('school_id', allIds)
+      .single()
+
+    if (error || !data) return null
+
+    return {
+      ...data,
+      text_title: (data as any).reading_text?.title ?? null,
+      text_content: (data as any).reading_text?.content ?? null,
+      text_language: (data as any).reading_text?.language ?? null,
+      student_name: (data as any).student
+        ? `${(data as any).student.first_name} ${(data as any).student.last_name}`.trim()
+        : null,
+      reading_text: undefined,
+      student: undefined,
+    } as SessionLog
+  }
+
+  async listSessionLogs(
+    schoolId: string,
+    filters: { student_id?: string; text_id?: string; date_from?: string; date_to?: string },
+    page = 1,
+    limit = 20
+  ): Promise<{ data: SessionLog[]; pagination: object }> {
+    const rootId = await getEffectiveSchoolId(schoolId)
+    const allIds = await getAllCampusIds(rootId)
+    const offset = (page - 1) * limit
+
+    let query = supabase
+      .from('student_reading_logs')
+      .select(
+        `id, school_id, student_id, text_id, target_wpm, correct_words, incorrect_words,
+         accuracy_percentage, points_earned, comprehension_bonus, grading_mode, audio_url, created_at,
+         reading_text:reading_texts (title),
+         student:profiles!student_reading_logs_student_id_fkey (first_name, last_name)`,
+        { count: 'exact' }
+      )
+      .in('school_id', allIds)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+
+    if (filters.student_id) query = query.eq('student_id', filters.student_id)
+    if (filters.text_id) query = query.eq('text_id', filters.text_id)
+    if (filters.date_from) query = query.gte('created_at', filters.date_from)
+    if (filters.date_to) query = query.lte('created_at', filters.date_to)
+
+    const { data, error, count } = await query
+    if (error) throw error
+
+    const rows: SessionLog[] = (data ?? []).map((row: any) => ({
+      ...row,
+      word_results: null, // omitted from list for performance
+      text_title: row.reading_text?.title ?? null,
+      student_name: row.student
+        ? `${row.student.first_name} ${row.student.last_name}`.trim()
+        : null,
+      reading_text: undefined,
+      student: undefined,
+    }))
+
+    return {
+      data: rows,
+      pagination: { total: count ?? 0, page, limit, totalPages: Math.ceil((count ?? 0) / limit) },
+    }
+  }
+
+  async getStudentLogs(
+    schoolId: string,
+    studentId: string,
+    page = 1,
+    limit = 20
+  ): Promise<{ data: SessionLog[]; pagination: object }> {
+    const rootId = await getEffectiveSchoolId(schoolId)
+    const allIds = await getAllCampusIds(rootId)
+    const offset = (page - 1) * limit
+
+    const { data, error, count } = await supabase
+      .from('student_reading_logs')
+      .select(
+        `id, school_id, student_id, text_id, target_wpm, correct_words, incorrect_words,
+         accuracy_percentage, points_earned, comprehension_bonus, grading_mode, audio_url, created_at,
+         reading_text:reading_texts (title)`,
+        { count: 'exact' }
+      )
+      .in('school_id', allIds)
+      .eq('student_id', studentId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+
+    if (error) throw error
+
+    const rows: SessionLog[] = (data ?? []).map((row: any) => ({
+      ...row,
+      word_results: null,
+      text_title: row.reading_text?.title ?? null,
+      reading_text: undefined,
+    }))
+
+    return {
+      data: rows,
+      pagination: { total: count ?? 0, page, limit, totalPages: Math.ceil((count ?? 0) / limit) },
+    }
   }
 
   async getLeaderboard(schoolId: string, limit = 20): Promise<LeaderboardEntry[]> {

@@ -55,7 +55,7 @@ export default function NewTextPage() {
 
   const handleSave = async () => {
     if (!title.trim() || !content.trim()) {
-      setError('Title and content are required.')
+      setError(t('errRequired'))
       return
     }
     setSaving(true)
@@ -74,7 +74,7 @@ export default function NewTextPage() {
     if (res.success) {
       router.push('/admin/speed-reading/texts')
     } else {
-      setError(res.error || 'Failed to save text.')
+      setError(res.error || t('errSave'))
     }
   }
 
@@ -92,8 +92,8 @@ export default function NewTextPage() {
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-2">
-            <Label>Title</Label>
-            <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Reading passage title" />
+            <Label>{t('titleLabel')}</Label>
+            <Input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('titlePlaceholder')} />
           </div>
           <div className="space-y-2">
             <Label>{t('language')}</Label>
@@ -108,13 +108,13 @@ export default function NewTextPage() {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Grade Level</Label>
+            <Label>{t('gradeLevelLabel')}</Label>
             <Select value={gradeLevelId} onValueChange={setGradeLevelId}>
               <SelectTrigger>
-                <SelectValue placeholder="All levels" />
+                <SelectValue placeholder={t('allLevels')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All levels</SelectItem>
+                <SelectItem value="all">{t('allLevels')}</SelectItem>
                 {gradeLevels.map(g => (
                   <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
                 ))}
@@ -128,13 +128,13 @@ export default function NewTextPage() {
           <Textarea
             value={content}
             onChange={e => setContent(e.target.value)}
-            placeholder="Paste or type the reading passage here..."
+            placeholder={t('contentPlaceholder')}
             className={`min-h-48 ${language === 'ar' ? 'text-right font-arabic' : ''}`}
             dir={language === 'ar' ? 'rtl' : 'ltr'}
           />
           {content && (
             <p className="text-xs text-muted-foreground">
-              ~{content.trim().split(/\s+/).filter(Boolean).length} words (server will confirm)
+              {t('wordCountEstimate', { count: content.trim().split(/\s+/).filter(Boolean).length })}
             </p>
           )}
         </div>
@@ -206,10 +206,10 @@ export default function NewTextPage() {
 
         <div className="flex gap-3">
           <Button onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save Text'}
+            {saving ? t('saving') : t('saveText')}
           </Button>
           <Button variant="outline" onClick={() => router.push('/admin/speed-reading/texts')}>
-            Cancel
+            {t('cancel')}
           </Button>
         </div>
       </div>

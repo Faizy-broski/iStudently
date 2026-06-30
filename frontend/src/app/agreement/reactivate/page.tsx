@@ -70,7 +70,7 @@ export default function ReactivatePage() {
                   Your account has been reactivated. Please log in — you will be asked to review and accept the school agreement before proceeding.
                 </p>
                 <Link href="/auth/login">
-                  <Button className="mt-2 bg-brand-blue hover:bg-brand-blue/90">Go to Login</Button>
+                  <Button className="mt-2">Go to Login</Button>
                 </Link>
               </div>
             ) : (
@@ -96,7 +96,7 @@ export default function ReactivatePage() {
                 <Button
                   type="submit"
                   disabled={loading || !email.trim()}
-                  className="w-full bg-brand-blue hover:bg-brand-blue/90"
+                  className="w-full"
                 >
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Restore Access

@@ -83,6 +83,7 @@ import credentialsRoutes from "./routes/credentials.routes";
 import withdrawalAnalyticsRoutes from "./routes/withdrawal-analytics.routes";
 import advancedReportRoutes from "./routes/advanced-report.routes";
 import userProfilesRoutes from "./routes/user-profiles.routes";
+import trainingRoutes, { trainingPublicRouter } from "./routes/training.routes";
 
 const app = express();
 
@@ -290,6 +291,9 @@ registerRoutes("/signup-links", signupLinksRoutes);
 registerRoutes("/pending-signups", pendingSignupsRoutes);
 // Public signup — registered BEFORE auth routes so no middleware intercepts it
 registerRoutes("/public-signup", publicSignupRoutes);
+// Training Center — public routes first (no auth), then admin routes
+registerRoutes("/training/public", trainingPublicRouter);
+registerRoutes("/training", trainingRoutes);
 registerRoutes("/credentials", credentialsRoutes);
 registerRoutes("/analytics/withdrawal", withdrawalAnalyticsRoutes);
 registerRoutes("/user-profiles", userProfilesRoutes);

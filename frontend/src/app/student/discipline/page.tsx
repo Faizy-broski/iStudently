@@ -1,8 +1,10 @@
 'use client'
 
 import useSWR from 'swr'
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { getStudentDiscipline } from '@/lib/api/student-dashboard'
+import { getDisciplineFields, type DisciplineField } from '@/lib/api/discipline'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, ShieldAlert, CheckCircle } from 'lucide-react'
@@ -16,6 +18,21 @@ export default function StudentDisciplinePage() {
     () => getStudentDiscipline(),
     { revalidateOnFocus: false, dedupingInterval: 120000 }
   )
+
+  const [fieldNameMap, setFieldNameMap] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    if (!user?.school_id) return
+    getDisciplineFields(user.school_id)
+      .then((res) => {
+        const map: Record<string, string> = {}
+        for (const f of res.data ?? []) {
+          map[f.id] = f.name
+        }
+        setFieldNameMap(map)
+      })
+      .catch(() => {/* silent — labels fall back to raw key */})
+  }, [user?.school_id])
 
   const referrals = data?.data || []
 
@@ -43,7 +60,7 @@ export default function StudentDisciplinePage() {
           <p className="text-sm text-muted-foreground">{referrals.length} referral{referrals.length !== 1 ? 's' : ''} on record</p>
           <div className="space-y-3">
             {referrals.map((ref: any) => (
-              <ReferralCard key={ref.id} referral={ref} />
+              <ReferralCard key={ref.id} referral={ref} fieldNameMap={fieldNameMap} />
             ))}
           </div>
         </div>
@@ -52,14 +69,24 @@ export default function StudentDisciplinePage() {
   )
 }
 
-function ReferralCard({ referral }: { referral: any }) {
-  const reporter = referral.reporter?.profile
-  const reporterName = reporter
-    ? `${reporter.first_name} ${reporter.last_name}`
+function formatValue(val: unknown): string {
+  if (val === null || val === undefined || val === '') return ''
+  if (val === 'Y' || val === true) return 'Yes'
+  if (val === 'N' || val === false) return 'No'
+  if (Array.isArray(val)) return val.join(', ')
+  return String(val)
+}
+
+function ReferralCard({ referral, fieldNameMap }: { referral: any; fieldNameMap: Record<string, string> }) {
+  const reporterName = referral.reporter
+    ? `${referral.reporter.first_name ?? ''} ${referral.reporter.last_name ?? ''}`.trim() || 'Staff'
     : 'Staff'
 
   const fieldValues: Record<string, any> = referral.field_values || {}
-  const hasFields = Object.keys(fieldValues).length > 0
+  const entries = Object.entries(fieldValues).filter(([, v]) => {
+    const s = formatValue(v)
+    return s !== ''
+  })
 
   return (
     <Card className="border-l-4 border-l-orange-400">
@@ -72,15 +99,19 @@ function ReferralCard({ referral }: { referral: any }) {
           <Badge variant="outline" className="text-xs">Reported by {reporterName}</Badge>
         </div>
       </CardHeader>
-      {hasFields && (
+      {entries.length > 0 && (
         <CardContent className="pt-0">
-          <div className="grid grid-cols-2 gap-2">
-            {Object.entries(fieldValues).map(([key, value]) => (
-              <div key={key} className="text-sm">
-                <span className="font-medium text-muted-foreground capitalize">{key.replace(/_/g, ' ')}: </span>
-                <span>{String(value)}</span>
-              </div>
-            ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {entries.map(([key, value]) => {
+              const label = fieldNameMap[key] || key.replace(/_/g, ' ')
+              const display = formatValue(value)
+              return (
+                <div key={key} className="text-sm">
+                  <span className="font-medium text-muted-foreground capitalize">{label}: </span>
+                  <span>{display}</span>
+                </div>
+              )
+            })}
           </div>
         </CardContent>
       )}

@@ -84,10 +84,10 @@ export default function SpeedReadingTextsPage() {
       <div className="flex items-center gap-3">
         <Select value={gradeFilter} onValueChange={setGradeFilter}>
           <SelectTrigger className="w-48">
-            <SelectValue placeholder="All grade levels" />
+            <SelectValue placeholder={t('allGradeLevels')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All grade levels</SelectItem>
+            <SelectItem value="all">{t('allGradeLevels')}</SelectItem>
             {gradeLevels.map(g => (
               <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
             ))}
@@ -102,7 +102,7 @@ export default function SpeedReadingTextsPage() {
       ) : texts.filter(t => gradeFilter === 'all' || !gradeFilter || t.grade_level_id === gradeFilter).length === 0 ? (
         <div className="py-16 text-center text-muted-foreground">
           <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-30" />
-          <p>{gradeFilter ? 'No texts for this grade level.' : t('noTexts')}</p>
+          <p>{gradeFilter && gradeFilter !== 'all' ? t('noTextsForGrade') : t('noTexts')}</p>
           {!gradeFilter && (
             <Button className="mt-4" onClick={() => router.push('/admin/speed-reading/texts/new')}>
               <Plus className="h-4 w-4 mr-2 rtl:ml-2 rtl:mr-0" />
@@ -118,11 +118,11 @@ export default function SpeedReadingTextsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-muted/50 border-b">
-                    <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary">Title</th>
-                    <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary">Grade Level</th>
+                    <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary">{t('colTitle')}</th>
+                    <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary">{t('colGradeLevel')}</th>
                     <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary">{t('language')}</th>
                     <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary">{t('wordCount')}</th>
-                    <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary">Quiz</th>
+                    <th className="text-left rtl:text-right px-4 py-3 font-semibold text-primary">{t('colQuiz')}</th>
                     <th className="px-4 py-3" />
                   </tr>
                 </thead>
@@ -141,7 +141,7 @@ export default function SpeedReadingTextsPage() {
                           {text.language === 'ar' ? t('languageAr') : t('languageEn')}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">{text.word_count} words</td>
+                      <td className="px-4 py-3 text-muted-foreground">{text.word_count} {t('words')}</td>
                       <td className="px-4 py-3 text-muted-foreground">
                         {text.quiz_questions && text.quiz_questions.length > 0
                           ? `${text.quiz_questions.length} Q`
@@ -182,7 +182,7 @@ export default function SpeedReadingTextsPage() {
             <AlertDialogDescription>{t('deleteTextConfirm')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {deleting ? '...' : t('deleteText')}
             </AlertDialogAction>

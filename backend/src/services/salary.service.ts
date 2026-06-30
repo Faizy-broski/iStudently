@@ -616,8 +616,9 @@ class SalaryService {
         staff!inner(
           id,
           title,
+          department,
           employee_number,
-          profile:profiles!staff_profile_id_fkey(first_name, last_name, email)
+          profile:profiles!staff_profile_id_fkey(first_name, last_name, email, role)
         )
       `, { count: 'exact' })
             .eq('school_id', targetSchoolId)
@@ -667,6 +668,109 @@ class SalaryService {
             ...record,
             allowances_breakdown: allowances || [],
             deductions_breakdown: deductions || []
+        }
+    }
+
+    async getPaySlipByPeriod(staffId: string, month: number, year: number, schoolId: string): Promise<any> {
+        // Look up the salary record by the unique (staff_id, month, year) constraint
+        const { data: record, error: recordError } = await supabase
+            .from('salary_records')
+            .select(`
+                *,
+                staff!inner(
+                  id,
+                  title,
+                  department,
+                  employee_number,
+                  payment_type,
+                  profile:profiles!staff_profile_id_fkey(first_name, last_name, email, role)
+                )
+            `)
+            .eq('staff_id', staffId)
+            .eq('month', month)
+            .eq('year', year)
+            .eq('school_id', schoolId)
+            .single()
+
+        if (recordError || !record) {
+            throw Object.assign(new Error('No salary record found for this period'), { statusCode: 404 })
+        }
+
+        const salaryRecordId = record.id
+
+        const { data: allowances } = await supabase
+            .from('salary_allowance_items')
+            .select('*')
+            .eq('salary_record_id', salaryRecordId)
+
+        const { data: deductions } = await supabase
+            .from('salary_deduction_items')
+            .select('*')
+            .eq('salary_record_id', salaryRecordId)
+            .order('deduction_date', { ascending: true })
+
+        // Fetch individual performance log items for this month
+        const monthStart = `${year}-${String(month).padStart(2, '0')}-01`
+        const monthEnd = new Date(year, month, 0).toISOString().split('T')[0] // last day of month
+        const { data: perfLogs } = await supabase
+            .from('staff_performance_log')
+            .select(`
+                id, notes, custom_points, custom_fine, status,
+                action:performance_actions_lookup!action_id(
+                    action_name_en, action_name_ar, action_type, default_points, default_fine
+                ),
+                created_at
+            `)
+            .eq('staff_id', staffId)
+            .eq('school_id', schoolId)
+            .eq('status', 'active')
+            .gte('created_at', monthStart)
+            .lte('created_at', monthEnd + 'T23:59:59Z')
+            .order('created_at', { ascending: true })
+
+        // Fetch teacher-hour commissions for the month (for hourly-rate staff)
+        let commissionsBreakdown: any[] = []
+        if (record.staff?.payment_type === 'hourly') {
+            const { data: hours } = await supabase
+                .from('staff_salary_records')
+                .select('id')
+                .eq('staff_id', staffId)
+                .limit(1)
+            // Query accounting teacher-hours for the month
+            const { data: teacherHours } = await supabase
+                .from('teacher_hour_logs')
+                .select('hours_worked, hourly_rate, notes, session_date')
+                .eq('staff_id', staffId)
+                .eq('school_id', schoolId)
+                .gte('session_date', monthStart)
+                .lte('session_date', monthEnd)
+                .order('session_date', { ascending: true })
+            if (teacherHours && teacherHours.length > 0) {
+                commissionsBreakdown = teacherHours.map((h: any) => ({
+                    description: h.notes || 'Teaching Hours',
+                    hours: h.hours_worked,
+                    rate: h.hourly_rate,
+                    amount: (h.hours_worked || 0) * (h.hourly_rate || 0),
+                    date: h.session_date,
+                }))
+            }
+        }
+
+        return {
+            ...record,
+            allowances_breakdown: allowances || [],
+            deductions_breakdown: deductions || [],
+            performance_log_items: (perfLogs || []).map((p: any) => ({
+                id: p.id,
+                action_name: p.action?.action_name_en || 'Performance Action',
+                action_name_ar: p.action?.action_name_ar || '',
+                action_type: p.action?.action_type || 'violation_demerit',
+                fine: p.custom_fine ?? p.action?.default_fine ?? 0,
+                points: p.custom_points ?? p.action?.default_points ?? 0,
+                notes: p.notes,
+                date: p.created_at,
+            })),
+            commissions_breakdown: commissionsBreakdown,
         }
     }
 

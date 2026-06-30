@@ -3,7 +3,7 @@ import { supabase } from '../config/supabase';
 export interface DefaultFieldOrder {
   id: string;
   school_id: string;
-  entity_type: 'student' | 'parent' | 'teacher';
+  entity_type: 'student' | 'parent' | 'teacher' | 'staff';
   category_id: string;
   field_label: string;
   sort_order: number;
@@ -12,7 +12,7 @@ export interface DefaultFieldOrder {
 }
 
 export interface DefaultFieldOrderInput {
-  entity_type: 'student' | 'parent' | 'teacher';
+  entity_type: 'student' | 'parent' | 'teacher' | 'staff';
   category_id: string;
   field_label: string;
   sort_order: number;
@@ -24,7 +24,7 @@ export class DefaultFieldOrderService {
    */
   static async getFieldOrders(
     schoolId: string,
-    entityType: 'student' | 'parent' | 'teacher',
+    entityType: 'student' | 'parent' | 'teacher' | 'staff',
     categoryId?: string
   ): Promise<DefaultFieldOrder[]> {
     try {
@@ -55,7 +55,7 @@ export class DefaultFieldOrderService {
    */
   static async saveFieldOrders(
     schoolId: string,
-    entityType: 'student' | 'parent' | 'teacher',
+    entityType: 'student' | 'parent' | 'teacher' | 'staff',
     categoryId: string,
     fields: Array<{ field_label: string; sort_order: number }>
   ): Promise<void> {
@@ -97,7 +97,7 @@ export class DefaultFieldOrderService {
    */
   static async deleteFieldOrders(
     schoolId: string,
-    entityType: 'student' | 'parent' | 'teacher',
+    entityType: 'student' | 'parent' | 'teacher' | 'staff',
     categoryId: string
   ): Promise<void> {
     try {
@@ -120,7 +120,7 @@ export class DefaultFieldOrderService {
    */
   static async resetAllFieldOrders(
     schoolId: string,
-    entityType: 'student' | 'parent' | 'teacher'
+    entityType: 'student' | 'parent' | 'teacher' | 'staff'
   ): Promise<void> {
     try {
       const { error } = await supabase
