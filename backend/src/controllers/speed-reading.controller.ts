@@ -107,6 +107,18 @@ class SpeedReadingController {
     }
   }
 
+  async deleteSessionLog(req: AuthRequest, res: Response) {
+    try {
+      const schoolId = req.profile?.school_id
+      if (!schoolId) return res.status(401).json({ success: false, error: 'Unauthorized' })
+      await speedReadingService.deleteSessionLog(req.params.id, schoolId)
+      return res.json({ success: true })
+    } catch (error: any) {
+      console.error('speed-reading deleteSessionLog error:', error)
+      return res.status(500).json({ success: false, error: error.message })
+    }
+  }
+
   async listSessionLogs(req: AuthRequest, res: Response) {
     try {
       const schoolId = req.profile?.school_id

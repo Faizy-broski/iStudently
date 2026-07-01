@@ -185,7 +185,7 @@ export default function TeleprompterPage() {
     anim.onfinish = () => {
       stopRecognition()
       stopRecordingAudioRef.current()
-      handleScrollEnd()
+      handleScrollEndRef.current()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase])
@@ -203,25 +203,6 @@ export default function TeleprompterPage() {
       setIsPaused(true)
     }
   }, [gradingMode, startRecognition, stopRecognition])
-
-  const stopEarly = useCallback(() => {
-    animationRef.current?.cancel()
-    stopRecognition()
-    stopRecordingAudio()
-    setIsPaused(false)
-    handleScrollEnd()
-  }, [stopRecognition, stopRecordingAudio])
-
-  const handleScrollEnd = useCallback(() => {
-    if (!text) return
-    if (gradingMode === 'manual') {
-      setPhase('manual-grade')
-    } else if (text.quiz_questions && text.quiz_questions.length > 0) {
-      setPhase('quiz')
-    } else {
-      finalise(false)
-    }
-  }, [text, gradingMode])
 
   const finalise = useCallback(async (bonus: boolean) => {
     if (!text) return
@@ -287,6 +268,29 @@ export default function TeleprompterPage() {
       }, token)
     } catch (_) {}
   }, [text, gradingMode, spokenWords, words, manualErrors, wpm])
+
+  const handleScrollEnd = useCallback(() => {
+    if (!text) return
+    if (gradingMode === 'manual') {
+      setPhase('manual-grade')
+    } else if (text.quiz_questions && text.quiz_questions.length > 0) {
+      setPhase('quiz')
+    } else {
+      finalise(false)
+    }
+  }, [text, gradingMode, finalise])
+
+  // Keep a stable ref so the animation onfinish closure always sees the latest spokenWords
+  const handleScrollEndRef = useRef(handleScrollEnd)
+  useEffect(() => { handleScrollEndRef.current = handleScrollEnd }, [handleScrollEnd])
+
+  const stopEarly = useCallback(() => {
+    animationRef.current?.cancel()
+    stopRecognition()
+    stopRecordingAudio()
+    setIsPaused(false)
+    handleScrollEnd()
+  }, [stopRecognition, stopRecordingAudio, handleScrollEnd])
 
   const handleQuizSubmit = useCallback(() => {
     if (!text?.quiz_questions) { finalise(false); return }

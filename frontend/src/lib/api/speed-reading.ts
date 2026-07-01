@@ -223,6 +223,14 @@ export async function listSessionLogs(
   return res.json()
 }
 
+export async function deleteSessionLog(id: string, token: string): Promise<ApiResponse> {
+  const res = await fetch(`${API_URL}/speed-reading/logs/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  return res.json()
+}
+
 export async function getStudentLogs(
   token: string,
   params?: { page?: number; limit?: number }

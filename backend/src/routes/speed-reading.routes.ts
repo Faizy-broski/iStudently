@@ -21,6 +21,7 @@ router.get('/stats/me',    (req, res) => speedReadingController.getMyStats(req, 
 // Session log review — IMPORTANT: /logs/student/me must come before /logs/:id
 router.get('/logs/student/me', (req, res) => speedReadingController.getStudentLogs(req, res))
 router.get('/logs/:id',        (req, res) => speedReadingController.getSessionLog(req, res))
+router.delete('/logs/:id',     requireRole('admin', 'teacher'), (req, res) => speedReadingController.deleteSessionLog(req, res))
 router.get('/logs',            requireRole('admin', 'teacher'), (req, res) => speedReadingController.listSessionLogs(req, res))
 
 // Dashboard stats — teachers see full stats, students see their school's aggregates

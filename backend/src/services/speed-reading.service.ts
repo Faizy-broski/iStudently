@@ -234,7 +234,7 @@ class SpeedReadingService {
         comprehension_bonus: dto.comprehension_bonus,
         grading_mode: dto.grading_mode,
         audio_url: dto.audio_url ?? null,
-        word_results: dto.word_results ? JSON.stringify(dto.word_results) : null,
+        word_results: dto.word_results ?? null,
       }])
     if (error) throw error
     return { points_earned: pointsEarned }
@@ -257,8 +257,15 @@ class SpeedReadingService {
 
     if (error || !data) return null
 
+    // Legacy rows may have word_results stored as a double-encoded JSON string
+    let wordResults = (data as any).word_results
+    if (typeof wordResults === 'string') {
+      try { wordResults = JSON.parse(wordResults) } catch { wordResults = null }
+    }
+
     return {
       ...data,
+      word_results: wordResults,
       text_title: (data as any).reading_text?.title ?? null,
       text_content: (data as any).reading_text?.content ?? null,
       text_language: (data as any).reading_text?.language ?? null,
@@ -268,6 +275,18 @@ class SpeedReadingService {
       reading_text: undefined,
       student: undefined,
     } as SessionLog
+  }
+
+  async deleteSessionLog(logId: string, schoolId: string): Promise<void> {
+    const rootId = await getEffectiveSchoolId(schoolId)
+    const allIds = await getAllCampusIds(rootId)
+
+    const { error } = await supabase
+      .from('student_reading_logs')
+      .delete()
+      .eq('id', logId)
+      .in('school_id', allIds)
+    if (error) throw error
   }
 
   async listSessionLogs(

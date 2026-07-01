@@ -2,12 +2,22 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Mic, MicOff, Eye, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Mic, MicOff, Eye, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { getAuthToken } from '@/lib/api/schools'
-import { listSessionLogs, type SessionLog } from '@/lib/api/speed-reading'
+import { listSessionLogs, deleteSessionLog, type SessionLog } from '@/lib/api/speed-reading'
 import { useAuth } from '@/context/AuthContext'
 
 export default function AdminReadingSessionsPage() {
@@ -18,22 +28,33 @@ export default function AdminReadingSessionsPage() {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
-  useEffect(() => {
+  const load = async () => {
     if (!profile?.school_id) return
-    const load = async () => {
-      setLoading(true)
-      const token = await getAuthToken()
-      const res = await listSessionLogs(token, { page, limit: 20 })
-      if (res.success && res.data) {
-        setLogs(res.data)
-        setTotalPages(res.pagination?.totalPages ?? 1)
-        setTotal(res.pagination?.total ?? 0)
-      }
-      setLoading(false)
+    setLoading(true)
+    const token = await getAuthToken()
+    const res = await listSessionLogs(token, { page, limit: 20 })
+    if (res.success && res.data) {
+      setLogs(res.data)
+      setTotalPages(res.pagination?.totalPages ?? 1)
+      setTotal(res.pagination?.total ?? 0)
     }
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [profile?.school_id, page])
+
+  const handleDelete = async () => {
+    if (!deleteId) return
+    setDeleting(true)
+    const token = await getAuthToken()
+    await deleteSessionLog(deleteId, token)
+    setDeleteId(null)
+    setDeleting(false)
     load()
-  }, [profile?.school_id, page])
+  }
 
   return (
     <div className="space-y-4">
@@ -106,14 +127,24 @@ export default function AdminReadingSessionsPage() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => router.push(`/admin/speed-reading/sessions/${log.id}`)}
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      Review
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => router.push(`/admin/speed-reading/sessions/${log.id}`)}
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        Review
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => setDeleteId(log.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -138,6 +169,23 @@ export default function AdminReadingSessionsPage() {
           </div>
         </div>
       )}
+
+      <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Session</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this reading session and its recording. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {deleting ? '...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
