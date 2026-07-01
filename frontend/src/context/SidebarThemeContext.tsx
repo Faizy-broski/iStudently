@@ -98,8 +98,19 @@ export function SidebarThemeProvider({
       } catch {}
 
       if (profile.role === 'super_admin') {
-        const result = await getSuperadminSidebarConfig()
-        if (result.success) setConfig(result.data ?? null)
+        // When impersonating a school, load that school's theme instead of the superadmin's own theme
+        const impersonatedSchoolId =
+          typeof window !== 'undefined'
+            ? sessionStorage.getItem('impersonatedSchoolId')
+            : null
+
+        if (impersonatedSchoolId) {
+          const result = await getSchoolSidebarConfig(impersonatedSchoolId)
+          if (result.success) setConfig(result.data ?? null)
+        } else {
+          const result = await getSuperadminSidebarConfig()
+          if (result.success) setConfig(result.data ?? null)
+        }
         return
       }
 

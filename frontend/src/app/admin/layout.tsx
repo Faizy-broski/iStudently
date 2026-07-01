@@ -7,6 +7,7 @@ import { SchoolSettingsProvider } from "@/context/SchoolSettingsContext";
 import { AuthLoadingGuard } from "@/components/auth/AuthLoadingGuard";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { RefreshOnReturn } from "@/components/RefreshOnReturn";
+import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 
 export default function AdminLayout({
   children,
@@ -15,10 +16,11 @@ export default function AdminLayout({
 }) {
   return (
     <AuthLoadingGuard>
-      <RoleGuard allowedRoles={['admin']}>
+      <RoleGuard allowedRoles={['admin', 'super_admin']}>
         <CampusProvider>
           <ProfileViewProvider>
             <SchoolSettingsProvider>
+              <ImpersonationBanner />
               <DashboardLayout role="admin">
                 <RefreshOnReturn>{children}</RefreshOnReturn>
               </DashboardLayout>

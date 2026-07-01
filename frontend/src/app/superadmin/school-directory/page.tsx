@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, Fragment } from "react";
+import { useRouter } from "next/navigation";
 import { schoolApi } from "@/lib/api/schools";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -9,16 +10,20 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
-import { GitBranch, ChevronRight, ChevronDown, ChevronUp, Search, Filter, Building2, Mail, Globe, MapPin, Calendar, Edit, Trash2, RefreshCw, User, Shield } from "lucide-react";
+import { GitBranch, ChevronRight, ChevronDown, ChevronUp, Search, Filter, Building2, Mail, Globe, MapPin, Calendar, Edit, Trash2, RefreshCw, User, Shield, LogIn } from "lucide-react";
 import EditSchoolModal from "@/components/super-admin/EditSchoolModal";
 import EditAdminModal from "@/components/super-admin/EditAdminModal";
 import ConfirmationDialog from "@/components/super-admin/ConfirmationDialog";
 import { PaginationWrapper } from "@/components/ui/pagination";
 import { useSchools, School } from "@/hooks/useSchools";
 import { SchoolSidebarConfigButton } from "@/components/superadmin/SchoolSidebarConfigButton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useSWRConfig } from "swr";
 
 export default function SchoolDirectoryPage() {
   const { schools, stats, loading, error, refreshSchools, mutate, isValidating } = useSchools();
+  const router = useRouter();
+  const { mutate: swrMutate } = useSWRConfig();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "suspended">("all");
@@ -91,6 +96,13 @@ export default function SchoolDirectoryPage() {
 
   const toggleNetwork = (id: string) => {
     setExpandedNetworks(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const enterSchoolDashboard = (school: School) => {
+    swrMutate(() => true, undefined, { revalidate: false });
+    sessionStorage.setItem('impersonatedSchoolId', school.id);
+    sessionStorage.setItem('impersonatedSchoolName', school.name);
+    router.push('/admin/dashboard');
   };
 
   const handleStatusChange = async () => {
@@ -235,125 +247,176 @@ export default function SchoolDirectoryPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {displayedNetworks.map(({ root, branches }) => (
-              <Card
-                key={root.id}
-                className="group flex flex-col overflow-hidden border-gray-200 hover:border-[#57A3CC] transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
-              >
-                {/* Card Header */}
-                <div className="relative h-24 gradient-blue p-6 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    {root.logo_url ? (
-                      <img
-                        src={root.logo_url}
-                        alt={`${root.name} logo`}
-                        className="w-14 h-14 object-cover rounded-lg border-2 border-white shadow-lg bg-white"
-                      />
-                    ) : (
-                      <div className="w-14 h-14 bg-white rounded-lg flex items-center justify-center shadow-lg">
-                        <Building2 className="h-7 w-7 text-[#022172]" />
-                      </div>
-                    )}
-                    <div>
-                      <h3 className="font-bold text-lg text-white line-clamp-1">{root.name}</h3>
-                      <p className="text-sm text-white/80">@{root.slug}</p>
-                    </div>
-                  </div>
-                  <Badge variant={root.status === 'active' ? 'default' : 'destructive'}
-                    className={`${root.status === 'active' ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"} text-white border-0`}
-                  >
-                    {root.status}
-                  </Badge>
-                </div>
-
-                <div className="p-6 space-y-3 flex-1">
-                  <div className="flex items-center gap-2 text-gray-700 hover:text-[#57A3CC] transition-colors">
-                    <Mail className="h-4 w-4 shrink-0 text-[#57A3CC]" />
-                    <span className="truncate text-sm">{root.contact_email}</span>
-                  </div>
-                  {root.website && (
-                    <div className="flex items-center gap-2 text-gray-700 hover:text-[#57A3CC] transition-colors">
-                      <Globe className="h-4 w-4 shrink-0 text-[#57A3CC]" />
-                      <a href={root.website} target="_blank" className="truncate text-sm hover:underline">
-                        {root.website.replace(/^https?:\/\//, '')}
-                      </a>
-                    </div>
-                  )}
-                  {root.address && (
-                    <div className="flex items-center gap-2 text-gray-700">
-                      <MapPin className="h-4 w-4 shrink-0 text-[#57A3CC]" />
-                      <span className="truncate text-sm">{root.address}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Calendar className="h-4 w-4 shrink-0 text-[#57A3CC]" />
-                    <span className="text-sm">
-                      Joined {new Date(root.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Actions Footer */}
-                <div className="p-4 bg-gray-50 border-t flex flex-col gap-2">
-                  <div className="flex gap-2">
-                    <Button size="sm" className="flex-1 gradient-blue text-white hover:shadow-md transition-all border-0" onClick={() => setEditingSchool(root)}>
-                      <Edit className="h-3 w-3 mr-2" /> Edit Info
-                    </Button>
-                    <Button size="sm" className="flex-1 gradient-orange text-white hover:shadow-md transition-all border-0" onClick={() => setEditingAdmin({ schoolId: root.id, schoolName: root.name })}>
-                      <User className="h-3 w-3 mr-2" /> Admin
-                    </Button>
-                  </div>
-                  <SchoolSidebarConfigButton schoolId={root.id} schoolName={root.name} />
-                  <Button
-                    size="sm"
-                    className={`w-full h-8 text-white border-0 ${root.status === 'active' ? 'gradient-red' : 'gradient-green'}`}
-                    onClick={() => setStatusChangeDialog({ open: true, school: root, newStatus: root.status === 'active' ? 'suspended' : 'active' })}
-                  >
-                    <Shield className="h-3 w-3 mr-2" />
-                    {root.status === 'active' ? 'Suspend School Access' : 'Activate School Access'}
-                  </Button>
-                </div>
-
-                {/* Branches Section */}
-                {branches.length > 0 && (
-                  <div className="bg-slate-50 border-t border-gray-200">
-                    <button
-                      onClick={() => toggleNetwork(root.id)}
-                      className="w-full h-10 flex items-center justify-between px-4 text-xs font-bold text-gray-700 hover:text-brand-blue hover:bg-white transition-colors uppercase tracking-wide"
-                    >
-                      <div className="flex items-center gap-2">
-                        <GitBranch className="h-3 w-3" />
-                        <span>{branches.length} Branch Campus{branches.length !== 1 ? 'es' : ''}</span>
-                      </div>
-                      {expandedNetworks[root.id] ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                    </button>
-
-                    {expandedNetworks[root.id] && (
-                      <div className="px-4 pb-4 pt-2 grid grid-cols-1 gap-3">
-                        {branches.map(branch => (
-                          <div key={branch.id} className="bg-white rounded-lg border-l-4 border-l-[#57A3CC] border-y border-r border-gray-200 shadow-sm p-3 flex flex-col gap-2 group hover:shadow-md transition-all">
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <h4 className="font-bold text-[#022172] text-sm leading-tight group-hover:text-[#57A3CC] transition-colors">{branch.name}</h4>
-                                <span className="text-xs text-slate-500 font-mono">@{branch.slug}</span>
-                              </div>
-                              <Badge variant={branch.status === 'active' ? 'secondary' : 'destructive'} className="text-[10px] px-1.5 h-5">
-                                {branch.status}
-                              </Badge>
+          <div className="rounded-md border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#0f172a] shadow-sm overflow-hidden w-full">
+            <Table>
+              <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
+                <TableRow className="border-gray-200 dark:border-gray-800 hover:bg-transparent">
+                  <TableHead className="font-semibold text-gray-900 dark:text-gray-200 py-4">School</TableHead>
+                  <TableHead className="font-semibold text-gray-900 dark:text-gray-200 py-4">Contact Info</TableHead>
+                  <TableHead className="font-semibold text-gray-900 dark:text-gray-200 py-4">Campuses</TableHead>
+                  <TableHead className="font-semibold text-gray-900 dark:text-gray-200 py-4 text-right pr-6">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {displayedNetworks.map(({ root, branches }) => (
+                  <Fragment key={root.id}>
+                    <TableRow className="border-gray-200 dark:border-gray-800 dark:hover:bg-gray-800/50 group transition-colors">
+                      {/* School Info */}
+                      <TableCell className="align-top pt-5 pb-5">
+                        <div className="flex items-start gap-4">
+                          {root.logo_url ? (
+                            <img
+                              src={root.logo_url}
+                              alt={`${root.name} logo`}
+                              className="w-12 h-12 object-cover rounded-md border border-gray-200 dark:border-gray-700 shadow-sm bg-white"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-md flex items-center justify-center shadow-sm border border-gray-200 dark:border-gray-700">
+                              <Building2 className="h-6 w-6 text-[#022172] dark:text-[#57A3CC]" />
                             </div>
-                            <div className="flex items-center gap-1.5 text-xs text-gray-500 pt-1 border-t border-gray-50 mt-1">
-                              <MapPin className="h-3 w-3 text-[#57A3CC]" />
-                              <span className="truncate">{branch.address || 'No address provided'}</span>
+                          )}
+                          <div className="flex flex-col gap-1">
+                            <span className="font-bold text-gray-900 dark:text-gray-100 text-base leading-tight">{root.name}</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">@{root.slug}</span>
+                            <Badge variant={root.status === 'active' ? 'default' : 'destructive'}
+                              className={`w-fit text-[10px] px-2 py-0.5 mt-1 border-0 uppercase tracking-wider font-semibold ${root.status === 'active' ? "bg-green-500 hover:bg-green-600 dark:bg-green-500/20 dark:text-green-400" : "bg-red-500 hover:bg-red-600 dark:bg-red-500/20 dark:text-red-400"}`}
+                            >
+                              {root.status}
+                            </Badge>
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      {/* Contact Info */}
+                      <TableCell className="align-top pt-5 pb-5">
+                        <div className="space-y-2.5">
+                          <div className="flex items-center gap-2.5 text-gray-600 dark:text-gray-300">
+                            <Mail className="h-4 w-4 shrink-0 text-[#57A3CC]" />
+                            <span className="text-sm truncate max-w-[220px] font-medium" title={root.contact_email}>{root.contact_email}</span>
+                          </div>
+                          {root.website && (
+                            <div className="flex items-center gap-2.5 text-gray-600 dark:text-gray-300">
+                              <Globe className="h-4 w-4 shrink-0 text-[#57A3CC]" />
+                              <a href={root.website} target="_blank" rel="noopener noreferrer" className="text-sm truncate max-w-[220px] hover:underline hover:text-[#57A3CC] font-medium">
+                                {root.website.replace(/^https?:\/\//, '')}
+                              </a>
+                            </div>
+                          )}
+                          {root.address && (
+                            <div className="flex items-start gap-2.5 text-gray-600 dark:text-gray-300">
+                              <MapPin className="h-4 w-4 shrink-0 text-[#57A3CC] mt-0.5" />
+                              <span className="text-sm line-clamp-2 max-w-[220px]" title={root.address}>{root.address}</span>
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+
+                      {/* Campuses */}
+                      <TableCell className="align-top pt-5 pb-5">
+                        {branches.length > 0 ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-9 px-3 text-xs font-bold text-gray-700 dark:text-gray-300 hover:text-brand-blue dark:hover:text-[#57A3CC] hover:bg-blue-50 dark:hover:bg-blue-900/20 uppercase tracking-wide border border-transparent hover:border-blue-100 dark:hover:border-blue-800/30"
+                            onClick={() => toggleNetwork(root.id)}
+                          >
+                            <GitBranch className="h-4 w-4 mr-2" />
+                            {branches.length} Campus{branches.length !== 1 ? 'es' : ''}
+                            {expandedNetworks[root.id] ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-gray-400 dark:text-gray-500 px-3 py-1.5 flex items-center font-medium uppercase tracking-wide">
+                            <GitBranch className="h-4 w-4 mr-2 opacity-40" />
+                            No branches
+                          </span>
+                        )}
+                      </TableCell>
+
+                      {/* Actions */}
+                      <TableCell className="align-top pt-5 pb-5 pr-6">
+                        <div className="flex flex-col gap-2.5 w-[220px] ml-auto">
+                          <Button
+                            size="sm"
+                            className="w-full gradient-blue text-white hover:shadow-lg hover:shadow-blue-500/20 transition-all border-0 h-9 text-xs justify-start font-semibold"
+                            onClick={() => enterSchoolDashboard(root)}
+                            disabled={root.status === 'suspended'}
+                          >
+                            <LogIn className="h-4 w-4 mr-2.5" /> Enter Dashboard
+                          </Button>
+                          <div className="flex gap-2">
+                            <Button size="sm" className="flex-1 gradient-blue text-white hover:shadow-md transition-all border-0 opacity-85 hover:opacity-100 h-9 text-xs justify-start px-3 font-medium" onClick={() => setEditingSchool(root)}>
+                              <Edit className="h-4 w-4 mr-2" /> Edit
+                            </Button>
+                            <Button size="sm" className="flex-1 gradient-orange text-white hover:shadow-md transition-all border-0 h-9 text-xs justify-start px-3 font-medium" onClick={() => setEditingAdmin({ schoolId: root.id, schoolName: root.name })}>
+                              <User className="h-4 w-4 mr-2" /> Admin
+                            </Button>
+                          </div>
+                          <div className="w-full text-left [&>button]:justify-start [&>button]:h-9 [&>button]:font-medium">
+                            <SchoolSidebarConfigButton schoolId={root.id} schoolName={root.name} />
+                          </div>
+                          <Button
+                            size="sm"
+                            className={`w-full h-9 text-white border-0 text-xs justify-start font-medium hover:shadow-md transition-all ${root.status === 'active' ? 'gradient-red hover:shadow-red-500/20' : 'gradient-green hover:shadow-green-500/20'}`}
+                            onClick={() => setStatusChangeDialog({ open: true, school: root, newStatus: root.status === 'active' ? 'suspended' : 'active' })}
+                          >
+                            <Shield className="h-4 w-4 mr-2.5" />
+                            {root.status === 'active' ? 'Suspend School Access' : 'Activate School Access'}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+
+                    {/* Expandable Branches Rows */}
+                    {expandedNetworks[root.id] && branches.map(branch => (
+                      <TableRow key={branch.id} className="bg-slate-50/50 dark:bg-slate-800/30 border-gray-100 dark:border-gray-800 border-b-0 last:border-b">
+                        <TableCell className="pl-12 pt-4 pb-4 border-l-4 border-l-[#57A3CC] dark:border-l-[#57A3CC]">
+                          <div className="flex items-center gap-3.5">
+                            <div className="w-9 h-9 rounded-md border border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center bg-white dark:bg-gray-800 shadow-sm">
+                              <GitBranch className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+                            </div>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-sm font-bold text-[#022172] dark:text-[#57A3CC]">{branch.name}</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">@{branch.slug}</span>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </Card>
-            ))}
+                        </TableCell>
+                        <TableCell className="pt-4 pb-4">
+                          <div className="flex flex-col gap-2">
+                            {branch.contact_email && (
+                              <div className="flex items-center gap-2.5 text-gray-600 dark:text-gray-300">
+                                <Mail className="h-3.5 w-3.5 shrink-0 text-[#57A3CC]/70 dark:text-[#57A3CC]" />
+                                <span className="text-xs truncate max-w-[200px] font-medium">{branch.contact_email}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2.5 text-gray-600 dark:text-gray-300">
+                              <MapPin className="h-3.5 w-3.5 shrink-0 text-[#57A3CC]/70 dark:text-[#57A3CC]" />
+                              <span className="text-xs truncate max-w-[200px]" title={branch.address || 'No address provided'}>{branch.address || 'No address provided'}</span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="pt-4 pb-4">
+                          <Badge variant={branch.status === 'active' ? 'secondary' : 'destructive'} className={`text-[10px] px-2 py-0.5 border-0 uppercase tracking-wider font-semibold ${branch.status === 'active' ? "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300" : "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400"}`}>
+                            {branch.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="pt-4 pb-4 text-right pr-6">
+                          <div className="flex justify-end">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              className="h-8 text-xs border-gray-200 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700 hover:bg-gray-100 dark:bg-transparent font-medium" 
+                              onClick={() => setEditingSchool(branch)}
+                            >
+                              <Edit className="h-3.5 w-3.5 mr-1.5" /> Edit Branch
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </Fragment>
+                ))}
+              </TableBody>
+            </Table>
           </div>
 
           {totalPages > 1 && (

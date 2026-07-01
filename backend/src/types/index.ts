@@ -1811,6 +1811,48 @@ export interface UpdateEmbeddedResourceDTO {
   is_active?: boolean;
 }
 
+// ─── Physics Labs ─────────────────────────────────────────────────────────────
+
+export interface PhysicsLab {
+  id: string
+  school_id: string
+  sim_key: string
+  subject_id: string | null
+  grade_id: string | null
+  custom_note: string | null
+  is_active: boolean
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CreatePhysicsLabDTO {
+  school_id: string
+  sim_key: string
+  subject_id?: string | null
+  grade_id?: string | null
+  custom_note?: string | null
+  is_active?: boolean
+  created_by?: string | null
+}
+
+export interface UpdatePhysicsLabDTO {
+  subject_id?: string | null
+  grade_id?: string | null
+  custom_note?: string | null
+  is_active?: boolean
+}
+
+export interface PhysicsLabSubmission {
+  id: string
+  school_id: string
+  lab_id: string
+  student_id: string
+  findings_text: string
+  time_spent_s: number | null
+  submitted_at: string
+}
+
 // ─── Performance & Efficiency Module ─────────────────────────────────────────
 
 export interface PerformanceActionLookup {

@@ -14,15 +14,16 @@ const SWR_CONFIG = {
 export function useTrainingSessions() {
   const { user } = useAuth()
   const campusContext = useCampus()
+  const selectedCampusId = campusContext?.selectedCampus?.id
 
   const cacheKey = user
-    ? ['training-sessions', user.id, campusContext?.selectedCampus?.id]
+    ? ['training-sessions', user.id, selectedCampusId]
     : null
 
   const { data, error, isLoading, mutate } = useSWR(
     cacheKey,
     async () => {
-      const res = await trainingApi.listSessions()
+      const res = await trainingApi.listSessions(selectedCampusId)
       if (!res.success) throw new Error(res.error ?? 'Failed to fetch training sessions')
       return res.data ?? []
     },

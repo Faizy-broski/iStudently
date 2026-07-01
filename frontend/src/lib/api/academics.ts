@@ -112,67 +112,7 @@ export interface UpdateSubjectDTO {
 // API REQUEST HELPER
 // ============================================================================
 
-async function apiRequest<T = unknown>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<ApiResponse<T>> {
-  const token = await getAuthToken()
-
-  if (!token) {
-    return {
-      success: false,
-      error: 'Authentication required. Please sign in.'
-    }
-  }
-
-  try {
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-        ...options.headers
-      }
-    })
-
-    const data = await response.json()
-
-    // Handle 401 - session expired or invalid token
-    if (response.status === 401) {
-      await handleSessionExpiry()
-      return {
-        success: false,
-        error: 'Session expired'
-      }
-    }
-
-    if (!response.ok) {
-      // Handle specific error messages
-      let errorMessage = data.error || `Request failed with status ${response.status}`
-
-      // Provide user-friendly error messages for common issues
-      if (errorMessage.includes('Cannot coerce') || errorMessage.includes('JSON')) {
-        errorMessage = 'Unable to complete the operation. Please try refreshing the page and trying again.'
-      }
-      if (errorMessage.includes('not found') || errorMessage.includes('access denied')) {
-        errorMessage = 'Access denied or item not found. Please check your permissions.'
-      }
-
-      return {
-        success: false,
-        error: errorMessage
-      }
-    }
-
-    return data
-  } catch {
-    // Silent fail - return generic error
-    return {
-      success: false,
-      error: 'Network error. Please check your connection.'
-    }
-  }
-}
+import { apiRequest } from '@/lib/api'
 
 // ============================================================================
 // GRADE LEVELS API

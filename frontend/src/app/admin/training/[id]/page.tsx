@@ -41,6 +41,7 @@ import {
   trainingApi, TrainingSession, CourseRegistration, TrainingPaymentStatus,
   CreateTrainingSessionDTO,
 } from '@/lib/api/training'
+import { useCampus } from '@/context/CampusContext'
 
 // QR code is client-only
 const QRCode = dynamic(() => import('qrcode.react').then((m) => m.QRCodeSVG), { ssr: false })
@@ -79,6 +80,7 @@ export default function TrainingDetailPage() {
   const params = useParams()
   const router = useRouter()
   const sessionId = params.id as string
+  const campusId = useCampus()?.selectedCampus?.id
 
   const { session, isLoading, mutate: mutateSession } = useTrainingSession(sessionId)
   const [activeTab, setActiveTab] = useState<string>('confirmed')
@@ -94,8 +96,26 @@ export default function TrainingDetailPage() {
 
   const copyLink = () => {
     if (!session) return
-    navigator.clipboard.writeText(`${appUrl}/register/training/${session.public_token}`)
-    toast.success('Registration link copied')
+    const url = `${appUrl}/register/training/${session.public_token}`
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(url)
+        .then(() => toast.success('Registration link copied'))
+        .catch(() => fallbackCopy(url))
+    } else {
+      fallbackCopy(url)
+    }
+  }
+
+  const fallbackCopy = (text: string) => {
+    const el = document.createElement('textarea')
+    el.value = text
+    el.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0'
+    document.body.appendChild(el)
+    el.focus()
+    el.select()
+    try { document.execCommand('copy'); toast.success('Registration link copied') }
+    catch { toast.error('Copy failed — link: ' + text) }
+    document.body.removeChild(el)
   }
 
   const handleExport = async () => {
@@ -134,7 +154,7 @@ export default function TrainingDetailPage() {
       ...data,
       start_date: new Date(data.start_date).toISOString(),
       end_date: new Date(data.end_date).toISOString(),
-    } as Partial<CreateTrainingSessionDTO>)
+    } as Partial<CreateTrainingSessionDTO>, campusId)
     setIsSaving(false)
     if (res.success) {
       toast.success('Session updated')
@@ -147,7 +167,7 @@ export default function TrainingDetailPage() {
 
   // Registration actions
   const toggleAttendance = async (reg: CourseRegistration) => {
-    const res = await trainingApi.toggleAttendance(reg.id, sessionId)
+    const res = await trainingApi.toggleAttendance(reg.id, sessionId, campusId)
     if (res.success) {
       mutateRegs()
     } else {
@@ -156,7 +176,7 @@ export default function TrainingDetailPage() {
   }
 
   const updatePayment = async (reg: CourseRegistration, status: TrainingPaymentStatus) => {
-    const res = await trainingApi.updatePaymentStatus(reg.id, sessionId, status)
+    const res = await trainingApi.updatePaymentStatus(reg.id, sessionId, status, campusId)
     if (res.success) {
       mutateRegs()
     } else {
@@ -165,7 +185,7 @@ export default function TrainingDetailPage() {
   }
 
   const cancelReg = async (reg: CourseRegistration) => {
-    const res = await trainingApi.cancelRegistration(reg.id, sessionId)
+    const res = await trainingApi.cancelRegistration(reg.id, sessionId, campusId)
     if (res.success) {
       toast.success('Registration cancelled')
       mutateRegs()
@@ -176,7 +196,7 @@ export default function TrainingDetailPage() {
   }
 
   const promoteReg = async (reg: CourseRegistration) => {
-    const res = await trainingApi.promoteWaitlistRecord(reg.id, sessionId)
+    const res = await trainingApi.promoteWaitlistRecord(reg.id, sessionId, campusId)
     if (res.success) {
       toast.success('Registration promoted to confirmed')
       mutateRegs()
@@ -189,7 +209,7 @@ export default function TrainingDetailPage() {
   }
 
   const hardDelete = async (reg: CourseRegistration) => {
-    const res = await trainingApi.hardDeleteRegistration(reg.id, sessionId)
+    const res = await trainingApi.hardDeleteRegistration(reg.id, sessionId, campusId)
     if (res.success || (res as any).status === 204) {
       toast.success('Registration permanently deleted')
       mutateRegs()

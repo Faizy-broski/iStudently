@@ -51,7 +51,11 @@ async function fetchAllStudents(schoolId: string, campusId?: string): Promise<Ac
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
-    return data.data ?? [];
+    return (data.data ?? []).map((s: any) => ({
+      ...s,
+      first_name: s.first_name ?? s.profile?.first_name ?? null,
+      last_name:  s.last_name  ?? s.profile?.last_name  ?? null,
+    }));
   } catch {
     return [];
   }

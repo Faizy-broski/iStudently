@@ -89,26 +89,32 @@ export interface RegisterDTO {
 // ─── Admin API (authenticated) ────────────────────────────────────────────────
 
 export const trainingApi = {
-  listSessions: () =>
-    apiRequest<TrainingSession[]>('/training/sessions'),
+  listSessions: (campusId?: string) => {
+    const qs = campusId ? `?campus_id=${campusId}` : ''
+    return apiRequest<TrainingSession[]>(`/training/sessions${qs}`)
+  },
 
-  createSession: (dto: CreateTrainingSessionDTO) =>
+  createSession: (dto: CreateTrainingSessionDTO, campusId?: string) =>
     apiRequest<TrainingSession>('/training/sessions', {
       method: 'POST',
-      body: JSON.stringify(dto),
+      body: JSON.stringify(campusId ? { ...dto, campus_id: campusId } : dto),
     }),
 
-  getSession: (id: string) =>
-    apiRequest<TrainingSession>(`/training/sessions/${id}`),
+  getSession: (id: string, campusId?: string) => {
+    const qs = campusId ? `?campus_id=${campusId}` : ''
+    return apiRequest<TrainingSession>(`/training/sessions/${id}${qs}`)
+  },
 
-  updateSession: (id: string, dto: Partial<CreateTrainingSessionDTO>) =>
+  updateSession: (id: string, dto: Partial<CreateTrainingSessionDTO>, campusId?: string) =>
     apiRequest<TrainingSession>(`/training/sessions/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(dto),
+      body: JSON.stringify(campusId ? { ...dto, campus_id: campusId } : dto),
     }),
 
-  deleteSession: (id: string) =>
-    apiRequest<void>(`/training/sessions/${id}`, { method: 'DELETE' }),
+  deleteSession: (id: string, campusId?: string) => {
+    const qs = campusId ? `?campus_id=${campusId}` : ''
+    return apiRequest<void>(`/training/sessions/${id}${qs}`, { method: 'DELETE' })
+  },
 
   listRegistrations: (
     sessionId: string,
@@ -118,9 +124,11 @@ export const trainingApi = {
       search?: string
       page?: number
       limit?: number
+      campus_id?: string
     } = {}
   ) => {
     const qs = new URLSearchParams()
+    if (params.campus_id) qs.set('campus_id', params.campus_id)
     if (params.status) qs.set('status', params.status)
     if (params.payment_status) qs.set('payment_status', params.payment_status)
     if (params.search) qs.set('search', params.search)
@@ -132,38 +140,39 @@ export const trainingApi = {
     )
   },
 
-  toggleAttendance: (registrationId: string, sessionId: string) =>
+  toggleAttendance: (registrationId: string, sessionId: string, campusId?: string) =>
     apiRequest<CourseRegistration>(`/training/registrations/${registrationId}/attendance`, {
       method: 'PUT',
-      body: JSON.stringify({ session_id: sessionId }),
+      body: JSON.stringify({ session_id: sessionId, campus_id: campusId }),
     }),
 
   updatePaymentStatus: (
     registrationId: string,
     sessionId: string,
-    payment_status: TrainingPaymentStatus
+    payment_status: TrainingPaymentStatus,
+    campusId?: string
   ) =>
     apiRequest<CourseRegistration>(`/training/registrations/${registrationId}/payment`, {
       method: 'PUT',
-      body: JSON.stringify({ session_id: sessionId, payment_status }),
+      body: JSON.stringify({ session_id: sessionId, payment_status, campus_id: campusId }),
     }),
 
-  cancelRegistration: (registrationId: string, sessionId: string) =>
+  cancelRegistration: (registrationId: string, sessionId: string, campusId?: string) =>
     apiRequest<void>(`/training/registrations/${registrationId}/cancel`, {
       method: 'PUT',
-      body: JSON.stringify({ session_id: sessionId }),
+      body: JSON.stringify({ session_id: sessionId, campus_id: campusId }),
     }),
 
-  promoteWaitlistRecord: (registrationId: string, sessionId: string) =>
+  promoteWaitlistRecord: (registrationId: string, sessionId: string, campusId?: string) =>
     apiRequest<void>(`/training/registrations/${registrationId}/promote`, {
       method: 'PUT',
-      body: JSON.stringify({ session_id: sessionId }),
+      body: JSON.stringify({ session_id: sessionId, campus_id: campusId }),
     }),
 
-  hardDeleteRegistration: (registrationId: string, sessionId: string) =>
+  hardDeleteRegistration: (registrationId: string, sessionId: string, campusId?: string) =>
     apiRequest<void>(`/training/registrations/${registrationId}`, {
       method: 'DELETE',
-      body: JSON.stringify({ session_id: sessionId }),
+      body: JSON.stringify({ session_id: sessionId, campus_id: campusId }),
     }),
 
   /** Downloads CSV via Blob to avoid exposing auth token in URL */

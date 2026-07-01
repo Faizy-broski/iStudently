@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select'
 
 import { trainingApi, CreateTrainingSessionDTO } from '@/lib/api/training'
+import { useCampus } from '@/context/CampusContext'
 
 const schema = z
   .object({
@@ -43,6 +44,8 @@ type FormData = z.infer<typeof schema>
 
 export default function CreateTrainingPage() {
   const router = useRouter()
+  const campusCtx = useCampus()
+  const campusId = campusCtx?.selectedCampus?.id
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const {
@@ -73,7 +76,7 @@ export default function CreateTrainingPage() {
       status: data.status,
     }
 
-    const res = await trainingApi.createSession(dto)
+    const res = await trainingApi.createSession(dto, campusId)
     setIsSubmitting(false)
 
     if (res.success && res.data) {

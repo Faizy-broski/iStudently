@@ -10,11 +10,12 @@ import {
 export class TrainingService {
   // ─── Admin: Sessions ──────────────────────────────────────────────────────
 
-  async listSessions(schoolId: string): Promise<TrainingSession[]> {
+  async listSessions(schoolId: string, parentSchoolId?: string): Promise<TrainingSession[]> {
+    const ids = parentSchoolId ? [schoolId, parentSchoolId] : [schoolId]
     const { data, error } = await supabase
       .from('training_sessions')
       .select('*')
-      .eq('school_id', schoolId)
+      .in('school_id', ids)
       .order('start_date', { ascending: false })
 
     if (error) throw error
@@ -52,13 +53,15 @@ export class TrainingService {
 
   async getSessionById(
     sessionId: string,
-    schoolId: string
+    schoolId: string,
+    parentSchoolId?: string
   ): Promise<TrainingSession | null> {
+    const ids = parentSchoolId ? [schoolId, parentSchoolId] : [schoolId]
     const { data: session, error } = await supabase
       .from('training_sessions')
       .select('*')
       .eq('id', sessionId)
-      .eq('school_id', schoolId)
+      .in('school_id', ids)
       .single()
 
     if (error) return null

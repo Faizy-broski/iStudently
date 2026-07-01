@@ -17,6 +17,11 @@ export const requireRole = (...allowedRoles: UserRole[]) => {
 
     const userRole = req.profile.role as UserRole
 
+    // Super admin can access any route that requires specific roles
+    if (userRole === 'super_admin') {
+      return next()
+    }
+
     if (!allowedRoles.includes(userRole)) {
       return res.status(403).json({
         success: false,

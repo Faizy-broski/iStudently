@@ -16,12 +16,18 @@ export async function apiRequest<T = unknown>(
   const token = await getAuthToken();
   if (!token) return { success: false, error: "Authentication required" };
 
+  const impersonatedSchoolId =
+    typeof window !== 'undefined'
+      ? sessionStorage.getItem('impersonatedSchoolId')
+      : null
+
   try {
     const response = await simpleFetch(`${API_URL}${endpoint}`, {
       ...options,
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
+        ...(impersonatedSchoolId ? { "X-School-Id": impersonatedSchoolId } : {}),
         ...(options.headers as Record<string, string> | undefined),
       },
       timeout: 30000,

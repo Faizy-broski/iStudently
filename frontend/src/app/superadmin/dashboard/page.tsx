@@ -2,12 +2,17 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { Building2, Users, CreditCard, TrendingUp, TrendingDown, School, RefreshCw } from 'lucide-react'
+import { Building2, Users, CreditCard, TrendingUp, TrendingDown, School, RefreshCw, LogIn } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import Link from 'next/link'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useSWRConfig } from 'swr'
 import { useSuperAdminDashboard } from '@/hooks/useSuperAdminDashboard'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
+import { useSchools } from '@/hooks/useSchools'
 import {
   AreaChart,
   Area,
@@ -37,7 +42,6 @@ const revenueConfig = {
 }
 
 export default function SuperAdminDashboard() {
-  // Use SWR hook for efficient data fetching with automatic revalidation
   const {
     stats,
     schoolGrowthData,
@@ -50,6 +54,19 @@ export default function SuperAdminDashboard() {
   } = useSuperAdminDashboard()
 
   const { formatCurrency, currencySymbol } = usePlatformSettings()
+  const { schools: allSchools } = useSchools()
+  const router = useRouter()
+  const { mutate: swrMutate } = useSWRConfig()
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string>('')
+
+  const enterSchoolDashboard = () => {
+    const school = allSchools.find(s => s.id === selectedSchoolId)
+    if (!school) return
+    swrMutate(() => true, undefined, { revalidate: false })
+    sessionStorage.setItem('impersonatedSchoolId', school.id)
+    sessionStorage.setItem('impersonatedSchoolName', school.name)
+    router.push('/admin/dashboard')
+  }
 
   // Calculate percentage changes from growth data
   const calculateGrowth = (current: number, previous: number): { change: string; trend: 'up' | 'down' } => {
@@ -163,6 +180,33 @@ export default function SuperAdminDashboard() {
           Here&apos;s what&apos;s happening across all schools today.
         </p>
       </div>
+
+      {/* Quick School Access */}
+      <Card className="mb-8 border-l-4 border-l-brand-blue shadow-sm">
+        <CardContent className="p-4">
+          <p className="text-sm font-medium text-gray-700 mb-3">Enter a School Dashboard</p>
+          <div className="flex gap-3">
+            <Select value={selectedSchoolId} onValueChange={setSelectedSchoolId}>
+              <SelectTrigger className="flex-1 h-10">
+                <SelectValue placeholder="Select a school…" />
+              </SelectTrigger>
+              <SelectContent>
+                {allSchools.filter(s => s.status === 'active').map(s => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              onClick={enterSchoolDashboard}
+              disabled={!selectedSchoolId}
+              className="gradient-blue text-white border-0 gap-2"
+            >
+              <LogIn className="h-4 w-4" />
+              Enter
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">

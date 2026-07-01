@@ -112,6 +112,8 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
     if (effectiveRole !== 'admin') return
     if (pathname?.startsWith('/admin/setup')) return
     if (setupCheckedRef.current || checkingSetupRef.current) return
+    // Never redirect super_admin to setup — they are impersonating and should have full access
+    if (profile.role === 'super_admin') return
 
     const checkSetup = async () => {
       checkingSetupRef.current = true

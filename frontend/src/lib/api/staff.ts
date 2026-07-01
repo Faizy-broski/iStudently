@@ -62,10 +62,15 @@ export interface UpdateStaffDTO {
 
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const token = await getAuthToken()
-    const headers = {
+    const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options.headers,
+        ...(options.headers as Record<string, string>),
+    }
+
+    const impersonatedSchoolId = typeof window !== 'undefined' ? sessionStorage.getItem('impersonatedSchoolId') : null;
+    if (impersonatedSchoolId) {
+        headers['X-School-Id'] = impersonatedSchoolId;
     }
 
     try {
@@ -192,12 +197,19 @@ export async function bulkImportStaff(
     campusId?: string
 ): Promise<{ success: boolean; data?: BulkImportStaffResult; error?: string; message?: string }> {
     const token = await getAuthToken()
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+    }
+
+    const impersonatedSchoolId = typeof window !== 'undefined' ? sessionStorage.getItem('impersonatedSchoolId') : null;
+    if (impersonatedSchoolId) {
+        headers['X-School-Id'] = impersonatedSchoolId;
+    }
+
     const response = await fetch(`${API_URL}/staff/bulk-import`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-        },
+        headers,
         body: JSON.stringify({ staff, campus_id: campusId })
     })
     return response.json()

@@ -1,57 +1,4 @@
-import { getAuthToken } from './schools'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
-
-interface ApiResponse<T> {
-    success?: boolean
-    data?: T
-    error?: string
-}
-
-// NOTE: Using centralized getAuthToken from schools.ts which includes
-// session validation wait logic to prevent race conditions on tab focus
-
-async function apiRequest<T = unknown>(
-    endpoint: string,
-    options: RequestInit = {}
-): Promise<ApiResponse<T>> {
-    const token = await getAuthToken()
-
-    if (!token) {
-        return {
-            success: false,
-            error: 'Authentication required'
-        }
-    }
-
-    try {
-        const response = await fetch(`${API_URL}${endpoint}`, {
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-                ...options.headers
-            }
-        })
-
-        const data = await response.json()
-
-        if (!response.ok) {
-            return {
-                success: false,
-                error: data.error || `Request failed with status ${response.status}`
-            }
-        }
-
-        return { success: true, data }
-    } catch {
-        // Silent fail - return error response without logging
-        return {
-            success: false,
-            error: 'Network error'
-        }
-    }
-}
+import { apiRequest } from '@/lib/api'
 
 export interface SetupStatus {
     hasCampuses: boolean
@@ -102,11 +49,17 @@ export interface CreateCampusData {
 export async function getSetupStatus(): Promise<SetupStatus> {
     const result = await apiRequest<SetupStatus>('/setup/status')
 
-    if (!result.success || !result.data) {
+    // If it has success=false, it's an error from the shared apiRequest
+    if ((result as any).success === false) {
         throw new Error(result.error || 'Failed to get setup status')
     }
 
-    return result.data
+    // Backend returns the status object directly
+    if ('hasCampuses' in result) {
+        return result as unknown as SetupStatus
+    }
+
+    return result.data as SetupStatus
 }
 
 /**
@@ -114,6 +67,11 @@ export async function getSetupStatus(): Promise<SetupStatus> {
  */
 export async function getCampuses(): Promise<Campus[]> {
     const result = await apiRequest<Campus[]>('/setup/campuses')
+
+    // If the backend returns an array directly
+    if (Array.isArray(result)) {
+        return result
+    }
 
     if (!result.success) {
         throw new Error(result.error || 'Failed to get campuses')
@@ -131,11 +89,15 @@ export async function createCampus(data: CreateCampusData): Promise<Campus> {
         body: JSON.stringify(data)
     })
 
-    if (!result.success || !result.data) {
+    if ((result as any).success === false) {
         throw new Error(result.error || 'Failed to create campus')
     }
 
-    return result.data
+    if ('id' in result && 'name' in result) {
+        return result as unknown as Campus
+    }
+
+    return result.data as Campus
 }
 
 /**
@@ -147,11 +109,15 @@ export async function updateCampus(id: string, data: Partial<CreateCampusData>):
         body: JSON.stringify(data)
     })
 
-    if (!result.success || !result.data) {
+    if ((result as any).success === false) {
         throw new Error(result.error || 'Failed to update campus')
     }
 
-    return result.data
+    if ('id' in result && 'name' in result) {
+        return result as unknown as Campus
+    }
+
+    return result.data as Campus
 }
 
 /**

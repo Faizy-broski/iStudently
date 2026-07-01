@@ -477,6 +477,7 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "dashboards", href: "/admin/resources/dashboards", icon: LayoutDashboard },
       { title: "school_inventory", href: "/admin/resources/school-inventory", icon: Package },
       { title: "inventory_snapshots", href: "/admin/resources/inventory-snapshots", icon: Camera },
+      { title: "physics_labs", href: "/admin/physics-labs", icon: FlaskConical },
     ],
   },
   {
@@ -771,6 +772,7 @@ const studentMenuItems: SidebarMenuItem[] = [
       { title: "learning_materials", href: "/student/materials", icon: Library },
       { title: "premium_resources", href: "#", icon: Star, isLabel: true },
       { title: "physics_virtual_labs", href: "/student/resources/physics-virtual-labs", icon: Globe },
+      { title: "physics_labs", href: "/student/resources/physics-labs", icon: FlaskConical },
       { title: "virtual_labs", href: "/student/resources/virtual-labs", icon: FlaskConical },
       { title: "periodic_table", href: "/student/resources/zperiod", icon: Table2 },
     ],

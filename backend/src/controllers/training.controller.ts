@@ -12,11 +12,26 @@ export class TrainingController {
     return (req.profile?.campus_id ?? req.profile?.school_id) as string
   }
 
+  private effectiveId(req: AuthRequest, source: 'query' | 'body' = 'query'): string {
+    const override = source === 'query'
+      ? (req.query.campus_id as string | undefined)
+      : (req.body.campus_id as string | undefined)
+    return override ?? this.schoolId(req)
+  }
+
   // ─── Admin: Sessions ──────────────────────────────────────────────────────
 
   async listSessions(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const data = await trainingService.listSessions(this.schoolId(req))
+      const requestedCampusId = req.query.campus_id as string | undefined
+      const adminBaseSchoolId = req.profile?.school_id as string
+      const effectiveId = requestedCampusId ?? this.schoolId(req)
+      // When viewing a specific campus, also include school-wide sessions (stored under main school_id)
+      const parentSchoolId =
+        requestedCampusId && requestedCampusId !== adminBaseSchoolId
+          ? adminBaseSchoolId
+          : undefined
+      const data = await trainingService.listSessions(effectiveId, parentSchoolId)
       res.json({ success: true, data })
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message })
@@ -34,7 +49,7 @@ export class TrainingController {
         res.status(400).json({ success: false, error: 'start_date must be before end_date' })
         return
       }
-      const data = await trainingService.createSession(this.schoolId(req), dto)
+      const data = await trainingService.createSession(this.effectiveId(req, 'body'), dto)
       res.status(201).json({ success: true, data })
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message })
@@ -43,7 +58,14 @@ export class TrainingController {
 
   async getSession(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const data = await trainingService.getSessionById(req.params.id, this.schoolId(req))
+      const requestedCampusId = req.query.campus_id as string | undefined
+      const adminBaseSchoolId = req.profile?.school_id as string
+      const effectiveId = requestedCampusId ?? this.schoolId(req)
+      const parentSchoolId =
+        requestedCampusId && requestedCampusId !== adminBaseSchoolId
+          ? adminBaseSchoolId
+          : undefined
+      const data = await trainingService.getSessionById(req.params.id, effectiveId, parentSchoolId)
       if (!data) {
         res.status(404).json({ success: false, error: 'Session not found' })
         return
@@ -57,7 +79,7 @@ export class TrainingController {
   async updateSession(req: AuthRequest, res: Response): Promise<void> {
     try {
       const dto: UpdateTrainingSessionDTO = req.body
-      const data = await trainingService.updateSession(req.params.id, this.schoolId(req), dto)
+      const data = await trainingService.updateSession(req.params.id, this.effectiveId(req, 'body'), dto)
       res.json({ success: true, data })
     } catch (err: any) {
       const status = err.message.includes('Cannot reduce') ? 400 : 500
@@ -67,7 +89,7 @@ export class TrainingController {
 
   async deleteSession(req: AuthRequest, res: Response): Promise<void> {
     try {
-      await trainingService.deleteSession(req.params.id, this.schoolId(req))
+      await trainingService.deleteSession(req.params.id, this.effectiveId(req, 'query'))
       res.status(204).send()
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message })
@@ -87,7 +109,7 @@ export class TrainingController {
       }
       const result = await trainingService.listRegistrations(
         req.params.id,
-        this.schoolId(req),
+        this.effectiveId(req, 'query'),
         filters,
         page,
         limit
@@ -101,7 +123,7 @@ export class TrainingController {
 
   async exportCSV(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const csv = await trainingService.exportRegistrationsCSV(req.params.id, this.schoolId(req))
+      const csv = await trainingService.exportRegistrationsCSV(req.params.id, this.effectiveId(req, 'query'))
       res.setHeader('Content-Type', 'text/csv')
       res.setHeader(
         'Content-Disposition',
@@ -123,7 +145,7 @@ export class TrainingController {
       const data = await trainingService.toggleAttendance(
         req.params.id,
         session_id,
-        this.schoolId(req)
+        this.effectiveId(req, 'body')
       )
       res.json({ success: true, data })
     } catch (err: any) {
@@ -142,7 +164,7 @@ export class TrainingController {
       const data = await trainingService.updatePaymentStatus(
         req.params.id,
         session_id,
-        this.schoolId(req),
+        this.effectiveId(req, 'body'),
         payment_status
       )
       res.json({ success: true, data })
@@ -159,7 +181,7 @@ export class TrainingController {
         res.status(400).json({ success: false, error: 'session_id is required' })
         return
       }
-      await trainingService.cancelRegistration(req.params.id, session_id, this.schoolId(req))
+      await trainingService.cancelRegistration(req.params.id, session_id, this.effectiveId(req, 'body'))
       res.json({ success: true, message: 'Registration cancelled' })
     } catch (err: any) {
       const status = err.message.includes('not found') ? 404 : 500
@@ -177,7 +199,7 @@ export class TrainingController {
       const promoted = await trainingService.promoteWaitlistRecord(
         req.params.id,
         session_id,
-        this.schoolId(req)
+        this.effectiveId(req, 'body')
       )
       if (!promoted) {
         res.status(409).json({ success: false, error: 'Seat already filled by another action' })
@@ -197,7 +219,7 @@ export class TrainingController {
         res.status(400).json({ success: false, error: 'session_id is required' })
         return
       }
-      await trainingService.hardDeleteRegistration(req.params.id, session_id, this.schoolId(req))
+      await trainingService.hardDeleteRegistration(req.params.id, session_id, this.effectiveId(req, 'body'))
       res.status(204).send()
     } catch (err: any) {
       const status = err.message.includes('not found') ? 404 : 500

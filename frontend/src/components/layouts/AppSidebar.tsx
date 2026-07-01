@@ -127,8 +127,16 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
       ).toUpperCase()
     : '?'
 
+  // When super_admin is impersonating a school, show that school's name even if no campus is loaded
+  const impersonatedSchoolId =
+    typeof window !== 'undefined' ? sessionStorage.getItem('impersonatedSchoolId') : null
+  const impersonatedSchoolName =
+    typeof window !== 'undefined' ? sessionStorage.getItem('impersonatedSchoolName') : null
+
   const adminName = profile
-    ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
+    ? profile.role === 'super_admin' && impersonatedSchoolId
+      ? 'School Admin'
+      : `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
     : ''
 
   // Gregorian — always use Western Arabic numerals (0-9), Arabic text only for names
@@ -183,7 +191,7 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
 
       {/* Admin name */}
       <p className="text-white font-semibold text-sm leading-tight truncate w-full">{adminName}</p>
-      <p className="text-white/50 text-xs mt-0.5 truncate w-full">{selectedCampus?.name || 'No Campus'}</p>
+      <p className="text-white/50 text-xs mt-0.5 truncate w-full">{selectedCampus?.name || impersonatedSchoolName || 'No Campus'}</p>
 
       {/* Date / time */}
       <div className="mt-3 w-full bg-white/10 rounded-lg px-3 py-2.5 space-y-1.5 text-center rtl:text-center">
@@ -218,16 +226,17 @@ function AcademicSelectors() {
     loading
   } = useAcademic()
   const campusContext = useCampus()
-  // Admins/Librarians can switch campuses via the dropdown.
+  // Admins/Librarians/super_admin (impersonating) can switch campuses via the dropdown.
   // Students/Teachers/Parents are bound to their assigned campus (or the main school if null).
-  const campusId = (profile?.role === 'admin' || profile?.role === 'librarian')
+  const isImpersonating = typeof window !== 'undefined' && !!sessionStorage.getItem('impersonatedSchoolId')
+  const isAdminLike = profile?.role === 'admin' || profile?.role === 'librarian' || (profile?.role === 'super_admin' && isImpersonating)
+  const campusId = isAdminLike
     ? (campusContext?.selectedCampus?.id || profile?.campus_id)
     : profile?.campus_id
 
   const isTeacher = profile?.role === 'teacher'
   const isVisible =
-    profile?.role === 'admin' ||
-    profile?.role === 'librarian' ||
+    isAdminLike ||
     profile?.role === 'student' ||
     isTeacher
 
@@ -664,8 +673,10 @@ function CampusSelector() {
   const locale = useLocale()
   const isAr = locale === 'ar'
 
-  // Only show for admin
-  if (profile?.role !== 'admin' || !campusContext) return null
+  // Show for admin and super_admin when impersonating a school
+  const isImpersonating = typeof window !== 'undefined' && !!sessionStorage.getItem('impersonatedSchoolId')
+  const isAdminLike = profile?.role === 'admin' || (profile?.role === 'super_admin' && isImpersonating)
+  if (!isAdminLike || !campusContext) return null
 
   const { campuses, selectedCampus, setSelectedCampus, loading } = campusContext
 

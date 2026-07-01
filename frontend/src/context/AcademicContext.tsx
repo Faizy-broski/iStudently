@@ -235,7 +235,7 @@ export function AcademicProvider({ children }: AcademicProviderProps) {
         setAcademicYearCache(years, user.id)
 
         // Set default academic year if not already set
-        if (profile.role === 'admin' || profile.role === 'librarian' || profile.role === 'teacher' || profile.role === 'student' || profile.role === 'parent') {
+        if (profile.role === 'admin' || profile.role === 'super_admin' || profile.role === 'librarian' || profile.role === 'teacher' || profile.role === 'student' || profile.role === 'parent') {
             const current = years.find(y => y.is_current)
             if (current && !selectedAcademicYear) {
                 setSelectedAcademicYear(current.id)

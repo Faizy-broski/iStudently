@@ -202,6 +202,19 @@ export const authenticate = async (
       }
     }
 
+    // Super admin school impersonation via X-School-Id header
+    // No DB lookup needed — super_admin is already fully verified.
+    // UUID validation ensures invalid strings produce empty results downstream.
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (profile.role === 'super_admin') {
+      const impersonatedSchoolId = req.headers['x-school-id'] as string | undefined
+      if (impersonatedSchoolId && UUID_RE.test(impersonatedSchoolId)) {
+        profile.school_id = impersonatedSchoolId
+        profile.campus_id = undefined
+        profile.impersonating_school_id = impersonatedSchoolId
+      }
+    }
+
     // Attach user and profile to request
     req.user = user
     req.profile = profile

@@ -34,6 +34,11 @@ async function apiRequest<T = unknown>(
     'Authorization': `Bearer ${token}`
   }
 
+  const impersonatedSchoolId = typeof window !== 'undefined' ? sessionStorage.getItem('impersonatedSchoolId') : null;
+  if (impersonatedSchoolId) {
+    headers['X-School-Id'] = impersonatedSchoolId;
+  }
+
   try {
     const response = await simpleFetch(`${API_URL}${endpoint}`, {
       ...options,

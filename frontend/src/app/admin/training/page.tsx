@@ -25,6 +25,7 @@ import {
 
 import { useTrainingSessions } from '@/hooks/useTraining'
 import { trainingApi, TrainingSession } from '@/lib/api/training'
+import { useCampus } from '@/context/CampusContext'
 
 function capacityColor(pct: number): string {
   if (pct >= 80) return 'bg-red-500'
@@ -48,6 +49,8 @@ function StatusBadge({ status }: { status: TrainingSession['status'] }) {
 export default function TrainingPage() {
   const router = useRouter()
   const { sessions, isLoading, mutate } = useTrainingSessions()
+  const campusCtx = useCampus()
+  const campusId = campusCtx?.selectedCampus?.id
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const appUrl =
@@ -56,13 +59,35 @@ export default function TrainingPage() {
       : process.env.NEXT_PUBLIC_APP_URL ?? ''
 
   const copyLink = (token: string) => {
-    navigator.clipboard.writeText(`${appUrl}/register/training/${token}`)
-    toast.success('Registration link copied to clipboard')
+    const url = `${appUrl}/register/training/${token}`
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(url)
+        .then(() => toast.success('Registration link copied to clipboard'))
+        .catch(() => fallbackCopy(url))
+    } else {
+      fallbackCopy(url)
+    }
+  }
+
+  const fallbackCopy = (text: string) => {
+    const el = document.createElement('textarea')
+    el.value = text
+    el.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0'
+    document.body.appendChild(el)
+    el.focus()
+    el.select()
+    try {
+      document.execCommand('copy')
+      toast.success('Registration link copied to clipboard')
+    } catch {
+      toast.error('Could not copy — please copy the link manually: ' + text)
+    }
+    document.body.removeChild(el)
   }
 
   const handleDelete = async (id: string) => {
     setDeletingId(id)
-    const res = await trainingApi.deleteSession(id)
+    const res = await trainingApi.deleteSession(id, campusId)
     setDeletingId(null)
     if (res.success || (res as any).status === 204) {
       toast.success('Session deleted')

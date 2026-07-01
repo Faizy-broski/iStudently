@@ -1,5 +1,5 @@
 import { getAuthToken } from './schools'
-
+import { simpleFetch } from './abortable-fetch'
 import { API_URL } from '@/config/api'
 
 interface ApiResponse<T = unknown> {
@@ -34,7 +34,7 @@ async function apiRequest<T = unknown>(
 
   try {
     const response = await Promise.race([
-      fetch(`${API_URL}${endpoint}`, {
+      simpleFetch(`${API_URL}${endpoint}`, {
         ...options,
         headers,
         cache: 'no-store'

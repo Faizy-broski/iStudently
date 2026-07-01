@@ -18,19 +18,23 @@ import {
   CheckCircle2,
   User,
   Info,
+  TrendingDown,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCampus } from '@/context/CampusContext';
 import { getDisciplineFields, createDisciplineReferral, type DisciplineField } from '@/lib/api/discipline';
 import { getStudents, getStudentById, type Student } from '@/lib/api/students';
+import { getGradeLevels, type GradeLevel } from '@/lib/api/academics';
 
 // ---------------------------------------------------------------------------
 
 function StudentSearch({
   campusId,
+  gradeFilter,
   onSelect,
 }: {
   campusId?: string;
+  gradeFilter: string;
   onSelect: (student: Student) => void;
 }) {
   const t = useTranslations('discipline');
@@ -45,14 +49,19 @@ function StudentSearch({
     }
     setSearching(true);
     try {
-      const res = await getStudents({ search: q, campus_id: campusId, limit: 10 });
-      setResults(res.data ?? []);
+      const res = await getStudents({ search: q, campus_id: campusId, limit: 20 });
+      const all = res.data ?? [];
+      setResults(
+        gradeFilter && gradeFilter !== 'all'
+          ? all.filter((s) => s.grade_level === gradeFilter)
+          : all
+      );
     } catch {
       setResults([]);
     } finally {
       setSearching(false);
     }
-  }, [campusId]);
+  }, [campusId, gradeFilter]);
 
   async function selectStudent(s: Student) {
     // pull full record so we have campus_id if available (search results don't
@@ -260,6 +269,17 @@ function DynamicFieldInput({
 }
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function getPenaltyPts(field: DisciplineField): number | null {
+  if (!field.options?.length) return null;
+  const first = field.options[0];
+  const n = parseFloat(first);
+  return !isNaN(n) && n < 0 ? Math.abs(n) : null;
+}
+
+// ---------------------------------------------------------------------------
 // Main Page
 // ---------------------------------------------------------------------------
 
@@ -283,6 +303,9 @@ export default function AddReferralPage() {
   const [fields, setFields] = useState<DisciplineField[]>([]);
   const [loadingFields, setLoadingFields] = useState(true);
 
+  const [grades, setGrades] = useState<GradeLevel[]>([]);
+  const [gradeFilter, setGradeFilter] = useState<string>('all');
+
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [incidentDate, setIncidentDate] = useState(
     new Date().toISOString().slice(0, 10)
@@ -301,6 +324,9 @@ export default function AddReferralPage() {
     }
 
     fetchFields();
+    getGradeLevels().then((res) => {
+      if (res.data) setGrades(res.data.filter((g) => g.is_active));
+    });
   }, [schoolId]);
 
   async function fetchFields() {
@@ -455,10 +481,26 @@ export default function AddReferralPage() {
                   ) : null}
                 </div>
               ) : (
-                <StudentSearch
-                  campusId={campusId}
-                  onSelect={setSelectedStudent}
-                />
+                <div className="space-y-2">
+                  {grades.length > 0 && (
+                    <Select value={gradeFilter} onValueChange={setGradeFilter}>
+                      <SelectTrigger className="w-48 h-8 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">{t('allGrades')}</SelectItem>
+                        {grades.map((g) => (
+                          <SelectItem key={g.id} value={g.name}>{g.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  <StudentSearch
+                    campusId={campusId}
+                    gradeFilter={gradeFilter}
+                    onSelect={setSelectedStudent}
+                  />
+                </div>
               )}
             </div>
 
@@ -488,19 +530,30 @@ export default function AddReferralPage() {
                 {t('toAddFields')}
               </p>
             ) : (
-              fields.map((field, idx) => (
-                <div key={field.id}>
-                  {idx > 0 && <hr className="my-5 border-t" />}
-                  <div className="space-y-3">
-                    <p className="text-base font-semibold text-blue-700">{field.name}</p>
-                    <DynamicFieldInput
-                      field={field}
-                      value={fieldValues[field.id]}
-                      onChange={(val) => setFieldValue(field.id, val)}
-                    />
+              fields.map((field, idx) => {
+                const pts = getPenaltyPts(field);
+                return (
+                  <div key={field.id}>
+                    {idx > 0 && <hr className="my-5 border-t" />}
+                    <div className="space-y-3">
+                      <p className="text-base font-semibold text-blue-700 flex items-center gap-2">
+                        {field.name}
+                        {pts !== null && (
+                          <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded">
+                            <TrendingDown className="h-3 w-3" />
+                            {pts} pts
+                          </span>
+                        )}
+                      </p>
+                      <DynamicFieldInput
+                        field={field}
+                        value={fieldValues[field.id]}
+                        onChange={(val) => setFieldValue(field.id, val)}
+                      />
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
 
           </CardContent>

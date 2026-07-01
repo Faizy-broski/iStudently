@@ -73,6 +73,7 @@ import userAgreementRoutes from "./routes/user-agreement.routes";
 import twoFARoutes from "./routes/two-fa.routes";
 import setupAssistantRoutes from "./routes/setup-assistant.routes";
 import embeddedResourcesRoutes from "./routes/embedded-resources.routes";
+import physicsLabsRoutes from "./routes/physics-labs.routes";
 import vlabyRoutes from "./routes/vlaby.routes";
 import sidebarConfigRoutes from "./routes/sidebar-config.routes";
 import speedReadingRoutes from "./routes/speed-reading.routes";
@@ -117,7 +118,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   );
   res.setHeader(
     "Access-Control-Allow-Headers",
-    "Accept, Accept-Language, Content-Language, Content-Type, Authorization, X-Requested-With, X-API-Key, Origin, X-Locale, X-VLaby-Token",
+    "Accept, Accept-Language, Content-Language, Content-Type, Authorization, X-Requested-With, X-API-Key, Origin, X-Locale, X-VLaby-Token, X-School-Id",
   );
   res.setHeader("Access-Control-Max-Age", "86400");
   res.setHeader("Vary", "Origin");
@@ -285,6 +286,7 @@ registerRoutes("/auth", authRoutes);
 registerRoutes("/resource-dashboards", resourceDashboardsRoutes);
 registerRoutes("/resource-links", resourceLinksRoutes);
 registerRoutes("/embedded-resources", embeddedResourcesRoutes);
+registerRoutes("/physics-labs", physicsLabsRoutes);
 registerRoutes("/vlaby", vlabyRoutes);
 registerRoutes("/sidebar-config", sidebarConfigRoutes);
 registerRoutes("/signup-links", signupLinksRoutes);

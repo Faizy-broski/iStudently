@@ -8,6 +8,12 @@ interface FetchOptions extends RequestInit {
   timeout?: number
 }
 
+function getImpersonationHeaders(): Record<string, string> {
+  if (typeof window === 'undefined') return {}
+  const id = sessionStorage.getItem('impersonatedSchoolId')
+  return id ? { 'X-School-Id': id } : {}
+}
+
 /**
  * Production-ready fetch with timeout (no AbortController)
  * Uses Promise.race() for timeout instead of abort signals
@@ -18,6 +24,8 @@ export async function simpleFetch(
 ): Promise<Response> {
   const { timeout = 30000, ...fetchOptions } = options
 
+  const impersonationHeaders = getImpersonationHeaders()
+
   // Create a timeout promise that rejects after the specified time
   const timeoutPromise = new Promise<never>((_, reject) => {
     setTimeout(() => {
@@ -27,7 +35,13 @@ export async function simpleFetch(
 
   // Race between fetch and timeout
   const response = await Promise.race([
-    fetch(url, fetchOptions),
+    fetch(url, {
+      ...fetchOptions,
+      headers: {
+        ...impersonationHeaders,
+        ...(fetchOptions.headers as Record<string, string> | undefined),
+      },
+    }),
     timeoutPromise
   ])
 

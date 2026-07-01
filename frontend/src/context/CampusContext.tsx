@@ -51,6 +51,11 @@ function setCampusCache(campuses: Campus[], schoolId: string) {
 export function CampusProvider({ children }: { children: ReactNode }) {
     const { profile } = useAuth()
 
+    // Super admin impersonation: use the impersonated school_id when profile has none
+    const effectiveSchoolId: string | null =
+        profile?.school_id ??
+        (typeof window !== 'undefined' ? sessionStorage.getItem('impersonatedSchoolId') : null)
+
     // Initialize from cache if available
     const [campuses, setCampuses] = useState<Campus[]>(() => {
         const cached = getCachedCampuses()
@@ -84,13 +89,14 @@ export function CampusProvider({ children }: { children: ReactNode }) {
     }
 
     const refreshCampuses = async (forceRefresh = false) => {
-        if (!profile?.school_id) {
+        if (!effectiveSchoolId) {
             setLoading(false)
             return
         }
 
         // For non-admin/librarian roles, fetch their single assigned campus
-        if (profile.role !== 'admin' && profile.role !== 'librarian') {
+        // super_admin is treated like admin so campus list loads during impersonation
+        if (!profile || (profile.role !== 'admin' && profile.role !== 'librarian' && profile.role !== 'super_admin')) {
             const hasCorrectCampus = selectedCampus?.id === profile.campus_id
             if (profile.campus_id && !hasCorrectCampus) {
                 try {
@@ -175,7 +181,7 @@ export function CampusProvider({ children }: { children: ReactNode }) {
             }
 
             setCampuses(data)
-            setCampusCache(data, profile.school_id)
+            setCampusCache(data, effectiveSchoolId!)
 
             // Auto-select first campus if none selected or if selected is not in list
             if (data.length > 0) {
@@ -209,7 +215,7 @@ export function CampusProvider({ children }: { children: ReactNode }) {
         let isMounted = true
 
         const loadCampuses = async () => {
-            if (profile?.school_id) {
+            if (effectiveSchoolId) {
                 try {
                     await refreshCampuses(false)
                 } catch {
@@ -226,16 +232,16 @@ export function CampusProvider({ children }: { children: ReactNode }) {
             isMounted = false
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [profile?.school_id, profile?.role, profile?.campus_id])
+    }, [effectiveSchoolId, profile?.role, profile?.campus_id])
 
     // Refetch data when tab becomes visible again
     useVisibilityRefetch(
         useCallback(() => {
-            if (profile?.school_id) {
+            if (effectiveSchoolId) {
                 refreshCampuses(true) // Force refresh when returning to tab
             }
             // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [profile?.school_id, profile?.role, profile?.campus_id])
+        }, [effectiveSchoolId, profile?.role, profile?.campus_id])
     )
 
     return (

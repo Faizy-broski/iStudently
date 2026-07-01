@@ -90,44 +90,7 @@ export const MP_TYPE_SHORT: Record<MarkingPeriodType, string> = {
 // API REQUEST HELPER
 // ============================================================================
 
-async function apiRequest<T = unknown>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<ApiResponse<T>> {
-  try {
-    const token = await getAuthToken()
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string> || {})
-    }
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
-    }
-
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      ...options,
-      headers
-    })
-
-    const data = await response.json()
-
-    if (response.status === 401) {
-      await handleSessionExpiry()
-      return { success: false, error: 'Session expired' }
-    }
-
-    if (!response.ok) {
-      return {
-        success: false,
-        error: data.error || `Request failed with status ${response.status}`
-      }
-    }
-
-    return data
-  } catch {
-    return { success: false, error: 'Network error. Please check your connection.' }
-  }
-}
+import { apiRequest } from '@/lib/api'
 
 // ============================================================================
 // API FUNCTIONS
