@@ -6,6 +6,7 @@ import { HostelService } from "./hostel.service";
 import { diaryReminderService } from "./diary-reminder.service";
 import { AutomaticRecordsService } from "./automaticRecords.service";
 import { twoFAService } from "./two-fa.service";
+import { sweepAllExpiredQuizzes } from "./quiz.service";
 
 /**
  * AUTOMATED CRON SERVICE
@@ -137,6 +138,24 @@ class CronService {
       "15 3 * * *",
       async () => {
         await twoFAService.sweepExpiredSessions();
+      },
+      {
+        scheduled: true,
+        timezone: "Asia/Karachi",
+      },
+    );
+
+    // Quiz absentees — every 15 minutes, mark roster no-shows absent (0) for
+    // any scheduled quiz whose lockout window has passed. Server-authoritative
+    // so students who never open the app still receive their gradebook 0.
+    cron.schedule(
+      "*/15 * * * *",
+      async () => {
+        try {
+          await sweepAllExpiredQuizzes();
+        } catch (error: any) {
+          console.error("❌ [CRON] Quiz absentee sweep error:", error.message);
+        }
       },
       {
         scheduled: true,

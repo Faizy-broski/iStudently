@@ -202,6 +202,7 @@ export interface CustomLink {
   is_template?: boolean
   start_date?: string
   end_date?: string
+  visible_to_roles?: string[]
 }
 
 /** Public — no auth. Used by login page to render external link tabs. */
@@ -222,7 +223,7 @@ export async function getSuperAdminCustomLinks(schoolId: string) {
 /** Super Admin — add a new custom link page (per-school). */
 export async function addCustomLink(
   schoolId: string,
-  data: { title: string; page_type: CustomPageType; url?: string; content?: string; image_url?: string; isActive: boolean; is_template?: boolean; start_date?: string; end_date?: string }
+  data: { title: string; page_type: CustomPageType; url?: string; content?: string; image_url?: string; isActive: boolean; is_template?: boolean; start_date?: string; end_date?: string; visible_to_roles?: string[] }
 ) {
   return authFetch<CustomLink>(`/public/superadmin/pages/${schoolId}`, {
     method: 'POST',
@@ -234,7 +235,7 @@ export async function addCustomLink(
 export async function updateCustomLink(
   schoolId: string,
   pageId: string,
-  data: Partial<{ title: string; page_type: CustomPageType; url: string; content: string; image_url: string; isActive: boolean; is_template: boolean; start_date: string | null; end_date: string | null }>
+  data: Partial<{ title: string; page_type: CustomPageType; url: string; content: string; image_url: string; isActive: boolean; is_template: boolean; start_date: string | null; end_date: string | null; visible_to_roles: string[] }>
 ) {
   return authFetch<CustomLink>(`/public/superadmin/pages/${schoolId}/${pageId}`, {
     method: 'PUT',
@@ -271,6 +272,7 @@ export async function addGlobalCustomLink(data: {
   is_template?: boolean
   start_date?: string
   end_date?: string
+  visible_to_roles?: string[]
 }) {
   return authFetch<CustomLink>('/public/superadmin/global-pages', {
     method: 'POST',
@@ -280,7 +282,7 @@ export async function addGlobalCustomLink(data: {
 
 export async function updateGlobalCustomLink(
   pageId: string,
-  data: Partial<{ title: string; page_type: CustomPageType; url: string; content: string; image_url: string; isActive: boolean; is_template: boolean; start_date: string | null; end_date: string | null }>
+  data: Partial<{ title: string; page_type: CustomPageType; url: string; content: string; image_url: string; isActive: boolean; is_template: boolean; start_date: string | null; end_date: string | null; visible_to_roles: string[] }>
 ) {
   return authFetch<CustomLink>(`/public/superadmin/global-pages/${pageId}`, {
     method: 'PUT',

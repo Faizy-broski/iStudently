@@ -20,6 +20,7 @@ export default function EmbeddedResourcesList({ role, gradeId }: Props) {
   const [search, setSearch] = useState('')
   const [selectedGrade, setSelectedGrade] = useState<string>('all')
   const [selectedTeacher, setSelectedTeacher] = useState<string>('all')
+  const [sortBy, setSortBy] = useState<'title_asc' | 'title_desc' | 'newest' | 'oldest'>('title_asc')
 
   useEffect(() => {
     const load = async () => {
@@ -81,8 +82,19 @@ export default function EmbeddedResourcesList({ role, gradeId }: Props) {
       list = list.filter(r => r.creator_name === selectedTeacher)
     }
 
+    // Sort
+    list = [...list].sort((a, b) => {
+      switch (sortBy) {
+        case 'title_asc': return a.title.localeCompare(b.title)
+        case 'title_desc': return b.title.localeCompare(a.title)
+        case 'newest': return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+        case 'oldest': return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+        default: return 0
+      }
+    })
+
     return list
-  }, [resources, search, selectedGrade, selectedTeacher])
+  }, [resources, search, selectedGrade, selectedTeacher, sortBy])
 
   const hasActiveFilters = search.trim() !== '' || selectedGrade !== 'all' || selectedTeacher !== 'all'
 
@@ -177,6 +189,21 @@ export default function EmbeddedResourcesList({ role, gradeId }: Props) {
               <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
             </div>
           )}
+
+          {/* Sort filter */}
+          <div className="relative min-w-40">
+            <select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value as any)}
+              className="w-full h-9 appearance-none rounded-md border border-input bg-background px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="title_asc">Title (A-Z)</option>
+              <option value="title_desc">Title (Z-A)</option>
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+            </select>
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+          </div>
 
           {/* Clear filters */}
           {hasActiveFilters && (

@@ -982,6 +982,7 @@ export class StudentDashboardService {
       .from('discipline_referrals')
       .select(`
         id,
+        school_id,
         incident_date,
         field_values,
         created_at,

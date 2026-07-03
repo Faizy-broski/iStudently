@@ -1,9 +1,11 @@
 'use client'
 
 import useSWR from 'swr'
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useParentDashboard } from '@/context/ParentDashboardContext'
 import { getStudentDiscipline } from '@/lib/api/parent-dashboard'
+import { getDisciplineFieldNameMap } from '@/lib/api/discipline'
 import { ParentDashboardLayout } from '@/components/parent/ParentDashboardLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -23,6 +25,16 @@ export default function ParentDisciplinePage() {
   )
 
   const referrals: any[] = Array.isArray(data) ? data : []
+  const schoolId = referrals[0]?.school_id
+
+  const [fieldNameMap, setFieldNameMap] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    if (!schoolId) return
+    getDisciplineFieldNameMap(schoolId)
+      .then(setFieldNameMap)
+      .catch(() => {/* silent — labels fall back to raw key */})
+  }, [schoolId])
 
   return (
     <ParentDashboardLayout hideStats={true}>
@@ -77,7 +89,7 @@ export default function ParentDisciplinePage() {
                       <div className="grid grid-cols-2 gap-2">
                         {Object.entries(fieldValues).map(([k, v]) => (
                           <div key={k} className="text-sm">
-                            <span className="font-medium text-muted-foreground capitalize">{k.replace(/_/g, ' ')}: </span>
+                            <span className="font-medium text-muted-foreground capitalize">{fieldNameMap[k] || k.replace(/_/g, ' ')}: </span>
                             <span className="text-muted-foreground">{String(v)}</span>
                           </div>
                         ))}

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Minus, Save, Globe, ExternalLink, Loader2, Users, ChevronDown, X } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { Plus, Minus, Save, Globe, ExternalLink, Loader2, Users, ChevronDown, X, ArrowDownAZ, ArrowUpZA, ArrowDown01, ArrowUp10 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -459,6 +459,7 @@ export default function EmbeddedResourcesPage() {
   const [loading,            setLoading]            = useState(true)
   const [saving,             setSaving]             = useState(false)
   const [deleteTarget,       setDeleteTarget]       = useState<string | null>(null)
+  const [sortBy,             setSortBy]             = useState<'title_asc' | 'title_desc' | 'url_asc' | 'url_desc'>('title_asc')
 
   // ── Data loading ────────────────────────────────────────────────────────────
 
@@ -579,6 +580,24 @@ export default function EmbeddedResourcesPage() {
     setDeleteTarget(null)
   }
 
+  // ── Sorting ─────────────────────────────────────────────────────────────────
+
+  const sortedRows = useMemo(() => {
+    // Separate the 'new' row so it always stays at the bottom
+    const existingRows = rows.filter(r => r.id !== 'new')
+    const newRow = rows.find(r => r.id === 'new')
+
+    existingRows.sort((a, b) => {
+      if (sortBy === 'title_asc') return a.title.localeCompare(b.title)
+      if (sortBy === 'title_desc') return b.title.localeCompare(a.title)
+      if (sortBy === 'url_asc') return a.url.localeCompare(b.url)
+      if (sortBy === 'url_desc') return b.url.localeCompare(a.url)
+      return 0
+    })
+
+    return newRow ? [...existingRows, newRow] : existingRows
+  }, [rows, sortBy])
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
@@ -600,9 +619,26 @@ export default function EmbeddedResourcesPage() {
         </Button>
       </div>
 
-      {/* Note */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-800 dark:bg-blue-950/30 dark:border-blue-900/50 dark:text-blue-300">
-        {t('note_audience_banner')}
+      {/* Note & Controls */}
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-800 dark:bg-blue-950/30 dark:border-blue-900/50 dark:text-blue-300 flex-1">
+          {t('note_audience_banner')}
+        </div>
+
+        {/* Sort Dropdown */}
+        <div className="relative min-w-48 shrink-0">
+          <select
+            value={sortBy}
+            onChange={e => setSortBy(e.target.value as any)}
+            className="w-full h-10 appearance-none rounded-lg border border-input bg-white dark:bg-gray-900 px-4 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+          >
+            <option value="title_asc">Sort by Title (A-Z)</option>
+            <option value="title_desc">Sort by Title (Z-A)</option>
+            <option value="url_asc">Sort by Link (A-Z)</option>
+            <option value="url_desc">Sort by Link (Z-A)</option>
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+        </div>
       </div>
 
       {/* Table */}
@@ -622,7 +658,7 @@ export default function EmbeddedResourcesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {rows.map(row => (
+              {sortedRows.map(row => (
                 <tr key={row.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors align-top">
                   {/* Delete */}
                   <td className="px-4 py-3">

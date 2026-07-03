@@ -4,7 +4,11 @@ import { supabase } from '../config/supabase'
 // TYPES
 // ============================================================================
 
-export type QuestionType = 'select' | 'multiple' | 'gap' | 'text' | 'textarea'
+export type QuestionType = 'select' | 'multiple' | 'gap' | 'text' | 'textarea' | 'matching'
+
+export type DifficultyLevel = 'easy' | 'medium' | 'hard'
+
+export type QuizGenerationMode = 'manual' | 'blueprint'
 
 export interface QuizCategory {
   id: string
@@ -27,6 +31,9 @@ export interface QuizQuestion {
   description?: string | null
   answer?: string | null
   sort_order: number
+  grade_level_id?: string | null
+  subject_id?: string | null
+  difficulty_level: DifficultyLevel
   created_at: string
   updated_at: string
   // joined
@@ -46,6 +53,21 @@ export interface Quiz {
   description?: string | null
   show_correct_answers: boolean
   shuffle: boolean
+  // categorization / auto-filter + blueprint source
+  subject_id?: string | null
+  grade_level_id?: string | null
+  // targeted assignment (empty array = whole section)
+  assigned_student_ids?: string[]
+  // multi-form blueprint
+  generation_mode: QuizGenerationMode
+  variant_count: number
+  variants_generated_at?: string | null
+  blueprint_easy: number
+  blueprint_medium: number
+  blueprint_hard: number
+  // strict live scheduling
+  start_time?: string | null
+  lockout_minutes?: number | null
   created_at: string
   updated_at: string
   // joined
@@ -54,6 +76,29 @@ export interface Quiz {
   creator?: { first_name: string; last_name: string } | null
   question_count?: number
   student_count?: number
+}
+
+export interface QuizVariant {
+  id: string
+  quiz_id: string
+  form_label: string
+  created_at: string
+}
+
+export interface QuizStudentForm {
+  id: string
+  quiz_id: string
+  student_id: string
+  variant_id: string
+  assigned_at: string
+}
+
+export interface QuizAccessState {
+  unlocked: boolean
+  locked_out: boolean
+  start_time: string | null
+  lockout_at: string | null
+  now: string
 }
 
 export interface QuizQuestionMap {
@@ -144,7 +189,15 @@ export const deleteCategory = async (id: string) => {
 
 export const getQuestions = async (
   schoolId: string,
-  filters?: { campusId?: string | null; categoryId?: string; search?: string; createdBy?: string }
+  filters?: {
+    campusId?: string | null
+    categoryId?: string
+    search?: string
+    createdBy?: string
+    gradeLevelId?: string
+    subjectId?: string
+    difficulty?: DifficultyLevel
+  }
 ) => {
   let q = supabase
     .from('quiz_questions')
@@ -160,6 +213,9 @@ export const getQuestions = async (
   if (filters?.campusId) q = q.eq('campus_id', filters.campusId)
   if (filters?.categoryId) q = q.eq('category_id', filters.categoryId)
   if (filters?.createdBy) q = q.eq('created_by', filters.createdBy)
+  if (filters?.gradeLevelId) q = q.eq('grade_level_id', filters.gradeLevelId)
+  if (filters?.subjectId) q = q.eq('subject_id', filters.subjectId)
+  if (filters?.difficulty) q = q.eq('difficulty_level', filters.difficulty)
   if (filters?.search) q = q.ilike('title', `%${filters.search}%`)
 
   const { data, error } = await q
@@ -191,7 +247,7 @@ export const createQuestion = async (
 
 export const updateQuestion = async (
   id: string,
-  dto: Partial<Pick<QuizQuestion, 'title' | 'type' | 'description' | 'answer' | 'sort_order' | 'category_id'>>
+  dto: Partial<Pick<QuizQuestion, 'title' | 'type' | 'description' | 'answer' | 'sort_order' | 'category_id' | 'grade_level_id' | 'subject_id' | 'difficulty_level'>>
 ) => {
   const { data, error } = await supabase
     .from('quiz_questions')
@@ -266,23 +322,76 @@ export const getQuiz = async (id: string) => {
 }
 
 export const createQuiz = async (dto: Omit<Quiz, 'id' | 'created_at' | 'updated_at' | 'assignment' | 'course_period' | 'creator' | 'question_count' | 'student_count'>) => {
-  const { data, error } = await supabase.from('quizzes').insert(dto).select().single()
+  const payload: any = { ...dto }
+
+  // Resolve subject/grade from the selected course period when not supplied,
+  // so blueprint generation + question auto-filter have them on the quiz row.
+  if (payload.course_period_id && (!payload.subject_id || !payload.grade_level_id)) {
+    const ctx = await getCoursePeriodContext(payload.course_period_id)
+    payload.subject_id = payload.subject_id ?? ctx.subject_id
+    payload.grade_level_id = payload.grade_level_id ?? ctx.grade_level_id
+  }
+
+  const { data, error } = await supabase.from('quizzes').insert(payload).select().single()
   if (error) throw error
-  return data as Quiz
+  const quiz = data as Quiz
+
+  // Blueprint quizzes: pre-generate the forms EAGERLY at publish time (never on
+  // student fetch). On failure, roll back the just-created quiz so the teacher
+  // sees the error instead of a half-created quiz.
+  if (quiz.generation_mode === 'blueprint') {
+    try {
+      await generateQuizVariants(quiz.id)
+    } catch (e) {
+      await supabase.from('quizzes').delete().eq('id', quiz.id)
+      throw e
+    }
+  }
+  return quiz
 }
 
 export const updateQuiz = async (
   id: string,
-  dto: Partial<Pick<Quiz, 'title' | 'description' | 'assignment_id' | 'course_period_id' | 'academic_year_id' | 'show_correct_answers' | 'shuffle'>>
+  dto: Partial<Pick<Quiz,
+    | 'title' | 'description' | 'assignment_id' | 'course_period_id' | 'academic_year_id'
+    | 'show_correct_answers' | 'shuffle' | 'subject_id' | 'grade_level_id'
+    | 'assigned_student_ids' | 'generation_mode' | 'variant_count'
+    | 'blueprint_easy' | 'blueprint_medium' | 'blueprint_hard'
+    | 'start_time' | 'lockout_minutes'
+  >>
 ) => {
+  const payload: any = { ...dto }
+
+  if (payload.course_period_id && (!payload.subject_id || !payload.grade_level_id)) {
+    const ctx = await getCoursePeriodContext(payload.course_period_id)
+    payload.subject_id = payload.subject_id ?? ctx.subject_id
+    payload.grade_level_id = payload.grade_level_id ?? ctx.grade_level_id
+  }
+
   const { data, error } = await supabase
     .from('quizzes')
-    .update({ ...dto, updated_at: new Date().toISOString() })
+    .update({ ...payload, updated_at: new Date().toISOString() })
     .eq('id', id)
     .select()
     .single()
   if (error) throw error
-  return data as Quiz
+  const quiz = data as Quiz
+
+  // Scheduling may have changed — drop the cached start/lockout for this quiz.
+  quizStatusCache.delete(id)
+
+  // Blueprint: (re)generate forms. If any student already got a form, the quiz
+  // is locked and we must NOT regenerate under them.
+  if (quiz.generation_mode === 'blueprint') {
+    const { count } = await supabase
+      .from('quiz_student_forms')
+      .select('id', { count: 'exact', head: true })
+      .eq('quiz_id', id)
+    if (!count) {
+      await generateQuizVariants(id, { force: true })
+    }
+  }
+  return quiz
 }
 
 export const deleteQuiz = async (id: string) => {
@@ -303,7 +412,8 @@ export const copyQuiz = async (sourceId: string, targetAcademicYearId: string, t
     .eq('quiz_id', sourceId)
   if (mapErr) throw mapErr
 
-  // Create new quiz
+  // Create new quiz. A blueprint source regenerates fresh forms from the
+  // current bank inside createQuiz; scheduling/targeting are not carried over.
   const newQuiz = await createQuiz({
     school_id: sourceQuiz.school_id,
     campus_id: sourceQuiz.campus_id,
@@ -315,11 +425,23 @@ export const copyQuiz = async (sourceId: string, targetAcademicYearId: string, t
     description: sourceQuiz.description,
     show_correct_answers: sourceQuiz.show_correct_answers,
     shuffle: sourceQuiz.shuffle,
+    subject_id: sourceQuiz.subject_id,
+    grade_level_id: sourceQuiz.grade_level_id,
+    generation_mode: sourceQuiz.generation_mode,
+    variant_count: sourceQuiz.variant_count,
+    blueprint_easy: sourceQuiz.blueprint_easy,
+    blueprint_medium: sourceQuiz.blueprint_medium,
+    blueprint_hard: sourceQuiz.blueprint_hard,
+    assigned_student_ids: [],
+    start_time: null,
+    lockout_minutes: null,
+    variants_generated_at: null,
   })
 
-  // Copy question mappings
-  if (mapRows && mapRows.length > 0) {
-    const newMaps = mapRows.map(m => ({
+  // Copy manual question mappings only (variant maps are regenerated above).
+  const manualMaps = (mapRows || []).filter((m: any) => !m.variant_id)
+  if (manualMaps.length > 0) {
+    const newMaps = manualMaps.map(m => ({
       quiz_id: newQuiz.id,
       question_id: m.question_id,
       points: m.points,
@@ -541,9 +663,31 @@ function autoGrade(
       return Math.round((correctCount / expectedGaps.length) * totalPoints)
     }
 
+    case 'matching': {
+      // Expected: "Paris::France\nTokyo::Japan" (one Left::Right pair per line)
+      // Student answer stored as: "2||0||1" — canonical right-index chosen for each left item, by position
+      const pairs = extractMatchingPairs(question.answer)
+      if (pairs.length === 0) return null
+
+      const chosen = studentAnswer.split('||').map(s => parseInt(s.trim(), 10))
+
+      const correctCount = pairs.reduce((acc, _, i) => acc + (chosen[i] === i ? 1 : 0), 0)
+
+      return Math.round((correctCount / pairs.length) * totalPoints)
+    }
+
     default:
       return null
   }
+}
+
+function extractMatchingPairs(text: string | null): Array<{ left: string; right: string }> {
+  if (!text) return []
+  return text
+    .split('\n')
+    .map(line => line.split('::'))
+    .filter((parts): parts is [string, string] => parts.length === 2)
+    .map(([left, right]) => ({ left: left.trim(), right: right.trim() }))
 }
 
 function extractGaps(text: string): string[] {
@@ -637,32 +781,52 @@ export const getStudentQuizzes = async (studentId: string) => {
     .eq('id', studentId)
     .single()
 
-  if (!student?.section_id) return []
-
-  // Get course periods for this section
-  const { data: cps } = await supabase
-    .from('course_periods')
-    .select('id')
-    .eq('section_id', student.section_id)
-
-  const cpIds = (cps || []).map(cp => cp.id)
-  if (cpIds.length === 0) return []
-
-  // Get quizzes linked to those course periods
-  const { data: quizzes, error } = await supabase
-    .from('quizzes')
-    .select(`
+  const selectCols = `
       id, title, description, show_correct_answers, shuffle,
       created_at, course_period_id, assignment_id, academic_year_id,
+      subject_id, grade_level_id, assigned_student_ids,
+      generation_mode, variant_count, start_time, lockout_minutes,
       assignment:gradebook_assignments(id, title, points, due_date, assigned_date)
-    `)
-    .in('course_period_id', cpIds)
+    `
+
+  // (1) Quizzes for the student's section's course periods
+  let sectionQuizzes: any[] = []
+  if (student?.section_id) {
+    const { data: cps } = await supabase
+      .from('course_periods')
+      .select('id')
+      .eq('section_id', student.section_id)
+    const cpIds = (cps || []).map(cp => cp.id)
+    if (cpIds.length > 0) {
+      const { data, error } = await supabase
+        .from('quizzes')
+        .select(selectCols)
+        .in('course_period_id', cpIds)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      // Targeting: a section quiz assigned to specific students is only visible
+      // to those students; empty assigned_student_ids = whole section.
+      sectionQuizzes = (data || []).filter((q: any) =>
+        !q.assigned_student_ids?.length || q.assigned_student_ids.includes(studentId)
+      )
+    }
+  }
+
+  // (2) Quizzes explicitly targeted to this student (even outside their section)
+  const { data: targeted } = await supabase
+    .from('quizzes')
+    .select(selectCols)
+    .contains('assigned_student_ids', [studentId])
     .order('created_at', { ascending: false })
 
-  if (error) throw error
+  // Merge + dedupe
+  const byId = new Map<string, any>()
+  for (const q of [...sectionQuizzes, ...(targeted || [])]) byId.set(q.id, q)
+  const quizzes = Array.from(byId.values())
+  if (quizzes.length === 0) return []
 
   // For each quiz, check if student has submitted
-  const quizIds = (quizzes || []).map(q => q.id)
+  const quizIds = quizzes.map(q => q.id)
   let submissionMap = new Map<string, boolean>()
 
   if (quizIds.length > 0) {
@@ -693,6 +857,365 @@ export const getStudentQuizzes = async (studentId: string) => {
     submitted: submissionMap.has(q.id),
     question_count: undefined,
   }))
+}
+
+// ============================================================================
+// COURSE-PERIOD CONTEXT (resolve subject/grade/section for a course period)
+// ============================================================================
+
+export const getCoursePeriodContext = async (
+  coursePeriodId: string
+): Promise<{ subject_id: string | null; grade_level_id: string | null; section_id: string | null }> => {
+  const { data, error } = await supabase
+    .from('course_periods')
+    .select('section_id, course:courses(subject_id), section:sections(grade_level_id)')
+    .eq('id', coursePeriodId)
+    .single()
+  if (error) throw error
+  const course = (data as any)?.course
+  const section = (data as any)?.section
+  return {
+    subject_id: course?.subject_id ?? null,
+    grade_level_id: section?.grade_level_id ?? null,
+    section_id: (data as any)?.section_id ?? null,
+  }
+}
+
+// ============================================================================
+// MULTI-FORM (BLUEPRINT) VARIANT GENERATION
+// Runs EAGERLY at teacher publish time (createQuiz/updateQuiz) — never on a
+// student request, to avoid a thundering-herd of concurrent generations.
+// ============================================================================
+
+const shuffleArray = <T,>(arr: T[]): T[] => {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
+const FORM_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+
+export const generateQuizVariants = async (
+  quizId: string,
+  opts?: { force?: boolean }
+): Promise<QuizVariant[]> => {
+  const quiz = await getQuiz(quizId)
+  if (quiz.generation_mode !== 'blueprint') return []
+
+  // Idempotent guard — if forms already exist, no-op unless forced.
+  const { data: existing } = await supabase.from('quiz_variants').select('id').eq('quiz_id', quizId)
+  if (existing && existing.length > 0) {
+    if (!opts?.force) return existing as QuizVariant[]
+    // force: clear existing forms (cascade removes their question maps + student assignments)
+    await supabase.from('quiz_variants').delete().eq('quiz_id', quizId)
+  }
+
+  const tiers: Array<{ difficulty: DifficultyLevel; count: number }> = [
+    { difficulty: 'easy', count: quiz.blueprint_easy || 0 },
+    { difficulty: 'medium', count: quiz.blueprint_medium || 0 },
+    { difficulty: 'hard', count: quiz.blueprint_hard || 0 },
+  ]
+  const variantCount = Math.max(1, quiz.variant_count || 1)
+
+  // Load + validate the centralized, campus-scoped pool for each difficulty tier.
+  const pools: Partial<Record<DifficultyLevel, QuizQuestion[]>> = {}
+  for (const tier of tiers) {
+    if (tier.count <= 0) continue
+    const pool = await getQuestions(quiz.school_id, {
+      campusId: quiz.campus_id ?? undefined,
+      subjectId: quiz.subject_id ?? undefined,
+      gradeLevelId: quiz.grade_level_id ?? undefined,
+      difficulty: tier.difficulty,
+    })
+    if (pool.length < tier.count) {
+      throw new Error(
+        `Not enough '${tier.difficulty}' questions in the bank (need ${tier.count}, found ${pool.length}) for this subject/grade.`
+      )
+    }
+    pools[tier.difficulty] = shuffleArray(pool)
+  }
+
+  const created: QuizVariant[] = []
+  for (let v = 0; v < variantCount; v++) {
+    const { data: variant, error: vErr } = await supabase
+      .from('quiz_variants')
+      .insert({ quiz_id: quizId, form_label: FORM_LABELS[v] ?? String(v + 1) })
+      .select()
+      .single()
+    if (vErr) throw vErr
+
+    const mapRows: any[] = []
+    let sort = 0
+    for (const tier of tiers) {
+      if (tier.count <= 0) continue
+      const pool = pools[tier.difficulty]!
+      for (let i = 0; i < tier.count; i++) {
+        // Disjoint slice per variant; wrap only if the pool is too small for
+        // fully-distinct forms (documented constraint).
+        const picked = pool[(v * tier.count + i) % pool.length]
+        mapRows.push({
+          quiz_id: quizId,
+          question_id: picked.id,
+          variant_id: variant.id,
+          points: 10,
+          sort_order: sort++,
+        })
+      }
+    }
+    if (mapRows.length) {
+      const { error: mErr } = await supabase.from('quiz_question_map').insert(mapRows)
+      if (mErr) throw mErr
+    }
+    created.push(variant as QuizVariant)
+  }
+
+  await supabase
+    .from('quizzes')
+    .update({ variants_generated_at: new Date().toISOString() })
+    .eq('id', quizId)
+
+  return created
+}
+
+// ============================================================================
+// STUDENT: FORM ASSIGNMENT + START (multi-form aware)
+// ============================================================================
+
+const assignStudentForm = async (quizId: string, studentId: string): Promise<string> => {
+  const { data: existing } = await supabase
+    .from('quiz_student_forms')
+    .select('variant_id')
+    .eq('quiz_id', quizId)
+    .eq('student_id', studentId)
+    .maybeSingle()
+  if (existing) return existing.variant_id
+
+  const { data: variants } = await supabase.from('quiz_variants').select('id').eq('quiz_id', quizId)
+  if (!variants || variants.length === 0) throw new Error('No exam forms available for this quiz.')
+
+  const chosen = variants[Math.floor(Math.random() * variants.length)].id
+  const { data: inserted, error } = await supabase
+    .from('quiz_student_forms')
+    .insert({ quiz_id: quizId, student_id: studentId, variant_id: chosen })
+    .select('variant_id')
+    .single()
+  if (error) {
+    // Concurrent first-click race — the UNIQUE(quiz_id, student_id) constraint
+    // rejected the duplicate; read back the winner's assignment.
+    const { data: again } = await supabase
+      .from('quiz_student_forms')
+      .select('variant_id')
+      .eq('quiz_id', quizId)
+      .eq('student_id', studentId)
+      .maybeSingle()
+    if (again) return again.variant_id
+    throw error
+  }
+  return inserted.variant_id
+}
+
+const questionMapSelect = `
+  *,
+  question:quiz_questions(
+    id, title, type, description, answer, sort_order,
+    category:quiz_categories(title)
+  )
+`
+
+// Returns the questions for the student's form (manual = shared set, variant_id
+// NULL; blueprint = the student's randomly-assigned form). Assumes blueprint
+// variants are already generated (publish-time), never generates here.
+export const getStudentQuizForm = async (quizId: string, studentId: string): Promise<QuizQuestionMap[]> => {
+  const quiz = await getQuiz(quizId)
+
+  if (quiz.generation_mode !== 'blueprint') {
+    const { data, error } = await supabase
+      .from('quiz_question_map')
+      .select(questionMapSelect)
+      .eq('quiz_id', quizId)
+      .is('variant_id', null)
+      .order('sort_order', { ascending: true })
+    if (error) throw error
+    return data as QuizQuestionMap[]
+  }
+
+  if (!quiz.variants_generated_at) {
+    throw new Error('This quiz has not been published yet.')
+  }
+  const variantId = await assignStudentForm(quizId, studentId)
+  const { data, error } = await supabase
+    .from('quiz_question_map')
+    .select(questionMapSelect)
+    .eq('quiz_id', quizId)
+    .eq('variant_id', variantId)
+    .order('sort_order', { ascending: true })
+  if (error) throw error
+  return data as QuizQuestionMap[]
+}
+
+// Resolve the question-map ids that make up a given student's attempt
+// (variant-aware). For a blueprint quiz with no prior form, assigns one so an
+// absent student still has a concrete set of questions to zero out.
+const getStudentMapIds = async (quiz: Quiz, studentId: string): Promise<string[]> => {
+  if (quiz.generation_mode !== 'blueprint') {
+    const { data } = await supabase
+      .from('quiz_question_map')
+      .select('id')
+      .eq('quiz_id', quiz.id)
+      .is('variant_id', null)
+    return (data || []).map(m => m.id)
+  }
+  if (!quiz.variants_generated_at) return []
+  const variantId = await assignStudentForm(quiz.id, studentId)
+  const { data } = await supabase
+    .from('quiz_question_map')
+    .select('id')
+    .eq('quiz_id', quiz.id)
+    .eq('variant_id', variantId)
+  return (data || []).map(m => m.id)
+}
+
+// ============================================================================
+// STRICT LIVE SCHEDULING — access state, cheap status poll, absent enforcement
+// ============================================================================
+
+export const getQuizAccessState = (
+  quiz: Pick<Quiz, 'start_time' | 'lockout_minutes'>,
+  now: Date = new Date()
+): QuizAccessState => {
+  const start = quiz.start_time ? new Date(quiz.start_time) : null
+  const unlocked = !start || now >= start
+  let lockoutAt: Date | null = null
+  if (start && quiz.lockout_minutes != null) {
+    lockoutAt = new Date(start.getTime() + quiz.lockout_minutes * 60000)
+  }
+  const locked_out = !!lockoutAt && now > lockoutAt
+  return {
+    unlocked,
+    locked_out,
+    start_time: quiz.start_time ?? null,
+    lockout_at: lockoutAt ? lockoutAt.toISOString() : null,
+    now: now.toISOString(),
+  }
+}
+
+// Deliberately minimal, cached poll target: one indexed single-row read, no
+// joins/eligibility/variant work, so hundreds of pollers collapse to one DB hit
+// per TTL window.
+const quizStatusCache = new Map<string, { start_time: string | null; lockout_minutes: number | null; cachedAt: number }>()
+const QUIZ_STATUS_TTL_MS = 30000
+
+export const getStudentQuizStatus = async (quizId: string): Promise<QuizAccessState> => {
+  const cached = quizStatusCache.get(quizId)
+  let start_time: string | null
+  let lockout_minutes: number | null
+  if (cached && Date.now() - cached.cachedAt < QUIZ_STATUS_TTL_MS) {
+    start_time = cached.start_time
+    lockout_minutes = cached.lockout_minutes
+  } else {
+    const { data, error } = await supabase
+      .from('quizzes')
+      .select('start_time, lockout_minutes')
+      .eq('id', quizId)
+      .single()
+    if (error) throw error
+    start_time = data.start_time
+    lockout_minutes = data.lockout_minutes
+    quizStatusCache.set(quizId, { start_time, lockout_minutes, cachedAt: Date.now() })
+  }
+  return getQuizAccessState({ start_time, lockout_minutes }, new Date())
+}
+
+// Records a zero-score, absent-flagged answer per question for a student who
+// missed the lockout window. Skips students who actually participated.
+export const markStudentAbsent = async (quizId: string, studentId: string): Promise<void> => {
+  const quiz = await getQuiz(quizId)
+  const mapIds = await getStudentMapIds(quiz, studentId)
+  if (mapIds.length === 0) return
+
+  const { data: existingAns } = await supabase
+    .from('quiz_answers')
+    .select('quiz_question_map_id, is_absent')
+    .eq('student_id', studentId)
+    .in('quiz_question_map_id', mapIds)
+  if ((existingAns || []).some(a => !a.is_absent)) return // actually participated
+
+  const rows = mapIds.map(id => ({
+    quiz_question_map_id: id,
+    student_id: studentId,
+    answer: '',
+    points: 0,
+    is_absent: true,
+    updated_at: new Date().toISOString(),
+  }))
+  const { error } = await supabase
+    .from('quiz_answers')
+    .upsert(rows, { onConflict: 'quiz_question_map_id,student_id' })
+  if (error) throw error
+
+  await updateGradebookFromQuiz(quizId, studentId)
+}
+
+const getQuizRosterStudentIds = async (quiz: Quiz): Promise<string[]> => {
+  if (quiz.assigned_student_ids && quiz.assigned_student_ids.length > 0) {
+    return quiz.assigned_student_ids
+  }
+  if (!quiz.course_period_id) return []
+  const ctx = await getCoursePeriodContext(quiz.course_period_id)
+  if (!ctx.section_id) return []
+  const { data } = await supabase.from('students').select('id').eq('section_id', ctx.section_id)
+  return (data || []).map(s => s.id)
+}
+
+// Server-authoritative absence enforcement: does not depend on the student ever
+// opening the app. Called by the cron sweep and the teacher "Close & Sync" action.
+export const sweepQuizAbsentees = async (quizId: string): Promise<{ marked: number }> => {
+  const quiz = await getQuiz(quizId)
+  const roster = await getQuizRosterStudentIds(quiz)
+  if (roster.length === 0) return { marked: 0 }
+
+  const { data: maps } = await supabase.from('quiz_question_map').select('id').eq('quiz_id', quizId)
+  const mapIds = (maps || []).map(m => m.id)
+  let answered = new Set<string>()
+  if (mapIds.length > 0) {
+    const { data: ans } = await supabase
+      .from('quiz_answers')
+      .select('student_id')
+      .in('quiz_question_map_id', mapIds)
+    answered = new Set((ans || []).map(a => a.student_id))
+  }
+
+  let marked = 0
+  for (const sid of roster) {
+    if (!answered.has(sid)) {
+      await markStudentAbsent(quizId, sid)
+      marked++
+    }
+  }
+  return { marked }
+}
+
+// Cron helper: sweep every quiz whose lockout window has passed.
+export const sweepAllExpiredQuizzes = async (): Promise<void> => {
+  const nowIso = new Date().toISOString()
+  const { data: quizzes } = await supabase
+    .from('quizzes')
+    .select('id, start_time, lockout_minutes')
+    .not('start_time', 'is', null)
+    .not('lockout_minutes', 'is', null)
+  for (const q of quizzes || []) {
+    const lockoutAt = new Date(new Date(q.start_time as string).getTime() + (q.lockout_minutes as number) * 60000)
+    if (lockoutAt.toISOString() < nowIso) {
+      try {
+        await sweepQuizAbsentees(q.id)
+      } catch {
+        // non-fatal; continue with the rest
+      }
+    }
+  }
 }
 
 // ============================================================================

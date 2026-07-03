@@ -57,8 +57,8 @@ export function ManageQuizQuestionsDialog({ quiz, schoolId, campusId, onClose, o
     () => getQuizQuestions(quiz.id).then(r => r.data ?? [])
   )
 
-  // --- question bank ---
-  const bankKey = ['quiz-bank', schoolId, campusId, filterCategory, search]
+  // --- question bank (auto-filtered to the quiz's subject + grade) ---
+  const bankKey = ['quiz-bank', schoolId, campusId, filterCategory, search, quiz.subject_id, quiz.grade_level_id]
   const { data: bank, isLoading: loadingBank } = useSWR(
     schoolId ? bankKey : null,
     () =>
@@ -66,6 +66,8 @@ export function ManageQuizQuestionsDialog({ quiz, schoolId, campusId, onClose, o
         campusId,
         categoryId: filterCategory || undefined,
         search: search || undefined,
+        subjectId: quiz.subject_id ?? undefined,
+        gradeLevelId: quiz.grade_level_id ?? undefined,
       }).then(r => r.data ?? [])
   )
 

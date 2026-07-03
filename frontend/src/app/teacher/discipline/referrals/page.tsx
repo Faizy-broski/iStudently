@@ -1,7 +1,8 @@
 'use client'
 
 import useSWR from 'swr'
-import { getStaffDisciplineReferrals, type DisciplineReferral } from '@/lib/api/discipline'
+import { useEffect, useState } from 'react'
+import { getStaffDisciplineReferrals, getDisciplineFieldNameMap, type DisciplineReferral } from '@/lib/api/discipline'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, ShieldAlert, AlertCircle } from 'lucide-react'
@@ -15,6 +16,16 @@ export default function TeacherDisciplineReferralsPage() {
   )
 
   const referrals: DisciplineReferral[] = referralsRes?.data || []
+  const schoolId = referrals[0]?.school_id
+
+  const [fieldNameMap, setFieldNameMap] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    if (!schoolId) return
+    getDisciplineFieldNameMap(schoolId)
+      .then(setFieldNameMap)
+      .catch(() => {/* silent — labels fall back to raw key */})
+  }, [schoolId])
 
   return (
     <div className="p-6 space-y-6">
@@ -36,14 +47,14 @@ export default function TeacherDisciplineReferralsPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {referrals.map(ref => <ReferralCard key={ref.id} referral={ref} />)}
+          {referrals.map(ref => <ReferralCard key={ref.id} referral={ref} fieldNameMap={fieldNameMap} />)}
         </div>
       )}
     </div>
   )
 }
 
-function ReferralCard({ referral }: { referral: DisciplineReferral }) {
+function ReferralCard({ referral, fieldNameMap }: { referral: DisciplineReferral; fieldNameMap: Record<string, string> }) {
   const student = (referral as any).students
   const studentName = student
     ? `${student.last_name || ''}, ${student.first_name || ''}`.trim()
@@ -67,7 +78,7 @@ function ReferralCard({ referral }: { referral: DisciplineReferral }) {
         {referral.field_values && Object.keys(referral.field_values).length > 0 && (
           <div className="mt-3 text-sm text-muted-foreground border-t pt-2 space-y-1">
             {Object.entries(referral.field_values as Record<string, any>).map(([k, v]) => (
-              <div key={k}><span className="font-medium capitalize">{k.replace(/_/g, ' ')}: </span>{String(v)}</div>
+              <div key={k}><span className="font-medium capitalize">{fieldNameMap[k] || k.replace(/_/g, ' ')}: </span>{String(v)}</div>
             ))}
           </div>
         )}

@@ -19,6 +19,7 @@ export interface CustomLink {
   is_template?: boolean
   start_date?: string
   end_date?: string
+  visible_to_roles?: string[]
 }
 
 export interface PublicPagesConfig {
@@ -275,6 +276,7 @@ export async function addCustomLink(
     is_template?: boolean
     start_date?: string
     end_date?: string
+    visible_to_roles?: string[]
   }
 ): Promise<CustomLink> {
   const { id: rowId, config } = await getRawSettingsRow(schoolId)
@@ -290,6 +292,7 @@ export async function addCustomLink(
     is_template: data.is_template ?? false,
     start_date: data.start_date,
     end_date: data.end_date,
+    visible_to_roles: data.visible_to_roles ?? [],
     order: links.length,
   }
   config.custom_links = [...links, newLink]
@@ -310,6 +313,7 @@ export async function updateCustomLink(
     is_template: boolean
     start_date: string | null
     end_date: string | null
+    visible_to_roles: string[]
   }>
 ): Promise<CustomLink> {
   const { id: rowId, config } = await getRawSettingsRow(schoolId)
@@ -329,6 +333,7 @@ export async function updateCustomLink(
     ...(data.is_template !== undefined ? { is_template: data.is_template } : {}),
     ...(data.start_date !== undefined ? { start_date: data.start_date || undefined } : {}),
     ...(data.end_date !== undefined ? { end_date: data.end_date || undefined } : {}),
+    ...(data.visible_to_roles !== undefined ? { visible_to_roles: data.visible_to_roles } : {}),
   }
   // Remove start_date/end_date if null was passed
   if (data.start_date === null) delete updated.start_date
@@ -410,6 +415,7 @@ export async function addGlobalCustomLink(
     is_template?: boolean
     start_date?: string
     end_date?: string
+    visible_to_roles?: string[]
   }
 ): Promise<CustomLink> {
   const schoolId = await getPrimarySchoolId()
@@ -429,6 +435,7 @@ export async function updateGlobalCustomLink(
     is_template: boolean
     start_date: string | null
     end_date: string | null
+    visible_to_roles: string[]
   }>
 ): Promise<CustomLink> {
   const schoolId = await getPrimarySchoolId()

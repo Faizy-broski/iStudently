@@ -11,7 +11,7 @@ interface ApiResponse<T = unknown> {
 // TYPES
 // ============================================================================
 
-export type QuestionType = 'select' | 'multiple' | 'gap' | 'text' | 'textarea'
+export type QuestionType = 'select' | 'multiple' | 'gap' | 'text' | 'textarea' | 'matching'
 
 export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   select: 'Select One (Radio)',
@@ -19,6 +19,17 @@ export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   gap: 'Gap Fill',
   text: 'Short Text',
   textarea: 'Long Text (Essay)',
+  matching: 'Drag & Drop Matching',
+}
+
+export type DifficultyLevel = 'easy' | 'medium' | 'hard'
+
+export type QuizGenerationMode = 'manual' | 'blueprint'
+
+export const DIFFICULTY_LABELS: Record<DifficultyLevel, string> = {
+  easy: 'Easy',
+  medium: 'Medium',
+  hard: 'Hard',
 }
 
 export interface QuizCategory {
@@ -42,6 +53,9 @@ export interface QuizQuestion {
   description?: string | null
   answer?: string | null
   sort_order: number
+  grade_level_id?: string | null
+  subject_id?: string | null
+  difficulty_level?: DifficultyLevel
   created_at: string
   updated_at: string
   category?: { title: string } | null
@@ -60,12 +74,41 @@ export interface Quiz {
   description?: string | null
   show_correct_answers: boolean
   shuffle: boolean
+  // categorization / auto-filter + blueprint source
+  subject_id?: string | null
+  grade_level_id?: string | null
+  // targeted assignment (empty = whole section)
+  assigned_student_ids?: string[]
+  // multi-form blueprint
+  generation_mode?: QuizGenerationMode
+  variant_count?: number
+  variants_generated_at?: string | null
+  blueprint_easy?: number
+  blueprint_medium?: number
+  blueprint_hard?: number
+  // strict live scheduling
+  start_time?: string | null
+  lockout_minutes?: number | null
   created_at: string
   updated_at: string
   assignment?: { title: string; points: number; due_date?: string; assigned_date?: string } | null
   course_period?: { id: string } | null
   creator?: { first_name: string; last_name: string } | null
   question_count?: number
+}
+
+export interface QuizAccessState {
+  unlocked: boolean
+  locked_out: boolean
+  start_time: string | null
+  lockout_at: string | null
+  now: string
+}
+
+export interface CoursePeriodContext {
+  subject_id: string | null
+  grade_level_id: string | null
+  section_id: string | null
 }
 
 export interface QuizQuestionMap {
@@ -177,10 +220,27 @@ export const deleteCategory = (id: string) =>
 
 export const getQuestions = (
   schoolId: string,
-  filters?: { campusId?: string | null; categoryId?: string; search?: string; createdBy?: string }
+  filters?: {
+    campusId?: string | null
+    categoryId?: string
+    search?: string
+    createdBy?: string
+    gradeLevelId?: string
+    subjectId?: string
+    difficulty?: DifficultyLevel
+  }
 ) =>
   apiFetch<QuizQuestion[]>(
-    `/quiz/questions${qs({ school_id: schoolId, campus_id: filters?.campusId, category_id: filters?.categoryId, search: filters?.search, created_by: filters?.createdBy })}`
+    `/quiz/questions${qs({
+      school_id: schoolId,
+      campus_id: filters?.campusId,
+      category_id: filters?.categoryId,
+      search: filters?.search,
+      created_by: filters?.createdBy,
+      grade_level_id: filters?.gradeLevelId,
+      subject_id: filters?.subjectId,
+      difficulty: filters?.difficulty,
+    })}`
   )
 
 export const getQuestion = (id: string) => apiFetch<QuizQuestion>(`/quiz/questions/${id}`)
@@ -190,7 +250,7 @@ export const createQuestion = (data: Omit<QuizQuestion, 'id' | 'created_at' | 'u
 
 export const updateQuestion = (
   id: string,
-  data: Partial<Pick<QuizQuestion, 'title' | 'type' | 'description' | 'answer' | 'sort_order' | 'category_id'>>
+  data: Partial<Pick<QuizQuestion, 'title' | 'type' | 'description' | 'answer' | 'sort_order' | 'category_id' | 'grade_level_id' | 'subject_id' | 'difficulty_level'>>
 ) =>
   apiFetch<QuizQuestion>(`/quiz/questions/${id}`, { method: 'PUT', body: JSON.stringify(data) })
 
@@ -216,11 +276,20 @@ export const createQuiz = (data: Omit<Quiz, 'id' | 'created_at' | 'updated_at' |
 
 export const updateQuiz = (
   id: string,
-  data: Partial<Pick<Quiz, 'title' | 'description' | 'assignment_id' | 'course_period_id' | 'academic_year_id' | 'show_correct_answers' | 'shuffle'>>
+  data: Partial<Pick<Quiz,
+    | 'title' | 'description' | 'assignment_id' | 'course_period_id' | 'academic_year_id'
+    | 'show_correct_answers' | 'shuffle' | 'subject_id' | 'grade_level_id'
+    | 'assigned_student_ids' | 'generation_mode' | 'variant_count'
+    | 'blueprint_easy' | 'blueprint_medium' | 'blueprint_hard'
+    | 'start_time' | 'lockout_minutes'
+  >>
 ) =>
   apiFetch<Quiz>(`/quiz/${id}`, { method: 'PUT', body: JSON.stringify(data) })
 
 export const deleteQuiz = (id: string) => apiFetch<null>(`/quiz/${id}`, { method: 'DELETE' })
+
+export const closeQuizAndSyncAbsentees = (quizId: string) =>
+  apiFetch<{ marked: number }>(`/quiz/${quizId}/close`, { method: 'POST' })
 
 export const copyQuiz = (id: string, targetAcademicYearId: string, targetAssignmentId?: string) =>
   apiFetch<Quiz>(`/quiz/${id}/copy`, {
@@ -301,3 +370,20 @@ export const getCoursePeriodsForQuiz = (schoolId: string, campusId?: string | nu
   apiFetch<Array<{ id: string; courses?: { title: string } }>>(
     `/quiz/helpers/course-periods${qs({ school_id: schoolId, campus_id: campusId })}`
   )
+
+export const getCoursePeriodContext = (coursePeriodId: string) =>
+  apiFetch<CoursePeriodContext>(
+    `/quiz/helpers/course-period-context${qs({ course_period_id: coursePeriodId })}`
+  )
+
+// ============================================================================
+// STUDENT: START (multi-form aware) + SCHEDULING STATUS
+// ============================================================================
+
+// Returns the student's form questions. On 423 (locked/not-yet-open), the
+// response carries { locked_out } or { unlocked:false, start_time } in `error`.
+export const getStudentQuizForm = (quizId: string) =>
+  apiFetch<QuizQuestionMap[]>(`/quiz/student/${quizId}/questions`)
+
+export const getStudentQuizStatus = (quizId: string) =>
+  apiFetch<QuizAccessState>(`/quiz/student/${quizId}/status`)

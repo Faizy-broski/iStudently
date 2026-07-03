@@ -771,21 +771,25 @@ import { supabase } from '../config/supabase'
 
 export const getStaffTakeAttendance = async (req: AuthRequest, res: Response) => {
   try {
+    const isAdmin = req.profile?.role === 'admin' || req.profile?.role === 'super_admin';
     const staffId = req.profile?.staff_id;
-    if (!staffId) return res.status(403).json({ error: 'Valid staff context required' });
+    if (!isAdmin && !staffId) return res.status(403).json({ error: 'Valid staff context required' });
 
     const date = req.query.date as string || new Date().toISOString().split('T')[0];
     const periodId = req.query.period_id as string;
-    
+
     if (!periodId) return res.status(400).json({ error: 'period_id is required' });
 
-    // Ensure teacher actually owns the course period for the given period
-    const { data: period, error: pErr } = await supabase
+    // Admins may act on behalf of any teacher's course period (e.g. Teacher Programs); teachers are
+    // restricted to course periods they actually own.
+    let periodQuery = supabase
       .from('course_periods')
       .select('id, section_id')
-      .eq('teacher_id', staffId)
-      .eq('period_id', periodId)
-      .single();
+      .eq('period_id', periodId);
+    if (!isAdmin) {
+      periodQuery = periodQuery.eq('teacher_id', staffId);
+    }
+    const { data: period, error: pErr } = await periodQuery.single();
 
     if (pErr || !period) {
       return res.status(403).json({ error: 'Forbidden: You do not own this course period' });
@@ -807,18 +811,22 @@ export const getStaffTakeAttendance = async (req: AuthRequest, res: Response) =>
 
 export const submitStaffAttendance = async (req: AuthRequest, res: Response) => {
   try {
+    const isAdmin = req.profile?.role === 'admin' || req.profile?.role === 'super_admin';
     const staffId = req.profile?.staff_id;
-    if (!staffId) return res.status(403).json({ error: 'Valid staff context required' });
+    if (!isAdmin && !staffId) return res.status(403).json({ error: 'Valid staff context required' });
 
     const { date, period_id, changes } = req.body;
-    
-    // Ensure teacher owns this period
-    const { data: period, error: pErr } = await supabase
+
+    // Admins may submit on behalf of any teacher's course period; teachers are restricted to
+    // course periods they actually own.
+    let periodQuery = supabase
       .from('course_periods')
       .select('id')
-      .eq('teacher_id', staffId)
-      .eq('period_id', period_id)
-      .single();
+      .eq('period_id', period_id);
+    if (!isAdmin) {
+      periodQuery = periodQuery.eq('teacher_id', staffId);
+    }
+    const { data: period, error: pErr } = await periodQuery.single();
 
     if (pErr || !period) {
       return res.status(403).json({ error: 'Forbidden: You do not own this course period' });

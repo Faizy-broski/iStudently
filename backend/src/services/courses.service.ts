@@ -131,6 +131,8 @@ class CoursesService {
   // ──────────────────────────────────────────────────────────────────────────
 
   async getAllCoursePeriods(schoolId: string, campusId?: string): Promise<CoursePeriod[]> {
+    // Course periods always keep school_id = the top-level school (see createCoursePeriod below);
+    // campus_id is a separate nullable column, same convention as getCourses() above.
     let query = supabase
       .from('course_periods')
       .select(`
@@ -143,7 +145,7 @@ class CoursesService {
       .eq('school_id', schoolId)
       .order('title')
 
-    if (campusId) query = query.eq('campus_id', campusId)
+    if (campusId) query = query.or(`campus_id.eq.${campusId},campus_id.is.null`)
 
     const { data, error } = await query
     if (error) throw new Error(`Failed to fetch course periods: ${error.message}`)

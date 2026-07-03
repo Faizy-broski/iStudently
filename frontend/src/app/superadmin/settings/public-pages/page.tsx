@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import {
   GripVertical, Plus, Pencil, Trash2, ExternalLink,
   Loader2, Globe, Link2, AlignLeft, Image as ImageIcon, Code2,
-  Upload, X as XIcon,
+  Upload, X as XIcon, Shield, Users
 } from 'lucide-react'
 import {
   DndContext,
@@ -77,6 +77,14 @@ function typeLabel(type: CustomPageType | undefined) {
   return PAGE_TYPES.find((t) => t.value === (type ?? 'url'))?.label ?? 'Link'
 }
 
+const ALL_ROLES = ['admin', 'teacher', 'student', 'parent']
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'Admin',
+  teacher: 'Teacher',
+  student: 'Student',
+  parent: 'Parent',
+}
+
 // ── Sortable row ──────────────────────────────────────────────────────────────
 
 function SortableRow({
@@ -135,6 +143,13 @@ function SortableRow({
         <div className="flex items-center gap-2">
           <p className="text-sm font-semibold truncate">{link.title}</p>
           <span className="text-[10px] text-muted-foreground border rounded px-1 shrink-0">{typeLabel(link.page_type)}</span>
+          {link.visible_to_roles && link.visible_to_roles.length > 0 && (
+            <div className="flex gap-1 shrink-0">
+              {link.visible_to_roles.map(r => (
+                <span key={r} className="text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded px-1">{ROLE_LABELS[r]}</span>
+              ))}
+            </div>
+          )}
         </div>
         <p className="text-xs text-muted-foreground truncate">{subtitle}</p>
       </div>
@@ -208,6 +223,7 @@ function FormDialog({
   const [isTemplate, setIsTemplate] = React.useState(false)
   const [startDate, setStartDate] = React.useState('')
   const [endDate, setEndDate] = React.useState('')
+  const [visibleToRoles, setVisibleToRoles] = React.useState<string[]>([])
   const [urlError, setUrlError] = React.useState('')
   const [uploading, setUploading] = React.useState(false)
   const [uploadError, setUploadError] = React.useState('')
@@ -232,6 +248,7 @@ function FormDialog({
       setIsTemplate(initial?.is_template ?? false)
       setStartDate(formatForInput(initial?.start_date))
       setEndDate(formatForInput(initial?.end_date))
+      setVisibleToRoles(initial?.visible_to_roles ?? [])
       setUrlError('')
       setUploadError('')
     }
@@ -299,12 +316,13 @@ function FormDialog({
       is_template: isTemplate,
       start_date: startDate ? new Date(startDate).toISOString() : undefined,
       end_date: endDate ? new Date(endDate).toISOString() : undefined,
+      visible_to_roles: visibleToRoles,
     })
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={pageType === 'text' ? 'max-w-3xl' : pageType === 'image' ? 'max-w-2xl' : 'max-w-md'}>
+      <DialogContent className={`max-h-[90vh] overflow-y-auto ${pageType === 'text' ? 'max-w-3xl' : pageType === 'image' ? 'max-w-2xl' : 'max-w-md'}`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Globe className="h-5 w-5 text-brand-blue" />
@@ -485,6 +503,32 @@ function FormDialog({
               disabled={saving}
             />
             <Label htmlFor="page-active" className="cursor-pointer font-medium">Active (visible on login page)</Label>
+          </div>
+
+          <div className="flex flex-col gap-4 border-t pt-4">
+            <p className="text-sm font-semibold flex items-center gap-2"><Users className="h-4 w-4" /> Audience / Portal Visibility</p>
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground block mb-2">Select which logged-in users can see this page in their dashboard (if left empty, it will only be a public login page tab):</Label>
+              <div className="flex flex-wrap gap-2">
+                {ALL_ROLES.map(role => {
+                  const checked = visibleToRoles.includes(role)
+                  return (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => setVisibleToRoles(prev => checked ? prev.filter(r => r !== role) : [...prev, role])}
+                      className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
+                        checked 
+                          ? 'bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-300'
+                          : 'bg-transparent border-border hover:bg-muted text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {ROLE_LABELS[role]}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-col gap-4 border-t pt-4">

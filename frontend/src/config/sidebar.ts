@@ -198,6 +198,11 @@ const adminMenuItems: SidebarMenuItem[] = [
     subItems: [
       { title: "add_referral", href: "/admin/discipline/add-referral", icon: Plus },
       { title: "referrals", href: "/admin/discipline", icon: ClipboardList },
+      { title: "reports", href: "#", icon: BarChart3, isLabel: true },
+      { title: "category_breakdown", href: "/admin/discipline/reports/category-breakdown", icon: BarChart3 },
+      { title: "breakdown_over_time", href: "/admin/discipline/reports/category-breakdown-time", icon: TrendingUp },
+      { title: "breakdown_by_student_field", href: "/admin/discipline/reports/breakdown-student-field", icon: Users },
+      { title: "discipline_log", href: "/admin/discipline/reports/log", icon: FileText },
       { title: "setup", href: "#", icon: Settings, isLabel: true },
       { title: "referral_form", href: "/admin/discipline/referral-form", icon: Settings },
     ],
@@ -248,6 +253,12 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "bulk_import", href: "/admin/teachers/bulk-import", icon: Upload },
       { title: "workload", href: "/admin/teachers/workload", icon: ClipboardList },
       { title: "custom_fields", href: "/admin/teachers/custom-fields", icon: Settings },
+      { title: "teacher_programs", href: "#", icon: UserCheck, isLabel: true },
+      { title: "input_final_grades", href: "/admin/teacher-programs/final-grades", icon: CheckSquare },
+      { title: "gradebook", href: "/admin/teacher-programs/gradebook", icon: Award },
+      { title: "anomalous_grades", href: "/admin/teacher-programs/anomalous-grades", icon: AlertCircle },
+      { title: "take_attendance", href: "/admin/teacher-programs/attendance", icon: CalendarCheck },
+      { title: "enter_eligibility", href: "/admin/activities/enter-eligibility", icon: ClipboardCheck },
     ],
   },
   {
@@ -595,6 +606,11 @@ const teacherMenuItems: SidebarMenuItem[] = [
     subItems: [
       { title: "add_referral", href: "/teacher/discipline/add-referral", icon: Plus },
       { title: "referrals", href: "/teacher/discipline/referrals", icon: ClipboardList },
+      { title: "reports", href: "#", icon: BarChart3, isLabel: true },
+      { title: "category_breakdown", href: "/teacher/discipline/reports/category-breakdown", icon: BarChart3 },
+      { title: "breakdown_over_time", href: "/teacher/discipline/reports/category-breakdown-time", icon: TrendingUp },
+      { title: "breakdown_by_student_field", href: "/teacher/discipline/reports/breakdown-student-field", icon: Users },
+      { title: "discipline_log", href: "/teacher/discipline/reports/log", icon: FileText },
     ],
   },
   {

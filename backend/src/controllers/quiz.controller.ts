@@ -38,9 +38,17 @@ export const deleteCategory = async (req: Request, res: Response) => {
 
 export const getQuestions = async (req: Request, res: Response) => {
   try {
-    const { school_id, campus_id, category_id, search, created_by } = req.query as Record<string, string>
+    const { school_id, campus_id, category_id, search, created_by, grade_level_id, subject_id, difficulty } = req.query as Record<string, string>
     if (!school_id) return err(res, { message: 'school_id required' }, 400)
-    ok(res, await svc.getQuestions(school_id, { campusId: campus_id, categoryId: category_id, search, createdBy: created_by }))
+    ok(res, await svc.getQuestions(school_id, {
+      campusId: campus_id,
+      categoryId: category_id,
+      search,
+      createdBy: created_by,
+      gradeLevelId: grade_level_id,
+      subjectId: subject_id,
+      difficulty: difficulty as svc.DifficultyLevel | undefined,
+    }))
   } catch (e) { err(res, e) }
 }
 
@@ -149,6 +157,47 @@ export const getStudentQuizzes = async (req: Request, res: Response) => {
   } catch (e) { err(res, e) }
 }
 
+// Student-facing start: enforces scheduling + targeting, returns the student's
+// (possibly variant-specific) question set. Replaces the old teacher-gated
+// GET /:quizId/questions that students were incorrectly hitting.
+export const getStudentQuizForm = async (req: Request, res: Response) => {
+  try {
+    const studentId = resolveStudentId(req)
+    if (!studentId) return err(res, { message: 'No student profile found' }, 403)
+    const quizId = req.params.quizId
+    const quiz = await svc.getQuiz(quizId)
+
+    // Targeting: if the quiz is assigned to specific students, others can't enter.
+    if (quiz.assigned_student_ids && quiz.assigned_student_ids.length > 0 && !quiz.assigned_student_ids.includes(studentId)) {
+      return err(res, { message: 'You are not assigned to this quiz.' }, 403)
+    }
+
+    // Scheduling gate.
+    const state = svc.getQuizAccessState(quiz, new Date())
+    if (state.locked_out) {
+      await svc.markStudentAbsent(quizId, studentId)
+      return res.status(423).json({ data: null, error: 'locked_out', locked_out: true })
+    }
+    if (!state.unlocked) {
+      return res.status(423).json({ data: null, error: 'not_unlocked', unlocked: false, start_time: state.start_time })
+    }
+
+    ok(res, await svc.getStudentQuizForm(quizId, studentId))
+  } catch (e) { err(res, e) }
+}
+
+// Cheap poll target for the countdown UI (single cached read, no joins).
+export const getStudentQuizStatus = async (req: Request, res: Response) => {
+  try { ok(res, await svc.getStudentQuizStatus(req.params.quizId)) }
+  catch (e) { err(res, e) }
+}
+
+// Teacher/admin: finalize absentees immediately when the window closes.
+export const closeQuizAndSyncAbsentees = async (req: Request, res: Response) => {
+  try { ok(res, await svc.sweepQuizAbsentees(req.params.quizId)) }
+  catch (e) { err(res, e) }
+}
+
 // ============================================================================
 // STUDENT SUBMISSION
 // ============================================================================
@@ -218,5 +267,14 @@ export const getCoursePeriods = async (req: Request, res: Response) => {
     const { school_id, campus_id } = req.query as Record<string, string>
     if (!school_id) return err(res, { message: 'school_id required' }, 400)
     ok(res, await svc.getCoursePeriods(school_id, campus_id || null))
+  } catch (e) { err(res, e) }
+}
+
+// Resolve subject/grade/section for a course period (for quiz auto-filter + roster).
+export const getCoursePeriodContext = async (req: Request, res: Response) => {
+  try {
+    const { course_period_id } = req.query as Record<string, string>
+    if (!course_period_id) return err(res, { message: 'course_period_id required' }, 400)
+    ok(res, await svc.getCoursePeriodContext(course_period_id))
   } catch (e) { err(res, e) }
 }

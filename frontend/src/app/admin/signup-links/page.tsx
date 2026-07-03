@@ -97,6 +97,7 @@ export default function SignupLinksPage() {
     poster_url: '',
     description: '',
     require_grade_level: false,
+    custom_fields: [] as Array<{ id: string; label: string; type: 'text' | 'select'; required: boolean; options: string }>,
   })
   const [generating, setGenerating] = React.useState(false)
 
@@ -195,6 +196,18 @@ export default function SignupLinksPage() {
         })
       }
 
+      form.custom_fields.forEach(cf => {
+        if (cf.label.trim()) {
+          custom_fields.push({
+            id: cf.id,
+            label: cf.label.trim(),
+            type: cf.type,
+            required: cf.required,
+            options: cf.type === 'select' ? cf.options.split(',').map(s => s.trim()).filter(Boolean) : undefined,
+          })
+        }
+      })
+
       const res = await generateSignupLink({
         role: form.role,
         label: form.label || null,
@@ -221,7 +234,7 @@ export default function SignupLinksPage() {
   const resetGenerateForm = () => {
     setForm({ 
       role: 'teacher', label: '', unlimited: true, max_uses: '', neverExpires: true, 
-      expires_at: '', campus_id: campusId ?? '', poster_url: '', description: '', require_grade_level: false 
+      expires_at: '', campus_id: campusId ?? '', poster_url: '', description: '', require_grade_level: false, custom_fields: [] 
     })
     setGeneratedLink(null)
     setShowGenerateDialog(false)
@@ -496,7 +509,7 @@ export default function SignupLinksPage() {
 
                 {/* Require Grade Level */}
                 {(form.role === 'student' || form.role === 'parent') && (
-                  <div className="flex items-center justify-between p-3 border rounded-lg bg-gray-50/50">
+                  <div className="flex items-center justify-between p-3 border dark:border-slate-800 rounded-lg bg-gray-50/50 dark:bg-slate-800/50">
                     <div className="space-y-0.5">
                       <Label className="text-sm font-semibold">{isAr ? 'طلب تحديد الصف الدراسي' : 'Require Grade Level'}</Label>
                       <p className="text-xs text-muted-foreground">
@@ -509,6 +522,108 @@ export default function SignupLinksPage() {
                     />
                   </div>
                 )}
+
+                {/* Additional Custom Fields */}
+                <div className="space-y-3 pt-2 border-t border-gray-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <Label>{isAr ? 'حقول مخصصة إضافية' : 'Additional Custom Fields'}</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => setForm(f => ({
+                        ...f,
+                        custom_fields: [...f.custom_fields, { id: `field_${Date.now()}`, label: '', type: 'text', required: false, options: '' }]
+                      }))}
+                    >
+                      <Plus className="h-3 w-3 me-1" />
+                      {isAr ? 'إضافة حقل' : 'Add Field'}
+                    </Button>
+                  </div>
+                  
+                  {form.custom_fields.length > 0 && (
+                    <div className="space-y-3">
+                      {form.custom_fields.map((field, idx) => (
+                        <div key={field.id} className="p-3 border dark:border-slate-800 rounded-lg bg-gray-50/50 dark:bg-slate-800/50 space-y-3 relative group">
+                          <button
+                            type="button"
+                            className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => setForm(f => ({ ...f, custom_fields: f.custom_fields.filter((_, i) => i !== idx) }))}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                          
+                          <div className="grid grid-cols-2 gap-3 pr-6">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">{isAr ? 'اسم الحقل' : 'Field Label'}</Label>
+                              <Input
+                                className="h-8 text-sm"
+                                placeholder={isAr ? 'مثال: رقم الهوية' : 'e.g. National ID'}
+                                value={field.label}
+                                onChange={(e) => {
+                                  const newFields = [...form.custom_fields]
+                                  newFields[idx].label = e.target.value
+                                  setForm(f => ({ ...f, custom_fields: newFields }))
+                                }}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">{isAr ? 'نوع الحقل' : 'Field Type'}</Label>
+                              <Select
+                                value={field.type}
+                                onValueChange={(v: 'text' | 'select') => {
+                                  const newFields = [...form.custom_fields]
+                                  newFields[idx].type = v
+                                  setForm(f => ({ ...f, custom_fields: newFields }))
+                                }}
+                              >
+                                <SelectTrigger className="h-8 text-sm">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="text">{isAr ? 'نص' : 'Text Input'}</SelectItem>
+                                  <SelectItem value="select">{isAr ? 'قائمة منسدلة' : 'Dropdown (Select)'}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          {field.type === 'select' && (
+                            <div className="space-y-1.5 pr-6">
+                              <Label className="text-xs">{isAr ? 'الخيارات (مفصولة بفاصلة)' : 'Options (comma separated)'}</Label>
+                              <Input
+                                className="h-8 text-sm"
+                                placeholder="Option 1, Option 2, Option 3"
+                                value={field.options}
+                                onChange={(e) => {
+                                  const newFields = [...form.custom_fields]
+                                  newFields[idx].options = e.target.value
+                                  setForm(f => ({ ...f, custom_fields: newFields }))
+                                }}
+                              />
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-2 pt-1">
+                            <Switch
+                              id={`req-${field.id}`}
+                              checked={field.required}
+                              onCheckedChange={(c) => {
+                                const newFields = [...form.custom_fields]
+                                newFields[idx].required = c
+                                setForm(f => ({ ...f, custom_fields: newFields }))
+                              }}
+                            />
+                            <Label htmlFor={`req-${field.id}`} className="text-xs cursor-pointer">
+                              {isAr ? 'حقل إلزامي' : 'Required Field'}
+                            </Label>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </TabsContent>
             </Tabs>
           ) : (

@@ -405,6 +405,18 @@ export async function deleteCourse(id: string) {
 // FINAL GRADES API
 // ============================================================================
 
+export interface StudentFinalGrade {
+  id: string
+  student_id: string
+  course_period_id: string
+  marking_period_id: string
+  academic_year_id?: string | null
+  percent_grade?: number | null
+  letter_grade?: string | null
+  comment?: string | null
+  student?: { id: string; student_number: string; profile?: { first_name: string; last_name: string } }
+}
+
 export async function getFinalGrades(params: {
   course_period_id?: string
   marking_period_id?: string
@@ -414,7 +426,22 @@ export async function getFinalGrades(params: {
   if (params.course_period_id) qp.append('course_period_id', params.course_period_id)
   if (params.marking_period_id) qp.append('marking_period_id', params.marking_period_id)
   if (params.campus_id) qp.append('campus_id', params.campus_id)
-  return apiRequest<unknown[]>(`/final-grades?${qp}`)
+  return apiRequest<StudentFinalGrade[]>(`/final-grades?${qp}`)
+}
+
+export interface SaveFinalGradeDTO {
+  student_id: string
+  course_period_id: string
+  marking_period_id: string
+  academic_year_id?: string
+  percent_grade?: number | null
+  letter_grade?: string | null
+  comment?: string | null
+  is_override?: boolean
+}
+
+export async function saveFinalGrade(data: SaveFinalGradeDTO) {
+  return apiRequest<StudentFinalGrade>('/final-grades', { method: 'POST', body: JSON.stringify(data) })
 }
 
 // ============================================================================
@@ -1418,6 +1445,8 @@ export async function importGradebookGrades(data: ImportGradebookGradesDTO) {
 export interface AnomalousGradesAdvancedParams {
   course_period_id?: string
   student_id?: string
+  /** Admin-only override: look up anomalous grades for this teacher (staff id) instead of the caller */
+  staff_id?: string
   include_all_courses?: boolean
   include_inactive?: boolean
   missing?: boolean
@@ -1432,6 +1461,7 @@ export async function getAnomalousGradesAdvanced(params: AnomalousGradesAdvanced
   const qp = new URLSearchParams()
   if (params.course_period_id) qp.append('course_period_id', params.course_period_id)
   if (params.student_id) qp.append('student_id', params.student_id)
+  if (params.staff_id) qp.append('staff_id', params.staff_id)
   if (params.include_all_courses) qp.append('include_all_courses', 'true')
   if (params.include_inactive) qp.append('include_inactive', 'true')
   if (params.missing !== undefined) qp.append('missing', params.missing.toString())

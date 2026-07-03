@@ -34,6 +34,7 @@ export default function TeleprompterPage() {
   const [wpm, setWpm] = useState(80)
   const [gradingMode, setGradingMode] = useState<'voice' | 'manual'>('voice')
   const [voiceSupported, setVoiceSupported] = useState(true)
+  const [insecureContext, setInsecureContext] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
   // Voice state
@@ -70,6 +71,16 @@ export default function TeleprompterPage() {
   const [isPaused, setIsPaused] = useState(false)
 
   useEffect(() => {
+    const isInsecure =
+      typeof window !== 'undefined' &&
+      window.location.protocol !== 'https:' &&
+      window.location.hostname !== 'localhost'
+    if (isInsecure) {
+      setInsecureContext(true)
+      setVoiceSupported(false)
+      setGradingMode('manual')
+      return
+    }
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SpeechRecognition) setVoiceSupported(false)
   }, [])
@@ -115,8 +126,9 @@ export default function TeleprompterPage() {
       }
       recorder.start(100) // collect data every 100 ms
       mediaRecorderRef.current = recorder
-    } catch {
-      // Microphone permission denied or not available — recording simply won't be available
+    } catch (err) {
+      // Microphone permission denied, no mic hardware, or insecure context
+      console.error('Audio recording unavailable:', err)
     }
   }, [])
 
@@ -135,25 +147,32 @@ export default function TeleprompterPage() {
 
   const startRecognition = useCallback(() => {
     if (!voiceSupported || !text) return
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-    const recognition = new SpeechRecognition()
-    recognition.lang = text.language === 'ar' ? 'ar-SA' : 'en-US'
-    recognition.continuous = true
-    recognition.interimResults = true
+    try {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+      const recognition = new SpeechRecognition()
+      recognition.lang = text.language === 'ar' ? 'ar-SA' : 'en-US'
+      recognition.continuous = true
+      recognition.interimResults = true
 
-    recognition.onresult = (event: any) => {
-      const transcript = Array.from(event.results as SpeechRecognitionResultList)
-        .map((r: SpeechRecognitionResult) => r[0].transcript)
-        .join(' ')
-      setSpokenWords(transcript.trim().split(/\s+/).filter(Boolean))
-    }
-    recognition.onerror = () => {
+      recognition.onresult = (event: any) => {
+        const transcript = Array.from(event.results as SpeechRecognitionResultList)
+          .map((r: SpeechRecognitionResult) => r[0].transcript)
+          .join(' ')
+        setSpokenWords(transcript.trim().split(/\s+/).filter(Boolean))
+      }
+      recognition.onerror = (event: any) => {
+        console.error('Speech recognition error:', event?.error)
+        setGradingMode('manual')
+        setVoiceSupported(false)
+      }
+      recognition.start()
+      recognitionRef.current = recognition
+      setIsListening(true)
+    } catch (err) {
+      console.error('Speech recognition unavailable:', err)
       setGradingMode('manual')
       setVoiceSupported(false)
     }
-    recognition.start()
-    recognitionRef.current = recognition
-    setIsListening(true)
   }, [text, voiceSupported])
 
   const stopRecognition = useCallback(() => {
@@ -266,7 +285,9 @@ export default function TeleprompterPage() {
         audio_url: uploadedAudioUrl,
         word_results: apiWordResults,
       }, token)
-    } catch (_) {}
+    } catch (err) {
+      console.error('Failed to submit reading session results:', err)
+    }
   }, [text, gradingMode, spokenWords, words, manualErrors, wpm])
 
   const handleScrollEnd = useCallback(() => {
@@ -368,7 +389,12 @@ export default function TeleprompterPage() {
               {t('manualMode')}
             </Button>
           </div>
-          {!voiceSupported && (
+          {insecureContext && (
+            <div className="rounded-md border border-yellow-400/40 bg-yellow-50 dark:bg-yellow-950/30 px-3 py-2 text-sm text-yellow-700 dark:text-yellow-400">
+              Insecure connection! Recording requires HTTPS or localhost.
+            </div>
+          )}
+          {!voiceSupported && !insecureContext && (
             <p className="text-xs text-amber-600">{t('voiceNotSupported')}</p>
           )}
           {gradingMode === 'voice' && (

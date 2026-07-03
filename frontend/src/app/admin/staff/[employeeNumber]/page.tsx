@@ -40,28 +40,9 @@ import { useStaff } from "@/hooks/useStaff";
 import { getLastLogin } from "@/lib/api/auth";
 import { useCampus } from "@/context/CampusContext";
 import { format } from "date-fns";
-import { useTranslations } from "next-intl";
+import { ar, enUS } from "date-fns/locale";
+import { useTranslations, useLocale } from "next-intl";
 import { getStaffScore, getLogs, type PerformanceScore, type StaffPerformanceLog } from "@/lib/api/performance";
-
-// Helper to format dates
-const formatDate = (dateString: string | null | undefined, notProvidedLabel: string) => {
-  if (!dateString) return notProvidedLabel;
-  try {
-    return format(new Date(dateString), "MMMM d, yyyy");
-  } catch {
-    return dateString;
-  }
-};
-
-// Helper to format date + time
-const formatDateTime = (dateString: string | null | undefined, notProvidedLabel: string) => {
-  if (!dateString) return notProvidedLabel;
-  try {
-    return format(new Date(dateString), "MMMM d, yyyy h:mm a");
-  } catch {
-    return dateString;
-  }
-};
 
 // Helper to get initials
 const getInitials = (firstName?: string | null, lastName?: string | null) => {
@@ -87,10 +68,32 @@ const InfoRow = ({ label, value, icon: Icon, fallbackLabel }: { label: string; v
 
 export default function StaffDetailsPage() {
   const t = useTranslations("staff");
+  const locale = useLocale();
+  const dateLocale = locale === 'ar' ? ar : enUS;
   const params = useParams();
   const router = useRouter();
   const { setViewedProfile, clearViewedProfile } = useProfileView();
   const campusContext = useCampus();
+
+  // Helper to format dates
+  const formatDate = (dateString: string | null | undefined, notProvidedLabel: string) => {
+    if (!dateString) return notProvidedLabel;
+    try {
+      return format(new Date(dateString), "MMMM d, yyyy", { locale: dateLocale });
+    } catch {
+      return dateString;
+    }
+  };
+
+  // Helper to format date + time
+  const formatDateTime = (dateString: string | null | undefined, notProvidedLabel: string) => {
+    if (!dateString) return notProvidedLabel;
+    try {
+      return format(new Date(dateString), "MMMM d, yyyy h:mm a", { locale: dateLocale });
+    } catch {
+      return dateString;
+    }
+  };
 
   // Get employee number from URL (URL-encoded, so decode it)
   const employeeNumber = decodeURIComponent(params.employeeNumber as string);

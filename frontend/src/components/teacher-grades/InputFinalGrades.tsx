@@ -109,35 +109,38 @@ export function InputFinalGrades() {
     });
   }, [selectedCp, coursePeriods, selectedCampus?.id]);
 
-  // ── Fetch Students for final grades ────────────────────────────────────────
+  // ── Fetch Students + existing final grades ─────────────────────────────────
   useEffect(() => {
     if (!selectedCp || !selectedMp) return;
-    
-    // We would fetch existing final grades, and if empty, fetch enrolled students
-    // Because we're writing a thin wrapper, we simulate fetching via students API
-    gradesApi.getStudentsForGrades({
-      course_period_id: selectedCp,
-      campus_id: selectedCampus?.id,
-      limit: 100,
-    }).then((res) => {
-      if (res.success && res.data) {
-        // Map to our row format
-        const rows: StudentFinalGradeRow[] = res.data.map(student => ({
+
+    Promise.all([
+      gradesApi.getStudentsForGrades({
+        course_period_id: selectedCp,
+        campus_id: selectedCampus?.id,
+        limit: 100,
+      }),
+      gradesApi.getFinalGrades({ course_period_id: selectedCp, marking_period_id: selectedMp }),
+    ]).then(([studentsRes, finalGradesRes]) => {
+      if (!studentsRes.success || !studentsRes.data) return;
+
+      const existingByStudent: Record<string, gradesApi.StudentFinalGrade> = {};
+      for (const g of finalGradesRes.data ?? []) existingByStudent[g.student_id] = g;
+
+      const rows: StudentFinalGradeRow[] = studentsRes.data.map((student) => {
+        const existing = existingByStudent[student.id];
+        return {
           student_id: student.id,
           student_number: student.student_number,
-          student_name: student.profile 
-            ? `${student.profile.first_name} ${student.profile.last_name}` 
+          student_name: student.profile
+            ? `${student.profile.first_name} ${student.profile.last_name}`
             : "Unknown Student",
-          letter_grade: "N/A",
-          percent: "",
-          comment: "",
-        }));
-        // We'd merge this with `getFinalGrades` for existing grades here.
-        // For now:
-        setStudents(rows);
-      }
+          letter_grade: existing?.letter_grade ?? "N/A",
+          percent: existing?.percent_grade != null ? String(existing.percent_grade) : "",
+          comment: existing?.comment ?? "",
+        };
+      });
+      setStudents(rows);
     });
-
   }, [selectedCp, selectedMp, selectedCampus?.id, includeInactive]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
@@ -201,10 +204,28 @@ export function InputFinalGrades() {
   };
 
   const handleSave = async () => {
+    if (!selectedCp || !selectedMp || students.length === 0) return;
     setSaving(true);
     try {
-      // Typically fires a bulk save endpoint to /final-grades
-      toast.success("Final grades saved successfully!");
+      const results = await Promise.all(
+        students.map((s) =>
+          gradesApi.saveFinalGrade({
+            student_id: s.student_id,
+            course_period_id: selectedCp,
+            marking_period_id: selectedMp,
+            percent_grade: s.percent !== "" ? parseFloat(s.percent) : null,
+            letter_grade: s.letter_grade !== "N/A" ? s.letter_grade : null,
+            comment: s.comment || null,
+            is_override: true,
+          })
+        )
+      );
+      const failed = results.filter((r) => !r.success);
+      if (failed.length > 0) {
+        toast.error(`Failed to save ${failed.length} of ${students.length} grades`);
+      } else {
+        toast.success("Final grades saved successfully!");
+      }
     } catch (err: any) {
       toast.error("Failed to save final grades");
     } finally {
@@ -240,7 +261,7 @@ export function InputFinalGrades() {
               <SelectContent>
                 {coursePeriods.map((cp) => (
                   <SelectItem key={cp.id} value={cp.id}>
-                    {cp.title || cp.course?.title || cp.first_name}
+                    {cp.course?.title || cp.first_name}
                   </SelectItem>
                 ))}
               </SelectContent>

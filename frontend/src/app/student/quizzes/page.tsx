@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
+import { DndContext, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from '@dnd-kit/core'
 import { useAuth } from '@/context/AuthContext'
 import { getAuthToken } from '@/lib/api/schools'
 import { API_URL } from '@/config/api'
-import { submitQuiz, getStudentSubmission, type QuizQuestionMap } from '@/lib/api/quiz'
+import { submitQuiz, getStudentSubmission, getStudentQuizForm, getStudentQuizStatus, type QuizQuestionMap } from '@/lib/api/quiz'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -14,9 +15,156 @@ import { Input } from '@/components/ui/input'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
 } from '@/components/ui/dialog'
-import { Loader2, HelpCircle, CheckCircle2, Clock, BookOpen, AlertCircle, ChevronRight } from 'lucide-react'
+import { Loader2, HelpCircle, CheckCircle2, XCircle, Clock, BookOpen, AlertCircle, ChevronRight } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { toast } from 'sonner'
+
+// ── Matching (Drag & Drop) question ─────────────────────────────────────────
+
+function parseMatchingPairs(answer?: string | null): { left: string; right: string }[] {
+  return (answer || '')
+    .split('\n')
+    .map(line => line.split('::'))
+    .filter((parts): parts is [string, string] => parts.length === 2)
+    .map(([left, right]) => ({ left: left.trim(), right: right.trim() }))
+}
+
+function shuffledIndices(length: number): number[] {
+  const arr = Array.from({ length }, (_, i) => i)
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+  }
+  return arr
+}
+
+function MatchingChip({ canonicalIndex, label, disabled }: { canonicalIndex: number; label: string; disabled?: boolean }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `right-${canonicalIndex}`,
+    disabled,
+  })
+  const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      className={[
+        'px-3 py-2 rounded-md border bg-background text-sm select-none',
+        disabled ? 'cursor-default' : 'cursor-grab hover:border-primary/50',
+        isDragging ? 'opacity-50 shadow-lg z-10 relative' : '',
+      ].join(' ')}
+    >
+      {label}
+    </div>
+  )
+}
+
+function MatchingSlot({
+  leftIndex, leftLabel, assigned, correctness, disabled,
+}: {
+  leftIndex: number
+  leftLabel: string
+  assigned?: { canonicalIndex: number; label: string } | null
+  correctness?: 'correct' | 'incorrect' | null
+  disabled?: boolean
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: `slot-${leftIndex}`, disabled })
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex-1 text-sm p-2 rounded-md border bg-muted/40">{leftLabel}</div>
+      <div
+        ref={setNodeRef}
+        className={[
+          'flex-1 min-h-[2.5rem] p-1 rounded-md border-2 border-dashed flex items-center gap-1 transition-colors',
+          isOver ? 'border-primary bg-primary/5' : 'border-muted-foreground/30',
+          correctness === 'correct' ? 'border-green-400 bg-green-50' : '',
+          correctness === 'incorrect' ? 'border-red-400 bg-red-50' : '',
+        ].join(' ')}
+      >
+        {assigned ? (
+          <MatchingChip canonicalIndex={assigned.canonicalIndex} label={assigned.label} disabled={disabled} />
+        ) : (
+          <span className="text-muted-foreground italic text-sm px-2">Drop here</span>
+        )}
+        {correctness === 'correct' && <CheckCircle2 className="h-4 w-4 text-green-600 ml-auto mr-1 shrink-0" />}
+        {correctness === 'incorrect' && <XCircle className="h-4 w-4 text-red-600 ml-auto mr-1 shrink-0" />}
+      </div>
+    </div>
+  )
+}
+
+function MatchingQuestionInput({
+  pairs, value, onChange, disabled, showCorrect,
+}: {
+  pairs: { left: string; right: string }[]
+  value: string
+  onChange: (value: string) => void
+  disabled: boolean
+  showCorrect: boolean
+}) {
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+  const rightOrder = useMemo(() => shuffledIndices(pairs.length), [pairs.length])
+
+  const assignment: Record<number, number> = {}
+  value.split('||').forEach((v, i) => {
+    const n = parseInt(v, 10)
+    if (!isNaN(n)) assignment[i] = n
+  })
+  const assignedCanonicalIndices = new Set(Object.values(assignment))
+
+  const handleDragEnd = (evt: DragEndEvent) => {
+    const { active, over } = evt
+    if (!over) return
+    const canonicalIndex = parseInt(String(active.id).replace('right-', ''), 10)
+    if (isNaN(canonicalIndex)) return
+
+    const next: Record<number, number> = {}
+    for (const [k, v] of Object.entries(assignment)) {
+      if (v !== canonicalIndex) next[Number(k)] = v
+    }
+    if (String(over.id).startsWith('slot-')) {
+      const leftIndex = parseInt(String(over.id).replace('slot-', ''), 10)
+      next[leftIndex] = canonicalIndex
+    }
+    onChange(pairs.map((_, i) => (next[i] !== undefined ? String(next[i]) : '')).join('||'))
+  }
+
+  return (
+    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <div className="space-y-3">
+        <div className="space-y-2">
+          {pairs.map((p, i) => {
+            const assignedIndex = assignment[i]
+            const correctness = disabled && showCorrect
+              ? (assignedIndex === undefined ? null : assignedIndex === i ? 'correct' : 'incorrect')
+              : null
+            return (
+              <MatchingSlot
+                key={i}
+                leftIndex={i}
+                leftLabel={p.left}
+                assigned={assignedIndex !== undefined ? { canonicalIndex: assignedIndex, label: pairs[assignedIndex]?.right ?? '' } : null}
+                correctness={correctness}
+                disabled={disabled}
+              />
+            )
+          })}
+        </div>
+        {!disabled && (
+          <div className="flex flex-wrap gap-2 p-2 rounded-md border border-dashed">
+            {rightOrder
+              .filter(canonicalIndex => !assignedCanonicalIndices.has(canonicalIndex))
+              .map(canonicalIndex => (
+                <MatchingChip key={canonicalIndex} canonicalIndex={canonicalIndex} label={pairs[canonicalIndex].right} />
+              ))}
+          </div>
+        )}
+      </div>
+    </DndContext>
+  )
+}
 
 // Fetch student's quizzes
 async function fetchStudentQuizzes() {
@@ -29,30 +177,66 @@ async function fetchStudentQuizzes() {
   return json.data || []
 }
 
-// Fetch quiz with questions
+// Fetch the student's form (multi-form aware). Throws with a coded message
+// ('locked_out' / 'not_unlocked') that the caller can branch on.
 async function fetchQuizQuestions(quizId: string) {
-  const token = await getAuthToken()
-  const res = await fetch(`${API_URL}/quiz/${quizId}/questions`, {
-    headers: { Authorization: `Bearer ${token}` }
-  })
-  const json = await res.json()
-  if (json.error) throw new Error(json.error)
-  return (json.data || []) as QuizQuestionMap[]
+  const res = await getStudentQuizForm(quizId)
+  if (res.error) throw new Error(res.error)
+  return (res.data || []) as QuizQuestionMap[]
+}
+
+function formatCountdown(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000))
+  const h = Math.floor(total / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  const s = total % 60
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`
 }
 
 function QuizCard({ quiz, onStart }: { quiz: any; onStart: (q: any) => void }) {
   const dueDate = quiz.assignment?.due_date
   const isOverdue = dueDate && new Date(dueDate) < new Date()
 
+  const hasSchedule = !!quiz.start_time
+  const [now, setNow] = useState(() => Date.now())
+
+  // Poll authoritative lock state (cheap cached endpoint) only while scheduled
+  // and not yet started; stop once the student has submitted.
+  const { data: statusRes } = useSWR(
+    hasSchedule && !quiz.submitted ? ['quiz-status', quiz.id] : null,
+    () => getStudentQuizStatus(quiz.id),
+    { refreshInterval: 5000, revalidateOnFocus: false }
+  )
+  const status = statusRes?.data
+
+  // Local 1s tick for a smooth countdown display.
+  useEffect(() => {
+    if (!hasSchedule || quiz.submitted) return
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [hasSchedule, quiz.submitted])
+
+  const startMs = quiz.start_time ? new Date(quiz.start_time).getTime() : 0
+  const unlocked = status ? status.unlocked : (!hasSchedule || now >= startMs)
+  const lockedOut = status?.locked_out ?? false
+  const beforeStart = hasSchedule && !unlocked && !lockedOut
+  const clickable = !lockedOut && unlocked
+
   return (
-    <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => onStart(quiz)}>
+    <Card
+      className={`transition-shadow ${clickable ? 'hover:shadow-md cursor-pointer' : 'opacity-90'}`}
+      onClick={() => { if (clickable) onStart(quiz) }}
+    >
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 flex-1 min-w-0">
-            <div className={`p-2 rounded-lg shrink-0 ${quiz.submitted ? 'bg-green-100' : 'bg-primary/10'}`}>
+            <div className={`p-2 rounded-lg shrink-0 ${quiz.submitted ? 'bg-green-100' : lockedOut ? 'bg-red-100' : 'bg-primary/10'}`}>
               {quiz.submitted
                 ? <CheckCircle2 className="h-5 w-5 text-green-600" />
-                : <HelpCircle className="h-5 w-5 text-primary" />
+                : lockedOut
+                  ? <XCircle className="h-5 w-5 text-red-600" />
+                  : <HelpCircle className="h-5 w-5 text-primary" />
               }
             </div>
             <div className="flex-1 min-w-0">
@@ -60,10 +244,14 @@ function QuizCard({ quiz, onStart }: { quiz: any; onStart: (q: any) => void }) {
               {quiz.description && (
                 <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{quiz.description}</p>
               )}
-              <div className="flex flex-wrap gap-2 mt-2">
+              <div className="flex flex-wrap gap-2 mt-2 items-center">
                 {quiz.submitted
                   ? <Badge className="bg-green-100 text-green-700">Submitted</Badge>
-                  : <Badge className="bg-blue-100 text-blue-700">Not Started</Badge>
+                  : lockedOut
+                    ? <Badge className="bg-red-100 text-red-700">Locked — Absent</Badge>
+                    : beforeStart
+                      ? <Badge className="bg-amber-100 text-amber-700"><Clock className="h-3 w-3 mr-1" />Starts in {formatCountdown(startMs - now)}</Badge>
+                      : <Badge className="bg-blue-100 text-blue-700">Not Started</Badge>
                 }
                 {dueDate && (
                   <Badge variant="outline" className={isOverdue ? 'text-red-600 border-red-200' : ''}>
@@ -75,9 +263,14 @@ function QuizCard({ quiz, onStart }: { quiz: any; onStart: (q: any) => void }) {
                   <Badge variant="outline">{quiz.assignment.points} pts</Badge>
                 )}
               </div>
+              {beforeStart && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Unlocks {format(parseISO(quiz.start_time), 'MMM d, yyyy • h:mm a')}
+                </p>
+              )}
             </div>
           </div>
-          <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0 mt-1" />
+          {clickable && <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0 mt-1" />}
         </div>
       </CardContent>
     </Card>
@@ -89,10 +282,10 @@ function QuizTaker({
 }: {
   quiz: any; studentId: string; onClose: () => void; onSubmitted: () => void
 }) {
-  const { data: maps, isLoading } = useSWR(
+  const { data: maps, isLoading, error: loadError } = useSWR(
     ['quiz-questions', quiz.id],
     () => fetchQuizQuestions(quiz.id),
-    { revalidateOnFocus: false }
+    { revalidateOnFocus: false, shouldRetryOnError: false }
   )
 
   // Check existing submission
@@ -254,6 +447,19 @@ function QuizTaker({
             />
           )}
 
+          {(q.type === 'matching') && (() => {
+            const pairs = parseMatchingPairs(q.answer)
+            return (
+              <MatchingQuestionInput
+                pairs={pairs}
+                value={getAnswer(mapId)}
+                onChange={v => handleAnswerChange(mapId, v)}
+                disabled={isSubmitted}
+                showCorrect={!!quiz.show_correct_answers}
+              />
+            )
+          })()}
+
           {(q.type === 'gap') && (
             <div className="text-sm text-muted-foreground italic">
               Gap fill — answer: {isSubmitted ? (getAnswer(mapId) || '—') : (
@@ -294,6 +500,29 @@ function QuizTaker({
         <div className="flex justify-center py-8">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
         </div>
+      ) : loadError ? (
+        <Card className={/locked/i.test(loadError.message) ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50'}>
+          <CardContent className="p-8 text-center">
+            {/locked/i.test(loadError.message) ? (
+              <>
+                <XCircle className="h-10 w-10 mx-auto mb-2 text-red-600" />
+                <p className="font-semibold text-red-700">You missed the entry window</p>
+                <p className="text-sm text-red-600 mt-1">This quiz is locked and you have been marked absent.</p>
+              </>
+            ) : /unlock/i.test(loadError.message) ? (
+              <>
+                <Clock className="h-10 w-10 mx-auto mb-2 text-amber-600" />
+                <p className="font-semibold text-amber-700">This quiz hasn’t started yet</p>
+                <p className="text-sm text-amber-600 mt-1">Please wait for the scheduled start time.</p>
+              </>
+            ) : (
+              <>
+                <AlertCircle className="h-10 w-10 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-muted-foreground">{loadError.message}</p>
+              </>
+            )}
+          </CardContent>
+        </Card>
       ) : !maps || maps.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center text-muted-foreground">

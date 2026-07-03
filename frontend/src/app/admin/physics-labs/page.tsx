@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { FlaskConical, Plus, Trash2, Pencil, Search, X, Users, Play } from 'lucide-react'
 import { toast } from 'sonner'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -52,6 +52,8 @@ import {
 import {
   PHYSICS_CATALOG,
   SIM_CATEGORIES,
+  CATEGORY_LABELS_AR,
+  getSimLocalized,
   type SimulationMeta,
   type SimCategory,
 } from '@/lib/physics-labs-catalog'
@@ -68,6 +70,9 @@ const CATEGORY_COLORS: Record<SimCategory, string> = {
 
 export default function PhysicsLabsAdminPage() {
   const t = useTranslations('physicsLabs')
+  const locale = useLocale()
+  const simText = (sim: SimulationMeta) => getSimLocalized(sim, locale)
+  const catLabel = (cat: SimCategory) => locale === 'ar' ? CATEGORY_LABELS_AR[cat] : cat
   const { profile } = useAuth()
   const campusCtx = useCampus()
   const campusId = campusCtx?.selectedCampus?.id
@@ -130,15 +135,22 @@ export default function PhysicsLabsAdminPage() {
 
   const filteredCatalog = useMemo(() => {
     return PHYSICS_CATALOG.filter(sim => {
+      const ar = locale === 'ar' ? getSimLocalized(sim, locale) : null
+      const q = search.toLowerCase()
       const matchesSearch =
         search.length === 0 ||
-        sim.title.toLowerCase().includes(search.toLowerCase()) ||
-        sim.description.toLowerCase().includes(search.toLowerCase()) ||
-        sim.topics.some(topic => topic.toLowerCase().includes(search.toLowerCase()))
+        sim.title.toLowerCase().includes(q) ||
+        sim.description.toLowerCase().includes(q) ||
+        sim.topics.some(topic => topic.toLowerCase().includes(q)) ||
+        (ar && (
+          ar.title.includes(search) ||
+          ar.description.includes(search) ||
+          ar.topics.some(topic => topic.includes(search))
+        ))
       const matchesCategory = activeCategory === 'All' || sim.category === activeCategory
       return matchesSearch && matchesCategory
     })
-  }, [search, activeCategory])
+  }, [search, activeCategory, locale])
 
   const assignedKeys = useMemo(() => new Set(assignedLabs.map(l => l.sim_key)), [assignedLabs])
 
@@ -315,7 +327,7 @@ export default function PhysicsLabsAdminPage() {
                     : 'bg-white text-gray-600 border-gray-300 hover:border-[#022172]'
                 }`}
               >
-                {cat}
+                {catLabel(cat)}
               </button>
             ))}
           </div>
@@ -336,16 +348,16 @@ export default function PhysicsLabsAdminPage() {
                 <Card key={sim.key} className={`flex flex-col ${isAssigned ? 'border-green-300 bg-green-50/40' : ''}`}>
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="text-base leading-snug">{sim.title}</CardTitle>
+                      <CardTitle className="text-base leading-snug">{simText(sim).title}</CardTitle>
                       <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${CATEGORY_COLORS[sim.category]}`}>
-                        {sim.category}
+                        {simText(sim).category}
                       </span>
                     </div>
                   </CardHeader>
                   <CardContent className="flex flex-col flex-1 gap-3 pt-0">
-                    <p className="text-sm text-muted-foreground flex-1">{sim.description}</p>
+                    <p className="text-sm text-muted-foreground flex-1">{simText(sim).description}</p>
                     <div className="flex flex-wrap gap-1">
-                      {sim.topics.slice(0, 3).map(topic => (
+                      {simText(sim).topics.slice(0, 3).map(topic => (
                         <Badge key={topic} variant="outline" className="text-xs">{topic}</Badge>
                       ))}
                     </div>
@@ -398,10 +410,10 @@ export default function PhysicsLabsAdminPage() {
                   <Card key={lab.id} className="flex flex-col sm:flex-row sm:items-center gap-4 p-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium">{sim?.title || lab.sim_key}</span>
+                        <span className="font-medium">{sim ? simText(sim).title : lab.sim_key}</span>
                         {sim && (
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${CATEGORY_COLORS[sim.category]}`}>
-                            {sim.category}
+                            {simText(sim).category}
                           </span>
                         )}
                         {!lab.is_active && (
@@ -443,7 +455,7 @@ export default function PhysicsLabsAdminPage() {
       <Dialog open={!!assignTarget} onOpenChange={open => !open && setAssignTarget(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{t('assignDialog.title', { title: assignTarget?.title || '' })}</DialogTitle>
+            <DialogTitle>{t('assignDialog.title', { title: assignTarget ? simText(assignTarget).title : '' })}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">

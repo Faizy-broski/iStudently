@@ -4,7 +4,8 @@ import useSWR, { mutate } from 'swr'
 import { useTranslations } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
-import { getQuizzes, deleteQuiz, copyQuiz, type Quiz } from '@/lib/api/quiz'
+import { getQuizzes, deleteQuiz, copyQuiz, closeQuizAndSyncAbsentees, type Quiz } from '@/lib/api/quiz'
+import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Plus, Trash2, Pencil, Copy, FileQuestion, BarChart2, Search, ListChecks } from 'lucide-react'
+import { Plus, Trash2, Pencil, Copy, FileQuestion, BarChart2, Search, ListChecks, UserX } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { AddEditQuizDialog } from '@/components/admin/quiz/AddEditQuizDialog'
@@ -62,6 +63,18 @@ export default function QuizzesPage() {
       if (res.data) mutate(key)
     } finally {
       setCopying(null)
+    }
+  }
+
+  const [closing, setClosing] = useState<string | null>(null)
+  const handleClose = async (id: string) => {
+    setClosing(id)
+    try {
+      const res = await closeQuizAndSyncAbsentees(id)
+      if (res.error) toast.error(res.error)
+      else toast.success(`${t('closeSyncDone')} (${res.data?.marked ?? 0})`)
+    } finally {
+      setClosing(null)
     }
   }
 
@@ -156,6 +169,17 @@ export default function QuizzesPage() {
                               <BarChart2 className="w-4 h-4" />
                             </Link>
                           </Button>
+                          {quiz.start_time && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title={t('actions.closeSync')}
+                              disabled={closing === quiz.id}
+                              onClick={() => handleClose(quiz.id)}
+                            >
+                              <UserX className="w-4 h-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"

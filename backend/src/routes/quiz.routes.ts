@@ -8,10 +8,13 @@ router.use(authenticate)
 
 // Student quiz list — authenticated students only (no teacher role required)
 router.get('/student/quizzes', ctrl.getStudentQuizzes)
+router.get('/student/:quizId/questions', ctrl.getStudentQuizForm)
+router.get('/student/:quizId/status', ctrl.getStudentQuizStatus)
 
 // Helpers (read-only, teachers can access)
 router.get('/helpers/assignments', requireTeacher, ctrl.getAssignments)
 router.get('/helpers/course-periods', requireTeacher, ctrl.getCoursePeriods)
+router.get('/helpers/course-period-context', requireTeacher, ctrl.getCoursePeriodContext)
 
 // Categories (teachers can manage their own categories)
 router.get('/categories', requireTeacher, ctrl.getCategories)
@@ -44,6 +47,9 @@ router.delete('/:quizId/questions/:mapId', requireTeacher, ctrl.removeQuestionFr
 router.get('/:quizId/submissions/:studentId', ctrl.getStudentSubmission)
 router.post('/:quizId/submit', ctrl.submitQuiz)
 router.put('/answers/:answerId/grade', requireTeacher, ctrl.gradeAnswer)
+
+// Teacher/admin: close a quiz and mark roster no-shows absent (0)
+router.post('/:quizId/close', requireTeacher, ctrl.closeQuizAndSyncAbsentees)
 
 // Answer Breakdown (Premium)
 router.get('/:quizId/answer-breakdown', requireTeacher, ctrl.getAnswerBreakdown)

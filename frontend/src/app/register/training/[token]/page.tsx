@@ -469,9 +469,9 @@ export default function TrainingRegisterPage() {
   const isFull = session.status === 'full'
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-indigo-50 via-white to-violet-50">
+    <div className="min-h-screen bg-linear-to-br from-sky-50 via-white to-blue-50">
       {/* Hero Header */}
-      <div className="bg-linear-to-r from-indigo-600 via-violet-600 to-purple-600 text-white">
+      <div className="bg-linear-to-r from-[#57A3CC] to-[#022172] text-white">
         <div className="max-w-lg mx-auto px-4 pt-12 pb-16">
           <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1 text-xs font-medium mb-4">
             <GraduationCap className="h-3.5 w-3.5" />
@@ -481,7 +481,7 @@ export default function TrainingRegisterPage() {
             {session.title}
           </h1>
           {session.description && (
-            <p className="text-indigo-100 text-sm leading-relaxed">
+            <p className="text-white/90 text-sm leading-relaxed">
               {session.description}
             </p>
           )}
@@ -544,10 +544,10 @@ export default function TrainingRegisterPage() {
             {/* Form header */}
             <div className="px-6 py-5 border-b border-gray-50">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-xl bg-[#57A3CC]/10 flex items-center justify-center">
                   {isFull
                     ? <Clock className="h-5 w-5 text-amber-500" />
-                    : <UserPlus className="h-5 w-5 text-indigo-600" />
+                    : <UserPlus className="h-5 w-5 text-[#022172]" />
                   }
                 </div>
                 <div>
@@ -594,14 +594,14 @@ export default function TrainingRegisterPage() {
                     <TabsList className="w-full mb-5 bg-gray-100 rounded-xl p-1 h-auto">
                       <TabsTrigger
                         value="internal"
-                        className="flex-1 rounded-lg text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm py-2"
+                        className="flex-1 rounded-lg text-sm font-medium text-gray-500 data-[state=active]:bg-white data-[state=active]:text-[#022172] data-[state=active]:shadow-sm py-2 transition-colors"
                       >
                         <GraduationCap className="h-3.5 w-3.5 mr-1.5" />
                         Current Student
                       </TabsTrigger>
                       <TabsTrigger
                         value="external"
-                        className="flex-1 rounded-lg text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm py-2"
+                        className="flex-1 rounded-lg text-sm font-medium text-gray-500 data-[state=active]:bg-white data-[state=active]:text-[#022172] data-[state=active]:shadow-sm py-2 transition-colors"
                       >
                         <MapPin className="h-3.5 w-3.5 mr-1.5" />
                         New / External
@@ -622,7 +622,7 @@ export default function TrainingRegisterPage() {
                             <Button
                               type="button"
                               variant="outline"
-                              className="border-indigo-200 text-indigo-600 hover:bg-indigo-50 shrink-0"
+                              className="bg-white border-sky-200 text-[#022172] hover:bg-sky-50 shrink-0"
                               onClick={lookupStudent}
                               disabled={lookingUp}
                             >
@@ -650,7 +650,7 @@ export default function TrainingRegisterPage() {
 
                         <Button
                           type="submit"
-                          className="w-full bg-indigo-600 hover:bg-indigo-700 font-semibold rounded-xl h-11 shadow-sm shadow-indigo-200"
+                          className="w-full bg-linear-to-r from-[#57A3CC] to-[#022172] hover:opacity-90 text-white font-semibold rounded-xl h-11 shadow-sm shadow-[#57A3CC]/30 disabled:opacity-50"
                           disabled={isSubmitting || !lookedUpStudent}
                         >
                           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -697,7 +697,7 @@ export default function TrainingRegisterPage() {
 
                         <Button
                           type="submit"
-                          className="w-full bg-indigo-600 hover:bg-indigo-700 font-semibold rounded-xl h-11 shadow-sm shadow-indigo-200"
+                          className="w-full bg-linear-to-r from-[#57A3CC] to-[#022172] hover:opacity-90 text-white font-semibold rounded-xl h-11 shadow-sm shadow-[#57A3CC]/30 disabled:opacity-50"
                           disabled={isSubmitting}
                         >
                           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

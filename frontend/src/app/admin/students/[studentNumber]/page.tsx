@@ -40,10 +40,11 @@ import { useStudents } from "@/hooks/useStudents";
 import { getParentById, type Parent } from "@/lib/api/parents";
 import { getLastLogin } from "@/lib/api/auth";
 import { format } from "date-fns";
+import { ar, enUS } from "date-fns/locale";
 import DisciplineScoreTab from "@/components/admin/DisciplineScoreTab";
 import RelativesTab from "@/components/admin/RelativesTab";
 import { UserQRCode } from "@/components/shared/UserQRCode";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { getFieldDefinitions, type CustomFieldDefinition } from "@/lib/api/custom-fields";
 
 interface EmergencyContact {
@@ -61,6 +62,8 @@ export default function StudentDetailsPage() {
   const t = useTranslations("school.students.student_details");
   const tFields = useTranslations("school.students.fields");
   const tCommon = useTranslations("common");
+  const locale = useLocale();
+  const dateLocale = locale === 'ar' ? ar : enUS;
   const params = useParams();
   const router = useRouter();
   const campusContext = useCampus();
@@ -91,7 +94,7 @@ export default function StudentDetailsPage() {
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return t("not_provided");
     try {
-      return format(new Date(dateString), "MMMM d, yyyy");
+      return format(new Date(dateString), "MMMM d, yyyy", { locale: dateLocale });
     } catch {
       return dateString;
     }
@@ -100,13 +103,13 @@ export default function StudentDetailsPage() {
   const formatDateTime = (dateString: string | null | undefined) => {
     if (!dateString) return t("not_provided");
     try {
-      return format(new Date(dateString), "MMMM d, yyyy h:mm a");
+      return format(new Date(dateString), "MMMM d, yyyy h:mm a", { locale: dateLocale });
     } catch {
       return dateString;
     }
   };
 
-  const calculateAge = (dateString: string | null | undefined): string | null => {
+  const calculateAge = (dateString: string | null | undefined): React.ReactNode | null => {
     if (!dateString) return null;
     const birthDate = new Date(dateString);
     if (isNaN(birthDate.getTime())) return null;
@@ -120,7 +123,14 @@ export default function StudentDetailsPage() {
       days += prevMonth.getDate();
     }
     if (months < 0) { years -= 1; months += 12; }
-    return `${years} ${t("years")} ${months} ${t("months")} ${days} ${t("days")}`;
+    
+    return (
+      <span className="inline-flex items-center gap-1.5 flex-wrap" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+        <span dir="auto">{years} {t("years")}</span>
+        <span dir="auto">{months} {t("months")}</span>
+        <span dir="auto">{days} {t("days")}</span>
+      </span>
+    );
   };
 
   const InfoRow = ({ label, value, icon: Icon }: { label: string; value: React.ReactNode; icon?: LucideIcon }) => (

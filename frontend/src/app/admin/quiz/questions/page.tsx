@@ -14,10 +14,13 @@ import {
   createQuestion,
   updateQuestion,
   QUESTION_TYPE_LABELS,
+  DIFFICULTY_LABELS,
   type QuizCategory,
   type QuizQuestion,
   type QuestionType,
+  type DifficultyLevel,
 } from '@/lib/api/quiz'
+import { getGradeLevels, getSubjects } from '@/lib/api/academics'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -79,8 +82,15 @@ function QuestionDialog({
   const [description, setDescription] = useState(question?.description ?? '')
   const [answer, setAnswer] = useState(question?.answer ?? '')
   const [categoryId, setCategoryId] = useState(question?.category_id ?? defaultCategoryId ?? '')
+  const [gradeLevelId, setGradeLevelId] = useState(question?.grade_level_id ?? '')
+  const [subjectId, setSubjectId] = useState(question?.subject_id ?? '')
+  const [difficulty, setDifficulty] = useState<DifficultyLevel>(question?.difficulty_level ?? 'medium')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  const activeContextId = campusId ?? schoolId
+  const { data: gradeLevels } = useSWR(activeContextId ? ['grade-levels', activeContextId] : null, () => getGradeLevels(activeContextId).then(r => r.data ?? []))
+  const { data: subjects } = useSWR(gradeLevelId ? ['subjects', gradeLevelId, activeContextId] : null, () => getSubjects(gradeLevelId, activeContextId).then(r => r.data ?? []))
 
   const answerPlaceholder: Record<QuestionType, string> = {
     select: t('placeholders.selectAnswer'),
@@ -88,6 +98,7 @@ function QuestionDialog({
     gap: t('placeholders.gapAnswer'),
     text: t('placeholders.textAnswer'),
     textarea: '',
+    matching: t('placeholders.matchingAnswer'),
   }
 
   const handleSave = async () => {
@@ -104,6 +115,9 @@ function QuestionDialog({
         description: description.trim() || null,
         answer: answer.trim() || null,
         sort_order: question?.sort_order ?? 0,
+        grade_level_id: gradeLevelId || null,
+        subject_id: subjectId || null,
+        difficulty_level: difficulty,
       }
       if (isEdit && question) {
         await updateQuestion(question.id, payload)
@@ -149,15 +163,51 @@ function QuestionDialog({
             </div>
           </div>
 
-          <div className="space-y-1">
-            <Label>{t('category')}</Label>
-            <Select value={categoryId || NONE} onValueChange={v => setCategoryId(v === NONE ? '' : v)}>
-              <SelectTrigger><SelectValue placeholder={t('none')} /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE}>{t('none')}</SelectItem>
-                {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label>{t('category')}</Label>
+              <Select value={categoryId || NONE} onValueChange={v => setCategoryId(v === NONE ? '' : v)}>
+                <SelectTrigger><SelectValue placeholder={t('none')} /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>{t('none')}</SelectItem>
+                  {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>{t('difficultyLabel')}</Label>
+              <Select value={difficulty} onValueChange={v => setDifficulty(v as DifficultyLevel)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(DIFFICULTY_LABELS) as DifficultyLevel[]).map(d => (
+                    <SelectItem key={d} value={d}>{t(`difficulty.${d}`)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label>{t('gradeLevel')}</Label>
+              <Select value={gradeLevelId || NONE} onValueChange={v => { const nv = v === NONE ? '' : v; setGradeLevelId(nv); setSubjectId('') }}>
+                <SelectTrigger><SelectValue placeholder={t('none')} /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>{t('none')}</SelectItem>
+                  {(gradeLevels ?? []).map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>{t('subject')}</Label>
+              <Select value={subjectId || NONE} onValueChange={v => setSubjectId(v === NONE ? '' : v)} disabled={!gradeLevelId}>
+                <SelectTrigger><SelectValue placeholder={t('none')} /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>{t('none')}</SelectItem>
+                  {(subjects ?? []).map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="space-y-1">
@@ -168,7 +218,7 @@ function QuestionDialog({
           {type !== 'textarea' && (
             <div className="space-y-1">
               <Label>
-                {type === 'select' || type === 'multiple' ? t('answerInput.options') : type === 'gap' ? t('answerInput.gapText') : t('answerInput.correctAnswer')}
+                {type === 'select' || type === 'multiple' ? t('answerInput.options') : type === 'gap' ? t('answerInput.gapText') : type === 'matching' ? t('answerInput.pairs') : t('answerInput.correctAnswer')}
               </Label>
               <Textarea
                 value={answer}
@@ -182,6 +232,9 @@ function QuestionDialog({
               )}
               {type === 'gap' && (
                 <p className="text-xs text-muted-foreground">{t('answerInput.gapHint')} <code>The sky is __blue__.</code></p>
+              )}
+              {type === 'matching' && (
+                <p className="text-xs text-muted-foreground">{t('answerInput.matchingHint')} <code>Paris::France</code></p>
               )}
             </div>
           )}
@@ -382,6 +435,9 @@ export default function QuestionsPage() {
                       <p className="font-medium text-sm truncate">{q.title}</p>
                       <div className="flex gap-2 mt-1 flex-wrap">
                         <Badge variant="secondary" className="text-xs">{t(`questionTypes.${q.type}`)}</Badge>
+                        {q.difficulty_level && (
+                          <Badge variant="outline" className="text-xs">{t(`difficulty.${q.difficulty_level}`)}</Badge>
+                        )}
                         {q.category && (
                           <Badge variant="outline" className="text-xs">{q.category.title}</Badge>
                         )}

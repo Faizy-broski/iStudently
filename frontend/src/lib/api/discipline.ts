@@ -120,6 +120,13 @@ export async function getDisciplineFields(
   return apiRequest<DisciplineField[]>(`/discipline/fields?${params}`);
 }
 
+export async function getDisciplineFieldNameMap(schoolId: string): Promise<Record<string, string>> {
+  const res = await getDisciplineFields(schoolId, true);
+  const map: Record<string, string> = {};
+  for (const f of res.data ?? []) map[f.id] = f.name;
+  return map;
+}
+
 export async function createDisciplineField(data: {
   school_id: string;
   name: string;

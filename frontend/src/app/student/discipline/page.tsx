@@ -4,7 +4,7 @@ import useSWR from 'swr'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { getStudentDiscipline } from '@/lib/api/student-dashboard'
-import { getDisciplineFields, type DisciplineField } from '@/lib/api/discipline'
+import { getDisciplineFieldNameMap } from '@/lib/api/discipline'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, ShieldAlert, CheckCircle } from 'lucide-react'
@@ -21,20 +21,15 @@ export default function StudentDisciplinePage() {
 
   const [fieldNameMap, setFieldNameMap] = useState<Record<string, string>>({})
 
-  useEffect(() => {
-    if (!user?.school_id) return
-    getDisciplineFields(user.school_id)
-      .then((res) => {
-        const map: Record<string, string> = {}
-        for (const f of res.data ?? []) {
-          map[f.id] = f.name
-        }
-        setFieldNameMap(map)
-      })
-      .catch(() => {/* silent — labels fall back to raw key */})
-  }, [user?.school_id])
-
   const referrals = data?.data || []
+  const schoolId = referrals[0]?.school_id || user?.school_id
+
+  useEffect(() => {
+    if (!schoolId) return
+    getDisciplineFieldNameMap(schoolId)
+      .then(setFieldNameMap)
+      .catch(() => {/* silent — labels fall back to raw key */})
+  }, [schoolId])
 
   return (
     <div className="p-6 space-y-6">

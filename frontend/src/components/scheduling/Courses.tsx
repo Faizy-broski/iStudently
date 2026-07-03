@@ -699,7 +699,7 @@ export function Courses() {
                       </td>
                       <td className="px-3 py-2 text-primary hover:underline">{sub.name}</td>
                       <td className="py-2 text-center text-xs text-muted-foreground tabular-nums select-none">
-                        {sub.sort_order ?? (idx + 1) * 10}
+                        {idx + 1}
                       </td>
                       <td className="px-1 py-2 text-right">
                         <div className="flex gap-0.5 justify-end">
@@ -776,7 +776,7 @@ export function Courses() {
                         </td>
                         <td className="px-3 py-2 text-primary hover:underline">{course.title}</td>
                         <td className="py-2 text-center text-xs text-muted-foreground tabular-nums select-none">
-                          {course.sort_order ?? (idx + 1) * 10}
+                          {idx + 1}
                         </td>
                         <td className="px-1 py-2 text-right">
                           <div className="flex gap-0.5 justify-end">
@@ -860,7 +860,7 @@ export function Courses() {
                         </td>
                         <td className="px-3 py-2 text-primary">{displayTitle}</td>
                         <td className="py-2 text-center text-xs text-muted-foreground tabular-nums select-none">
-                          {cp.sort_order ?? (idx + 1) * 10}
+                          {idx + 1}
                         </td>
                         <td className="px-3 py-2 text-right font-medium text-amber-600">
                           {cp.available_seats != null

@@ -255,13 +255,13 @@ router.post(
   requireRole('super_admin'),
   async (req: Request, res: Response) => {
     try {
-      const { title, page_type = 'url', url, content, image_url, isActive = true, is_template, start_date, end_date } = req.body
+      const { title, page_type = 'url', url, content, image_url, isActive = true, is_template, start_date, end_date, visible_to_roles } = req.body
       if (!title?.trim()) return res.status(400).json({ success: false, error: 'title is required' })
       if (!VALID_PAGE_TYPES.includes(page_type)) return res.status(400).json({ success: false, error: `page_type must be one of: ${VALID_PAGE_TYPES.join(', ')}` })
       if ((page_type === 'url' || page_type === 'embed') && !url?.trim()) return res.status(400).json({ success: false, error: 'url is required for this page type' })
       if (page_type === 'text' && !content?.trim()) return res.status(400).json({ success: false, error: 'content is required for text pages' })
       if (page_type === 'image' && !image_url?.trim()) return res.status(400).json({ success: false, error: 'image_url is required for image pages' })
-      const link = await addGlobalCustomLink({ title, page_type, url, content, image_url, isActive: Boolean(isActive), is_template, start_date, end_date })
+      const link = await addGlobalCustomLink({ title, page_type, url, content, image_url, isActive: Boolean(isActive), is_template, start_date, end_date, visible_to_roles })
       res.status(201).json({ success: true, data: link })
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message })
@@ -292,7 +292,7 @@ router.put(
   async (req: Request, res: Response) => {
     try {
       const { pageId } = req.params
-      const { title, page_type, url, content, image_url, isActive, is_template, start_date, end_date } = req.body
+      const { title, page_type, url, content, image_url, isActive, is_template, start_date, end_date, visible_to_roles } = req.body
       if (page_type !== undefined && !VALID_PAGE_TYPES.includes(page_type)) {
         return res.status(400).json({ success: false, error: `page_type must be one of: ${VALID_PAGE_TYPES.join(', ')}` })
       }
@@ -306,6 +306,7 @@ router.put(
         ...(is_template !== undefined ? { is_template: Boolean(is_template) } : {}),
         ...(start_date !== undefined ? { start_date } : {}),
         ...(end_date !== undefined ? { end_date } : {}),
+        ...(visible_to_roles !== undefined ? { visible_to_roles } : {}),
       })
       res.json({ success: true, data: link })
     } catch (err: any) {

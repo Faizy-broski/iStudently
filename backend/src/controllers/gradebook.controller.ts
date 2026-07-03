@@ -291,11 +291,15 @@ export const getAnomalousGrades = async (req: Request, res: Response) => {
       exceed_max,
       max_ratio,
       extra_credit,
+      staff_id,
     } = req.query
 
     // If 'advanced' flag is passed, use the new AnomalousGrades.php equivalent
     if (advanced === 'true') {
-      const staffId = (req as AuthRequest).user?.id
+      const authReq = req as AuthRequest
+      const isAdmin = authReq.profile?.role === 'admin' || authReq.profile?.role === 'super_admin'
+      // Admins may look up anomalous grades for any teacher via ?staff_id=; everyone else is scoped to themselves
+      const staffId = isAdmin && staff_id ? (staff_id as string) : authReq.user?.id
 
       const data = await gradebookService.getAnomalousGradesAdvanced({
         coursePeriodId: course_period_id as string | undefined,

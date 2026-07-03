@@ -8,6 +8,16 @@ import {
 } from '../types'
 
 export class TrainingService {
+  // Sessions created at the parent-school level should accept students from
+  // any of that parent's child campuses, not just an exact school_id match.
+  private async resolveEligibleSchoolIds(schoolId: string): Promise<string[]> {
+    const { data: campuses } = await supabase
+      .from('schools')
+      .select('id')
+      .eq('parent_school_id', schoolId)
+    return [schoolId, ...(campuses ?? []).map((c: any) => c.id)]
+  }
+
   // ─── Admin: Sessions ──────────────────────────────────────────────────────
 
   async listSessions(schoolId: string, parentSchoolId?: string): Promise<TrainingSession[]> {
@@ -435,11 +445,13 @@ export class TrainingService {
 
     if (!session) return null
 
+    const eligibleSchoolIds = await this.resolveEligibleSchoolIds(session.school_id)
+
     const { data, error } = await supabase
       .from('students')
       .select('id, profile:profiles(first_name, last_name)')
       .eq('student_number', studentNumber)
-      .eq('school_id', session.school_id)
+      .in('school_id', eligibleSchoolIds)
       .single()
 
     if (error || !data) return null
@@ -473,11 +485,12 @@ export class TrainingService {
     // For internal: verify the student_id belongs to this school
     if (dto.student_type === 'internal') {
       if (!dto.student_id) throw new Error('student_id is required for internal registration')
+      const eligibleSchoolIds = await this.resolveEligibleSchoolIds(session.school_id)
       const { data: student } = await supabase
         .from('students')
         .select('id')
         .eq('id', dto.student_id)
-        .eq('school_id', session.school_id)
+        .in('school_id', eligibleSchoolIds)
         .single()
       if (!student) throw new Error('Student not found in this school')
     } else {

@@ -36,27 +36,10 @@ import { type Parent } from "@/lib/api/parents";
 import { useParents } from "@/hooks/useParents";
 import { getLastLogin } from "@/lib/api/auth";
 import { format } from "date-fns";
-import { useTranslations } from "next-intl";
+import { ar, enUS } from "date-fns/locale";
+import { useTranslations, useLocale } from "next-intl";
 
-// Helper to format dates
-const formatDate = (t: (key: string, values?: Record<string, any>) => string, dateString: string | null | undefined) => {
-  if (!dateString) return t("notProvided");
-  try {
-    return format(new Date(dateString), "MMMM d, yyyy");
-  } catch {
-    return dateString;
-  }
-};
 
-// Helper to format date + time
-const formatDateTime = (t: (key: string, values?: Record<string, any>) => string, dateString: string | null | undefined) => {
-  if (!dateString) return t("notProvided");
-  try {
-    return format(new Date(dateString), "MMMM d, yyyy h:mm a");
-  } catch {
-    return dateString;
-  }
-};
 
 // Helper to get initials
 const getInitials = (firstName?: string | null, lastName?: string | null) => {
@@ -78,7 +61,29 @@ export default function ParentDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const t = useTranslations("parents");
+  const locale = useLocale();
+  const dateLocale = locale === 'ar' ? ar : enUS;
   const { setViewedProfile, clearViewedProfile } = useProfileView();
+
+  // Helper to format dates
+  const formatDate = (t: (key: string, values?: Record<string, any>) => string, dateString: string | null | undefined) => {
+    if (!dateString) return t("notProvided");
+    try {
+      return format(new Date(dateString), "MMMM d, yyyy", { locale: dateLocale });
+    } catch {
+      return dateString;
+    }
+  };
+
+  // Helper to format date + time
+  const formatDateTime = (t: (key: string, values?: Record<string, any>) => string, dateString: string | null | undefined) => {
+    if (!dateString) return t("notProvided");
+    try {
+      return format(new Date(dateString), "MMMM d, yyyy h:mm a", { locale: dateLocale });
+    } catch {
+      return dateString;
+    }
+  };
 
   // Get parent ID from URL
   const parentId = params.parentId as string;
