@@ -46,7 +46,8 @@ export const getEmbeddedResources = async (schoolId: string): Promise<EmbeddedRe
     .from('embedded_resources')
     .select('*')
     .eq('school_id', schoolId)
-    .order('title')
+    .order('sort_order', { ascending: true })
+    .order('title', { ascending: true })
 
   if (error) throw error
   return enrichResources(data || [])
@@ -83,7 +84,8 @@ export const getEmbeddedResourcesForUser = async (
     .select('*')
     .eq('school_id', schoolId)
     .eq('is_active', true)
-    .order('title')
+    .order('sort_order', { ascending: true })
+    .order('title', { ascending: true })
 
   if (error) throw error
   let resources: EmbeddedResource[] = data || []
@@ -177,6 +179,7 @@ export const createEmbeddedResource = async (
       visible_to_roles:        dto.visible_to_roles        || [],
       visible_to_teacher_ids:  dto.visible_to_teacher_ids  || [],
       visible_to_student_ids:  dto.visible_to_student_ids  || [],
+      sort_order:              dto.sort_order ?? 0,
       created_by:              dto.created_by || null,
     })
     .select()
@@ -200,6 +203,7 @@ export const updateEmbeddedResource = async (
   if (dto.visible_to_teacher_ids  !== undefined) payload.visible_to_teacher_ids  = dto.visible_to_teacher_ids
   if (dto.visible_to_student_ids  !== undefined) payload.visible_to_student_ids  = dto.visible_to_student_ids
   if (dto.is_active               !== undefined) payload.is_active               = dto.is_active
+  if (dto.sort_order              !== undefined) payload.sort_order              = dto.sort_order
 
   const { data, error } = await supabase
     .from('embedded_resources')

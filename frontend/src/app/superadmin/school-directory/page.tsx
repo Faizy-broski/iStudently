@@ -17,6 +17,7 @@ import ConfirmationDialog from "@/components/super-admin/ConfirmationDialog";
 import { PaginationWrapper } from "@/components/ui/pagination";
 import { useSchools, School } from "@/hooks/useSchools";
 import { SchoolSidebarConfigButton } from "@/components/superadmin/SchoolSidebarConfigButton";
+import { SchoolCustomFieldsButton } from "@/components/superadmin/SchoolCustomFieldsButton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useSWRConfig } from "swr";
 
@@ -353,6 +354,9 @@ export default function SchoolDirectoryPage() {
                           </div>
                           <div className="w-full text-left [&>button]:justify-start [&>button]:h-9 [&>button]:font-medium">
                             <SchoolSidebarConfigButton schoolId={root.id} schoolName={root.name} />
+                          </div>
+                          <div className="w-full text-left [&>button]:justify-start [&>button]:h-9 [&>button]:font-medium">
+                            <SchoolCustomFieldsButton schoolId={root.id} schoolName={root.name} />
                           </div>
                           <Button
                             size="sm"

@@ -75,7 +75,7 @@ export async function getLogs(req: Request, res: Response): Promise<void> {
     const adminProfile  = (req as AuthRequest).profile
     if (!adminProfile) { res.status(401).json({ success: false, error: 'Unauthorized' }); return }
 
-    const { staff_id, campus_id, academic_year_id, page, limit } = req.query
+    const { staff_id, campus_id, academic_year_id, start_date, end_date, page, limit, unpaginated } = req.query
 
     // Validate and resolve campus_id the same way as staff controller
     const effectiveCampusId = campus_id
@@ -87,6 +87,9 @@ export async function getLogs(req: Request, res: Response): Promise<void> {
       staffId:        staff_id as string | undefined,
       campusId:       effectiveCampusId,
       academicYearId: academic_year_id as string | undefined,
+      startDate:      start_date as string | undefined,
+      endDate:        end_date as string | undefined,
+      unpaginated:    unpaginated === 'true',
       page:  page  ? Number(page)  : 1,
       limit: limit ? Number(limit) : 20,
     })

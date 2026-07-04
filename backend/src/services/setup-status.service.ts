@@ -130,6 +130,8 @@ class SetupStatusService {
         name?: string
         address?: string
         contact_email?: string
+        custom_fields?: Record<string, any>
+        [key: string]: any
     }): Promise<any> {
         const { data, error } = await supabase
             .from('schools')

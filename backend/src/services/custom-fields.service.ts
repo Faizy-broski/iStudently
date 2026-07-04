@@ -9,6 +9,7 @@ export type EntityType =
     | 'staff'
     | 'hostel_room'
     | 'hostel_building'
+    | 'school'
 export type CampusScope = 'this_campus' | 'selected_campuses' | 'all_campuses'
 
 export interface CustomFieldDefinition {
@@ -62,6 +63,19 @@ export interface UpdateCustomFieldDTO {
 }
 
 export class CustomFieldsService {
+    /**
+     * Look up just the entity_type of a field definition by id (used for
+     * permission checks before the caller knows what kind of field it is).
+     */
+    async getEntityType(fieldId: string): Promise<EntityType | null> {
+        const { data } = await supabase
+            .from('custom_field_definitions')
+            .select('entity_type')
+            .eq('id', fieldId)
+            .maybeSingle()
+        return data?.entity_type ?? null
+    }
+
     /**
      * Get all custom field definitions for a school and entity type
      * Also includes fields from parent school with all_campuses scope

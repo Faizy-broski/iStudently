@@ -43,7 +43,11 @@ function studentFullName(r: DisciplineReferral): string {
     const { first_name, last_name } = r.students;
     return `${first_name ?? ''} ${last_name ?? ''}`.trim() || r.students.student_number;
   }
-  return r.student_id;
+  if (r.staff) {
+    const p = r.staff.profile;
+    return (p ? `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim() : '') || r.staff.employee_number;
+  }
+  return r.student_id ?? r.staff_id ?? '';
 }
 
 function formatFieldValue(val: unknown): string {
@@ -58,7 +62,7 @@ function formatFieldValue(val: unknown): string {
 function groupByStudent(referrals: DisciplineReferral[]): Map<string, DisciplineReferral[]> {
   const map = new Map<string, DisciplineReferral[]>();
   for (const r of referrals) {
-    const key = r.student_id;
+    const key = r.student_id ?? r.staff_id ?? r.id;
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(r);
   }

@@ -24,6 +24,7 @@ export interface DisciplineField {
   options: string[] | null;
   sort_order: number;
   is_active: boolean;
+  penalty_points: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -32,7 +33,9 @@ export interface DisciplineReferral {
   id: string;
   school_id: string;
   campus_id: string | null;
-  student_id: string;
+  target_type: 'student' | 'staff';
+  student_id: string | null;
+  staff_id: string | null;
   academic_year_id: string | null;
   reporter_id: string | null;
   incident_date: string;
@@ -47,6 +50,11 @@ export interface DisciplineReferral {
     student_number: string;
     grade_level?: string | null;
     section_id?: string | null;
+  } | null;
+  staff?: {
+    id: string;
+    employee_number: string;
+    profile?: { first_name: string; last_name: string } | null;
   } | null;
   reporter?: {
     id: string;
@@ -133,6 +141,7 @@ export async function createDisciplineField(data: {
   field_type: DisciplineFieldType;
   options?: string[] | null;
   sort_order?: number;
+  penalty_points?: number | null;
 }): Promise<ApiResponse<DisciplineField>> {
   return apiRequest<DisciplineField>('/discipline/fields', {
     method: 'POST',
@@ -148,6 +157,7 @@ export async function updateDisciplineField(
     options: string[] | null;
     sort_order: number;
     is_active: boolean;
+    penalty_points: number | null;
   }>
 ): Promise<ApiResponse<DisciplineField>> {
   return apiRequest<DisciplineField>(`/discipline/fields/${id}`, {
@@ -169,7 +179,9 @@ export async function deleteDisciplineField(id: string): Promise<ApiResponse<{ s
 export interface GetReferralsParams {
   school_id: string;
   campus_id?: string;
+  target_type?: 'student' | 'staff';
   student_id?: string;
+  staff_id?: string;
   start_date?: string;
   end_date?: string;
   academic_year_id?: string;
@@ -184,7 +196,9 @@ export async function getDisciplineReferrals(
 ): Promise<ApiResponse<DisciplineReferral[]>> {
   const urlParams = new URLSearchParams({ school_id: params.school_id });
   if (params.campus_id) urlParams.append('campus_id', params.campus_id);
+  if (params.target_type) urlParams.append('target_type', params.target_type);
   if (params.student_id) urlParams.append('student_id', params.student_id);
+  if (params.staff_id) urlParams.append('staff_id', params.staff_id);
   if (params.start_date) urlParams.append('start_date', params.start_date);
   if (params.end_date) urlParams.append('end_date', params.end_date);
   if (params.academic_year_id) urlParams.append('academic_year_id', params.academic_year_id);
@@ -204,13 +218,17 @@ export async function getDisciplineReferralById(
 export async function createDisciplineReferral(data: {
   school_id: string;
   campus_id?: string | null;
-  student_id: string;
+  target_type?: 'student' | 'staff';
+  student_id?: string;
+  student_ids?: string[];
+  staff_id?: string;
+  staff_ids?: string[];
   reporter_id?: string | null;
   incident_date?: string;
   field_values?: Record<string, any>;
   academic_year_id?: string | null;
-}): Promise<ApiResponse<DisciplineReferral>> {
-  return apiRequest<DisciplineReferral>('/discipline/referrals', {
+}): Promise<ApiResponse<DisciplineReferral | DisciplineReferral[]>> {
+  return apiRequest<DisciplineReferral | DisciplineReferral[]>('/discipline/referrals', {
     method: 'POST',
     body: JSON.stringify(data),
   });
@@ -278,13 +296,19 @@ export async function getStudentDisciplineScore(params: {
 export async function getAllDisciplineReferrals(params: {
   school_id: string;
   campus_id?: string;
+  target_type?: 'student' | 'staff';
   start_date?: string;
   end_date?: string;
+  grade_level?: string;
+  section_id?: string;
 }): Promise<ApiResponse<DisciplineReferral[]>> {
   const urlParams = new URLSearchParams({ school_id: params.school_id, report: 'true' });
   if (params.campus_id) urlParams.append('campus_id', params.campus_id);
+  if (params.target_type) urlParams.append('target_type', params.target_type);
   if (params.start_date) urlParams.append('start_date', params.start_date);
   if (params.end_date) urlParams.append('end_date', params.end_date);
+  if (params.grade_level) urlParams.append('grade_level', params.grade_level);
+  if (params.section_id) urlParams.append('section_id', params.section_id);
   return apiRequest<DisciplineReferral[]>(`/discipline/referrals?${urlParams}`);
 }
 

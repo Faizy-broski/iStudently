@@ -20,16 +20,6 @@ export interface DisciplineScoreResult {
 }
 
 // ============================================================================
-// Helpers
-// ============================================================================
-
-/** Returns the penalty value if the first option is a negative number, else null */
-function parsePenalty(firstOption: string): number | null {
-  const num = parseFloat(firstOption)
-  return !isNaN(num) && num < 0 ? num : null
-}
-
-// ============================================================================
 // Service
 // ============================================================================
 
@@ -69,14 +59,14 @@ export async function getStudentDisciplineScore(params: {
   // ── 2. Fetch discipline fields ───────────────────────────────────────────
   const { data: fields, error: fieldsError } = await supabase
     .from('discipline_fields')
-    .select('id, name, field_type, options')
+    .select('id, name, field_type, options, penalty_points')
     .eq('school_id', schoolId)
     .eq('is_active', true)
 
   if (fieldsError) throw fieldsError
 
   // Index by both id and name so we can look up field_values keys either way
-  const fieldMap: Record<string, { id: string; name: string; field_type: string; options: string[] | null }> = {}
+  const fieldMap: Record<string, { id: string; name: string; field_type: string; options: string[] | null; penalty_points: number | null }> = {}
   for (const f of (fields || [])) {
     fieldMap[f.name] = f
     fieldMap[f.id] = f
@@ -96,9 +86,7 @@ export async function getStudentDisciplineScore(params: {
   const { data: referrals, error: refError } = await query
   if (refError) throw refError
 
-  // ── 4. Calculate score from penalty markers ──────────────────────────────
-  // Convention: if the first option of a field is a negative number it is a
-  // penalty marker and does not appear as a selectable value.
+  // ── 4. Calculate score from penalty_points ────────────────────────────────
   //   multiple_checkbox → penalty × number_of_items_selected
   //   select / multiple_radio → flat penalty once (if anything selected)
   let totalDelta = 0
@@ -109,16 +97,13 @@ export async function getStudentDisciplineScore(params: {
 
     for (const [key, value] of Object.entries(fieldValues)) {
       const field = fieldMap[key]
-      if (!field?.options || field.options.length === 0) continue
+      if (!field?.penalty_points) continue // no scoring impact on this field
 
-      const penalty = parsePenalty(field.options[0])
-      if (penalty === null) continue // no penalty marker on this field
-
+      const penalty = field.penalty_points // signed: positive = bonus, negative = deduction
       let delta = 0
       let detail = ''
 
       if (field.field_type === 'multiple_checkbox') {
-        // value is an array of selected labels (the penalty marker is not selectable)
         const selected = Array.isArray(value) ? (value as string[]) : []
         if (selected.length > 0) {
           delta = penalty * selected.length

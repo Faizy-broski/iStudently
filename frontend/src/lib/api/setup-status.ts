@@ -25,6 +25,7 @@ export interface Campus {
     logo_url?: string | null
     status: string
     parent_school_id: string
+    custom_fields?: Record<string, any>
     created_at: string
     updated_at: string
 }

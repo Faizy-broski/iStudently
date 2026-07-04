@@ -177,7 +177,7 @@ export async function createField(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const { name, field_type, options, sort_order } = req.body;
+    const { name, field_type, options, sort_order, penalty_points } = req.body;
 
     if (!name || !field_type) {
       res.status(400).json({ error: 'name and field_type are required' });
@@ -192,6 +192,7 @@ export async function createField(req: Request, res: Response): Promise<void> {
         field_type,
         options: options || null,
         sort_order: sort_order ?? 0,
+        penalty_points: penalty_points ?? null,
       })
       .select()
       .single();
@@ -214,7 +215,7 @@ export async function createField(req: Request, res: Response): Promise<void> {
 export async function updateField(req: Request, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { name, field_type, options, sort_order, is_active } = req.body;
+    const { name, field_type, options, sort_order, is_active, penalty_points } = req.body;
 
     const updates: Record<string, any> = { updated_at: new Date().toISOString() };
     if (name !== undefined) updates.name = name;
@@ -222,6 +223,7 @@ export async function updateField(req: Request, res: Response): Promise<void> {
     if (options !== undefined) updates.options = options;
     if (sort_order !== undefined) updates.sort_order = sort_order;
     if (is_active !== undefined) updates.is_active = is_active;
+    if (penalty_points !== undefined) updates.penalty_points = penalty_points;
 
     const { data, error } = await supabase
       .from('discipline_fields')
@@ -298,6 +300,8 @@ export async function getReferrals(req: Request, res: Response): Promise<void> {
     const {
       campus_id,
       student_id,
+      staff_id,
+      target_type,
       start_date,
       end_date,
       academic_year_id,
@@ -336,6 +340,7 @@ export async function getReferrals(req: Request, res: Response): Promise<void> {
       .select(`
         *,
         students ( id, student_number, grade_level, section_id, profile:profiles(first_name, father_name, grandfather_name, last_name) ),
+        staff ( id, employee_number, profile:profiles!staff_profile_id_fkey(first_name, last_name) ),
         reporter:profiles!discipline_referrals_reporter_id_fkey ( id, first_name, last_name )
       `, { count: 'exact' })
       .eq('school_id', schoolId)
@@ -344,6 +349,8 @@ export async function getReferrals(req: Request, res: Response): Promise<void> {
 
     if (campus_id) query = query.eq('campus_id', campus_id);
     if (student_id) query = query.eq('student_id', student_id);
+    if (staff_id) query = query.eq('staff_id', staff_id);
+    if (target_type) query = query.eq('target_type', target_type);
     if (academic_year_id) query = query.eq('academic_year_id', academic_year_id);
     if (start_date) query = query.gte('incident_date', start_date);
     if (end_date) query = query.lte('incident_date', end_date);
@@ -430,35 +437,49 @@ export async function createReferral(req: Request, res: Response): Promise<void>
 
     const {
       // campus_id,
+      target_type,
       student_id,
+      student_ids,
+      staff_id,
+      staff_ids,
       reporter_id,
       incident_date,
       field_values,
       academic_year_id,
     } = req.body;
 
-    if (!student_id) {
-      res.status(400).json({ error: 'student_id is required' });
+    const targetType: 'student' | 'staff' = target_type === 'staff' ? 'staff' : 'student';
+
+    const targetIds: string[] = targetType === 'staff'
+      ? (Array.isArray(staff_ids) && staff_ids.length > 0 ? staff_ids : (staff_id ? [staff_id] : []))
+      : (Array.isArray(student_ids) && student_ids.length > 0 ? student_ids : (student_id ? [student_id] : []));
+
+    if (targetIds.length === 0) {
+      res.status(400).json({ error: targetType === 'staff' ? 'staff_id is required' : 'student_id is required' });
       return;
     }
 
+    const rows = targetIds.map((tid) => ({
+      school_id: schoolId,
+      campus_id: campus_id || null,
+      target_type: targetType,
+      student_id: targetType === 'student' ? tid : null,
+      staff_id: targetType === 'staff' ? tid : null,
+      reporter_id: reporter_id || null,
+      incident_date: incident_date || new Date().toISOString().slice(0, 10),
+      field_values: field_values || {},
+      academic_year_id: academic_year_id || null,
+    }));
+
     const { data, error } = await supabase
       .from('discipline_referrals')
-      .insert({
-        school_id: schoolId,
-        campus_id: campus_id || null,
-        student_id,
-        reporter_id: reporter_id || null,
-        incident_date: incident_date || new Date().toISOString().slice(0, 10),
-        field_values: field_values || {},
-        academic_year_id: academic_year_id || null,
-      })
+      .insert(rows)
       .select(`
         *,
         students ( id, student_number, profile:profiles(first_name, father_name, grandfather_name, last_name) ),
+        staff ( id, employee_number, profile:profiles!staff_profile_id_fkey(first_name, last_name) ),
         reporter:profiles!discipline_referrals_reporter_id_fkey ( id, first_name, last_name )
-      `)
-      .single();
+      `);
 
     if (error) {
       res.status(500).json({ error: error.message });
@@ -466,11 +487,16 @@ export async function createReferral(req: Request, res: Response): Promise<void>
     }
 
     // compute reporter full_name for client
-    if (data && data.reporter && data.reporter.first_name !== undefined) {
-      data.reporter.full_name = `${data.reporter.first_name || ''} ${data.reporter.last_name || ''}`.trim();
+    for (const row of data ?? []) {
+      if (row.reporter && row.reporter.first_name !== undefined) {
+        row.reporter.full_name = `${row.reporter.first_name || ''} ${row.reporter.last_name || ''}`.trim();
+      }
     }
 
-    res.status(201).json({ data });
+    // Preserve the previous single-object response shape when only one student was targeted
+    const responseData = Array.isArray(data) && targetIds.length === 1 ? data[0] : data;
+
+    res.status(201).json({ data: responseData });
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Internal server error' });
   }

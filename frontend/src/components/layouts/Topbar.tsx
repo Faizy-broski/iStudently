@@ -142,7 +142,7 @@ export function Topbar({ className }: TopbarProps) {
         className
       )}
     >
-      <div className="flex items-center justify-between h-16 px-3 md:px-6">
+      <div className="flex items-center justify-between gap-2 h-16 px-3 md:px-6">
         {/* Left Side - Mobile Menu & Search */}
         <div className="flex items-center gap-2 md:gap-4">
           {/* Mobile Menu Toggle */}
@@ -150,7 +150,7 @@ export function Topbar({ className }: TopbarProps) {
             variant="ghost"
             size="icon"
             onClick={() => setIsMobileOpen(true)}
-            className="lg:hidden -ml-2 h-10 w-10 flex-shrink-0"
+            className="lg:hidden -ms-2 h-10 w-10 flex-shrink-0"
           >
             <Menu className="h-5 w-5" />
             <span className="sr-only">Toggle Menu</span>

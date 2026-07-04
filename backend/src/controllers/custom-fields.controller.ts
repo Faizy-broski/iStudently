@@ -25,7 +25,7 @@ export class CustomFieldsController {
                 return
             }
 
-            if (!['student', 'teacher', 'parent', 'staff', 'hostel_room', 'hostel_building'].includes(entityType)) {
+            if (!['student', 'teacher', 'parent', 'staff', 'hostel_room', 'hostel_building', 'school'].includes(entityType)) {
                 res.status(400).json({
                     success: false,
                     error: 'Invalid entity type.'
@@ -103,6 +103,14 @@ export class CustomFieldsController {
                 return
             }
 
+            if (entity_type === 'school' && req.profile?.role !== 'super_admin') {
+                res.status(403).json({
+                    success: false,
+                    error: 'Only Super Admin can manage school custom fields'
+                })
+                return
+            }
+
             const field = await customFieldsService.createFieldDefinition(effectiveSchoolId, {
                 entity_type,
                 category_id,
@@ -156,6 +164,15 @@ export class CustomFieldsController {
 
             const updates = req.body
 
+            const existingEntityType = await customFieldsService.getEntityType(fieldId)
+            if (existingEntityType === 'school' && req.profile?.role !== 'super_admin') {
+                res.status(403).json({
+                    success: false,
+                    error: 'Only Super Admin can manage school custom fields'
+                })
+                return
+            }
+
             const field = await customFieldsService.updateFieldDefinition(fieldId, effectiveSchoolId, updates)
 
             res.json({
@@ -197,6 +214,15 @@ export class CustomFieldsController {
                 res.status(400).json({
                     success: false,
                     error: 'School context required'
+                })
+                return
+            }
+
+            const existingEntityType = await customFieldsService.getEntityType(fieldId)
+            if (existingEntityType === 'school' && req.profile?.role !== 'super_admin') {
+                res.status(403).json({
+                    success: false,
+                    error: 'Only Super Admin can manage school custom fields'
                 })
                 return
             }

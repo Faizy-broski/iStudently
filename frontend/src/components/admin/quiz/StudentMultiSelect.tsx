@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 export interface StudentOption {
   id: string;
   name: string;
+  subtitle?: string;
 }
 
 interface Props {
@@ -109,8 +110,13 @@ export function StudentMultiSelect({
               >
                 <Checkbox checked={value.includes(o.id)} onCheckedChange={() => toggle(o.id)} />
                 <label className="flex-1 cursor-pointer text-sm">
-                  {o.name}
-                  {value.includes(o.id) && <Check className="ml-2 h-4 w-4 inline" />}
+                  <div className="flex items-center justify-between gap-2">
+                    <span>{o.name}</span>
+                    {value.includes(o.id) && <Check className="h-4 w-4 shrink-0" />}
+                  </div>
+                  {o.subtitle && (
+                    <div className="text-xs text-muted-foreground">{o.subtitle}</div>
+                  )}
                 </label>
               </div>
             ))

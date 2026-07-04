@@ -82,27 +82,36 @@ export async function getLogs(params: {
   staffId?: string
   campusId?: string
   academicYearId?: string
+  startDate?: string
+  endDate?: string
   page?: number
   limit?: number
+  unpaginated?: boolean
 }): Promise<{ data: StaffPerformanceLog[]; total: number }> {
-  const { schoolId, staffId, campusId, academicYearId, page = 1, limit = 20 } = params
-  const from = (page - 1) * limit
-  const to   = from + limit - 1
+  const { schoolId, staffId, campusId, academicYearId, startDate, endDate, page = 1, limit = 20, unpaginated } = params
 
   let q = supabase
     .from('staff_performance_log')
     .select(`
       *,
       action:performance_actions_lookup(*),
-      staff:staff(id, employee_number, profiles:profiles!staff_profile_id_fkey(first_name, last_name, profile_photo_url))
+      staff:staff(id, employee_number, role, employment_type, department, profiles:profiles!staff_profile_id_fkey(first_name, last_name, profile_photo_url)),
+      reporter:profiles!created_by(first_name, last_name)
     `, { count: 'exact' })
     .eq('school_id', schoolId)
     .order('created_at', { ascending: false })
-    .range(from, to)
 
-  if (staffId)       q = (q as any).eq('staff_id', staffId)
-  if (campusId)      q = (q as any).eq('campus_id', campusId)
-  if (academicYearId) q = (q as any).eq('academic_year_id', academicYearId)
+  if (staffId)        q = (q as any).eq('staff_id', staffId)
+  if (campusId)        q = (q as any).eq('campus_id', campusId)
+  if (academicYearId)  q = (q as any).eq('academic_year_id', academicYearId)
+  if (startDate)       q = (q as any).gte('created_at', startDate)
+  if (endDate)         q = (q as any).lte('created_at', `${endDate}T23:59:59.999Z`)
+
+  if (!unpaginated) {
+    const from = (page - 1) * limit
+    const to   = from + limit - 1
+    q = q.range(from, to)
+  }
 
   const { data, error, count } = await q
   if (error) throw error

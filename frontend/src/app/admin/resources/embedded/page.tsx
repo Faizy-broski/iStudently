@@ -28,6 +28,7 @@ interface RowState {
   published_section_ids: string[]
   visible_to_teacher_ids: string[]
   visible_to_student_ids: string[]
+  sort_order: number
   dirty: boolean
 }
 
@@ -459,7 +460,7 @@ export default function EmbeddedResourcesPage() {
   const [loading,            setLoading]            = useState(true)
   const [saving,             setSaving]             = useState(false)
   const [deleteTarget,       setDeleteTarget]       = useState<string | null>(null)
-  const [sortBy,             setSortBy]             = useState<'title_asc' | 'title_desc' | 'url_asc' | 'url_desc'>('title_asc')
+  const [sortBy,             setSortBy]             = useState<'order_asc' | 'title_asc' | 'title_desc' | 'url_asc' | 'url_desc'>('order_asc')
 
   // ── Data loading ────────────────────────────────────────────────────────────
 
@@ -484,6 +485,7 @@ export default function EmbeddedResourcesPage() {
         published_section_ids:  r.published_section_ids  || [],
         visible_to_teacher_ids: r.visible_to_teacher_ids || [],
         visible_to_student_ids: r.visible_to_student_ids || [],
+        sort_order: r.sort_order ?? 0,
         dirty: false,
       })))
     } else {
@@ -515,10 +517,12 @@ export default function EmbeddedResourcesPage() {
 
   const addNewRow = () => {
     if (rows.some(r => r.id === 'new')) return
+    const nextOrder = rows.reduce((max, r) => Math.max(max, r.sort_order), 0) + 1
     setRows(prev => [...prev, {
       id: 'new', title: '', url: '',
       visible_to_roles: [], published_grade_ids: [], published_section_ids: [],
       visible_to_teacher_ids: [], visible_to_student_ids: [],
+      sort_order: nextOrder,
       dirty: true,
     }])
   }
@@ -548,6 +552,7 @@ export default function EmbeddedResourcesPage() {
         published_section_ids:  r.published_section_ids,
         visible_to_teacher_ids: r.visible_to_teacher_ids,
         visible_to_student_ids: r.visible_to_student_ids,
+        sort_order:             r.sort_order,
       }
 
       if (r.id === 'new') {
@@ -588,6 +593,7 @@ export default function EmbeddedResourcesPage() {
     const newRow = rows.find(r => r.id === 'new')
 
     existingRows.sort((a, b) => {
+      if (sortBy === 'order_asc') return a.sort_order - b.sort_order || a.title.localeCompare(b.title)
       if (sortBy === 'title_asc') return a.title.localeCompare(b.title)
       if (sortBy === 'title_desc') return b.title.localeCompare(a.title)
       if (sortBy === 'url_asc') return a.url.localeCompare(b.url)
@@ -632,6 +638,7 @@ export default function EmbeddedResourcesPage() {
             onChange={e => setSortBy(e.target.value as any)}
             className="w-full h-10 appearance-none rounded-lg border border-input bg-white dark:bg-gray-900 px-4 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
           >
+            <option value="order_asc">Sort by Order (1-9)</option>
             <option value="title_asc">Sort by Title (A-Z)</option>
             <option value="title_desc">Sort by Title (Z-A)</option>
             <option value="url_asc">Sort by Link (A-Z)</option>
@@ -652,6 +659,7 @@ export default function EmbeddedResourcesPage() {
             <thead className="bg-gray-50 dark:bg-gray-800 border-b">
               <tr>
                 <th className="w-10 px-4 py-3" />
+                <th className="px-4 py-3 text-left font-semibold text-blue-600 uppercase text-xs tracking-wide w-20">{t('th_order_header')}</th>
                 <th className="px-4 py-3 text-left font-semibold text-blue-600 uppercase text-xs tracking-wide w-48">{t('th_title_header')}</th>
                 <th className="px-4 py-3 text-left font-semibold text-blue-600 uppercase text-xs tracking-wide">{t('th_link_header')}</th>
                 <th className="px-4 py-3 text-left font-semibold text-blue-600 uppercase text-xs tracking-wide w-72">{t('th_audience')}</th>
@@ -668,6 +676,16 @@ export default function EmbeddedResourcesPage() {
                     >
                       <Minus className="h-3.5 w-3.5" />
                     </button>
+                  </td>
+
+                  {/* Order */}
+                  <td className="px-4 py-3">
+                    <Input
+                      type="number"
+                      value={row.sort_order}
+                      onChange={e => updateRow(row.id, { sort_order: parseInt(e.target.value, 10) || 0 })}
+                      className="h-8 text-sm w-16"
+                    />
                   </td>
 
                   {/* Title */}
@@ -724,13 +742,13 @@ export default function EmbeddedResourcesPage() {
                       <Plus className="h-3.5 w-3.5" />
                     </button>
                   </td>
-                  <td colSpan={3} className="px-4 py-3 text-sm text-gray-400 italic">{t('add_resource_prompt')}</td>
+                  <td colSpan={4} className="px-4 py-3 text-sm text-gray-400 italic">{t('add_resource_prompt')}</td>
                 </tr>
               )}
 
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="text-center py-12 text-gray-400 italic">{t('no_resources_empty')}</td>
+                  <td colSpan={5} className="text-center py-12 text-gray-400 italic">{t('no_resources_empty')}</td>
                 </tr>
               )}
             </tbody>

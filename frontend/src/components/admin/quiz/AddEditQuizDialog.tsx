@@ -123,7 +123,8 @@ export function AddEditQuizDialog({ quiz, schoolId, campusId, onClose, onSaved }
   const studentOptions: StudentOption[] = useMemo(
     () => (rosterRes?.data ?? []).map((s: any) => ({
       id: s.id,
-      name: [s.medical_info?.first_name, s.medical_info?.last_name].filter(Boolean).join(' ') || s.student_number,
+      name: [s.profile?.first_name, s.profile?.last_name].filter(Boolean).join(' ') || s.student_number,
+      subtitle: [s.grade?.name, s.section?.name].filter(Boolean).join(' - ') || undefined,
     })),
     [rosterRes]
   )

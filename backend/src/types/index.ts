@@ -285,6 +285,7 @@ export interface School {
     billing: boolean;
     activities: boolean;
   };
+  custom_fields?: Record<string, any>;
   created_at: string;
   updated_at: string;
 }
@@ -322,6 +323,7 @@ export interface UpdateSchoolDTO {
   website?: string;
   logo_url?: string;
   status?: SchoolStatus;
+  custom_fields?: Record<string, any>;
 }
 
 export interface SchoolStats {
@@ -1779,6 +1781,7 @@ export interface EmbeddedResource {
   visible_to_teacher_ids: string[];   // empty = all teachers
   visible_to_student_ids: string[];   // specific student record IDs (empty = all in section/grade)
   is_active: boolean;
+  sort_order: number;                 // manual display order (lower first)
   created_at: string;
   updated_at: string;
   created_by: string | null;
@@ -1797,6 +1800,7 @@ export interface CreateEmbeddedResourceDTO {
   visible_to_roles?: string[];
   visible_to_teacher_ids?: string[];
   visible_to_student_ids?: string[];
+  sort_order?: number;
   created_by?: string;
 }
 
@@ -1809,6 +1813,7 @@ export interface UpdateEmbeddedResourceDTO {
   visible_to_teacher_ids?: string[];
   visible_to_student_ids?: string[];
   is_active?: boolean;
+  sort_order?: number;
 }
 
 // ─── Physics Labs ─────────────────────────────────────────────────────────────
@@ -1890,8 +1895,12 @@ export interface StaffPerformanceLog {
   staff?: {
     id: string
     employee_number: string
+    role?: string | null
+    employment_type?: string | null
+    department?: string | null
     profile?: { first_name: string; last_name: string; profile_photo_url?: string | null }
   }
+  reporter?: { first_name: string; last_name: string } | null
 }
 
 export interface PerformanceScore {

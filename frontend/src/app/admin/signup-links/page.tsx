@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { FileUpload } from '@/components/ui/file-upload'
 import {
@@ -47,6 +48,7 @@ import {
   deleteSignupLink,
   buildSignupUrl,
   type SignupLink,
+  type SignupCustomField,
 } from '@/lib/api/signup-links'
 import { getPendingCount } from '@/lib/api/pending-signups'
 import { getGradeLevels, type GradeLevel } from '@/lib/api/academics'
@@ -96,7 +98,7 @@ export default function SignupLinksPage() {
     campus_id: campusId ?? '',
     poster_url: '',
     description: '',
-    require_grade_level: false,
+    selected_grade_ids: [] as string[],
     custom_fields: [] as Array<{ id: string; label: string; type: 'text' | 'select'; required: boolean; options: string }>,
   })
   const [generating, setGenerating] = React.useState(false)
@@ -126,15 +128,25 @@ export default function SignupLinksPage() {
   React.useEffect(() => { fetchData() }, [fetchData])
 
   const execCommandCopy = (url: string) => {
+    // Append inside the currently-open Radix dialog (if any) so the textarea
+    // sits within its focus trap — appending to document.body while a Dialog
+    // is open can prevent .focus()/.select() from actually moving focus,
+    // causing execCommand('copy') to silently return false.
+    const container = document.querySelector('[role="dialog"]') ?? document.body
     const ta = document.createElement('textarea')
     ta.value = url
     // Position off-screen but still reachable (opacity:0 can break focus in some browsers)
     ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;'
-    document.body.appendChild(ta)
+    container.appendChild(ta)
     ta.focus()
     ta.select()
-    const ok = document.execCommand('copy')
-    document.body.removeChild(ta)
+    let ok = false
+    try {
+      ok = document.execCommand('copy')
+    } catch {
+      ok = false
+    }
+    container.removeChild(ta)
     return ok
   }
 
@@ -147,17 +159,21 @@ export default function SignupLinksPage() {
       setTimeout(() => setCopiedId(null), 2000)
     }
 
+    const onFailure = () => {
+      toast.error(isAr ? 'تعذر نسخ الرابط' : 'Could not copy link')
+    }
+
     // On HTTPS / localhost the Clipboard API is available; use it.
     // On plain HTTP we must copy synchronously inside the user-gesture callback
     // because execCommand('copy') loses the gesture context after an await/microtask.
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(url).then(onSuccess).catch(() => {
-        execCommandCopy(url)
-        onSuccess()
+        if (execCommandCopy(url)) onSuccess()
+        else onFailure()
       })
     } else {
-      execCommandCopy(url)
-      onSuccess()
+      if (execCommandCopy(url)) onSuccess()
+      else onFailure()
     }
   }
 
@@ -185,14 +201,15 @@ export default function SignupLinksPage() {
   const handleGenerate = async () => {
     setGenerating(true)
     try {
-      const custom_fields = []
-      if (form.require_grade_level && gradeLevels.length > 0) {
+      const custom_fields: SignupCustomField[] = []
+      if (form.selected_grade_ids.length > 0) {
+        const selectedGrades = gradeLevels.filter(g => form.selected_grade_ids.includes(g.id))
         custom_fields.push({
           id: 'grade_level',
           label: isAr ? 'الصف الدراسي' : 'Grade Level',
           type: 'select',
           required: true,
-          options: gradeLevels.map(g => g.name),
+          options: selectedGrades.map(g => g.name),
         })
       }
 
@@ -233,8 +250,8 @@ export default function SignupLinksPage() {
 
   const resetGenerateForm = () => {
     setForm({ 
-      role: 'teacher', label: '', unlimited: true, max_uses: '', neverExpires: true, 
-      expires_at: '', campus_id: campusId ?? '', poster_url: '', description: '', require_grade_level: false, custom_fields: [] 
+      role: 'teacher', label: '', unlimited: true, max_uses: '', neverExpires: true,
+      expires_at: '', campus_id: campusId ?? '', poster_url: '', description: '', selected_grade_ids: [], custom_fields: []
     })
     setGeneratedLink(null)
     setShowGenerateDialog(false)
@@ -429,6 +446,51 @@ export default function SignupLinksPage() {
                   </div>
                 </div>
 
+                {/* Grade Levels offered (Student / Parent only) */}
+                {(form.role === 'student' || form.role === 'parent') && (
+                  <div className="space-y-1.5">
+                    <Label>{isAr ? 'الصفوف الدراسية المتاحة' : 'Grade Levels Offered'}</Label>
+                    <p className="text-xs text-muted-foreground">
+                      {isAr
+                        ? 'اختر الصفوف الدراسية التي يقدمها هذا الفرع ليختار منها المتقدم'
+                        : "Select which of this campus's grade levels the applicant can choose from"}
+                    </p>
+                    {gradeLevels.length === 0 ? (
+                      <p className="text-xs text-muted-foreground italic">
+                        {isAr ? 'لا توجد صفوف دراسية لهذا الفرع' : 'No grade levels found for this campus'}
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border dark:border-slate-800 rounded-lg">
+                        {gradeLevels.map((g) => {
+                          const checked = form.selected_grade_ids.includes(g.id)
+                          return (
+                            <label
+                              key={g.id}
+                              className={cn(
+                                'flex items-center gap-2 text-sm px-2 py-1.5 rounded-md border cursor-pointer transition-colors',
+                                checked
+                                  ? 'border-[#022172] bg-[#022172]/5'
+                                  : 'border-gray-200 dark:border-slate-800 hover:border-[#57A3CC]'
+                              )}
+                            >
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(c) => setForm(f => ({
+                                  ...f,
+                                  selected_grade_ids: c
+                                    ? [...f.selected_grade_ids, g.id]
+                                    : f.selected_grade_ids.filter(id => id !== g.id),
+                                }))}
+                              />
+                              <span className="truncate">{g.name}</span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Label */}
                 <div className="space-y-1.5">
                   <Label>{t('fieldLabel')}</Label>
@@ -506,22 +568,6 @@ export default function SignupLinksPage() {
                     {isAr ? 'سيظهر هذا الملصق في صفحة التسجيل.' : 'This image will be displayed on the public signup page.'}
                   </p>
                 </div>
-
-                {/* Require Grade Level */}
-                {(form.role === 'student' || form.role === 'parent') && (
-                  <div className="flex items-center justify-between p-3 border dark:border-slate-800 rounded-lg bg-gray-50/50 dark:bg-slate-800/50">
-                    <div className="space-y-0.5">
-                      <Label className="text-sm font-semibold">{isAr ? 'طلب تحديد الصف الدراسي' : 'Require Grade Level'}</Label>
-                      <p className="text-xs text-muted-foreground">
-                        {isAr ? 'إضافة حقل الصف الدراسي لنموذج التسجيل' : 'Add a required Grade Level dropdown to the signup form'}
-                      </p>
-                    </div>
-                    <Switch
-                      checked={form.require_grade_level}
-                      onCheckedChange={(c) => setForm(f => ({ ...f, require_grade_level: c }))}
-                    />
-                  </div>
-                )}
 
                 {/* Additional Custom Fields */}
                 <div className="space-y-3 pt-2 border-t border-gray-100 dark:border-slate-800">

@@ -40,13 +40,15 @@ export function useTrainingSessions() {
 
 export function useTrainingSession(id: string | null) {
   const { user } = useAuth()
+  const campusContext = useCampus()
+  const selectedCampusId = campusContext?.selectedCampus?.id
 
-  const cacheKey = user && id ? ['training-session', id, user.id] : null
+  const cacheKey = user && id ? ['training-session', id, user.id, selectedCampusId] : null
 
   const { data, error, isLoading, mutate } = useSWR(
     cacheKey,
     async () => {
-      const res = await trainingApi.getSession(id!)
+      const res = await trainingApi.getSession(id!, selectedCampusId)
       if (!res.success) throw new Error(res.error ?? 'Failed to fetch session')
       return res.data
     },

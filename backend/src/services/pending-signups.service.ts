@@ -243,6 +243,27 @@ export async function approvePendingSignup(
   // campus_id is the actual campus school_id; fall back to school_id if not set.
   const campusId = row.campus_id ?? row.school_id
 
+  // Custom fields answered on the public signup form (see submitSignup / meta.custom_fields).
+  // grade_level is handled separately below since it maps to a real column, not custom_fields.
+  const extraData = (row.extra_data ?? {}) as Record<string, unknown>
+  const { grade_level: submittedGradeLevelName, ...customFieldAnswers } = extraData
+
+  let gradeLevelId: string | null = null
+  if (row.role === 'student' && submittedGradeLevelName) {
+    const { data: gradeLevel, error: gradeLookupError } = await supabase
+      .from('grade_levels')
+      .select('id')
+      .eq('campus_id', campusId)
+      .eq('name', submittedGradeLevelName)
+      .maybeSingle()
+
+    if (gradeLookupError || !gradeLevel) {
+      console.warn(`⚠️ Could not resolve grade level "${submittedGradeLevelName}" for approved signup ${id}`)
+    } else {
+      gradeLevelId = gradeLevel.id
+    }
+  }
+
   if (['teacher', 'staff', 'librarian', 'counselor'].includes(row.role)) {
     const rolePrefix =
       row.role === 'teacher'   ? 'TCH' :
@@ -261,7 +282,7 @@ export async function approvePendingSignup(
         payment_type: 'fixed_salary',
         is_active: true,
         permissions: {},
-        custom_fields: {},
+        custom_fields: customFieldAnswers,
         created_by: reviewedBy,
       })
 
@@ -280,8 +301,9 @@ export async function approvePendingSignup(
         profile_id: profileId,
         school_id: campusId,
         student_number: studentNumber,
+        grade_level_id: gradeLevelId,
         medical_info: {},
-        custom_fields: {},
+        custom_fields: customFieldAnswers,
       })
 
     if (studentError) {
@@ -297,7 +319,7 @@ export async function approvePendingSignup(
         profile_id: profileId,
         school_id: campusId,
         metadata: {},
-        custom_fields: {},
+        custom_fields: customFieldAnswers,
       })
 
     if (parentError) {

@@ -100,6 +100,19 @@ export interface Student {
     profile_photo_url: string | null // NEW
     is_active: boolean
   }
+  // Returned by GET /students (list endpoint) — not present on all student shapes
+  profile?: {
+    id: string
+    first_name: string | null
+    last_name: string | null
+    email: string | null
+    phone: string | null
+    avatar_url: string | null
+    profile_photo_url: string | null
+    is_active: boolean
+  }
+  grade?: { id: string; name: string } | null
+  section?: { id: string; name: string } | null
 }
 
 export interface CreateStudentDTO {

@@ -127,6 +127,14 @@ export class StudentService {
           profile_photo_url,
           is_active
         ),
+        grade:grade_levels!grade_level_id(
+          id,
+          name
+        ),
+        section:sections!section_id(
+          id,
+          name
+        ),
         parent_links:parent_student_links(
           parent:parents(
             id,

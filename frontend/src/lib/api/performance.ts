@@ -38,8 +38,12 @@ export interface StaffPerformanceLog {
   staff?: {
     id: string
     employee_number: string
+    role?: string | null
+    employment_type?: string | null
+    department?: string | null
     profiles?: { first_name: string; last_name: string; profile_photo_url?: string | null }
   }
+  reporter?: { first_name: string; last_name: string } | null
 }
 
 export interface PerformanceScore {
@@ -117,6 +121,8 @@ export async function getLogs(params: {
   staffId?: string
   academicYearId?: string
   campusId?: string
+  startDate?: string
+  endDate?: string
   page?: number
   limit?: number
 }): Promise<{ data: StaffPerformanceLog[]; total: number }> {
@@ -125,12 +131,32 @@ export async function getLogs(params: {
   if (params.staffId)        qs.set('staff_id', params.staffId)
   if (params.academicYearId) qs.set('academic_year_id', params.academicYearId)
   if (params.campusId)       qs.set('campus_id', params.campusId)
+  if (params.startDate)      qs.set('start_date', params.startDate)
+  if (params.endDate)        qs.set('end_date', params.endDate)
   if (params.page)           qs.set('page', String(params.page))
   if (params.limit)          qs.set('limit', String(params.limit))
 
   const r = await apiFetch<StaffPerformanceLog[]>(`/performance/logs?${qs}`, { headers })
   if (!r.success) throw new Error(r.error)
   return { data: r.data ?? [], total: r.pagination?.total ?? 0 }
+}
+
+// Unpaginated fetch for report pages — mirrors getAllDisciplineReferrals in lib/api/discipline.ts
+export async function getAllLogs(params: {
+  campusId?: string
+  startDate?: string
+  endDate?: string
+}): Promise<{ data: StaffPerformanceLog[] }> {
+  const headers = await authHeaders()
+  const qs = new URLSearchParams()
+  if (params.campusId)  qs.set('campus_id', params.campusId)
+  if (params.startDate) qs.set('start_date', params.startDate)
+  if (params.endDate)   qs.set('end_date', params.endDate)
+  qs.set('unpaginated', 'true')
+
+  const r = await apiFetch<StaffPerformanceLog[]>(`/performance/logs?${qs}`, { headers })
+  if (!r.success) throw new Error(r.error)
+  return { data: r.data ?? [] }
 }
 
 export async function createLog(data: {

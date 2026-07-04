@@ -15,6 +15,7 @@ export type EntityType =
     | 'staff'
     | 'hostel_room'
     | 'hostel_building'
+    | 'school'
 export type CampusScope = 'this_campus' | 'selected_campuses' | 'all_campuses'
 
 export interface CustomFieldDefinition {

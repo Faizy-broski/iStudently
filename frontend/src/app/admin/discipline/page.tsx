@@ -77,7 +77,11 @@ function studentName(r: DisciplineReferral): string {
     const name = parts.join(" ").trim();
     return name || r.students.student_number;
   }
-  return r.student_id;
+  if (r.staff) {
+    const p = r.staff.profile;
+    return (p ? `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() : "") || r.staff.employee_number;
+  }
+  return r.student_id ?? r.staff_id ?? "";
 }
 
 // ---------------------------------------------------------------------------

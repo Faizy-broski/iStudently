@@ -11,6 +11,15 @@ import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { useCampus } from "@/context/CampusContext"
 import { getAuthToken } from "@/lib/api/schools"
+import { getFieldDefinitions, type CustomFieldDefinition } from "@/lib/api/custom-fields"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "sonner"
 import {
   Building2,
@@ -75,6 +84,8 @@ export default function SchoolDetailsPage() {
     short_name: "",
     school_number: "",
   })
+  const [customFields, setCustomFields] = useState<CustomFieldDefinition[]>([])
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({})
 
   // Get selected campus directly from context
   const selectedCampus = campusContext?.selectedCampus
@@ -94,8 +105,16 @@ export default function SchoolDetailsPage() {
         short_name: selectedCampus.short_name || "",
         school_number: selectedCampus.school_number || "",
       })
+      setCustomFieldValues(selectedCampus.custom_fields || {})
     }
   }, [selectedCampus])
+
+  useEffect(() => {
+    if (!selectedCampus?.id) { setCustomFields([]); return }
+    getFieldDefinitions('school', selectedCampus.id).then((res) => {
+      if (res.success) setCustomFields(res.data ?? [])
+    })
+  }, [selectedCampus?.id])
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -151,7 +170,7 @@ export default function SchoolDetailsPage() {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify({ ...formData, custom_fields: customFieldValues }),
         }
       )
       const data = await res.json()
@@ -186,9 +205,90 @@ export default function SchoolDetailsPage() {
         short_name: selectedCampus.short_name || "",
         school_number: selectedCampus.school_number || "",
       })
+      setCustomFieldValues(selectedCampus.custom_fields || {})
     }
     setIsEditing(false)
     toast.info("Edit cancelled")
+  }
+
+  function setCustomFieldValue(fieldId: string, value: any) {
+    setCustomFieldValues((prev) => ({ ...prev, [fieldId]: value }))
+  }
+
+  function renderCustomFieldInput(field: CustomFieldDefinition) {
+    const value = customFieldValues[field.id] ?? ''
+    switch (field.type) {
+      case 'long-text':
+        return (
+          <Textarea
+            value={value}
+            onChange={(e) => setCustomFieldValue(field.id, e.target.value)}
+            rows={3}
+          />
+        )
+      case 'number':
+        return (
+          <Input
+            type="number"
+            value={value}
+            onChange={(e) => setCustomFieldValue(field.id, e.target.value)}
+          />
+        )
+      case 'date':
+        return (
+          <Input
+            type="date"
+            value={value}
+            onChange={(e) => setCustomFieldValue(field.id, e.target.value)}
+          />
+        )
+      case 'checkbox':
+        return (
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={value === true || value === 'Y'}
+              onCheckedChange={(c) => setCustomFieldValue(field.id, !!c)}
+            />
+          </div>
+        )
+      case 'select':
+        return (
+          <Select value={value || undefined} onValueChange={(v) => setCustomFieldValue(field.id, v)}>
+            <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+            <SelectContent>
+              {(field.options ?? []).map((opt) => (
+                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )
+      case 'multi-select': {
+        const selected: string[] = Array.isArray(value) ? value : []
+        return (
+          <div className="flex flex-wrap gap-3">
+            {(field.options ?? []).map((opt) => (
+              <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                <Checkbox
+                  checked={selected.includes(opt)}
+                  onCheckedChange={(c) => {
+                    setCustomFieldValue(field.id, c ? [...selected, opt] : selected.filter((v) => v !== opt))
+                  }}
+                />
+                {opt}
+              </label>
+            ))}
+          </div>
+        )
+      }
+      case 'text':
+      default:
+        return (
+          <Input
+            value={value}
+            onChange={(e) => setCustomFieldValue(field.id, e.target.value)}
+          />
+        )
+    }
   }
 
   const selectedCampusName = selectedCampus?.name || "All Campuses"
@@ -363,6 +463,14 @@ export default function SchoolDetailsPage() {
                       placeholder={t("principal")}
                     />
                   </div>
+                  {customFields.map((field) => (
+                    <div key={field.id} className="space-y-2">
+                      <Label>
+                        {field.label} {field.required && <span className="text-destructive">*</span>}
+                      </Label>
+                      {renderCustomFieldInput(field)}
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -447,6 +555,26 @@ export default function SchoolDetailsPage() {
                         </p>
                       </div>
                     </div>
+
+                    {customFields.map((field) => {
+                      const v = customFieldValues[field.id]
+                      const display = (() => {
+                        if (v === undefined || v === null || v === '') return t("not_provided")
+                        if (Array.isArray(v)) return v.join(', ')
+                        if (v === true) return 'Yes'
+                        if (v === false) return 'No'
+                        return String(v)
+                      })()
+                      return (
+                        <div key={field.id} className="flex items-center gap-3">
+                          <Building2 className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <p className="text-sm font-medium">{field.label}</p>
+                            <p className="text-sm text-muted-foreground">{display}</p>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )}

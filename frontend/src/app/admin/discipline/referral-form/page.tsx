@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import {
   Settings,
   Plus,
@@ -21,6 +22,7 @@ import {
   GripVertical,
   Info,
   TrendingDown,
+  TrendingUp,
   Minus,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -61,8 +63,9 @@ const OPTIONS_TYPES: DisciplineFieldType[] = ['select', 'multiple_radio', 'multi
 interface FieldFormState {
   name: string;
   field_type: DisciplineFieldType;
-  options_text: string; // one option per line (no penalty marker)
-  penalty: string;      // positive number; stored as first option "-N" in DB
+  options_text: string; // one option per line
+  penalty: string;      // magnitude only (>= 0); sign carried separately by penaltySign
+  penaltySign: '+' | '-';
   sort_order: string;
 }
 
@@ -71,6 +74,7 @@ const emptyForm = (): FieldFormState => ({
   field_type: 'text',
   options_text: '',
   penalty: '',
+  penaltySign: '-',
   sort_order: '0',
 });
 
@@ -125,19 +129,14 @@ export default function ReferralFormPage() {
   }
 
   function openEdit(field: DisciplineField) {
-    const opts = field.options ?? [];
-    let penalty = '';
-    let visibleOpts = opts;
-    if (opts.length > 0 && !isNaN(parseFloat(opts[0])) && parseFloat(opts[0]) < 0) {
-      penalty = String(Math.abs(parseFloat(opts[0])));
-      visibleOpts = opts.slice(1);
-    }
+    const pts = field.penalty_points;
     setEditField(field);
     setEditForm({
       name: field.name,
       field_type: field.field_type,
-      options_text: visibleOpts.join('\n'),
-      penalty,
+      options_text: (field.options ?? []).join('\n'),
+      penalty: pts != null ? String(Math.abs(pts)) : '',
+      penaltySign: pts != null && pts > 0 ? '+' : '-',
       sort_order: String(field.sort_order),
     });
   }
@@ -145,11 +144,13 @@ export default function ReferralFormPage() {
   function buildOptions(form: FieldFormState): string[] | null {
     if (!OPTIONS_TYPES.includes(form.field_type)) return null;
     const lines = form.options_text.split('\n').map((l) => l.trim()).filter(Boolean);
-    const penaltyVal = parseFloat(form.penalty);
-    if (!isNaN(penaltyVal) && penaltyVal > 0) {
-      lines.unshift(`-${penaltyVal}`);
-    }
     return lines.length > 0 ? lines : null;
+  }
+
+  function buildPenaltyPoints(form: FieldFormState): number | null {
+    const magnitude = parseFloat(form.penalty) || 0;
+    if (magnitude <= 0) return null;
+    return form.penaltySign === '-' ? -magnitude : magnitude;
   }
 
   async function handleAdd() {
@@ -165,6 +166,7 @@ export default function ReferralFormPage() {
         field_type: addForm.field_type,
         options: buildOptions(addForm),
         sort_order: parseInt(addForm.sort_order, 10) || 0,
+        penalty_points: buildPenaltyPoints(addForm),
       });
       if (res.error) {
         toast.error(res.error);
@@ -193,6 +195,7 @@ export default function ReferralFormPage() {
         field_type: editForm.field_type,
         options: buildOptions(editForm),
         sort_order: parseInt(editForm.sort_order, 10) || 0,
+        penalty_points: buildPenaltyPoints(editForm),
       });
       if (res.error) {
         toast.error(res.error);
@@ -300,33 +303,30 @@ export default function ReferralFormPage() {
                         >
                           {t(`fieldTypes.${field.field_type}`)}
                         </Badge>
-                        {(() => {
-                          const first = field.options?.[0];
-                          if (first && !isNaN(parseFloat(first)) && parseFloat(first) < 0) {
-                            return (
-                              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800 flex items-center gap-1">
-                                <TrendingDown className="h-3 w-3" />
-                                {Math.abs(parseFloat(first))} pts
-                              </Badge>
-                            );
-                          }
-                          return null;
-                        })()}
+                        {field.penalty_points != null && (
+                          field.penalty_points > 0 ? (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800 flex items-center gap-1">
+                              <TrendingUp className="h-3 w-3" />
+                              +{field.penalty_points} pts
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800 flex items-center gap-1">
+                              <TrendingDown className="h-3 w-3" />
+                              {field.penalty_points} pts
+                            </Badge>
+                          )
+                        )}
                         {!field.is_active && (
                           <Badge variant="outline" className="bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700">
                             {t('inactive')}
                           </Badge>
                         )}
                       </div>
-                      {field.options && field.options.length > 0 && (() => {
-                        const hasPenalty = !isNaN(parseFloat(field.options[0])) && parseFloat(field.options[0]) < 0;
-                        const displayOpts = hasPenalty ? field.options.slice(1) : field.options;
-                        return displayOpts.length > 0 ? (
-                          <p className="text-xs text-muted-foreground mt-1 truncate">
-                            {t('options')}: {displayOpts.join(', ')}
-                          </p>
-                        ) : null;
-                      })()}
+                      {field.options && field.options.length > 0 && (
+                        <p className="text-xs text-muted-foreground mt-1 truncate">
+                          {t('options')}: {field.options.join(', ')}
+                        </p>
+                      )}
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {t('sort_order')}: {field.sort_order}
                       </p>
@@ -471,22 +471,49 @@ function FieldForm({ form, onChange, onSubmit, onCancel, saving, submitLabel }: 
             />
           </div>
 
-          {/* Point deduction — clearly separate from the choice options */}
-          <div className="rounded-lg border border-red-200 bg-red-50/50 dark:border-red-900/50 dark:bg-red-900/20 p-3 space-y-2">
-            <div className="flex items-center gap-1.5 text-red-700 dark:text-red-400">
-              <TrendingDown className="h-4 w-4 shrink-0" />
-              <span className="text-sm font-medium">Point Deduction (optional)</span>
+          {/* Point impact — clearly separate from the choice options */}
+          <div className={cn(
+            'rounded-lg border p-3 space-y-2',
+            form.penaltySign === '+'
+              ? 'border-green-200 bg-green-50/50 dark:border-green-900/50 dark:bg-green-900/20'
+              : 'border-red-200 bg-red-50/50 dark:border-red-900/50 dark:bg-red-900/20'
+          )}>
+            <div className={cn(
+              'flex items-center gap-1.5',
+              form.penaltySign === '+' ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'
+            )}>
+              {form.penaltySign === '+' ? <TrendingUp className="h-4 w-4 shrink-0" /> : <TrendingDown className="h-4 w-4 shrink-0" />}
+              <span className="text-sm font-medium">Point Impact (optional)</span>
             </div>
             <p className="text-xs text-muted-foreground">
-              Points deducted each time a student is assigned this referral field. Leave blank or 0 for no deduction.
+              Points added or deducted each time a student is assigned this referral field. Leave blank or 0 for no impact.
             </p>
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                variant={form.penaltySign === '-' ? 'default' : 'outline'}
+                size="sm"
+                className={cn('h-8 px-3', form.penaltySign === '-' && 'bg-red-600 hover:bg-red-700 text-white')}
+                onClick={() => onChange({ ...form, penaltySign: '-' })}
+              >
+                − Deduct
+              </Button>
+              <Button
+                type="button"
+                variant={form.penaltySign === '+' ? 'default' : 'outline'}
+                size="sm"
+                className={cn('h-8 px-3', form.penaltySign === '+' && 'bg-green-600 hover:bg-green-700 text-white')}
+                onClick={() => onChange({ ...form, penaltySign: '+' })}
+              >
+                + Add
+              </Button>
+            </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-red-600 dark:text-red-400 select-none">−</span>
-              <Button 
-                type="button" 
-                variant="outline" 
-                size="icon" 
-                className="h-8 w-8 rounded-r-none border-r-0" 
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-r-none border-r-0"
                 onClick={() => onChange({...form, penalty: String(Math.max(0, parseInt(form.penalty || '0') - 1))})}
               >
                 <Minus className="h-3 w-3" />
@@ -500,9 +527,9 @@ function FieldForm({ form, onChange, onSubmit, onCancel, saving, submitLabel }: 
                 value={form.penalty}
                 onChange={(e) => onChange({ ...form, penalty: e.target.value })}
               />
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 size="icon" 
                 className="h-8 w-8 rounded-l-none border-l-0" 
                 onClick={() => onChange({...form, penalty: String(parseInt(form.penalty || '0') + 1)})}
