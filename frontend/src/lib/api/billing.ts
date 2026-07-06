@@ -24,6 +24,7 @@ export interface BillingRecord {
   subscription_plan?: string;
   billing_cycle: "Monthly" | "Quarterly" | "Yearly";
   amount: number;
+  currency: string;
   due_date: string;
   payment_status: "paid" | "unpaid" | "overdue" | "pending";
   payment_date: string | null;
@@ -37,6 +38,7 @@ export interface CreateBillingRecordData {
   billing_plan_id: string;
   billing_cycle: "Monthly" | "Quarterly" | "Yearly";
   amount: number;
+  currency: string;
   due_date: string;
   start_date: string;
   payment_status: "paid" | "unpaid" | "overdue" | "pending";

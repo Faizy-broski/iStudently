@@ -35,6 +35,11 @@ import { PaginationWrapper } from "@/components/ui/pagination";
 import { billingRecordsApi, billingPlansApi, BillingRecord, BillingPlan } from "@/lib/api/billing";
 import { useBilling } from "@/hooks/useBilling";
 import { usePlatformSettings } from "@/hooks/usePlatformSettings";
+import { CURRENCY_OPTIONS } from "@/lib/api/school-settings";
+
+function currencySymbolFor(code?: string): string {
+  return CURRENCY_OPTIONS.find((c) => c.value === code)?.symbol || code || "$";
+}
 
 export default function BillingStatusPage() {
   // Use SWR hook for efficient data fetching
@@ -322,13 +327,13 @@ export default function BillingStatusPage() {
                   <span style="color: #666; font-size: 14px;">School Management System Subscription</span>
                 </td>
                 <td>${record.billing_cycle}</td>
-                <td style="text-align: right; font-weight: bold;">${currencySymbol}${record.amount.toLocaleString()}</td>
+                <td style="text-align: right; font-weight: bold;">${currencySymbolFor(record.currency)}${record.amount.toLocaleString()}</td>
               </tr>
             </tbody>
           </table>
-          
+
           <div class="total">
-            Total Amount: ${currencySymbol}${record.amount.toLocaleString()}
+            Total Amount: ${currencySymbolFor(record.currency)}${record.amount.toLocaleString()}
           </div>
           
           <div class="footer">
@@ -377,7 +382,7 @@ export default function BillingStatusPage() {
           record.invoice_number,
           record.subscription_plan,
           record.billing_cycle,
-          `${currencySymbol}${record.amount}`,
+          `${currencySymbolFor(record.currency)}${record.amount}`,
           record.due_date,
           record.payment_status,
           record.payment_date || "N/A"
@@ -632,7 +637,7 @@ export default function BillingStatusPage() {
                             </Badge>
                           </TableCell>
                           <TableCell>{record.billing_cycle}</TableCell>
-                          <TableCell className="font-bold text-green-600">{currencySymbol}{record.amount}</TableCell>
+                          <TableCell className="font-bold text-green-600">{currencySymbolFor(record.currency)}{record.amount}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1 text-sm">
                               <Calendar className="h-4 w-4 text-gray-400" />
@@ -851,7 +856,7 @@ export default function BillingStatusPage() {
         title="Mark as Paid?"
         description={
           selectedRecord
-            ? `Are you sure you want to mark invoice ${selectedRecord.invoice_number} for "${selectedRecord.school_name}" as paid? Amount: ${currencySymbol}${selectedRecord.amount}`
+            ? `Are you sure you want to mark invoice ${selectedRecord.invoice_number} for "${selectedRecord.school_name}" as paid? Amount: ${currencySymbolFor(selectedRecord.currency)}${selectedRecord.amount}`
             : ""
         }
         confirmText="Mark as Paid"

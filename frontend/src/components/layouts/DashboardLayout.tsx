@@ -19,6 +19,7 @@ import { LayoutDashboard, Globe, Star } from 'lucide-react'
 import { UnsavedChangesProvider } from '@/components/unsaved-changes/UnsavedChangesProvider'
 import { useCampus } from '@/context/CampusContext'
 import { TourAssistantPanel } from '@/components/setup-assistant/TourAssistantPanel'
+import { FeedbackWidget } from '@/components/feedback/FeedbackWidget'
 import { SidebarThemeProvider } from '@/context/SidebarThemeContext'
 import { AgreementGate } from '@/components/agreement/AgreementGate'
 import { PermissionsProvider, usePermissions } from '@/context/PermissionsContext'
@@ -303,6 +304,9 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
 
       {/* Tour Assistant — fixed overlay, persists across all pages */}
       <TourAssistantPanel />
+
+      {/* Feedback / Bug Report — fixed overlay, persists across all pages */}
+      <FeedbackWidget />
     </div>
   )
 }

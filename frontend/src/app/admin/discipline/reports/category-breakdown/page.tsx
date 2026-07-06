@@ -27,7 +27,7 @@ import { BarChart3, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCampus } from '@/context/CampusContext';
 import {
-  getDisciplineFields,
+  getAllDisciplineFields,
   getAllDisciplineReferrals,
   type DisciplineField,
   type DisciplineReferral,
@@ -124,9 +124,9 @@ export default function CategoryBreakdownPage() {
   // Fetch chartable discipline fields
   useEffect(() => {
     if (!schoolId) { setLoadingFields(false); return; }
-    getDisciplineFields(schoolId)
-      .then((res) => {
-        const chartable = (res.data ?? []).filter((f) =>
+    getAllDisciplineFields(schoolId)
+      .then((data) => {
+        const chartable = data.filter((f) =>
           CHARTABLE_TYPES.includes(f.field_type)
         );
         setFields(chartable);

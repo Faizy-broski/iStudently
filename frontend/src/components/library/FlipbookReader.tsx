@@ -14,7 +14,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import { Document, Page, pdfjs } from 'react-pdf'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight, Loader2, Maximize2, Minimize2, BookOpen } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2, Maximize2, Minimize2, BookOpen, FileText, Download } from 'lucide-react'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
 
@@ -37,6 +37,8 @@ const HTMLFlipBook = dynamic<Record<string, unknown>>(
 interface FlipbookReaderProps {
   fileUrl: string
   title: string
+  /** Show a Download button in the toolbar (admin-only by default — pass explicitly). */
+  allowDownload?: boolean
 }
 
 function detectFileType(url: string): 'pdf' | 'image' {
@@ -47,7 +49,7 @@ function detectFileType(url: string): 'pdf' | 'image' {
 
 // ---------------------------------------------------------------------------
 
-export function FlipbookReader({ fileUrl, title }: FlipbookReaderProps) {
+export function FlipbookReader({ fileUrl, title, allowDownload = false }: FlipbookReaderProps) {
   const fileType = detectFileType(fileUrl)
 
   const [numPages, setNumPages] = useState<number>(0)
@@ -56,6 +58,15 @@ export function FlipbookReader({ fileUrl, title }: FlipbookReaderProps) {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [pdfError, setPdfError] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(true)
+  const [viewMode, setViewMode] = useState<'flipbook' | 'pdf'>('flipbook')
+
+  const downloadButton = allowDownload ? (
+    <a href={fileUrl} download target="_blank" rel="noopener noreferrer">
+      <Button variant="ghost" size="icon" title="Download">
+        <Download className="h-4 w-4" />
+      </Button>
+    </a>
+  ) : null
 
   const flipBookRef = useRef<any>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -111,9 +122,10 @@ export function FlipbookReader({ fileUrl, title }: FlipbookReaderProps) {
   const pageHeight = Math.round(pageWidth * 1.414)
 
   // -------------------------------------------------------------------------
-  // Fallback — if PDF fails to parse, show an embedded iframe
+  // Plain viewer — normal browser PDF rendering (user-selected), image files,
+  // or a fallback if the PDF fails to parse for the flipbook.
   // -------------------------------------------------------------------------
-  if (pdfError || fileType === 'image') {
+  if (pdfError || fileType === 'image' || (fileType === 'pdf' && viewMode === 'pdf')) {
     const isSingleImage = fileType === 'image'
     return (
       <div
@@ -122,9 +134,17 @@ export function FlipbookReader({ fileUrl, title }: FlipbookReaderProps) {
       >
         <div className="flex items-center justify-between w-full max-w-3xl">
           <p className="text-sm text-muted-foreground font-medium truncate">{title}</p>
-          <Button variant="ghost" size="icon" onClick={toggleFullscreen}>
-            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </Button>
+          <div className="flex items-center gap-1">
+            {fileType === 'pdf' && !pdfError && (
+              <Button variant="ghost" size="icon" onClick={() => setViewMode('flipbook')} title="Flipbook view">
+                <BookOpen className="h-4 w-4" />
+              </Button>
+            )}
+            {downloadButton}
+            <Button variant="ghost" size="icon" onClick={toggleFullscreen}>
+              {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </Button>
+          </div>
         </div>
         {isSingleImage ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -159,9 +179,15 @@ export function FlipbookReader({ fileUrl, title }: FlipbookReaderProps) {
           <BookOpen className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-medium text-muted-foreground truncate max-w-xs">{title}</span>
         </div>
-        <Button variant="ghost" size="icon" onClick={toggleFullscreen} title="Toggle fullscreen">
-          {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" onClick={() => setViewMode('pdf')} title="Normal PDF view">
+            <FileText className="h-4 w-4" />
+          </Button>
+          {downloadButton}
+          <Button variant="ghost" size="icon" onClick={toggleFullscreen} title="Toggle fullscreen">
+            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </Button>
+        </div>
       </div>
 
       {/* Loading state */}

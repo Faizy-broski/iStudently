@@ -34,7 +34,10 @@ import {
   deleteDisciplineField,
   type DisciplineField,
   type DisciplineFieldType,
+  type DisciplineTargetType,
 } from '@/lib/api/discipline';
+
+const TARGET_TYPES: DisciplineTargetType[] = ['student', 'teacher', 'staff'];
 
 const FIELD_TYPES: DisciplineFieldType[] = [
   'select',
@@ -89,6 +92,7 @@ export default function ReferralFormPage() {
   // discipline module is school‑scoped so we can't do anything useful in that
   // case.  watch for an empty id and show a message instead of the form.
 
+  const [targetType, setTargetType] = useState<DisciplineTargetType>('student');
   const [fields, setFields] = useState<DisciplineField[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -114,12 +118,12 @@ export default function ReferralFormPage() {
     }
 
     fetchFields();
-  }, [schoolId]);
+  }, [schoolId, targetType]);
 
   async function fetchFields() {
     setLoading(true);
     try {
-      const res = await getDisciplineFields(schoolId, true);
+      const res = await getDisciplineFields(schoolId, targetType, true);
       setFields(res.data ?? []);
     } catch {
       toast.error(t('errors.loadReferralFields'));
@@ -163,6 +167,7 @@ export default function ReferralFormPage() {
       const res = await createDisciplineField({
         school_id: schoolId,
         name: addForm.name.trim(),
+        target_type: targetType,
         field_type: addForm.field_type,
         options: buildOptions(addForm),
         sort_order: parseInt(addForm.sort_order, 10) || 0,
@@ -257,6 +262,25 @@ export default function ReferralFormPage() {
             <Plus className="h-4 w-4 mr-2" />
             {t('addField')}
           </Button>
+        </div>
+
+        {/* Target type tabs */}
+        <div className="grid grid-cols-3 gap-2 max-w-md">
+          {TARGET_TYPES.map((type) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => setTargetType(type)}
+              className={cn(
+                'py-1.5 px-3 rounded-md text-sm font-medium border capitalize transition-colors',
+                targetType === type
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-input hover:bg-muted'
+              )}
+            >
+              {t(`targetTypes.${type}`)}
+            </button>
+          ))}
         </div>
 
         {/* Info */}

@@ -178,7 +178,7 @@ export default function AddTeacherReferralPage() {
       setLoadingFields(false)
       return
     }
-    getDisciplineFields(schoolId)
+    getDisciplineFields(schoolId, 'student')
       .then((res) => setFields(res.data ?? []))
       .catch(() => toast.error('Failed to load referral fields'))
       .finally(() => setLoadingFields(false))

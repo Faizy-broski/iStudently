@@ -28,7 +28,7 @@ import { FileText, Loader2, Printer, Search, RefreshCcw } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCampus } from '@/context/CampusContext';
 import {
-  getDisciplineFields,
+  getAllDisciplineFields,
   getAllDisciplineReferrals,
   type DisciplineField,
   type DisciplineReferral,
@@ -116,9 +116,8 @@ export default function DisciplineLogPage() {
   // Fetch discipline fields
   useEffect(() => {
     if (!schoolId) { setLoadingFields(false); return; }
-    getDisciplineFields(schoolId)
-      .then((res) => {
-        const f = res.data ?? [];
+    getAllDisciplineFields(schoolId)
+      .then((f) => {
         setFields(f);
         // Default: last field (comments/textarea) ticked; others not
         const initial: IncludeColumns = { entry_date: true, reporter: true };

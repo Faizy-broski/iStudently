@@ -180,6 +180,7 @@ export const createEmbeddedResource = async (
       visible_to_teacher_ids:  dto.visible_to_teacher_ids  || [],
       visible_to_student_ids:  dto.visible_to_student_ids  || [],
       sort_order:              dto.sort_order ?? 0,
+      category_id:             dto.category_id ?? null,
       created_by:              dto.created_by || null,
     })
     .select()
@@ -204,6 +205,7 @@ export const updateEmbeddedResource = async (
   if (dto.visible_to_student_ids  !== undefined) payload.visible_to_student_ids  = dto.visible_to_student_ids
   if (dto.is_active               !== undefined) payload.is_active               = dto.is_active
   if (dto.sort_order              !== undefined) payload.sort_order              = dto.sort_order
+  if (dto.category_id             !== undefined) payload.category_id             = dto.category_id
 
   const { data, error } = await supabase
     .from('embedded_resources')

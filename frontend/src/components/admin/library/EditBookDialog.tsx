@@ -62,6 +62,8 @@ export function EditBookDialog({ open, onOpenChange, book, onBookUpdated }: Edit
   const [digitalFile, setDigitalFile] = useState<File | null>(null);
   const [fileUploading, setFileUploading] = useState(false);
   const digitalFileInputRef = useRef<HTMLInputElement>(null);
+  const [digitalFileMode, setDigitalFileMode] = useState<'upload' | 'url'>('upload');
+  const [digitalFileUrl, setDigitalFileUrl] = useState('');
 
   const form = useForm<BookFormData>({
     resolver: zodResolver(bookSchema),
@@ -95,6 +97,8 @@ export function EditBookDialog({ open, onOpenChange, book, onBookUpdated }: Edit
       setCoverImageUrl(book.cover_image_url || null);
       setExistingFileUrl(book.file_url || null);
       setDigitalFile(null);
+      setDigitalFileMode('upload');
+      setDigitalFileUrl('');
     }
   }, [book, open]);
 
@@ -134,9 +138,11 @@ export function EditBookDialog({ open, onOpenChange, book, onBookUpdated }: Edit
     try {
       setIsSubmitting(true);
 
-      // Upload new digital file if selected
+      // Digital file: either a direct URL, a newly uploaded file, or leave as-is
       let fileUrl: string | null | undefined = existingFileUrl;
-      if (digitalFile && profile?.school_id) {
+      if (digitalFileMode === 'url' && digitalFileUrl.trim()) {
+        fileUrl = digitalFileUrl.trim();
+      } else if (digitalFile && profile?.school_id) {
         setFileUploading(true);
         const uploadRes = await uploadLibraryDocument(digitalFile, profile.school_id, data.category_id || undefined);
         setFileUploading(false);
@@ -401,7 +407,7 @@ export function EditBookDialog({ open, onOpenChange, book, onBookUpdated }: Edit
               </p>
 
               {/* Existing file */}
-              {existingFileUrl && !digitalFile && (
+              {existingFileUrl && !digitalFile && digitalFileMode === 'upload' && (
                 <div className="flex items-center gap-3 p-3 rounded-lg border bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800">
                   <FileText className="h-5 w-5 text-green-600 shrink-0" />
                   <div className="flex-1 min-w-0">
@@ -416,6 +422,10 @@ export function EditBookDialog({ open, onOpenChange, book, onBookUpdated }: Edit
                       onClick={() => digitalFileInputRef.current?.click()}>
                       Replace
                     </Button>
+                    <Button type="button" variant="outline" size="sm" className="text-xs h-7"
+                      onClick={() => setDigitalFileMode('url')}>
+                      Use URL
+                    </Button>
                     <Button type="button" variant="ghost" size="sm" className="h-7"
                       onClick={() => setExistingFileUrl(null)}>
                       <X className="h-3.5 w-3.5 text-red-500" />
@@ -425,7 +435,7 @@ export function EditBookDialog({ open, onOpenChange, book, onBookUpdated }: Edit
               )}
 
               {/* New file selected */}
-              {digitalFile && (
+              {digitalFile && digitalFileMode === 'upload' && (
                 <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
                   <FileText className="h-5 w-5 text-[#57A3CC] shrink-0" />
                   <div className="flex-1 min-w-0">
@@ -439,13 +449,47 @@ export function EditBookDialog({ open, onOpenChange, book, onBookUpdated }: Edit
               )}
 
               {/* Drop zone — shown when no existing file and no new file selected */}
-              {!existingFileUrl && !digitalFile && (
-                <div
-                  className="flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 border-dashed border-muted-foreground/30 cursor-pointer hover:border-[#57A3CC]/50 hover:bg-muted/20 transition-colors"
-                  onClick={() => digitalFileInputRef.current?.click()}
-                >
-                  <Upload className="h-6 w-6 text-muted-foreground/50" />
-                  <p className="text-xs text-muted-foreground text-center">Click to upload PDF, Word, Excel, PowerPoint, image · max 50 MB</p>
+              {!existingFileUrl && !digitalFile && digitalFileMode === 'upload' && (
+                <>
+                  <div className="flex gap-1 rounded-lg border p-1 w-fit">
+                    <button
+                      type="button"
+                      className="px-3 py-1 text-xs font-medium rounded-md bg-[#57A3CC] text-white"
+                    >
+                      Upload File
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDigitalFileMode('url')}
+                      className="px-3 py-1 text-xs font-medium rounded-md text-muted-foreground hover:bg-muted transition-colors"
+                    >
+                      Paste URL
+                    </button>
+                  </div>
+                  <div
+                    className="flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 border-dashed border-muted-foreground/30 cursor-pointer hover:border-[#57A3CC]/50 hover:bg-muted/20 transition-colors"
+                    onClick={() => digitalFileInputRef.current?.click()}
+                  >
+                    <Upload className="h-6 w-6 text-muted-foreground/50" />
+                    <p className="text-xs text-muted-foreground text-center">Click to upload PDF, Word, Excel, PowerPoint, image · max 50 MB</p>
+                  </div>
+                </>
+              )}
+
+              {/* URL mode */}
+              {digitalFileMode === 'url' && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={digitalFileUrl}
+                      onChange={(e) => setDigitalFileUrl(e.target.value)}
+                      placeholder="https://example.com/book.pdf"
+                      className="flex-1"
+                    />
+                    <Button type="button" variant="ghost" size="sm" onClick={() => { setDigitalFileMode('upload'); setDigitalFileUrl(''); }}>
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
               )}
 

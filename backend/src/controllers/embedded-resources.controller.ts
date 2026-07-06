@@ -80,6 +80,7 @@ export const create = async (req: Request, res: Response) => {
       title, url,
       published_grade_ids, published_section_ids,
       visible_to_roles, visible_to_teacher_ids, visible_to_student_ids,
+      sort_order, category_id,
     } = req.body
     if (!title || !url) return res.status(400).json({ success: false, error: 'Title and URL are required' } as ApiResponse)
 
@@ -95,6 +96,8 @@ export const create = async (req: Request, res: Response) => {
       visible_to_roles:        visible_to_roles        || [],
       visible_to_teacher_ids:  visible_to_teacher_ids  || [],
       visible_to_student_ids:  visible_to_student_ids  || [],
+      sort_order,
+      category_id: category_id ?? null,
       created_by: profile.id,
     })
 

@@ -987,14 +987,7 @@ function DesktopSidebar({ menuItems, className }: AppSidebarProps) {
       )}
       style={theme?.bg_color ? { background: theme.bg_color } : undefined}
     >
-      {/* Default decorative SVG overlay — hidden when a custom image is set */}
-      {!theme?.bg_image_url && (
-        <div
-          className="absolute inset-0 opacity-10 bg-cover bg-center bg-no-repeat pointer-events-none"
-          style={{ backgroundImage: 'url(/images/sidebar-bg.svg)' }}
-        />
-      )}
-      {/* Custom background image overlay */}
+      {/* Custom background image overlay — only shown when the user uploads one */}
       {theme?.bg_image_url && (
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat pointer-events-none"
@@ -1100,14 +1093,7 @@ function MobileSidebar({ menuItems }: AppSidebarProps) {
       >
         <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
 
-        {/* Default decorative SVG overlay — hidden when a custom image is set */}
-        {!theme?.bg_image_url && (
-          <div
-            className="absolute inset-0 opacity-10 bg-cover bg-center bg-no-repeat pointer-events-none"
-            style={{ backgroundImage: 'url(/images/sidebar-bg.svg)' }}
-          />
-        )}
-        {/* Custom background image overlay */}
+        {/* Custom background image overlay — only shown when the user uploads one */}
         {theme?.bg_image_url && (
           <div
             className="absolute inset-0 bg-cover bg-center bg-no-repeat pointer-events-none"

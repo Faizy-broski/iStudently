@@ -11,7 +11,7 @@ router.use(requireRole('admin', 'super_admin'))
 /**
  * GET /api/advanced-report/:role/search
  * Quick name/number search for picking a specific user.
- * Query: ?q=<term>&campus_id=<id>
+ * Query: ?q=<term>&campus_id=<id>&grade_level_id=<id>&section_id=<id>&department=<text>
  */
 router.get('/:role/search', async (req: AuthRequest, res: Response) => {
   try {
@@ -30,16 +30,23 @@ router.get('/:role/search', async (req: AuthRequest, res: Response) => {
 
     const q = ((req.query.q as string) ?? '').trim().toLowerCase()
     const campusId = req.query.campus_id as string | undefined
+    const gradeLevelId = req.query.grade_level_id as string | undefined
+    const sectionId = req.query.section_id as string | undefined
+    const department = req.query.department as string | undefined
     const effectiveId = campusId?.trim() ? campusId.trim() : schoolId
 
     let results: { id: string; label: string }[] = []
 
     if (role === 'student') {
-      const { data: rows } = await supabase
+      let studentQuery = supabase
         .from('students')
         .select('id, student_number, profile:profiles(first_name, last_name)')
         .eq('school_id', effectiveId)
-        .limit(200)
+
+      if (gradeLevelId?.trim()) studentQuery = studentQuery.eq('grade_level_id', gradeLevelId.trim())
+      if (sectionId?.trim())    studentQuery = studentQuery.eq('section_id', sectionId.trim())
+
+      const { data: rows } = await studentQuery.limit(200)
 
       results = (rows ?? [])
         .map((s: any) => {
@@ -51,11 +58,14 @@ router.get('/:role/search', async (req: AuthRequest, res: Response) => {
     }
 
     if (['teacher', 'staff', 'librarian'].includes(role)) {
-      const { data: rows } = await supabase
+      let staffQuery = supabase
         .from('staff')
         .select('id, employee_number, profile:profiles!staff_profile_id_fkey(first_name, last_name, role)')
         .eq('school_id', effectiveId)
-        .limit(200)
+
+      if (department?.trim()) staffQuery = staffQuery.ilike('department', `%${department.trim()}%`)
+
+      const { data: rows } = await staffQuery.limit(200)
 
       results = (rows ?? [])
         .filter((r: any) => {

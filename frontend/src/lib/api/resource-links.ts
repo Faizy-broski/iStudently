@@ -62,6 +62,7 @@ export interface ResourceLink {
   visible_to_teacher_ids: string[]     // teacher sub-filter (empty = all teachers)
   visible_to_student_ids: string[]     // specific student record IDs (empty = all in section/grade)
   sort_order?: number
+  category_id?: string | null
   created_by?: string
   created_at: string
   updated_at: string
@@ -107,7 +108,7 @@ export async function createResourceLink(data: {
  */
 export async function updateResourceLink(
   id: string,
-  data: Partial<{ title: string; url: string; visible_to: string[]; sort_order: number }>
+  data: Partial<{ title: string; url: string; visible_to: string[]; sort_order: number; category_id: string | null }>
 ): Promise<ResourceLink | null> {
   const result = await apiRequest<ResourceLink>(`/resource-links/${id}`, {
     method: 'PUT',
@@ -140,6 +141,7 @@ export async function bulkSaveResourceLinks(
     visible_to_teacher_ids: string[]
     visible_to_student_ids: string[]
     sort_order?: number
+    category_id?: string | null
   }>,
   existingIds: string[]
 ): Promise<ResourceLink[]> {

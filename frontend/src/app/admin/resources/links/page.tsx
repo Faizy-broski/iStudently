@@ -7,12 +7,21 @@ import { Input } from '@/components/ui/input'
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { Plus, Minus, Search, Link2, Loader2, Save, X, Users, ChevronDown } from 'lucide-react'
+import { Plus, Minus, Search, Link2, Loader2, Save, X, Users, ChevronDown, Tags, Pencil, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import { getResourceLinks, bulkSaveResourceLinks } from '@/lib/api/resource-links'
+import {
+  getResourceLinkCategories,
+  createResourceLinkCategory,
+  updateResourceLinkCategory,
+  deleteResourceLinkCategory,
+  type ResourceLinkCategory,
+} from '@/lib/api/resource-link-categories'
 import * as academicsApi from '@/lib/api/academics'
 import { getAllTeachers, type Staff } from '@/lib/api/teachers'
 import { getStudents } from '@/lib/api/students'
@@ -28,6 +37,8 @@ interface EditableLink {
   visible_to_section_ids: string[]
   visible_to_teacher_ids: string[]
   visible_to_student_ids: string[]
+  sort_order: number
+  category_id: string | null
   isNew?: boolean
 }
 
@@ -455,6 +466,22 @@ export default function ResourceLinksPage() {
   const [deleteIdx,          setDeleteIdx]          = useState<number | null>(null)
   const [gradesWithSections, setGradesWithSections] = useState<GradeWithSections[]>([])
   const [teachers,           setTeachers]           = useState<Staff[]>([])
+  const [categories,         setCategories]         = useState<ResourceLinkCategory[]>([])
+  const [categoryFilter,     setCategoryFilter]     = useState<string>('all')
+  const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false)
+  const [newCategoryName,    setNewCategoryName]    = useState('')
+  const [savingCategory,     setSavingCategory]     = useState(false)
+  const [editingCategoryId,  setEditingCategoryId]  = useState<string | null>(null)
+  const [editingCategoryName, setEditingCategoryName] = useState('')
+
+  // ── Load categories ─────────────────────────────────────────────────────────
+
+  const fetchCategories = useCallback(async () => {
+    const data = await getResourceLinkCategories(selectedCampus?.id)
+    setCategories(data)
+  }, [selectedCampus?.id])
+
+  useEffect(() => { fetchCategories() }, [fetchCategories])
 
   // ── Load lookup data ────────────────────────────────────────────────────────
 
@@ -501,6 +528,8 @@ export default function ResourceLinksPage() {
             visible_to_section_ids: l.visible_to_section_ids || [],
             visible_to_teacher_ids: l.visible_to_teacher_ids || [],
             visible_to_student_ids: l.visible_to_student_ids || [],
+            sort_order:             l.sort_order ?? 0,
+            category_id:            l.category_id ?? null,
           })))
           setInitialized(true)
         }
@@ -513,16 +542,25 @@ export default function ResourceLinksPage() {
   // ── Search filter ───────────────────────────────────────────────────────────
 
   const filteredLinks = useMemo(() => {
-    if (!searchQuery.trim()) return editableLinks
-    const q = searchQuery.toLowerCase()
-    return editableLinks.filter(l => l.title.toLowerCase().includes(q) || l.url.toLowerCase().includes(q))
-  }, [editableLinks, searchQuery])
+    let result = editableLinks
+    if (categoryFilter !== 'all') {
+      result = result.filter(l => l.category_id === categoryFilter)
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      result = result.filter(l => l.title.toLowerCase().includes(q) || l.url.toLowerCase().includes(q))
+    }
+    return result
+  }, [editableLinks, searchQuery, categoryFilter])
 
   // ── Mutations ───────────────────────────────────────────────────────────────
 
   const addNew = () => setEditableLinks(prev => [
     ...prev,
-    { title: '', url: '', visible_to: ['admin'], visible_to_grade_ids: [], visible_to_section_ids: [], visible_to_teacher_ids: [], visible_to_student_ids: [], isNew: true },
+    {
+      title: '', url: '', visible_to: ['admin'], visible_to_grade_ids: [], visible_to_section_ids: [],
+      visible_to_teacher_ids: [], visible_to_student_ids: [], sort_order: prev.length + 1, category_id: null, isNew: true,
+    },
   ])
 
   const updateLink = (idx: number, patch: Partial<EditableLink>) => {
@@ -558,7 +596,8 @@ export default function ResourceLinksPage() {
           visible_to_section_ids: l.visible_to_section_ids,
           visible_to_teacher_ids: l.visible_to_teacher_ids,
           visible_to_student_ids: l.visible_to_student_ids,
-          sort_order:             i + 1,
+          sort_order:             l.sort_order ?? i + 1,
+          category_id:            l.category_id,
         })),
         existingIds
       )
@@ -570,6 +609,52 @@ export default function ResourceLinksPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  // ── Categories ──────────────────────────────────────────────────────────────
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) return
+    setSavingCategory(true)
+    try {
+      const created = await createResourceLinkCategory({
+        name: newCategoryName.trim(),
+        campus_id: selectedCampus?.id,
+        sort_order: categories.length,
+      })
+      if (!created) { toast.error(t('msg_category_error')); return }
+      setNewCategoryName('')
+      await fetchCategories()
+    } finally {
+      setSavingCategory(false)
+    }
+  }
+
+  const startEditCategory = (cat: ResourceLinkCategory) => {
+    setEditingCategoryId(cat.id)
+    setEditingCategoryName(cat.name)
+  }
+
+  const handleRenameCategory = async () => {
+    if (!editingCategoryId || !editingCategoryName.trim()) return
+    setSavingCategory(true)
+    try {
+      const updated = await updateResourceLinkCategory(editingCategoryId, { name: editingCategoryName.trim() })
+      if (!updated) { toast.error(t('msg_category_error')); return }
+      setEditingCategoryId(null)
+      setEditingCategoryName('')
+      await fetchCategories()
+    } finally {
+      setSavingCategory(false)
+    }
+  }
+
+  const handleDeleteCategory = async (id: string) => {
+    const ok = await deleteResourceLinkCategory(id)
+    if (!ok) { toast.error(t('msg_category_error')); return }
+    if (categoryFilter === id) setCategoryFilter('all')
+    setEditableLinks(prev => prev.map(l => l.category_id === id ? { ...l, category_id: null } : l))
+    await fetchCategories()
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -587,9 +672,15 @@ export default function ResourceLinksPage() {
             {t('subtitle')}
           </p>
         </div>
-        <Button onClick={handleSave} disabled={saving} className="bg-[#008B8B] hover:bg-[#007070] text-white">
-          {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t('saving_button')}</> : <><Save className="h-4 w-4 mr-2" />{t('save_button')}</>}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setManageCategoriesOpen(true)}>
+            <Tags className="h-4 w-4 mr-2" />
+            {t('manage_categories')}
+          </Button>
+          <Button onClick={handleSave} disabled={saving} className="bg-[#008B8B] hover:bg-[#007070] text-white">
+            {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t('saving_button')}</> : <><Save className="h-4 w-4 mr-2" />{t('save_button')}</>}
+          </Button>
+        </div>
       </div>
 
       {/* Card */}
@@ -599,14 +690,27 @@ export default function ResourceLinksPage() {
           <span className="text-sm text-muted-foreground">
             {isLoading ? t('loading') : `${editableLinks.length} ${t('resource')}${editableLinks.length !== 1 ? 's' : ''}`}
           </span>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={t('search_placeholder')}
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="pl-9 w-48"
-            />
+          <div className="flex items-center gap-2">
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-44 h-9 text-sm">
+                <SelectValue placeholder={t('all_categories')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('all_categories')}</SelectItem>
+                {categories.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={t('search_placeholder')}
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="pl-9 w-48"
+              />
+            </div>
           </div>
         </div>
 
@@ -621,8 +725,10 @@ export default function ResourceLinksPage() {
               <TableHeader>
                 <TableRow className="bg-gray-900 hover:bg-gray-900">
                   <TableHead className="w-10 text-white" />
+                  <TableHead className="text-white font-semibold w-20">{t('th_order')}</TableHead>
                   <TableHead className="text-white font-semibold w-44">{t('th_title')}</TableHead>
                   <TableHead className="text-white font-semibold">{t('th_link')}</TableHead>
+                  <TableHead className="text-white font-semibold w-44">{t('th_category')}</TableHead>
                   <TableHead className="text-white font-semibold w-72">{t('th_visible_to')}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -637,6 +743,16 @@ export default function ResourceLinksPage() {
                       >
                         <Minus className="h-5 w-5" />
                       </button>
+                    </TableCell>
+
+                    {/* Order */}
+                    <TableCell className="pt-2.5">
+                      <Input
+                        type="number"
+                        value={link.sort_order}
+                        onChange={e => updateLink(idx, { sort_order: parseInt(e.target.value, 10) || 0 })}
+                        className="w-16"
+                      />
                     </TableCell>
 
                     {/* Title */}
@@ -657,6 +773,24 @@ export default function ResourceLinksPage() {
                         placeholder={t('url_placeholder')}
                         className="max-w-md"
                       />
+                    </TableCell>
+
+                    {/* Category */}
+                    <TableCell className="pt-2.5">
+                      <Select
+                        value={link.category_id ?? '__none__'}
+                        onValueChange={v => updateLink(idx, { category_id: v === '__none__' ? null : v })}
+                      >
+                        <SelectTrigger className="h-9 text-sm">
+                          <SelectValue placeholder={t('no_category')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">{t('no_category')}</SelectItem>
+                          {categories.map(c => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
 
                     {/* Audience */}
@@ -685,7 +819,7 @@ export default function ResourceLinksPage() {
                       <Plus className="h-5 w-5" />
                     </button>
                   </TableCell>
-                  <TableCell colSpan={3} className="text-muted-foreground text-sm italic">
+                  <TableCell colSpan={5} className="text-muted-foreground text-sm italic">
                     {t('add_row_prompt')}
                   </TableCell>
                 </TableRow>
@@ -708,6 +842,63 @@ export default function ResourceLinksPage() {
           </div>
         </div>
       )}
+
+      {/* Manage Categories */}
+      <Dialog open={manageCategoriesOpen} onOpenChange={setManageCategoriesOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('manage_categories')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <Input
+                placeholder={t('new_category_placeholder')}
+                value={newCategoryName}
+                onChange={e => setNewCategoryName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleAddCategory() }}
+              />
+              <Button onClick={handleAddCategory} disabled={savingCategory || !newCategoryName.trim()}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="space-y-1.5 max-h-72 overflow-y-auto">
+              {categories.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">{t('no_categories_yet')}</p>
+              )}
+              {categories.map(cat => (
+                <div key={cat.id} className="flex items-center gap-2 border rounded-md px-2 py-1.5">
+                  {editingCategoryId === cat.id ? (
+                    <>
+                      <Input
+                        value={editingCategoryName}
+                        onChange={e => setEditingCategoryName(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') handleRenameCategory() }}
+                        className="h-8"
+                        autoFocus
+                      />
+                      <Button size="sm" onClick={handleRenameCategory} disabled={savingCategory}>{t('save_button')}</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditingCategoryId(null)}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="flex-1 text-sm">{cat.name}</span>
+                      <button className="text-muted-foreground hover:text-foreground" onClick={() => startEditCategory(cat)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button className="text-red-500 hover:text-red-700" onClick={() => handleDeleteCategory(cat.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

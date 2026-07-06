@@ -85,7 +85,7 @@ export class ResourceLinksController {
         return
       }
 
-      const { title, url, visible_to, visible_to_grade_ids, visible_to_section_ids, visible_to_teacher_ids, campus_id, sort_order } = req.body
+      const { title, url, visible_to, visible_to_grade_ids, visible_to_section_ids, visible_to_teacher_ids, campus_id, sort_order, category_id } = req.body
       if (!title?.trim()) { res.status(400).json({ success: false, error: 'Title is required' }); return }
       if (!url?.trim())   { res.status(400).json({ success: false, error: 'URL is required' });   return }
 
@@ -98,6 +98,7 @@ export class ResourceLinksController {
         visible_to_teacher_ids: Array.isArray(visible_to_teacher_ids) ? visible_to_teacher_ids : [],
         campus_id,
         sort_order,
+        category_id: category_id ?? null,
       })
 
       res.status(201).json({ success: true, data: link })
@@ -167,6 +168,7 @@ export class ResourceLinksController {
           visible_to_teacher_ids:  Array.isArray(l.visible_to_teacher_ids)  ? l.visible_to_teacher_ids  : [],
           visible_to_student_ids:  Array.isArray(l.visible_to_student_ids)  ? l.visible_to_student_ids  : [],
           sort_order:              l.sort_order ?? i + 1,
+          category_id:             l.category_id ?? null,
         })),
         Array.isArray(existing_ids) ? existing_ids : []
       )

@@ -16,10 +16,13 @@ export type DisciplineFieldType =
   | 'numeric'
   | 'date';
 
+export type DisciplineTargetType = 'student' | 'teacher' | 'staff';
+
 export interface DisciplineField {
   id: string;
   school_id: string;
   name: string;
+  target_type: DisciplineTargetType;
   field_type: DisciplineFieldType;
   options: string[] | null;
   sort_order: number;
@@ -33,7 +36,7 @@ export interface DisciplineReferral {
   id: string;
   school_id: string;
   campus_id: string | null;
-  target_type: 'student' | 'staff';
+  target_type: 'student' | 'teacher' | 'staff';
   student_id: string | null;
   staff_id: string | null;
   academic_year_id: string | null;
@@ -121,23 +124,40 @@ async function apiRequest<T = unknown>(
 
 export async function getDisciplineFields(
   schoolId: string,
+  targetType: DisciplineTargetType,
   includeInactive = false
 ): Promise<ApiResponse<DisciplineField[]>> {
-  const params = new URLSearchParams({ school_id: schoolId });
+  const params = new URLSearchParams({ school_id: schoolId, target_type: targetType });
   if (includeInactive) params.append('include_inactive', 'true');
   return apiRequest<DisciplineField[]>(`/discipline/fields?${params}`);
 }
 
+// Fetches fields across all three target types merged into one flat list —
+// used by display-only surfaces (dashboards/reports) that show referrals of
+// every type together and just need to resolve a field id/name regardless of
+// which form it belongs to.
+export async function getAllDisciplineFields(
+  schoolId: string,
+  includeInactive = false
+): Promise<DisciplineField[]> {
+  const targetTypes: DisciplineTargetType[] = ['student', 'teacher', 'staff'];
+  const results = await Promise.all(
+    targetTypes.map((t) => getDisciplineFields(schoolId, t, includeInactive))
+  );
+  return results.flatMap((res) => res.data ?? []);
+}
+
 export async function getDisciplineFieldNameMap(schoolId: string): Promise<Record<string, string>> {
-  const res = await getDisciplineFields(schoolId, true);
+  const all = await getAllDisciplineFields(schoolId, true);
   const map: Record<string, string> = {};
-  for (const f of res.data ?? []) map[f.id] = f.name;
+  for (const f of all) map[f.id] = f.name;
   return map;
 }
 
 export async function createDisciplineField(data: {
   school_id: string;
   name: string;
+  target_type: DisciplineTargetType;
   field_type: DisciplineFieldType;
   options?: string[] | null;
   sort_order?: number;
@@ -179,7 +199,7 @@ export async function deleteDisciplineField(id: string): Promise<ApiResponse<{ s
 export interface GetReferralsParams {
   school_id: string;
   campus_id?: string;
-  target_type?: 'student' | 'staff';
+  target_type?: 'student' | 'teacher' | 'staff';
   student_id?: string;
   staff_id?: string;
   start_date?: string;
@@ -218,7 +238,7 @@ export async function getDisciplineReferralById(
 export async function createDisciplineReferral(data: {
   school_id: string;
   campus_id?: string | null;
-  target_type?: 'student' | 'staff';
+  target_type?: 'student' | 'teacher' | 'staff';
   student_id?: string;
   student_ids?: string[];
   staff_id?: string;
@@ -296,7 +316,7 @@ export async function getStudentDisciplineScore(params: {
 export async function getAllDisciplineReferrals(params: {
   school_id: string;
   campus_id?: string;
-  target_type?: 'student' | 'staff';
+  target_type?: 'student' | 'teacher' | 'staff';
   start_date?: string;
   end_date?: string;
   grade_level?: string;

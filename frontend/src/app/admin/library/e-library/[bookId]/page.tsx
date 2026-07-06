@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react'
 
 export default function AdminELibraryReaderPage() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const router = useRouter()
   const params = useParams()
   const bookId = params?.bookId as string
@@ -67,7 +67,11 @@ export default function AdminELibraryReaderPage() {
             </Button>
           </div>
         ) : book?.file_url ? (
-          <FlipbookReader fileUrl={book.file_url} title={book.title ?? 'Book'} />
+          <FlipbookReader
+            fileUrl={book.file_url}
+            title={book.title ?? 'Book'}
+            allowDownload={profile?.role === 'admin' || profile?.role === 'super_admin'}
+          />
         ) : null}
       </div>
     </div>

@@ -267,9 +267,9 @@ export function PayslipPreviewDialog({ payslip, open, onClose }: PayslipPreviewD
   const period = payslip ? `${MONTH_NAMES[payslip.month]} ${payslip.year}` : ''
 
   const statusColors: Record<string, string> = {
-    pending: 'bg-yellow-100 text-yellow-800',
-    approved: 'bg-blue-100 text-blue-800',
-    paid: 'bg-green-100 text-green-800',
+    pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+    approved: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+    paid: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
   }
 
   const statusLabels: Record<string, string> = {

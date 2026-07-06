@@ -60,6 +60,7 @@ import {
   Table2,
   Gauge,
   Mic,
+  MessageSquareWarning,
   type LucideIcon,
 } from "lucide-react";
 import { UserRole } from "@/types";
@@ -87,6 +88,7 @@ const superAdminMenuItems: SidebarMenuItem[] = [
   { title: "onboard_school", href: "/superadmin/onboard-school", icon: School },
   { title: "billing_status", href: "/superadmin/billing-status", icon: CreditCard },
   { title: "login_quotes", href: "/superadmin/quotes", icon: MessageSquare },
+  { title: "feedback", href: "/superadmin/feedback", icon: MessageSquareWarning },
   { title: "sidebar_customization", href: "/superadmin/settings/sidebar", icon: Paintbrush },
   { title: "public_pages", href: "/superadmin/settings/public-pages", icon: Globe },
   { title: "settings", href: "/superadmin/settings", icon: Settings },
@@ -196,7 +198,9 @@ const adminMenuItems: SidebarMenuItem[] = [
     href: "/admin/discipline",
     icon: AlertCircle,
     subItems: [
-      { title: "add_referral", href: "/admin/discipline/add-referral", icon: Plus },
+      { title: "add_referral_student", href: "/admin/discipline/add-referral-student", icon: Plus },
+      { title: "add_referral_teacher", href: "/admin/discipline/add-referral-teacher", icon: Plus },
+      { title: "add_referral_staff", href: "/admin/discipline/add-referral-staff", icon: Plus },
       { title: "referrals", href: "/admin/discipline", icon: ClipboardList },
       { title: "reports", href: "#", icon: BarChart3, isLabel: true },
       { title: "category_breakdown", href: "/admin/discipline/reports/category-breakdown", icon: BarChart3 },

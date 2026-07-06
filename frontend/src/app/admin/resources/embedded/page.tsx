@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { Plus, Minus, Save, Globe, ExternalLink, Loader2, Users, ChevronDown, X, ArrowDownAZ, ArrowUpZA, ArrowDown01, ArrowUp10 } from 'lucide-react'
+import { Plus, Minus, Save, Globe, ExternalLink, Loader2, Users, ChevronDown, X, ArrowDownAZ, ArrowUpZA, ArrowDown01, ArrowUp10, Tags, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -10,12 +10,20 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useTranslations } from 'next-intl'
 import { useCampus } from '@/context/CampusContext'
 import * as embeddedApi from '@/lib/api/embedded-resources'
 import * as academicsApi from '@/lib/api/academics'
 import { getAllTeachers, type Staff } from '@/lib/api/teachers'
 import { getStudents } from '@/lib/api/students'
+import {
+  getEmbeddedResourceCategories,
+  createEmbeddedResourceCategory,
+  updateEmbeddedResourceCategory,
+  deleteEmbeddedResourceCategory,
+  type EmbeddedResourceCategory,
+} from '@/lib/api/embedded-resource-categories'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -29,6 +37,7 @@ interface RowState {
   visible_to_teacher_ids: string[]
   visible_to_student_ids: string[]
   sort_order: number
+  category_id: string | null
   dirty: boolean
 }
 
@@ -461,6 +470,21 @@ export default function EmbeddedResourcesPage() {
   const [saving,             setSaving]             = useState(false)
   const [deleteTarget,       setDeleteTarget]       = useState<string | null>(null)
   const [sortBy,             setSortBy]             = useState<'order_asc' | 'title_asc' | 'title_desc' | 'url_asc' | 'url_desc'>('order_asc')
+  const [categories,         setCategories]         = useState<EmbeddedResourceCategory[]>([])
+  const [categoryFilter,     setCategoryFilter]     = useState<string>('all')
+  const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false)
+  const [newCategoryName,    setNewCategoryName]    = useState('')
+  const [savingCategory,     setSavingCategory]     = useState(false)
+  const [editingCategoryId,  setEditingCategoryId]  = useState<string | null>(null)
+  const [editingCategoryName, setEditingCategoryName] = useState('')
+
+  const fetchCategories = useCallback(async () => {
+    if (!selectedCampus) return
+    const res = await getEmbeddedResourceCategories(selectedCampus.id)
+    setCategories(res.data || [])
+  }, [selectedCampus])
+
+  useEffect(() => { fetchCategories() }, [fetchCategories])
 
   // ── Data loading ────────────────────────────────────────────────────────────
 
@@ -486,6 +510,7 @@ export default function EmbeddedResourcesPage() {
         visible_to_teacher_ids: r.visible_to_teacher_ids || [],
         visible_to_student_ids: r.visible_to_student_ids || [],
         sort_order: r.sort_order ?? 0,
+        category_id: r.category_id ?? null,
         dirty: false,
       })))
     } else {
@@ -523,6 +548,7 @@ export default function EmbeddedResourcesPage() {
       visible_to_roles: [], published_grade_ids: [], published_section_ids: [],
       visible_to_teacher_ids: [], visible_to_student_ids: [],
       sort_order: nextOrder,
+      category_id: null,
       dirty: true,
     }])
   }
@@ -553,6 +579,7 @@ export default function EmbeddedResourcesPage() {
         visible_to_teacher_ids: r.visible_to_teacher_ids,
         visible_to_student_ids: r.visible_to_student_ids,
         sort_order:             r.sort_order,
+        category_id:            r.category_id,
       }
 
       if (r.id === 'new') {
@@ -589,8 +616,12 @@ export default function EmbeddedResourcesPage() {
 
   const sortedRows = useMemo(() => {
     // Separate the 'new' row so it always stays at the bottom
-    const existingRows = rows.filter(r => r.id !== 'new')
+    let existingRows = rows.filter(r => r.id !== 'new')
     const newRow = rows.find(r => r.id === 'new')
+
+    if (categoryFilter !== 'all') {
+      existingRows = existingRows.filter(r => r.category_id === categoryFilter)
+    }
 
     existingRows.sort((a, b) => {
       if (sortBy === 'order_asc') return a.sort_order - b.sort_order || a.title.localeCompare(b.title)
@@ -602,7 +633,54 @@ export default function EmbeddedResourcesPage() {
     })
 
     return newRow ? [...existingRows, newRow] : existingRows
-  }, [rows, sortBy])
+  }, [rows, sortBy, categoryFilter])
+
+  // ── Categories ──────────────────────────────────────────────────────────────
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim() || !selectedCampus) return
+    setSavingCategory(true)
+    try {
+      const res = await createEmbeddedResourceCategory(
+        { name: newCategoryName.trim(), sort_order: categories.length },
+        selectedCampus.id
+      )
+      if (!res.success) { toast.error(res.error || 'Failed to save category'); return }
+      setNewCategoryName('')
+      await fetchCategories()
+    } finally {
+      setSavingCategory(false)
+    }
+  }
+
+  const startEditCategory = (cat: EmbeddedResourceCategory) => {
+    setEditingCategoryId(cat.id)
+    setEditingCategoryName(cat.name)
+  }
+
+  const handleRenameCategory = async () => {
+    if (!editingCategoryId || !editingCategoryName.trim()) return
+    setSavingCategory(true)
+    try {
+      const res = await updateEmbeddedResourceCategory(
+        editingCategoryId, { name: editingCategoryName.trim() }, selectedCampus?.id
+      )
+      if (!res.success) { toast.error(res.error || 'Failed to save category'); return }
+      setEditingCategoryId(null)
+      setEditingCategoryName('')
+      await fetchCategories()
+    } finally {
+      setSavingCategory(false)
+    }
+  }
+
+  const handleDeleteCategory = async (id: string) => {
+    const res = await deleteEmbeddedResourceCategory(id, selectedCampus?.id)
+    if (!res.success) { toast.error(res.error || 'Failed to delete category'); return }
+    if (categoryFilter === id) setCategoryFilter('all')
+    setRows(prev => prev.map(r => r.category_id === id ? { ...r, category_id: null } : r))
+    await fetchCategories()
+  }
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -619,16 +697,37 @@ export default function EmbeddedResourcesPage() {
             <p className="text-sm text-gray-500">{t('subtitle')}</p>
           </div>
         </div>
-        <Button onClick={saveAll} disabled={saving} className="gap-2">
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          {saving ? t('saving_button') : t('save_button')}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setManageCategoriesOpen(true)}>
+            <Tags className="h-4 w-4 mr-2" />
+            {t('manage_categories')}
+          </Button>
+          <Button onClick={saveAll} disabled={saving} className="gap-2">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {saving ? t('saving_button') : t('save_button')}
+          </Button>
+        </div>
       </div>
 
       {/* Note & Controls */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-800 dark:bg-blue-950/30 dark:border-blue-900/50 dark:text-blue-300 flex-1">
           {t('note_audience_banner')}
+        </div>
+
+        {/* Category Filter */}
+        <div className="relative min-w-44 shrink-0">
+          <select
+            value={categoryFilter}
+            onChange={e => setCategoryFilter(e.target.value)}
+            className="w-full h-10 appearance-none rounded-lg border border-input bg-white dark:bg-gray-900 px-4 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+          >
+            <option value="all">{t('all_categories')}</option>
+            {categories.map(c => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
         </div>
 
         {/* Sort Dropdown */}
@@ -662,6 +761,7 @@ export default function EmbeddedResourcesPage() {
                 <th className="px-4 py-3 text-left font-semibold text-blue-600 uppercase text-xs tracking-wide w-20">{t('th_order_header')}</th>
                 <th className="px-4 py-3 text-left font-semibold text-blue-600 uppercase text-xs tracking-wide w-48">{t('th_title_header')}</th>
                 <th className="px-4 py-3 text-left font-semibold text-blue-600 uppercase text-xs tracking-wide">{t('th_link_header')}</th>
+                <th className="px-4 py-3 text-left font-semibold text-blue-600 uppercase text-xs tracking-wide w-44">{t('th_category')}</th>
                 <th className="px-4 py-3 text-left font-semibold text-blue-600 uppercase text-xs tracking-wide w-72">{t('th_audience')}</th>
               </tr>
             </thead>
@@ -718,6 +818,20 @@ export default function EmbeddedResourcesPage() {
                     </div>
                   </td>
 
+                  {/* Category */}
+                  <td className="px-4 py-3">
+                    <select
+                      value={row.category_id ?? '__none__'}
+                      onChange={e => updateRow(row.id, { category_id: e.target.value === '__none__' ? null : e.target.value })}
+                      className="w-full h-9 rounded-md border border-input bg-white dark:bg-gray-900 px-2 text-sm"
+                    >
+                      <option value="__none__">{t('no_category')}</option>
+                      {categories.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </td>
+
                   {/* Audience */}
                   <td className="px-4 py-3">
                     <AudiencePopover
@@ -742,13 +856,13 @@ export default function EmbeddedResourcesPage() {
                       <Plus className="h-3.5 w-3.5" />
                     </button>
                   </td>
-                  <td colSpan={4} className="px-4 py-3 text-sm text-gray-400 italic">{t('add_resource_prompt')}</td>
+                  <td colSpan={5} className="px-4 py-3 text-sm text-gray-400 italic">{t('add_resource_prompt')}</td>
                 </tr>
               )}
 
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="text-center py-12 text-gray-400 italic">{t('no_resources_empty')}</td>
+                  <td colSpan={6} className="text-center py-12 text-gray-400 italic">{t('no_resources_empty')}</td>
                 </tr>
               )}
             </tbody>
@@ -777,6 +891,63 @@ export default function EmbeddedResourcesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Manage Categories */}
+      <Dialog open={manageCategoriesOpen} onOpenChange={setManageCategoriesOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('manage_categories')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <Input
+                placeholder={t('new_category_placeholder')}
+                value={newCategoryName}
+                onChange={e => setNewCategoryName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleAddCategory() }}
+              />
+              <Button onClick={handleAddCategory} disabled={savingCategory || !newCategoryName.trim()}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="space-y-1.5 max-h-72 overflow-y-auto">
+              {categories.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">{t('no_categories_yet')}</p>
+              )}
+              {categories.map(cat => (
+                <div key={cat.id} className="flex items-center gap-2 border rounded-md px-2 py-1.5">
+                  {editingCategoryId === cat.id ? (
+                    <>
+                      <Input
+                        value={editingCategoryName}
+                        onChange={e => setEditingCategoryName(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') handleRenameCategory() }}
+                        className="h-8"
+                        autoFocus
+                      />
+                      <Button size="sm" onClick={handleRenameCategory} disabled={savingCategory}>{t('save_button')}</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditingCategoryId(null)}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="flex-1 text-sm">{cat.name}</span>
+                      <button className="text-muted-foreground hover:text-foreground" onClick={() => startEditCategory(cat)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button className="text-red-500 hover:text-red-700" onClick={() => handleDeleteCategory(cat.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

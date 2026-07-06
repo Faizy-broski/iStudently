@@ -355,6 +355,9 @@
     "entry_times": "Entry Times",
     "discipline": "Discipline",
     "add_referral": "Add Referral",
+    "add_referral_student": "Add Referral (Student)",
+    "add_referral_teacher": "Add Referral (Teacher)",
+    "add_referral_staff": "Add Referral (Staff)",
     "referrals": "Referrals",
     "referral_form": "Referral Form",
     "quiz": "Question Bank",
@@ -454,7 +457,7 @@
     "e_library": "E-Library",
     "loan_directory": "Loan Directory",
     "fines": "Fines",
-    "document_categories": "Document Categories",
+    "document_categories": "Book Categories",
     "document_fields": "Document Fields",
     "calculations": "Calculations",
     "calculation_reports": "Calculation Reports",
@@ -493,6 +496,7 @@
     "onboard_school": "Onboard School",
     "billing_status": "Billing Status",
     "login_quotes": "Login Quotes",
+    "feedback": "Feedback",
     "sidebar_customization": "Sidebar Customization",
     "public_pages": "Public Pages",
     "associated_parents": "Associated Parents",
@@ -726,8 +730,8 @@
         }
       },
       "categories": {
-        "title": "Document Categories",
-        "subtitle": "Manage document categories, set visibility by role and grade level.",
+        "title": "Book Categories",
+        "subtitle": "Manage book categories, set visibility by role and grade level.",
         "new_category": "New Category",
         "all_categories": "All Categories ({count})",
         "all_categories_desc": "Click a category row to edit, or use the actions menu.",
@@ -746,9 +750,9 @@
           "parent": "Parent"
         },
         "dialog": {
-          "new_title": "New Document Category",
-          "edit_title": "Edit Document Category",
-          "new_desc": "Define a new category for organizing library documents.",
+          "new_title": "New Book Category",
+          "edit_title": "Edit Book Category",
+          "new_desc": "Define a new category for organizing library books.",
           "edit_desc": "Update category details below.",
           "title_placeholder": "e.g. Youth Comics, Periodicals...",
           "visible_roles": "Visible To (Staff Roles)",
@@ -758,7 +762,7 @@
           "no_grade_levels": "No grade levels configured.",
           "save_changes": "Save Changes"
         },
-        "delete_confirm": "Delete category \"{name}\"? Documents in this category won't be deleted.",
+        "delete_confirm": "Delete category \"{name}\"? Books in this category won't be deleted.",
         "toast": {
           "load_failed": "Failed to load data",
           "created": "Category created",
@@ -865,7 +869,8 @@
         "toast": {
           "refreshing": "Refreshing data...",
           "refresh_success": "Data refreshed successfully",
-          "refresh_error": "Failed to refresh data"
+          "refresh_error": "Failed to refresh data",
+          "payslip_error": "Failed to load payslip"
         },
         "filters": {
           "month": "Month",
@@ -4770,7 +4775,15 @@
         "msg_save_success": "Saved successfully",
         "msg_save_error": "Failed to save",
         "msg_no_resources": "No resources. Add your first resources to get started.",
-        "add_row_prompt": "Click + to add a new resource link"
+        "add_row_prompt": "Click + to add a new resource link",
+        "th_order": "Order",
+        "th_category": "Category",
+        "manage_categories": "Manage Categories",
+        "all_categories": "All Categories",
+        "no_category": "No Category",
+        "new_category_placeholder": "New category name",
+        "no_categories_yet": "No categories yet. Add one above.",
+        "msg_category_error": "Failed to save category"
       },
       "embedded": {
         "title": "Embedded Resources",
@@ -4807,6 +4820,12 @@
         "th_link_header": "Link",
         "th_title_header": "Title",
         "th_order_header": "Order",
+        "th_category": "Category",
+        "manage_categories": "Manage Categories",
+        "all_categories": "All Categories",
+        "no_category": "No Category",
+        "new_category_placeholder": "New category name",
+        "no_categories_yet": "No categories yet. Add one above.",
         "note_audience_banner": "Add external websites. Use the Audience column to control which roles, grades, sections, specific students, or teachers can see each resource.",
         "resource_title_placeholder": "Resource title",
         "url_placeholder": "https://...",
@@ -7089,6 +7108,16 @@
     "addRecords": "Add Records",
     "add": "Add Referral",
     "addSubtitle": "Record a new discipline incident for a student.",
+    "addReferralTitles": {
+      "student": "Add Student Referral",
+      "teacher": "Add Teacher Referral",
+      "staff": "Add Staff Referral"
+    },
+    "targetTypes": {
+      "student": "Student",
+      "teacher": "Teacher",
+      "staff": "Staff"
+    },
     "addField": "Add Field",
     "editField": "Edit Field",
     "addReferralFormField": "Add Referral Form Field",
@@ -7119,6 +7148,7 @@
     "search": "Search",
     "search_student": "Search student",
     "search_placeholder": "Search by name or student number...",
+    "staff_search_placeholder": "Search by name or employee number...",
     "studentSearch": "Student Search",
     "student": "Student",
     "studentNumber": "Student #",

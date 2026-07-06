@@ -61,6 +61,8 @@ export function AddBookDialog({ open, onOpenChange, onBookAdded }: AddBookDialog
   const [digitalFile, setDigitalFile] = useState<File | null>(null);
   const [fileUploading, setFileUploading] = useState(false);
   const digitalFileInputRef = useRef<HTMLInputElement>(null);
+  const [digitalFileMode, setDigitalFileMode] = useState<'upload' | 'url'>('upload');
+  const [digitalFileUrl, setDigitalFileUrl] = useState('');
 
   useEffect(() => {
     if (open && user?.access_token) {
@@ -121,9 +123,11 @@ export function AddBookDialog({ open, onOpenChange, onBookAdded }: AddBookDialog
     try {
       setIsSubmitting(true);
 
-      // Upload digital file if selected
+      // Digital file: either a direct URL, or an uploaded file
       let fileUrl: string | undefined;
-      if (digitalFile && profile?.school_id) {
+      if (digitalFileMode === 'url' && digitalFileUrl.trim()) {
+        fileUrl = digitalFileUrl.trim();
+      } else if (digitalFile && profile?.school_id) {
         setFileUploading(true);
         const uploadRes = await uploadLibraryDocument(digitalFile, profile.school_id, data.category_id || undefined);
         setFileUploading(false);
@@ -144,6 +148,8 @@ export function AddBookDialog({ open, onOpenChange, onBookAdded }: AddBookDialog
         form.reset();
         setCoverImageUrl(null);
         setDigitalFile(null);
+        setDigitalFileUrl('');
+        setDigitalFileMode('upload');
         onBookAdded();
       } else {
         toast.error(response.error || "Failed to add book");
@@ -389,10 +395,34 @@ export function AddBookDialog({ open, onOpenChange, onBookAdded }: AddBookDialog
               )}
             />
 
-            {/* Digital File Upload */}
+            {/* Digital File — upload or URL */}
             <div className="space-y-2">
               <p className="text-sm font-medium">Digital File <span className="text-xs text-muted-foreground">(optional — makes book available in E-Library)</span></p>
-              {digitalFile ? (
+
+              <div className="flex gap-1 rounded-lg border p-1 w-fit">
+                <button
+                  type="button"
+                  onClick={() => setDigitalFileMode('upload')}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${digitalFileMode === 'upload' ? 'bg-[#57A3CC] text-white' : 'text-muted-foreground hover:bg-muted'}`}
+                >
+                  Upload File
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDigitalFileMode('url')}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${digitalFileMode === 'url' ? 'bg-[#57A3CC] text-white' : 'text-muted-foreground hover:bg-muted'}`}
+                >
+                  Paste URL
+                </button>
+              </div>
+
+              {digitalFileMode === 'url' ? (
+                <Input
+                  value={digitalFileUrl}
+                  onChange={(e) => setDigitalFileUrl(e.target.value)}
+                  placeholder="https://example.com/book.pdf"
+                />
+              ) : digitalFile ? (
                 <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
                   <FileText className="h-5 w-5 text-[#57A3CC] shrink-0" />
                   <div className="flex-1 min-w-0">

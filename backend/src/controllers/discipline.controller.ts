@@ -102,6 +102,8 @@ function resolveQuerySchoolId(req: Request): string | undefined {
  * GET /api/discipline/fields
  * Query: school_id, include_inactive?
  */
+const VALID_TARGET_TYPES = ['student', 'teacher', 'staff'];
+
 export async function getFields(req: Request, res: Response): Promise<void> {
   try {
     const schoolId = resolveQuerySchoolId(req);
@@ -110,12 +112,16 @@ export async function getFields(req: Request, res: Response): Promise<void> {
       return;
     }
 
+    const targetTypeQ = req.query.target_type as string | undefined;
+    const targetType = VALID_TARGET_TYPES.includes(targetTypeQ ?? '') ? targetTypeQ! : 'student';
+
     const includeInactive = req.query.include_inactive === 'true';
 
     let query = supabase
       .from('discipline_fields')
       .select('*')
       .eq('school_id', schoolId)
+      .eq('target_type', targetType)
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true });
 
@@ -132,8 +138,11 @@ export async function getFields(req: Request, res: Response): Promise<void> {
     // If there aren't any custom fields yet, or if a few of the defaults
     // were somehow removed/never created, insert whatever is missing.  This
     // allows rolling this change out to schools that already had a few fields
-    // configured without stomping on their existing setup.
-    if (schoolId) {
+    // configured without stomping on their existing setup.  These defaults
+    // are student-oriented (Detention, Suspension, ...), so only seed them
+    // for the student form — teacher/staff forms start empty for admins to
+    // configure themselves.
+    if (schoolId && targetType === 'student') {
       const existingNames = (data || []).map((f: any) => f.name);
       const missingDefaults = DEFAULT_DISCIPLINE_FIELDS.filter(
         (f) => !existingNames.includes(f.name)
@@ -142,6 +151,7 @@ export async function getFields(req: Request, res: Response): Promise<void> {
         const toInsert = missingDefaults.map((f) => ({
           ...f,
           school_id: schoolId,
+          target_type: 'student',
         }));
         const { data: inserted, error: insertErr } = await supabase
           .from('discipline_fields')
@@ -167,7 +177,7 @@ export async function getFields(req: Request, res: Response): Promise<void> {
 
 /**
  * POST /api/discipline/fields
- * Body: { school_id, name, field_type, options?, sort_order? }
+ * Body: { school_id, name, field_type, target_type, options?, sort_order? }
  */
 export async function createField(req: Request, res: Response): Promise<void> {
   try {
@@ -177,10 +187,15 @@ export async function createField(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const { name, field_type, options, sort_order, penalty_points } = req.body;
+    const { name, field_type, target_type, options, sort_order, penalty_points } = req.body;
 
     if (!name || !field_type) {
       res.status(400).json({ error: 'name and field_type are required' });
+      return;
+    }
+
+    if (!VALID_TARGET_TYPES.includes(target_type)) {
+      res.status(400).json({ error: `target_type must be one of: ${VALID_TARGET_TYPES.join(', ')}` });
       return;
     }
 
@@ -190,6 +205,7 @@ export async function createField(req: Request, res: Response): Promise<void> {
         school_id: schoolId,
         name,
         field_type,
+        target_type,
         options: options || null,
         sort_order: sort_order ?? 0,
         penalty_points: penalty_points ?? null,
@@ -448,14 +464,16 @@ export async function createReferral(req: Request, res: Response): Promise<void>
       academic_year_id,
     } = req.body;
 
-    const targetType: 'student' | 'staff' = target_type === 'staff' ? 'staff' : 'student';
+    const targetType: 'student' | 'teacher' | 'staff' =
+      target_type === 'teacher' ? 'teacher' : target_type === 'staff' ? 'staff' : 'student';
+    const usesStaffId = targetType === 'teacher' || targetType === 'staff';
 
-    const targetIds: string[] = targetType === 'staff'
+    const targetIds: string[] = usesStaffId
       ? (Array.isArray(staff_ids) && staff_ids.length > 0 ? staff_ids : (staff_id ? [staff_id] : []))
       : (Array.isArray(student_ids) && student_ids.length > 0 ? student_ids : (student_id ? [student_id] : []));
 
     if (targetIds.length === 0) {
-      res.status(400).json({ error: targetType === 'staff' ? 'staff_id is required' : 'student_id is required' });
+      res.status(400).json({ error: usesStaffId ? 'staff_id is required' : 'student_id is required' });
       return;
     }
 
@@ -464,7 +482,7 @@ export async function createReferral(req: Request, res: Response): Promise<void>
       campus_id: campus_id || null,
       target_type: targetType,
       student_id: targetType === 'student' ? tid : null,
-      staff_id: targetType === 'staff' ? tid : null,
+      staff_id: usesStaffId ? tid : null,
       reporter_id: reporter_id || null,
       incident_date: incident_date || new Date().toISOString().slice(0, 10),
       field_values: field_values || {},

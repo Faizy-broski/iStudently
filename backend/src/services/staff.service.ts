@@ -75,10 +75,29 @@ export const getAllStaff = async (
             query = query.in('role', ['staff', 'librarian', 'admin', 'counselor'])
         }
 
-        // Execute main query with pagination AFTER role filtering
-        const { data: staffData, error, count } = await query
-            .order('created_at', { ascending: false })
-            .range(offset, offset + limit - 1)
+        query = query.order('created_at', { ascending: false })
+
+        // Search filtering happens in JS below (name lives on the joined profile,
+        // not a plain column we can .ilike() alongside employee_number/title in
+        // one query). If we paginate in SQL first, the search only ever sees the
+        // current page's rows instead of every match for the school — so when a
+        // search term is present, fetch the full role-filtered candidate set
+        // (capped, not truly unbounded) and paginate the JS-filtered results
+        // instead of the raw query.
+        let staffData: any[] | null
+        let error: any
+        let count: number | null = null
+
+        if (search) {
+            const res = await query.limit(1000)
+            staffData = res.data
+            error = res.error
+        } else {
+            const res = await query.range(offset, offset + limit - 1)
+            staffData = res.data
+            error = res.error
+            count = res.count
+        }
 
         if (error) throw error
 
@@ -99,9 +118,23 @@ export const getAllStaff = async (
                     empId.includes(search) ||
                     title.includes(search)
             })
+
+            // Paginate the filtered set ourselves since SQL pagination was skipped above
+            const total = filteredStaff.length
+            const totalPages = Math.ceil(total / limit)
+            filteredStaff = filteredStaff.slice(offset, offset + limit)
+
+            return {
+                success: true,
+                data: {
+                    data: filteredStaff as Staff[],
+                    total,
+                    page,
+                    totalPages
+                }
+            }
         }
 
-        // Recalculate totals after JS filtering (approximation if pagination was used)
         const total = count || filteredStaff.length
         const totalPages = Math.ceil(total / limit)
 

@@ -61,6 +61,7 @@ export async function getStudentDisciplineScore(params: {
     .from('discipline_fields')
     .select('id, name, field_type, options, penalty_points')
     .eq('school_id', schoolId)
+    .eq('target_type', 'student')
     .eq('is_active', true)
 
   if (fieldsError) throw fieldsError

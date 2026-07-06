@@ -29,6 +29,8 @@ import { cn } from '@/lib/utils'
 import { NotificationBell } from '@/components/portal'
 import { useLocale, useTranslations } from 'next-intl'
 import { getSidebarConfig } from '@/config/sidebar'
+import { MessageSquareWarning } from 'lucide-react'
+import { getFeedbackCount } from '@/lib/api/feedback'
 
 interface TopbarProps {
   className?: string
@@ -44,12 +46,25 @@ export function Topbar({ className }: TopbarProps) {
   const [searchQuery, setSearchQuery] = React.useState('')
   const [isSearchOpen, setIsSearchOpen] = React.useState(false)
   const [isFullscreen, setIsFullscreen] = React.useState(false)
+  const [feedbackCount, setFeedbackCount] = React.useState(0)
 
   React.useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement)
     document.addEventListener('fullscreenchange', onChange)
     return () => document.removeEventListener('fullscreenchange', onChange)
   }, [])
+
+  React.useEffect(() => {
+    if (profile?.role !== 'super_admin') return
+    let cancelled = false
+    const fetchCount = async () => {
+      const res = await getFeedbackCount()
+      if (!cancelled && res.success) setFeedbackCount(res.data?.count ?? 0)
+    }
+    fetchCount()
+    const interval = setInterval(fetchCount, 60000)
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [profile?.role])
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -274,6 +289,24 @@ export function Topbar({ className }: TopbarProps) {
 
           {/* Notifications */}
           <NotificationBell className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100" />
+
+          {/* Open Feedback Reports (super admin only) */}
+          {profile?.role === 'super_admin' && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
+              onClick={() => router.push('/superadmin/feedback')}
+              title="Feedback & Bug Reports"
+            >
+              <MessageSquareWarning className="h-5 w-5" />
+              {feedbackCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-4.5 h-4.5 px-1 rounded-full bg-red-600 text-white text-[10px] font-semibold">
+                  {feedbackCount > 99 ? '99+' : feedbackCount}
+                </span>
+              )}
+            </Button>
+          )}
 
           {/* Profile Dropdown */}
           <DropdownMenu>

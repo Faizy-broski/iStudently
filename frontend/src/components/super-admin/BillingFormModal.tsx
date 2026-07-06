@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { billingPlansApi, BillingPlan, BillingRecord, calculateBillingAmount } from "@/lib/api/billing";
+import { CURRENCY_OPTIONS } from "@/lib/api/school-settings";
 
 const billingFormSchema = z.object({
   school_id: z.string().min(1, "School ID is required"),
@@ -26,6 +27,7 @@ const billingFormSchema = z.object({
   subscription_plan: z.string().min(1, "Subscription plan is required"),
   billing_cycle: z.string().min(1, "Billing cycle is required"),
   amount: z.number().min(1, "Amount must be greater than 0"),
+  currency: z.string().min(1, "Currency is required"),
   due_date: z.string().min(1, "Due date is required"),
   payment_status: z.enum(["paid", "unpaid", "overdue", "pending"]),
   invoice_number: z.string().min(1, "Invoice number is required"),
@@ -67,6 +69,7 @@ export default function BillingFormModal({
       subscription_plan: "",
       billing_cycle: "Monthly",
       amount: 0,
+      currency: "USD",
       due_date: "",
       payment_status: "unpaid",
       invoice_number: "",
@@ -107,6 +110,7 @@ export default function BillingFormModal({
         subscription_plan: editingRecord.subscription_plan,
         billing_cycle: editingRecord.billing_cycle,
         amount: editingRecord.amount,
+        currency: editingRecord.currency || "USD",
         due_date: editingRecord.due_date,
         payment_status: editingRecord.payment_status,
         invoice_number: editingRecord.invoice_number,
@@ -123,6 +127,7 @@ export default function BillingFormModal({
         subscription_plan: defaultPlan?.name || "",
         billing_cycle: "Monthly",
         amount: defaultPlan?.monthly_price || 0,
+        currency: "USD",
         due_date: "",
         payment_status: "unpaid",
         invoice_number: invoiceNum,
@@ -259,18 +264,41 @@ export default function BillingFormModal({
             )}
           </div>
 
-          {/* Amount */}
-          <div className="space-y-2">
-            <Label htmlFor="amount">Amount (USD) *</Label>
-            <Input
-              id="amount"
-              type="number"
-              {...register("amount", { valueAsNumber: true })}
-              placeholder="299"
-            />
-            {errors.amount && (
-              <p className="text-sm text-red-500">{errors.amount.message}</p>
-            )}
+          {/* Amount & Currency */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="amount">Amount *</Label>
+              <Input
+                id="amount"
+                type="number"
+                {...register("amount", { valueAsNumber: true })}
+                placeholder="299"
+              />
+              {errors.amount && (
+                <p className="text-sm text-red-500">{errors.amount.message}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="currency">Currency *</Label>
+              <Select
+                value={watch("currency")}
+                onValueChange={(value) => setValue("currency", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent className="max-h-64">
+                  {CURRENCY_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.value} - {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.currency && (
+                <p className="text-sm text-red-500">{errors.currency.message}</p>
+              )}
+            </div>
           </div>
 
           {/* Due Date */}

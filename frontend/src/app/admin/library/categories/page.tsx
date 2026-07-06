@@ -66,7 +66,7 @@ interface GradeLevel {
     name: string;
 }
 
-export default function DocumentCategoriesPage() {
+export default function BookCategoriesPage() {
     const t = useTranslations('admin.library.categories')
     const tCommon = useTranslations('common')
     const { user } = useAuth();

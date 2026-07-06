@@ -61,6 +61,9 @@ interface PersonOption { id: string; label: string }
 function PersonPicker({
   role,
   campusId,
+  gradeLevelId,
+  sectionId,
+  department,
   value,
   onChange,
   placeholder,
@@ -68,6 +71,9 @@ function PersonPicker({
 }: {
   role: ReportRole
   campusId?: string
+  gradeLevelId?: string
+  sectionId?: string
+  department?: string
   value: PersonOption | null
   onChange: (v: PersonOption | null) => void
   placeholder: string
@@ -96,6 +102,9 @@ function PersonPicker({
         const token = await getAuthToken()
         const qs = new URLSearchParams({ q: query })
         if (campusId) qs.set('campus_id', campusId)
+        if (gradeLevelId) qs.set('grade_level_id', gradeLevelId)
+        if (sectionId) qs.set('section_id', sectionId)
+        if (department) qs.set('department', department)
         const res = await fetch(`${API_URL}/advanced-report/${role}/search?${qs}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
@@ -108,7 +117,7 @@ function PersonPicker({
         setSearching(false)
       }
     }, 300)
-  }, [query, role, campusId])
+  }, [query, role, campusId, gradeLevelId, sectionId, department])
 
   if (value) {
     return (
@@ -387,6 +396,9 @@ export default function AdvancedReportPage() {
             <PersonPicker
               role={selectedRole}
               campusId={selectedCampus?.id}
+              gradeLevelId={selectedRole === 'student' ? selectedGradeId : undefined}
+              sectionId={selectedRole === 'student' ? selectedSectionId : undefined}
+              department={['teacher', 'staff', 'librarian'].includes(selectedRole) ? department : undefined}
               value={selectedPerson}
               onChange={p => {
                 setSelectedPerson(p)

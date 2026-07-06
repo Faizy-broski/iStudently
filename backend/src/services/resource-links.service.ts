@@ -14,6 +14,7 @@ export interface ResourceLink {
   visible_to_teacher_ids: string[]       // teacher sub-filter (empty = all teachers)
   visible_to_student_ids: string[]       // specific student record IDs (empty = all in section/grade)
   sort_order?: number
+  category_id?: string | null
   created_by?: string
   created_at: string
   updated_at: string
@@ -29,6 +30,7 @@ export interface CreateResourceLinkDTO {
   visible_to_student_ids?: string[]
   campus_id?: string
   sort_order?: number
+  category_id?: string | null
 }
 
 export interface UpdateResourceLinkDTO {
@@ -40,6 +42,7 @@ export interface UpdateResourceLinkDTO {
   visible_to_teacher_ids?: string[]
   visible_to_student_ids?: string[]
   sort_order?: number
+  category_id?: string | null
 }
 
 interface UserContext {
@@ -182,6 +185,7 @@ export class ResourceLinksService {
         visible_to_teacher_ids:  dto.visible_to_teacher_ids  || [],
         visible_to_student_ids:  dto.visible_to_student_ids  || [],
         sort_order:              dto.sort_order ?? null,
+        category_id:             dto.category_id ?? null,
         created_by:              createdBy,
       })
       .select()
@@ -205,6 +209,7 @@ export class ResourceLinksService {
     if (dto.visible_to_teacher_ids  !== undefined) updateData.visible_to_teacher_ids  = dto.visible_to_teacher_ids
     if (dto.visible_to_student_ids  !== undefined) updateData.visible_to_student_ids  = dto.visible_to_student_ids
     if (dto.sort_order              !== undefined) updateData.sort_order              = dto.sort_order
+    if (dto.category_id             !== undefined) updateData.category_id             = dto.category_id
 
     const { data, error } = await supabase
       .from('resource_links')
@@ -241,6 +246,7 @@ export class ResourceLinksService {
       visible_to_teacher_ids: string[]
       visible_to_student_ids: string[]
       sort_order?: number
+      category_id?: string | null
     }>,
     existingIds: string[]
   ): Promise<ResourceLink[]> {
@@ -263,7 +269,8 @@ export class ResourceLinksService {
         visible_to_section_ids: link.visible_to_section_ids,
         visible_to_teacher_ids: link.visible_to_teacher_ids,
         visible_to_student_ids: link.visible_to_student_ids,
-        sort_order:             i + 1,
+        sort_order:             link.sort_order ?? i + 1,
+        category_id:            link.category_id ?? null,
       }
 
       if (link.id) {
@@ -277,7 +284,8 @@ export class ResourceLinksService {
           visible_to_section_ids: link.visible_to_section_ids,
           visible_to_teacher_ids: link.visible_to_teacher_ids,
           visible_to_student_ids: link.visible_to_student_ids,
-          sort_order:             i + 1,
+          sort_order:             link.sort_order ?? i + 1,
+          category_id:            link.category_id ?? null,
         }))
       }
     }

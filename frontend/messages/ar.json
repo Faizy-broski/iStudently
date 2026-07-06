@@ -344,6 +344,9 @@
     "entry_times": "أوقات الدخول",
     "discipline": "الانضباط",
     "add_referral": "إضافة إحالة",
+    "add_referral_student": "إضافة إحالة (طالب)",
+    "add_referral_teacher": "إضافة إحالة (معلم)",
+    "add_referral_staff": "إضافة إحالة (موظف)",
     "referrals": "الإحالات",
     "referral_form": "نموذج الإحالة",
     "quiz": "بنك الأسئلة",
@@ -443,7 +446,7 @@
     "e_library": "المكتبة الإلكترونية",
     "loan_directory": "دليل الإعارة",
     "fines": "الغرامات",
-    "document_categories": "فئات الوثائق",
+    "document_categories": "فئات الكتب",
     "document_fields": "حقول الوثائق",
     "calculations": "الحسابات",
     "calculation_reports": "تقارير الحسابات",
@@ -482,6 +485,7 @@
     "onboard_school": "إضافة مدرسة",
     "billing_status": "حالة الفواتير",
     "login_quotes": "اقتباسات تسجيل الدخول",
+    "feedback": "الملاحظات",
     "sidebar_customization": "تخصيص القائمة الجانبية",
     "public_pages": "الصفحات العامة",
     "associated_parents": "أولياء الأمور المرتبطون",
@@ -715,8 +719,8 @@
         }
       },
       "categories": {
-        "title": "تصنيفات المستندات",
-        "subtitle": "إدارة تصنيفات المستندات وتحديد الظهور حسب الدور والصف.",
+        "title": "فئات الكتب",
+        "subtitle": "إدارة فئات الكتب وتحديد الظهور حسب الدور والصف.",
         "new_category": "تصنيف جديد",
         "all_categories": "كل التصنيفات ({count})",
         "all_categories_desc": "انقر على الصف للتعديل أو استخدم قائمة الإجراءات.",
@@ -735,9 +739,9 @@
           "parent": "ولي أمر"
         },
         "dialog": {
-          "new_title": "تصنيف مستند جديد",
-          "edit_title": "تعديل تصنيف المستند",
-          "new_desc": "عرّف تصنيفاً جديداً لتنظيم مستندات المكتبة.",
+          "new_title": "فئة كتب جديدة",
+          "edit_title": "تعديل فئة الكتب",
+          "new_desc": "عرّف فئة جديدة لتنظيم كتب المكتبة.",
           "edit_desc": "حدّث تفاصيل التصنيف أدناه.",
           "title_placeholder": "مثال: قصص مصوّرة، دوريات...",
           "visible_roles": "مرئي لـ (أدوار الموظفين)",
@@ -747,7 +751,7 @@
           "no_grade_levels": "لا توجد مراحل دراسية مهيأة.",
           "save_changes": "حفظ التغييرات"
         },
-        "delete_confirm": "حذف التصنيف \"{name}\"؟ لن يتم حذف المستندات ضمن هذا التصنيف.",
+        "delete_confirm": "حذف الفئة \"{name}\"؟ لن يتم حذف الكتب ضمن هذه الفئة.",
         "toast": {
           "load_failed": "فشل تحميل البيانات",
           "created": "تم إنشاء التصنيف",
@@ -854,7 +858,8 @@
         "toast": {
           "refreshing": "جارٍ تحديث البيانات...",
           "refresh_success": "تم تحديث البيانات بنجاح",
-          "refresh_error": "فشل تحديث البيانات"
+          "refresh_error": "فشل تحديث البيانات",
+          "payslip_error": "فشل تحميل قسيمة الراتب"
         },
         "filters": {
           "month": "الشهر",
@@ -4778,7 +4783,15 @@
         "msg_save_success": "تم الحفظ بنجاح",
         "msg_save_error": "فشل الحفظ",
         "msg_no_resources": "لا توجد موارد. أضف الموارد الخاصة بك الأولى للبدء.",
-        "add_row_prompt": "انقر على + لإضافة رابط مورد جديد"
+        "add_row_prompt": "انقر على + لإضافة رابط مورد جديد",
+        "th_order": "الترتيب",
+        "th_category": "الفئة",
+        "manage_categories": "إدارة الفئات",
+        "all_categories": "جميع الفئات",
+        "no_category": "بدون فئة",
+        "new_category_placeholder": "اسم الفئة الجديدة",
+        "no_categories_yet": "لا توجد فئات بعد. أضف واحدة أعلاه.",
+        "msg_category_error": "فشل حفظ الفئة"
       },
       "embedded": {
         "title": "الموارد المدمجة",
@@ -4815,6 +4828,12 @@
         "th_link_header": "الرابط",
         "th_title_header": "العنوان",
         "th_order_header": "الترتيب",
+        "th_category": "الفئة",
+        "manage_categories": "إدارة الفئات",
+        "all_categories": "جميع الفئات",
+        "no_category": "بدون فئة",
+        "new_category_placeholder": "اسم الفئة الجديدة",
+        "no_categories_yet": "لا توجد فئات بعد. أضف واحدة أعلاه.",
         "note_audience_banner": "أضف مواقع ويب خارجية. استخدم عمود الجمهور للتحكم في الأدوار والصفوف والشعب والطلاب المحددين أو المعلمين الذين يمكنهم رؤية كل مورد.",
         "resource_title_placeholder": "عنوان المورد",
         "url_placeholder": "https://...",
@@ -7097,6 +7116,16 @@
     "addRecords": "إضافة سجلات",
     "add": "إضافة إحالة",
     "addSubtitle": "تسجيل حادثة انضباط جديدة لطالب.",
+    "addReferralTitles": {
+      "student": "إضافة إحالة طالب",
+      "teacher": "إضافة إحالة معلم",
+      "staff": "إضافة إحالة موظف"
+    },
+    "targetTypes": {
+      "student": "طالب",
+      "teacher": "معلم",
+      "staff": "موظف"
+    },
     "addField": "إضافة حقل",
     "editField": "تعديل حقل",
     "addReferralFormField": "إضافة حقل لنموذج الإحالة",
@@ -7127,6 +7156,7 @@
     "search": "بحث",
     "search_student": "بحث الطالب",
     "search_placeholder": "ابحث بالاسم أو رقم الطالب...",
+    "staff_search_placeholder": "ابحث بالاسم أو الرقم الوظيفي...",
     "studentSearch": "بحث الطالب",
     "student": "الطالب",
     "studentNumber": "رقم الطالب",

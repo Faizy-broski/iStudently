@@ -38,7 +38,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
 import {
   getDisciplineReferrals,
-  getDisciplineFields,
+  getAllDisciplineFields,
   deleteDisciplineReferral,
   type DisciplineReferral,
   type DisciplineField,
@@ -148,8 +148,8 @@ export default function DisciplineReferralsPage() {
       return;
     }
 
-    getDisciplineFields(schoolId)
-      .then((res) => setFields(res.data ?? []))
+    getAllDisciplineFields(schoolId)
+      .then((data) => setFields(data))
       .catch(() => {
         // swallow any error, we'll show a toast so users know later if they try
         // to interact.  Without this the promise rejection bubbled to console.
@@ -236,7 +236,7 @@ export default function DisciplineReferralsPage() {
               {campusId && ` · ${campusCtx?.selectedCampus?.name}`}
             </p>
           </div>
-          <Link href="/admin/discipline/add-referral">
+          <Link href="/admin/discipline/add-referral-student">
             <Button>
               <Plus className="h-4 w-4 mr-2" />
               {t("add")}

@@ -4,18 +4,19 @@ import { useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import { useSalaryDashboardStats, useSalaryRecords, usePendingAdvances } from '@/hooks/useSalary'
-import { formatMonthYear } from '@/lib/api/salary'
+import { formatMonthYear, getPayslipByPeriod, type PayslipByPeriod, type SalaryRecord } from '@/lib/api/salary'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
-import { IconCash, IconCheck, IconClock, IconSettings, IconUsers, IconArrowUp, IconRefresh } from '@tabler/icons-react'
+import { IconCash, IconCheck, IconClock, IconSettings, IconUsers, IconArrowUp, IconRefresh, IconLoader2 } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { useSchoolSettings } from '@/hooks/useSchoolSettings'
+import { PayslipPreviewDialog } from '@/components/admin/PayslipDocument'
 
 export default function SalaryPage() {
     const t = useTranslations('admin.salary.page')
@@ -31,6 +32,9 @@ export default function SalaryPage() {
     const [statusFilter, setStatusFilter] = useState<string>('')
     const [page, setPage] = useState(1)
     const [refreshing, setRefreshing] = useState(false)
+    const [dialogPayslip, setDialogPayslip] = useState<PayslipByPeriod | null>(null)
+    const [dialogOpen, setDialogOpen] = useState(false)
+    const [loadingPayslipId, setLoadingPayslipId] = useState<string | null>(null)
 
     const { data: stats, isLoading: statsLoading, mutate: mutateStats } = useSalaryDashboardStats(schoolId, month, year)
     const { data: salaryData, isLoading: salaryLoading, mutate: mutateSalary } = useSalaryRecords(schoolId, {
@@ -58,6 +62,20 @@ export default function SalaryPage() {
             toast.error(t('toast.refresh_error'))
         } finally {
             setRefreshing(false)
+        }
+    }
+
+    const handleViewPayslip = async (record: SalaryRecord) => {
+        if (!schoolId) return
+        setLoadingPayslipId(record.id)
+        try {
+            const payslip = await getPayslipByPeriod(record.staff_id, record.month, record.year, schoolId, campusId)
+            setDialogPayslip(payslip)
+            setDialogOpen(true)
+        } catch (error: any) {
+            toast.error(error.message || t('toast.payslip_error'))
+        } finally {
+            setLoadingPayslipId(null)
         }
     }
 
@@ -274,8 +292,17 @@ export default function SalaryPage() {
                                                 <TableCell className="font-bold">{formatCurrency(record.net_salary)}</TableCell>
                                                 <TableCell>{getStatusBadge(record.status)}</TableCell>
                                                 <TableCell className="text-right">
-                                                    <Button variant="ghost" size="sm" asChild>
-                                                        <Link href={`/admin/salary/records/${record.id}`}>{tCommon('view')}</Link>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => handleViewPayslip(record)}
+                                                        disabled={loadingPayslipId === record.id}
+                                                    >
+                                                        {loadingPayslipId === record.id ? (
+                                                            <IconLoader2 className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                            tCommon('view')
+                                                        )}
                                                     </Button>
                                                 </TableCell>
                                             </TableRow>
@@ -337,6 +364,12 @@ export default function SalaryPage() {
                     )}
                 </CardContent>
             </Card>
+
+            <PayslipPreviewDialog
+                payslip={dialogPayslip}
+                open={dialogOpen}
+                onClose={() => { setDialogOpen(false); setDialogPayslip(null) }}
+            />
         </div>
     )
 }

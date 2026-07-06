@@ -22,6 +22,7 @@ export interface EmbeddedResource {
   visible_to_student_ids: string[]    // specific student record IDs (empty = all in section/grade)
   is_active: boolean
   sort_order: number                  // manual display order (lower first)
+  category_id?: string | null
   created_at: string
   updated_at: string
   created_by: string | null
@@ -40,6 +41,7 @@ export interface CreateEmbeddedResourceDTO {
   visible_to_teacher_ids?: string[]
   visible_to_student_ids?: string[]
   sort_order?: number
+  category_id?: string | null
   campus_id?: string
 }
 
@@ -53,6 +55,7 @@ export interface UpdateEmbeddedResourceDTO {
   visible_to_student_ids?: string[]
   is_active?: boolean
   sort_order?: number
+  category_id?: string | null
 }
 
 async function apiRequest<T = unknown>(
