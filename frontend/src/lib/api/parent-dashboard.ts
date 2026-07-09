@@ -73,6 +73,7 @@ export interface ParentStudent {
   first_name: string
   last_name: string
   grade_level: string
+  grade_level_id?: string | null
   section: string
   campus_id: string
   campus_name: string

@@ -37,6 +37,8 @@ export interface GradeLevel {
   created_at: string;
   updated_at: string;
   created_by: string | null;
+  next_grade_id?: string | null;
+  group_id?: string | null;
   // Computed fields
   sections_count?: number;
   subjects_count?: number;
@@ -82,6 +84,8 @@ export interface CreateGradeLevelDTO {
   order_index: number;
   base_fee: number;
   created_by?: string;
+  next_grade_id?: string | null;
+  group_id?: string | null;
 }
 
 export interface UpdateGradeLevelDTO {
@@ -89,6 +93,8 @@ export interface UpdateGradeLevelDTO {
   order_index?: number;
   base_fee?: number;
   is_active?: boolean;
+  next_grade_id?: string | null;
+  group_id?: string | null;
 }
 
 export interface CreateSectionDTO {

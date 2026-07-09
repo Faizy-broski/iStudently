@@ -61,6 +61,7 @@ import {
   Gauge,
   Mic,
   MessageSquareWarning,
+  Palette,
   type LucideIcon,
 } from "lucide-react";
 import { UserRole } from "@/types";
@@ -90,6 +91,7 @@ const superAdminMenuItems: SidebarMenuItem[] = [
   { title: "login_quotes", href: "/superadmin/quotes", icon: MessageSquare },
   { title: "feedback", href: "/superadmin/feedback", icon: MessageSquareWarning },
   { title: "sidebar_customization", href: "/superadmin/settings/sidebar", icon: Paintbrush },
+  { title: "login_page_customization", href: "/superadmin/settings/login-page", icon: Palette },
   { title: "public_pages", href: "/superadmin/settings/public-pages", icon: Globe },
   { title: "settings", href: "/superadmin/settings", icon: Settings },
 ];

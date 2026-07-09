@@ -50,6 +50,8 @@ import {
 } from '@/components/ui/alert-dialog'
 import * as academicsApi from '@/lib/api/academics'
 import { useCampus } from '@/context/CampusContext'
+import { useSchoolSettings } from '@/context/SchoolSettingsContext'
+import { getMarkingPeriodGroups, type MarkingPeriodGroup } from '@/lib/api/marking-period-groups'
 
 import { useTranslations } from 'next-intl'
 
@@ -57,8 +59,11 @@ export default function GradeLevelsPage() {
   const t = useTranslations('school.grades')
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
-  
+  const { isPluginActive } = useSchoolSettings()
+  const mpGroupsActive = isPluginActive('marking_period_groups')
+
   const [grades, setGrades] = useState<academicsApi.GradeLevel[]>([])
+  const [mpGroups, setMpGroups] = useState<MarkingPeriodGroup[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -90,6 +95,34 @@ export default function GradeLevelsPage() {
       fetchGrades()
     }
   }, [selectedCampus, fetchGrades])
+
+  useEffect(() => {
+    if (!mpGroupsActive) return
+    getMarkingPeriodGroups(selectedCampus?.id).then(setMpGroups).catch(() => {})
+  }, [mpGroupsActive, selectedCampus?.id])
+
+  const handleGroupChange = async (gradeId: string, groupId: string) => {
+    const previousGrades = [...grades]
+    setGrades((prev) =>
+      prev.map((g) => (g.id === gradeId ? { ...g, group_id: groupId === 'default' ? null : groupId } : g))
+    )
+
+    try {
+      const result = await academicsApi.updateGradeLevel(gradeId, {
+        group_id: groupId === 'default' ? null : groupId,
+      })
+      if (result.success) {
+        toast.success(t('update_success'))
+        fetchGrades()
+      } else {
+        setGrades(previousGrades)
+        toast.error(result.error || t('fetch_error'))
+      }
+    } catch {
+      setGrades(previousGrades)
+      toast.error(t('fetch_error'))
+    }
+  }
 
   // export grade levels to CSV
   const exportGrades = () => {
@@ -305,6 +338,7 @@ export default function GradeLevelsPage() {
                     {t('subjects')}
                   </TableHead>
                   <TableHead>{t('next_grade')}</TableHead>
+                  {mpGroupsActive && <TableHead>{t('mp_group')}</TableHead>}
                   <TableHead>{t('status')}</TableHead>
                   <TableHead className="text-right">{t('actions')}</TableHead>
                 </TableRow>
@@ -341,6 +375,24 @@ export default function GradeLevelsPage() {
                         </SelectContent>
                       </Select>
                     </TableCell>
+                    {mpGroupsActive && (
+                      <TableCell>
+                        <Select
+                          value={grade.group_id ?? 'default'}
+                          onValueChange={(v) => handleGroupChange(grade.id, v)}
+                        >
+                          <SelectTrigger className="w-40">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="default">{t('mp_group_default')}</SelectItem>
+                            {mpGroups.map((g) => (
+                              <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                    )}
                     <TableCell>
                       <Badge variant={grade.is_active ? 'default' : 'secondary'}>
                         {grade.is_active ? t('active') : t('inactive')}

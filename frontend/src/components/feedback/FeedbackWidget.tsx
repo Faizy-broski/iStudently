@@ -8,12 +8,14 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { submitFeedback } from '@/lib/api/feedback'
 
 export function FeedbackWidget() {
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [category, setCategory] = useState<'feature_request' | 'bug'>('bug')
   const [submitting, setSubmitting] = useState(false)
 
   const handleSubmit = async () => {
@@ -23,7 +25,7 @@ export function FeedbackWidget() {
     }
     setSubmitting(true)
     try {
-      const res = await submitFeedback({ title: title.trim(), description: description.trim() })
+      const res = await submitFeedback({ title: title.trim(), description: description.trim(), category })
       if (!res.success) {
         toast.error(res.error || 'Failed to submit feedback')
         return
@@ -31,6 +33,7 @@ export function FeedbackWidget() {
       toast.success('Thanks! Your feedback has been submitted.')
       setTitle('')
       setDescription('')
+      setCategory('bug')
       setOpen(false)
     } finally {
       setSubmitting(false)
@@ -58,6 +61,18 @@ export function FeedbackWidget() {
           </DialogHeader>
 
           <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="feedback-category">Category</Label>
+              <Select value={category} onValueChange={(v) => setCategory(v as 'feature_request' | 'bug')}>
+                <SelectTrigger id="feedback-category" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="feature_request">Suggest a new feature</SelectItem>
+                  <SelectItem value="bug">Bug</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-1.5">
               <Label htmlFor="feedback-title">Title</Label>
               <Input

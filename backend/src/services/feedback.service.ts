@@ -10,6 +10,7 @@ export interface FeedbackReport {
   submitter_email: string | null
   title: string
   description: string
+  category: 'feature_request' | 'bug'
   status: 'open' | 'in_progress' | 'resolved'
   created_at: string
   updated_at: string
@@ -24,6 +25,7 @@ export interface CreateFeedbackDTO {
   submitter_email?: string | null
   title: string
   description: string
+  category: 'feature_request' | 'bug'
 }
 
 export async function createFeedback(dto: CreateFeedbackDTO): Promise<FeedbackReport> {
@@ -38,6 +40,7 @@ export async function createFeedback(dto: CreateFeedbackDTO): Promise<FeedbackRe
       submitter_email: dto.submitter_email ?? null,
       title:           dto.title,
       description:     dto.description,
+      category:        dto.category,
     })
     .select()
     .single()
@@ -46,7 +49,7 @@ export async function createFeedback(dto: CreateFeedbackDTO): Promise<FeedbackRe
   return data
 }
 
-export async function getFeedbackReports(filters?: { status?: string }): Promise<FeedbackReport[]> {
+export async function getFeedbackReports(filters?: { status?: string; category?: string }): Promise<FeedbackReport[]> {
   let query = supabase
     .from('feedback_reports')
     .select('*')
@@ -54,6 +57,9 @@ export async function getFeedbackReports(filters?: { status?: string }): Promise
 
   if (filters?.status) {
     query = query.eq('status', filters.status)
+  }
+  if (filters?.category) {
+    query = query.eq('category', filters.category)
   }
 
   const { data, error } = await query

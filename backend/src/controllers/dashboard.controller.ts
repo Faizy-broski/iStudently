@@ -1,4 +1,4 @@
-import { Response } from 'express'
+import { Request, Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
 import { DashboardService } from '../services/dashboard.service'
 
@@ -113,6 +113,37 @@ export class DashboardController {
     } catch (error: any) {
       console.error('Update platform settings error:', error)
       res.status(500).json({ success: false, error: error.message || 'Failed to update platform settings' })
+    }
+  }
+
+  // Public — read by the unauthenticated /auth/login page
+  async getLoginPageConfig(req: Request, res: Response) {
+    try {
+      const config = await dashboardService.getLoginPageConfig()
+      res.json({ success: true, data: config })
+    } catch (error: any) {
+      console.error('Get login page config error:', error)
+      res.status(500).json({ success: false, error: error.message || 'Failed to fetch login page config' })
+    }
+  }
+
+  async updateLoginPageConfig(req: AuthRequest, res: Response) {
+    try {
+      const config = await dashboardService.updateLoginPageConfig(req.body)
+      res.json({ success: true, data: config, message: 'Login page config updated' })
+    } catch (error: any) {
+      console.error('Update login page config error:', error)
+      res.status(500).json({ success: false, error: error.message || 'Failed to update login page config' })
+    }
+  }
+
+  async resetLoginPageConfig(req: AuthRequest, res: Response) {
+    try {
+      const config = await dashboardService.resetLoginPageConfig()
+      res.json({ success: true, data: config, message: 'Login page config reset to defaults' })
+    } catch (error: any) {
+      console.error('Reset login page config error:', error)
+      res.status(500).json({ success: false, error: error.message || 'Failed to reset login page config' })
     }
   }
 }

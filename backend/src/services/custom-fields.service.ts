@@ -255,14 +255,19 @@ export class CustomFieldsService {
     }
 
     /**
-     * Reorder fields within a category
+     * Reorder fields within a category. Each item's sort_order is written as-is
+     * (an absolute position, e.g. its position in a merged default+custom list),
+     * not derived from array index.
      */
-    async reorderFields(schoolId: string, categoryId: string, orderedIds: string[]): Promise<void> {
-        // Update sort_order for each field
-        const updates = orderedIds.map((id, index) =>
+    async reorderFields(
+        schoolId: string,
+        categoryId: string,
+        items: { id: string; sort_order: number }[]
+    ): Promise<void> {
+        const updates = items.map(({ id, sort_order }) =>
             supabase
                 .from('custom_field_definitions')
-                .update({ sort_order: index })
+                .update({ sort_order })
                 .eq('id', id)
                 .eq('school_id', schoolId)
                 .eq('category_id', categoryId)

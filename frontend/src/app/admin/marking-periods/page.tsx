@@ -38,6 +38,15 @@ const CHILD_TYPE: Record<MarkingPeriodType, MarkingPeriodType | null> = {
 const MP_TYPES: MarkingPeriodType[] = ["FY", "SEM", "QTR", "PRO"]
 
 import { useTranslations } from "next-intl"
+import { useSchoolSettings } from "@/context/SchoolSettingsContext"
+import { getMarkingPeriodGroups, type MarkingPeriodGroup } from "@/lib/api/marking-period-groups"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export default function MarkingPeriodsPage() {
   const t = useTranslations('school.marking_periods')
@@ -48,6 +57,9 @@ export default function MarkingPeriodsPage() {
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
 
+  const { isPluginActive } = useSchoolSettings()
+  const mpGroupsActive = isPluginActive('marking_period_groups')
+
   const [grouped, setGrouped] = useState<GroupedMarkingPeriods>({
     FY: [],
     SEM: [],
@@ -56,6 +68,10 @@ export default function MarkingPeriodsPage() {
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+
+  // Group filter (plugin-gated)
+  const [mpGroups, setMpGroups] = useState<MarkingPeriodGroup[]>([])
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
 
   // Currently selected marking period for editing
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -94,7 +110,7 @@ export default function MarkingPeriodsPage() {
     }
 
     try {
-      const data = await getMarkingPeriodsGrouped(selectedCampus?.id)
+      const data = await getMarkingPeriodsGrouped(selectedCampus?.id, selectedGroupId || undefined)
       setGrouped(data)
     } catch (error) {
       console.error("Error fetching marking periods:", error)
@@ -102,11 +118,19 @@ export default function MarkingPeriodsPage() {
     } finally {
       setLoading(false)
     }
-  }, [profile?.school_id, selectedCampus?.id, t])
+  }, [profile?.school_id, selectedCampus?.id, selectedGroupId, t])
 
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  // Load groups when plugin is active
+  useEffect(() => {
+    if (!mpGroupsActive) return
+    getMarkingPeriodGroups(selectedCampus?.id)
+      .then(setMpGroups)
+      .catch(() => {})
+  }, [mpGroupsActive, selectedCampus?.id])
 
   // ========================================================================
   // SELECTION & EDIT FORM
@@ -181,6 +205,7 @@ export default function MarkingPeriodsPage() {
         does_grades: true,
         does_comments: false,
         campus_id: selectedCampus?.id || null,
+        group_id: selectedGroupId || null,
       })
 
       toast.success(t('create_success', { type: campusT(mpType) }))
@@ -360,6 +385,29 @@ export default function MarkingPeriodsPage() {
           {t('subtitle', { campus: selectedCampus ? ` — ${selectedCampus.name}` : "" })}
         </p>
       </div>
+
+      {/* Group selector (plugin-gated) */}
+      {mpGroupsActive && mpGroups.length > 0 && (
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium text-muted-foreground">{t('group_filter')}:</span>
+          <Select
+            value={selectedGroupId ?? 'all'}
+            onValueChange={(v) => { setSelectedGroupId(v === 'all' ? null : v); setSelectedId(null) }}
+          >
+            <SelectTrigger className="w-48 h-8 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('all_groups')}</SelectItem>
+              {mpGroups.map((g) => (
+                <SelectItem key={g.id} value={g.id}>
+                  {g.name}{g.is_default ? ' ★' : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* ================================================================ */}
       {/* EDIT FORM (top section — shown when an item is selected) */}

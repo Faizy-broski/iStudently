@@ -125,6 +125,7 @@ export class StudentService {
           phone,
           avatar_url,
           profile_photo_url,
+          username,
           is_active
         ),
         grade:grade_levels!grade_level_id(

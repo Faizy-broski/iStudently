@@ -60,14 +60,32 @@ export interface TemplateConfig {
   };
 }
 
+// Opaque config produced by the drag-and-drop ID Card Designer
+// (frontend/src/app/admin/id-card/page.tsx). Distinct shape/token vocabulary
+// from the form-builder's TemplateConfig above — marked with __designer so
+// the backend knows to skip the form-builder's token allowlist validation.
+export interface DesignerTemplateConfig {
+  __designer: true;
+  userType: string;
+  fields: unknown[];
+  bgColor: string;
+  bgGradient: string;
+  bgImage?: string;
+  borderColor: string;
+  cardThemeId: string;
+  borderWidth: number;
+  borderRadius: number;
+  dims: { width: number; height: number; unit: string };
+}
+
 export interface IdCardTemplate {
   id: string;
   campus_id: string;
   name: string;
   description: string;
-  user_type: 'student' | 'teacher' | 'staff';
+  user_type: 'student' | 'teacher' | 'staff' | 'librarian' | 'parent';
   occasion: string;
-  template_config: TemplateConfig;
+  template_config: TemplateConfig | DesignerTemplateConfig;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -98,9 +116,9 @@ export const getTemplateById = async (id: string) => {
 export const createTemplate = async (data: {
   name: string;
   description?: string;
-  user_type: 'student' | 'teacher' | 'staff';
+  user_type: 'student' | 'teacher' | 'staff' | 'librarian' | 'parent';
   occasion?: string;
-  template_config: TemplateConfig;
+  template_config: TemplateConfig | DesignerTemplateConfig;
 }) => {
   return apiRequest('/id-card-templates', {
     method: 'POST',
@@ -115,7 +133,7 @@ export const updateTemplate = async (
     name?: string;
     description?: string;
     occasion?: string;
-    template_config?: TemplateConfig;
+    template_config?: TemplateConfig | DesignerTemplateConfig;
   }
 ) => {
   return apiRequest(`/id-card-templates/${id}`, {

@@ -11,6 +11,9 @@ router.use(requireAdmin)
 // POST /api/credentials/bulk-assign — assign username+password to all null-username users in school
 router.post('/bulk-assign', credentialsController.bulkAssignUsernames)
 
+// POST /api/credentials/bulk-get-or-create — fetch (or first-time generate) credentials for a list of profiles
+router.post('/bulk-get-or-create', credentialsController.bulkGetOrCreateCredentials)
+
 // POST /api/credentials/:id/regenerate — issue new credentials for one user
 router.post('/:id/regenerate', credentialsController.regenerateCredentials)
 

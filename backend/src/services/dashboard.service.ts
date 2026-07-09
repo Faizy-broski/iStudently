@@ -191,4 +191,80 @@ export class DashboardService {
 
     return data?.value as Record<string, any>
   }
+
+  /**
+   * Default login page appearance — matches the page's current hardcoded look.
+   */
+  private readonly defaultLoginPageConfig: Record<string, any> = {
+    background_type: 'gradient', // 'gradient' | 'color' | 'image'
+    gradient_from: '#57A3CC',
+    gradient_to: '#022172',
+    background_color: '#022172',
+    background_image_url: null,
+    background_image_opacity: 1,
+    text_color_left: '#022172',
+    text_color_right: '#ffffff',
+    logo_url: null,
+    form_offset_x: 0,
+    form_offset_y: 0,
+    form_width: 448,
+  }
+
+  /**
+   * Get the global login page appearance config (public — read pre-login).
+   */
+  async getLoginPageConfig(): Promise<Record<string, any>> {
+    const { data, error } = await supabase
+      .from('platform_settings')
+      .select('value')
+      .eq('key', 'login_page')
+      .single()
+
+    if (error || !data) {
+      return this.defaultLoginPageConfig
+    }
+
+    return { ...this.defaultLoginPageConfig, ...(data.value as Record<string, any>) }
+  }
+
+  /**
+   * Update the global login page appearance config (super admin only).
+   */
+  async updateLoginPageConfig(updates: Record<string, any>): Promise<Record<string, any>> {
+    const current = await this.getLoginPageConfig()
+    const merged = { ...current, ...updates }
+
+    const { data, error } = await supabase
+      .from('platform_settings')
+      .upsert({ key: 'login_page', value: merged, updated_at: new Date().toISOString() })
+      .select('value')
+      .single()
+
+    if (error) {
+      throw new Error(`Failed to update login page config: ${error.message}`)
+    }
+
+    return data?.value as Record<string, any>
+  }
+
+  /**
+   * Reset the login page appearance config to defaults.
+   */
+  async resetLoginPageConfig(): Promise<Record<string, any>> {
+    const { data, error } = await supabase
+      .from('platform_settings')
+      .upsert({
+        key: 'login_page',
+        value: this.defaultLoginPageConfig,
+        updated_at: new Date().toISOString(),
+      })
+      .select('value')
+      .single()
+
+    if (error) {
+      throw new Error(`Failed to reset login page config: ${error.message}`)
+    }
+
+    return data?.value as Record<string, any>
+  }
 }

@@ -184,12 +184,17 @@ export async function deleteFieldDefinition(fieldId: string, campusId?: string):
 }
 
 /**
- * Reorder fields within a category
+ * Reorder fields within a category. Each item's sort_order is written as-is
+ * (e.g. its absolute position in a merged default+custom field list), not
+ * derived from array position.
  */
-export async function reorderFields(categoryId: string, orderedIds: string[]): Promise<ApiResponse<void>> {
+export async function reorderFields(
+    categoryId: string,
+    items: { id: string; sort_order: number }[]
+): Promise<ApiResponse<void>> {
     return apiRequest<void>('/custom-fields/reorder', {
         method: 'POST',
-        body: JSON.stringify({ category_id: categoryId, ordered_ids: orderedIds })
+        body: JSON.stringify({ category_id: categoryId, items })
     })
 }
 

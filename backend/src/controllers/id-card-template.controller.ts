@@ -92,8 +92,8 @@ export class IdCardTemplateController {
         return res.status(400).json({ error: 'Missing required fields: name, user_type, template_config' });
       }
 
-      if (!['student', 'teacher', 'staff'].includes(user_type)) {
-        return res.status(400).json({ error: 'Invalid user_type. Must be student, teacher, or staff' });
+      if (!['student', 'teacher', 'staff', 'librarian', 'parent'].includes(user_type)) {
+        return res.status(400).json({ error: 'Invalid user_type. Must be student, teacher, staff, librarian, or parent' });
       }
 
       const template = await templateService.createTemplate(

@@ -13,8 +13,12 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/s
 import { useAuth } from '@/context/AuthContext'
 import { useAcademic, getStoredSelectedQuarterId, type SelectedCoursePeriod } from '@/context/AcademicContext'
 import { getMarkingPeriods, type MarkingPeriod } from '@/lib/api/marking-periods'
+import { getMarkingPeriodGroups } from '@/lib/api/marking-period-groups'
+import { getGradeLevels } from '@/lib/api/academics'
+import { getStudentById } from '@/lib/api/students'
 import { getMyCoursePeriods, type CoursePeriod } from '@/lib/api/courses'
 import { useCampus } from '@/context/CampusContext'
+import { useSchoolSettings } from '@/context/SchoolSettingsContext'
 import { ProfileViewContext } from '@/context/ProfileViewContext'
 import { useParentDashboardSafe } from '@/context/ParentDashboardContext'
 import {
@@ -240,6 +244,36 @@ function AcademicSelectors() {
     profile?.role === 'student' ||
     isTeacher
 
+  const { isPluginActive } = useSchoolSettings()
+  const mpGroupsActive = isPluginActive('marking_period_groups')
+
+  // ── Resolve the student's effective group_id (plugin-gated) ──
+  const [studentGroupId, setStudentGroupId] = React.useState<string | null>(null)
+  React.useEffect(() => {
+    if (!mpGroupsActive || profile?.role !== 'student' || !profile?.student_id || !campusId) {
+      setStudentGroupId(null)
+      return
+    }
+    let active = true
+    async function resolveStudentGroup() {
+      try {
+        const [studentRes, groups, gradesRes] = await Promise.all([
+          getStudentById(profile!.student_id!, campusId || undefined),
+          getMarkingPeriodGroups(campusId || undefined),
+          getGradeLevels(campusId || undefined),
+        ])
+        if (!active) return
+        const gradeLevelId = studentRes.data?.grade?.id ?? null
+        const defaultGroup = groups.find(g => g.is_default) ?? null
+        if (!gradeLevelId) { setStudentGroupId(defaultGroup?.id ?? null); return }
+        const gl = (gradesRes.data ?? []).find(g => g.id === gradeLevelId)
+        setStudentGroupId(gl?.group_id ?? defaultGroup?.id ?? null)
+      } catch { /* ignore */ }
+    }
+    resolveStudentGroup()
+    return () => { active = false }
+  }, [mpGroupsActive, profile?.role, profile?.student_id, campusId])
+
   // ── Quarters (QTR marking periods) ──
   const [quarters, setQuarters] = React.useState<MarkingPeriod[]>([])
   const [loadingQ, setLoadingQ] = React.useState(false)
@@ -263,6 +297,13 @@ function AcademicSelectors() {
 
         const qtrs = (all || [])
           .filter(mp => mp.mp_type === 'QTR')
+          .filter(mp => {
+            // Group filter: students see only their group's quarters (when plugin active)
+            if (mpGroupsActive && profile?.role === 'student' && studentGroupId) {
+              return mp.group_id === studentGroupId
+            }
+            return true
+          })
           .filter(mp => {
             if (!currentAcademicYear || !mp.start_date) return true
             return mp.start_date >= currentAcademicYear.start_date && mp.start_date <= currentAcademicYear.end_date
@@ -295,7 +336,7 @@ function AcademicSelectors() {
     load()
     return () => { active = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [campusId, isVisible, selectedAcademicYear])
+  }, [campusId, isVisible, selectedAcademicYear, studentGroupId])
 
   React.useEffect(() => {
     if (!isTeacher || !selectedAcademicYear) {
@@ -502,6 +543,34 @@ function ParentSelectors() {
   // Parents don't have a campus_id in their profile so we derive it from the child.
   const childCampusId = selectedStudentData?.campus_id ?? undefined
 
+  const { isPluginActive: isPluginActiveParent } = useSchoolSettings()
+  const mpGroupsActiveParent = isPluginActiveParent('marking_period_groups')
+
+  // ── Resolve the selected child's effective group_id (plugin-gated) ──
+  const [childGroupId, setChildGroupId] = React.useState<string | null>(null)
+  React.useEffect(() => {
+    const childGradeLevelId = selectedStudentData?.grade_level_id
+    if (!mpGroupsActiveParent || !childGradeLevelId || !childCampusId) {
+      setChildGroupId(null)
+      return
+    }
+    let active = true
+    async function resolveChildGroup() {
+      try {
+        const [groups, gradesRes] = await Promise.all([
+          getMarkingPeriodGroups(childCampusId || undefined),
+          getGradeLevels(childCampusId || undefined),
+        ])
+        if (!active) return
+        const defaultGroup = groups.find(g => g.is_default) ?? null
+        const gl = (gradesRes.data ?? []).find(g => g.id === childGradeLevelId)
+        setChildGroupId(gl?.group_id ?? defaultGroup?.id ?? null)
+      } catch { /* ignore */ }
+    }
+    resolveChildGroup()
+    return () => { active = false }
+  }, [mpGroupsActiveParent, selectedStudentData?.grade_level_id, childCampusId])
+
   const [quarters, setQuarters] = React.useState<MarkingPeriod[]>([])
   const [loadingQ, setLoadingQ] = React.useState(false)
 
@@ -518,6 +587,13 @@ function ParentSelectors() {
 
         const qtrs = (all || [])
           .filter(mp => mp.mp_type === 'QTR')
+          .filter(mp => {
+            // Group filter: parents see only their child's group's quarters
+            if (mpGroupsActiveParent && childGroupId) {
+              return mp.group_id === childGroupId
+            }
+            return true
+          })
           .filter(mp => {
             if (!currentAcademicYear || !mp.start_date) return true
             return mp.start_date >= currentAcademicYear.start_date && mp.start_date <= currentAcademicYear.end_date
@@ -550,7 +626,7 @@ function ParentSelectors() {
     load()
     return () => { active = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [childCampusId, isParent, selectedAcademicYear])
+  }, [childCampusId, isParent, selectedAcademicYear, childGroupId])
 
   if (!isParent) return null
 

@@ -6,6 +6,7 @@ export interface ParentStudent {
   first_name: string
   last_name: string
   grade_level: string
+  grade_level_id: string | null
   section: string
   campus_id: string
   campus_name: string
@@ -99,6 +100,7 @@ class ParentDashboardService {
             profile_photo_url
           ),
           grade_level,
+          grade_level_id,
           section_id,
           sections(
             name
@@ -119,6 +121,7 @@ class ParentDashboardService {
       first_name: ps.student.profile.first_name,
       last_name: ps.student.profile.last_name,
       grade_level: ps.student.grade_level,
+      grade_level_id: ps.student.grade_level_id || null,
       section: ps.student.sections?.name || 'N/A',
       campus_id: ps.student.school_id,
       campus_name: ps.student.school.name,

@@ -19,6 +19,7 @@ export interface FeedbackReport {
   submitter_email: string | null
   title: string
   description: string
+  category: 'feature_request' | 'bug'
   status: 'open' | 'in_progress' | 'resolved'
   created_at: string
   updated_at: string
@@ -59,7 +60,11 @@ async function apiRequest<T = unknown>(
 }
 
 // Any authenticated user
-export async function submitFeedback(data: { title: string; description: string }): Promise<ApiResponse<FeedbackReport>> {
+export async function submitFeedback(data: {
+  title: string
+  description: string
+  category: 'feature_request' | 'bug'
+}): Promise<ApiResponse<FeedbackReport>> {
   return apiRequest<FeedbackReport>('/feedback', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -67,8 +72,11 @@ export async function submitFeedback(data: { title: string; description: string 
 }
 
 // Super admin only
-export async function getFeedbackReports(status?: string): Promise<ApiResponse<FeedbackReport[]>> {
-  const qs = status ? `?status=${encodeURIComponent(status)}` : ''
+export async function getFeedbackReports(status?: string, category?: string): Promise<ApiResponse<FeedbackReport[]>> {
+  const params = new URLSearchParams()
+  if (status) params.set('status', status)
+  if (category) params.set('category', category)
+  const qs = params.toString() ? `?${params.toString()}` : ''
   return apiRequest<FeedbackReport[]>(`/feedback${qs}`)
 }
 

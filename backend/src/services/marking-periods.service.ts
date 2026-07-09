@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase'
+import { markingPeriodGroupsService } from './marking-period-groups.service'
 
 // ============================================================================
 // TYPES
@@ -10,6 +11,7 @@ export interface MarkingPeriod {
   id: string
   school_id: string
   campus_id?: string | null
+  group_id?: string | null
   mp_type: MarkingPeriodType
   parent_id?: string | null
   title: string
@@ -27,6 +29,7 @@ export interface MarkingPeriod {
 }
 
 export interface CreateMarkingPeriodDTO {
+  group_id?: string | null
   mp_type: MarkingPeriodType
   parent_id?: string | null
   title: string
@@ -41,6 +44,7 @@ export interface CreateMarkingPeriodDTO {
 }
 
 export interface UpdateMarkingPeriodDTO {
+  group_id?: string | null
   title?: string
   short_name?: string
   sort_order?: number
@@ -76,7 +80,7 @@ class MarkingPeriodsService {
   /**
    * Get all marking periods for a school, organized by type
    */
-  async getAll(schoolId: string, campusId?: string): Promise<MarkingPeriod[]> {
+  async getAll(schoolId: string, campusId?: string, groupId?: string): Promise<MarkingPeriod[]> {
     let query = supabase
       .from('marking_periods')
       .select('*')
@@ -88,6 +92,10 @@ class MarkingPeriodsService {
     if (campusId) {
       // Include school-wide (null campus) AND campus-specific
       query = query.or(`campus_id.eq.${campusId},campus_id.is.null`)
+    }
+
+    if (groupId) {
+      query = query.eq('group_id', groupId)
     }
 
     const { data, error } = await query
@@ -103,8 +111,8 @@ class MarkingPeriodsService {
   /**
    * Get marking periods grouped by type for the RosarioSIS-style UI
    */
-  async getGroupedByType(schoolId: string, campusId?: string): Promise<Record<MarkingPeriodType, MarkingPeriod[]>> {
-    const all = await this.getAll(schoolId, campusId)
+  async getGroupedByType(schoolId: string, campusId?: string, groupId?: string): Promise<Record<MarkingPeriodType, MarkingPeriod[]>> {
+    const all = await this.getAll(schoolId, campusId, groupId)
 
     const grouped: Record<MarkingPeriodType, MarkingPeriod[]> = {
       'FY': [],
@@ -181,7 +189,12 @@ class MarkingPeriodsService {
       throw new Error('Grade Posting End date must be on or after Grade Posting Begin date')
     }
 
-    // Validate date ranges don't overlap with siblings of same type under same parent
+    // Default to this school/campus's Default group when none specified, so
+    // callers unaware of groups keep working exactly as before.
+    const groupId = dto.group_id
+      ?? (await markingPeriodGroupsService.getOrCreateDefaultGroup(schoolId, campusId)).id
+
+    // Validate date ranges don't overlap with siblings of same type/group under same parent
     if (dto.start_date && dto.end_date) {
       await this.validateDateOverlap(
         schoolId,
@@ -190,7 +203,8 @@ class MarkingPeriodsService {
         dto.parent_id || null,
         dto.start_date,
         dto.end_date,
-        null // no existing id (new record)
+        null, // no existing id (new record)
+        groupId
       )
     }
 
@@ -210,6 +224,7 @@ class MarkingPeriodsService {
       .insert({
         school_id: schoolId,
         campus_id: campusId,
+        group_id: groupId,
         mp_type: dto.mp_type,
         parent_id: dto.parent_id || null,
         title: dto.title,
@@ -266,11 +281,13 @@ class MarkingPeriodsService {
         existing.parent_id || null,
         startDate,
         endDate,
-        id
+        id,
+        dto.group_id !== undefined ? dto.group_id : existing.group_id || undefined
       )
     }
 
     const updateData: any = {}
+    if (dto.group_id !== undefined) updateData.group_id = dto.group_id
     if (dto.title !== undefined) updateData.title = dto.title
     if (dto.short_name !== undefined) updateData.short_name = dto.short_name
     if (dto.sort_order !== undefined) updateData.sort_order = dto.sort_order
@@ -324,7 +341,8 @@ class MarkingPeriodsService {
   async getCurrent(
     schoolId: string,
     mpType?: MarkingPeriodType,
-    campusId?: string
+    campusId?: string,
+    groupId?: string
   ): Promise<MarkingPeriod[]> {
     const today = new Date().toISOString().split('T')[0]
 
@@ -344,6 +362,10 @@ class MarkingPeriodsService {
 
     if (campusId) {
       query = query.or(`campus_id.eq.${campusId},campus_id.is.null`)
+    }
+
+    if (groupId) {
+      query = query.eq('group_id', groupId)
     }
 
     const { data, error } = await query
@@ -406,7 +428,8 @@ class MarkingPeriodsService {
     parentId: string | null,
     startDate: string,
     endDate: string,
-    excludeId: string | null
+    excludeId: string | null,
+    groupId?: string
   ): Promise<void> {
     let query = supabase
       .from('marking_periods')
@@ -425,6 +448,12 @@ class MarkingPeriodsService {
 
     if (campusId) {
       query = query.or(`campus_id.eq.${campusId},campus_id.is.null`)
+    }
+
+    // Scope overlap checks to the same group — different groups are allowed
+    // to cover the same calendar dates (that's the whole point of groups).
+    if (groupId) {
+      query = query.eq('group_id', groupId)
     }
 
     if (excludeId) {

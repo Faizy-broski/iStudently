@@ -17,7 +17,7 @@ import {
   AlignLeft, AlignCenter, AlignRight, Bold, Italic,
   Type, ImageIcon, Palette, Ruler,
   Users, GraduationCap, BookOpen, UserCheck, UserCircle, Settings,
-  FileText, Layers, QrCode,
+  FileText, Layers, QrCode, KeyRound,
 } from 'lucide-react'
 import QRCode from 'react-qr-code'
 import { getStudents } from '@/lib/api/students'
@@ -25,11 +25,20 @@ import { getAllTeachers } from '@/lib/api/teachers'
 import { getAllStaff } from '@/lib/api/staff'
 import { getParents } from '@/lib/api/parents'
 import { useCampus } from '@/context/CampusContext'
+import { bulkGetOrCreateCredentials, type UserCredentials } from '@/lib/api/credentials'
+import {
+  getTemplates as getIdCardTemplates,
+  createTemplate as createIdCardTemplate,
+  updateTemplate as updateIdCardTemplate,
+  deleteTemplate as deleteIdCardTemplate,
+  type DesignerTemplateConfig,
+} from '@/lib/api/id-card-template'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const PX_PER_INCH = 96
 const CANVAS_SCALE = 2.2 // display scale factor for the designer canvas
+const LOGIN_URL = 'https://www.istudent.ly'
 
 type Unit = 'in' | 'cm' | 'mm' | 'px'
 type UserType = 'student' | 'teacher' | 'staff' | 'librarian' | 'parent'
@@ -257,6 +266,9 @@ const TOKENS: Record<UserType, Record<string, { label: string; category: string;
     '{{current_date}}': { label: 'Today Date', category: 'Validity' },
     '{{custom_text}}': { label: 'Free Text Line', category: 'Decoration', isCustomText: true },
     '{{qr_code}}': { label: 'QR Code', category: 'QR Code', isQR: true },
+    '{{username}}': { label: 'Username', category: 'Credentials' },
+    '{{password}}': { label: 'Password', category: 'Credentials' },
+    '{{login_url}}': { label: 'Login URL', category: 'Credentials' },
   },
   teacher: {
     '{{photo_url}}': { label: 'Photo', category: 'Basic', isImage: true },
@@ -284,6 +296,9 @@ const TOKENS: Record<UserType, Record<string, { label: string; category: string;
     '{{issue_date}}': { label: 'Issue Date', category: 'Validity' },
     '{{custom_text}}': { label: 'Free Text Line', category: 'Decoration', isCustomText: true },
     '{{qr_code}}': { label: 'QR Code', category: 'QR Code', isQR: true },
+    '{{username}}': { label: 'Username', category: 'Credentials' },
+    '{{password}}': { label: 'Password', category: 'Credentials' },
+    '{{login_url}}': { label: 'Login URL', category: 'Credentials' },
   },
   staff: {
     '{{photo_url}}': { label: 'Photo', category: 'Basic', isImage: true },
@@ -309,6 +324,9 @@ const TOKENS: Record<UserType, Record<string, { label: string; category: string;
     '{{issue_date}}': { label: 'Issue Date', category: 'Validity' },
     '{{custom_text}}': { label: 'Free Text Line', category: 'Decoration', isCustomText: true },
     '{{qr_code}}': { label: 'QR Code', category: 'QR Code', isQR: true },
+    '{{username}}': { label: 'Username', category: 'Credentials' },
+    '{{password}}': { label: 'Password', category: 'Credentials' },
+    '{{login_url}}': { label: 'Login URL', category: 'Credentials' },
   },
   librarian: {
     '{{photo_url}}': { label: 'Photo', category: 'Basic', isImage: true },
@@ -330,6 +348,9 @@ const TOKENS: Record<UserType, Record<string, { label: string; category: string;
     '{{issue_date}}': { label: 'Issue Date', category: 'Validity' },
     '{{custom_text}}': { label: 'Free Text Line', category: 'Decoration', isCustomText: true },
     '{{qr_code}}': { label: 'QR Code', category: 'QR Code', isQR: true },
+    '{{username}}': { label: 'Username', category: 'Credentials' },
+    '{{password}}': { label: 'Password', category: 'Credentials' },
+    '{{login_url}}': { label: 'Login URL', category: 'Credentials' },
   },
   parent: {
     '{{photo_url}}': { label: 'Photo', category: 'Basic', isImage: true },
@@ -352,6 +373,9 @@ const TOKENS: Record<UserType, Record<string, { label: string; category: string;
     '{{issue_date}}': { label: 'Issue Date', category: 'Validity' },
     '{{custom_text}}': { label: 'Free Text Line', category: 'Decoration', isCustomText: true },
     '{{qr_code}}': { label: 'QR Code', category: 'QR Code', isQR: true },
+    '{{username}}': { label: 'Username', category: 'Credentials' },
+    '{{password}}': { label: 'Password', category: 'Credentials' },
+    '{{login_url}}': { label: 'Login URL', category: 'Credentials' },
   },
 }
 
@@ -605,8 +629,7 @@ function CanvasField({
         </button>
       )}
       {isImage ? (
-        <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded text-gray-400"
-          style={{ fontSize: field.fontSize * scale * 0.6 }}>
+        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#e5e7eb', color: '#9ca3af', borderRadius: '4px', fontSize: field.fontSize * scale * 0.6 }}>
           <ImageIcon style={{ width: field.height * scale * 0.4, height: field.height * scale * 0.4 }} />
         </div>
       ) : isQRField ? (
@@ -670,17 +693,79 @@ export default function IdCardDesignerPage() {
   const [printUsers, setPrintUsers] = useState<any[]>([])
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set())
   const [loadingUsers, setLoadingUsers] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+
+  // ── Login credentials (username/password fields), fetched on demand — session only ──
+  const [credentialsMap, setCredentialsMap] = useState<Record<string, { username: string; password: string }>>({})
+  const [loadingCredentials, setLoadingCredentials] = useState(false)
+
+  const handleLoadCredentials = async () => {
+    if (selectedUsers.size === 0) {
+      toast.warning(t('warn_select_users_print'))
+      return
+    }
+    setLoadingCredentials(true)
+    try {
+      // API requires profile_ids, but selectedUsers stores record IDs (student/teacher ID)
+      const mappings = printUsers
+        .filter((u: any) => selectedUsers.has(u.id))
+        .map((u: any) => ({
+          recordId: u.id,
+          profileId: u.profile_id || u.user_id || u.profile?.id || u.id
+        }))
+        .filter(m => m.profileId)
+
+      const profileIds = mappings.map(m => m.profileId)
+      if (profileIds.length === 0) {
+        toast.error("No linked profiles found for selected users")
+        return
+      }
+
+      const res = await bulkGetOrCreateCredentials(profileIds)
+      if (res.success && res.data?.credentials) {
+        setCredentialsMap(prev => {
+          const next = { ...prev }
+          for (const c of res.data!.credentials as UserCredentials[]) {
+            const match = mappings.find(m => m.profileId === c.id)
+            if (match) {
+              next[match.recordId] = { username: c.username, password: c.password }
+            }
+          }
+          return next
+        })
+        toast.success(`Loaded credentials for ${res.data.credentials.length} user(s)`)
+      } else {
+        toast.error(res.error || 'Failed to load credentials')
+      }
+    } finally {
+      setLoadingCredentials(false)
+    }
+  }
 
   // ── Mobile panel state (Fields | Canvas | Style) ──
   const [mobilePanel, setMobilePanel] = useState<'fields' | 'canvas' | 'style'>('canvas')
   const [printListOpen, setPrintListOpen] = useState(true)
 
-  // ── Templates ──
+  // ── Templates (persisted server-side, shared across the campus) ──
+  interface SavedDesignerTemplate {
+    id: string
+    name: string
+    userType: UserType
+    fields: DesignField[]
+    bgColor: string
+    bgGradient: string
+    bgImage: string
+    borderColor: string
+    cardThemeId: string
+    borderWidth: number
+    borderRadius: number
+    dims: CardDimensions
+  }
   const [templateName, setTemplateName] = useState('')
-  const [savedTemplates, setSavedTemplates] = useState<{ name: string; userType: UserType; fields: DesignField[]; bgColor: string; bgGradient: string; borderColor: string; cardThemeId: string; borderWidth: number; borderRadius: number; dims: CardDimensions }[]>(() => {
-    try { return JSON.parse(localStorage.getItem('id_card_templates') ?? '[]') } catch { return [] }
-  })
+  const [savedTemplates, setSavedTemplates] = useState<SavedDesignerTemplate[]>([])
+  const [templatesLoading, setTemplatesLoading] = useState(false)
+  const [savingTemplate, setSavingTemplate] = useState(false)
 
   // ── Canvas auto-scale based on container width ──
   const canvasContainerRef = useRef<HTMLDivElement>(null)
@@ -697,6 +782,43 @@ export default function IdCardDesignerPage() {
   const campusId = campusCtx?.selectedCampus?.id
   const schoolName = campusCtx?.selectedCampus?.name ?? ''
   const schoolLogo = campusCtx?.selectedCampus?.logo_url ?? ''
+
+  // ── Load saved designer templates for this campus ──
+  const refreshTemplates = useCallback(async () => {
+    setTemplatesLoading(true)
+    try {
+      const res: any = await getIdCardTemplates()
+      const list: SavedDesignerTemplate[] = (res?.templates ?? [])
+        .filter((tpl: any) => tpl?.template_config?.__designer)
+        .map((tpl: any) => {
+          const cfg = tpl.template_config as DesignerTemplateConfig
+          return {
+            id: tpl.id,
+            name: tpl.name,
+            userType: cfg.userType as UserType,
+            fields: cfg.fields as unknown as DesignField[],
+            bgColor: cfg.bgColor,
+            bgGradient: cfg.bgGradient,
+            bgImage: cfg.bgImage ?? '',
+            borderColor: cfg.borderColor,
+            cardThemeId: cfg.cardThemeId,
+            borderWidth: cfg.borderWidth,
+            borderRadius: cfg.borderRadius,
+            dims: cfg.dims as CardDimensions,
+          }
+        })
+      setSavedTemplates(list)
+    } catch {
+      toast.error(t('err_templates_fetch'))
+    } finally {
+      setTemplatesLoading(false)
+    }
+  }, [t])
+
+  useEffect(() => {
+    if (!campusId) return
+    refreshTemplates()
+  }, [campusId, refreshTemplates])
 
   const todayStr  = new Date().toLocaleDateString('en-GB').replace(/\//g, '-')
   const validTillStr = new Date(new Date().setFullYear(new Date().getFullYear() + 1))
@@ -739,6 +861,9 @@ export default function IdCardDesignerPage() {
       case '{{children_names}}':    return p('children_names')
       case '{{children_grades}}':   return p('children_grades')
       case '{{qr_code}}':           return u.student_number ?? u.employee_number ?? u.id ?? ''
+      case '{{username}}':          return credentialsMap[u.id]?.username ?? u.username ?? u.profile?.username ?? ''
+      case '{{password}}':          return credentialsMap[u.id]?.password ?? ''
+      case '{{login_url}}':         return LOGIN_URL
       default:                      return ''
     }
   }
@@ -905,42 +1030,70 @@ export default function IdCardDesignerPage() {
     setSelectedId(null)
   }
 
-  // ── Template save / load ──
-  const saveTemplate = () => {
+  // ── Template save / load (persisted server-side via id_card_templates) ──
+  const saveTemplate = async () => {
     const name = templateName.trim()
     if (!name) { toast.error(t('err_template_name')); return }
-    const tpl = { name, userType, fields, bgColor, bgGradient, borderColor, cardThemeId, borderWidth, borderRadius, dims }
-    setSavedTemplates(prev => {
-      const updated = prev.filter(t => t.name !== name).concat(tpl)
-      localStorage.setItem('id_card_templates', JSON.stringify(updated))
-      return updated
-    })
-    toast.success(t('toast_template_saved', { name }))
+    if (!campusId) { toast.error(t('err_select_campus')); return }
+
+    const templateConfig: DesignerTemplateConfig = {
+      __designer: true,
+      userType,
+      fields: fields as unknown[],
+      bgColor,
+      bgGradient,
+      bgImage,
+      borderColor,
+      cardThemeId,
+      borderWidth,
+      borderRadius,
+      dims,
+    }
+
+    setSavingTemplate(true)
+    try {
+      const existing = savedTemplates.find(st => st.name === name && st.userType === userType)
+      if (existing) {
+        await updateIdCardTemplate(existing.id, { name, template_config: templateConfig })
+      } else {
+        await createIdCardTemplate({ name, user_type: userType, template_config: templateConfig })
+      }
+      await refreshTemplates()
+      toast.success(t('toast_template_saved', { name }))
+    } catch (err: any) {
+      toast.error(err?.message || t('err_template_save'))
+    } finally {
+      setSavingTemplate(false)
+    }
   }
 
-  const loadTemplate = (name: string) => {
-    const tpl = savedTemplates.find(t => t.name === name)
+  const loadTemplate = (id: string) => {
+    const tpl = savedTemplates.find(st => st.id === id)
     if (!tpl) return
     setUserType(tpl.userType)
     setFields(tpl.fields)
     setBgColor(tpl.bgColor)
     setBgGradient(tpl.bgGradient)
+    setBgImage(tpl.bgImage)
     setBorderColor(tpl.borderColor)
     setCardThemeId(tpl.cardThemeId)
     setBorderWidth(tpl.borderWidth)
     setBorderRadius(tpl.borderRadius)
     setDims(tpl.dims)
     setSelectedId(null)
-    toast.success(t('toast_template_loaded', { name }))
+    toast.success(t('toast_template_loaded', { name: tpl.name }))
   }
 
-  const deleteTemplate = (name: string) => {
-    setSavedTemplates(prev => {
-      const updated = prev.filter(t => t.name !== name)
-      localStorage.setItem('id_card_templates', JSON.stringify(updated))
-      return updated
-    })
-    toast.success(t('toast_template_deleted', { name }))
+  const deleteTemplate = async (id: string) => {
+    const tpl = savedTemplates.find(st => st.id === id)
+    if (!tpl) return
+    try {
+      await deleteIdCardTemplate(id)
+      setSavedTemplates(prev => prev.filter(st => st.id !== id))
+      toast.success(t('toast_template_deleted', { name: tpl.name }))
+    } catch (err: any) {
+      toast.error(err?.message || t('err_template_delete'))
+    }
   }
 
   // ── Load users for print ──
@@ -1036,14 +1189,25 @@ export default function IdCardDesignerPage() {
       return
     }
 
+    setIsExporting(true)
     toast.info(t('info_generating_pdf', { count: cardEls.length }))
     try {
       const wIn = cardWidthPx / PX_PER_INCH
       const hIn = cardHeightPx / PX_PER_INCH
+
+      // Pack multiple cards per A4 page instead of one card per page.
+      const PAGE_W_IN = 8.27
+      const PAGE_H_IN = 11.69
+      const MARGIN_IN = 0.3
+      const GAP_IN = 0.15
+      const cols = Math.max(1, Math.floor((PAGE_W_IN - 2 * MARGIN_IN + GAP_IN) / (wIn + GAP_IN)))
+      const rows = Math.max(1, Math.floor((PAGE_H_IN - 2 * MARGIN_IN + GAP_IN) / (hIn + GAP_IN)))
+      const perPage = cols * rows
+
       const pdf = new jsPDF({
-        orientation: wIn > hIn ? 'landscape' : 'portrait',
+        orientation: 'portrait',
         unit: 'in',
-        format: [wIn, hIn],
+        format: [PAGE_W_IN, PAGE_H_IN],
       })
 
       // html2canvas can't parse modern CSS color functions (oklch/lab) used by Tailwind v4.
@@ -1069,10 +1233,36 @@ export default function IdCardDesignerPage() {
 
         clonedDoc.querySelectorAll('link[rel="stylesheet"]').forEach(el => el.remove())
         clonedDoc.querySelectorAll('style').forEach(el => el.remove())
+        
+        if ('adoptedStyleSheets' in clonedDoc) {
+          (clonedDoc as any).adoptedStyleSheets = [];
+        }
+
+        // Wipe any inline styles from html/body that might contain CSS variables (--color-*: lab(...))
+        if (clonedDoc.documentElement) clonedDoc.documentElement.removeAttribute('style');
+        if (clonedDoc.body) clonedDoc.body.removeAttribute('style');
 
         const style = clonedDoc.createElement('style')
-        style.textContent = fontFaces + `\n* { font-family: ${computedFont} !important; }`
+        style.textContent = fontFaces + `\n* { font-family: ${computedFont} !important; }\nbody { color: #000 !important; background: #fff !important; }`
         clonedDoc.head.appendChild(style)
+
+        // Patch getComputedStyle to strip lab/oklch colors that crash html2canvas
+        const win = clonedDoc.defaultView;
+        if (win) {
+          const origGCS = win.getComputedStyle;
+          win.getComputedStyle = function(el, pseudo) {
+            const css = origGCS.call(this, el, pseudo);
+            const origGetProp = css.getPropertyValue;
+            css.getPropertyValue = function(prop: string) {
+              const val = origGetProp.call(this, prop);
+              if (val && (val.includes('lab(') || val.includes('oklch(') || val.includes('color('))) {
+                return 'rgba(0,0,0,0)';
+              }
+              return val;
+            };
+            return css;
+          };
+        }
       }
 
       for (let i = 0; i < cardEls.length; i++) {
@@ -1081,8 +1271,16 @@ export default function IdCardDesignerPage() {
           width: cardEls[i].offsetWidth, height: cardEls[i].offsetHeight,
           onclone: (clonedDoc) => stripTailwindColors(clonedDoc),
         })
-        if (i > 0) pdf.addPage([wIn, hIn])
-        pdf.addImage(c.toDataURL('image/png'), 'PNG', 0, 0, wIn, hIn)
+
+        if (i > 0 && i % perPage === 0) pdf.addPage([PAGE_W_IN, PAGE_H_IN])
+
+        const posInPage = i % perPage
+        const col = posInPage % cols
+        const row = Math.floor(posInPage / cols)
+        const x = MARGIN_IN + col * (wIn + GAP_IN)
+        const y = MARGIN_IN + row * (hIn + GAP_IN)
+
+        pdf.addImage(c.toDataURL('image/png'), 'PNG', x, y, wIn, hIn)
       }
 
       pdf.save('id-cards.pdf')
@@ -1090,6 +1288,8 @@ export default function IdCardDesignerPage() {
     } catch (err) {
       console.error(err)
       toast.error(t('err_pdf_export'))
+    } finally {
+      setIsExporting(false)
     }
   }
 
@@ -1158,9 +1358,27 @@ export default function IdCardDesignerPage() {
             </Button>
           </div>
 
-          <Button size="sm" variant="outline" className="h-8 px-2 sm:px-3 text-xs gap-1" onClick={exportPDF}>
-            <Download className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{t('btn_export_pdf')}</span>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 px-2 sm:px-3 text-xs gap-1"
+            onClick={handleLoadCredentials}
+            disabled={loadingCredentials || selectedUsers.size === 0}
+            title="Generates login credentials the first time; safe to reuse afterwards — this session only, not saved to disk"
+          >
+            <KeyRound className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{loadingCredentials ? 'Loading...' : 'Load Credentials'}</span>
+          </Button>
+          <Button size="sm" variant="outline" className="h-8 px-2 sm:px-3 text-xs gap-1" onClick={exportPDF} disabled={isExporting}>
+            {isExporting ? (
+              <svg className="animate-spin h-3.5 w-3.5 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <Download className="h-3.5 w-3.5" />
+            )}
+            <span className="hidden sm:inline">{isExporting ? t('loading') : t('btn_export_pdf')}</span>
           </Button>
           <Button size="sm" className="h-8 px-2 sm:px-3 text-xs gap-1" onClick={handlePrint}>
             <Printer className="h-3.5 w-3.5" />
@@ -1275,6 +1493,52 @@ export default function IdCardDesignerPage() {
           <div className={`${mobilePanel === 'style' ? 'flex' : 'hidden'} lg:flex w-full lg:w-64 border-l bg-background flex-col print:hidden overflow-hidden`}>
             <ScrollArea className="flex-1">
               <div className="p-3 space-y-4">
+
+                {/* Your saved templates — kept at the top so it's visible without scrolling */}
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1">
+                    <Layers className="h-3 w-3" /> {t('section_templates')}
+                  </p>
+                  <div className="flex gap-1 mb-2">
+                    <Input
+                      value={templateName}
+                      onChange={e => setTemplateName(e.target.value)}
+                      placeholder={t('template_name_placeholder')}
+                      className="h-7 text-xs flex-1"
+                    />
+                    <Button size="sm" variant="outline" className="h-7 px-2 text-xs shrink-0" onClick={saveTemplate} disabled={savingTemplate}>
+                      {savingTemplate ? t('btn_saving') : t('btn_save')}
+                    </Button>
+                  </div>
+                  {templatesLoading ? (
+                    <p className="text-[10px] text-muted-foreground px-1">{t('loading_templates')}</p>
+                  ) : savedTemplates.length === 0 ? (
+                    <p className="text-[10px] text-muted-foreground px-1">{t('no_templates')}</p>
+                  ) : (
+                    <div className="space-y-0.5">
+                      {savedTemplates.map(st => (
+                        <div key={st.id} className="flex items-center gap-1 px-1">
+                          <button
+                            onClick={() => loadTemplate(st.id)}
+                            className="flex-1 text-left text-xs py-1 hover:text-primary truncate"
+                          >
+                            {st.name}
+                            <span className="ml-1 text-[9px] text-muted-foreground">({USER_TYPE_META[st.userType]?.label})</span>
+                          </button>
+                          <button
+                            onClick={() => deleteTemplate(st.id)}
+                            className="text-destructive hover:text-destructive/80 p-0.5 shrink-0"
+                            title="Delete template"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
 
                 {/* Card Dimensions */}
                 <div>
@@ -1662,50 +1926,6 @@ export default function IdCardDesignerPage() {
                   </div>
                 </div>
 
-                <Separator />
-
-                {/* Templates */}
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1">
-                    <Layers className="h-3 w-3" /> {t('section_templates')}
-                  </p>
-                  <div className="flex gap-1 mb-2">
-                    <Input
-                      value={templateName}
-                      onChange={e => setTemplateName(e.target.value)}
-                      placeholder={t('template_name_placeholder')}
-                      className="h-7 text-xs flex-1"
-                    />
-                    <Button size="sm" variant="outline" className="h-7 px-2 text-xs shrink-0" onClick={saveTemplate}>
-                      {t('btn_save')}
-                    </Button>
-                  </div>
-                  {savedTemplates.length === 0 ? (
-                    <p className="text-[10px] text-muted-foreground px-1">{t('no_templates')}</p>
-                  ) : (
-                    <div className="space-y-0.5">
-                      {savedTemplates.map(t => (
-                        <div key={t.name} className="flex items-center gap-1 px-1">
-                          <button
-                            onClick={() => loadTemplate(t.name)}
-                            className="flex-1 text-left text-xs py-1 hover:text-primary truncate"
-                          >
-                            {t.name}
-                            <span className="ml-1 text-[9px] text-muted-foreground">({USER_TYPE_META[t.userType]?.label})</span>
-                          </button>
-                          <button
-                            onClick={() => deleteTemplate(t.name)}
-                            className="text-destructive hover:text-destructive/80 p-0.5 shrink-0"
-                            title="Delete template"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
               </div>
             </ScrollArea>
           </div>
@@ -1823,8 +2043,8 @@ export default function IdCardDesignerPage() {
               <div className="flex flex-wrap gap-4 justify-center print:gap-4 min-w-max lg:min-w-0">
                 {filteredUsers.filter((u: any) => selectedUsers.has(u.id)).map((u: any) => {
                   const name = `${u.first_name ?? u.profile?.first_name ?? ''} ${u.last_name ?? u.profile?.last_name ?? ''}`.trim()
-                  // Use scale=2 for print quality; on mobile the container is narrower but cards are still scrollable
-                  const printScale = 2
+                  // Using scale=1 ensures the physical print size exactly matches the configured dimensions (1in = 96px).
+                  const printScale = 1
                   return (
                     <div
                       key={u.id}
@@ -1845,12 +2065,12 @@ export default function IdCardDesignerPage() {
                         flexShrink: 0,
                       }}
                     >
-                      <ThemeDecoLayer theme={activeTheme} width={cardWidthPx * 2} height={cardHeightPx * 2} />
+                      <ThemeDecoLayer theme={activeTheme} width={cardWidthPx * printScale} height={cardHeightPx * printScale} />
                       {fields.map(field => {
                         const isImage = field.type === 'image'
                         const isLabeled = field.type === 'labeled'
                         const isQRField = field.type === 'qrcode'
-                        const printScale = 2
+                        const printScale = 1
                         const boxStyle: React.CSSProperties = {
                           position: 'absolute',
                           left: field.x * printScale,
@@ -1911,7 +2131,7 @@ export default function IdCardDesignerPage() {
                                   <img src={imgSrc} alt=""
                                     style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: field.borderRadius }} />
                                 ) : (
-                                  <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400 rounded">
+                                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#e5e7eb', color: '#9ca3af', borderRadius: field.borderRadius }}>
                                     <UserCircle style={{ width: field.height * printScale * 0.6, height: field.height * printScale * 0.6 }} />
                                   </div>
                                 )
@@ -1936,21 +2156,32 @@ export default function IdCardDesignerPage() {
       {/* Print styles */}
       <style jsx global>{`
         @media print {
-          @page { margin: 0.3in; size: auto; }
+          @page { size: A4; margin: 10mm; }
           body * { visibility: hidden !important; }
           #id-card-print-area,
           #id-card-print-area * { visibility: visible !important; }
           #id-card-print-area {
-            position: fixed !important;
+            position: absolute !important;
             top: 0 !important; left: 0 !important;
-            width: 100vw !important;
+            width: 100% !important;
+            min-height: 100vh !important;
             background: white !important;
-            padding: 0.3in !important;
-            display: flex !important;
-            flex-wrap: wrap !important;
-            gap: 0.2in !important;
-            justify-content: center !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            display: block !important;
             overflow: visible !important;
+          }
+          #id-card-print-area > div {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fill, ${cardWidthPx}px) !important;
+            justify-content: center !important;
+            gap: 0.2in !important;
+            width: 100% !important;
+            min-width: 0 !important;
+          }
+          #id-card-print-area [data-print-card] {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
           }
         }
       `}</style>

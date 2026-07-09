@@ -16,10 +16,14 @@ interface AuthRequest extends Request {
 export async function submitFeedback(req: Request, res: Response): Promise<void> {
   try {
     const profile = (req as AuthRequest).profile
-    const { title, description } = req.body
+    const { title, description, category } = req.body
 
     if (!title?.trim())       { res.status(400).json({ success: false, error: 'Title is required' }); return }
     if (!description?.trim()) { res.status(400).json({ success: false, error: 'Description is required' }); return }
+    if (!['feature_request', 'bug'].includes(category)) {
+      res.status(400).json({ success: false, error: 'Category must be feature_request or bug' })
+      return
+    }
 
     const submitterName = profile
       ? `${profile.first_name ?? ''} ${profile.last_name ?? ''}`.trim() || null
@@ -33,6 +37,7 @@ export async function submitFeedback(req: Request, res: Response): Promise<void>
       submitter_email: profile?.email || null,
       title:           title.trim(),
       description:     description.trim(),
+      category,
     })
 
     res.status(201).json({ success: true, data: report })
@@ -44,7 +49,10 @@ export async function submitFeedback(req: Request, res: Response): Promise<void>
 export async function listFeedback(req: Request, res: Response): Promise<void> {
   try {
     const status = req.query.status as string | undefined
-    const reports = await service.getFeedbackReports(status ? { status } : undefined)
+    const category = req.query.category as string | undefined
+    const reports = await service.getFeedbackReports(
+      status || category ? { status, category } : undefined
+    )
     res.json({ success: true, data: reports })
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message || 'Failed to fetch feedback' })

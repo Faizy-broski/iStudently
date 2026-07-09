@@ -38,7 +38,7 @@ export const changePassword = async (req: Request, res: Response) => {
 
 /**
  * PUT /api/auth/profile
- * Body: { first_name?, last_name?, phone? }
+ * Body: { first_name?, last_name?, phone?, avatar_url? }
  * Any authenticated user can update their own profile fields.
  */
 export const updateProfile = async (req: Request, res: Response) => {
@@ -46,8 +46,8 @@ export const updateProfile = async (req: Request, res: Response) => {
     const userId = (req as AuthRequest).user?.id
     if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' })
 
-    const { first_name, last_name, phone } = req.body
-    await authService.updateProfile(userId, { first_name, last_name, phone })
+    const { first_name, last_name, phone, avatar_url } = req.body
+    await authService.updateProfile(userId, { first_name, last_name, phone, avatar_url })
     res.json({ success: true, message: 'Profile updated successfully' })
   } catch (error: any) {
     console.error('Error in updateProfile:', error)

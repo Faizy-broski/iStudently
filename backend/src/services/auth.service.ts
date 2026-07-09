@@ -31,12 +31,13 @@ class AuthService {
    */
   async updateProfile(
     userId: string,
-    data: { first_name?: string; last_name?: string; phone?: string }
+    data: { first_name?: string; last_name?: string; phone?: string; avatar_url?: string }
   ): Promise<void> {
     const update: Record<string, string> = {}
     if (data.first_name !== undefined) update.first_name = data.first_name.trim()
     if (data.last_name !== undefined) update.last_name = data.last_name.trim()
     if (data.phone !== undefined) update.phone = data.phone.trim()
+    if (data.avatar_url !== undefined) update.avatar_url = data.avatar_url.trim()
 
     if (Object.keys(update).length === 0) return
 

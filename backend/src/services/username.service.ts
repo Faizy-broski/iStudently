@@ -1,5 +1,7 @@
 import { supabase } from '../config/supabase'
 import bcrypt from 'bcrypt'
+import { encryptSecret, decryptSecret } from '../utils/crypto'
+import { validateCampusAccess } from '../utils/campus-validation'
 
 export async function generateUniqueUsername(): Promise<string> {
   for (let i = 0; i < 20; i++) {
@@ -29,16 +31,18 @@ export async function generateCredentials(): Promise<{ username: string; plainPa
 
 export async function regenerateCredentials(
   profileId: string,
-  schoolId: string
+  adminSchoolId: string
 ): Promise<{ username: string; plainPassword: string }> {
   const { data: profile, error: fetchError } = await supabase
     .from('profiles')
     .select('id, school_id')
     .eq('id', profileId)
-    .eq('school_id', schoolId)
     .maybeSingle()
 
-  if (fetchError || !profile) throw new Error('Profile not found or access denied')
+  if (fetchError || !profile) throw new Error('Profile not found')
+
+  const hasAccess = await validateCampusAccess(adminSchoolId, profile.school_id)
+  if (!hasAccess) throw new Error('Access denied')
 
   const { username, plainPassword } = await generateCredentials()
   const hashedPassword = await bcrypt.hash(plainPassword, 10)
@@ -48,6 +52,7 @@ export async function regenerateCredentials(
     .update({
       username,
       system_password: hashedPassword,
+      login_password_enc: encryptSecret(plainPassword),
       force_password_change: true,
       username_generated_at: new Date().toISOString(),
     })
@@ -60,4 +65,45 @@ export async function regenerateCredentials(
     .catch(() => {})
 
   return { username, plainPassword }
+}
+
+/**
+ * Fetch a profile's current login credentials for redisplay (e.g. printing an
+ * ID card). Never resets an existing password — only generates one the first
+ * time a profile has none (login_password_enc IS NULL).
+ */
+export async function getOrCreateStoredCredentials(
+  profileId: string,
+  adminSchoolId: string
+): Promise<{ username: string; password: string }> {
+  const { data: profile, error: fetchError } = await supabase
+    .from('profiles')
+    .select('id, username, login_password_enc, school_id')
+    .eq('id', profileId)
+    .maybeSingle()
+
+  if (fetchError || !profile) {
+    // Diagnostic checks to see if profileId is actually a record ID from another table
+    const [isParent, isStaff, isStudent] = await Promise.all([
+      supabase.from('parents').select('id, profile_id').eq('id', profileId).maybeSingle(),
+      supabase.from('staff').select('id, profile_id').eq('id', profileId).maybeSingle(),
+      supabase.from('students').select('id, profile_id').eq('id', profileId).maybeSingle()
+    ]);
+    console.error(`[Diagnostic] ID ${profileId} not in profiles. Found in - Parents: ${!!isParent.data}, Staff: ${!!isStaff.data}, Students: ${!!isStudent.data}`);
+    if (isParent.data) console.error(`[Diagnostic] Found parent. Actual profile_id is: ${isParent.data.profile_id}`);
+    throw new Error('Profile not found')
+  }
+
+  const hasAccess = await validateCampusAccess(adminSchoolId, profile.school_id)
+  if (!hasAccess) throw new Error('Access denied')
+
+  if (!profile.login_password_enc) {
+    const { username, plainPassword } = await regenerateCredentials(profileId, adminSchoolId)
+    return { username, password: plainPassword }
+  }
+
+  return {
+    username: profile.username,
+    password: decryptSecret(profile.login_password_enc),
+  }
 }

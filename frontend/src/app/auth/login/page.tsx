@@ -17,6 +17,7 @@ import { API_URL } from '@/config/api'
 import { useTranslations, useLocale } from 'next-intl'
 import { getLoginLinks, type CustomLink } from '@/lib/api/public-pages'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { getLoginPageConfig, DEFAULT_LOGIN_PAGE_CONFIG, type LoginPageConfig } from '@/lib/api/login-page-config'
 
 // ── Custom page viewer modal ──────────────────────────────────────────────────
 
@@ -146,6 +147,9 @@ function LoginForm() {
   const [openPage, setOpenPage] = useState<CustomLink | null>(null)
   const [aboutOpen, setAboutOpen] = useState(false)
 
+  // Super-admin-configured page appearance
+  const [pageConfig, setPageConfig] = useState<LoginPageConfig>(DEFAULT_LOGIN_PAGE_CONFIG)
+
   const error = searchParams.get('error')
 
   // Redirect already logged-in users
@@ -196,6 +200,11 @@ function LoginForm() {
     getLoginLinks()
       .then(res => { if (res.success && res.data) setCustomLinks(res.data) })
       .catch(() => {})
+  }, [])
+
+  // Fetch super-admin-configured page appearance (falls back to defaults on any failure)
+  useEffect(() => {
+    getLoginPageConfig().then(setPageConfig)
   }, [])
 
   // Trigger animations on mount
@@ -332,20 +341,29 @@ function LoginForm() {
       {/* LEFT: Branding */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-12 relative z-10">
         <div className={`text-center transition-all duration-1000 delay-300 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-          <h1 className="text-4xl lg:text-5xl font-bold text-brand-blue mb-4">
+          <h1 className="text-4xl lg:text-5xl font-bold mb-4" style={{ color: pageConfig.text_color_left }}>
             {t('title')}
           </h1>
-          <p className="text-gray-500 text-lg mb-8">
+          <p className="text-lg mb-8" style={{ color: pageConfig.text_color_left, opacity: 0.7 }}>
             {t('subtitle')}
           </p>
           <div className="relative w-64 h-64 mx-auto">
-            <Image
-              src="/images/logo.png"
-              alt="Studently Logo"
-              fill
-              className="object-contain"
-              priority
-            />
+            {pageConfig.logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={pageConfig.logo_url}
+                alt="Studently Logo"
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <Image
+                src="/images/logo.png"
+                alt="Studently Logo"
+                fill
+                className="object-contain"
+                priority
+              />
+            )}
           </div>
           <LoginQuoteWidget locale={locale as "en" | "ar"} />
         </div>
@@ -356,13 +374,28 @@ function LoginForm() {
 
         {/* Animated background bubble */}
         <div
-          className="absolute inset-0 gradient-blue shadow-2xl"
+          className="absolute inset-0 shadow-2xl"
           style={{
+            background:
+              pageConfig.background_type === 'image' && pageConfig.background_image_url
+                ? `url(${pageConfig.background_image_url})`
+                : pageConfig.background_type === 'color'
+                ? pageConfig.background_color
+                : `linear-gradient(to right, ${pageConfig.gradient_from}, ${pageConfig.gradient_to})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
             clipPath: isExpanded ? 'circle(150% at 100% 50%)' : 'circle(0% at 100% 50%)',
             WebkitClipPath: isExpanded ? 'circle(150% at 100% 50%)' : 'circle(0% at 100% 50%)',
             transition: 'clip-path 1.2s cubic-bezier(0.77, 0, 0.175, 1), -webkit-clip-path 1.2s cubic-bezier(0.77, 0, 0.175, 1)',
           }}
-        />
+        >
+          {pageConfig.background_type === 'image' && pageConfig.background_image_url && (
+            <div
+              className="absolute inset-0 bg-black"
+              style={{ opacity: 1 - pageConfig.background_image_opacity }}
+            />
+          )}
+        </div>
 
         <div
           className="absolute inset-y-0 left-0 w-1 bg-white/20 hidden lg:block"
@@ -370,9 +403,18 @@ function LoginForm() {
         />
 
         {/* Form container */}
-        <div className="relative z-20 w-full max-w-md px-8 py-12">
+        <div
+          className="relative z-20 w-full px-8 py-12"
+          style={{
+            maxWidth: pageConfig.form_width,
+            transform: `translate(${pageConfig.form_offset_x}px, ${pageConfig.form_offset_y}px)`,
+          }}
+        >
 
-          <h2 className={`text-3xl font-bold text-white mb-8 text-center lg:text-start ${anim('delay-100')}`}>
+          <h2
+            className={`text-3xl font-bold mb-8 text-center lg:text-start ${anim('delay-100')}`}
+            style={{ color: pageConfig.text_color_right }}
+          >
             {t('heading')}
           </h2>
 
@@ -408,7 +450,7 @@ function LoginForm() {
 
             {/* Email or Username */}
             <div className={anim('delay-200')}>
-              <Label className="text-white/90 mb-1.5 block">{t('label_email_or_username')}</Label>
+              <Label className="mb-1.5 block" style={{ color: pageConfig.text_color_right }}>{t('label_email_or_username')}</Label>
               <Input
                 type="text"
                 placeholder={t('placeholder_email_or_username')}
@@ -423,7 +465,7 @@ function LoginForm() {
 
             {/* Password */}
             <div className={anim('delay-300')}>
-              <Label className="text-white/90 mb-1.5 block">{t('label_password')}</Label>
+              <Label className="mb-1.5 block" style={{ color: pageConfig.text_color_right }}>{t('label_password')}</Label>
               <div className="relative">
                 <Input
                   type={showPassword ? 'text' : 'password'}
@@ -456,7 +498,8 @@ function LoginForm() {
                   className="border-white/30 data-[state=checked]:bg-white data-[state=checked]:text-brand-blue"
                 />
                 <span
-                  className="text-sm text-white/90 select-none"
+                  className="text-sm select-none"
+                  style={{ color: pageConfig.text_color_right }}
                   onClick={() => { if (!loading && !authLoading) setRememberMe(r => !r) }}
                 >
                   {t('remember_me')}
@@ -533,7 +576,10 @@ function LoginForm() {
             )}
 
             {/* Footer */}
-            <p className={`text-center text-white/70 text-sm mt-6 ${anim('delay-600')}`}>
+            <p
+              className={`text-center text-sm mt-6 ${anim('delay-600')}`}
+              style={{ color: pageConfig.text_color_right, opacity: 0.7 }}
+            >
               {t('contact_admin')}
             </p>
 

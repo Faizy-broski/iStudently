@@ -25,6 +25,7 @@ export interface GradeLevel {
   is_active: boolean
   next_grade_id?: string | null
   next_grade_name?: string | null
+  group_id?: string | null
   created_at: string
   updated_at: string
   created_by: string | null
@@ -69,6 +70,7 @@ export interface CreateGradeLevelDTO {
   order_index: number
   base_fee: number
   campus_id?: string // For campus-specific grade levels
+  group_id?: string | null
 }
 
 export interface UpdateGradeLevelDTO {
@@ -77,6 +79,7 @@ export interface UpdateGradeLevelDTO {
   base_fee?: number
   is_active?: boolean
   next_grade_id?: string | null
+  group_id?: string | null
 }
 
 export interface CreateSectionDTO {

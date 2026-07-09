@@ -268,17 +268,17 @@ export class CustomFieldsController {
                 return
             }
 
-            const { category_id, ordered_ids } = req.body
+            const { category_id, items } = req.body
 
-            if (!category_id || !Array.isArray(ordered_ids)) {
+            if (!category_id || !Array.isArray(items)) {
                 res.status(400).json({
                     success: false,
-                    error: 'Missing required fields: category_id, ordered_ids (array)'
+                    error: 'Missing required fields: category_id, items (array of {id, sort_order})'
                 })
                 return
             }
 
-            await customFieldsService.reorderFields(schoolId, category_id, ordered_ids)
+            await customFieldsService.reorderFields(schoolId, category_id, items)
 
             res.json({
                 success: true,

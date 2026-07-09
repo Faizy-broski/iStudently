@@ -20,3 +20,16 @@ export async function bulkAssignUsernames() {
     method: 'POST',
   })
 }
+
+export interface UserCredentials {
+  id: string
+  username: string
+  password: string
+}
+
+export async function bulkGetOrCreateCredentials(profileIds: string[]) {
+  return apiRequest<{ credentials: UserCredentials[] }>('/credentials/bulk-get-or-create', {
+    method: 'POST',
+    body: JSON.stringify({ profile_ids: profileIds }),
+  })
+}

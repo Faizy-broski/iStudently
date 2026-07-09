@@ -191,7 +191,8 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
     allSections.filter((s) =>
       s.is_active &&
       s.grade_level_id === selectedGradeId &&
-      (s.available_seats ?? 0) > 0
+      // Show section if available_seats is unknown (API didn't return it) or if seats remain
+      (s.available_seats === undefined || s.available_seats === null || s.available_seats > 0)
     ),
     [allSections, selectedGradeId]
   );
@@ -853,11 +854,14 @@ customFields.forEach((field) => {
                 />
               </SelectTrigger>
               <SelectContent>
-                {sections.map((section) => (
-                  <SelectItem key={section.id} value={section.id}>
-                    {section.name} - {section.available_seats}/{section.capacity} seats available
-                  </SelectItem>
-                ))}
+                {sections.map((section) => {
+                  const seats = section.available_seats ?? (section.capacity - section.current_strength)
+                  return (
+                    <SelectItem key={section.id} value={section.id}>
+                      {section.name} — {seats}/{section.capacity} seats available
+                    </SelectItem>
+                  )
+                })}
               </SelectContent>
             </Select>
             {selectedGradeId && sections.length === 0 && !isLoadingSections && (

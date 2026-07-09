@@ -439,11 +439,11 @@ export default function AddReferralForm({ targetKind }: { targetKind: Discipline
 
     fetchFields();
     if (targetKind === 'student') {
-      getGradeLevels().then((res) => {
+      getGradeLevels(campusId || schoolId || undefined).then((res) => {
         if (res.data) setGrades(res.data.filter((g) => g.is_active));
       });
     }
-  }, [schoolId, targetKind]);
+  }, [schoolId, campusId, targetKind]);
 
   // Multiple-student mode: load sections for the selected grade
   useEffect(() => {
@@ -805,7 +805,7 @@ export default function AddReferralForm({ targetKind }: { targetKind: Discipline
                   {grades.length > 0 && (
                     <Select value={gradeFilter} onValueChange={setGradeFilter}>
                       <SelectTrigger className="w-48 h-8 text-sm">
-                        <SelectValue />
+                        <SelectValue placeholder={t('allGrades')} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">{t('allGrades')}</SelectItem>

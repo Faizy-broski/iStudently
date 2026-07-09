@@ -4,6 +4,7 @@ import { supabase } from '../config/supabase'
 import * as usernameService from '../services/username.service'
 import { ApiResponse } from '../types'
 import bcrypt from 'bcrypt'
+import { encryptSecret } from '../utils/crypto'
 
 export const regenerateCredentials = async (
   req: AuthRequest,
@@ -53,6 +54,43 @@ export const getUsername = async (
   }
 }
 
+export const bulkGetOrCreateCredentials = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const schoolId = req.profile?.school_id
+    if (!schoolId) {
+      res.status(403).json({ success: false, error: 'School context required' } as ApiResponse)
+      return
+    }
+
+    const profileIds: string[] = Array.isArray(req.body?.profile_ids) ? req.body.profile_ids : []
+    if (!profileIds.length) {
+      res.json({ success: true, data: { credentials: [] } } as ApiResponse)
+      return
+    }
+
+    const credentials: { id: string; username: string; password: string }[] = []
+    for (const profileId of profileIds) {
+      try {
+        const { username, password } = await usernameService.getOrCreateStoredCredentials(
+          profileId,
+          schoolId
+        )
+        credentials.push({ id: profileId, username, password })
+      } catch (err: any) {
+        console.error('bulkGetOrCreateCredentials failed for profileId', profileId, err.message)
+        // Continue — don't let one failure break the batch
+      }
+    }
+
+    res.json({ success: true, data: { credentials } } as ApiResponse)
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message } as ApiResponse)
+  }
+}
+
 export const bulkAssignUsernames = async (
   req: AuthRequest,
   res: Response
@@ -87,6 +125,7 @@ export const bulkAssignUsernames = async (
           .update({
             username,
             system_password: hashedPassword,
+            login_password_enc: encryptSecret(plainPassword),
             force_password_change: true,
             username_generated_at: new Date().toISOString(),
           })

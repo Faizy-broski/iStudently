@@ -18,6 +18,7 @@ export interface MarkingPeriod {
   id: string
   school_id: string
   campus_id?: string | null
+  group_id?: string | null
   mp_type: MarkingPeriodType
   parent_id?: string | null
   title: string
@@ -42,6 +43,7 @@ export interface GroupedMarkingPeriods {
 }
 
 export interface CreateMarkingPeriodData {
+  group_id?: string | null
   mp_type: MarkingPeriodType
   parent_id?: string | null
   title: string
@@ -57,6 +59,7 @@ export interface CreateMarkingPeriodData {
 }
 
 export interface UpdateMarkingPeriodData {
+  group_id?: string | null
   title?: string
   short_name?: string
   sort_order?: number
@@ -99,10 +102,11 @@ import { apiRequest } from '@/lib/api'
 /**
  * Get all marking periods (flat list)
  */
-export async function getMarkingPeriods(campusId?: string): Promise<MarkingPeriod[]> {
+export async function getMarkingPeriods(campusId?: string, groupId?: string): Promise<MarkingPeriod[]> {
   const params = new URLSearchParams()
   if (campusId) params.append('campus_id', campusId)
-  
+  if (groupId) params.append('group_id', groupId)
+
   const query = params.toString() ? `?${params.toString()}` : ''
   const response = await apiRequest<MarkingPeriod[]>(
     `/marking-periods${query}`
@@ -114,10 +118,11 @@ export async function getMarkingPeriods(campusId?: string): Promise<MarkingPerio
 /**
  * Get marking periods grouped by type for the UI
  */
-export async function getMarkingPeriodsGrouped(campusId?: string): Promise<GroupedMarkingPeriods> {
+export async function getMarkingPeriodsGrouped(campusId?: string, groupId?: string): Promise<GroupedMarkingPeriods> {
   const params = new URLSearchParams()
   if (campusId) params.append('campus_id', campusId)
-  
+  if (groupId) params.append('group_id', groupId)
+
   const query = params.toString() ? `?${params.toString()}` : ''
   const response = await apiRequest<GroupedMarkingPeriods>(
     `/marking-periods/grouped${query}`
@@ -131,12 +136,14 @@ export async function getMarkingPeriodsGrouped(campusId?: string): Promise<Group
  */
 export async function getCurrentMarkingPeriods(
   mpType?: MarkingPeriodType,
-  campusId?: string
+  campusId?: string,
+  groupId?: string
 ): Promise<MarkingPeriod[]> {
   const params = new URLSearchParams()
   if (mpType) params.append('mp_type', mpType)
   if (campusId) params.append('campus_id', campusId)
-  
+  if (groupId) params.append('group_id', groupId)
+
   const query = params.toString() ? `?${params.toString()}` : ''
   const response = await apiRequest<MarkingPeriod[]>(
     `/marking-periods/current${query}`

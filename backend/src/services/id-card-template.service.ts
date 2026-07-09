@@ -371,6 +371,13 @@ export class IdCardTemplateService {
    * Validate template configuration
    */
   private validateTemplateConfig(config: TemplateConfig, userType: string) {
+    // Templates saved by the drag-and-drop ID Card Designer (admin/id-card page)
+    // are a different, self-contained shape/token vocabulary (it resolves its
+    // own tokens client-side and supports librarian/parent user types that
+    // SUBSTITUTION_TOKENS doesn't define) — skip the form-builder token
+    // allowlist check for those.
+    if ((config as any)?.__designer) return
+
     const allowedTokens = Object.keys(SUBSTITUTION_TOKENS[userType as keyof typeof SUBSTITUTION_TOKENS] || {});
 
     // Check all tokens in fields are valid

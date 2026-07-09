@@ -35,6 +35,7 @@ export async function updateProfile(data: {
   first_name?: string
   last_name?: string
   phone?: string
+  avatar_url?: string
 }): Promise<ApiResponse> {
   return apiRequest('/auth/profile', {
     method: 'PUT',

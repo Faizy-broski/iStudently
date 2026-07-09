@@ -26,22 +26,36 @@ const STATUS_LABELS: Record<FeedbackReport['status'], string> = {
   resolved: 'Resolved',
 }
 
+const CATEGORY_COLORS: Record<FeedbackReport['category'], string> = {
+  feature_request: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+  bug:              'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+}
+
+const CATEGORY_LABELS: Record<FeedbackReport['category'], string> = {
+  feature_request: 'Feature Request',
+  bug: 'Bug',
+}
+
 export default function SuperAdminFeedbackPage() {
   const [reports, setReports] = useState<FeedbackReport[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [updatingId, setUpdatingId] = useState<string | null>(null)
 
   const fetchReports = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await getFeedbackReports(statusFilter !== 'all' ? statusFilter : undefined)
+      const res = await getFeedbackReports(
+        statusFilter !== 'all' ? statusFilter : undefined,
+        categoryFilter !== 'all' ? categoryFilter : undefined
+      )
       if (res.success) setReports(res.data || [])
       else toast.error(res.error || 'Failed to load feedback')
     } finally {
       setLoading(false)
     }
-  }, [statusFilter])
+  }, [statusFilter, categoryFilter])
 
   useEffect(() => { fetchReports() }, [fetchReports])
 
@@ -70,6 +84,16 @@ export default function SuperAdminFeedbackPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-44">
+              <SelectValue placeholder="Filter by category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              <SelectItem value="feature_request">Suggest a new feature</SelectItem>
+              <SelectItem value="bug">Bug</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-44">
               <SelectValue placeholder="Filter by status" />
@@ -101,6 +125,7 @@ export default function SuperAdminFeedbackPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Category</TableHead>
                   <TableHead>Title</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead>Submitted By</TableHead>
@@ -111,6 +136,11 @@ export default function SuperAdminFeedbackPage() {
               <TableBody>
                 {reports.map((r) => (
                   <TableRow key={r.id}>
+                    <TableCell>
+                      <Badge variant="outline" className={CATEGORY_COLORS[r.category]}>
+                        {CATEGORY_LABELS[r.category]}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="font-medium max-w-[200px] truncate">{r.title}</TableCell>
                     <TableCell className="max-w-[320px] text-sm text-muted-foreground truncate" title={r.description}>
                       {r.description}

@@ -30,6 +30,7 @@ export const createGradeLevel = async (data: CreateGradeLevelDTO): Promise<Grade
       order_index: data.order_index,
       base_fee: data.base_fee,
       created_by: data.created_by,
+      group_id: data.group_id ?? null,
     })
     .select()
     .single()

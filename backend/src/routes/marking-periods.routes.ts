@@ -20,12 +20,13 @@ router.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     const campusId = (req.query.campus_id as string | undefined) || req.profile?.campus_id
+    const groupId = req.query.group_id as string | undefined
 
     if (!schoolId) {
       return res.status(400).json({ success: false, error: 'School ID required' })
     }
 
-    const data = await markingPeriodsService.getAll(schoolId, campusId)
+    const data = await markingPeriodsService.getAll(schoolId, campusId, groupId)
 
     res.json({ success: true, data })
   } catch (error: any) {
@@ -42,12 +43,13 @@ router.get('/grouped', async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     const campusId = (req.query.campus_id as string | undefined) || req.profile?.campus_id
+    const groupId = req.query.group_id as string | undefined
 
     if (!schoolId) {
       return res.status(400).json({ success: false, error: 'School ID required' })
     }
 
-    const data = await markingPeriodsService.getGroupedByType(schoolId, campusId)
+    const data = await markingPeriodsService.getGroupedByType(schoolId, campusId, groupId)
 
     res.json({ success: true, data })
   } catch (error: any) {
@@ -65,12 +67,13 @@ router.get('/current', async (req: AuthRequest, res: Response) => {
     const schoolId = req.profile?.school_id
     const campusId = (req.query.campus_id as string | undefined) || req.profile?.campus_id
     const mpType = req.query.mp_type as MarkingPeriodType | undefined
+    const groupId = req.query.group_id as string | undefined
 
     if (!schoolId) {
       return res.status(400).json({ success: false, error: 'School ID required' })
     }
 
-    const data = await markingPeriodsService.getCurrent(schoolId, mpType, campusId)
+    const data = await markingPeriodsService.getCurrent(schoolId, mpType, campusId, groupId)
 
     res.json({ success: true, data })
   } catch (error: any) {
@@ -131,6 +134,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
     }
 
     const dto: CreateMarkingPeriodDTO = {
+      group_id: req.body.group_id || null,
       mp_type: req.body.mp_type,
       parent_id: req.body.parent_id || null,
       title: req.body.title,
@@ -177,6 +181,7 @@ router.put('/:id', async (req: AuthRequest, res: Response) => {
     const { id } = req.params
 
     const dto: UpdateMarkingPeriodDTO = {}
+    if (req.body.group_id !== undefined) dto.group_id = req.body.group_id
     if (req.body.title !== undefined) dto.title = req.body.title
     if (req.body.short_name !== undefined) dto.short_name = req.body.short_name
     if (req.body.sort_order !== undefined) dto.sort_order = req.body.sort_order

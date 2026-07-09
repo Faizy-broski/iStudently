@@ -660,6 +660,25 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     ],
   },
 
+  // ── Marking Period Groups ────────────────────────────────────────────────
+  {
+    id: 'marking_period_groups',
+    name: 'Marking Period Groups',
+    description:
+      'Lets you define additional groups of marking periods with their own dates — useful when some Grade Levels use a different number of semesters/quarters than others. The "Default" group is the marking periods that already existed and cannot be deleted. Assign a group to each Grade Level from the Grade Levels page.',
+    icon: CalendarRange,
+    category: 'Grades',
+    settingsHref: '/admin/settings/marking-period-groups',
+    sidebarInjections: [
+      {
+        parentTitle: 'school',
+        items: [
+          { title: 'marking_period_groups', href: '/admin/settings/marking-period-groups', icon: CalendarRange },
+        ],
+      },
+    ],
+  },
+
   // ── Future plugins go here ────────────────────────────────────────────────
   // Example template:
   // {
