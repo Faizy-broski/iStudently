@@ -7,6 +7,7 @@ import { diaryReminderService } from "./diary-reminder.service";
 import { AutomaticRecordsService } from "./automaticRecords.service";
 import { twoFAService } from "./two-fa.service";
 import { sweepAllExpiredQuizzes } from "./quiz.service";
+import { GrievanceService } from "./grievance.service";
 
 /**
  * AUTOMATED CRON SERVICE
@@ -155,6 +156,26 @@ class CronService {
           await sweepAllExpiredQuizzes();
         } catch (error: any) {
           console.error("❌ [CRON] Quiz absentee sweep error:", error.message);
+        }
+      },
+      {
+        scheduled: true,
+        timezone: "Asia/Karachi",
+      },
+    );
+
+    // GrievancePortal SLA sweep — daily at 6:00 AM, marks overdue open
+    // complaints as escalated and logs an audit entry for each.
+    cron.schedule(
+      "0 6 * * *",
+      async () => {
+        try {
+          const result = await new GrievanceService().runSlaEscalationSweep();
+          if (result.escalated > 0) {
+            console.log(`⚠️ [CRON] Grievance SLA sweep escalated ${result.escalated} complaint(s)`);
+          }
+        } catch (error: any) {
+          console.error("❌ [CRON] Grievance SLA sweep error:", error.message);
         }
       },
       {

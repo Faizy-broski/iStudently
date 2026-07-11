@@ -129,6 +129,9 @@ export interface CreateStudentDTO {
   phone?: string
   profile_photo_url?: string // NEW: Supabase storage URL
   password?: string // NEW: Optional password
+  gender?: 'male' | 'female' | 'other'
+  date_of_birth?: string
+  national_id?: string
   medical_info?: Student['medical_info']
   custom_fields?: Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 }
@@ -147,6 +150,9 @@ export interface UpdateStudentDTO {
   profile_photo_url?: string // NEW
   password?: string // NEW: Optional password update
   is_active?: boolean // NEW: Toggle student active/inactive status
+  gender?: 'male' | 'female' | 'other'
+  date_of_birth?: string
+  national_id?: string
   medical_info?: Student['medical_info']
   custom_fields?: Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 }
@@ -293,49 +299,63 @@ export async function getStudentsPrintInfo(params: {
 // ============================================================================
 
 export interface BulkImportRow {
-  student_number: string
   first_name: string
   father_name?: string
   grandfather_name?: string
   last_name: string
   email: string
   phone?: string
-  password?: string
-  grade_level_name?: string
-  section_name?: string
+  gender?: 'male' | 'female' | 'other'
+  date_of_birth?: string
+  national_id?: string
+  /** Original row number in the uploaded file, echoed back on error rows */
+  _row?: number
 }
 
 export interface BulkImportError {
   row: number
-  student_number?: string
   error: string
+}
+
+export interface BulkImportCreatedStudent {
+  student_number: string
+  first_name: string
+  last_name: string
+  username?: string
+  password?: string
 }
 
 export interface BulkImportResult {
   success_count: number
   error_count: number
   errors: BulkImportError[]
-  created_students: Student[]
+  created: BulkImportCreatedStudent[]
 }
 
 export async function bulkImportStudents(
   students: BulkImportRow[],
+  target: { gradeLevelId: string; sectionId?: string },
   campusId?: string
 ) {
   return apiRequest<BulkImportResult>('/students/bulk-import', {
     method: 'POST',
-    body: JSON.stringify({ students, campus_id: campusId })
+    body: JSON.stringify({
+      students,
+      grade_level_id: target.gradeLevelId,
+      section_id: target.sectionId,
+      campus_id: campusId
+    })
   })
 }
 
 export function downloadStudentImportTemplate() {
   const headers = [
-    'student_number', 'first_name', 'father_name', 'grandfather_name',
-    'last_name', 'email', 'phone', 'password', 'grade_level_name', 'section_name'
+    'first_name', 'father_name', 'grandfather_name', 'last_name',
+    'email', 'phone', 'gender', 'date_of_birth', 'national_id'
   ]
   const example = [
-    'S001', 'John', 'Robert', 'James', 'Smith',
-    'john.smith@school.com', '+1234567890', 'Pass@1234', 'Grade 10', 'A'
+    'John', 'Robert', 'James', 'Smith',
+    'john.smith@school.com', '+1234567890', 'male', '2012-05-14', 'A123456789'
   ]
   const csv = [headers.join(','), example.join(',')].join('\n')
   const blob = new Blob([csv], { type: 'text/csv' })
@@ -345,4 +365,30 @@ export function downloadStudentImportTemplate() {
   a.download = 'student_import_template.csv'
   a.click()
   URL.revokeObjectURL(url)
+}
+
+// ============================================================================
+// BULK DELETE (super admin only)
+// ============================================================================
+
+export interface BulkDeleteResult {
+  deleted: number
+  errors: { student_id: string; error: string }[]
+}
+
+export async function bulkDeleteStudents(params: {
+  studentIds?: string[]
+  gradeLevelId?: string
+  sectionId?: string
+  campusId?: string
+}) {
+  return apiRequest<BulkDeleteResult>('/students/bulk-delete', {
+    method: 'POST',
+    body: JSON.stringify({
+      student_ids: params.studentIds,
+      grade_level_id: params.gradeLevelId,
+      section_id: params.sectionId,
+      campus_id: params.campusId
+    })
+  })
 }

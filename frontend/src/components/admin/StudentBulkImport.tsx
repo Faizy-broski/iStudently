@@ -22,9 +22,11 @@ import {
   bulkImportStudents,
   downloadStudentImportTemplate,
   type BulkImportRow,
-  type BulkImportError
+  type BulkImportError,
+  type BulkImportCreatedStudent
 } from "@/lib/api/students"
 import { useCampus } from "@/context/CampusContext"
+import { useGradeLevels, useSections } from "@/hooks/useAcademics"
 import { useTranslations } from "next-intl"
 
 // ─── Field definitions ────────────────────────────────────────────────────────
@@ -37,25 +39,20 @@ interface FieldDef {
 }
 
 const FIELD_DEFS: FieldDef[] = [
-  { key: "student_number",    labelKey: "student_number",    required: true,  hintKey: "student_number_hint" },
   { key: "first_name",        labelKey: "first_name",        required: true },
   { key: "last_name",         labelKey: "last_name",         required: true },
   { key: "email",             labelKey: "email",             required: true },
   { key: "father_name",       labelKey: "father_name",       required: false },
   { key: "grandfather_name",  labelKey: "grandfather_name",  required: false },
   { key: "phone",             labelKey: "phone",             required: false },
-  { key: "password",          labelKey: "password",          required: false, hintKey: "password_hint" },
-  { key: "grade_level_name",  labelKey: "grade_level",       required: false, hintKey: "grade_level_hint" },
-  { key: "section_name",      labelKey: "section",           required: false, hintKey: "section_hint" },
+  { key: "gender",            labelKey: "gender",            required: false, hintKey: "gender_hint" },
+  { key: "date_of_birth",     labelKey: "date_of_birth",     required: false, hintKey: "date_of_birth_hint" },
+  { key: "national_id",       labelKey: "national_id",       required: false },
 ]
 
 // ─── Auto-detect column mapping ───────────────────────────────────────────────
 
 const AUTO_DETECT_MAP: Record<string, keyof BulkImportRow> = {
-  // student_number
-  student_number: "student_number", studentnumber: "student_number",
-  "student number": "student_number", stud_no: "student_number", id: "student_number",
-  student_id: "student_number", studentid: "student_number",
   // first_name
   first_name: "first_name", firstname: "first_name", "first name": "first_name",
   given_name: "first_name", givenname: "first_name", fname: "first_name",
@@ -72,15 +69,14 @@ const AUTO_DETECT_MAP: Record<string, keyof BulkImportRow> = {
   // phone
   phone: "phone", phone_number: "phone", phonenumber: "phone", mobile: "phone",
   telephone: "phone", tel: "phone", "phone number": "phone",
-  // password
-  password: "password", pass: "password", pwd: "password",
-  // grade_level_name
-  grade_level_name: "grade_level_name", gradelevelname: "grade_level_name",
-  grade_level: "grade_level_name", "grade level": "grade_level_name",
-  grade: "grade_level_name", class: "grade_level_name",
-  // section_name
-  section_name: "section_name", sectionname: "section_name",
-  section: "section_name", "class section": "section_name",
+  // gender
+  gender: "gender", sex: "gender",
+  // date_of_birth
+  date_of_birth: "date_of_birth", dateofbirth: "date_of_birth", "date of birth": "date_of_birth",
+  dob: "date_of_birth", birth_date: "date_of_birth", birthdate: "date_of_birth",
+  // national_id
+  national_id: "national_id", nationalid: "national_id", "national id": "national_id",
+  civil_id: "national_id", "civil id": "national_id", id_number: "national_id",
 }
 
 function autoDetectMappings(csvColumns: string[]): Record<keyof BulkImportRow, string> {
@@ -110,7 +106,6 @@ function applyMappingAndValidate(
   mapping: Record<string, string>,   // fieldKey → csvColumn | SKIP
   t: (key: string) => string
 ): ParsedRow[] {
-  const seenNumbers = new Set<string>()
   const seenEmails = new Set<string>()
 
   return rawRows.map((raw, i): ParsedRow => {
@@ -122,41 +117,40 @@ function applyMappingAndValidate(
       return raw[col]?.toString().trim() ?? ""
     }
 
-    const studentNumber  = get("student_number")
     const firstName      = get("first_name")
     const lastName       = get("last_name")
     const email          = get("email").toLowerCase()
     const fatherName     = get("father_name")
     const grandfatherName = get("grandfather_name")
     const phone          = get("phone")
-    const password       = get("password")
-    const gradeLevelName = get("grade_level_name")
-    const sectionName    = get("section_name")
+    const genderRaw       = get("gender").toLowerCase()
+    const dateOfBirth    = get("date_of_birth")
+    const nationalId     = get("national_id")
 
-    if (!studentNumber)  errors.push(t("error_student_number_req"))
+    const gender = genderRaw === "male" || genderRaw === "m" ? "male"
+      : genderRaw === "female" || genderRaw === "f" ? "female"
+      : genderRaw ? "other" : undefined
+
     if (!firstName)      errors.push(t("error_first_name_req"))
     if (!lastName)       errors.push(t("error_last_name_req"))
     if (!email)          errors.push(t("error_email_req"))
     else if (!EMAIL_RE.test(email)) errors.push(`${t("error_invalid_email")}: ${email}`)
     else if (seenEmails.has(email)) errors.push(t("error_duplicate_email"))
-    if (studentNumber && seenNumbers.has(studentNumber)) errors.push(t("error_duplicate_student_number"))
 
-    if (studentNumber) seenNumbers.add(studentNumber)
     if (email && EMAIL_RE.test(email)) seenEmails.add(email)
 
     return {
       _rowIndex: i + 2,
       _clientErrors: errors,
-      student_number:   studentNumber,
       first_name:       firstName,
       last_name:        lastName,
       email,
       father_name:      fatherName   || undefined,
       grandfather_name: grandfatherName || undefined,
       phone:            phone        || undefined,
-      password:         password     || undefined,
-      grade_level_name: gradeLevelName || undefined,
-      section_name:     sectionName  || undefined,
+      gender,
+      date_of_birth:    dateOfBirth  || undefined,
+      national_id:      nationalId   || undefined,
     }
   })
 }
@@ -164,8 +158,8 @@ function applyMappingAndValidate(
 // ─── Error report download ────────────────────────────────────────────────────
 
 function downloadErrorReport(errors: BulkImportError[], t: (key: string) => string, filename = "student_import_errors.csv") {
-  const header = `${t("row_label")},${t("student_number_label")},${t("error_label")}`
-  const lines = errors.map(e => `${e.row},${e.student_number || ""},${JSON.stringify(e.error)}`)
+  const header = `${t("row_label")},${t("error_label")}`
+  const lines = errors.map(e => `${e.row},${JSON.stringify(e.error)}`)
   const csv = [header, ...lines].join("\n")
   const blob = new Blob([csv], { type: "text/csv" })
   const url = URL.createObjectURL(blob)
@@ -191,10 +185,17 @@ export function StudentBulkImport() {
   const [mapping, setMapping] = useState<Record<string, string>>({})
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([])
   const [importErrors, setImportErrors] = useState<BulkImportError[]>([])
+  const [createdStudents, setCreatedStudents] = useState<BulkImportCreatedStudent[]>([])
   const [successCount, setSuccessCount] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
+  const [targetGradeId, setTargetGradeId] = useState("")
+  const [targetSectionId, setTargetSectionId] = useState("")
   const fileRef = useRef<HTMLInputElement>(null)
+
+  const { gradeLevels } = useGradeLevels()
+  const { sections } = useSections()
+  const sectionsForGrade = sections.filter(s => s.grade_level_id === targetGradeId)
 
   const STEPS = [
     t("step_upload"), 
@@ -256,6 +257,10 @@ export function StudentBulkImport() {
   // ── Proceed from mapping → preview ─────────────────────────────────────────
 
   const applyMapping = () => {
+    if (!targetGradeId) {
+      toast.error(t("msg_target_grade_required"))
+      return
+    }
     const requiredMissing = FIELD_DEFS.filter(
       f => f.required && (!mapping[f.key] || mapping[f.key] === SKIP)
     )
@@ -278,8 +283,12 @@ export function StudentBulkImport() {
     setStep(4)
 
     try {
-      const payload: BulkImportRow[] = validRows.map(({ _rowIndex, _clientErrors, ...rest }) => rest)
-      const result = await bulkImportStudents(payload, campusId)
+      const payload = validRows.map(({ _rowIndex, _clientErrors, ...rest }) => ({ ...rest, _row: _rowIndex }))
+      const result = await bulkImportStudents(
+        payload,
+        { gradeLevelId: targetGradeId, sectionId: targetSectionId || undefined },
+        campusId
+      )
 
       if (!result.success || !result.data) {
         toast.error(result.error || t("msg_import_failed"))
@@ -289,6 +298,7 @@ export function StudentBulkImport() {
 
       setSuccessCount(result.data.success_count)
       setImportErrors(result.data.errors)
+      setCreatedStudents(result.data.created)
       setStep(5)
       if (result.data.success_count > 0)
         toast.success(t("msg_import_success", { count: result.data.success_count }))
@@ -305,6 +315,7 @@ export function StudentBulkImport() {
   const reset = () => {
     setParsedRows([]); setImportErrors([]); setSuccessCount(0)
     setCsvColumns([]); setRawRows([]); setMapping({}); setFileName("")
+    setTargetGradeId(""); setTargetSectionId(""); setCreatedStudents([])
     setStep(1)
   }
 
@@ -388,6 +399,52 @@ export function StudentBulkImport() {
               </Button>
             </div>
           </div>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">{t("target_class_title")}</CardTitle>
+              <CardDescription>{t("target_class_desc")}</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-sm font-medium flex items-center gap-1.5">
+                  {t("fields.grade_level")} <span className="text-red-500 text-xs">*</span>
+                </label>
+                <Select
+                  value={targetGradeId}
+                  onValueChange={val => { setTargetGradeId(val); setTargetSectionId("") }}
+                >
+                  <SelectTrigger className={!targetGradeId ? "border-red-400" : ""}>
+                    <SelectValue placeholder={t("select_grade_placeholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {gradeLevels.map(g => (
+                      <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium flex items-center gap-1.5">
+                  {t("fields.section")} <span className="text-muted-foreground text-xs">({tCommon("optional")})</span>
+                </label>
+                <Select
+                  value={targetSectionId}
+                  onValueChange={setTargetSectionId}
+                  disabled={!targetGradeId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("select_section_placeholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sectionsForGrade.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardContent className="pt-5">
@@ -488,7 +545,7 @@ export function StudentBulkImport() {
                 <div className="max-h-40 overflow-y-auto space-y-1">
                   {parsedRows.filter(r => r._clientErrors.length > 0).map(r => (
                     <div key={r._rowIndex} className="text-xs text-destructive">
-                      {tCommon("row")} {r._rowIndex}{r.student_number ? ` (${r.student_number})` : ""}: {r._clientErrors.join("; ")}
+                      {tCommon("row")} {r._rowIndex}{r.email ? ` (${r.email})` : ""}: {r._clientErrors.join("; ")}
                     </div>
                   ))}
                 </div>
@@ -505,7 +562,7 @@ export function StudentBulkImport() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b">
-                      {[t("th_row"), t("th_student_num"), t("th_first_name"), t("th_last_name"), t("th_email"), t("th_grade"), t("th_section"), tCommon("status")].map(h => (
+                      {[t("th_row"), t("th_first_name"), t("th_last_name"), t("th_email"), t("th_gender"), t("th_dob"), tCommon("status")].map(h => (
                         <th key={h} className="text-left py-1 px-2 font-medium text-muted-foreground rtl:text-right">{h}</th>
                       ))}
                     </tr>
@@ -514,12 +571,11 @@ export function StudentBulkImport() {
                     {parsedRows.slice(0, 20).map(row => (
                       <tr key={row._rowIndex} className={`border-b ${row._clientErrors.length > 0 ? "bg-destructive/5" : ""}`}>
                         <td className="py-1 px-2">{row._rowIndex}</td>
-                        <td className="py-1 px-2">{row.student_number}</td>
                         <td className="py-1 px-2">{row.first_name}</td>
                         <td className="py-1 px-2">{row.last_name}</td>
                         <td className="py-1 px-2">{row.email}</td>
-                        <td className="py-1 px-2">{row.grade_level_name || "—"}</td>
-                        <td className="py-1 px-2">{row.section_name || "—"}</td>
+                        <td className="py-1 px-2">{row.gender || "—"}</td>
+                        <td className="py-1 px-2">{row.date_of_birth || "—"}</td>
                         <td className="py-1 px-2">
                           {row._clientErrors.length > 0
                             ? <span className="text-destructive flex items-center gap-1"><XCircle className="h-3 w-3" /> {row._clientErrors[0]}</span>
@@ -581,16 +637,49 @@ export function StudentBulkImport() {
                     <thead>
                       <tr className="border-b">
                         <th className="text-left py-1 px-2 font-medium rtl:text-right">{t("th_row")}</th>
-                        <th className="text-left py-1 px-2 font-medium rtl:text-right">{t("th_student_num")}</th>
                         <th className="text-left py-1 px-2 font-medium rtl:text-right">{tCommon("error")}</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {importErrors.map(e => (
-                        <tr key={e.row} className="border-b">
-                          <td className="py-1 px-2">{e.row}</td>
-                          <td className="py-1 px-2">{e.student_number || "—"}</td>
+                      {importErrors.map((e, i) => (
+                        <tr key={i} className="border-b">
+                          <td className="py-1 px-2">{e.row ?? "—"}</td>
                           <td className="py-1 px-2 text-destructive">{e.error}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {createdStudents.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">{t("credentials_title")}</CardTitle>
+                <CardDescription>{t("credentials_desc")}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="max-h-80 overflow-y-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-1 px-2 font-medium rtl:text-right">{t("th_student_num")}</th>
+                        <th className="text-left py-1 px-2 font-medium rtl:text-right">{t("th_first_name")}</th>
+                        <th className="text-left py-1 px-2 font-medium rtl:text-right">{t("th_last_name")}</th>
+                        <th className="text-left py-1 px-2 font-medium rtl:text-right">{t("th_username")}</th>
+                        <th className="text-left py-1 px-2 font-medium rtl:text-right">{t("th_password")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {createdStudents.map((s, i) => (
+                        <tr key={i} className="border-b">
+                          <td className="py-1 px-2">{s.student_number}</td>
+                          <td className="py-1 px-2">{s.first_name}</td>
+                          <td className="py-1 px-2">{s.last_name}</td>
+                          <td className="py-1 px-2 font-mono">{s.username || "—"}</td>
+                          <td className="py-1 px-2 font-mono">{s.password || "—"}</td>
                         </tr>
                       ))}
                     </tbody>

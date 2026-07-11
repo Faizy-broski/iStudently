@@ -463,3 +463,11 @@ export async function deleteLibraryDocument(
     }
   }
 }
+
+// Note: grievance attachments are deliberately NOT uploaded directly to
+// Supabase Storage from here — the 'grievance-attachments' bucket has no
+// authenticated-role storage policies at all. Uploads/downloads go through
+// the backend instead (see frontend/src/lib/api/grievances.ts's
+// uploadAttachmentFile / getAttachmentUrl), which enforces per-complaint
+// authorization, this school's configured file type/size limits, and a
+// magic-byte content check before anything touches storage.

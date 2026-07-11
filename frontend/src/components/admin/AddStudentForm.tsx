@@ -78,6 +78,7 @@ const STANDARD_FIELDS = [
   { id: 'address', label: 'address', type: 'textarea', category: 'personal', sort_order: 8, required: false, width: 'full' },
   { id: 'email', label: 'email', type: 'email', category: 'personal', sort_order: 9, required: true, width: 'half' },
   { id: 'phoneNumber', label: 'phone_number', type: 'tel', category: 'personal', sort_order: 10, required: false, width: 'half' },
+  { id: 'nationalId', label: 'national_id', type: 'text', category: 'personal', sort_order: 11, required: false, width: 'half' },
 
   // ACADEMIC INFORMATION (Category: academic)
   { id: 'grade_level_id', label: 'grade_level', type: 'grade_select', category: 'academic', sort_order: 1, required: true, width: 'half' },
@@ -119,49 +120,88 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
 
-  const studentSchema = useMemo(() => z.object({
-    firstName: z.string().min(2, t("validation.first_name_min")),
-    fatherName: z.string().min(2, t("validation.father_name_min")),
-    grandfatherName: z.string().optional(),
-    lastName: z.string().min(2, t("validation.last_name_min")),
-    dateOfBirth: z.date({ message: t("validation.dob_required") }),
-    gender: z.enum(["male", "female"], { message: t("validation.gender_required") }),
-    gradeLevel: z.string().optional(),
-    grade_level_id: z.string().min(1, t("validation.grade_required")),
-    section_id: z.string().min(1, t("validation.section_required")),
-    admissionDate: z.date({ message: t("validation.admission_date_required") }),
-    bloodGroup: z.enum(["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"], { message: t("validation.blood_group_required") }),
-    hasAllergies: z.boolean(),
-    allergiesList: z.array(z.string()).min(0),
-    studentId: z.string(),
-    username: z.string(),
-    password: z.string(),
-    status: z.enum(["active", "inactive", "suspended"]),
-    studentPhoto: z.string().optional(),
-    address: z.string().optional(),
-    email: z.string().min(1, t("validation.email_required")).email(t("validation.email_invalid")),
-    phoneNumber: z.string().optional(),
-    previousSchoolHistory: z.object({
-      schoolName: z.string(),
-      transferDate: z.string(),
-      lastGradeCompleted: z.string(),
-    }),
-    medicalNotes: z.string(),
-    linkedParentId: z.string(),
-    parentRelationType: z.enum(["father", "mother", "guardian", "other"]),
-    emergencyContacts: z.array(z.object({
-      name: z.string(),
-      relationship: z.string(),
-      phone: z.string(),
-      address: z.string(),
-    })),
-  }), [t]);
-
   // API-based custom fields (replacing localStorage approach)
   const [customFields, setCustomFields] = useState<CustomFieldDefinition[]>([]);
   const [loadingFields, setLoadingFields] = useState(true);
   const [defaultFieldOrders, setDefaultFieldOrders] = useState<DefaultFieldOrder[]>([]);
   const [orderedStandardFields, setOrderedStandardFields] = useState(STANDARD_FIELDS);
+
+  // Base field types stay permissive (optional) — presence is enforced below
+  // via superRefine, driven by orderedStandardFields[].required, which a
+  // campus admin can toggle per field on the Custom Fields page instead of
+  // it being fixed in code. Format checks (min length, email shape, enum
+  // membership) still apply whenever a value IS provided.
+  const studentSchema = useMemo(() => {
+    const emptyToUndefined = (val: unknown) =>
+      val === null || (typeof val === 'string' && val.trim() === '') ? undefined : val;
+    const isEmptyValue = (value: unknown) =>
+      value === undefined || value === null ||
+      (typeof value === 'string' && value.trim() === '') ||
+      (Array.isArray(value) && value.length === 0);
+    const requiredMessages: Record<string, string> = {
+      firstName: t("validation.first_name_min"),
+      fatherName: t("validation.father_name_min"),
+      lastName: t("validation.last_name_min"),
+      dateOfBirth: t("validation.dob_required"),
+      gender: t("validation.gender_required"),
+      grade_level_id: t("validation.grade_required"),
+      section_id: t("validation.section_required"),
+      admissionDate: t("validation.admission_date_required"),
+      bloodGroup: t("validation.blood_group_required"),
+      email: t("validation.email_required"),
+    };
+
+    return z.object({
+      firstName: z.preprocess(emptyToUndefined, z.string().min(2, t("validation.first_name_min")).optional()),
+      fatherName: z.preprocess(emptyToUndefined, z.string().min(2, t("validation.father_name_min")).optional()),
+      grandfatherName: z.string().optional(),
+      lastName: z.preprocess(emptyToUndefined, z.string().min(2, t("validation.last_name_min")).optional()),
+      dateOfBirth: z.preprocess(emptyToUndefined, z.date().optional()),
+      gender: z.preprocess(emptyToUndefined, z.enum(["male", "female"]).optional()),
+      gradeLevel: z.string().optional(),
+      grade_level_id: z.preprocess(emptyToUndefined, z.string().optional()),
+      section_id: z.preprocess(emptyToUndefined, z.string().optional()),
+      admissionDate: z.preprocess(emptyToUndefined, z.date().optional()),
+      bloodGroup: z.preprocess(emptyToUndefined, z.enum(["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"]).optional()),
+      hasAllergies: z.boolean(),
+      allergiesList: z.array(z.string()).min(0),
+      studentId: z.string(),
+      username: z.string(),
+      password: z.string(),
+      status: z.enum(["active", "inactive", "suspended"]),
+      studentPhoto: z.string().optional(),
+      address: z.string().optional(),
+      email: z.preprocess(emptyToUndefined, z.string().email(t("validation.email_invalid")).optional()),
+      phoneNumber: z.string().optional(),
+      previousSchoolHistory: z.object({
+        schoolName: z.string(),
+        transferDate: z.string(),
+        lastGradeCompleted: z.string(),
+      }),
+      medicalNotes: z.string(),
+      linkedParentId: z.string(),
+      parentRelationType: z.enum(["father", "mother", "guardian", "other"]),
+      emergencyContacts: z.array(z.object({
+        name: z.string(),
+        relationship: z.string(),
+        phone: z.string(),
+        address: z.string(),
+      })),
+    }).superRefine((data, ctx) => {
+      orderedStandardFields.forEach(field => {
+        if (!field.required) return;
+        if (!(field.id in data)) return;
+        const value = (data as Record<string, unknown>)[field.id];
+        if (isEmptyValue(value)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [field.id],
+            message: requiredMessages[field.id] || t("validation.field_required", { defaultValue: "This field is required" }),
+          });
+        }
+      });
+    });
+  }, [t, orderedStandardFields]);
   const [activeTab, setActiveTab] = useState("personal");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -247,13 +287,19 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
         if (ordersResponse.success && ordersResponse.data) {
           setDefaultFieldOrders(ordersResponse.data);
 
-          // Apply orders to STANDARD_FIELDS
+          // Apply saved order + required overrides to STANDARD_FIELDS. Saved
+          // rows are keyed by field.id (a stable identifier), not field.label
+          // (which is just an i18n key) — matching on label would never hit.
           const orderedFields = STANDARD_FIELDS.map(field => {
-            // Get effective order for this field
             const categoryOrders = ordersResponse.data!.filter(o => o.category_id === field.category);
-            const savedOrder = categoryOrders.find(o => o.field_label === field.label);
+            const savedOrder = categoryOrders.find(o => o.field_label === field.id);
+            if (!savedOrder) return field;
 
-            return savedOrder ? { ...field, sort_order: savedOrder.sort_order } : field;
+            return {
+              ...field,
+              sort_order: savedOrder.sort_order,
+              required: typeof savedOrder.required === 'boolean' ? savedOrder.required : field.required,
+            };
           });
 
           setOrderedStandardFields(orderedFields);
@@ -397,6 +443,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
     lastName: "",
     dateOfBirth: null,
     gender: null,
+    nationalId: "",
     studentPhoto: "",
     address: "",
     email: "",
@@ -600,6 +647,9 @@ customFields.forEach((field) => {
         section_id: validatedData.section_id || undefined,
         campus_id: selectedCampus?.id, // Assign to selected campus
         profile_photo_url: formData.studentPhoto || undefined, // NEW: Supabase storage URL
+        gender: formData.gender || undefined,
+        date_of_birth: formData.dateOfBirth?.toISOString(),
+        national_id: formData.nationalId || undefined,
         medical_info: medicalInfo,
         custom_fields: {
           ...customFieldsData,

@@ -3,15 +3,22 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import OnboardSchoolForm from "@/components/forms/OnboardSchoolForm";
+import OnboardSchoolForm, { OnboardSuccessResult } from "@/components/forms/OnboardSchoolForm";
+import AdminCredentialsCard from "@/components/super-admin/AdminCredentialsCard";
 import { toast } from "sonner";
 
 export default function OnboardSchoolPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [credentialsResult, setCredentialsResult] = useState<OnboardSuccessResult | null>(null);
 
-  const handleSuccess = (schoolName: string) => {
-    toast.success(`School "${schoolName}" has been successfully onboarded!`);
+  const handleSuccess = (result: OnboardSuccessResult) => {
+    toast.success(`School "${result.schoolName}" has been successfully onboarded!`);
+    setCredentialsResult(result);
+  };
+
+  const closeCredentialsCard = () => {
+    setCredentialsResult(null);
     router.push("/superadmin/school-directory");
   };
 
@@ -46,6 +53,20 @@ export default function OnboardSchoolPage() {
           </CardContent>
         </Card>
       </div>
+
+      {credentialsResult && (
+        <AdminCredentialsCard
+          data={{
+            schoolName: credentialsResult.schoolName,
+            logoUrl: credentialsResult.logoUrl,
+            adminName: credentialsResult.adminName,
+            adminEmail: credentialsResult.adminEmail,
+            username: credentialsResult.username,
+            password: credentialsResult.password,
+          }}
+          onClose={closeCredentialsCard}
+        />
+      )}
     </div>
   );
 }

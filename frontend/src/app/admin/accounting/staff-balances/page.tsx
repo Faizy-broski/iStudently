@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { SortableTableHead } from '@/components/ui/sortable-table-head'
 import { Badge } from '@/components/ui/badge'
 import { IconLoader, IconPrinter } from '@tabler/icons-react'
 import useSWR from 'swr'
@@ -16,6 +17,9 @@ import { format } from 'date-fns'
 import { getAllStaff, Staff } from '@/lib/api/staff'
 import { useTranslations } from 'next-intl'
 import { useSchoolSettings } from '@/hooks/useSchoolSettings'
+import { useTableSort } from '@/hooks/useTableSort'
+
+type StaffBalanceSortKey = 'staff_name' | 'designation' | 'total_salary_due' | 'total_salary_paid' | 'manual_payments' | 'balance'
 
 const MONTHS = [
     { value: '01', monthKey: '0' },
@@ -158,8 +162,16 @@ export default function StaffBalancesPage() {
             sb.balance = sb.total_salary_due - sb.total_salary_paid - sb.manual_payments
         })
 
-        return Array.from(balanceMap.values()).sort((a, b) => b.balance - a.balance)
+        return Array.from(balanceMap.values())
     }, [staffResponse, staffPayments, salaryRecordsData])
+
+    const getStaffSortValue = (sb: StaffBalance, key: StaffBalanceSortKey): string | number => {
+        if (key === 'staff_name') return sb.staff_name.toLowerCase()
+        if (key === 'designation') return (sb.designation || '').toLowerCase()
+        return sb[key]
+    }
+    const { sorted: sortedStaffBalances, sortKey: staffSortKey, sortDir: staffSortDir, toggleSort: toggleStaffSort } =
+        useTableSort<StaffBalance, StaffBalanceSortKey>(staffBalances, getStaffSortValue, 'balance', 'desc')
 
     const handleApplyFilters = () => {
         let startDate: string | undefined
@@ -324,17 +336,17 @@ export default function StaffBalancesPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>{t('col_name')}</TableHead>
-                                    <TableHead>{t('col_title')}</TableHead>
-                                    <TableHead className="text-right">{t('col_salary_due')}</TableHead>
-                                    <TableHead className="text-right">{t('col_salary_paid')}</TableHead>
-                                    <TableHead className="text-right">{t('col_manual')}</TableHead>
-                                    <TableHead className="text-right">{t('col_balance')}</TableHead>
+                                    <SortableTableHead label={t('col_name')} sortKey="staff_name" activeKey={staffSortKey} direction={staffSortDir} onSort={key => toggleStaffSort(key, 'asc')} />
+                                    <SortableTableHead label={t('col_title')} sortKey="designation" activeKey={staffSortKey} direction={staffSortDir} onSort={key => toggleStaffSort(key, 'asc')} />
+                                    <SortableTableHead label={t('col_salary_due')} sortKey="total_salary_due" activeKey={staffSortKey} direction={staffSortDir} onSort={key => toggleStaffSort(key, 'desc')} align="right" />
+                                    <SortableTableHead label={t('col_salary_paid')} sortKey="total_salary_paid" activeKey={staffSortKey} direction={staffSortDir} onSort={key => toggleStaffSort(key, 'desc')} align="right" />
+                                    <SortableTableHead label={t('col_manual')} sortKey="manual_payments" activeKey={staffSortKey} direction={staffSortDir} onSort={key => toggleStaffSort(key, 'desc')} align="right" />
+                                    <SortableTableHead label={t('col_balance')} sortKey="balance" activeKey={staffSortKey} direction={staffSortDir} onSort={key => toggleStaffSort(key, 'desc')} align="right" />
                                     <TableHead>{tCommon('status')}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {staffBalances.map(sb => (
+                                {sortedStaffBalances.map(sb => (
                                     <TableRow key={sb.staff_id}>
                                         <TableCell className="font-medium">{sb.staff_name}</TableCell>
                                         <TableCell>{sb.designation || '-'}</TableCell>

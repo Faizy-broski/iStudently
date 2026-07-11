@@ -7,13 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Settings, Save, AlertTriangle, Clock, DollarSign, Palette, Loader2, Camera, KeyRound } from "lucide-react";
+import { Settings, Save, AlertTriangle, Clock, DollarSign, Palette, Loader2, Camera, KeyRound, MailX } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { UserQRCode } from "@/components/shared/UserQRCode";
 import { ProfilePhoto } from "@/components/shared/ProfilePhoto";
 import { usePlatformSettings } from "@/hooks/usePlatformSettings";
 import { CURRENCY_OPTIONS } from "@/lib/api/school-settings";
+import { messagingApi } from "@/lib/api/messaging";
 import { updateProfile as updateOwnProfile, changePassword as changeOwnPassword } from "@/lib/api/auth";
 import { createClient } from "@/lib/supabase/client";
 
@@ -111,6 +112,31 @@ export default function SuperAdminSettingsPage() {
   const [supportEmail, setSupportEmail] = useState("support@studently.com");
   const [maxSchools, setMaxSchools] = useState(1000);
   const [isSaving, setIsSaving] = useState(false);
+
+  const [deleteWindowMinutes, setDeleteWindowMinutes] = useState(0);
+  const [isSavingMessaging, setIsSavingMessaging] = useState(false);
+
+  useEffect(() => {
+    messagingApi.getMessagingSettings().then((res) => {
+      if (res.success && res.data) {
+        setDeleteWindowMinutes(Number(res.data.delete_window_minutes) || 0);
+      }
+    });
+  }, []);
+
+  const handleSaveMessagingSettings = async () => {
+    setIsSavingMessaging(true);
+    try {
+      const res = await messagingApi.updateMessagingSettings({ delete_window_minutes: deleteWindowMinutes });
+      if (res.success) {
+        toast.success("Messaging settings saved");
+      } else {
+        toast.error(res.error || "Failed to save messaging settings");
+      }
+    } finally {
+      setIsSavingMessaging(false);
+    }
+  };
 
   // Sync local state when settings load
   useEffect(() => {
@@ -251,6 +277,38 @@ export default function SuperAdminSettingsPage() {
           <Button onClick={handleSave} disabled={isSaving || settingsLoading}>
             <Save className="h-4 w-4 mr-2" />
             {isSaving ? "Saving..." : "Save Currency"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Messaging Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MailX className="h-5 w-5" />
+            Messaging — Delete Window
+          </CardTitle>
+          <CardDescription>
+            How long after sending a message it can still be deleted (by admins, super admins, or users explicitly
+            granted the Messaging permission). Set to 0 to disable message deletion entirely.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2 max-w-xs">
+            <Label htmlFor="deleteWindowMinutes">Delete window (minutes)</Label>
+            <Input
+              id="deleteWindowMinutes"
+              type="number"
+              min={0}
+              value={deleteWindowMinutes}
+              onChange={(e) => setDeleteWindowMinutes(Math.max(0, parseInt(e.target.value) || 0))}
+              placeholder="0"
+            />
+          </div>
+
+          <Button onClick={handleSaveMessagingSettings} disabled={isSavingMessaging}>
+            <Save className="h-4 w-4 mr-2" />
+            {isSavingMessaging ? "Saving..." : "Save Messaging Settings"}
           </Button>
         </CardContent>
       </Card>

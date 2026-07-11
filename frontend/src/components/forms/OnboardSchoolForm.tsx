@@ -7,13 +7,33 @@ import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { onboardSchool } from "@/lib/api/schools";
 import { handleApiError } from "@/lib/utils/error-handler";
 import { createClient } from "@/lib/supabase/client";
 import { billingPlansApi, BillingPlan, calculateBillingAmount, calculateDueDate } from "@/lib/api/billing";
-import { Loader2, Building2, User, Mail, Lock, Globe, MapPin, Check, Upload, X, DollarSign, Calendar, FileText, Eye, EyeOff } from "lucide-react";
+import { Loader2, Building2, User, Mail, Lock, Globe, MapPin, Check, Upload, X, DollarSign, Calendar, FileText, Eye, EyeOff, Clock } from "lucide-react";
+
+// Mirrors backend/src/services/username.service.ts so the preview shown here
+// matches what would be auto-derived server-side if left blank.
+function generateSuggestedPassword(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+}
+function generateSuggestedUsername(): string {
+  return Math.floor(10000000 + Math.random() * 90000000).toString();
+}
+
+export interface OnboardSuccessResult {
+  schoolName: string;
+  logoUrl?: string | null;
+  adminName: string;
+  adminEmail: string;
+  username: string;
+  password: string;
+}
 
 const onboardSchoolSchema = z.object({
   // School Information
@@ -41,6 +61,11 @@ const onboardSchoolSchema = z.object({
   billingPlanId: z.string().min(1, "Please select a billing plan"),
   billingCycle: z.enum(["Monthly", "Quarterly", "Yearly"]),
   startDate: z.string().min(1, "Start date is required"),
+
+  // Trial / Test Access
+  isTrial: z.boolean().optional(),
+  trialDuration: z.enum(["5days", "2weeks", "1month", "custom"]).optional(),
+  trialEndDate: z.string().optional(),
 }).refine((data) => data.adminPassword === data.adminPasswordConfirm, {
   message: "Passwords don't match",
   path: ["adminPasswordConfirm"],
@@ -49,7 +74,7 @@ const onboardSchoolSchema = z.object({
 type OnboardSchoolFormData = z.infer<typeof onboardSchoolSchema>;
 
 interface OnboardSchoolFormProps {
-  onSuccess: (schoolName: string) => void;
+  onSuccess: (result: OnboardSuccessResult) => void;
   isSubmitting: boolean;
   setIsSubmitting: (value: boolean) => void;
 }
@@ -80,8 +105,20 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
     defaultValues: {
       billingCycle: "Monthly",
       startDate: new Date().toISOString().split('T')[0],
+      isTrial: false,
+      trialDuration: "2weeks",
     },
   });
+
+  // Pre-fill admin username/password with a strong auto-generated suggestion
+  // as soon as the form mounts — still fully editable afterward.
+  useEffect(() => {
+    setValue("adminUsername", generateSuggestedUsername());
+    const suggestedPassword = generateSuggestedPassword();
+    setValue("adminPassword", suggestedPassword);
+    setValue("adminPasswordConfirm", suggestedPassword);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fetch billing plans
   useEffect(() => {
@@ -203,7 +240,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
       ? ['schoolName', 'schoolSlug', 'contactEmail', 'address'] as const
       : currentStep === 2
       ? ['adminFirstName', 'adminLastName', 'adminEmail', 'adminUsername', 'adminPassword', 'adminPasswordConfirm'] as const
-      : ['subscriptionPlan', 'billingCycle', 'startDate'] as const;
+      : ['billingPlanId', 'billingCycle', 'startDate'] as const;
     
     const isValid = await trigger(fieldsToValidate);
     
@@ -272,7 +309,20 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
       
       // Calculate due date based on start date and billing cycle
       const dueDate = calculateDueDate(data.startDate, data.billingCycle);
-      
+
+      // Calculate trial end date, if this is a trial account
+      let trialEndsAt: string | null = null;
+      if (data.isTrial) {
+        if (data.trialDuration === "custom" && data.trialEndDate) {
+          trialEndsAt = new Date(data.trialEndDate).toISOString();
+        } else {
+          const days = data.trialDuration === "5days" ? 5 : data.trialDuration === "1month" ? 30 : 14;
+          const end = new Date(data.startDate);
+          end.setDate(end.getDate() + days);
+          trialEndsAt = end.toISOString();
+        }
+      }
+
       await onboardSchool({
         school: {
           name: data.schoolName,
@@ -281,6 +331,8 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
           website: data.website || null,
           logo_url: logoUrl,
           address: data.address,
+          is_trial: !!data.isTrial,
+          trial_ends_at: trialEndsAt,
         },
         admin: {
           first_name: data.adminFirstName,
@@ -302,11 +354,21 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
       toast.success("School onboarded successfully!", {
         description: `${data.schoolName} has been created with admin account and billing`
       });
+
+      const result: OnboardSuccessResult = {
+        schoolName: data.schoolName,
+        logoUrl,
+        adminName: `${data.adminFirstName} ${data.adminLastName}`,
+        adminEmail: data.adminEmail,
+        username: data.adminUsername || "",
+        password: data.adminPassword,
+      };
+
       reset(); // Reset form after successful submission
       setCurrentStep(1); // Reset to first step
       setLogoFile(null);
       setLogoPreview(null);
-      onSuccess(data.schoolName);
+      onSuccess(result);
     } catch (error: any) {
       handleApiError(error);
     } finally {
@@ -612,7 +674,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
 
           <div className="space-y-2">
             <Label htmlFor="adminUsername" className="text-gray-700 dark:text-gray-300">
-              Username <span className="text-gray-400 dark:text-gray-500 text-xs font-normal">(optional — auto-generated if blank)</span>
+              Username <span className="text-gray-400 dark:text-gray-500 text-xs font-normal">(auto-generated — edit if you want a specific value)</span>
             </Label>
             <div className="relative">
               <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -634,7 +696,8 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label htmlFor="adminPassword" className="text-gray-700 dark:text-gray-300">
-                Password <span className="text-red-500">*</span>
+                Password <span className="text-red-500">*</span>{" "}
+                <span className="text-gray-400 dark:text-gray-500 text-xs font-normal">(auto-generated)</span>
               </Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -710,6 +773,65 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Select a subscription plan and billing cycle for the school
             </p>
+          </div>
+
+          {/* Trial / Test Access */}
+          <div className="space-y-2 p-4 rounded-lg border border-dashed border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/10">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="isTrial"
+                checked={watch("isTrial") || false}
+                onCheckedChange={(checked) => setValue("isTrial", checked === true)}
+                disabled={isSubmitting}
+              />
+              <label
+                htmlFor="isTrial"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none flex items-center gap-1.5"
+              >
+                <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                This is a test / trial account
+              </label>
+            </div>
+
+            {watch("isTrial") && (
+              <div className="pl-6 pt-2 space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-gray-700 dark:text-gray-300">Trial Duration</Label>
+                  <Select
+                    value={watch("trialDuration") || "2weeks"}
+                    onValueChange={(value) => setValue("trialDuration", value as any)}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger className="w-56 border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5days">5 Days</SelectItem>
+                      <SelectItem value="2weeks">2 Weeks</SelectItem>
+                      <SelectItem value="1month">1 Month</SelectItem>
+                      <SelectItem value="custom">Custom End Date</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {watch("trialDuration") === "custom" && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="trialEndDate" className="text-gray-700 dark:text-gray-300">Trial End Date</Label>
+                    <Input
+                      id="trialEndDate"
+                      type="date"
+                      {...register("trialEndDate")}
+                      disabled={isSubmitting}
+                      className="w-56 border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                    />
+                  </div>
+                )}
+
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  Access will automatically be blocked for this school once the trial ends.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Subscription Plan */}

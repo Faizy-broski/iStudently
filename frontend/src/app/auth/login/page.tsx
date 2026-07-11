@@ -82,6 +82,19 @@ interface SocialLoginConfig {
   school_id?: string | null
 }
 
+// Converts a #rrggbb (or #rgb) hex color to an rgba() string with the given alpha,
+// so the admin-configured text color can also drive the /60, /70, /80 "muted" variants
+// that were previously hardcoded as text-white/NN Tailwind classes.
+function withOpacity(hex: string, alpha: number): string {
+  let h = hex.replace('#', '')
+  if (h.length === 3) h = h.split('').map(c => c + c).join('')
+  const r = parseInt(h.substring(0, 2), 16)
+  const g = parseInt(h.substring(2, 4), 16)
+  const b = parseInt(h.substring(4, 6), 16)
+  if ([r, g, b].some(Number.isNaN)) return hex
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
 // ---------------------------------------------------------------------------
 // Language toggle button — writes cookie directly then hard-reloads
 // ---------------------------------------------------------------------------
@@ -335,6 +348,11 @@ function LoginForm() {
   // RTL when Arabic
   const dir = locale === 'ar' ? 'rtl' : 'ltr'
 
+  // Super-admin text overrides fall back to the default translations when blank
+  const titleText = (locale === 'ar' ? pageConfig.title_ar : pageConfig.title_en) || t('title')
+  const subtitleText = (locale === 'ar' ? pageConfig.subtitle_ar : pageConfig.subtitle_en) || t('subtitle')
+  const headingText = (locale === 'ar' ? pageConfig.heading_ar : pageConfig.heading_en) || t('heading')
+
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-white overflow-hidden" dir={dir}>
 
@@ -342,10 +360,10 @@ function LoginForm() {
       <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-12 relative z-10">
         <div className={`text-center transition-all duration-1000 delay-300 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           <h1 className="text-4xl lg:text-5xl font-bold mb-4" style={{ color: pageConfig.text_color_left }}>
-            {t('title')}
+            {titleText}
           </h1>
           <p className="text-lg mb-8" style={{ color: pageConfig.text_color_left, opacity: 0.7 }}>
-            {t('subtitle')}
+            {subtitleText}
           </p>
           <div className="relative w-64 h-64 mx-auto">
             {pageConfig.logo_url ? (
@@ -376,12 +394,14 @@ function LoginForm() {
         <div
           className="absolute inset-0 shadow-2xl"
           style={{
-            background:
+            backgroundColor:
+              pageConfig.background_type === 'color' ? pageConfig.background_color : undefined,
+            backgroundImage:
               pageConfig.background_type === 'image' && pageConfig.background_image_url
                 ? `url(${pageConfig.background_image_url})`
-                : pageConfig.background_type === 'color'
-                ? pageConfig.background_color
-                : `linear-gradient(to right, ${pageConfig.gradient_from}, ${pageConfig.gradient_to})`,
+                : pageConfig.background_type !== 'color'
+                ? `linear-gradient(to right, ${pageConfig.gradient_from}, ${pageConfig.gradient_to})`
+                : undefined,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             clipPath: isExpanded ? 'circle(150% at 100% 50%)' : 'circle(0% at 100% 50%)',
@@ -415,7 +435,7 @@ function LoginForm() {
             className={`text-3xl font-bold mb-8 text-center lg:text-start ${anim('delay-100')}`}
             style={{ color: pageConfig.text_color_right }}
           >
-            {t('heading')}
+            {headingText}
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -423,15 +443,15 @@ function LoginForm() {
             {/* Error messages */}
             {error === 'account_inactive' && (
               <div className={`p-3 rounded-lg bg-red-500/20 border border-red-400/30 ${anim('delay-150')}`}>
-                <p className="text-sm text-white">{t('err_inactive')}</p>
+                <p className="text-sm" style={{ color: pageConfig.text_color_right }}>{t('err_inactive')}</p>
               </div>
             )}
             {error === 'agreement_rejected' && (
               <div className={`p-3 rounded-lg bg-amber-500/20 border border-amber-400/30 ${anim('delay-150')}`}>
-                <p className="text-sm text-white font-medium">{t('err_agreement_rejected')}</p>
+                <p className="text-sm font-medium" style={{ color: pageConfig.text_color_right }}>{t('err_agreement_rejected')}</p>
                 <a
                   href="/agreement/reactivate"
-                  className="text-xs text-amber-200 underline underline-offset-2 mt-1 inline-block hover:text-white"
+                  className="text-xs text-amber-200 underline underline-offset-2 mt-1 inline-block hover:opacity-80"
                 >
                   {t('err_agreement_reactivate_link')}
                 </a>
@@ -439,14 +459,19 @@ function LoginForm() {
             )}
             {error === 'unauthorized' && (
               <div className={`p-3 rounded-lg bg-red-500/20 border border-red-400/30 ${anim('delay-150')}`}>
-                <p className="text-sm text-white">{t('err_unauthorized')}</p>
+                <p className="text-sm" style={{ color: pageConfig.text_color_right }}>{t('err_unauthorized')}</p>
               </div>
             )}
             {error === 'role_not_supported' && (
               <div className={`p-3 rounded-lg bg-red-500/20 border border-red-400/30 ${anim('delay-150')}`}>
-                <p className="text-sm text-white">{t('err_role')}</p>
+                <p className="text-sm" style={{ color: pageConfig.text_color_right }}>{t('err_role')}</p>
               </div>
             )}
+
+            {/* Scoped placeholder color for the themed inputs below — inline `style` can't target ::placeholder */}
+            <style>{`
+              .login-themed-input::placeholder { color: ${withOpacity(pageConfig.text_color_right, 0.5)}; }
+            `}</style>
 
             {/* Email or Username */}
             <div className={anim('delay-200')}>
@@ -456,7 +481,8 @@ function LoginForm() {
                 placeholder={t('placeholder_email_or_username')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-12 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:bg-white/20 focus:border-white transition-all"
+                className="login-themed-input h-12 bg-white/10 border-white/20 focus:bg-white/20 focus:border-white transition-all"
+                style={{ color: pageConfig.text_color_right }}
                 required
                 disabled={loading || authLoading}
                 autoComplete="username"
@@ -472,7 +498,8 @@ function LoginForm() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-12 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:bg-white/20 focus:border-white transition-all pr-10"
+                  className="login-themed-input h-12 bg-white/10 border-white/20 focus:bg-white/20 focus:border-white transition-all pr-10"
+                  style={{ color: pageConfig.text_color_right }}
                   required
                   disabled={loading || authLoading}
                   autoComplete="current-password"
@@ -480,7 +507,8 @@ function LoginForm() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute end-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors"
+                  className="absolute end-3 top-1/2 -translate-y-1/2 hover:opacity-80 transition-opacity"
+                  style={{ color: withOpacity(pageConfig.text_color_right, 0.7) }}
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -531,7 +559,7 @@ function LoginForm() {
               <div className={anim('delay-500')}>
                 <div className="flex items-center gap-3 my-2">
                   <div className="flex-1 h-px bg-white/20" />
-                  <span className="text-xs text-white/60 uppercase tracking-wide">{t('or')}</span>
+                  <span className="text-xs uppercase tracking-wide" style={{ color: withOpacity(pageConfig.text_color_right, 0.6) }}>{t('or')}</span>
                   <div className="flex-1 h-px bg-white/20" />
                 </div>
                 <div className="space-y-2.5">
@@ -540,7 +568,8 @@ function LoginForm() {
                       type="button"
                       onClick={() => handleSocialLogin('google')}
                       disabled={loading || authLoading || socialLoading}
-                      className="w-full h-11 flex items-center justify-center gap-2.5 bg-white/10 border border-white/20 rounded-md text-white text-sm font-medium hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full h-11 flex items-center justify-center gap-2.5 bg-white/10 border border-white/20 rounded-md text-sm font-medium hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ color: pageConfig.text_color_right }}
                     >
                       {socialLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
                         <svg className="h-4.5 w-4.5" viewBox="0 0 24 24">
@@ -558,7 +587,8 @@ function LoginForm() {
                       type="button"
                       onClick={() => handleSocialLogin('microsoft')}
                       disabled={loading || authLoading || socialLoading}
-                      className="w-full h-11 flex items-center justify-center gap-2.5 bg-white/10 border border-white/20 rounded-md text-white text-sm font-medium hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full h-11 flex items-center justify-center gap-2.5 bg-white/10 border border-white/20 rounded-md text-sm font-medium hover:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ color: pageConfig.text_color_right }}
                     >
                       {socialLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
                         <svg className="h-4.5 w-4.5" viewBox="0 0 23 23">
@@ -590,7 +620,8 @@ function LoginForm() {
                 <button
                   type="button"
                   onClick={() => setAboutOpen((o) => !o)}
-                  className="flex items-center gap-1.5 text-white/60 hover:text-white text-sm font-medium transition-colors select-none w-full"
+                  className="flex items-center gap-1.5 hover:opacity-100 text-sm font-medium transition-opacity select-none w-full"
+                  style={{ color: withOpacity(pageConfig.text_color_right, 0.6) }}
                 >
                   <ChevronRight
                     className={`h-4 w-4 transition-transform duration-200 ${aboutOpen ? 'rotate-90' : ''}`}
@@ -610,7 +641,8 @@ function LoginForm() {
                             href={link.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-2 text-white/80 hover:text-white text-sm transition-colors group"
+                            className="flex items-center gap-2 hover:opacity-100 text-sm transition-opacity group"
+                            style={{ color: withOpacity(pageConfig.text_color_right, 0.8) }}
                           >
                             <ExternalLink className="h-3.5 w-3.5 opacity-50 group-hover:opacity-100 shrink-0" />
                             {link.title}
@@ -622,7 +654,8 @@ function LoginForm() {
                           key={link.id}
                           type="button"
                           onClick={() => setOpenPage(link)}
-                          className="flex items-center gap-2 text-white/80 hover:text-white text-sm transition-colors text-start group"
+                          className="flex items-center gap-2 hover:opacity-100 text-sm transition-opacity text-start group"
+                          style={{ color: withOpacity(pageConfig.text_color_right, 0.8) }}
                         >
                           <ChevronRight className="h-3.5 w-3.5 opacity-50 group-hover:opacity-100 shrink-0" />
                           {link.title}

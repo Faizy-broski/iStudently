@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { StudentController } from '../controllers/student.controller'
 import { authenticate } from '../middlewares/auth.middleware'
-import { requireRole } from '../middlewares/role.middleware'
+import { requireRole, requireSuperAdmin } from '../middlewares/role.middleware'
 import type { AuthRequest } from '../middlewares/auth.middleware'
 import { getStudentRelatives } from '../services/parent.service'
 
@@ -98,6 +98,15 @@ router.get('/import-template', requireRole('admin'), (req, res) =>
  */
 router.post('/bulk-import', requireRole('admin'), (req, res) =>
   studentController.bulkImportStudents(req, res)
+)
+
+/**
+ * POST /api/students/bulk-delete
+ * Bulk delete students by IDs and/or grade/section filter
+ * Super admin only (cleanup for botched bulk imports)
+ */
+router.post('/bulk-delete', requireSuperAdmin, (req, res) =>
+  studentController.bulkDeleteStudents(req, res)
 )
 
 /**

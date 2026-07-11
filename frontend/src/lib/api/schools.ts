@@ -19,6 +19,8 @@ export interface School {
   contact_email: string
   parent_school_id: string | null
   logo_url?: string
+  is_trial?: boolean
+  trial_ends_at?: string | null
 }
 
 export interface CreateSchoolDTO {
@@ -155,12 +157,15 @@ export interface OnboardSchoolData {
     website?: string | null
     logo_url?: string | null
     address: string
+    is_trial?: boolean
+    trial_ends_at?: string | null
   }
   admin: {
     first_name: string
     last_name: string
     email: string
     password: string
+    username?: string
   }
   billing: {
     billing_plan_id: string
@@ -222,6 +227,17 @@ export async function getAdmin(schoolId: string): Promise<ApiResponse<any>> {
   return await apiRequest<any>(`/schools/${schoolId}/admin`)
 }
 
+export interface AdminCredentials {
+  admin_name: string
+  admin_email: string
+  username: string
+  password: string
+}
+
+export async function getAdminCredentials(schoolId: string): Promise<ApiResponse<AdminCredentials>> {
+  return await apiRequest<AdminCredentials>(`/schools/${schoolId}/admin/credentials`)
+}
+
 export async function updateAdmin(schoolId: string, data: any): Promise<ApiResponse<any>> {
   return await apiRequest<any>(`/schools/${schoolId}/admin`, {
     method: 'PATCH',
@@ -242,6 +258,7 @@ export const schoolApi = {
   updateStatus: updateSchoolStatus,
   delete: deleteSchool,
   getAdmin,
+  getAdminCredentials,
   updateAdmin,
   getStats
 }

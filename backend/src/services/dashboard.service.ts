@@ -208,6 +208,13 @@ export class DashboardService {
     form_offset_x: 0,
     form_offset_y: 0,
     form_width: 448,
+    // Text content overrides — blank means "use the built-in default translation"
+    title_en: '',
+    title_ar: '',
+    subtitle_en: '',
+    subtitle_ar: '',
+    heading_en: '',
+    heading_ar: '',
   }
 
   /**

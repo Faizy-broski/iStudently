@@ -276,6 +276,7 @@ export interface StudentFormData {
   lastName: string;
   dateOfBirth: Date | null;
   gender: Gender | null;
+  nationalId: string;
   studentPhoto: string;
   address: string;
   email: string;

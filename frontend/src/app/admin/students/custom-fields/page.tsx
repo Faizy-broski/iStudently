@@ -12,44 +12,50 @@ import { useCampus } from "@/context/CampusContext";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { getFieldOrders, getEffectiveFieldOrder, DefaultFieldOrder } from '@/lib/utils/field-ordering';
+import { getFieldOrders, getEffectiveFieldOrder, updateFieldRequired, DefaultFieldOrder } from '@/lib/utils/field-ordering';
 import { useTranslations } from "next-intl";
 import { MergedFieldOrderList, type MergedFieldOrderListLabels } from "@/components/admin/custom-fields/MergedFieldOrderList";
 
+type DefaultFieldEntry = { label: string; id: string; sort_order: number; required: boolean };
+
 // Default/Standard Fields for Students
-const DEFAULT_FIELDS_BY_CATEGORY: Record<string, Array<{label: string, sort_order: number}>> = {
+// `id` matches the corresponding STANDARD_FIELDS[].id in AddStudentForm.tsx —
+// the stable key used to save/match order & required overrides server-side.
+// `required` is the built-in baseline (mirrors STANDARD_FIELDS[].required
+// there), used until a campus saves an explicit override.
+const DEFAULT_FIELDS_BY_CATEGORY: Record<string, Array<{label: string, id: string, sort_order: number, required: boolean}>> = {
   personal: [
-    { label: 'First Name', sort_order: 1 },
-    { label: "Father's Name", sort_order: 2 },
-    { label: "Grandfather's Name", sort_order: 3 },
-    { label: 'Surname', sort_order: 4 },
-    { label: 'Date of Birth', sort_order: 5 },
-    { label: 'Gender', sort_order: 6 },
-    { label: 'Student Photo', sort_order: 7 },
-    { label: 'Address', sort_order: 8 },
-    { label: 'Email', sort_order: 9 },
-    { label: 'Phone Number', sort_order: 10 },
+    { label: 'First Name', id: 'firstName', sort_order: 1, required: true },
+    { label: "Father's Name", id: 'fatherName', sort_order: 2, required: true },
+    { label: "Grandfather's Name", id: 'grandfatherName', sort_order: 3, required: false },
+    { label: 'Surname', id: 'lastName', sort_order: 4, required: true },
+    { label: 'Date of Birth', id: 'dateOfBirth', sort_order: 5, required: true },
+    { label: 'Gender', id: 'gender', sort_order: 6, required: true },
+    { label: 'Student Photo', id: 'studentPhoto', sort_order: 7, required: false },
+    { label: 'Address', id: 'address', sort_order: 8, required: false },
+    { label: 'Email', id: 'email', sort_order: 9, required: true },
+    { label: 'Phone Number', id: 'phoneNumber', sort_order: 10, required: false },
   ],
   academic: [
-    { label: 'Grade Level', sort_order: 1 },
-    { label: 'Section', sort_order: 2 },
-    { label: 'Admission Date', sort_order: 3 },
-    { label: 'Previous School History', sort_order: 4 },
+    { label: 'Grade Level', id: 'grade_level_id', sort_order: 1, required: true },
+    { label: 'Section', id: 'section_id', sort_order: 2, required: true },
+    { label: 'Admission Date', id: 'admissionDate', sort_order: 3, required: true },
+    { label: 'Previous School History', id: 'previousSchoolHistory', sort_order: 4, required: false },
   ],
   medical: [
-    { label: 'Blood Group', sort_order: 1 },
-    { label: 'Has Allergies?', sort_order: 2 },
-    { label: 'Allergies List', sort_order: 3 },
-    { label: 'Medical Notes', sort_order: 4 },
+    { label: 'Blood Group', id: 'bloodGroup', sort_order: 1, required: true },
+    { label: 'Has Allergies?', id: 'hasAllergies', sort_order: 2, required: false },
+    { label: 'Allergies List', id: 'allergiesList', sort_order: 3, required: false },
+    { label: 'Medical Notes', id: 'medicalNotes', sort_order: 4, required: false },
   ],
   family: [
-    { label: 'Link to Parent', sort_order: 1 },
-    { label: 'Relationship Type', sort_order: 2 },
-    { label: 'Emergency Contacts', sort_order: 3 },
+    { label: 'Link to Parent', id: 'linkedParentId', sort_order: 1, required: false },
+    { label: 'Relationship Type', id: 'parentRelationType', sort_order: 2, required: false },
+    { label: 'Emergency Contacts', id: 'emergencyContacts', sort_order: 3, required: false },
   ],
   system: [
-    { label: 'Username', sort_order: 1 },
-    { label: 'Password', sort_order: 2 },
+    { label: 'Username', id: 'username', sort_order: 1, required: false },
+    { label: 'Password', id: 'password', sort_order: 2, required: false },
   ],
 };
 
@@ -98,7 +104,7 @@ export default function CustomFieldsPage() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [savedDefaultOrders, setSavedDefaultOrders] = useState<DefaultFieldOrder[]>([]);
-  const [defaultFieldsByCategory, setDefaultFieldsByCategory] = useState<Record<string, Array<{label: string, sort_order: number}>>>(DEFAULT_FIELDS_BY_CATEGORY);
+  const [defaultFieldsByCategory, setDefaultFieldsByCategory] = useState<Record<string, DefaultFieldEntry[]>>(DEFAULT_FIELDS_BY_CATEGORY);
 
   const STANDARD_CATEGORIES = ['personal', 'academic', 'medical', 'family', 'system'];
 
@@ -123,7 +129,7 @@ export default function CustomFieldsPage() {
         if (defaultOrdersResponse.success && defaultOrdersResponse.data) {
           setSavedDefaultOrders(defaultOrdersResponse.data);
 
-          const updatedDefaults: Record<string, Array<{label: string, sort_order: number}>> = {};
+          const updatedDefaults: Record<string, DefaultFieldEntry[]> = {};
           Object.keys(DEFAULT_FIELDS_BY_CATEGORY).forEach(categoryId => {
             const effective = getEffectiveFieldOrder(
               defaultOrdersResponse.data!,
@@ -461,7 +467,7 @@ export default function CustomFieldsPage() {
     if (response.success && response.data) {
       setSavedDefaultOrders(response.data);
 
-      const updatedDefaults: Record<string, Array<{label: string, sort_order: number}>> = {};
+      const updatedDefaults: Record<string, DefaultFieldEntry[]> = {};
       Object.keys(DEFAULT_FIELDS_BY_CATEGORY).forEach(catId => {
         const effective = getEffectiveFieldOrder(
           response.data!,
@@ -500,6 +506,36 @@ export default function CustomFieldsPage() {
       ? [...currentIds, schoolId]
       : currentIds.filter(id => id !== schoolId);
     updateCustomField(categoryId, fieldId, { applicable_school_ids: newIds });
+  };
+
+  const handleDefaultRequiredToggle = async (
+    categoryId: string,
+    item: { id?: string; label: string; sort_order: number },
+    checked: boolean
+  ) => {
+    const fieldKey = item.id ?? item.label;
+    const campusId = selectedCampus?.id;
+
+    const applyLocal = (required: boolean) => {
+      setDefaultFieldsByCategory(prev => ({
+        ...prev,
+        [categoryId]: (prev[categoryId] || []).map(f =>
+          (f.id ?? f.label) === fieldKey ? { ...f, required } : f
+        ),
+      }));
+    };
+
+    applyLocal(checked);
+    try {
+      const res = await updateFieldRequired('student', categoryId, fieldKey, checked, item.sort_order, campusId);
+      if (!res.success) {
+        applyLocal(!checked);
+        toast.error(res.error || tCommon("error_occurred"));
+      }
+    } catch {
+      applyLocal(!checked);
+      toast.error(tCommon("error_occurred"));
+    }
   };
 
   if (isLoading) {
@@ -585,6 +621,7 @@ export default function CustomFieldsPage() {
                 defaultFields={defaultFieldsByCategory[category.id] || []}
                 campusId={selectedCampus?.id}
                 onOrderSaved={handleOrderSaved}
+                onDefaultRequiredToggle={(item, checked) => handleDefaultRequiredToggle(category.id, item, checked)}
               />
             ))}
           </div>
@@ -607,7 +644,8 @@ function SortableCategoryItem({
   isStandard,
   defaultFields,
   campusId,
-  onOrderSaved
+  onOrderSaved,
+  onDefaultRequiredToggle
 }: {
   category: ExtendedCategory;
   expanded: boolean;
@@ -619,9 +657,10 @@ function SortableCategoryItem({
   branchSchools: BranchSchool[];
   toggleCampusSelection: (categoryId: string, fieldId: string, schoolId: string, checked: boolean) => void;
   isStandard: boolean;
-  defaultFields: Array<{label: string, sort_order: number}>;
+  defaultFields: DefaultFieldEntry[];
   campusId?: string;
   onOrderSaved: () => void;
+  onDefaultRequiredToggle: (item: { id?: string; label: string; sort_order: number }, checked: boolean) => void;
 }) {
   const t = useTranslations("school.students.custom_fields");
   const tFields = useTranslations("school.students.custom_fields.standard_fields");
@@ -729,6 +768,7 @@ function SortableCategoryItem({
             onRemoveField={(fieldId) => onRemoveField(category.id, fieldId)}
             toggleCampusSelection={(fieldId, schoolId, checked) => toggleCampusSelection(category.id, fieldId, schoolId, checked)}
             onOrderSaved={onOrderSaved}
+            onDefaultRequiredToggle={onDefaultRequiredToggle}
           />
         </CardContent>
       )}

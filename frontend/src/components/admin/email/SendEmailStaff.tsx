@@ -65,7 +65,7 @@ export function SendEmailStaff() {
   const fetchStaff = useCallback(async () => {
     setLoadingStaff(true)
     try {
-      const role = roleFilter === "all" ? "all" : (roleFilter as any)
+      const role = roleFilter === "all" ? "employees" : (roleFilter as any)
       const res = await getAllStaff(1, 300, search.trim() || undefined, role, selectedCampusId)
       setStaffList((res.data as any)?.data || (res.data as any) || [])
     } finally {

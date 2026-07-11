@@ -202,7 +202,7 @@ export default function SignupLinksPage() {
     setGenerating(true)
     try {
       const custom_fields: SignupCustomField[] = []
-      if (form.selected_grade_ids.length > 0) {
+      if ((form.role === 'student' || form.role === 'parent') && form.selected_grade_ids.length > 0) {
         const selectedGrades = gradeLevels.filter(g => form.selected_grade_ids.includes(g.id))
         custom_fields.push({
           id: 'grade_level',
@@ -432,7 +432,11 @@ export default function SignupLinksPage() {
                       <button
                         key={r}
                         type="button"
-                        onClick={() => setForm(f => ({ ...f, role: r }))}
+                        onClick={() => setForm(f => ({
+                          ...f,
+                          role: r,
+                          selected_grade_ids: (r === 'student' || r === 'parent') ? f.selected_grade_ids : [],
+                        }))}
                         className={cn(
                           'py-2 px-3 rounded-lg text-sm font-medium border transition-all capitalize',
                           form.role === r

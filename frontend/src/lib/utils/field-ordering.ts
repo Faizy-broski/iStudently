@@ -9,6 +9,7 @@ export {
   deleteFieldOrders,
   resetAllFieldOrders,
   getEffectiveFieldOrder,
+  updateFieldRequired,
   type EntityType,
   type DefaultFieldOrder,
   type FieldOrderInput

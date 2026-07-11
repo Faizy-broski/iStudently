@@ -133,6 +133,7 @@ export class StudentController {
           success: false,
           error: 'Student not found'
         })
+        return
       }
 
       res.json({
@@ -235,6 +236,7 @@ export class StudentController {
           success: false,
           error: error.message
         })
+        return
       }
 
       if (error.message.includes('required')) {
@@ -242,6 +244,7 @@ export class StudentController {
           success: false,
           error: error.message
         })
+        return
       }
 
       res.status(500).json({
@@ -332,6 +335,7 @@ export class StudentController {
           success: false,
           error: error.message
         })
+        return
       }
 
       res.status(500).json({
@@ -413,12 +417,12 @@ export class StudentController {
    */
   async getImportTemplate(_req: AuthRequest, res: Response): Promise<void> {
     const headers = [
-      'student_number', 'first_name', 'father_name', 'grandfather_name',
-      'last_name', 'email', 'phone', 'password', 'grade_level_name', 'section_name'
+      'first_name', 'father_name', 'grandfather_name', 'last_name',
+      'email', 'phone', 'gender', 'date_of_birth', 'national_id'
     ]
     const example = [
-      'S001', 'John', 'Robert', 'James', 'Smith',
-      'john.smith@school.com', '+1234567890', 'Pass@1234', 'Grade 10', 'A'
+      'John', 'Robert', 'James', 'Smith',
+      'john.smith@school.com', '+1234567890', 'male', '2012-05-14', 'A123456789'
     ]
     const csv = [headers.join(','), example.join(',')].join('\n')
 
@@ -442,7 +446,7 @@ export class StudentController {
         return
       }
 
-      const { students, campus_id } = req.body
+      const { students, campus_id, grade_level_id, section_id } = req.body
 
       if (!Array.isArray(students) || students.length === 0) {
         res.status(400).json({ success: false, error: 'students array is required and must not be empty' })
@@ -454,8 +458,13 @@ export class StudentController {
         return
       }
 
+      if (!grade_level_id) {
+        res.status(400).json({ success: false, error: 'grade_level_id is required' })
+        return
+      }
+
       const effectiveSchoolId = await getEffectiveSchoolId(adminSchoolId, campus_id)
-      const result = await studentService.bulkImportStudents(students, effectiveSchoolId)
+      const result = await studentService.bulkImportStudents(students, effectiveSchoolId, { grade_level_id, section_id })
 
       res.status(200).json({
         success: true,
@@ -521,6 +530,42 @@ export class StudentController {
         success: false,
         error: error.message || 'Failed to fetch students print info'
       })
+    }
+  }
+
+  /**
+   * Bulk delete students by explicit IDs and/or grade/section filter
+   * POST /api/students/bulk-delete
+   * Requires: super_admin role only
+   * Body: { student_ids?: string[], grade_level_id?: string, section_id?: string, campus_id?: string }
+   */
+  async bulkDeleteStudents(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const adminSchoolId = req.profile?.school_id
+
+      if (!adminSchoolId) {
+        res.status(403).json({ success: false, error: 'No school associated with your account' })
+        return
+      }
+
+      const { student_ids, grade_level_id, section_id, campus_id } = req.body
+
+      if ((!student_ids || student_ids.length === 0) && !grade_level_id) {
+        res.status(400).json({ success: false, error: 'Provide student_ids and/or grade_level_id to select students to delete' })
+        return
+      }
+
+      const effectiveSchoolId = await getEffectiveSchoolId(adminSchoolId, campus_id)
+      const result = await studentService.bulkDeleteStudents(effectiveSchoolId, { student_ids, grade_level_id, section_id })
+
+      res.json({
+        success: true,
+        data: result,
+        message: `Deleted ${result.deleted} student(s)`
+      })
+    } catch (error: any) {
+      console.error('Bulk delete students error:', error)
+      res.status(500).json({ success: false, error: error.message || 'Bulk delete failed' })
     }
   }
 }

@@ -107,3 +107,32 @@ export async function getOrCreateStoredCredentials(
     password: decryptSecret(profile.login_password_enc),
   }
 }
+
+/**
+ * Same as getOrCreateStoredCredentials, but for super admins fetching
+ * credentials for a profile in ANY school — they aren't scoped to one
+ * school_id, so the campus-access check doesn't apply.
+ */
+export async function getStoredCredentialsAsSuperAdmin(
+  profileId: string
+): Promise<{ username: string; password: string }> {
+  const { data: profile, error: fetchError } = await supabase
+    .from('profiles')
+    .select('id, username, login_password_enc, school_id')
+    .eq('id', profileId)
+    .maybeSingle()
+
+  if (fetchError || !profile) {
+    throw new Error('Profile not found')
+  }
+
+  if (!profile.login_password_enc) {
+    const { username, plainPassword } = await regenerateCredentials(profileId, profile.school_id)
+    return { username, password: plainPassword }
+  }
+
+  return {
+    username: profile.username,
+    password: decryptSecret(profile.login_password_enc),
+  }
+}

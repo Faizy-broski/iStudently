@@ -15,6 +15,13 @@ export interface LoginPageConfig {
   form_offset_x: number
   form_offset_y: number
   form_width: number
+  // Text content overrides — blank means "use the built-in default translation"
+  title_en: string
+  title_ar: string
+  subtitle_en: string
+  subtitle_ar: string
+  heading_en: string
+  heading_ar: string
 }
 
 export const DEFAULT_LOGIN_PAGE_CONFIG: LoginPageConfig = {
@@ -30,6 +37,12 @@ export const DEFAULT_LOGIN_PAGE_CONFIG: LoginPageConfig = {
   form_offset_x: 0,
   form_offset_y: 0,
   form_width: 448,
+  title_en: '',
+  title_ar: '',
+  subtitle_en: '',
+  subtitle_ar: '',
+  heading_en: '',
+  heading_ar: '',
 }
 
 // Public — called from the unauthenticated /auth/login page, so it cannot use

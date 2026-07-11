@@ -27,6 +27,9 @@ import { Search, LogOut, Settings, Menu, Moon, Sun, Languages, LayoutDashboard, 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { NotificationBell } from '@/components/portal'
+import { MessagingNotificationBell } from '@/components/messaging/MessagingNotificationBell'
+import { GrievanceNotificationBell } from '@/components/grievances/GrievanceNotificationBell'
+import { useSchoolSettings } from '@/context/SchoolSettingsContext'
 import { useLocale, useTranslations } from 'next-intl'
 import { getSidebarConfig } from '@/config/sidebar'
 import { MessageSquareWarning } from 'lucide-react'
@@ -38,6 +41,7 @@ interface TopbarProps {
 
 export function Topbar({ className }: TopbarProps) {
   const { profile, signOut } = useAuth()
+  const { isPluginActive } = useSchoolSettings()
   const { theme, toggleTheme } = useTheme()
   const router = useRouter()
   const { setIsMobileOpen } = useSidebarContext()
@@ -289,6 +293,14 @@ export function Topbar({ className }: TopbarProps) {
 
           {/* Notifications */}
           <NotificationBell className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100" />
+
+          {/* Messages */}
+          <MessagingNotificationBell className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100" />
+
+          {/* Complaints & Grievances */}
+          {isPluginActive('grievance_portal') && (
+            <GrievanceNotificationBell className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100" />
+          )}
 
           {/* Open Feedback Reports (super admin only) */}
           {profile?.role === 'super_admin' && (

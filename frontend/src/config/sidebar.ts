@@ -507,6 +507,29 @@ const adminMenuItems: SidebarMenuItem[] = [
     ],
   },
   {
+    title: "messaging",
+    href: "/admin/messaging",
+    icon: Send,
+    subItems: [
+      { title: "inbox", href: "/admin/messaging", icon: Send },
+      { title: "write", href: "/admin/messaging/write", icon: Mail },
+    ],
+  },
+  {
+    title: "grievances",
+    href: "/admin/grievances",
+    icon: MessageSquareWarning,
+    pluginRequired: "grievance_portal",
+    subItems: [
+      { title: "all_complaints", href: "/admin/grievances", icon: MessageSquareWarning },
+      { title: "submit_complaint", href: "/admin/grievances/submit", icon: Plus },
+      { title: "dashboard", href: "/admin/grievances/dashboard", icon: Gauge },
+      { title: "reports", href: "/admin/grievances/reports", icon: BarChart3 },
+      { title: "categories", href: "/admin/grievances/categories", icon: FolderOpen },
+      { title: "settings", href: "/admin/grievances/settings", icon: Settings },
+    ],
+  },
+  {
     title: "settings",
     href: "/admin/settings",
     icon: Settings,
@@ -678,6 +701,25 @@ const teacherMenuItems: SidebarMenuItem[] = [
       { title: "quizzes", href: "/teacher/quiz", icon: HelpCircle },
     ],
   },
+  {
+    title: "messaging",
+    href: "/teacher/messaging",
+    icon: Send,
+    subItems: [
+      { title: "inbox", href: "/teacher/messaging", icon: Send },
+      { title: "write", href: "/teacher/messaging/write", icon: Mail },
+    ],
+  },
+  {
+    title: "grievances",
+    href: "/teacher/grievances",
+    icon: MessageSquareWarning,
+    pluginRequired: "grievance_portal",
+    subItems: [
+      { title: "my_complaints", href: "/teacher/grievances", icon: MessageSquareWarning },
+      { title: "submit_complaint", href: "/teacher/grievances/submit", icon: Plus },
+    ],
+  },
   { title: "id_card", href: "/teacher/id-card", icon: CreditCard },
   { title: "agreement", href: "/teacher/agreement", icon: FileText },
   { title: "settings", href: "/teacher/settings", icon: Settings },
@@ -796,7 +838,26 @@ const studentMenuItems: SidebarMenuItem[] = [
       { title: "physics_virtual_labs", href: "/student/resources/physics-virtual-labs", icon: Globe },
       { title: "physics_labs", href: "/student/resources/physics-labs", icon: FlaskConical },
       { title: "virtual_labs", href: "/student/resources/virtual-labs", icon: FlaskConical },
-      { title: "periodic_table", href: "/student/resources/zperiod", icon: Table2 },
+      { title: "periodic_table", href: "/student/resources/jperiod", icon: Table2 },
+    ],
+  },
+  {
+    title: "messaging",
+    href: "/student/messaging",
+    icon: Send,
+    subItems: [
+      { title: "inbox", href: "/student/messaging", icon: Send },
+      { title: "write", href: "/student/messaging/write", icon: Mail },
+    ],
+  },
+  {
+    title: "grievances",
+    href: "/student/grievances",
+    icon: MessageSquareWarning,
+    pluginRequired: "grievance_portal",
+    subItems: [
+      { title: "my_complaints", href: "/student/grievances", icon: MessageSquareWarning },
+      { title: "submit_complaint", href: "/student/grievances/submit", icon: Plus },
     ],
   },
   {
@@ -887,6 +948,25 @@ const parentMenuItems: SidebarMenuItem[] = [
   { title: "class_diary", href: "/parent/class-diary", icon: BookOpen },
   { title: "timetable", href: "/parent/timetable", icon: Clock },
   {
+    title: "messaging",
+    href: "/parent/messaging",
+    icon: Send,
+    subItems: [
+      { title: "inbox", href: "/parent/messaging", icon: Send },
+      { title: "write", href: "/parent/messaging/write", icon: Mail },
+    ],
+  },
+  {
+    title: "grievances",
+    href: "/parent/grievances",
+    icon: MessageSquareWarning,
+    pluginRequired: "grievance_portal",
+    subItems: [
+      { title: "my_complaints", href: "/parent/grievances", icon: MessageSquareWarning },
+      { title: "submit_complaint", href: "/parent/grievances/submit", icon: Plus },
+    ],
+  },
+  {
     title: "discipline",
     href: "/parent/discipline",
     icon: AlertCircle,
@@ -925,6 +1005,16 @@ const librarianMenuItems: SidebarMenuItem[] = [
     ],
   },
   { title: "discipline", href: "/librarian/discipline", icon: AlertCircle },
+  {
+    title: "grievances",
+    href: "/librarian/grievances",
+    icon: MessageSquareWarning,
+    pluginRequired: "grievance_portal",
+    subItems: [
+      { title: "my_complaints", href: "/librarian/grievances", icon: MessageSquareWarning },
+      { title: "submit_complaint", href: "/librarian/grievances/submit", icon: Plus },
+    ],
+  },
   { title: "id_card", href: "/librarian/id-card", icon: CreditCard },
   { title: "agreement", href: "/librarian/agreement", icon: FileText },
   { title: "advanced_report", href: "/librarian/students/advanced-report", icon: BarChart3 },

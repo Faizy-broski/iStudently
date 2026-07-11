@@ -59,6 +59,9 @@ interface MergedFieldOrderListProps {
   // Called after a successful order save so the page can refresh its
   // default-field-order cache (savedDefaultOrders / defaultFieldsByCategory).
   onOrderSaved: () => void
+  // Toggle the required status of a default (built-in) field. Omitted for
+  // entity types that haven't been wired up to this yet.
+  onDefaultRequiredToggle?: (item: Extract<MergedFieldItem, { kind: 'default' }>, checked: boolean) => void
 }
 
 export function MergedFieldOrderList({
@@ -74,6 +77,7 @@ export function MergedFieldOrderList({
   onRemoveField,
   toggleCampusSelection,
   onOrderSaved,
+  onDefaultRequiredToggle,
 }: MergedFieldOrderListProps) {
   const [order, setOrder] = useState<MergedFieldItem[]>(() => buildMergedItems(defaultFields, customFields))
   const [isSavingOrder, setIsSavingOrder] = useState(false)
@@ -166,7 +170,13 @@ export function MergedFieldOrderList({
         <SortableContext items={order.map((i) => i.key)} strategy={verticalListSortingStrategy}>
           {order.map((item) =>
             item.kind === 'default' ? (
-              <DefaultFieldRow key={item.key} item={item} label={translateDefaultLabel ? translateDefaultLabel(item.label) : item.label} badgeText={labels.default_badge} />
+              <DefaultFieldRow
+                key={item.key}
+                item={item}
+                label={translateDefaultLabel ? translateDefaultLabel(item.label) : item.label}
+                badgeText={labels.default_badge}
+                onRequiredToggle={onDefaultRequiredToggle}
+              />
             ) : (
               <CustomFieldRow
                 key={item.key}
@@ -186,7 +196,17 @@ export function MergedFieldOrderList({
   )
 }
 
-function DefaultFieldRow({ item, label, badgeText }: { item: MergedFieldItem; label: string; badgeText: string }) {
+function DefaultFieldRow({
+  item,
+  label,
+  badgeText,
+  onRequiredToggle,
+}: {
+  item: Extract<MergedFieldItem, { kind: 'default' }>
+  label: string
+  badgeText: string
+  onRequiredToggle?: (item: Extract<MergedFieldItem, { kind: 'default' }>, checked: boolean) => void
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.key })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 }
 
@@ -205,7 +225,14 @@ function DefaultFieldRow({ item, label, badgeText }: { item: MergedFieldItem; la
       <div className="col-span-6">
         <Badge variant="secondary" className="text-[10px] h-4">{badgeText}</Badge>
       </div>
-      <div className="col-span-1"></div>
+      <div className="col-span-1 flex justify-center">
+        {onRequiredToggle && (
+          <Checkbox
+            checked={item.required || false}
+            onCheckedChange={(checked) => onRequiredToggle(item, checked as boolean)}
+          />
+        )}
+      </div>
       <div className="col-span-1"></div>
     </div>
   )

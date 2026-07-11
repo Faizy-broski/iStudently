@@ -23,6 +23,8 @@ import { FeedbackWidget } from '@/components/feedback/FeedbackWidget'
 import { SidebarThemeProvider } from '@/context/SidebarThemeContext'
 import { AgreementGate } from '@/components/agreement/AgreementGate'
 import { PermissionsProvider, usePermissions } from '@/context/PermissionsContext'
+import { MessagingNotificationProvider } from '@/context/MessagingNotificationContext'
+import { GrievanceNotificationProvider } from '@/context/GrievanceNotificationContext'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -168,6 +170,9 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
   const menuItems = React.useMemo(() => {
     let items = baseMenuItems
 
+    // 0. Hide any top-level item whose `pluginRequired` plugin isn't active for this school.
+    items = items.filter((item) => !item.pluginRequired || isPluginActive(item.pluginRequired))
+
     // 1. Inject user-created dashboards into Resources section (existing logic)
     if (dynamicDashboards.length > 0) {
       items = items.map((item) => {
@@ -305,8 +310,8 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
       {/* Tour Assistant — fixed overlay, persists across all pages */}
       <TourAssistantPanel />
 
-      {/* Feedback / Bug Report — fixed overlay, persists across all pages */}
-      <FeedbackWidget />
+      {/* Feedback / Bug Report — fixed overlay, persists across all pages (hidden for super admin) */}
+      {effectiveRole !== 'super_admin' && <FeedbackWidget />}
     </div>
   )
 }
@@ -318,9 +323,13 @@ export function DashboardLayout({ children, className, role }: DashboardLayoutPr
         <AgreementGate>
           <UnsavedChangesGuard>
             <PermissionsProvider>
-              <DashboardContent className={className} role={role}>
-                {children}
-              </DashboardContent>
+              <MessagingNotificationProvider>
+                <GrievanceNotificationProvider>
+                  <DashboardContent className={className} role={role}>
+                    {children}
+                  </DashboardContent>
+                </GrievanceNotificationProvider>
+              </MessagingNotificationProvider>
             </PermissionsProvider>
           </UnsavedChangesGuard>
         </AgreementGate>

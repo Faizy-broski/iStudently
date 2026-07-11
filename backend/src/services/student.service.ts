@@ -1,7 +1,23 @@
 import { supabase } from '../config/supabase'
+import bcrypt from 'bcrypt'
 import { Student, CreateStudentDTO, UpdateStudentDTO } from '../types'
+import { generateCredentials } from './username.service'
+import { encryptSecret } from '../utils/crypto'
 
 export class StudentService {
+  /**
+   * Generate a student number that's unique within the school, retrying on
+   * collision (mirrors the loop shape of generateUniqueUsername).
+   */
+  async generateUniqueStudentNumber(schoolId: string): Promise<string> {
+    for (let i = 0; i < 20; i++) {
+      const candidate = Math.floor(100000 + Math.random() * 900000).toString()
+      const existing = await this.getStudentByNumber(candidate, schoolId)
+      if (!existing) return candidate
+    }
+    throw new Error('Unable to generate unique student number after 20 attempts')
+  }
+
   /**
    * Get all students for a specific school with pagination and search
    * Enforces tenant isolation via school_id
@@ -284,8 +300,10 @@ export class StudentService {
    * Create a new student with tenant isolation
    * If profile_id not provided, creates a new profile first
    */
-  async createStudent(studentData: CreateStudentDTO): Promise<Student> {
+  async createStudent(studentData: CreateStudentDTO): Promise<Student & { generated_username?: string; generated_password?: string }> {
     let profileId = studentData.profile_id
+    let generatedUsername: string | undefined
+    let generatedPassword: string | undefined
 
     // Create profile if not provided
     if (!profileId && studentData.first_name && studentData.last_name) {
@@ -293,13 +311,21 @@ export class StudentService {
       if (!studentData.email || !studentData.email.trim()) {
         throw new Error('Email is required for student creation')
       }
-      
-      const tempPassword = studentData.password || Math.random().toString(36).slice(-12) + 'A1!' // Use provided or generate strong password
+
+      let username = studentData.username
+      let plainPassword = studentData.password
+      if (!plainPassword) {
+        const credentials = await generateCredentials()
+        username = username || credentials.username
+        plainPassword = credentials.plainPassword
+        generatedUsername = credentials.username
+        generatedPassword = credentials.plainPassword
+      }
 
       // Create auth user first (this creates the user in auth.users)
       const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
         email: studentData.email,
-        password: tempPassword,
+        password: plainPassword,
         email_confirm: true, // Auto-confirm email
         user_metadata: {
           first_name: studentData.first_name,
@@ -313,6 +339,8 @@ export class StudentService {
       }
 
       profileId = authUser.user.id
+
+      const hashedPassword = generatedPassword ? await bcrypt.hash(generatedPassword, 10) : undefined
 
       // Now create/update the profile with the auth user's ID
       const { data: newProfile, error: profileError } = await supabase
@@ -328,7 +356,16 @@ export class StudentService {
           email: studentData.email,
           phone: studentData.phone,
           profile_photo_url: studentData.profile_photo_url,
-          username: studentData.username || studentData.student_number || null,
+          username: username || studentData.student_number || null,
+          gender: studentData.gender,
+          date_of_birth: studentData.date_of_birth,
+          national_id: studentData.national_id,
+          ...(hashedPassword ? {
+            system_password: hashedPassword,
+            login_password_enc: encryptSecret(generatedPassword!),
+            force_password_change: true,
+            username_generated_at: new Date().toISOString()
+          } : {}),
           is_active: true
         })
         .select()
@@ -347,8 +384,11 @@ export class StudentService {
       throw new Error('profile_id or profile data (first_name, last_name) is required')
     }
 
+    // Auto-generate a student number if not provided
+    const studentNumber = studentData.student_number || await this.generateUniqueStudentNumber(studentData.school_id)
+
     // Check if student number already exists in this school
-    const existing = await this.getStudentByNumber(studentData.student_number, studentData.school_id)
+    const existing = await this.getStudentByNumber(studentNumber, studentData.school_id)
     if (existing) {
       throw new Error('Student number already exists in this school')
     }
@@ -359,7 +399,7 @@ export class StudentService {
       .insert({
         profile_id: profileId,
         school_id: studentData.school_id,
-        student_number: studentData.student_number,
+        student_number: studentNumber,
         grade_level: studentData.grade_level, // Legacy field
         grade_level_id: studentData.grade_level_id, // New: UUID reference
         section_id: studentData.section_id, // New: UUID reference (triggers auto-update)
@@ -405,7 +445,9 @@ export class StudentService {
       }
     }
 
-    return data
+    return generatedUsername
+      ? { ...data, generated_username: generatedUsername, generated_password: generatedPassword }
+      : data
   }
 
   /**
@@ -842,21 +884,80 @@ export class StudentService {
     }
   }
 
-  async bulkImportStudents(students: any[], schoolId: string): Promise<{ success_count: number; error_count: number; errors: any[] }> {
+  async bulkImportStudents(
+    students: any[],
+    schoolId: string,
+    target?: { grade_level_id?: string; section_id?: string }
+  ): Promise<{ success_count: number; error_count: number; errors: any[]; created: any[] }> {
     let success_count = 0
     let error_count = 0
     const errors: any[] = []
+    const created: any[] = []
 
     for (const student of students) {
       try {
-        await this.createStudent({ ...student, school_id: schoolId })
+        const result = await this.createStudent({
+          ...student,
+          school_id: schoolId,
+          grade_level_id: target?.grade_level_id,
+          section_id: target?.section_id
+        })
         success_count++
+        created.push({
+          student_number: result.student_number,
+          first_name: result.profile?.first_name,
+          last_name: result.profile?.last_name,
+          username: (result as any).generated_username,
+          password: (result as any).generated_password
+        })
       } catch (err: any) {
         error_count++
-        errors.push({ student, error: err.message || String(err) })
+        errors.push({ row: student._row, error: err.message || String(err) })
       }
     }
 
-    return { success_count, error_count, errors }
+    return { success_count, error_count, errors, created }
+  }
+
+  /**
+   * Delete multiple students at once (super_admin only, enforced at route level).
+   * Accepts explicit IDs and/or a grade/section filter — useful for cleaning up
+   * a bulk import that landed in the wrong class.
+   */
+  async bulkDeleteStudents(
+    schoolId: string,
+    filter: { student_ids?: string[]; grade_level_id?: string; section_id?: string }
+  ): Promise<{ deleted: number; errors: any[] }> {
+    let ids = filter.student_ids || []
+
+    if (filter.grade_level_id) {
+      let query = supabase
+        .from('students')
+        .select('id')
+        .eq('school_id', schoolId)
+        .eq('grade_level_id', filter.grade_level_id)
+
+      if (filter.section_id) {
+        query = query.eq('section_id', filter.section_id)
+      }
+
+      const { data, error } = await query
+      if (error) throw new Error(`Failed to resolve students for deletion: ${error.message}`)
+      ids = [...new Set([...ids, ...(data || []).map((s: any) => s.id)])]
+    }
+
+    let deleted = 0
+    const errors: any[] = []
+
+    for (const id of ids) {
+      try {
+        await this.deleteStudent(id, schoolId)
+        deleted++
+      } catch (err: any) {
+        errors.push({ student_id: id, error: err.message || String(err) })
+      }
+    }
+
+    return { deleted, errors }
   }
 }

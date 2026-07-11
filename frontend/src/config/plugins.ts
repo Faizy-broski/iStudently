@@ -42,6 +42,7 @@ import {
   AlertTriangle,
   FlaskConical,
   ShieldCheck,
+  MessageSquareWarning,
   type LucideIcon,
 } from 'lucide-react'
 import type { SidebarMenuItem } from './sidebar'
@@ -79,6 +80,22 @@ export interface PluginDefinition {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const PLUGIN_REGISTRY: PluginDefinition[] = [
+  // ── GrievancePortal (Complaints & Grievances) ────────────────────────────
+  // Standalone module with its own top-level sidebar entry (added directly in
+  // sidebar.ts per role, gated by pluginRequired: 'grievance_portal'), so no
+  // sidebarInjections are needed here — this entry exists so it shows up in
+  // the Plugins settings page and carries the settings deep-link.
+  {
+    id: 'grievance_portal',
+    name: 'Complaints & Grievances',
+    description:
+      'A Ministry-of-Education-compliant complaints/grievances portal for students, parents, teachers, and staff — submission, assignment, SLA tracking, escalation, confidential/anonymous handling, and reporting.',
+    icon: MessageSquareWarning,
+    category: 'Communication',
+    settingsHref: '/admin/grievances/settings',
+    sidebarInjections: [],
+  },
+
   // ── Automatic Attendance ─────────────────────────────────────────────────
   {
     id: 'automatic_attendance',
@@ -533,13 +550,13 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
       'Interactive periodic table with 118 elements, 3D atom models, chemical equation balancer, molar mass calculator, and worksheet generator — all self-contained with no login required.',
     icon: FlaskConical,
     category: 'Resources',
-    settingsHref: '/admin/resources/zperiod',
+    settingsHref: '/admin/resources/jperiod',
     sidebarInjections: [
       {
         parentTitle: 'resources',
         items: [
           { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
-          { title: 'periodic_table', href: '/admin/resources/zperiod', icon: FlaskConical }
+          { title: 'periodic_table', href: '/admin/resources/jperiod', icon: FlaskConical }
         ],
         roles: ['admin'],
       },
@@ -547,7 +564,7 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
         parentTitle: 'resources',
         items: [
           { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
-          { title: 'periodic_table', href: '/teacher/resources/zperiod', icon: FlaskConical }
+          { title: 'periodic_table', href: '/teacher/resources/jperiod', icon: FlaskConical }
         ],
         roles: ['teacher'],
       },
@@ -555,7 +572,7 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
         parentTitle: 'resources',
         items: [
           { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
-          { title: 'periodic_table', href: '/student/resources/zperiod', icon: FlaskConical }
+          { title: 'periodic_table', href: '/student/resources/jperiod', icon: FlaskConical }
         ],
         roles: ['student'],
       },
@@ -563,7 +580,7 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
         parentTitle: 'resources',
         items: [
           { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
-          { title: 'periodic_table', href: '/parent/resources/zperiod', icon: FlaskConical }
+          { title: 'periodic_table', href: '/parent/resources/jperiod', icon: FlaskConical }
         ],
         roles: ['parent'],
       },

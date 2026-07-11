@@ -8,11 +8,15 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { SortableTableHead } from '@/components/ui/sortable-table-head'
 import { IconLoader, IconSearch, IconUsers, IconDownload } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslations } from 'next-intl'
+import { sortItems, useTableSort } from '@/hooks/useTableSort'
+
+type StudentBalanceSortKey = 'student_name' | 'student_number' | 'grade_level' | 'ethnicity' | 'gender' | 'address' | 'city' | 'state' | 'zip_code' | 'balance'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
@@ -229,6 +233,21 @@ export default function StudentBalancesPage() {
         return Array.from(familyMap.values()).sort((a, b) => a.familyName.localeCompare(b.familyName))
     }, [studentBalances])
 
+    const getStudentSortValue = (sb: StudentBalance, key: StudentBalanceSortKey): string | number => {
+        if (key === 'balance') return sb.balance
+        return (sb[key] || '').toString().toLowerCase()
+    }
+    const { sorted: sortedStudentBalances, sortKey: studentSortKey, sortDir: studentSortDir, toggleSort: toggleStudentSort } =
+        useTableSort<StudentBalance, StudentBalanceSortKey>(studentBalances, getStudentSortValue, 'student_name', 'asc')
+
+    const sortedFamilyGroups = useMemo(
+        () => familyGroups.map(family => ({
+            ...family,
+            students: sortItems(family.students, getStudentSortValue, studentSortKey, studentSortDir),
+        })),
+        [familyGroups, studentSortKey, studentSortDir]
+    )
+
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
@@ -256,7 +275,7 @@ export default function StudentBalancesPage() {
             ? [t('th_student'), t('th_studentId'), t('gradeLevel'), t('th_ethnicity'), t('th_gender'), t('th_address'), t('th_city'), t('th_state'), t('th_zip'), t('th_balance')]
             : [t('th_student'), t('th_studentId'), t('gradeLevel'), t('th_balance')]
         
-        const rows = studentBalances.map(sb => {
+        const rows = sortedStudentBalances.map(sb => {
             const baseRow = [sb.student_name, sb.student_number, sb.grade_level]
             if (viewMode === 'expanded') {
                 return [...baseRow, sb.ethnicity || '', sb.gender || '', sb.address || '', sb.city || '', sb.state || '', sb.zip_code || '', formatCurrency(sb.balance)]
@@ -389,7 +408,7 @@ export default function StudentBalancesPage() {
                     ) : viewMode === 'family' ? (
                         // Family View
                         <div className="space-y-4">
-                            {familyGroups.map(family => (
+                            {sortedFamilyGroups.map(family => (
                                 <div key={family.familyId} className="border rounded-lg overflow-hidden">
                                     <div className="bg-[#3d8fb5] text-white px-4 py-2 flex items-center justify-between">
                                         <div className="flex items-center gap-2">
@@ -402,11 +421,11 @@ export default function StudentBalancesPage() {
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
-                                                <TableHead className="text-[#3d8fb5]">{t('th_student')}</TableHead>
-                                                <TableHead className="text-[#3d8fb5]">{t('th_studentId')}</TableHead>
-                                                <TableHead className="text-[#3d8fb5]">{tp('gradeLevel')}</TableHead>
+                                                <SortableTableHead className="text-[#3d8fb5]" label={t('th_student')} sortKey="student_name" activeKey={studentSortKey} direction={studentSortDir} onSort={key => toggleStudentSort(key, 'asc')} />
+                                                <SortableTableHead className="text-[#3d8fb5]" label={t('th_studentId')} sortKey="student_number" activeKey={studentSortKey} direction={studentSortDir} onSort={key => toggleStudentSort(key, 'asc')} />
+                                                <SortableTableHead className="text-[#3d8fb5]" label={tp('gradeLevel')} sortKey="grade_level" activeKey={studentSortKey} direction={studentSortDir} onSort={key => toggleStudentSort(key, 'asc')} />
                                                 <TableHead className="text-[#3d8fb5]">{t('th_relationship')}</TableHead>
-                                                <TableHead className="text-end text-[#3d8fb5]">{t('th_balance')}</TableHead>
+                                                <SortableTableHead className="text-[#3d8fb5]" label={t('th_balance')} sortKey="balance" activeKey={studentSortKey} direction={studentSortDir} onSort={key => toggleStudentSort(key, 'desc')} align="right" />
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
@@ -438,24 +457,24 @@ export default function StudentBalancesPage() {
                          <Table>
                              <TableHeader>
                                  <TableRow>
-                                     <TableHead className="text-[#3d8fb5]">{t('th_student')}</TableHead>
-                                     <TableHead className="text-[#3d8fb5]">{t('th_studentId')}</TableHead>
-                                     <TableHead className="text-[#3d8fb5]">{tp('gradeLevel')}</TableHead>
+                                     <SortableTableHead className="text-[#3d8fb5]" label={t('th_student')} sortKey="student_name" activeKey={studentSortKey} direction={studentSortDir} onSort={key => toggleStudentSort(key, 'asc')} />
+                                     <SortableTableHead className="text-[#3d8fb5]" label={t('th_studentId')} sortKey="student_number" activeKey={studentSortKey} direction={studentSortDir} onSort={key => toggleStudentSort(key, 'asc')} />
+                                     <SortableTableHead className="text-[#3d8fb5]" label={tp('gradeLevel')} sortKey="grade_level" activeKey={studentSortKey} direction={studentSortDir} onSort={key => toggleStudentSort(key, 'asc')} />
                                      {viewMode === 'expanded' && (
                                          <>
-                                             <TableHead className="text-[#3d8fb5]">{t('th_ethnicity')}</TableHead>
-                                             <TableHead className="text-[#3d8fb5]">{t('th_gender')}</TableHead>
-                                             <TableHead className="text-[#3d8fb5]">{t('th_address')}</TableHead>
-                                             <TableHead className="text-[#3d8fb5]">{t('th_city')}</TableHead>
-                                             <TableHead className="text-[#3d8fb5]">{t('th_state')}</TableHead>
-                                             <TableHead className="text-[#3d8fb5]">{t('th_zip')}</TableHead>
+                                             <SortableTableHead className="text-[#3d8fb5]" label={t('th_ethnicity')} sortKey="ethnicity" activeKey={studentSortKey} direction={studentSortDir} onSort={key => toggleStudentSort(key, 'asc')} />
+                                             <SortableTableHead className="text-[#3d8fb5]" label={t('th_gender')} sortKey="gender" activeKey={studentSortKey} direction={studentSortDir} onSort={key => toggleStudentSort(key, 'asc')} />
+                                             <SortableTableHead className="text-[#3d8fb5]" label={t('th_address')} sortKey="address" activeKey={studentSortKey} direction={studentSortDir} onSort={key => toggleStudentSort(key, 'asc')} />
+                                             <SortableTableHead className="text-[#3d8fb5]" label={t('th_city')} sortKey="city" activeKey={studentSortKey} direction={studentSortDir} onSort={key => toggleStudentSort(key, 'asc')} />
+                                             <SortableTableHead className="text-[#3d8fb5]" label={t('th_state')} sortKey="state" activeKey={studentSortKey} direction={studentSortDir} onSort={key => toggleStudentSort(key, 'asc')} />
+                                             <SortableTableHead className="text-[#3d8fb5]" label={t('th_zip')} sortKey="zip_code" activeKey={studentSortKey} direction={studentSortDir} onSort={key => toggleStudentSort(key, 'asc')} />
                                          </>
                                      )}
-                                     <TableHead className="text-end text-[#3d8fb5]">{t('th_balance')}</TableHead>
+                                     <SortableTableHead className="text-[#3d8fb5]" label={t('th_balance')} sortKey="balance" activeKey={studentSortKey} direction={studentSortDir} onSort={key => toggleStudentSort(key, 'desc')} align="right" />
                                  </TableRow>
                              </TableHeader>
                             <TableBody>
-                                {studentBalances.map(sb => (
+                                {sortedStudentBalances.map(sb => (
                                     <TableRow key={sb.student_id}>
                                         <TableCell>{sb.student_name}</TableCell>
                                         <TableCell>{sb.student_number}</TableCell>

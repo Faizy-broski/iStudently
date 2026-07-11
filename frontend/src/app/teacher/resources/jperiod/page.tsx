@@ -4,10 +4,10 @@ export default function TeacherJperiodPage() {
   return (
     <div className="flex flex-col" style={{ height: 'calc(100vh - 64px)' }}>
       <iframe
-        src="/zperiod/index.html"
+        src="/jperiod/index.html"
         allow="fullscreen"
         className="w-full flex-1 border-none"
-        title="J Periodic Table"
+        title="J Periodic Table Interactive Periodic Table"
       />
     </div>
   )

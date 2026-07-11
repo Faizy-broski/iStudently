@@ -132,6 +132,62 @@ export class DefaultFieldOrderController {
   }
 
   /**
+   * POST /api/default-field-orders/:entityType/:categoryId/required
+   * Toggle whether a single default field is required for this school/campus
+   */
+  static async updateFieldRequired(req: AuthRequest, res: Response) {
+    try {
+      const { entityType, categoryId } = req.params;
+      const { field_label, required, sort_order, campus_id } = req.body;
+
+      if (!['student', 'parent', 'teacher', 'staff'].includes(entityType)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid entity type'
+        });
+      }
+
+      if (!field_label || typeof required !== 'boolean') {
+        return res.status(400).json({
+          success: false,
+          message: 'field_label and required (boolean) are required'
+        });
+      }
+
+      const adminSchoolId = req.profile?.school_id;
+      if (!adminSchoolId) {
+        return res.status(401).json({
+          success: false,
+          message: 'School ID not found in profile'
+        });
+      }
+
+      const effectiveSchoolId = getEffectiveSchoolId(adminSchoolId, campus_id);
+
+      await DefaultFieldOrderService.upsertFieldRequired(
+        effectiveSchoolId,
+        entityType as 'student' | 'parent' | 'teacher' | 'staff',
+        categoryId,
+        field_label,
+        required,
+        typeof sort_order === 'number' ? sort_order : 0
+      );
+
+      res.json({
+        success: true,
+        message: 'Field required status updated successfully'
+      });
+    } catch (error) {
+      console.error('Error updating field required status:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update field required status',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+
+  /**
    * DELETE /api/default-field-orders/:entityType/:categoryId
    * Delete field orders for a specific category (reset to defaults)
    */

@@ -90,6 +90,8 @@ import withdrawalAnalyticsRoutes from "./routes/withdrawal-analytics.routes";
 import advancedReportRoutes from "./routes/advanced-report.routes";
 import userProfilesRoutes from "./routes/user-profiles.routes";
 import trainingRoutes, { trainingPublicRouter } from "./routes/training.routes";
+import messagingRoutes from "./routes/messaging.routes";
+import grievanceRoutes from "./routes/grievance.routes";
 
 const app = express();
 
@@ -309,6 +311,8 @@ registerRoutes("/training", trainingRoutes);
 registerRoutes("/credentials", credentialsRoutes);
 registerRoutes("/analytics/withdrawal", withdrawalAnalyticsRoutes);
 registerRoutes("/user-profiles", userProfilesRoutes);
+registerRoutes("/messaging", messagingRoutes);
+registerRoutes("/grievances", grievanceRoutes);
 registerRoutes("/attendance-calendars", attendanceCalendarsRoutes);
 registerRoutes("/advanced-report", advancedReportRoutes);
 

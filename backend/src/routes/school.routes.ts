@@ -35,6 +35,7 @@ router.patch('/:id/status', requireSuperAdmin, (req, res) => schoolController.up
 
 // Admin management routes
 router.get('/:id/admin', requireSuperAdmin, (req, res) => schoolController.getSchoolAdmin(req, res))
+router.get('/:id/admin/credentials', requireSuperAdmin, (req, res) => schoolController.getSchoolAdminCredentials(req, res))
 router.patch('/:id/admin', requireSuperAdmin, (req, res) => schoolController.updateSchoolAdmin(req, res))
 
 // User status management (soft delete / reactivate)

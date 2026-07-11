@@ -2,6 +2,7 @@ import { Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
 import { SchoolService } from '../services/school.service'
 import { CreateSchoolDTO, UpdateSchoolDTO } from '../types'
+import { getStoredCredentialsAsSuperAdmin } from '../services/username.service'
 
 const schoolService = new SchoolService()
 
@@ -316,6 +317,43 @@ export class SchoolController {
       res.status(500).json({
         success: false,
         error: error.message || 'Failed to fetch admin information'
+      })
+    }
+  }
+
+  /**
+   * Get the school admin's retrievable login credentials (for printing a
+   * credentials/ID card)
+   * GET /api/schools/:id/admin/credentials
+   * Super Admin only
+   */
+  async getSchoolAdminCredentials(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params
+
+      const adminInfo = await schoolService.getSchoolAdmin(id)
+      if (!adminInfo) {
+        return res.status(404).json({
+          success: false,
+          error: 'Admin information not found for this school'
+        })
+      }
+
+      const credentials = await getStoredCredentialsAsSuperAdmin(adminInfo.user_id)
+
+      res.json({
+        success: true,
+        data: {
+          admin_name: adminInfo.admin_name,
+          admin_email: adminInfo.admin_email,
+          ...credentials
+        }
+      })
+    } catch (error: any) {
+      console.error('Get school admin credentials error:', error)
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to fetch admin credentials'
       })
     }
   }

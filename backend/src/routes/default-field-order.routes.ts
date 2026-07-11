@@ -13,6 +13,9 @@ router.get('/:entityType', DefaultFieldOrderController.getFieldOrders);
 // POST /api/default-field-orders/:entityType/:categoryId - Save field orders
 router.post('/:entityType/:categoryId', DefaultFieldOrderController.saveFieldOrders);
 
+// POST /api/default-field-orders/:entityType/:categoryId/required - Toggle a default field's required status
+router.post('/:entityType/:categoryId/required', DefaultFieldOrderController.updateFieldRequired);
+
 // DELETE /api/default-field-orders/:entityType/:categoryId - Reset category to defaults
 router.delete('/:entityType/:categoryId', DefaultFieldOrderController.deleteFieldOrders);
 

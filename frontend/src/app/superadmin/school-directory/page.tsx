@@ -10,9 +10,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
-import { GitBranch, ChevronRight, ChevronDown, ChevronUp, Search, Filter, Building2, Mail, Globe, MapPin, Calendar, Edit, Trash2, RefreshCw, User, Shield, LogIn } from "lucide-react";
+import { GitBranch, ChevronRight, ChevronDown, ChevronUp, Search, Filter, Building2, Mail, Globe, MapPin, Calendar, Edit, Trash2, RefreshCw, User, Shield, LogIn, Clock, CreditCard } from "lucide-react";
 import EditSchoolModal from "@/components/super-admin/EditSchoolModal";
 import EditAdminModal from "@/components/super-admin/EditAdminModal";
+import AdminCredentialsCard from "@/components/super-admin/AdminCredentialsCard";
 import ConfirmationDialog from "@/components/super-admin/ConfirmationDialog";
 import { PaginationWrapper } from "@/components/ui/pagination";
 import { useSchools, School } from "@/hooks/useSchools";
@@ -39,6 +40,44 @@ export default function SchoolDirectoryPage() {
   }>({ open: false, school: null, newStatus: "active" });
   const [isChangingStatus, setIsChangingStatus] = useState(false);
   const [expandedNetworks, setExpandedNetworks] = useState<Record<string, boolean>>({});
+  const [credentialsCard, setCredentialsCard] = useState<{
+    schoolName: string;
+    logoUrl?: string | null;
+    adminName: string;
+    adminEmail: string;
+    username: string;
+    password: string;
+  } | null>(null);
+  const [loadingCredentialsFor, setLoadingCredentialsFor] = useState<string | null>(null);
+
+  const showCredentialsCard = async (school: School) => {
+    try {
+      setLoadingCredentialsFor(school.id);
+      const response = await schoolApi.getAdminCredentials(school.id);
+      if (response.success && response.data) {
+        setCredentialsCard({
+          schoolName: school.name,
+          logoUrl: school.logo_url,
+          adminName: response.data.admin_name,
+          adminEmail: response.data.admin_email,
+          username: response.data.username,
+          password: response.data.password,
+        });
+      } else {
+        toast.error("Failed to load admin credentials", { description: response.error });
+      }
+    } catch (error: any) {
+      toast.error("Error loading admin credentials", { description: error.message });
+    } finally {
+      setLoadingCredentialsFor(null);
+    }
+  };
+
+  const trialDaysLeft = (school: School): number | null => {
+    if (!school.is_trial || !school.trial_ends_at) return null;
+    const diffMs = new Date(school.trial_ends_at).getTime() - Date.now();
+    return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  };
 
   const schoolNetworks = useMemo(() => {
     const networks: Record<string, { root: School; branches: School[] }> = {};
@@ -284,6 +323,19 @@ export default function SchoolDirectoryPage() {
                             >
                               {root.status}
                             </Badge>
+                            {root.is_trial && (() => {
+                              const daysLeft = trialDaysLeft(root);
+                              const expired = daysLeft !== null && daysLeft < 0;
+                              return (
+                                <Badge
+                                  variant="outline"
+                                  className={`w-fit text-[10px] px-2 py-0.5 border-0 uppercase tracking-wider font-semibold flex items-center gap-1 ${expired ? "bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400" : "bg-amber-500/10 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"}`}
+                                >
+                                  <Clock className="h-3 w-3" />
+                                  {expired ? "Trial expired" : `Trial: ${daysLeft}d left`}
+                                </Badge>
+                              );
+                            })()}
                           </div>
                         </div>
                       </TableCell>
@@ -352,6 +404,16 @@ export default function SchoolDirectoryPage() {
                               <User className="h-4 w-4 mr-2" /> Admin
                             </Button>
                           </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full h-9 text-xs justify-start font-medium"
+                            onClick={() => showCredentialsCard(root)}
+                            disabled={loadingCredentialsFor === root.id}
+                          >
+                            <CreditCard className="h-4 w-4 mr-2.5" />
+                            {loadingCredentialsFor === root.id ? "Loading..." : "Credentials Card"}
+                          </Button>
                           <div className="w-full text-left [&>button]:justify-start [&>button]:h-9 [&>button]:font-medium">
                             <SchoolSidebarConfigButton schoolId={root.id} schoolName={root.name} />
                           </div>
@@ -449,6 +511,12 @@ export default function SchoolDirectoryPage() {
           schoolName={editingAdmin.schoolName}
           onClose={() => setEditingAdmin(null)}
           onSuccess={() => { setEditingAdmin(null); mutate(); }}
+        />
+      )}
+      {credentialsCard && (
+        <AdminCredentialsCard
+          data={credentialsCard}
+          onClose={() => setCredentialsCard(null)}
         />
       )}
       <ConfirmationDialog

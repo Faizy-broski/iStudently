@@ -9,14 +9,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Eye, Edit, Download, MoreHorizontal, ChevronLeft, ChevronRight, Loader2, Users, UserCheck, UserX } from "lucide-react";
+import { Eye, Edit, Download, MoreHorizontal, ChevronLeft, ChevronRight, Loader2, Users, UserCheck, UserX, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Lock } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
 import { EditCredentialsModal } from "@/components/admin/EditCredentialsModal";
 import { EditStudentForm } from "@/components/admin";
-import { type Student, getStudentById } from "@/lib/api/students";
+import { type Student, getStudentById, bulkDeleteStudents } from "@/lib/api/students";
 import { useStudents } from "@/hooks/useStudents";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { UniversalFilter, type FilterState } from "@/components/filters/UniversalFilter";
@@ -37,6 +37,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Pagination,
   PaginationContent,
@@ -85,9 +95,10 @@ export default function StudentInfoPage() {
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const campusContext = useCampus();
   const schoolId = user?.school_id || '';
+  const isSuperAdmin = profile?.role === 'super_admin';
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [credentialsData, setCredentialsData] = useState<{ id: string, name: string } | null>(null);
   const [studentFilters, setStudentFilters] = useState<FilterState>({});
@@ -99,6 +110,9 @@ export default function StudentInfoPage() {
   const [showInactive, setShowInactive] = useState(false);
   const itemsPerPage = 10;
   const [appendConfig, setAppendConfig] = useState<StudentListAppendConfig | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [confirmDeleteMode, setConfirmDeleteMode] = useState<"selected" | "class" | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load the "Append Custom Field to Grade Level" campus setting once on mount
   useEffect(() => {
@@ -202,6 +216,48 @@ export default function StudentInfoPage() {
   const handleStudentFilterChange = (filters: FilterState) => {
     setStudentFilters(filters);
     setCurrentPage(1);
+    setSelectedIds(new Set());
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    setSelectedIds(checked ? new Set(filteredStudents.map(s => s.id)) : new Set());
+  };
+
+  const toggleSelectOne = (id: string, checked: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) next.add(id); else next.delete(id);
+      return next;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const result = await bulkDeleteStudents(
+        confirmDeleteMode === "class"
+          ? { gradeLevelId: studentFilters.gradeId, sectionId: studentFilters.sectionId }
+          : { studentIds: Array.from(selectedIds) }
+      );
+
+      if (!result.success || !result.data) {
+        toast.error(result.error || t("msg_delete_failed"));
+        return;
+      }
+
+      if (result.data.errors.length > 0) {
+        toast.warning(t("msg_delete_partial", { count: result.data.deleted, errors: result.data.errors.length }));
+      } else {
+        toast.success(t("msg_delete_success", { count: result.data.deleted }));
+      }
+      setSelectedIds(new Set());
+      refresh();
+    } catch {
+      toast.error(t("msg_delete_failed"));
+    } finally {
+      setIsDeleting(false);
+      setConfirmDeleteMode(null);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -260,6 +316,36 @@ export default function StudentInfoPage() {
             </CardContent>
           </Card>
 
+          {isSuperAdmin && (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="text-sm text-muted-foreground">
+                {selectedIds.size > 0 && t("selected_count", { count: selectedIds.size })}
+              </div>
+              <div className="flex gap-2">
+                {selectedIds.size > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => setConfirmDeleteMode("selected")}
+                  >
+                    <Trash2 className="h-4 w-4" /> {t("btn_delete_selected")}
+                  </Button>
+                )}
+                {studentFilters.gradeId && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 text-destructive border-destructive/50 hover:bg-destructive/10"
+                    onClick={() => setConfirmDeleteMode("class")}
+                  >
+                    <Trash2 className="h-4 w-4" /> {t("btn_delete_by_class")}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="text-sm text-muted-foreground">
             {loading ? (
               <span>{tCommon("loading")}</span>
@@ -285,6 +371,17 @@ export default function StudentInfoPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10">
+                      {isSuperAdmin && (
+                        <TableHead className="w-10">
+                          <input
+                            type="checkbox"
+                            aria-label={t("th_select")}
+                            checked={filteredStudents.length > 0 && selectedIds.size === filteredStudents.length}
+                            onChange={(e) => toggleSelectAll(e.target.checked)}
+                            className="rounded border-gray-300"
+                          />
+                        </TableHead>
+                      )}
                       <TableHead className="text-left rtl:text-right">{t("th_student_id")}</TableHead>
                       <TableHead className="text-left rtl:text-right">{tCommon("name")}</TableHead>
                       <TableHead className="text-left rtl:text-right">{tCommon("grade")}</TableHead>
@@ -296,7 +393,7 @@ export default function StudentInfoPage() {
                   <TableBody>
                     {filteredStudents.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={isSuperAdmin ? 7 : 6} className="text-center py-8 text-muted-foreground">
                           {t("no_students_found")}
                         </TableCell>
                       </TableRow>
@@ -310,6 +407,17 @@ export default function StudentInfoPage() {
                             className="hover:bg-muted/50 cursor-pointer"
                             onClick={() => handleViewDetails(student)}
                           >
+                            {isSuperAdmin && (
+                              <TableCell onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  type="checkbox"
+                                  aria-label={t("th_select")}
+                                  checked={selectedIds.has(student.id)}
+                                  onChange={(e) => toggleSelectOne(student.id, e.target.checked)}
+                                  className="rounded border-gray-300"
+                                />
+                              </TableCell>
+                            )}
                             <TableCell className="font-medium">{student.student_number}</TableCell>
                             <TableCell className="max-w-sm">
                               <div className="flex items-center gap-3">
@@ -520,6 +628,30 @@ export default function StudentInfoPage() {
           onSuccess={() => { }}
         />
       )}
+
+      {/* Bulk Delete Confirmation (super admin only) */}
+      <AlertDialog open={confirmDeleteMode !== null} onOpenChange={(open) => !open && setConfirmDeleteMode(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("confirm_delete_title")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDeleteMode === "class"
+                ? t("confirm_delete_by_class_desc")
+                : t("confirm_delete_desc", { count: selectedIds.size })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>{t("btn_cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => { e.preventDefault(); handleBulkDelete(); }}
+            >
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : t("btn_confirm_delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

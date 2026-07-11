@@ -25,6 +25,8 @@ export interface School {
   school_number: string | null;
   parent_school_id: string | null;
   status: "active" | "suspended";
+  is_trial: boolean;
+  trial_ends_at: string | null;
   created_at: string;
   updated_at: string;
 }

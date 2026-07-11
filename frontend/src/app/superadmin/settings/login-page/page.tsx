@@ -65,6 +65,32 @@ function ColorField({
   )
 }
 
+function TextField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  dir = 'ltr',
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  placeholder: string
+  dir?: 'ltr' | 'rtl'
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs text-gray-500">{label}</Label>
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        dir={dir}
+      />
+    </div>
+  )
+}
+
 function LoginPreview({ config }: { config: LoginPageConfig }) {
   const rightBg: React.CSSProperties =
     config.background_type === 'image' && config.background_image_url
@@ -84,7 +110,7 @@ function LoginPreview({ config }: { config: LoginPageConfig }) {
       <div className="w-1/2 bg-white flex flex-col items-center justify-center gap-2 p-4">
         <img src="/images/logo.png" alt="logo" className="w-10 h-10 object-contain" />
         <p className="text-xs font-semibold text-center" style={{ color: config.text_color_left }}>
-          Welcome Back
+          {config.title_en || 'Welcome Back'}
         </p>
       </div>
       <div className="w-1/2 relative overflow-hidden" style={rightBg}>
@@ -104,7 +130,7 @@ function LoginPreview({ config }: { config: LoginPageConfig }) {
           }}
         >
           <p className="text-[10px] font-semibold" style={{ color: config.text_color_right }}>
-            Sign In
+            {config.heading_en || 'Sign In'}
           </p>
           <div className="w-full h-2 rounded bg-white/20" />
           <div className="w-full h-2 rounded bg-white/20" />
@@ -366,6 +392,72 @@ export default function LoginPageAppearanceSettingsPage() {
                   value={config.text_color_right}
                   onChange={(v) => patch({ text_color_right: v })}
                 />
+              </CardContent>
+            </Card>
+
+            {/* Text Content */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Text Content</CardTitle>
+                <CardDescription>
+                  Override the wording shown on the login page. Leave a field blank to use the default.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-2">Left Panel Title</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <TextField
+                      label="English"
+                      value={config.title_en}
+                      onChange={(v) => patch({ title_en: v })}
+                      placeholder="iStudent.ly Login"
+                    />
+                    <TextField
+                      label="Arabic"
+                      value={config.title_ar}
+                      onChange={(v) => patch({ title_ar: v })}
+                      placeholder="تسجيل الدخول - iStudent.ly"
+                      dir="rtl"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-2">Left Panel Subtitle</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <TextField
+                      label="English"
+                      value={config.subtitle_en}
+                      onChange={(v) => patch({ subtitle_en: v })}
+                      placeholder="Manage your school with ease and efficiency."
+                    />
+                    <TextField
+                      label="Arabic"
+                      value={config.subtitle_ar}
+                      onChange={(v) => patch({ subtitle_ar: v })}
+                      placeholder="إدارة مدرستك بسهولة وكفاءة."
+                      dir="rtl"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-2">Right Panel Heading (form)</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <TextField
+                      label="English"
+                      value={config.heading_en}
+                      onChange={(v) => patch({ heading_en: v })}
+                      placeholder="Login to Account"
+                    />
+                    <TextField
+                      label="Arabic"
+                      value={config.heading_ar}
+                      onChange={(v) => patch({ heading_ar: v })}
+                      placeholder="تسجيل الدخول إلى الحساب"
+                      dir="rtl"
+                    />
+                  </div>
+                </div>
               </CardContent>
             </Card>
 

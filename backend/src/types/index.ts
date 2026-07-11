@@ -277,6 +277,8 @@ export interface School {
   short_name: string | null;
   school_number: string | null;
   parent_school_id: string | null; // NEW: For branches
+  is_trial: boolean;
+  trial_ends_at: string | null;
   settings?: {
     grading_scale: number;
     currency: string;
@@ -311,6 +313,8 @@ export interface CreateSchoolDTO {
   school_number?: string;
   website?: string;
   logo_url?: string;
+  is_trial?: boolean;
+  trial_ends_at?: string | null;
   settings?: School["settings"];
   modules?: School["modules"];
 }
@@ -372,7 +376,7 @@ export interface Student {
 export interface CreateStudentDTO {
   profile_id?: string;
   school_id: string;
-  student_number: string;
+  student_number?: string; // Auto-generated if not provided
   grade_level?: string; // Legacy - keep for backward compatibility
   grade_level_id?: string; // New: UUID reference to grade_levels
   section_id?: string; // New: UUID reference to sections
@@ -386,8 +390,11 @@ export interface CreateStudentDTO {
   email?: string;
   phone?: string;
   profile_photo_url?: string;
-  password?: string;
-  username?: string; // Custom login username; falls back to student_number
+  password?: string; // Auto-generated if not provided
+  username?: string; // Custom login username; auto-generated if not provided
+  gender?: "male" | "female" | "other";
+  date_of_birth?: string;
+  national_id?: string;
 }
 
 export interface UpdateStudentDTO {
@@ -408,6 +415,25 @@ export interface UpdateStudentDTO {
   password?: string;
   is_active?: boolean;
   username?: string; // Login username
+  gender?: "male" | "female" | "other";
+  date_of_birth?: string;
+  national_id?: string;
+}
+
+export interface BulkImportStudentRow {
+  first_name: string;
+  last_name: string;
+  email: string;
+  father_name?: string;
+  grandfather_name?: string;
+  phone?: string;
+  gender?: "male" | "female" | "other";
+  date_of_birth?: string;
+  national_id?: string;
+  // Optional overrides — auto-generated when omitted
+  student_number?: string;
+  username?: string;
+  password?: string;
 }
 
 // ============================================================================
@@ -1998,5 +2024,125 @@ export interface RegisterForTrainingDTO {
   ext_student_age?: number
   ext_parent_phone?: string
   ext_current_school?: string
+}
+
+// ============================================================================
+// GRIEVANCE PORTAL TYPES
+// ============================================================================
+
+export type GrievancePriority = 'low' | 'normal' | 'high' | 'urgent' | 'critical'
+
+export type GrievanceStatus =
+  | 'submitted'
+  | 'pending_review'
+  | 'assigned'
+  | 'under_investigation'
+  | 'awaiting_info'
+  | 'resolved'
+  | 'closed'
+  | 'reopened'
+  | 'escalated'
+  | 'rejected'
+
+export type GrievanceAuditAction =
+  | 'created'
+  | 'status_changed'
+  | 'assigned'
+  | 'comment_added'
+  | 'attachment_uploaded'
+  | 'attachment_downloaded'
+  | 'feedback_submitted'
+  | 'escalated'
+  | 'reopened'
+
+export interface GrievanceCategory {
+  id: string
+  school_id: string
+  name: string
+  is_active: boolean
+  is_default: boolean
+  sort_order: number
+  sla_days: number | null
+  created_at: string
+}
+
+export interface Grievance {
+  id: string
+  school_id: string
+  complaint_number: string
+  title: string
+  description: string
+  category_id: string | null
+  priority: GrievancePriority
+  department: string | null
+  submitter_profile_id: string
+  person_involved_profile_id: string | null
+  is_anonymous: boolean
+  is_confidential: boolean
+  status: GrievanceStatus
+  tracking_token: string
+  submitted_at: string
+  due_date: string | null
+  resolved_at: string | null
+  closed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateGrievanceDTO {
+  school_id: string
+  title: string
+  description: string
+  category_id?: string
+  priority?: GrievancePriority
+  department?: string
+  submitter_profile_id: string
+  person_involved_profile_id?: string
+  is_anonymous?: boolean
+  is_confidential?: boolean
+  attachments?: { file_name: string; file_url: string; file_type?: string; file_size?: number }[]
+}
+
+export interface GrievanceComment {
+  id: string
+  grievance_id: string
+  author_profile_id: string
+  body: string
+  is_internal_note: boolean
+  created_at: string
+}
+
+export interface GrievanceAttachment {
+  id: string
+  grievance_id: string
+  comment_id: string | null
+  file_name: string
+  file_url: string
+  file_type: string | null
+  file_size: number | null
+  uploaded_by_profile_id: string
+  created_at: string
+}
+
+export interface GrievanceAssignment {
+  id: string
+  grievance_id: string
+  assignee_profile_id: string
+  assigned_by_profile_id: string
+  role_label: string | null
+  is_current: boolean
+  created_at: string
+}
+
+export interface GrievanceSettings {
+  school_id: string
+  sla_days_default: number
+  allow_anonymous: boolean
+  allow_confidential: boolean
+  allow_reopen: boolean
+  max_attachment_mb: number
+  allowed_file_types: string[]
+  notification_channels: { in_app: boolean; email: boolean }
+  updated_at: string
 }
 

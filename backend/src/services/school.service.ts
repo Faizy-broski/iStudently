@@ -1,5 +1,7 @@
 import { supabase } from '../config/supabase'
 import { CreateSchoolDTO, UpdateSchoolDTO, School, SchoolStats } from '../types'
+import bcrypt from 'bcrypt'
+import { encryptSecret } from '../utils/crypto'
 
 export class SchoolService {
   /**
@@ -35,6 +37,8 @@ export class SchoolService {
           address: schoolData.address || null,
           website: schoolData.website || null,
           logo_url: schoolData.logo_url || null,
+          is_trial: schoolData.is_trial || false,
+          trial_ends_at: schoolData.trial_ends_at || null,
           status: 'active'
         })
         .select()
@@ -125,6 +129,12 @@ export class SchoolService {
 
       console.log('🔍 Existing profile check:', existingProfile)
 
+      // Store the admin's password retrievably (encrypted, not just hashed) so
+      // it can be redisplayed later for printing an ID/credentials card —
+      // mirrors regenerateCredentials() in username.service.ts.
+      const hashedPassword = await bcrypt.hash(adminData.password, 10)
+      const encryptedPassword = encryptSecret(adminData.password)
+
       if (!existingProfile) {
         // Profile wasn't created by trigger, create it manually
         const { error: insertError } = await supabase
@@ -137,6 +147,8 @@ export class SchoolService {
             last_name: adminData.last_name,
             school_id: school.id,
             username: adminUsername,
+            system_password: hashedPassword,
+            login_password_enc: encryptedPassword,
             is_active: true
           })
 
@@ -158,6 +170,8 @@ export class SchoolService {
             first_name: adminData.first_name,
             last_name: adminData.last_name,
             username: adminUsername,
+            system_password: hashedPassword,
+            login_password_enc: encryptedPassword,
           })
           .eq('id', authUser.user.id)
 
@@ -566,8 +580,10 @@ export class SchoolService {
       updates.push(authUpdate())
     }
 
-    // Update profile name and/or username
-    if (data.admin_name || data.username) {
+    // Update profile name, username, and/or the retrievably-stored password
+    // (so it can be redisplayed later for a credentials/ID card, mirroring
+    // regenerateCredentials() in username.service.ts).
+    if (data.admin_name || data.username || data.password) {
       const profileUpdate = async () => {
         const profileFields: Record<string, string> = {}
 
@@ -579,6 +595,11 @@ export class SchoolService {
 
         if (data.username) {
           profileFields.username = data.username
+        }
+
+        if (data.password) {
+          profileFields.system_password = await bcrypt.hash(data.password, 10)
+          profileFields.login_password_enc = encryptSecret(data.password)
         }
 
         const { error } = await supabase

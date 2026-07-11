@@ -215,6 +215,33 @@ export const authenticate = async (
       }
     }
 
+    // ── School suspension / trial-expiry enforcement ────────────────────────
+    // Super admins are never blocked — they need access to fix/investigate
+    // suspended or trial-expired schools (including while impersonating one).
+    if (profile.role !== 'super_admin' && profile.school_id) {
+      const { data: school } = await supabase
+        .from('schools')
+        .select('status, is_trial, trial_ends_at')
+        .eq('id', profile.school_id)
+        .single()
+
+      if (school?.status === 'suspended') {
+        return res.status(403).json({
+          success: false,
+          error: 'This school account has been suspended. Please contact your administrator.',
+          code: 'SCHOOL_SUSPENDED'
+        })
+      }
+
+      if (school?.is_trial && school.trial_ends_at && new Date(school.trial_ends_at) < new Date()) {
+        return res.status(403).json({
+          success: false,
+          error: 'Your trial period has ended. Please contact us to continue using the system.',
+          code: 'TRIAL_EXPIRED'
+        })
+      }
+    }
+
     // Attach user and profile to request
     req.user = user
     req.profile = profile

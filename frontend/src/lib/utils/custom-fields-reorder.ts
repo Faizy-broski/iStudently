@@ -5,10 +5,17 @@ import { saveFieldOrders, type EntityType as FieldOrderEntityType } from '@/lib/
 export interface DefaultFieldMeta {
   label: string
   sort_order: number
+  // Stable field identifier (matches the registration form's field id, e.g.
+  // 'firstName') used for saving/matching order & required overrides.
+  // Optional for entity types that haven't been wired up to a registration
+  // form's field ids yet — falls back to matching on `label` (fragile, since
+  // `label` there is just a display string, but preserves prior behavior).
+  id?: string
+  required?: boolean
 }
 
 export type MergedFieldItem =
-  | { key: string; kind: 'default'; label: string; sort_order: number }
+  | { key: string; kind: 'default'; label: string; sort_order: number; id?: string; required?: boolean }
   | { key: string; kind: 'custom'; label: string; sort_order: number; field: CustomField }
 
 // Builds one combined, sort_order-ordered list out of the default fields and
@@ -25,6 +32,8 @@ export function buildMergedItems(
       kind: 'default' as const,
       label: f.label,
       sort_order: f.sort_order,
+      id: f.id,
+      required: f.required,
     })),
     ...customFields.map((f) => ({
       key: `custom:${f.id}`,
@@ -52,7 +61,7 @@ export function splitMergedOrder(items: MergedFieldItem[]): {
   items.forEach((item, idx) => {
     const sort_order = idx + 1
     if (item.kind === 'default') {
-      defaultOrder.push({ field_label: item.label, sort_order })
+      defaultOrder.push({ field_label: item.id ?? item.label, sort_order })
     } else {
       customOrder.push({ id: item.field.id, sort_order })
     }

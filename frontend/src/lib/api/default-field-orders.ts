@@ -57,6 +57,7 @@ export interface DefaultFieldOrder {
   category_id: string;
   field_label: string;
   sort_order: number;
+  required?: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -119,6 +120,36 @@ export async function saveFieldOrders(
 }
 
 /**
+ * Toggle whether a single default field is required for this school/campus
+ */
+export async function updateFieldRequired(
+  entityType: EntityType,
+  categoryId: string,
+  fieldLabel: string,
+  required: boolean,
+  sortOrder: number,
+  campusId?: string
+): Promise<ApiResponse> {
+  try {
+    return await apiRequest(`/default-field-orders/${entityType}/${categoryId}/required`, {
+      method: 'POST',
+      body: JSON.stringify({
+        field_label: fieldLabel,
+        required,
+        sort_order: sortOrder,
+        campus_id: campusId
+      })
+    });
+  } catch (error: any) {
+    console.error('Error updating field required status:', error);
+    return {
+      success: false,
+      message: error.message || 'Failed to update field required status'
+    };
+  }
+}
+
+/**
  * Delete field orders for a specific category (reset to defaults)
  */
 export async function deleteFieldOrders(
@@ -172,27 +203,36 @@ export async function resetAllFieldOrders(
 }
 
 /**
- * Get effective field order for a category
- * Returns saved order from database, or default order if not customized
+ * Get effective field order (and, where saved, required-override) for a
+ * category. Matches saved rows by `id` when the caller provides one
+ * (preferred — a stable key, unlike a translated/display label), falling
+ * back to `label` for callers that don't yet pass an id. Always iterates the
+ * caller-supplied defaultFields list as the source of truth for which fields
+ * exist, so fields added after an order was last saved don't disappear and
+ * stale saved rows for removed fields don't reappear.
  */
-export function getEffectiveFieldOrder(
+export function getEffectiveFieldOrder<
+  T extends { id?: string; label: string; sort_order: number; required?: boolean }
+>(
   savedOrders: DefaultFieldOrder[],
   categoryId: string,
-  defaultFields: Array<{ label: string; sort_order: number }>
-): Array<{ label: string; sort_order: number }> {
-  // Filter orders for this category
+  defaultFields: T[]
+): T[] {
   const categoryOrders = savedOrders.filter(order => order.category_id === categoryId);
-  
+
   if (categoryOrders.length === 0) {
-    // No custom ordering, return default
     return [...defaultFields].sort((a, b) => a.sort_order - b.sort_order);
   }
-  
-  // Use saved ordering
-  return categoryOrders
-    .sort((a, b) => a.sort_order - b.sort_order)
-    .map(order => ({
-      label: order.field_label,
-      sort_order: order.sort_order
-    }));
+
+  return defaultFields
+    .map(field => {
+      const saved = categoryOrders.find(order => order.field_label === (field.id ?? field.label));
+      if (!saved) return field;
+      return {
+        ...field,
+        sort_order: saved.sort_order,
+        required: typeof saved.required === 'boolean' ? saved.required : field.required,
+      };
+    })
+    .sort((a, b) => a.sort_order - b.sort_order);
 }
