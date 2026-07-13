@@ -60,11 +60,20 @@ async function apiRequest<T = unknown>(
   }
 }
 
+export interface MessageAttachment {
+  id: string
+  file_name: string
+  url: string
+  mime_type: string
+  size: number
+}
+
 export interface MessageListItem {
   id: string
   status: 'unread' | 'read' | 'archived' | 'sent'
   read_at: string | null
   sender_name: string
+  has_attachments?: boolean
   messages: {
     id: string
     subject: string
@@ -84,6 +93,7 @@ export interface ThreadMessage {
   is_own: boolean
   status: string
   can_delete: boolean
+  attachments: MessageAttachment[]
 }
 
 export interface MessageTemplate {
@@ -117,6 +127,7 @@ export const messagingApi = {
     body: string
     campus_id?: string
     reply_to_message_id?: string
+    attachments?: { url: string; name: string; mime_type: string; size: number; path: string }[]
   }) => {
     return apiRequest<{ id: string }>('/messaging/send', {
       method: 'POST',

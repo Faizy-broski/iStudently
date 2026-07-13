@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { messagingApi, type MessageTemplate, type MessageRecipientOption } from "@/lib/api/messaging"
+import { uploadMessageAttachment, type MessageAttachmentUploadResult } from "@/lib/api/media-upload"
 import { playMessageSentSound } from "@/lib/utils/notification-sound"
 import { useCampus } from "@/context/CampusContext"
 import { useAuth } from "@/context/AuthContext"
@@ -16,7 +17,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
-import { Send, Search, Users, GraduationCap, Save, X } from "lucide-react"
+import { Send, Search, Users, GraduationCap, Save, X, Paperclip, FileText } from "lucide-react"
+
+const MAX_ATTACHMENTS = 5
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
 
 interface MessageComposeProps {
   inboxHref: string
@@ -39,6 +48,8 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
   const [selectedProfileIds, setSelectedProfileIds] = useState<Set<string>>(new Set())
   const [knownRecipientNames, setKnownRecipientNames] = useState<Record<string, string>>({})
   const [replyToMessageId, setReplyToMessageId] = useState<string | undefined>(undefined)
+  const [attachments, setAttachments] = useState<MessageAttachmentUploadResult[]>([])
+  const [uploadingCount, setUploadingCount] = useState(0)
 
   useEffect(() => {
     const replyTo = searchParams.get("reply_to")
@@ -142,10 +153,40 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
     }
   }
 
+  const handleAttachFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    e.target.value = ""
+    if (files.length === 0) return
+
+    if (attachments.length + files.length > MAX_ATTACHMENTS) {
+      toast.error(`You can attach up to ${MAX_ATTACHMENTS} files`)
+      return
+    }
+
+    setUploadingCount((c) => c + files.length)
+    for (const file of files) {
+      try {
+        const res = await uploadMessageAttachment(file, selectedCampusId)
+        if (res.success && res.data) {
+          setAttachments((prev) => [...prev, res.data as MessageAttachmentUploadResult])
+        } else {
+          toast.error(res.error || `Failed to upload ${file.name}`)
+        }
+      } finally {
+        setUploadingCount((c) => c - 1)
+      }
+    }
+  }
+
+  const removeAttachment = (path: string) => {
+    setAttachments((prev) => prev.filter((a) => a.path !== path))
+  }
+
   const handleSend = async () => {
     if (!subject.trim()) { toast.error("Subject is required"); return }
     if (!body.trim()) { toast.error("Message is required"); return }
     if (selectedProfileIds.size === 0) { toast.error("Select at least one recipient"); return }
+    if (uploadingCount > 0) { toast.error("Please wait for attachments to finish uploading"); return }
 
     setSending(true)
     try {
@@ -155,10 +196,12 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
         body,
         campus_id: selectedCampusId,
         reply_to_message_id: replyToMessageId,
+        attachments: attachments.map((a) => ({ url: a.url, name: a.name, mime_type: a.mime_type, size: a.size, path: a.path })),
       })
       if (res.success) {
         playMessageSentSound()
         toast.success("Message sent")
+        setAttachments([])
         router.push(inboxHref)
       } else {
         toast.error(res.error || "Failed to send message")
@@ -214,7 +257,51 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
               value={body}
               onChange={setBody}
               campusId={selectedCampusId}
+              showMediaRecorder
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="attachments" className="cursor-pointer">
+                <Button type="button" variant="outline" size="sm" asChild>
+                  <span>
+                    <Paperclip className="h-3.5 w-3.5 mr-1.5" />
+                    Attach files
+                  </span>
+                </Button>
+              </Label>
+              <input
+                id="attachments"
+                type="file"
+                multiple
+                className="hidden"
+                onChange={handleAttachFiles}
+                disabled={uploadingCount > 0 || attachments.length >= MAX_ATTACHMENTS}
+              />
+              {uploadingCount > 0 && (
+                <span className="text-xs text-muted-foreground">Uploading {uploadingCount}...</span>
+              )}
+            </div>
+            {attachments.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {attachments.map((a) => (
+                  <Badge key={a.path} variant="secondary" className="gap-1.5 py-1.5 pl-2 pr-1.5">
+                    <FileText className="h-3.5 w-3.5" />
+                    <span className="max-w-[160px] truncate">{a.name}</span>
+                    <span className="text-muted-foreground">({formatFileSize(a.size)})</span>
+                    <button
+                      type="button"
+                      onClick={() => removeAttachment(a.path)}
+                      className="ml-0.5 hover:text-destructive"
+                      aria-label="Remove attachment"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap items-end gap-2 pt-2 border-t">
@@ -249,7 +336,7 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
                   <X className="h-3.5 w-3.5 mr-1" /> Clear
                 </Button>
               )}
-              <Button onClick={handleSend} disabled={sending || selectedProfileIds.size === 0} size="sm">
+              <Button onClick={handleSend} disabled={sending || uploadingCount > 0 || selectedProfileIds.size === 0} size="sm">
                 <Send className="h-3.5 w-3.5 mr-1.5" /> {sending ? "Sending..." : "Send"}
               </Button>
             </div>

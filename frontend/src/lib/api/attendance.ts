@@ -1,6 +1,7 @@
 import { getAuthToken } from './schools'
 import { handleSessionExpiry } from '@/context/AuthContext'
 import { API_URL } from '@/config/api'
+import { getImpersonationHeaders } from './abortable-fetch'
 
 interface ApiResponse<T = unknown> {
   success: boolean
@@ -180,6 +181,7 @@ async function apiRequest<T = unknown>(
     const token = await getAuthToken()
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      ...getImpersonationHeaders(),
       ...(options.headers as Record<string, string> || {})
     }
     if (token) {
@@ -566,7 +568,7 @@ export async function exportAttendanceSummary(
   if (sectionId) params.append('section_id', sectionId)
 
   const resp = await fetch(`${API_URL}/attendance/reports/summary/export?${params}`, {
-    headers: { 'Authorization': `Bearer ${token}` }
+    headers: { 'Authorization': `Bearer ${token}`, ...getImpersonationHeaders() }
   })
 
   if (!resp.ok) {
@@ -616,7 +618,8 @@ export async function downloadCoursePeriodSheets(data: {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      'Authorization': `Bearer ${token}`,
+      ...getImpersonationHeaders(),
     },
     body: JSON.stringify(data)
   })

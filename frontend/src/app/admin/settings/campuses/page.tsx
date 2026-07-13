@@ -11,9 +11,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { toast } from "sonner"
 import { Building2, Plus, Pencil, Trash2, Loader2, Upload, X } from "lucide-react"
 import { getCampuses, createCampus, updateCampus, deleteCampus, Campus, CreateCampusData } from "@/lib/api/setup-status"
+import { getMySchools } from "@/lib/api/schools"
 import { createClient } from "@/lib/supabase/client"
 import { useCampus } from "@/context/CampusContext"
 import { CampusSidebarConfigButton } from "@/components/sidebar/CampusSidebarConfigButton"
+import { CopySchoolSettingsDialog, type CopySettingsSchoolOption } from "@/components/shared/CopySchoolSettingsDialog"
 
 import { useTranslations } from "next-intl"
 
@@ -28,6 +30,9 @@ export default function CampusesPage() {
     const [logoFile, setLogoFile] = useState<File | null>(null)
     const [logoPreview, setLogoPreview] = useState<string | null>(null)
     const logoInputRef = useRef<HTMLInputElement>(null)
+    const [newCampus, setNewCampus] = useState<{ id: string; name: string } | null>(null)
+    const [showCopyDialog, setShowCopyDialog] = useState(false)
+    const [copySourceOptions, setCopySourceOptions] = useState<CopySettingsSchoolOption[]>([])
 
     // Form state
     const [formData, setFormData] = useState<CreateCampusData>({
@@ -152,8 +157,12 @@ export default function CampusesPage() {
                 await updateCampus(editingCampus.id, payload)
                 toast.success(t('update_success'))
             } else {
-                await createCampus(payload)
+                const created = await createCampus(payload)
                 toast.success(t('create_success'))
+                const mySchools = await getMySchools()
+                setCopySourceOptions(mySchools)
+                setNewCampus({ id: created.id, name: created.name })
+                setShowCopyDialog(true)
             }
             handleCloseDialog()
             loadCampuses()
@@ -490,6 +499,17 @@ export default function CampusesPage() {
                         </Card>
                     ))}
                 </div>
+            )}
+
+            {newCampus && (
+                <CopySchoolSettingsDialog
+                    targetSchoolId={newCampus.id}
+                    targetSchoolName={newCampus.name}
+                    sourceSchoolOptions={copySourceOptions}
+                    open={showCopyDialog}
+                    onOpenChange={(open) => { setShowCopyDialog(open); if (!open) setNewCampus(null) }}
+                    hideTrigger
+                />
             )}
         </div>
     )

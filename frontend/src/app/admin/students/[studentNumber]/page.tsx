@@ -192,14 +192,14 @@ export default function StudentDetailsPage() {
       fetchStudent();
     }
 
-    getFieldDefinitions('student').then((res) => {
+    getFieldDefinitions('student', campusContext?.selectedCampus?.id).then((res) => {
       if (res.success && res.data) setCustomFieldDefs(res.data);
     }).catch(() => {});
 
     return () => {
       clearViewedProfile();
     };
-  }, [studentNumber, students, setViewedProfile, clearViewedProfile]);
+  }, [studentNumber, students, setViewedProfile, clearViewedProfile, campusContext?.selectedCampus?.id]);
 
   const navigateToStudent = (student: Student) => {
     router.push(`/admin/students/${encodeURIComponent(student.student_number)}`);

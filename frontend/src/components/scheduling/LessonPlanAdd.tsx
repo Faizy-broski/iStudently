@@ -558,6 +558,7 @@ export default function LessonPlanAdd() {
                 placeholder={t("desc_objectives")}
                 campusId={campusId}
                 showEditorPlugins
+                showMediaRecorder
               />
             </div>
 
@@ -647,6 +648,7 @@ export default function LessonPlanAdd() {
                           minHeight="80px"
                           campusId={campusId}
                           showEditorPlugins
+                          showMediaRecorder
                         />
                       </div>
                       <div>
@@ -660,6 +662,7 @@ export default function LessonPlanAdd() {
                           minHeight="80px"
                           campusId={campusId}
                           showEditorPlugins
+                          showMediaRecorder
                         />
                       </div>
                       <div>
@@ -673,6 +676,7 @@ export default function LessonPlanAdd() {
                           minHeight="80px"
                           campusId={campusId}
                           showEditorPlugins
+                          showMediaRecorder
                         />
                       </div>
                       <div>
@@ -688,6 +692,7 @@ export default function LessonPlanAdd() {
                           minHeight="80px"
                           campusId={campusId}
                           showEditorPlugins
+                          showMediaRecorder
                         />
                       </div>
                     </div>
@@ -712,6 +717,7 @@ export default function LessonPlanAdd() {
                   placeholder={t("lesson_evaluation") + "..."}
                   campusId={campusId}
                   showEditorPlugins
+                  showMediaRecorder
                 />
               </div>
               <div>
@@ -724,6 +730,7 @@ export default function LessonPlanAdd() {
                   placeholder={t("inclusiveness") + "..."}
                   campusId={campusId}
                   showEditorPlugins
+                  showMediaRecorder
                 />
               </div>
             </div>

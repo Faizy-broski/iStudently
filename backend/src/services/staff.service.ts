@@ -372,7 +372,7 @@ export const createStaffRecord = async (
             payment_type: data.payment_type || 'fixed_salary',
             is_active: true,
             permissions: data.permissions || {},
-            custom_fields: data.custom_fields || [],
+            custom_fields: data.custom_fields || {},
             created_by: creatorId,
             role: role  // Set correct role based on title
         })
@@ -712,7 +712,8 @@ export const bulkImportStaff = async (
                 date_of_joining: raw.date_of_joining?.toString().trim() || undefined,
                 employment_type: (empType as any) || 'full_time',
                 payment_type: (payType as any) || 'fixed_salary',
-                base_salary: baseSalary
+                base_salary: baseSalary,
+                custom_fields: raw.custom_fields || {}
             }
         })
     }

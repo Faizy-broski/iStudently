@@ -20,6 +20,7 @@ interface CustomFieldsRendererProps {
     values: Record<string, any>
     onChange: (values: Record<string, any>) => void
     disabled?: boolean
+    campusId?: string
 }
 
 /**
@@ -30,7 +31,8 @@ export function CustomFieldsRenderer({
     entityType,
     values,
     onChange,
-    disabled = false
+    disabled = false,
+    campusId
 }: CustomFieldsRendererProps) {
     const [fields, setFields] = useState<CustomFieldDefinition[]>([])
     const [loading, setLoading] = useState(true)
@@ -40,7 +42,7 @@ export function CustomFieldsRenderer({
         const fetchFields = async () => {
             try {
                 setLoading(true)
-                const response = await getFieldDefinitions(entityType)
+                const response = await getFieldDefinitions(entityType, campusId)
                 if (response.success && response.data) {
                     // Sort by sort_order (should already be sorted by backend, but ensure)
                     const sortedFields = [...response.data].sort((a, b) => a.sort_order - b.sort_order)
@@ -57,7 +59,7 @@ export function CustomFieldsRenderer({
         }
 
         fetchFields()
-    }, [entityType])
+    }, [entityType, campusId])
 
     const handleFieldChange = (fieldKey: string, value: any) => {
         onChange({

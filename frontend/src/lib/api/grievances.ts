@@ -1,6 +1,7 @@
 import { apiRequest, type ApiResponse } from './index'
 import { getAuthToken } from './schools'
 import { API_URL } from '@/config/api'
+import { getImpersonationHeaders } from './abortable-fetch'
 
 // ============================================================================
 // TYPES
@@ -199,7 +200,7 @@ export const grievancesApi = {
     try {
       const response = await fetch(`${API_URL}/grievances/${grievanceId}/attachments/upload`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}`, ...getImpersonationHeaders() },
         body: formData,
       })
       const data = await response.json()

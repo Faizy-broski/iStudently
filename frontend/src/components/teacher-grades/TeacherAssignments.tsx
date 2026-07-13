@@ -419,6 +419,7 @@ export function TeacherAssignments() {
                 placeholder="Describe the assignment..."
                 campusId={selectedCampus?.id}
                 showEditorPlugins
+                showMediaRecorder
               />
             </div>
 

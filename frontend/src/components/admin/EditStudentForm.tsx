@@ -1,20 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { TagsInput } from "@/components/ui/tags-input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, ArrowRight, Save, Loader2, User, GraduationCap, Heart, Shield } from "lucide-react";
+import { ArrowLeft, ArrowRight, Save, Loader2, User, GraduationCap, Heart, Shield, ListPlus } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
 import { type Student, updateStudent } from "@/lib/api/students";
+import { getFieldDefinitions, type CustomFieldDefinition } from "@/lib/api/custom-fields";
 import { useTranslations } from "next-intl";
 import { useGradeLevels } from "@/hooks/useAcademics";
 import { StudentPhotoUpload } from "@/components/ui/student-photo-upload";
@@ -83,11 +87,109 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { gradeLevels } = useGradeLevels();
 
+  // Admin-defined custom field definitions + their current values (keyed by
+  // category_id -> field_key), seeded from the student's existing custom_fields
+  // so any category/key not covered by the hardcoded inputs below survives a save.
+  const [customFieldDefs, setCustomFieldDefs] = useState<CustomFieldDefinition[]>([]);
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, Record<string, any>>>(
+    () => JSON.parse(JSON.stringify(student.custom_fields ?? {}))
+  );
+
+  useEffect(() => {
+    getFieldDefinitions('student', campusContext?.selectedCampus?.id).then((res) => {
+      if (res.success && res.data) setCustomFieldDefs(res.data);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campusContext?.selectedCampus?.id]);
+
+  const updateCustomFieldValue = (categoryId: string, fieldKey: string, value: any) => {
+    setCustomFieldValues(prev => ({
+      ...prev,
+      [categoryId]: { ...prev[categoryId], [fieldKey]: value },
+    }));
+  };
+
+  const KNOWN_CATEGORIES = ['personal', 'academic', 'medical', 'family'];
+  const extraCategoryIds = Array.from(
+    new Set(customFieldDefs.filter(f => !KNOWN_CATEGORIES.includes(f.category_id)).map(f => f.category_id))
+  );
+
+  const renderCustomFieldInput = (field: CustomFieldDefinition) => {
+    const value = customFieldValues[field.category_id]?.[field.field_key];
+    const onChange = (val: any) => updateCustomFieldValue(field.category_id, field.field_key, val);
+
+    switch (field.type) {
+      case "long-text":
+        return <Textarea value={value || ""} onChange={(e) => onChange(e.target.value)} rows={3} />;
+      case "number":
+        return <Input type="number" value={value ?? ""} onChange={(e) => onChange(e.target.value)} />;
+      case "date":
+        return (
+          <DatePicker
+            value={value ? new Date(value) : undefined}
+            onChange={(date) => onChange(date?.toISOString())}
+            placeholder={`Select ${field.label}`}
+          />
+        );
+      case "checkbox":
+        return (
+          <div className="flex items-center space-x-2">
+            <Checkbox checked={!!value} onCheckedChange={(checked) => onChange(!!checked)} />
+            <span className="text-sm">{field.label}</span>
+          </div>
+        );
+      case "select":
+        return (
+          <Select value={value || ""} onValueChange={onChange}>
+            <SelectTrigger>
+              <SelectValue placeholder={`Select ${field.label}`} />
+            </SelectTrigger>
+            <SelectContent>
+              {field.options?.map((option) => (
+                <SelectItem key={option} value={option}>{option}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      case "multi-select":
+        return <TagsInput value={value || []} onChange={onChange} placeholder={`Add ${field.label}`} />;
+      case "file":
+        return <Input type="url" value={value || ""} onChange={(e) => onChange(e.target.value)} placeholder={`Enter URL for ${field.label}`} />;
+      case "text":
+      default:
+        return <Input value={value || ""} onChange={(e) => onChange(e.target.value)} />;
+    }
+  };
+
+  const renderCustomFieldsForCategory = (categoryId: string) => {
+    const fields = customFieldDefs.filter(f => f.category_id === categoryId).sort((a, b) => a.sort_order - b.sort_order);
+    if (fields.length === 0) return null;
+    return (
+      <>
+        <Separator />
+        <div>
+          <Label className="text-sm font-semibold text-[#022172] dark:text-white">Custom Fields</Label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+            {fields.map(field => (
+              <div key={field.id} className={field.type === 'long-text' ? 'md:col-span-2' : ''}>
+                {field.type !== 'checkbox' && (
+                  <Label>{field.label}{field.required && <span className="text-red-500"> *</span>}</Label>
+                )}
+                {renderCustomFieldInput(field)}
+              </div>
+            ))}
+          </div>
+        </div>
+      </>
+    );
+  };
+
   const tabs = [
     { id: 'personal', label: t("personal_info"), icon: User },
     { id: 'academic', label: t("academic_info"), icon: GraduationCap },
     { id: 'medical', label: t("medical_info"), icon: Heart },
-    { id: 'emergency', label: t("emergency_contacts"), icon: Shield }
+    { id: 'emergency', label: t("emergency_contacts"), icon: Shield },
+    ...(extraCategoryIds.length > 0 ? [{ id: 'custom', label: 'Custom Fields', icon: ListPlus }] : []),
   ];
 
   // Initialize form data with student information
@@ -144,7 +246,8 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
       personal: t("personal_info"),
       academic: t("academic_info"),
       medical: t("medical_info"),
-      emergency: t("emergency_contacts")
+      emergency: t("emergency_contacts"),
+      custom: 'Custom Fields',
     };
     return titles[activeTab] || '';
   };
@@ -160,14 +263,21 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
         student_number: formData.studentNumber,
         grade_level: formData.gradeLevel,
         username: formData.username || undefined,
+        // Start from the preserved custom_fields (original values + any admin-defined
+        // custom field edits) and only overlay the keys this form has dedicated inputs
+        // for. Overwriting with just the hardcoded shape would silently wipe out any
+        // category/key not covered here, since the backend replaces custom_fields wholesale.
         custom_fields: {
+          ...customFieldValues,
           personal: {
+            ...customFieldValues.personal,
             gender: formData.gender,
             date_of_birth: formData.dateOfBirth,
             address: formData.address,
             student_photo: formData.studentPhoto,
           },
           academic: {
+            ...customFieldValues.academic,
             admission_date: formData.admissionDate,
             previous_school: {
               schoolName: formData.previousSchool,
@@ -175,9 +285,11 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
             },
           },
           system: {
+            ...customFieldValues.system,
             username: formData.username,
           },
           family: {
+            ...customFieldValues.family,
             emergency_contacts: [{
               name: formData.emergencyName,
               relationship: formData.emergencyRelation,
@@ -244,7 +356,7 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
 
       {/* Tab Navigation */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className={`grid w-full ${tabs.length === 5 ? 'grid-cols-5' : 'grid-cols-4'}`}>
           {tabs.map(tab => (
             <TabsTrigger key={tab.id} value={tab.id} className="gap-2">
               <tab.icon className="h-4 w-4 hidden sm:inline" />
@@ -357,6 +469,7 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
                   />
                 </div>
               </div>
+              {renderCustomFieldsForCategory('personal')}
             </CardContent>
           </Card>
         </TabsContent>
@@ -432,6 +545,7 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
                   />
                 </div>
               </div>
+              {renderCustomFieldsForCategory('academic')}
             </CardContent>
           </Card>
         </TabsContent>
@@ -483,6 +597,7 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
                   />
                 </div>
               </div>
+              {renderCustomFieldsForCategory('medical')}
             </CardContent>
           </Card>
         </TabsContent>
@@ -534,9 +649,44 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
                   />
                 </div>
               </div>
+              {renderCustomFieldsForCategory('family')}
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Additional Custom Fields Tab (categories beyond the standard 4) */}
+        {extraCategoryIds.length > 0 && (
+          <TabsContent value="custom" className="space-y-4 mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-[#022172] dark:text-white">Custom Fields</CardTitle>
+                <CardDescription>Additional school-defined fields</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {extraCategoryIds.map(categoryId => (
+                  <div key={categoryId}>
+                    <Label className="text-sm font-semibold text-[#022172] dark:text-white">
+                      {customFieldDefs.find(f => f.category_id === categoryId)?.category_name || categoryId}
+                    </Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                      {customFieldDefs
+                        .filter(f => f.category_id === categoryId)
+                        .sort((a, b) => a.sort_order - b.sort_order)
+                        .map(field => (
+                          <div key={field.id} className={field.type === 'long-text' ? 'md:col-span-2' : ''}>
+                            {field.type !== 'checkbox' && (
+                              <Label>{field.label}{field.required && <span className="text-red-500"> *</span>}</Label>
+                            )}
+                            {renderCustomFieldInput(field)}
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Navigation Buttons */}

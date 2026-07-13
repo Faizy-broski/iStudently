@@ -156,7 +156,7 @@ function ImageDialog({
 
 // ── Toolbar ───────────────────────────────────────────────────────────────────
 
-function Toolbar({ editor, campusId, showEditorPlugins }: { editor: Editor; campusId?: string; showEditorPlugins?: boolean }) {
+function Toolbar({ editor, campusId, showEditorPlugins, showMediaRecorder }: { editor: Editor; campusId?: string; showEditorPlugins?: boolean; showMediaRecorder?: boolean }) {
   const [showSource, setShowSource] = useState(false)
   const [sourceHtml, setSourceHtml] = useState('')
   const [linkOpen, setLinkOpen] = useState(false)
@@ -223,7 +223,7 @@ function Toolbar({ editor, campusId, showEditorPlugins }: { editor: Editor; camp
           }}
         />
       )}
-      {showEditorPlugins && recorderType && (
+      {showMediaRecorder && recorderType && (
         <AudioVideoRecorderDialog
           open={!!recorderType}
           type={recorderType}
@@ -276,12 +276,12 @@ function Toolbar({ editor, campusId, showEditorPlugins }: { editor: Editor; camp
               <span className="font-mono font-bold italic text-xs">fx</span>
             </TB>
           )}
-          {showEditorPlugins && (
+          {showMediaRecorder && (
             <TB onClick={() => setRecorderType('audio')} title="Record audio annotation">
               <Mic className="h-3.5 w-3.5" />
             </TB>
           )}
-          {showEditorPlugins && (
+          {showMediaRecorder && (
             <TB onClick={() => setRecorderType('video')} title="Record video annotation">
               <Video className="h-3.5 w-3.5" />
             </TB>
@@ -323,11 +323,13 @@ interface RichTextEditorProps {
   minHeight?: string
   /** Optional campus ID — forwarded to the media recorder so files are stored per-campus */
   campusId?: string
-  /** Show formula (fx) and audio/video recording toolbar buttons. Only for lesson plans and assignments. */
+  /** Show formula (fx) toolbar button. Only for lesson plans and assignments. */
   showEditorPlugins?: boolean
+  /** Show audio/video recording toolbar buttons. */
+  showMediaRecorder?: boolean
 }
 
-export function RichTextEditor({ value, onChange, campusId, showEditorPlugins }: RichTextEditorProps) {
+export function RichTextEditor({ value, onChange, campusId, showEditorPlugins, showMediaRecorder }: RichTextEditorProps) {
   const isMounted = useRef(false)
 
   const editor = useEditor({
@@ -369,7 +371,7 @@ export function RichTextEditor({ value, onChange, campusId, showEditorPlugins }:
 
   return (
     <div className="rounded-md overflow-hidden border border-input bg-background">
-      <Toolbar editor={editor} campusId={campusId} showEditorPlugins={showEditorPlugins} />
+      <Toolbar editor={editor} campusId={campusId} showEditorPlugins={showEditorPlugins} showMediaRecorder={showMediaRecorder} />
     </div>
   )
 }

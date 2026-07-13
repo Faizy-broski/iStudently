@@ -1049,7 +1049,8 @@ export const bulkImportTeachers = async (
         date_of_joining: raw.date_of_joining?.toString().trim() || undefined,
         employment_type: (empType as any)                       || 'full_time',
         payment_type:    (payType as any)                       || 'fixed_salary',
-        base_salary:     baseSalary
+        base_salary:     baseSalary,
+        custom_fields:   raw.custom_fields || {}
       }
     })
   }

@@ -1,5 +1,6 @@
 import { getAuthToken } from './schools';
 import { API_URL } from '@/config/api';
+import { getImpersonationHeaders } from './abortable-fetch';
 
 // Helper function for API requests
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -10,6 +11,7 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...getImpersonationHeaders(),
       ...options.headers,
     },
   });

@@ -1,19 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSWRConfig } from 'swr'
 import { Button } from '@/components/ui/button'
 import { LogOut, Shield } from 'lucide-react'
 
 export function ImpersonationBanner() {
-  const [schoolName, setSchoolName] = useState<string | null>(null)
+  const schoolName = typeof window !== 'undefined' ? sessionStorage.getItem('impersonatedSchoolName') : null
   const router = useRouter()
   const { mutate } = useSWRConfig()
-
-  useEffect(() => {
-    setSchoolName(sessionStorage.getItem('impersonatedSchoolName'))
-  }, [])
 
   if (!schoolName) return null
 
@@ -21,6 +16,10 @@ export function ImpersonationBanner() {
     mutate(() => true, undefined, { revalidate: false })
     sessionStorage.removeItem('impersonatedSchoolId')
     sessionStorage.removeItem('impersonatedSchoolName')
+    // Clear cached campus data too, so returning to super-admin views (or a future
+    // impersonation session) can't briefly show this school's campus name/logo.
+    sessionStorage.removeItem('studently_campus_cache')
+    localStorage.removeItem('selectedCampusId')
     router.push('/superadmin/school-directory')
   }
 

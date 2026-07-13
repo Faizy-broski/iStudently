@@ -20,7 +20,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Inbox, Archive, Send as SendIcon, Trash2, ArrowLeft, PenSquare, MailOpen, Mail, Reply } from "lucide-react"
+import { Inbox, Archive, Send as SendIcon, Trash2, ArrowLeft, PenSquare, MailOpen, Mail, Reply, Paperclip, FileText } from "lucide-react"
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
 
 interface MessagingInboxProps {
   writeHref: string
@@ -215,6 +221,24 @@ export function MessagingInbox({ writeHref }: MessagingInboxProps) {
                   className="prose prose-sm max-w-none pl-[52px]"
                   dangerouslySetInnerHTML={{ __html: m.body }}
                 />
+                {m.attachments.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pl-[52px]">
+                    {m.attachments.map((att) => (
+                      <a
+                        key={att.id}
+                        href={att.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download={att.file_name}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border bg-muted/30 hover:bg-muted/60 transition-colors text-xs"
+                      >
+                        <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="max-w-[180px] truncate">{att.file_name}</span>
+                        <span className="text-muted-foreground">({formatFileSize(att.size)})</span>
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -292,8 +316,9 @@ export function MessagingInbox({ writeHref }: MessagingInboxProps) {
                           {item.sender_name}
                         </span>
                       </div>
-                      <div className={`text-sm truncate ${isUnread ? "font-medium" : "text-muted-foreground"}`}>
-                        {item.messages.subject}
+                      <div className={`flex items-center gap-1.5 text-sm truncate ${isUnread ? "font-medium" : "text-muted-foreground"}`}>
+                        <span className="truncate">{item.messages.subject}</span>
+                        {item.has_attachments && <Paperclip className="h-3 w-3 shrink-0 text-muted-foreground" />}
                       </div>
                       <div className="text-xs text-muted-foreground truncate max-w-md">
                         {item.messages.body.replace(/<[^>]+>/g, "").slice(0, 100)}

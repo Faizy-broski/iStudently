@@ -38,6 +38,9 @@ router.get('/:id/admin', requireSuperAdmin, (req, res) => schoolController.getSc
 router.get('/:id/admin/credentials', requireSuperAdmin, (req, res) => schoolController.getSchoolAdminCredentials(req, res))
 router.patch('/:id/admin', requireSuperAdmin, (req, res) => schoolController.updateSchoolAdmin(req, res))
 
+// Copy settings from another school — admin (own schools only) or super admin (any school)
+router.post('/:id/copy-settings', requireRole('admin', 'super_admin'), (req, res) => schoolController.copySettings(req, res))
+
 // User status management (soft delete / reactivate)
 router.patch('/users/:userId/toggle-status', requireRole('admin', 'super_admin'), (req, res) => schoolController.toggleUserStatus(req, res))
 

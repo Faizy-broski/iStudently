@@ -3,6 +3,8 @@ import { AuthRequest } from '../middlewares/auth.middleware'
 import { SchoolService } from '../services/school.service'
 import { CreateSchoolDTO, UpdateSchoolDTO } from '../types'
 import { getStoredCredentialsAsSuperAdmin } from '../services/username.service'
+import { copySchoolSettings, type CopySchoolSettingsOptions } from '../services/school-settings-copy.service'
+import { supabase } from '../config/supabase'
 
 const schoolService = new SchoolService()
 
@@ -91,6 +93,60 @@ export class SchoolController {
         success: false,
         error: error.message || 'Failed to create school'
       })
+    }
+  }
+
+  /**
+   * Copy settings (grade levels, periods, grading scales, default field orders,
+   * custom fields, marking period structure) from one school to another.
+   * POST /api/schools/:id/copy-settings
+   * Admin (own schools only) or Super Admin (any school)
+   */
+  async copySettings(req: AuthRequest, res: Response) {
+    try {
+      const targetSchoolId = req.params.id
+      const { source_school_id: sourceSchoolId, options } = req.body as {
+        source_school_id?: string
+        options?: CopySchoolSettingsOptions
+      }
+
+      if (!sourceSchoolId) {
+        return res.status(400).json({ success: false, error: 'source_school_id is required' })
+      }
+      if (sourceSchoolId === targetSchoolId) {
+        return res.status(400).json({ success: false, error: 'Source and target school must be different' })
+      }
+
+      const { data: schools } = await supabase
+        .from('schools')
+        .select('id')
+        .in('id', [sourceSchoolId, targetSchoolId])
+
+      if (!schools || schools.length !== 2) {
+        return res.status(404).json({ success: false, error: 'Source or target school not found' })
+      }
+
+      if (req.profile?.role !== 'super_admin') {
+        const { data: links } = await supabase
+          .from('admin_schools')
+          .select('school_id')
+          .eq('profile_id', req.profile.id)
+          .in('school_id', [sourceSchoolId, targetSchoolId])
+
+        if (!links || links.length !== 2) {
+          return res.status(403).json({
+            success: false,
+            error: 'You do not have access to one or both of these schools',
+          })
+        }
+      }
+
+      const result = await copySchoolSettings(sourceSchoolId, targetSchoolId, options || {})
+
+      res.json({ success: true, data: result })
+    } catch (error: any) {
+      console.error('Copy school settings error:', error)
+      res.status(500).json({ success: false, error: error.message || 'Failed to copy school settings' })
     }
   }
 

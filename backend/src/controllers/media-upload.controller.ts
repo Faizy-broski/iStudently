@@ -99,6 +99,104 @@ export const uploadMediaRecording = async (
   }
 }
 
+const ATTACHMENT_BUCKET = 'message-attachments'
+
+const ALLOWED_ATTACHMENT_TYPES: Record<string, string> = {
+  'application/pdf': 'pdf',
+  'application/msword': 'doc',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+  'application/vnd.ms-excel': 'xls',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+  'application/vnd.ms-powerpoint': 'ppt',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+  'text/plain': 'txt',
+  'text/csv': 'csv',
+  'application/zip': 'zip',
+  'application/x-zip-compressed': 'zip',
+  'image/jpeg': 'jpg',
+  'image/jpg': 'jpg',
+  'image/png': 'png',
+  'image/gif': 'gif',
+  'image/webp': 'webp',
+}
+
+const MAX_ATTACHMENT_SIZE_BYTES = 15 * 1024 * 1024 // 15 MB
+
+/**
+ * POST /api/media/upload-attachment
+ *
+ * Accepts a multipart form-data upload with field name "file".
+ * Stores the file in Supabase Storage under:
+ *   message-attachments/{school_id}/{uuid}.{ext}
+ *
+ * Returns the public URL plus the original filename so the UI can show a
+ * real file name instead of the storage path.
+ */
+export const uploadMessageAttachment = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const adminSchoolId = req.profile?.school_id
+    if (!adminSchoolId) {
+      res.status(401).json({ success: false, error: 'Unauthorized' })
+      return
+    }
+
+    const file = (req as any).file as Express.Multer.File | undefined
+    if (!file) {
+      res.status(400).json({ success: false, error: 'No file uploaded' })
+      return
+    }
+
+    if (file.size > MAX_ATTACHMENT_SIZE_BYTES) {
+      res.status(413).json({ success: false, error: 'File too large (max 15 MB)' })
+      return
+    }
+
+    const mimeBase = file.mimetype.split(';')[0].trim().toLowerCase()
+    const ext = ALLOWED_ATTACHMENT_TYPES[mimeBase]
+    if (!ext) {
+      res.status(415).json({ success: false, error: `Unsupported file type: ${file.mimetype}` })
+      return
+    }
+
+    const campus_id = req.body?.campus_id as string | undefined
+    const effectiveSchoolId = await getEffectiveSchoolId(adminSchoolId, campus_id)
+
+    const fileName = `${effectiveSchoolId}/${randomUUID()}.${ext}`
+
+    const { error: uploadError } = await supabase.storage
+      .from(ATTACHMENT_BUCKET)
+      .upload(fileName, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false,
+      })
+
+    if (uploadError) {
+      console.error('[AttachmentUpload] Supabase storage error:', uploadError)
+      res.status(500).json({ success: false, error: 'Storage upload failed: ' + uploadError.message })
+      return
+    }
+
+    const { data: urlData } = supabase.storage.from(ATTACHMENT_BUCKET).getPublicUrl(fileName)
+
+    res.status(201).json({
+      success: true,
+      data: {
+        url: urlData.publicUrl,
+        mime_type: file.mimetype,
+        size: file.size,
+        path: fileName,
+        name: file.originalname,
+      },
+    })
+  } catch (error: any) {
+    console.error('[AttachmentUpload] Unexpected error:', error)
+    res.status(500).json({ success: false, error: error.message || 'Upload failed' })
+  }
+}
+
 const ALLOWED_IMAGE_TYPES: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/jpg': 'jpg',

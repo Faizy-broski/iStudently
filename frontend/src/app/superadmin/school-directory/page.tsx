@@ -19,6 +19,7 @@ import { PaginationWrapper } from "@/components/ui/pagination";
 import { useSchools, School } from "@/hooks/useSchools";
 import { SchoolSidebarConfigButton } from "@/components/superadmin/SchoolSidebarConfigButton";
 import { SchoolCustomFieldsButton } from "@/components/superadmin/SchoolCustomFieldsButton";
+import { CopySchoolSettingsDialog } from "@/components/shared/CopySchoolSettingsDialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useSWRConfig } from "swr";
 
@@ -140,6 +141,11 @@ export default function SchoolDirectoryPage() {
 
   const enterSchoolDashboard = (school: School) => {
     swrMutate(() => true, undefined, { revalidate: false });
+    // Clear any cached campus data from a previously-impersonated school so the
+    // sidebar can't briefly (or indefinitely, if a refetch silently fails) show
+    // the wrong school's name/logo before CampusContext refetches.
+    sessionStorage.removeItem('studently_campus_cache');
+    localStorage.removeItem('selectedCampusId');
     sessionStorage.setItem('impersonatedSchoolId', school.id);
     sessionStorage.setItem('impersonatedSchoolName', school.name);
     router.push('/admin/dashboard');
@@ -417,8 +423,15 @@ export default function SchoolDirectoryPage() {
                           <div className="w-full text-left [&>button]:justify-start [&>button]:h-9 [&>button]:font-medium">
                             <SchoolSidebarConfigButton schoolId={root.id} schoolName={root.name} />
                           </div>
-                          <div className="w-full text-left [&>button]:justify-start [&>button]:h-9 [&>button]:font-medium">
+                          <div className="w-full text-left [&>button]:justify-start [&>button]:h-9 [&>button]:font-medium [&>button]:w-full">
                             <SchoolCustomFieldsButton schoolId={root.id} schoolName={root.name} />
+                          </div>
+                          <div className="w-full text-left [&>button]:justify-start [&>button]:h-9 [&>button]:font-medium [&>button]:w-full">
+                            <CopySchoolSettingsDialog
+                              targetSchoolId={root.id}
+                              targetSchoolName={root.name}
+                              sourceSchoolOptions={schools.filter((s) => s.id !== root.id)}
+                            />
                           </div>
                           <Button
                             size="sm"

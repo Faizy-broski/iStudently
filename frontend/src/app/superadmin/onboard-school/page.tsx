@@ -5,20 +5,33 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import OnboardSchoolForm, { OnboardSuccessResult } from "@/components/forms/OnboardSchoolForm";
 import AdminCredentialsCard from "@/components/super-admin/AdminCredentialsCard";
+import { CopySchoolSettingsDialog, type CopySettingsSchoolOption } from "@/components/shared/CopySchoolSettingsDialog";
+import { getAllSchoolsData } from "@/lib/api/schools";
 import { toast } from "sonner";
 
 export default function OnboardSchoolPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [credentialsResult, setCredentialsResult] = useState<OnboardSuccessResult | null>(null);
+  const [newSchool, setNewSchool] = useState<{ id: string; name: string } | null>(null);
+  const [showCopyDialog, setShowCopyDialog] = useState(false);
+  const [otherSchools, setOtherSchools] = useState<CopySettingsSchoolOption[]>([]);
 
-  const handleSuccess = (result: OnboardSuccessResult) => {
+  const handleSuccess = async (result: OnboardSuccessResult) => {
     toast.success(`School "${result.schoolName}" has been successfully onboarded!`);
     setCredentialsResult(result);
+    setNewSchool({ id: result.schoolId, name: result.schoolName });
+    const res = await getAllSchoolsData();
+    if (res.success && res.data) setOtherSchools(res.data);
   };
 
   const closeCredentialsCard = () => {
     setCredentialsResult(null);
+    setShowCopyDialog(true);
+  };
+
+  const finishOnboarding = () => {
+    setShowCopyDialog(false);
     router.push("/superadmin/school-directory");
   };
 
@@ -65,6 +78,17 @@ export default function OnboardSchoolPage() {
             password: credentialsResult.password,
           }}
           onClose={closeCredentialsCard}
+        />
+      )}
+
+      {newSchool && (
+        <CopySchoolSettingsDialog
+          targetSchoolId={newSchool.id}
+          targetSchoolName={newSchool.name}
+          sourceSchoolOptions={otherSchools}
+          open={showCopyDialog}
+          onOpenChange={(open) => { if (!open) finishOnboarding(); }}
+          hideTrigger
         />
       )}
     </div>

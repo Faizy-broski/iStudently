@@ -1,6 +1,7 @@
 import { getAuthToken } from './schools';
 import { handleSessionExpiry } from '@/context/AuthContext';
 import { API_URL } from '@/config/api';
+import { getImpersonationHeaders } from './abortable-fetch';
 
 // ============================================================================
 // TYPES
@@ -87,6 +88,7 @@ async function apiRequest<T = unknown>(
     const token = await getAuthToken();
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      ...getImpersonationHeaders(),
       ...((options.headers as Record<string, string>) || {}),
     };
     if (token) {

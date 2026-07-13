@@ -2,6 +2,7 @@ import { getAuthToken } from './schools'
 import { simpleFetch } from './abortable-fetch'
 import { handleSessionExpiry } from '@/context/AuthContext'
 import { API_URL } from '@/config/api'
+import { getFieldDefinitions } from './custom-fields'
 
 interface ApiResponse<T = unknown> {
   success: boolean
@@ -113,6 +114,7 @@ export interface Student {
   }
   grade?: { id: string; name: string } | null
   section?: { id: string; name: string } | null
+  custom_fields?: Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 export interface CreateStudentDTO {
@@ -308,6 +310,8 @@ export interface BulkImportRow {
   gender?: 'male' | 'female' | 'other'
   date_of_birth?: string
   national_id?: string
+  /** Admin-defined custom field values, grouped by category_id.field_key */
+  custom_fields?: Record<string, any>
   /** Original row number in the uploaded file, echoed back on error rows */
   _row?: number
 }
@@ -348,7 +352,7 @@ export async function bulkImportStudents(
   })
 }
 
-export function downloadStudentImportTemplate() {
+export async function downloadStudentImportTemplate(campusId?: string) {
   const headers = [
     'first_name', 'father_name', 'grandfather_name', 'last_name',
     'email', 'phone', 'gender', 'date_of_birth', 'national_id'
@@ -357,7 +361,17 @@ export function downloadStudentImportTemplate() {
     'John', 'Robert', 'James', 'Smith',
     'john.smith@school.com', '+1234567890', 'male', '2012-05-14', 'A123456789'
   ]
-  const csv = [headers.join(','), example.join(',')].join('\n')
+
+  const fieldsRes = await getFieldDefinitions('student', campusId)
+  if (fieldsRes.success && fieldsRes.data) {
+    for (const field of fieldsRes.data) {
+      headers.push(field.label)
+      example.push(field.options?.[0] ?? '')
+    }
+  }
+
+  const csvEscape = (v: string) => (v.includes(',') || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v)
+  const csv = [headers.map(csvEscape).join(','), example.map(csvEscape).join(',')].join('\n')
   const blob = new Blob([csv], { type: 'text/csv' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')

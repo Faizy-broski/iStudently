@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
 import Papa from "papaparse"
 import * as XLSX from "xlsx"
 import { toast } from "sonner"
@@ -28,6 +28,7 @@ import {
 import { useCampus } from "@/context/CampusContext"
 import { useGradeLevels, useSections } from "@/hooks/useAcademics"
 import { useTranslations } from "next-intl"
+import { getFieldDefinitions, type CustomFieldDefinition } from "@/lib/api/custom-fields"
 
 // ─── Field definitions ────────────────────────────────────────────────────────
 
@@ -104,7 +105,8 @@ interface ParsedRow extends BulkImportRow {
 function applyMappingAndValidate(
   rawRows: Record<string, any>[],
   mapping: Record<string, string>,   // fieldKey → csvColumn | SKIP
-  t: (key: string) => string
+  t: (key: string) => string,
+  customFieldDefs: CustomFieldDefinition[]
 ): ParsedRow[] {
   const seenEmails = new Set<string>()
 
@@ -139,6 +141,18 @@ function applyMappingAndValidate(
 
     if (email && EMAIL_RE.test(email)) seenEmails.add(email)
 
+    const customFields: Record<string, Record<string, any>> = {}
+    for (const field of customFieldDefs) {
+      const value = get(field.field_key)
+      if (field.required && !value) {
+        errors.push(`${field.label} is required`)
+      }
+      if (value) {
+        if (!customFields[field.category_id]) customFields[field.category_id] = {}
+        customFields[field.category_id][field.field_key] = value
+      }
+    }
+
     return {
       _rowIndex: i + 2,
       _clientErrors: errors,
@@ -151,6 +165,7 @@ function applyMappingAndValidate(
       gender,
       date_of_birth:    dateOfBirth  || undefined,
       national_id:      nationalId   || undefined,
+      custom_fields:    Object.keys(customFields).length > 0 ? customFields : undefined,
     }
   })
 }
@@ -196,6 +211,13 @@ export function StudentBulkImport() {
   const { gradeLevels } = useGradeLevels()
   const { sections } = useSections()
   const sectionsForGrade = sections.filter(s => s.grade_level_id === targetGradeId)
+
+  const [customFieldDefs, setCustomFieldDefs] = useState<CustomFieldDefinition[]>([])
+  useEffect(() => {
+    getFieldDefinitions('student', campusId).then(res => {
+      if (res.success && res.data) setCustomFieldDefs(res.data)
+    })
+  }, [campusId])
 
   const STEPS = [
     t("step_upload"), 
@@ -268,7 +290,14 @@ export function StudentBulkImport() {
       toast.error(`${t("msg_map_required")}: ${requiredMissing.map(f => t(`fields.${f.labelKey}`)).join(", ")}`)
       return
     }
-    const rows = applyMappingAndValidate(rawRows, mapping, t)
+    const requiredCustomMissing = customFieldDefs.filter(
+      f => f.required && (!mapping[f.field_key] || mapping[f.field_key] === SKIP)
+    )
+    if (requiredCustomMissing.length > 0) {
+      toast.error(`${t("msg_map_required")}: ${requiredCustomMissing.map(f => f.label).join(", ")}`)
+      return
+    }
+    const rows = applyMappingAndValidate(rawRows, mapping, t, customFieldDefs)
     setParsedRows(rows)
     setStep(3)
   }
@@ -373,7 +402,7 @@ export function StudentBulkImport() {
               <span>{t("required_fields_hint")}: <code className="bg-muted px-1 rounded text-xs">{t("required_fields_list")}</code></span>
             </div>
 
-            <Button variant="outline" size="sm" onClick={downloadStudentImportTemplate} className="gap-2">
+            <Button variant="outline" size="sm" onClick={() => downloadStudentImportTemplate(campusId)} className="gap-2">
               <Download className="h-4 w-4" /> {t("download_template")}
             </Button>
           </CardContent>
@@ -482,6 +511,47 @@ export function StudentBulkImport() {
               </div>
             </CardContent>
           </Card>
+
+          {customFieldDefs.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Custom Fields</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {customFieldDefs.map(field => {
+                    const currentVal = mapping[field.field_key] ?? SKIP
+                    return (
+                      <div key={field.id} className="space-y-1">
+                        <label className="text-sm font-medium flex items-center gap-1.5">
+                          {field.label}
+                          {field.required
+                            ? <span className="text-red-500 text-xs">*</span>
+                            : <span className="text-muted-foreground text-xs">({tCommon("optional")})</span>}
+                        </label>
+                        <Select
+                          value={currentVal}
+                          onValueChange={val =>
+                            setMapping(prev => ({ ...prev, [field.field_key]: val }))
+                          }
+                        >
+                          <SelectTrigger className={field.required && (!currentVal || currentVal === SKIP) ? "border-red-400" : ""}>
+                            <SelectValue placeholder={t("skip_option")} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={SKIP}>{t("skip_option")}</SelectItem>
+                            {csvColumns.map(col => (
+                              <SelectItem key={col} value={col}>{col}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Column preview table */}
           <Card>

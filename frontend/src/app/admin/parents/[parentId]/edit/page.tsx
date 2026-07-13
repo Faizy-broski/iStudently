@@ -14,14 +14,16 @@ import { CustomFieldsRenderer } from "@/components/admin/CustomFieldsRenderer"
 import { useTranslations } from "next-intl"
 import { StudentPhotoUpload } from "@/components/ui/student-photo-upload"
 import { useAuth } from "@/context/AuthContext"
+import { useCampus } from "@/context/CampusContext"
 
 export default function EditParentPage() {
   const params = useParams()
   const router = useRouter()
   const t = useTranslations("parents")
   const parentId = params.parentId as string
-  
+
   const { profile } = useAuth()
+  const campusContext = useCampus()
   const [parent, setParent] = useState<Parent | null>(null)
   const [loading, setLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -341,6 +343,7 @@ export default function EditParentPage() {
                 entityType="parent"
                 values={editCustomFields}
                 onChange={setEditCustomFields}
+                campusId={campusContext?.selectedCampus?.id}
               />
             </div>
 

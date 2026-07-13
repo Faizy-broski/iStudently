@@ -1,3 +1,5 @@
+import { getImpersonationHeaders } from './abortable-fetch'
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 async function apiRequest<T = any>(
@@ -8,6 +10,7 @@ async function apiRequest<T = any>(
   const res = await fetch(url, {
     headers: {
       "Content-Type": "application/json",
+      ...getImpersonationHeaders(),
       ...(options?.headers || {}),
     },
     ...options,
@@ -33,6 +36,7 @@ async function apiRequestToken<T = any>(
   const res = await fetch(url, {
     headers: {
       "Content-Type": "application/json",
+      ...getImpersonationHeaders(),
       ...(options?.headers || {}),
       Authorization: `Bearer ${token}`,
     },

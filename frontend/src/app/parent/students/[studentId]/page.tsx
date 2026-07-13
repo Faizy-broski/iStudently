@@ -8,6 +8,8 @@ import { ProfilePhoto } from '@/components/shared/ProfilePhoto'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Loader2, ArrowLeft, GraduationCap, MapPin, Phone, Mail, User } from 'lucide-react'
+import { getStudentInfo } from '@/lib/api/parent-dashboard'
+import { StudentCustomFields } from '@/components/shared/StudentCustomFields'
 
 export default function ParentStudentDetailPage() {
   const params = useParams()
@@ -16,6 +18,12 @@ export default function ParentStudentDetailPage() {
 
   const { students, isLoading } = useParentStudents()
   const student = students?.find(s => s.id === studentId)
+
+  const { data: studentInfo } = useSWR(
+    studentId ? ['parent-student-custom-fields', studentId] : null,
+    () => getStudentInfo(studentId),
+    { revalidateOnFocus: false }
+  )
 
   if (isLoading) {
     return (
@@ -120,6 +128,8 @@ export default function ParentStudentDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      <StudentCustomFields entityCustomFields={studentInfo?.custom_fields} campusId={student.campus_id} />
     </div>
   )
 }

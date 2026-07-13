@@ -1,6 +1,7 @@
 import { API_URL } from '@/config/api'
 import { getAuthToken } from './schools'
 import { handleSessionExpiry } from '@/context/AuthContext'
+import { getImpersonationHeaders } from './abortable-fetch'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -43,6 +44,7 @@ async function apiRequest<T>(
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...getImpersonationHeaders(),
   }
 
   try {

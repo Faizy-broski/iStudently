@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Loader2, ArrowLeft, GraduationCap, MapPin, Phone, Mail, User } from 'lucide-react'
 import { getStudentsForGrades, type StudentListItem } from '@/lib/api/grades'
+import { getStudentById } from '@/lib/api/students'
+import { StudentCustomFields } from '@/components/shared/StudentCustomFields'
 
 export default function TeacherStudentDetailPage() {
   const params = useParams()
@@ -27,6 +29,15 @@ export default function TeacherStudentDetailPage() {
   )
 
   const student = students?.find(s => s.id === studentId)
+
+  const { data: fullStudent } = useSWR(
+    studentId ? ['teacher-student-custom-fields', studentId, campusId] : null,
+    async () => {
+      const res = await getStudentById(studentId, campusId)
+      return res.success ? res.data : null
+    },
+    { revalidateOnFocus: false }
+  )
 
   if (isLoading) {
     return (
@@ -125,6 +136,8 @@ export default function TeacherStudentDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      <StudentCustomFields entityCustomFields={fullStudent?.custom_fields} campusId={campusId} />
     </div>
   )
 }

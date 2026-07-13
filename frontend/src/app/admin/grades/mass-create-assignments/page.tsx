@@ -380,6 +380,7 @@ export default function MassCreateAssignmentsPage() {
               onChange={setDescription}
               campusId={selectedCampus?.id}
               showEditorPlugins
+              showMediaRecorder
             />
           </div>
 

@@ -5,6 +5,7 @@
 
 import { API_URL } from '@/config/api'
 import { getAuthToken } from './schools'
+import { getImpersonationHeaders } from './abortable-fetch'
 
 // Types
 export type CustomFieldType = 'text' | 'long-text' | 'number' | 'date' | 'checkbox' | 'select' | 'multi-select' | 'file'
@@ -99,6 +100,7 @@ async function apiRequest<T>(
             headers: {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${token}`,
+                ...getImpersonationHeaders(),
                 ...options.headers
             }
         })

@@ -1,5 +1,13 @@
 import { supabase } from '../config/supabase'
 
+export interface MessageAttachmentInput {
+  url: string
+  name: string
+  mime_type: string
+  size: number
+  path: string
+}
+
 export interface SendMessageInput {
   schoolId: string
   senderProfileId: string
@@ -8,6 +16,15 @@ export interface SendMessageInput {
   recipientProfileIds: string[]
   /** If set, this message joins the same conversation thread as the message being replied to. */
   replyToMessageId?: string
+  attachments?: MessageAttachmentInput[]
+}
+
+export interface MessageAttachment {
+  id: string
+  file_name: string
+  url: string
+  mime_type: string
+  size: number
 }
 
 export interface ThreadMessage {
@@ -20,6 +37,7 @@ export interface ThreadMessage {
   is_own: boolean
   status: string
   can_delete: boolean
+  attachments: MessageAttachment[]
 }
 
 export interface MessagingProfile {
@@ -32,7 +50,7 @@ const MESSAGING_MODULE_KEY = '/admin/messaging'
 
 export class MessagingService {
   async sendMessage(input: SendMessageInput) {
-    const { schoolId, senderProfileId, subject, body, recipientProfileIds, replyToMessageId } = input
+    const { schoolId, senderProfileId, subject, body, recipientProfileIds, replyToMessageId, attachments } = input
 
     let threadId: string | undefined
     if (replyToMessageId) {
@@ -90,6 +108,25 @@ export class MessagingService {
       throw new Error(`Failed to save message recipients: ${recipientsError.message}`)
     }
 
+    if (attachments && attachments.length > 0) {
+      const attachmentRows = attachments.map((a) => ({
+        message_id: message.id,
+        file_name: a.name,
+        url: a.url,
+        mime_type: a.mime_type,
+        size: a.size,
+        path: a.path,
+      }))
+
+      const { error: attachmentsError } = await supabase
+        .from('message_attachments')
+        .insert(attachmentRows)
+
+      if (attachmentsError) {
+        throw new Error(`Failed to save message attachments: ${attachmentsError.message}`)
+      }
+    }
+
     return message
   }
 
@@ -115,9 +152,18 @@ export class MessagingService {
       .filter((id: string | undefined): id is string => !!id)
     const profiles = await this.fetchProfilesByIds(senderIds)
 
+    const messageIds = (data || [])
+      .map((item: any) => item.messages?.id)
+      .filter((id: string | undefined): id is string => !!id)
+    const { data: attachmentRows } = messageIds.length
+      ? await supabase.from('message_attachments').select('message_id').in('message_id', messageIds)
+      : { data: [] }
+    const messageIdsWithAttachments = new Set((attachmentRows || []).map((r: any) => r.message_id))
+
     const enriched = (data || []).map((item: any) => ({
       ...item,
       sender_name: this.formatProfileName(profiles.get(item.messages?.sender_profile_id)),
+      has_attachments: messageIdsWithAttachments.has(item.messages?.id),
     }))
 
     return {
@@ -200,6 +246,25 @@ export class MessagingService {
     const senderIds = visible.map((m) => m.sender_profile_id)
     const profiles = await this.fetchProfilesByIds(senderIds)
 
+    const visibleIds = visible.map((m) => m.id)
+    const { data: attachmentRows } = await supabase
+      .from('message_attachments')
+      .select('id, message_id, file_name, url, mime_type, size')
+      .in('message_id', visibleIds)
+
+    const attachmentsByMessage = new Map<string, MessageAttachment[]>()
+    for (const row of attachmentRows || []) {
+      const list = attachmentsByMessage.get(row.message_id) || []
+      list.push({
+        id: row.id,
+        file_name: row.file_name,
+        url: row.url,
+        mime_type: row.mime_type,
+        size: row.size,
+      })
+      attachmentsByMessage.set(row.message_id, list)
+    }
+
     const messages: ThreadMessage[] = []
     for (const m of visible) {
       const recipientRow = recipientByMessage.get(m.id)
@@ -221,6 +286,7 @@ export class MessagingService {
         is_own: m.sender_profile_id === profile.id,
         status,
         can_delete: canDelete,
+        attachments: attachmentsByMessage.get(m.id) || [],
       })
     }
 

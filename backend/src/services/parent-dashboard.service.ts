@@ -1352,6 +1352,7 @@ class ParentDashboardService {
         grade_level,
         admission_date,
         school_id,
+        custom_fields,
         profile:profiles!students_profile_id_fkey(
           first_name,
           last_name,
@@ -1420,6 +1421,7 @@ class ParentDashboardService {
       blood_group: null,
       campus_name: school?.name || null,
       age: null,
+      custom_fields: student.custom_fields || null,
       enrollments: (enrollments || []).map((e: any) => ({
         id: e.id,
         start_date: e.start_date,

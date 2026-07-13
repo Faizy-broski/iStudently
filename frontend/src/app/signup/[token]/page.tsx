@@ -75,6 +75,14 @@ export default function SignupPage() {
 
   const strength = passwordStrength(form.password)
 
+  // Standard field config (first/last name, phone) — defaults reproduce the
+  // pre-existing hardcoded behavior for links generated before this feature.
+  const sf = linkInfo?.meta?.standard_fields ?? {}
+  const firstNameRequired = sf.first_name?.required ?? true
+  const lastNameRequired = sf.last_name?.required ?? true
+  const phoneEnabled = sf.phone?.enabled ?? true
+  const phoneRequired = phoneEnabled && (sf.phone?.required ?? false)
+
   // Load link info on mount
   React.useEffect(() => {
     if (!token) { setPageState('invalid'); setInvalidReason('link_not_found'); return }
@@ -92,9 +100,10 @@ export default function SignupPage() {
 
   const validate = (): boolean => {
     const errs: Partial<typeof form> & { extra_fields?: Record<string, string> } = {}
-    if (!form.first_name.trim() || form.first_name.trim().length < 2) errs.first_name = t('firstName') + ' is required'
-    if (!form.last_name.trim() || form.last_name.trim().length < 2) errs.last_name = t('lastName') + ' is required'
+    if (firstNameRequired && (!form.first_name.trim() || form.first_name.trim().length < 2)) errs.first_name = t('firstName') + ' is required'
+    if (lastNameRequired && (!form.last_name.trim() || form.last_name.trim().length < 2)) errs.last_name = t('lastName') + ' is required'
     if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = t('email') + ' is invalid'
+    if (phoneRequired && !form.phone.trim()) errs.phone = t('phoneOptional') + ' is required'
     if (!form.password || form.password.length < 8) errs.password = t('passwordHint')
     if (form.password !== form.confirm_password) errs.confirm_password = t('passwordMismatch')
 
@@ -293,7 +302,7 @@ export default function SignupPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label htmlFor="first_name" className="block text-sm font-semibold text-gray-800">
-                  {t('firstName')} <span className="text-red-500">*</span>
+                  {t('firstName')} {firstNameRequired && <span className="text-red-500">*</span>}
                 </label>
                 <Input
                   id="first_name"
@@ -307,7 +316,7 @@ export default function SignupPage() {
               </div>
               <div className="space-y-1.5">
                 <label htmlFor="last_name" className="block text-sm font-semibold text-gray-800">
-                  {t('lastName')} <span className="text-red-500">*</span>
+                  {t('lastName')} {lastNameRequired && <span className="text-red-500">*</span>}
                 </label>
                 <Input
                   id="last_name"
@@ -372,21 +381,24 @@ export default function SignupPage() {
               {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
             </div>
 
-            {/* Phone (optional) */}
-            <div className="space-y-1.5">
-              <label htmlFor="phone" className="block text-sm font-semibold text-gray-800">
-                {t('phoneOptional')}
-              </label>
-              <Input
-                id="phone"
-                type="tel"
-                placeholder="+966 5xx xxx xxxx"
-                value={form.phone}
-                onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))}
-                className="border-gray-300 focus:border-[#57A3CC] text-gray-900! placeholder:text-gray-400"
-                disabled={submitting}
-              />
-            </div>
+            {/* Phone */}
+            {phoneEnabled && (
+              <div className="space-y-1.5">
+                <label htmlFor="phone" className="block text-sm font-semibold text-gray-800">
+                  {phoneRequired ? (isAr ? 'رقم الهاتف' : 'Phone Number') : t('phoneOptional')} {phoneRequired && <span className="text-red-500">*</span>}
+                </label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="+966 5xx xxx xxxx"
+                  value={form.phone}
+                  onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))}
+                  className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900! placeholder:text-gray-400', errors.phone ? 'border-red-400' : '')}
+                  disabled={submitting}
+                />
+                {errors.phone && <p className="text-xs text-red-500">{errors.phone}</p>}
+              </div>
+            )}
 
             {/* Password */}
             <div className="space-y-1.5">

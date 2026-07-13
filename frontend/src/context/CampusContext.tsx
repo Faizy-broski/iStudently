@@ -48,23 +48,32 @@ function setCampusCache(campuses: Campus[], schoolId: string) {
     }
 }
 
+// Compute the effective school id (accounting for super-admin impersonation) outside
+// the component so both the useState initializers and the rest of the component agree
+// on the exact same value at the exact same time (no risk of reading it twice and racing).
+function getEffectiveSchoolId(profileSchoolId: string | null | undefined): string | null {
+    return profileSchoolId ?? (typeof window !== 'undefined' ? sessionStorage.getItem('impersonatedSchoolId') : null)
+}
+
 export function CampusProvider({ children }: { children: ReactNode }) {
     const { profile } = useAuth()
 
     // Super admin impersonation: use the impersonated school_id when profile has none
-    const effectiveSchoolId: string | null =
-        profile?.school_id ??
-        (typeof window !== 'undefined' ? sessionStorage.getItem('impersonatedSchoolId') : null)
+    const effectiveSchoolId: string | null = getEffectiveSchoolId(profile?.school_id)
 
-    // Initialize from cache if available
+    // Initialize from cache if available — but only if the cache actually belongs to the
+    // current effective school. Otherwise a previously-impersonated (or previous session's)
+    // school's campus data/logo would flash on screen before the fetch below corrects it.
     const [campuses, setCampuses] = useState<Campus[]>(() => {
         const cached = getCachedCampuses()
-        return cached?.campuses || []
+        if (cached?.campuses && cached.schoolId === effectiveSchoolId) return cached.campuses
+        return []
     })
 
     const [selectedCampus, setSelectedCampus] = useState<Campus | null>(() => {
         if (typeof window === 'undefined') return null
         const cached = getCachedCampuses()
+        if (cached?.schoolId !== effectiveSchoolId) return null
         const savedCampusId = localStorage.getItem(SELECTED_CAMPUS_KEY)
         if (cached?.campuses && savedCampusId) {
             return cached.campuses.find(c => c.id === savedCampusId) || null
@@ -72,10 +81,10 @@ export function CampusProvider({ children }: { children: ReactNode }) {
         return null
     })
 
-    // Start with loading=false if we have cached data
+    // Start with loading=false if we have cached data for the current effective school
     const [loading, setLoading] = useState(() => {
         const cached = getCachedCampuses()
-        return !cached?.campuses?.length
+        return !(cached?.campuses?.length && cached.schoolId === effectiveSchoolId)
     })
 
     // Update selected campus and save to localStorage
@@ -129,7 +138,7 @@ export function CampusProvider({ children }: { children: ReactNode }) {
         if (
             !effectiveForceRefresh &&
             cached &&
-            cached.schoolId === profile.school_id &&
+            cached.schoolId === effectiveSchoolId &&
             now - cached.timestamp < CACHE_DURATION &&
             cached.campuses.length > 0
         ) {

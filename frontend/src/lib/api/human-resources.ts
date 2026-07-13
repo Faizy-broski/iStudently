@@ -1,6 +1,7 @@
 import { getAuthToken } from './schools'
 import { handleSessionExpiry } from '@/context/AuthContext'
 import { API_URL } from '@/config/api'
+import { getImpersonationHeaders } from './abortable-fetch'
 
 interface ApiResponse<T = unknown> {
   data: T | null
@@ -98,6 +99,7 @@ async function apiFetch<T>(
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
+        ...getImpersonationHeaders(),
         ...(options.headers || {}),
       },
     })

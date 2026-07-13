@@ -192,6 +192,39 @@ export async function onboardSchool(data: OnboardSchoolData): Promise<School> {
 
 
 
+export interface CopySchoolSettingsOptions {
+  gradeLevels?: boolean
+  periods?: boolean
+  gradingScales?: boolean
+  defaultFieldOrders?: boolean
+  customFields?: boolean
+  markingPeriods?: boolean
+}
+
+export interface CopySchoolSettingsResult {
+  counts: {
+    gradeLevels: number
+    sections: number
+    periods: number
+    gradingScales: number
+    defaultFieldOrders: number
+    customFields: number
+    markingPeriods: number
+  }
+  errors: string[]
+}
+
+export async function copySchoolSettings(
+  targetSchoolId: string,
+  sourceSchoolId: string,
+  options: CopySchoolSettingsOptions
+): Promise<ApiResponse<CopySchoolSettingsResult>> {
+  return await apiRequest<CopySchoolSettingsResult>(`/schools/${targetSchoolId}/copy-settings`, {
+    method: 'POST',
+    body: JSON.stringify({ source_school_id: sourceSchoolId, options }),
+  })
+}
+
 export async function getAllSchoolsData(filters?: { status?: string }): Promise<ApiResponse<School[]>> {
   const queryParams = new URLSearchParams()
   if (filters?.status && filters.status !== 'all') {

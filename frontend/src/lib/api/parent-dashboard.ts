@@ -404,6 +404,7 @@ export interface StudentInfoData {
   campus_name: string | null
   age: { years: number; months: number; days: number } | null
   enrollments: StudentEnrollment[]
+  custom_fields: Record<string, any> | null // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 export async function getStudentInfo(studentId: string): Promise<StudentInfoData> {

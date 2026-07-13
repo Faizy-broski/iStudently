@@ -2,33 +2,19 @@
 
 import * as React from 'react'
 import { useTranslations, useLocale } from 'next-intl'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Plus, Link2, Copy, Check, Trash2, Power, PowerOff, Share2, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
-  DialogFooter,
 } from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { FileUpload } from '@/components/ui/file-upload'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,19 +28,16 @@ import {
 import { useCampus } from '@/context/CampusContext'
 import {
   getSignupLinks,
-  generateSignupLink,
   deactivateSignupLink,
   activateSignupLink,
   deleteSignupLink,
   buildSignupUrl,
   type SignupLink,
-  type SignupCustomField,
 } from '@/lib/api/signup-links'
 import { getPendingCount } from '@/lib/api/pending-signups'
-import { getGradeLevels, type GradeLevel } from '@/lib/api/academics'
 import { formatDistanceToNow, parseISO } from 'date-fns'
 
-const ROLES = ['teacher', 'student', 'parent', 'staff', 'librarian'] as const
+
 
 const ROLE_COLORS: Record<string, string> = {
   teacher: 'bg-blue-100 text-blue-800',
@@ -75,41 +58,16 @@ export default function SignupLinksPage() {
   const t = useTranslations('signupLinks')
   const locale = useLocale()
   const isAr = locale === 'ar'
+  const router = useRouter()
   const campusContext = useCampus()
   const campusId = campusContext?.selectedCampus?.id
 
   const [links, setLinks] = React.useState<SignupLink[]>([])
   const [pendingCount, setPendingCount] = React.useState(0)
   const [loading, setLoading] = React.useState(true)
-  const [showGenerateDialog, setShowGenerateDialog] = React.useState(false)
   const [showShareDialog, setShowShareDialog] = React.useState<SignupLink | null>(null)
   const [deleteTarget, setDeleteTarget] = React.useState<SignupLink | null>(null)
-  const [generatedLink, setGeneratedLink] = React.useState<SignupLink | null>(null)
   const [copiedId, setCopiedId] = React.useState<string | null>(null)
-
-  const [gradeLevels, setGradeLevels] = React.useState<GradeLevel[]>([])
-  const [form, setForm] = React.useState({
-    role: 'teacher' as string,
-    label: '',
-    unlimited: true,
-    max_uses: '',
-    neverExpires: true,
-    expires_at: '',
-    campus_id: campusId ?? '',
-    poster_url: '',
-    description: '',
-    selected_grade_ids: [] as string[],
-    custom_fields: [] as Array<{ id: string; label: string; type: 'text' | 'select'; required: boolean; options: string }>,
-  })
-  const [generating, setGenerating] = React.useState(false)
-
-  React.useEffect(() => {
-    if (campusId) {
-      getGradeLevels(campusId).then(res => {
-        if (res.success && res.data) setGradeLevels(res.data)
-      })
-    }
-  }, [campusId])
 
   const fetchData = React.useCallback(async () => {
     setLoading(true)
@@ -198,65 +156,6 @@ export default function SignupLinksPage() {
     fetchData()
   }
 
-  const handleGenerate = async () => {
-    setGenerating(true)
-    try {
-      const custom_fields: SignupCustomField[] = []
-      if ((form.role === 'student' || form.role === 'parent') && form.selected_grade_ids.length > 0) {
-        const selectedGrades = gradeLevels.filter(g => form.selected_grade_ids.includes(g.id))
-        custom_fields.push({
-          id: 'grade_level',
-          label: isAr ? 'الصف الدراسي' : 'Grade Level',
-          type: 'select',
-          required: true,
-          options: selectedGrades.map(g => g.name),
-        })
-      }
-
-      form.custom_fields.forEach(cf => {
-        if (cf.label.trim()) {
-          custom_fields.push({
-            id: cf.id,
-            label: cf.label.trim(),
-            type: cf.type,
-            required: cf.required,
-            options: cf.type === 'select' ? cf.options.split(',').map(s => s.trim()).filter(Boolean) : undefined,
-          })
-        }
-      })
-
-      const res = await generateSignupLink({
-        role: form.role,
-        label: form.label || null,
-        max_uses: form.unlimited ? null : parseInt(form.max_uses, 10) || null,
-        expires_at: form.neverExpires ? null : (form.expires_at || null),
-        campus_id: form.campus_id || null,
-        meta: {
-          poster_url: form.poster_url || null,
-          description: form.description || null,
-          custom_fields,
-        },
-      })
-      if (res.success && res.data) {
-        setGeneratedLink(res.data)
-        fetchData()
-      } else {
-        toast.error(res.error ?? 'Failed to generate link')
-      }
-    } finally {
-      setGenerating(false)
-    }
-  }
-
-  const resetGenerateForm = () => {
-    setForm({ 
-      role: 'teacher', label: '', unlimited: true, max_uses: '', neverExpires: true,
-      expires_at: '', campus_id: campusId ?? '', poster_url: '', description: '', selected_grade_ids: [], custom_fields: []
-    })
-    setGeneratedLink(null)
-    setShowGenerateDialog(false)
-  }
-
   const activeCount = links.filter(l => getLinkStatus(l) === 'active').length
   const totalUses = links.reduce((sum, l) => sum + l.use_count, 0)
 
@@ -278,7 +177,7 @@ export default function SignupLinksPage() {
           </Button>
           <Button
             className="gradient-blue text-white border-0 gap-2"
-            onClick={() => setShowGenerateDialog(true)}
+            onClick={() => router.push('/admin/signup-links/new')}
           >
             <Plus className="h-4 w-4" />
             {t('generateBtn')}
@@ -316,7 +215,7 @@ export default function SignupLinksPage() {
             </div>
             <h3 className="text-lg font-semibold text-gray-700 mb-1">{t('emptyTitle')}</h3>
             <p className="text-sm text-muted-foreground mb-4">{t('emptyDesc')}</p>
-            <Button className="gradient-blue text-white border-0" onClick={() => setShowGenerateDialog(true)}>
+            <Button className="gradient-blue text-white border-0" onClick={() => router.push('/admin/signup-links/new')}>
               <Plus className="h-4 w-4 me-2" />
               {t('generateBtn')}
             </Button>
@@ -405,321 +304,6 @@ export default function SignupLinksPage() {
           })}
         </div>
       )}
-
-      {/* Generate Dialog */}
-      <Dialog open={showGenerateDialog} onOpenChange={(o) => { if (!o) resetGenerateForm(); setShowGenerateDialog(o) }}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{t('generateTitle')}</DialogTitle>
-            <DialogDescription>
-              {isAr ? 'أنشئ رابطاً دعوة مخصصاً للمستخدمين' : 'Create a custom invite link for users to sign up.'}
-            </DialogDescription>
-          </DialogHeader>
-
-          {!generatedLink ? (
-            <Tabs defaultValue="basic" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-4">
-                <TabsTrigger value="basic">{isAr ? 'أساسي' : 'Basic'}</TabsTrigger>
-                <TabsTrigger value="advanced">{isAr ? 'متقدم وتصميم' : 'Advanced & Design'}</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="basic" className="space-y-4 py-2">
-                {/* Role */}
-                <div className="space-y-1.5">
-                  <Label>{t('fieldRole')}</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {ROLES.map((r) => (
-                      <button
-                        key={r}
-                        type="button"
-                        onClick={() => setForm(f => ({
-                          ...f,
-                          role: r,
-                          selected_grade_ids: (r === 'student' || r === 'parent') ? f.selected_grade_ids : [],
-                        }))}
-                        className={cn(
-                          'py-2 px-3 rounded-lg text-sm font-medium border transition-all capitalize',
-                          form.role === r
-                            ? 'border-[#022172] bg-[#022172] text-white'
-                            : 'border-gray-200 hover:border-[#57A3CC] hover:text-[#022172]'
-                        )}
-                      >
-                        {r}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Grade Levels offered (Student / Parent only) */}
-                {(form.role === 'student' || form.role === 'parent') && (
-                  <div className="space-y-1.5">
-                    <Label>{isAr ? 'الصفوف الدراسية المتاحة' : 'Grade Levels Offered'}</Label>
-                    <p className="text-xs text-muted-foreground">
-                      {isAr
-                        ? 'اختر الصفوف الدراسية التي يقدمها هذا الفرع ليختار منها المتقدم'
-                        : "Select which of this campus's grade levels the applicant can choose from"}
-                    </p>
-                    {gradeLevels.length === 0 ? (
-                      <p className="text-xs text-muted-foreground italic">
-                        {isAr ? 'لا توجد صفوف دراسية لهذا الفرع' : 'No grade levels found for this campus'}
-                      </p>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border dark:border-slate-800 rounded-lg">
-                        {gradeLevels.map((g) => {
-                          const checked = form.selected_grade_ids.includes(g.id)
-                          return (
-                            <label
-                              key={g.id}
-                              className={cn(
-                                'flex items-center gap-2 text-sm px-2 py-1.5 rounded-md border cursor-pointer transition-colors',
-                                checked
-                                  ? 'border-[#022172] bg-[#022172]/5'
-                                  : 'border-gray-200 dark:border-slate-800 hover:border-[#57A3CC]'
-                              )}
-                            >
-                              <Checkbox
-                                checked={checked}
-                                onCheckedChange={(c) => setForm(f => ({
-                                  ...f,
-                                  selected_grade_ids: c
-                                    ? [...f.selected_grade_ids, g.id]
-                                    : f.selected_grade_ids.filter(id => id !== g.id),
-                                }))}
-                              />
-                              <span className="truncate">{g.name}</span>
-                            </label>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Label */}
-                <div className="space-y-1.5">
-                  <Label>{t('fieldLabel')}</Label>
-                  <Input
-                    placeholder={t('fieldLabelPlaceholder')}
-                    value={form.label}
-                    onChange={(e) => setForm(f => ({ ...f, label: e.target.value }))}
-                  />
-                  <p className="text-xs text-muted-foreground">{t('fieldLabelHint')}</p>
-                </div>
-
-                {/* Max Uses */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <Label>{t('fieldMaxUses')}</Label>
-                    <button
-                      type="button"
-                      onClick={() => setForm(f => ({ ...f, unlimited: !f.unlimited }))}
-                      className={cn(
-                        'text-xs px-2 py-0.5 rounded-full border transition-colors',
-                        form.unlimited ? 'bg-[#022172] text-white border-[#022172]' : 'border-gray-300'
-                      )}
-                    >
-                      {t('fieldMaxUsesUnlimited')}
-                    </button>
-                  </div>
-                  {!form.unlimited && (
-                    <Input
-                      type="number"
-                      min={1}
-                      placeholder="e.g. 50"
-                      value={form.max_uses}
-                      onChange={(e) => setForm(f => ({ ...f, max_uses: e.target.value }))}
-                    />
-                  )}
-                </div>
-
-                {/* Expiry */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <Label>{t('fieldExpiry')}</Label>
-                    <button
-                      type="button"
-                      onClick={() => setForm(f => ({ ...f, neverExpires: !f.neverExpires }))}
-                      className={cn(
-                        'text-xs px-2 py-0.5 rounded-full border transition-colors',
-                        form.neverExpires ? 'bg-[#022172] text-white border-[#022172]' : 'border-gray-300'
-                      )}
-                    >
-                      {t('fieldExpiryNever')}
-                    </button>
-                  </div>
-                  {!form.neverExpires && (
-                    <Input
-                      type="date"
-                      value={form.expires_at}
-                      min={new Date().toISOString().split('T')[0]}
-                      onChange={(e) => setForm(f => ({ ...f, expires_at: e.target.value }))}
-                    />
-                  )}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="advanced" className="space-y-4 py-2">
-                {/* Poster */}
-                <div className="space-y-1.5">
-                  <Label>{isAr ? 'صورة الغلاف / الملصق' : 'Cover Image / Poster'}</Label>
-                  <FileUpload
-                    value={form.poster_url}
-                    onChange={(url) => setForm(f => ({ ...f, poster_url: url }))}
-                    accept="image/*"
-                    label={isAr ? 'رفع ملصق' : 'Upload Poster'}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {isAr ? 'سيظهر هذا الملصق في صفحة التسجيل.' : 'This image will be displayed on the public signup page.'}
-                  </p>
-                </div>
-
-                {/* Additional Custom Fields */}
-                <div className="space-y-3 pt-2 border-t border-gray-100 dark:border-slate-800">
-                  <div className="flex items-center justify-between">
-                    <Label>{isAr ? 'حقول مخصصة إضافية' : 'Additional Custom Fields'}</Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={() => setForm(f => ({
-                        ...f,
-                        custom_fields: [...f.custom_fields, { id: `field_${Date.now()}`, label: '', type: 'text', required: false, options: '' }]
-                      }))}
-                    >
-                      <Plus className="h-3 w-3 me-1" />
-                      {isAr ? 'إضافة حقل' : 'Add Field'}
-                    </Button>
-                  </div>
-                  
-                  {form.custom_fields.length > 0 && (
-                    <div className="space-y-3">
-                      {form.custom_fields.map((field, idx) => (
-                        <div key={field.id} className="p-3 border dark:border-slate-800 rounded-lg bg-gray-50/50 dark:bg-slate-800/50 space-y-3 relative group">
-                          <button
-                            type="button"
-                            className="absolute top-2 right-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => setForm(f => ({ ...f, custom_fields: f.custom_fields.filter((_, i) => i !== idx) }))}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                          
-                          <div className="grid grid-cols-2 gap-3 pr-6">
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">{isAr ? 'اسم الحقل' : 'Field Label'}</Label>
-                              <Input
-                                className="h-8 text-sm"
-                                placeholder={isAr ? 'مثال: رقم الهوية' : 'e.g. National ID'}
-                                value={field.label}
-                                onChange={(e) => {
-                                  const newFields = [...form.custom_fields]
-                                  newFields[idx].label = e.target.value
-                                  setForm(f => ({ ...f, custom_fields: newFields }))
-                                }}
-                              />
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">{isAr ? 'نوع الحقل' : 'Field Type'}</Label>
-                              <Select
-                                value={field.type}
-                                onValueChange={(v: 'text' | 'select') => {
-                                  const newFields = [...form.custom_fields]
-                                  newFields[idx].type = v
-                                  setForm(f => ({ ...f, custom_fields: newFields }))
-                                }}
-                              >
-                                <SelectTrigger className="h-8 text-sm">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="text">{isAr ? 'نص' : 'Text Input'}</SelectItem>
-                                  <SelectItem value="select">{isAr ? 'قائمة منسدلة' : 'Dropdown (Select)'}</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-
-                          {field.type === 'select' && (
-                            <div className="space-y-1.5 pr-6">
-                              <Label className="text-xs">{isAr ? 'الخيارات (مفصولة بفاصلة)' : 'Options (comma separated)'}</Label>
-                              <Input
-                                className="h-8 text-sm"
-                                placeholder="Option 1, Option 2, Option 3"
-                                value={field.options}
-                                onChange={(e) => {
-                                  const newFields = [...form.custom_fields]
-                                  newFields[idx].options = e.target.value
-                                  setForm(f => ({ ...f, custom_fields: newFields }))
-                                }}
-                              />
-                            </div>
-                          )}
-
-                          <div className="flex items-center gap-2 pt-1">
-                            <Switch
-                              id={`req-${field.id}`}
-                              checked={field.required}
-                              onCheckedChange={(c) => {
-                                const newFields = [...form.custom_fields]
-                                newFields[idx].required = c
-                                setForm(f => ({ ...f, custom_fields: newFields }))
-                              }}
-                            />
-                            <Label htmlFor={`req-${field.id}`} className="text-xs cursor-pointer">
-                              {isAr ? 'حقل إلزامي' : 'Required Field'}
-                            </Label>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-            </Tabs>
-          ) : (
-            /* Success state */
-            <div className="py-4 text-center space-y-4">
-              <div className="w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto">
-                <Check className="h-7 w-7 text-green-600 dark:text-green-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-green-700 dark:text-green-400">{t('generateSuccessTitle')}</h3>
-              <p className="text-sm text-muted-foreground">{t('generateSuccessDesc')}</p>
-              <div className="bg-gray-50 dark:bg-gray-800 border dark:border-gray-700 rounded-lg p-3 text-sm font-mono break-all text-start text-gray-900 dark:text-gray-100">
-                {buildSignupUrl(generatedLink.token)}
-              </div>
-              <Button
-                className="w-full gradient-blue text-white border-0 gap-2"
-                onClick={() => handleCopy(generatedLink)}
-              >
-                {copiedId === generatedLink.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                {copiedId === generatedLink.id ? t('copied') : t('copyLink')}
-              </Button>
-            </div>
-          )}
-
-          <DialogFooter className="gap-2">
-            {!generatedLink ? (
-              <>
-                <Button variant="outline" onClick={resetGenerateForm}>{isAr ? 'إلغاء' : 'Cancel'}</Button>
-                <Button
-                  className="gradient-blue text-white border-0"
-                  onClick={handleGenerate}
-                  disabled={generating}
-                >
-                  {generating ? t('generating') : t('generateSubmit')}
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button variant="outline" onClick={() => setGeneratedLink(null)}>
-                  {t('generateAnother')}
-                </Button>
-                <Button onClick={resetGenerateForm}>{t('done')}</Button>
-              </>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Share Dialog */}
       <Dialog open={!!showShareDialog} onOpenChange={(o) => { if (!o) setShowShareDialog(null) }}>

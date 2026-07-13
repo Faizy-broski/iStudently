@@ -529,18 +529,58 @@ export class SchoolService {
       throw new Error('Failed to fetch admin information')
     }
 
-    if (!adminLink || !adminLink.profiles) {
+    if (adminLink && adminLink.profiles) {
+      // Cast to any to handle the joined relation safe access
+      const adminUser = adminLink.profiles as any
+
+      return {
+        admin_name: `${adminUser.first_name || ''} ${adminUser.last_name || ''}`.trim(),
+        admin_email: adminUser.email,
+        admin_username: adminUser.username || '',
+        user_id: adminUser.id
+      }
+    }
+
+    // Fallback: the admin_schools link row can be missing even when a valid
+    // admin profile exists (its insert is fire-and-forget at creation time and
+    // can silently fail). Look the admin up directly via profiles as a repair path.
+    const { data: adminProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, first_name, last_name, email, username')
+      .eq('school_id', schoolId)
+      .eq('role', 'admin')
+      .limit(1)
+      .maybeSingle()
+
+    if (profileError) {
+      console.error('Get school admin profile fallback error:', profileError)
+      throw new Error('Failed to fetch admin information')
+    }
+
+    if (!adminProfile) {
       return null
     }
 
-    // Cast to any to handle the joined relation safe access
-    const adminUser = adminLink.profiles as any
+    // Self-heal the missing link so future lookups (including getMySchools /
+    // switchSchoolContext, which only read admin_schools) don't need this fallback.
+    const { error: repairError } = await supabase
+      .from('admin_schools')
+      .insert({
+        profile_id: adminProfile.id,
+        school_id: schoolId,
+        role: 'admin',
+        is_primary: true
+      })
+
+    if (repairError) {
+      console.error('Failed to repair missing admin_schools link:', repairError)
+    }
 
     return {
-      admin_name: `${adminUser.first_name || ''} ${adminUser.last_name || ''}`.trim(),
-      admin_email: adminUser.email,
-      admin_username: adminUser.username || '',
-      user_id: adminUser.id
+      admin_name: `${adminProfile.first_name || ''} ${adminProfile.last_name || ''}`.trim(),
+      admin_email: adminProfile.email,
+      admin_username: adminProfile.username || '',
+      user_id: adminProfile.id
     }
   }
 

@@ -1,6 +1,7 @@
 import { getAuthToken } from './schools'
 import { handleSessionExpiry } from '@/context/AuthContext'
 import { API_URL } from '@/config/api'
+import { getImpersonationHeaders } from './abortable-fetch'
 
 export type ICalType = 'events' | 'schedule'
 
@@ -17,6 +18,7 @@ async function apiRequest<T>(endpoint: string): Promise<{ data?: T; error?: stri
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
+        ...getImpersonationHeaders(),
       },
     })
     const data = await res.json()

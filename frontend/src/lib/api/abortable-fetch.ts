@@ -8,7 +8,7 @@ interface FetchOptions extends RequestInit {
   timeout?: number
 }
 
-function getImpersonationHeaders(): Record<string, string> {
+export function getImpersonationHeaders(): Record<string, string> {
   if (typeof window === 'undefined') return {}
   const id = sessionStorage.getItem('impersonatedSchoolId')
   return id ? { 'X-School-Id': id } : {}

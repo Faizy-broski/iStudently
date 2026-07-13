@@ -2,6 +2,7 @@ import { getAuthToken } from './schools'
 import { simpleFetch } from './abortable-fetch'
 import { handleSessionExpiry } from '@/context/AuthContext'
 import { API_URL } from '@/config/api'
+import { getFieldDefinitions } from './custom-fields'
 
 interface ApiResponse<T = unknown> {
   success: boolean
@@ -749,6 +750,8 @@ export interface BulkImportTeacherRow {
   employment_type?: 'full_time' | 'part_time' | 'contract'
   payment_type?: 'fixed_salary' | 'hourly'
   base_salary?: number
+  /** Admin-defined custom field values, grouped by category_id.field_key */
+  custom_fields?: Record<string, any>
 }
 
 export interface BulkImportTeacherError {
@@ -779,7 +782,7 @@ export async function bulkImportTeachers(
   return response.json()
 }
 
-export function downloadTeacherImportTemplate() {
+export async function downloadTeacherImportTemplate(campusId?: string) {
   const headers = [
     'employee_number', 'first_name', 'last_name', 'email', 'phone', 'password',
     'title', 'department', 'qualifications', 'specialization',
@@ -796,7 +799,18 @@ export function downloadTeacherImportTemplate() {
     ['TCH002', 'Jane', 'Doe', 'jane.doe@school.com', '+1234567891', 'Pass@1234', 'Science Teacher', 'Science', 'M.Sc', 'Physics', '2024-02-01', 'full_time', 'fixed_salary', '5500'],
     ['TCH003', 'Mike', 'Lee', 'mike.lee@school.com', '+1234567892', 'Pass@1234', 'English Teacher', 'English', 'B.A', 'Literature', '2024-03-01', 'part_time', 'hourly', '30']
   ]
-  const csv = [notes.join('\n'), headers.join(','), ...examples.map(r => r.join(','))].join('\n')
+
+  const fieldsRes = await getFieldDefinitions('teacher', campusId)
+  if (fieldsRes.success && fieldsRes.data) {
+    for (const field of fieldsRes.data) {
+      headers.push(field.label)
+      const example = field.options?.[0] ?? ''
+      examples.forEach(row => row.push(example))
+    }
+  }
+
+  const csvEscape = (v: string) => (v.includes(',') || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v)
+  const csv = [notes.join('\n'), headers.map(csvEscape).join(','), ...examples.map(r => r.map(csvEscape).join(','))].join('\n')
   const blob = new Blob([csv], { type: 'text/csv' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')

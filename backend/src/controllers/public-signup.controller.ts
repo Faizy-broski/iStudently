@@ -72,11 +72,9 @@ export const submitSignup = async (req: Request, res: Response): Promise<void> =
   try {
     const { token, first_name, last_name, email, phone, password, confirm_password, extra_fields } = req.body
 
-    // Validate required fields
+    // Validate the fields that are never optional, regardless of link config
     const errors: string[] = []
     if (!token) errors.push('token is required')
-    if (!first_name || String(first_name).trim().length < 2) errors.push('first_name must be at least 2 characters')
-    if (!last_name || String(last_name).trim().length < 2) errors.push('last_name must be at least 2 characters')
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push('valid email is required')
     if (!password || String(password).length < 8) errors.push('password must be at least 8 characters')
     if (password !== confirm_password) errors.push('passwords do not match')
@@ -97,6 +95,29 @@ export const submitSignup = async (req: Request, res: Response): Promise<void> =
     }
 
     const link = validation.link
+
+    // Standard fields (first/last name, phone) can be made optional or hidden per link —
+    // defaults below reproduce the previously-hardcoded behavior for links with no config.
+    const standardFields = link.meta?.standard_fields ?? {}
+    const firstNameRequired = standardFields.first_name?.required ?? true
+    const lastNameRequired = standardFields.last_name?.required ?? true
+    const phoneEnabled = standardFields.phone?.enabled ?? true
+    const phoneRequired = phoneEnabled && (standardFields.phone?.required ?? false)
+
+    const standardFieldErrors: string[] = []
+    if (firstNameRequired && (!first_name || String(first_name).trim().length < 2)) {
+      standardFieldErrors.push('first_name must be at least 2 characters')
+    }
+    if (lastNameRequired && (!last_name || String(last_name).trim().length < 2)) {
+      standardFieldErrors.push('last_name must be at least 2 characters')
+    }
+    if (phoneRequired && (!phone || !String(phone).trim())) {
+      standardFieldErrors.push('phone is required')
+    }
+    if (standardFieldErrors.length > 0) {
+      res.status(400).json({ success: false, error: standardFieldErrors.join('; ') } as ApiResponse)
+      return
+    }
 
     // Validate required custom fields defined in meta
     const customFields = link.meta?.custom_fields ?? []
@@ -130,10 +151,10 @@ export const submitSignup = async (req: Request, res: Response): Promise<void> =
       campusId: link.campus_id,
       signupLinkId: link.id,
       role: link.role,
-      firstName: first_name.trim(),
-      lastName: last_name.trim(),
+      firstName: first_name ? String(first_name).trim() : '',
+      lastName: last_name ? String(last_name).trim() : '',
       email: email.toLowerCase().trim(),
-      phone: phone?.trim() || null,
+      phone: phoneEnabled ? (phone?.trim() || null) : null,
       encryptedPassword,
       extraData: extra_fields ?? {},
     })

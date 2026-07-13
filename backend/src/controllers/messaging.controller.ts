@@ -8,7 +8,7 @@ const messagingService = new MessagingService()
 export class MessagingController {
   async sendMessage(req: AuthRequest, res: Response) {
     try {
-      const { recipient_ids, subject, body, campus_id, reply_to_message_id } = req.body
+      const { recipient_ids, subject, body, campus_id, reply_to_message_id, attachments } = req.body
 
       if (!recipient_ids?.length) {
         res.status(400).json({ success: false, error: 'No recipients selected' })
@@ -23,6 +23,15 @@ export class MessagingController {
         return
       }
 
+      let validAttachments: { url: string; name: string; mime_type: string; size: number; path: string }[] | undefined
+      if (attachments !== undefined) {
+        if (!Array.isArray(attachments) || attachments.some((a: any) => !a || typeof a.url !== 'string' || !a.url)) {
+          res.status(400).json({ success: false, error: 'Invalid attachments' })
+          return
+        }
+        validAttachments = attachments
+      }
+
       const schoolId = await getEffectiveSchoolId(req.profile.school_id, campus_id)
 
       const message = await messagingService.sendMessage({
@@ -32,6 +41,7 @@ export class MessagingController {
         body,
         recipientProfileIds: recipient_ids,
         replyToMessageId: reply_to_message_id || undefined,
+        attachments: validAttachments,
       })
 
       res.json({ success: true, data: message })

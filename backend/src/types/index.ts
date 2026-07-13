@@ -679,7 +679,7 @@ export interface CreateStaffDTO {
   employment_type?: EmploymentType;
   payment_type?: 'fixed_salary' | 'hourly';
   permissions?: Record<string, any>;
-  custom_fields?: any[]; // NEW
+  custom_fields?: Record<string, any>;
   created_by?: string;
   // Profile data (if creating new user)
   first_name?: string;
@@ -710,7 +710,7 @@ export interface UpdateStaffDTO {
   section_id?: string | null;
   is_active?: boolean;
   permissions?: Record<string, any>;
-  custom_fields?: any[]; // NEW
+  custom_fields?: Record<string, any>;
   // Profile updates
   first_name?: string;
   last_name?: string;

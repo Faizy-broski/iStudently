@@ -27,6 +27,7 @@ function generateSuggestedUsername(): string {
 }
 
 export interface OnboardSuccessResult {
+  schoolId: string;
   schoolName: string;
   logoUrl?: string | null;
   adminName: string;
@@ -323,7 +324,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
         }
       }
 
-      await onboardSchool({
+      const createdSchool = await onboardSchool({
         school: {
           name: data.schoolName,
           slug: data.schoolSlug,
@@ -356,6 +357,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
       });
 
       const result: OnboardSuccessResult = {
+        schoolId: createdSchool.id,
         schoolName: data.schoolName,
         logoUrl,
         adminName: `${data.adminFirstName} ${data.adminLastName}`,

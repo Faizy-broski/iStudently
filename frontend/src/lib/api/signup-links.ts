@@ -13,6 +13,11 @@ export interface SignupLinkMeta {
   poster_url?: string | null
   description?: string | null
   custom_fields?: SignupCustomField[]
+  standard_fields?: {
+    first_name?: { required: boolean }
+    last_name?: { required: boolean }
+    phone?: { enabled: boolean; required: boolean }
+  }
 }
 
 export interface SignupLink {

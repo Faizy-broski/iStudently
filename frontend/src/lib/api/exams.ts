@@ -1,5 +1,6 @@
 import { getAuthToken } from './schools'
 import { handleSessionExpiry } from '@/context/AuthContext'
+import { getImpersonationHeaders } from './abortable-fetch'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
 
@@ -9,6 +10,7 @@ async function authenticatedFetch(url: string, options: RequestInit = {}) {
   const response = await fetch(url, {
     ...options,
     headers: {
+      ...getImpersonationHeaders(),
       ...options.headers,
       Authorization: `Bearer ${token}`
     }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
 import Papa from "papaparse"
 import * as XLSX from "xlsx"
 import { toast } from "sonner"
@@ -26,6 +26,7 @@ import {
 } from "@/lib/api/teachers"
 import { useCampus } from "@/context/CampusContext"
 import { useTranslations } from "next-intl"
+import { getFieldDefinitions, type CustomFieldDefinition } from "@/lib/api/custom-fields"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -128,7 +129,8 @@ const SKIP = "__skip__"
 
 function applyMappingAndValidate(
   rawRows: Record<string, any>[],
-  mapping: Record<string, string>
+  mapping: Record<string, string>,
+  customFieldDefs: CustomFieldDefinition[]
 ): ParsedRow[] {
   const seenEmails = new Set<string>()
   const seenEmpNums = new Set<string>()
@@ -179,6 +181,18 @@ function applyMappingAndValidate(
     if (EMAIL_RE.test(email)) seenEmails.add(email)
     if (empNum) seenEmpNums.add(empNum)
 
+    const customFields: Record<string, Record<string, any>> = {}
+    for (const field of customFieldDefs) {
+      const value = get(field.field_key)
+      if (field.required && !value) {
+        errors.push(`${field.label} is required`)
+      }
+      if (value) {
+        if (!customFields[field.category_id]) customFields[field.category_id] = {}
+        customFields[field.category_id][field.field_key] = value
+      }
+    }
+
     return {
       _rowIndex: i + 2,
       _clientErrors: errors,
@@ -196,6 +210,7 @@ function applyMappingAndValidate(
       employment_type: (empType as any) || undefined,
       payment_type:   (payType as any) || undefined,
       base_salary:    rawSalary ? Number(rawSalary) : undefined,
+      custom_fields:  Object.keys(customFields).length > 0 ? customFields : undefined,
     }
   })
 }
@@ -228,6 +243,13 @@ export function TeacherBulkImport() {
 
   const campusCtx = useCampus()
   const campusId = campusCtx?.selectedCampus?.id
+
+  const [customFieldDefs, setCustomFieldDefs] = useState<CustomFieldDefinition[]>([])
+  useEffect(() => {
+    getFieldDefinitions('teacher', campusId).then(res => {
+      if (res.success && res.data) setCustomFieldDefs(res.data)
+    })
+  }, [campusId])
 
   const [step, setStep] = useState<Step>(1)
   const [csvColumns, setCsvColumns] = useState<string[]>([])
@@ -299,7 +321,14 @@ export function TeacherBulkImport() {
       toast.error(bi('errors.mapRequiredFirst', { fields: requiredMissing.map(f => f.label).join(", ") }))
       return
     }
-    setParsedRows(applyMappingAndValidate(rawRows, mapping))
+    const requiredCustomMissing = customFieldDefs.filter(
+      f => f.required && (!mapping[f.field_key] || mapping[f.field_key] === SKIP)
+    )
+    if (requiredCustomMissing.length > 0) {
+      toast.error(bi('errors.mapRequiredFirst', { fields: requiredCustomMissing.map(f => f.label).join(", ") }))
+      return
+    }
+    setParsedRows(applyMappingAndValidate(rawRows, mapping, customFieldDefs))
     setStep(3)
   }
 
@@ -406,7 +435,7 @@ export function TeacherBulkImport() {
               </div>
             </div>
 
-            <Button variant="outline" size="sm" onClick={downloadTeacherImportTemplate} className="gap-2">
+            <Button variant="outline" size="sm" onClick={() => downloadTeacherImportTemplate(campusId)} className="gap-2">
               <Download className="h-4 w-4" /> {bi('downloadTemplate')}
             </Button>
           </CardContent>
@@ -465,6 +494,45 @@ export function TeacherBulkImport() {
               </div>
             </CardContent>
           </Card>
+
+          {customFieldDefs.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Custom Fields</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {customFieldDefs.map(field => {
+                    const currentVal = mapping[field.field_key] ?? SKIP
+                    return (
+                      <div key={field.id} className="space-y-1">
+                        <label className="text-sm font-medium flex items-center gap-1.5">
+                          {field.label}
+                          {field.required
+                            ? <span className="text-red-500 text-xs">*</span>
+                            : <span className="text-muted-foreground text-xs">(optional)</span>}
+                        </label>
+                        <Select
+                          value={currentVal}
+                          onValueChange={val => setMapping(prev => ({ ...prev, [field.field_key]: val }))}
+                        >
+                          <SelectTrigger className={field.required && (!currentVal || currentVal === SKIP) ? "border-red-400" : ""}>
+                            <SelectValue placeholder={bi('skip')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={SKIP}>{bi('skip')}</SelectItem>
+                            {csvColumns.map(col => (
+                              <SelectItem key={col} value={col}>{col}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Column preview table */}
           <Card>

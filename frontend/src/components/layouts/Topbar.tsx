@@ -146,12 +146,25 @@ export function Topbar({ className }: TopbarProps) {
     return 'U'
   }
 
+  // When super_admin is impersonating a school, show as "School Admin" instead of their
+  // real name/role — matches the same handling already in AppSidebar.tsx, so the topbar
+  // doesn't contradict the sidebar/impersonation banner about who's "logged in" right now.
+  const impersonatedSchoolId =
+    typeof window !== 'undefined' ? sessionStorage.getItem('impersonatedSchoolId') : null
+  const isImpersonating = profile?.role === 'super_admin' && !!impersonatedSchoolId
+
   const getRoleDisplayName = () => {
+    if (isImpersonating) return 'School Admin'
     if (!profile?.role) return ''
     const roleKey = profile.role as string
     const knownRoles = ['admin', 'teacher', 'superadmin', 'librarian', 'student', 'parent']
     if (knownRoles.includes(roleKey)) return t(`roles.${roleKey}`)
     return roleKey.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())
+  }
+
+  const getDisplayName = () => {
+    if (isImpersonating) return 'School Admin'
+    return `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim()
   }
 
   return (
@@ -338,7 +351,7 @@ export function Topbar({ className }: TopbarProps) {
                 </Avatar>
                 <div className="hidden md:flex flex-col items-start">
                   <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {profile?.first_name} {profile?.last_name}
+                    {getDisplayName()}
                   </span>
                   <span className="text-xs text-gray-500 dark:text-gray-400">
                     {getRoleDisplayName()}
@@ -349,7 +362,7 @@ export function Topbar({ className }: TopbarProps) {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
                 <div className="flex flex-col">
-                  <span>{profile?.first_name} {profile?.last_name}</span>
+                  <span>{getDisplayName()}</span>
                   <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
                     {profile?.email}
                   </span>

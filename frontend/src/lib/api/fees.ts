@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
-import { simpleFetch } from './abortable-fetch'
+import { simpleFetch, getImpersonationHeaders } from './abortable-fetch'
 import { handleSessionExpiry } from '@/context/AuthContext'
 import { API_URL } from '@/config/api'
 import { getAuthToken } from './schools'
@@ -152,6 +152,7 @@ async function apiRequest<T = unknown>(
     const headers: HeadersInit = {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
+        ...getImpersonationHeaders(),
         ...options.headers,
     }
 
@@ -201,6 +202,7 @@ async function apiRequestPaginated<T>(
     const headers: HeadersInit = {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
+        ...getImpersonationHeaders(),
         ...options.headers,
     }
 
