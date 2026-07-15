@@ -3,10 +3,28 @@ import { apiRequest } from './index'
 export interface SignupCustomField {
   id: string
   label: string
-  type: 'text' | 'select' | 'textarea'
+  type: 'text' | 'select' | 'textarea' | 'date'
   required: boolean
   options?: string[]
   placeholder?: string
+  source?: 'custom' | 'profile_field'
+  mapping?: { table: 'profiles' | 'parents' | 'staff'; column: string }
+}
+
+export interface ProfileFieldOption {
+  id: string
+  label_en: string
+  label_ar: string
+}
+
+export interface ProfileFieldDef {
+  table: 'profiles' | 'parents' | 'staff'
+  column: string
+  label_en: string
+  label_ar: string
+  type: 'text' | 'select' | 'textarea' | 'date'
+  options?: ProfileFieldOption[]
+  appliesToRoles: string[]
 }
 
 export interface SignupLinkMeta {
@@ -70,6 +88,10 @@ export async function activateSignupLink(id: string) {
 
 export async function deleteSignupLink(id: string) {
   return apiRequest<void>(`/signup-links/${id}`, { method: 'DELETE' })
+}
+
+export async function getProfileFields(role: string) {
+  return apiRequest<ProfileFieldDef[]>(`/signup-links/profile-fields?role=${role}`)
 }
 
 /** Build the full public URL for a signup token */

@@ -25,6 +25,7 @@ import { AgreementGate } from '@/components/agreement/AgreementGate'
 import { PermissionsProvider, usePermissions } from '@/context/PermissionsContext'
 import { MessagingNotificationProvider } from '@/context/MessagingNotificationContext'
 import { GrievanceNotificationProvider } from '@/context/GrievanceNotificationContext'
+import { PushNotificationPrompt } from '@/components/notifications/PushNotificationPrompt'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -312,6 +313,9 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
 
       {/* Feedback / Bug Report — fixed overlay, persists across all pages (hidden for super admin) */}
       {effectiveRole !== 'super_admin' && <FeedbackWidget />}
+
+      {/* Web push permission prompt — fixed overlay, persists across all pages (hidden for super admin) */}
+      {effectiveRole !== 'super_admin' && <PushNotificationPrompt />}
     </div>
   )
 }

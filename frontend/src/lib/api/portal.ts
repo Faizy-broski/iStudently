@@ -1,4 +1,5 @@
 import { getAuthToken } from './schools'
+import { getImpersonationHeaders } from './abortable-fetch'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL
 
@@ -136,6 +137,7 @@ async function apiRequest<T>(
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
+      ...getImpersonationHeaders(),
       ...options.headers,
     },
   })

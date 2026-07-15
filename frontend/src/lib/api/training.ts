@@ -1,6 +1,7 @@
 import { apiRequest } from './index'
 import { API_URL } from '@/config/api'
 import { getAuthToken } from './schools'
+import { getImpersonationHeaders } from './abortable-fetch'
 
 // ─── Shared Types ─────────────────────────────────────────────────────────────
 
@@ -179,7 +180,7 @@ export const trainingApi = {
   exportCSV: async (sessionId: string): Promise<void> => {
     const token = await getAuthToken()
     const res = await fetch(`${API_URL}/training/sessions/${sessionId}/export`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${token}`, ...getImpersonationHeaders() },
     })
     if (!res.ok) throw new Error('Export failed')
     const text = await res.text()

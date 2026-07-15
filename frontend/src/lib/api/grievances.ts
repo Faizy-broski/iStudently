@@ -103,7 +103,7 @@ export interface GrievanceSettings {
   allow_reopen: boolean
   max_attachment_mb: number
   allowed_file_types: string[]
-  notification_channels: { in_app: boolean; email: boolean }
+  notification_channels: { in_app: boolean; email: boolean; push: boolean }
   updated_at: string
 }
 

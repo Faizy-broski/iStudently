@@ -353,6 +353,7 @@ export default function SignupPage() {
                 ) : (
                   <Input
                     id={field.id}
+                    type={field.type === 'date' ? 'date' : 'text'}
                     placeholder={field.placeholder}
                     value={form.extra_fields[field.id] || ''}
                     onChange={(e) => setForm(f => ({ ...f, extra_fields: { ...f.extra_fields, [field.id]: e.target.value } }))}

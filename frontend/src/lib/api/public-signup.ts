@@ -5,7 +5,7 @@ import { API_URL } from '@/config/api'
 export interface SignupCustomField {
   id: string
   label: string
-  type: 'text' | 'select' | 'textarea'
+  type: 'text' | 'select' | 'textarea' | 'date'
   required: boolean
   options?: string[]
   placeholder?: string

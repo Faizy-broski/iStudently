@@ -13,6 +13,9 @@ router.post('/', requireAdmin, signupLinksController.generateLink)
 // GET /api/signup-links — list all signup links for the admin's school
 router.get('/', requireAdmin, signupLinksController.getLinks)
 
+// GET /api/signup-links/profile-fields?role=parent — existing profile columns that can be mapped
+router.get('/profile-fields', requireAdmin, signupLinksController.getProfileFields)
+
 // PUT /api/signup-links/:id/deactivate — deactivate a link
 router.put('/:id/deactivate', requireAdmin, signupLinksController.deactivateLink)
 

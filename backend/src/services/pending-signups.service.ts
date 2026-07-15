@@ -3,6 +3,7 @@ import { decryptPassword } from './public-signup.service'
 import { sendEmail } from './mail'
 import { getSchoolMailer } from './email.service'
 import { generateCredentials } from './username.service'
+import type { SignupLinkMeta } from './signup-links.service'
 import bcrypt from 'bcrypt'
 
 export interface PendingSignup {
@@ -217,6 +218,45 @@ export async function approvePendingSignup(
 
   const profileId = authUser.user.id
 
+  // Custom fields answered on the public signup form (see submitSignup / meta.custom_fields).
+  // grade_level is handled separately below since it maps to a real column, not custom_fields.
+  const extraData = (row.extra_data ?? {}) as Record<string, unknown>
+  const { grade_level: submittedGradeLevelName, ...rest } = extraData
+
+  // Fields marked source: 'profile_field' on the signup link map onto real named
+  // columns instead of the generic custom_fields JSONB — look up that mapping now.
+  let linkMeta: SignupLinkMeta | null = null
+  if (row.signup_link_id) {
+    const { data: signupLink } = await supabase
+      .from('signup_links')
+      .select('meta')
+      .eq('id', row.signup_link_id)
+      .maybeSingle()
+    linkMeta = (signupLink?.meta ?? null) as SignupLinkMeta | null
+  }
+
+  const profileFieldMap = new Map(
+    (linkMeta?.custom_fields ?? [])
+      .filter(f => f.source === 'profile_field' && f.mapping)
+      .map(f => [f.id, f.mapping!])
+  )
+
+  const profileUpdates: Record<string, unknown> = {}
+  const parentsMapped: Record<string, unknown> = {}
+  const staffMapped: Record<string, unknown> = {}
+  const customFieldAnswers: Record<string, unknown> = {}
+
+  for (const [key, value] of Object.entries(rest)) {
+    const mapping = profileFieldMap.get(key)
+    if (!mapping) {
+      customFieldAnswers[key] = value
+      continue
+    }
+    if (mapping.table === 'profiles') profileUpdates[mapping.column] = value
+    else if (mapping.table === 'parents') parentsMapped[mapping.column] = value
+    else if (mapping.table === 'staff') staffMapped[mapping.column] = value
+  }
+
   // 2. Create profile record
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
@@ -229,6 +269,7 @@ export async function approvePendingSignup(
       email: row.email,
       phone: row.phone,
       is_active: true,
+      ...profileUpdates,
     })
     .select()
     .single()
@@ -242,11 +283,6 @@ export async function approvePendingSignup(
   // 3. Create the role-specific record so the user appears in the correct list.
   // campus_id is the actual campus school_id; fall back to school_id if not set.
   const campusId = row.campus_id ?? row.school_id
-
-  // Custom fields answered on the public signup form (see submitSignup / meta.custom_fields).
-  // grade_level is handled separately below since it maps to a real column, not custom_fields.
-  const extraData = (row.extra_data ?? {}) as Record<string, unknown>
-  const { grade_level: submittedGradeLevelName, ...customFieldAnswers } = extraData
 
   let gradeLevelId: string | null = null
   if (row.role === 'student' && submittedGradeLevelName) {
@@ -282,6 +318,7 @@ export async function approvePendingSignup(
         payment_type: 'fixed_salary',
         is_active: true,
         permissions: {},
+        ...staffMapped,
         custom_fields: customFieldAnswers,
         created_by: reviewedBy,
       })
@@ -319,6 +356,7 @@ export async function approvePendingSignup(
         profile_id: profileId,
         school_id: campusId,
         metadata: {},
+        ...parentsMapped,
         custom_fields: customFieldAnswers,
       })
 

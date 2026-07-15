@@ -4,10 +4,15 @@ import { supabase } from '../config/supabase'
 export interface SignupCustomField {
   id: string          // e.g. "grade_level", "phone", "address"
   label: string
-  type: 'text' | 'select' | 'textarea'
+  type: 'text' | 'select' | 'textarea' | 'date'
   required: boolean
   options?: string[]  // for type === 'select'
   placeholder?: string
+  // Absent/'custom' = brand-new freeform field (answer goes to custom_fields JSONB).
+  // 'profile_field' = maps onto an existing named column (see `mapping`), so the
+  // answer is written directly to that column on approval instead.
+  source?: 'custom' | 'profile_field'
+  mapping?: { table: 'profiles' | 'parents' | 'staff'; column: string }
 }
 
 export interface SignupLinkMeta {

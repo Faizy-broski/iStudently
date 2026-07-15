@@ -92,6 +92,7 @@ import userProfilesRoutes from "./routes/user-profiles.routes";
 import trainingRoutes, { trainingPublicRouter } from "./routes/training.routes";
 import messagingRoutes from "./routes/messaging.routes";
 import grievanceRoutes from "./routes/grievance.routes";
+import pushNotificationsRoutes from "./routes/push-notifications.routes";
 
 const app = express();
 
@@ -313,6 +314,7 @@ registerRoutes("/analytics/withdrawal", withdrawalAnalyticsRoutes);
 registerRoutes("/user-profiles", userProfilesRoutes);
 registerRoutes("/messaging", messagingRoutes);
 registerRoutes("/grievances", grievanceRoutes);
+registerRoutes("/push", pushNotificationsRoutes);
 registerRoutes("/attendance-calendars", attendanceCalendarsRoutes);
 registerRoutes("/advanced-report", advancedReportRoutes);
 

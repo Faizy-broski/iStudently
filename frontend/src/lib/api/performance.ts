@@ -1,4 +1,5 @@
 import { getAuthToken } from './schools'
+import { getImpersonationHeaders } from './abortable-fetch'
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
@@ -70,6 +71,7 @@ async function authHeaders(): Promise<HeadersInit> {
   return {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...getImpersonationHeaders(),
   }
 }
 

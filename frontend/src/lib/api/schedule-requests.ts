@@ -1,5 +1,6 @@
 import { getAuthToken } from './schools'
 import { API_URL } from '@/config/api'
+import { getImpersonationHeaders } from './abortable-fetch'
 
 // ============================================================================
 // SCHEDULE REQUESTS & TEMPLATES API CLIENT
@@ -93,6 +94,7 @@ async function authFetch<T>(url: string, options: RequestInit = {}): Promise<T> 
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
+      ...getImpersonationHeaders(),
       ...options.headers,
     },
   })

@@ -8,6 +8,8 @@ import { uploadMessageAttachment, type MessageAttachmentUploadResult } from "@/l
 import { playMessageSentSound } from "@/lib/utils/notification-sound"
 import { useCampus } from "@/context/CampusContext"
 import { useAuth } from "@/context/AuthContext"
+import { useGradeLevels } from "@/hooks/useAcademics"
+import { getSections, type Section } from "@/lib/api/academics"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { RichTextEditor } from "@/components/ui/rich-text-editor"
@@ -38,11 +40,16 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
   const selectedCampusId = campusContext?.selectedCampus?.id
   const { profile } = useAuth()
   const canMessageStudents = profile?.role === "admin" || profile?.role === "teacher" || profile?.role === "super_admin"
+  const { gradeLevels } = useGradeLevels()
 
   const [subject, setSubject] = useState("")
   const [body, setBody] = useState("")
-  const [recipientTab, setRecipientTab] = useState<"staff" | "students">("staff")
+  const [recipientTab, setRecipientTab] = useState<"teachers" | "staff" | "parents" | "students">("teachers")
   const [search, setSearch] = useState("")
+  const [gradeFilter, setGradeFilter] = useState("all")
+  const [sectionFilter, setSectionFilter] = useState("all")
+  const [sections, setSections] = useState<Section[]>([])
+  const [sectionsLoading, setSectionsLoading] = useState(false)
   const [recipientOptions, setRecipientOptions] = useState<MessageRecipientOption[]>([])
   const [loadingRecipients, setLoadingRecipients] = useState(false)
   const [selectedProfileIds, setSelectedProfileIds] = useState<Set<string>>(new Set())
@@ -87,7 +94,13 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
   const fetchRecipients = useCallback(async () => {
     setLoadingRecipients(true)
     try {
-      const res = await messagingApi.listRecipients(recipientTab, search.trim() || undefined, selectedCampusId)
+      const res = await messagingApi.listRecipients(
+        recipientTab,
+        search.trim() || undefined,
+        selectedCampusId,
+        recipientTab === "students" && gradeFilter !== "all" ? gradeFilter : undefined,
+        recipientTab === "students" && sectionFilter !== "all" ? sectionFilter : undefined
+      )
       const options = res.success && res.data ? res.data : []
       setRecipientOptions(options)
       if (options.length > 0) {
@@ -100,7 +113,22 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
     } finally {
       setLoadingRecipients(false)
     }
-  }, [recipientTab, search, selectedCampusId])
+  }, [recipientTab, search, selectedCampusId, gradeFilter, sectionFilter])
+
+  // Load sections for the selected grade (Students tab only)
+  useEffect(() => {
+    if (gradeFilter === "all") {
+      setSections([])
+      setSectionFilter("all")
+      return
+    }
+    setSectionsLoading(true)
+    getSections(gradeFilter)
+      .then((res) => { if (res.success && res.data) setSections(res.data) })
+      .catch(() => {})
+      .finally(() => setSectionsLoading(false))
+    setSectionFilter("all")
+  }, [gradeFilter])
 
   useEffect(() => {
     const timer = setTimeout(fetchRecipients, 300)
@@ -361,9 +389,19 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
             </div>
           )}
 
-          <Tabs value={recipientTab} onValueChange={(v) => { setRecipientTab(v as "staff" | "students"); setSearch("") }}>
+          <Tabs
+            value={recipientTab}
+            onValueChange={(v) => {
+              setRecipientTab(v as "teachers" | "staff" | "parents" | "students")
+              setSearch("")
+              setGradeFilter("all")
+              setSectionFilter("all")
+            }}
+          >
             <TabsList>
-              <TabsTrigger value="staff"><Users className="h-3.5 w-3.5 mr-1.5" /> Users</TabsTrigger>
+              <TabsTrigger value="teachers"><Users className="h-3.5 w-3.5 mr-1.5" /> Teachers</TabsTrigger>
+              <TabsTrigger value="staff"><Users className="h-3.5 w-3.5 mr-1.5" /> Staff</TabsTrigger>
+              <TabsTrigger value="parents"><Users className="h-3.5 w-3.5 mr-1.5" /> Parents</TabsTrigger>
               {canMessageStudents && (
                 <TabsTrigger value="students"><GraduationCap className="h-3.5 w-3.5 mr-1.5" /> Students</TabsTrigger>
               )}
@@ -374,12 +412,55 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder={recipientTab === "staff" ? "Search users..." : "Search students..."}
+                placeholder={`Search ${recipientTab}...`}
                 className="pl-9"
               />
             </div>
 
+            {recipientTab === "students" && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                <Select value={gradeFilter} onValueChange={setGradeFilter}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="All Grades" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Grades</SelectItem>
+                    {gradeLevels.map((g) => (
+                      <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={sectionFilter} onValueChange={setSectionFilter} disabled={gradeFilter === "all" || sectionsLoading}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="All Sections" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Sections</SelectItem>
+                    {sections.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <TabsContent value="teachers" className="mt-3">
+              <RecipientList
+                loading={loadingRecipients}
+                items={recipientOptions}
+                selected={selectedProfileIds}
+                onToggle={toggleRecipient}
+              />
+            </TabsContent>
             <TabsContent value="staff" className="mt-3">
+              <RecipientList
+                loading={loadingRecipients}
+                items={recipientOptions}
+                selected={selectedProfileIds}
+                onToggle={toggleRecipient}
+              />
+            </TabsContent>
+            <TabsContent value="parents" className="mt-3">
               <RecipientList
                 loading={loadingRecipients}
                 items={recipientOptions}

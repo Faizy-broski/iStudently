@@ -364,7 +364,14 @@ export class MessagingService {
     return true
   }
 
-  async listRecipients(schoolId: string, role: string, type: 'staff' | 'students', search?: string) {
+  async listRecipients(
+    schoolId: string,
+    role: string,
+    type: 'students' | 'teachers' | 'staff' | 'parents',
+    search?: string,
+    gradeLevelId?: string,
+    sectionId?: string
+  ) {
     const term = search?.trim().toLowerCase()
 
     if (type === 'students') {
@@ -372,12 +379,17 @@ export class MessagingService {
         return []
       }
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('students')
         .select('profile_id, student_number')
         .eq('school_id', schoolId)
         .not('profile_id', 'is', null)
         .limit(300)
+
+      if (gradeLevelId) query = query.eq('grade_level_id', gradeLevelId)
+      if (sectionId) query = query.eq('section_id', sectionId)
+
+      const { data, error } = await query
 
       if (error) {
         throw new Error(`Failed to list student recipients: ${error.message}`)
@@ -397,10 +409,42 @@ export class MessagingService {
         .filter((r) => !term || r.name.toLowerCase().includes(term))
     }
 
+    if (type === 'parents') {
+      const { data, error } = await supabase
+        .from('parents')
+        .select('profile_id')
+        .eq('school_id', schoolId)
+        .not('profile_id', 'is', null)
+        .limit(300)
+
+      if (error) {
+        throw new Error(`Failed to list parent recipients: ${error.message}`)
+      }
+
+      const profiles = await this.fetchProfilesByIds((data || []).map((p) => p.profile_id as string))
+
+      return (data || [])
+        .map((p) => {
+          const profile = profiles.get(p.profile_id as string)
+          return {
+            profileId: p.profile_id as string,
+            name: `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim(),
+            subtitle: 'Parent',
+          }
+        })
+        .filter((r) => !term || r.name.toLowerCase().includes(term))
+    }
+
+    // 'teachers' -> role='teacher'; 'staff' -> everyone else in the staff table
+    // (librarian/admin/counselor/generic staff), matching the same split already
+    // used by staff.service.ts's role filter ('teacher' vs 'all').
+    const staffRoles = type === 'teachers' ? ['teacher'] : ['staff', 'librarian', 'admin', 'counselor']
+
     const { data, error } = await supabase
       .from('staff')
       .select('profile_id, title')
       .eq('school_id', schoolId)
+      .in('role', staffRoles)
       .limit(300)
 
     if (error) {

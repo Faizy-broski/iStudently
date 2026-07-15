@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import * as signupLinksService from '../services/signup-links.service'
+import { getProfileFieldsForRole } from '../services/profile-field-registry'
 import type { ApiResponse } from '../types'
 
 interface AuthRequest extends Request {
@@ -71,6 +72,20 @@ export const activateLink = async (req: AuthRequest, res: Response): Promise<voi
 
     await signupLinksService.activateSignupLink(req.params.id, schoolId)
     res.json({ success: true, message: 'Link activated' } as ApiResponse)
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message } as ApiResponse)
+  }
+}
+
+export const getProfileFields = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const role = req.query.role as string | undefined
+    if (!role || !VALID_ROLES.includes(role)) {
+      res.status(400).json({ success: false, error: `role must be one of: ${VALID_ROLES.join(', ')}` } as ApiResponse)
+      return
+    }
+
+    res.json({ success: true, data: getProfileFieldsForRole(role) } as ApiResponse)
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message } as ApiResponse)
   }

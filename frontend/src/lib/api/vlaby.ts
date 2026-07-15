@@ -1,6 +1,7 @@
 import { getAuthToken } from './schools'
 import { handleSessionExpiry } from '@/context/AuthContext'
 import { API_URL } from '@/config/api'
+import { getImpersonationHeaders } from './abortable-fetch'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -97,6 +98,7 @@ async function apiRequest<T = unknown>(
     'Content-Type': 'application/json',
     Authorization: `Bearer ${authToken}`,
     'x-locale': locale,
+    ...getImpersonationHeaders(),
   }
 
   if (vlabyToken) headers['x-vlaby-token'] = vlabyToken

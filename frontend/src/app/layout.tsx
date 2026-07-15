@@ -23,6 +23,7 @@ const cairo = Cairo({
 export const metadata: Metadata = {
   title: "Studently - School Management System",
   description: "Comprehensive school management SaaS platform",
+  manifest: "/manifest.json",
 };
 
 export default async function RootLayout({

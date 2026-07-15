@@ -1,6 +1,7 @@
 import { API_URL } from '@/config/api'
 import { getAuthToken } from './schools'
 import { handleSessionExpiry } from '@/context/AuthContext'
+import { getImpersonationHeaders } from './abortable-fetch'
 
 export interface MediaUploadResult {
   url: string
@@ -30,7 +31,7 @@ export async function uploadMediaRecording(
 
     const response = await fetch(`${API_URL}/media/upload`, {
       method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...getImpersonationHeaders() },
       body: formData,
     })
 
@@ -78,7 +79,7 @@ export async function uploadMessageAttachment(
 
     const response = await fetch(`${API_URL}/media/upload-attachment`, {
       method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...getImpersonationHeaders() },
       body: formData,
     })
 

@@ -5,6 +5,7 @@
 import { API_URL } from '@/config/api'
 import { getAuthToken } from './schools'
 import { handleSessionExpiry } from '@/context/AuthContext'
+import { getImpersonationHeaders } from './abortable-fetch'
 
 // ============================================================================
 // TYPES
@@ -122,6 +123,7 @@ async function authFetch<T>(
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
+        ...getImpersonationHeaders(),
         ...(options.headers || {}),
       },
     })

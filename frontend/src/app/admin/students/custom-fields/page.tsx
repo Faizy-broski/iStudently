@@ -123,7 +123,7 @@ export default function CustomFieldsPage() {
         const [fieldsResponse, branchesResponse, defaultOrdersResponse] = await Promise.all([
           customFieldsApi.getFieldDefinitions('student', campusId),
           customFieldsApi.getBranchSchools(),
-          getFieldOrders('student')
+          getFieldOrders('student', undefined, campusId)
         ]);
 
         if (defaultOrdersResponse.success && defaultOrdersResponse.data) {
@@ -463,7 +463,8 @@ export default function CustomFieldsPage() {
 
   // Refresh default-field order cache after a merged order save
   const refreshDefaultFieldOrders = async () => {
-    const response = await getFieldOrders('student');
+    const campusId = selectedCampus?.id;
+    const response = await getFieldOrders('student', undefined, campusId);
     if (response.success && response.data) {
       setSavedDefaultOrders(response.data);
 

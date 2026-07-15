@@ -1,0 +1,15 @@
+{
+  "name": "Studently",
+  "short_name": "Studently",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#022172",
+  "theme_color": "#022172",
+  "icons": [
+    {
+      "src": "/images/logo.png",
+      "sizes": "any",
+      "type": "image/png"
+    }
+  ]
+}

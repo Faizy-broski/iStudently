@@ -101,7 +101,9 @@ export default function BillingFormModal({
     }
   }, [open, setValue, editingRecord]);
 
+  // Reset form when editing record changes or modal opens/closes
   useEffect(() => {
+    if (!open) return;
     if (editingRecord) {
       reset({
         school_id: editingRecord.school_id,
@@ -116,25 +118,28 @@ export default function BillingFormModal({
         invoice_number: editingRecord.invoice_number,
         payment_date: editingRecord.payment_date,
       });
-    } else {
-      // Generate invoice number for new records
-      const invoiceNum = `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
-      const defaultPlan = billingPlans[0];
-      reset({
-        school_id: "",
-        school_name: "",
-        billing_plan_id: defaultPlan?.id || "",
-        subscription_plan: defaultPlan?.name || "",
-        billing_cycle: "Monthly",
-        amount: defaultPlan?.monthly_price || 0,
-        currency: "USD",
-        due_date: "",
-        payment_status: "unpaid",
-        invoice_number: invoiceNum,
-        payment_date: null,
-      });
     }
-  }, [editingRecord, reset, open, billingPlans]);
+  }, [editingRecord, reset, open]);
+
+  // Reset form for new records once plans are loaded
+  useEffect(() => {
+    if (!open || editingRecord) return;
+    const invoiceNum = `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`;
+    const defaultPlan = billingPlans[0];
+    reset({
+      school_id: "",
+      school_name: "",
+      billing_plan_id: defaultPlan?.id || "",
+      subscription_plan: defaultPlan?.name || "",
+      billing_cycle: "Monthly",
+      amount: defaultPlan?.monthly_price || 0,
+      currency: "USD",
+      due_date: "",
+      payment_status: "unpaid",
+      invoice_number: invoiceNum,
+      payment_date: null,
+    });
+  }, [open, editingRecord, reset, billingPlans]);
 
   const selectedPlanId = watch("billing_plan_id");
   const selectedCycle = watch("billing_cycle");
@@ -221,7 +226,7 @@ export default function BillingFormModal({
             <Label htmlFor="subscription_plan">Subscription Plan *</Label>
             <Select
               value={watch("billing_plan_id")}
-              onValueChange={(value) => setValue("billing_plan_id", value)}
+              onValueChange={(value) => setValue("billing_plan_id", value, { shouldDirty: true, shouldValidate: true })}
               disabled={loadingPlans || billingPlans.length === 0}
             >
               <SelectTrigger>

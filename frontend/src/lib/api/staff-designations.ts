@@ -1,5 +1,6 @@
 import { API_URL } from '@/config/api'
 import { getAuthToken } from './schools'
+import { getImpersonationHeaders } from './abortable-fetch'
 
 export interface StaffDesignation {
     id: string
@@ -39,6 +40,7 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
+            ...getImpersonationHeaders(),
             ...options.headers,
         },
     })

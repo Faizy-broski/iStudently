@@ -143,17 +143,26 @@ export class MessagingController {
 
   async listRecipients(req: AuthRequest, res: Response) {
     try {
-      const type = (req.query.type as string) || 'staff'
+      const type = (req.query.type as string) || 'teachers'
       const search = req.query.search as string | undefined
       const campusId = req.query.campus_id as string | undefined
+      const gradeLevelId = req.query.grade_level_id as string | undefined
+      const sectionId = req.query.section_id as string | undefined
 
-      if (!['staff', 'students'].includes(type)) {
+      if (!['students', 'teachers', 'staff', 'parents'].includes(type)) {
         res.status(400).json({ success: false, error: 'Invalid recipient type' })
         return
       }
 
       const schoolId = await getEffectiveSchoolId(req.profile.school_id, campusId)
-      const recipients = await messagingService.listRecipients(schoolId, req.profile.role, type as any, search)
+      const recipients = await messagingService.listRecipients(
+        schoolId,
+        req.profile.role,
+        type as any,
+        search,
+        gradeLevelId,
+        sectionId
+      )
 
       res.json({ success: true, data: recipients })
     } catch (error: any) {

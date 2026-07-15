@@ -114,10 +114,18 @@ export interface MessageRecipientOption {
 }
 
 export const messagingApi = {
-  listRecipients: async (type: 'staff' | 'students', search?: string, campusId?: string) => {
+  listRecipients: async (
+    type: 'students' | 'teachers' | 'staff' | 'parents',
+    search?: string,
+    campusId?: string,
+    gradeLevelId?: string,
+    sectionId?: string
+  ) => {
     const params = new URLSearchParams({ type })
     if (search) params.append('search', search)
     if (campusId) params.append('campus_id', campusId)
+    if (gradeLevelId) params.append('grade_level_id', gradeLevelId)
+    if (sectionId) params.append('section_id', sectionId)
     return apiRequest<MessageRecipientOption[]>(`/messaging/recipients?${params.toString()}`)
   },
 

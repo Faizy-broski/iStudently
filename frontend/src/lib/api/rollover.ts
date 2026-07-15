@@ -19,6 +19,7 @@ import type {
   RolloverStatus,
 } from '@/types/enrollment.types';
 import { getAuthToken } from './schools';
+import { getImpersonationHeaders } from './abortable-fetch';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -33,6 +34,7 @@ async function rolloverFetch<T>(
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...getImpersonationHeaders(),
       ...options.headers,
     },
   });

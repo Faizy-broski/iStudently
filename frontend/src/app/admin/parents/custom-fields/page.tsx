@@ -12,39 +12,40 @@ import { useCampus } from "@/context/CampusContext";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { getFieldOrders, getEffectiveFieldOrder, DefaultFieldOrder } from '@/lib/utils/field-ordering';
+import { getFieldOrders, getEffectiveFieldOrder, updateFieldRequired, DefaultFieldOrder } from '@/lib/utils/field-ordering';
 import { useTranslations } from "next-intl";
 import { MergedFieldOrderList, type MergedFieldOrderListLabels } from "@/components/admin/custom-fields/MergedFieldOrderList";
 
 // Default/Standard Fields for Parents
-const DEFAULT_FIELDS_BY_CATEGORY: Record<string, Array<{label: string, sort_order: number}>> = {
+type DefaultFieldEntry = { label: string; id: string; sort_order: number; required: boolean };
+const DEFAULT_FIELDS_BY_CATEGORY: Record<string, DefaultFieldEntry[]> = {
   personal: [
-    { label: "First Name", sort_order: 1 },
-    { label: "Last Name", sort_order: 2 },
-    { label: "CNIC", sort_order: 3 },
-    { label: "Phone Number", sort_order: 4 },
-    { label: "Email Address", sort_order: 5 },
+    { label: "First Name", id: "firstName", sort_order: 1, required: true },
+    { label: "Last Name", id: "lastName", sort_order: 2, required: true },
+    { label: "CNIC", id: "cnic", sort_order: 3, required: true },
+    { label: "Phone Number", id: "phoneNumber", sort_order: 4, required: true },
+    { label: "Email Address", id: "emailAddress", sort_order: 5, required: true },
   ],
   professional: [
-    { label: "Occupation", sort_order: 1 },
-    { label: "Workplace", sort_order: 2 },
-    { label: "Monthly Income", sort_order: 3 },
+    { label: "Occupation", id: "occupation", sort_order: 1, required: false },
+    { label: "Workplace", id: "workplace", sort_order: 2, required: false },
+    { label: "Monthly Income", id: "monthlyIncome", sort_order: 3, required: false },
   ],
   contact: [
-    { label: "Home Address", sort_order: 1 },
-    { label: "City", sort_order: 2 },
-    { label: "State/Province", sort_order: 3 },
-    { label: "ZIP/Postal Code", sort_order: 4 },
-    { label: "Country", sort_order: 5 },
+    { label: "Home Address", id: "homeAddress", sort_order: 1, required: false },
+    { label: "City", id: "city", sort_order: 2, required: false },
+    { label: "State/Province", id: "stateProvince", sort_order: 3, required: false },
+    { label: "ZIP/Postal Code", id: "zipPostalCode", sort_order: 4, required: false },
+    { label: "Country", id: "country", sort_order: 5, required: false },
   ],
   emergency: [
-    { label: "Emergency Contact Name", sort_order: 1 },
-    { label: "Relationship", sort_order: 2 },
-    { label: "Phone", sort_order: 3 },
+    { label: "Emergency Contact Name", id: "emergencyContactName", sort_order: 1, required: false },
+    { label: "Relationship", id: "relationship", sort_order: 2, required: false },
+    { label: "Phone", id: "emergencyPhone", sort_order: 3, required: false },
   ],
   system: [
-    { label: "Username", sort_order: 1 },
-    { label: "Password", sort_order: 2 },
+    { label: "Username", id: "username", sort_order: 1, required: true },
+    { label: "Password", id: "password", sort_order: 2, required: true },
   ],
 };
 
@@ -66,7 +67,7 @@ export default function ParentCustomFieldsPage() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [savedDefaultOrders, setSavedDefaultOrders] = useState<DefaultFieldOrder[]>([]);
-  const [defaultFieldsByCategory, setDefaultFieldsByCategory] = useState<Record<string, Array<{label: string, sort_order: number}>>>(DEFAULT_FIELDS_BY_CATEGORY);
+  const [defaultFieldsByCategory, setDefaultFieldsByCategory] = useState<Record<string, DefaultFieldEntry[]>>(DEFAULT_FIELDS_BY_CATEGORY);
 
   const STANDARD_CATEGORIES = ['personal', 'professional', 'contact', 'emergency', 'system'];
 
@@ -86,7 +87,7 @@ export default function ParentCustomFieldsPage() {
         const [fieldsResponse, branchesResponse, defaultOrdersResponse] = await Promise.all([
           customFieldsApi.getFieldDefinitions('parent', campusId),
           customFieldsApi.getBranchSchools(),
-          getFieldOrders('parent')
+          getFieldOrders('parent', undefined, campusId)
         ]);
 
         // Load saved default field orders if any
@@ -94,7 +95,7 @@ export default function ParentCustomFieldsPage() {
           setSavedDefaultOrders(defaultOrdersResponse.data);
 
           // Apply saved orders to default fields
-          const updatedDefaults: Record<string, Array<{label: string, sort_order: number}>> = {};
+          const updatedDefaults: Record<string, DefaultFieldEntry[]> = {};
           Object.keys(DEFAULT_FIELDS_BY_CATEGORY).forEach(categoryId => {
             const effective = getEffectiveFieldOrder(
               defaultOrdersResponse.data!,
@@ -412,11 +413,12 @@ export default function ParentCustomFieldsPage() {
   };
 
   const refreshDefaultFieldOrders = async () => {
-    const response = await getFieldOrders('parent');
+    const campusId = selectedCampus?.id;
+    const response = await getFieldOrders('parent', undefined, campusId);
     if (response.success && response.data) {
       setSavedDefaultOrders(response.data);
 
-      const updatedDefaults: Record<string, Array<{label: string, sort_order: number}>> = {};
+      const updatedDefaults: Record<string, DefaultFieldEntry[]> = {};
       Object.keys(DEFAULT_FIELDS_BY_CATEGORY).forEach(catId => {
         const effective = getEffectiveFieldOrder(
           response.data!,
@@ -426,6 +428,34 @@ export default function ParentCustomFieldsPage() {
         updatedDefaults[catId] = effective;
       });
       setDefaultFieldsByCategory(updatedDefaults);
+    }
+  };
+
+  const handleDefaultRequiredToggle = async (
+    categoryId: string,
+    item: { id?: string; label: string; sort_order: number },
+    checked: boolean
+  ) => {
+    const fieldKey = item.id ?? item.label;
+    const campusId = selectedCampus?.id;
+    const applyLocal = (required: boolean) => {
+      setDefaultFieldsByCategory(prev => ({
+        ...prev,
+        [categoryId]: (prev[categoryId] || []).map(f =>
+          (f.id ?? f.label) === fieldKey ? { ...f, required } : f
+        ),
+      }));
+    };
+    applyLocal(checked);
+    try {
+      const res = await updateFieldRequired('parent', categoryId, fieldKey, checked, item.sort_order, campusId);
+      if (!res.success) {
+        applyLocal(!checked);
+        toast.error(res.error || t("customFieldsPage.toasts.failedSave"));
+      }
+    } catch {
+      applyLocal(!checked);
+      toast.error(t("customFieldsPage.toasts.failedSave"));
     }
   };
 
@@ -542,6 +572,7 @@ export default function ParentCustomFieldsPage() {
                 defaultFields={defaultFieldsByCategory[category.id] || []}
                 campusId={selectedCampus?.id}
                 onOrderSaved={handleOrderSaved}
+                onDefaultRequiredToggle={(item, checked) => handleDefaultRequiredToggle(category.id, item, checked)}
               />
             ))}
           </div>
@@ -565,7 +596,8 @@ function SortableCategoryItem({
   isStandard,
   defaultFields,
   campusId,
-  onOrderSaved
+  onOrderSaved,
+  onDefaultRequiredToggle
 }: {
   category: ExtendedCategory;
   expanded: boolean;
@@ -577,9 +609,10 @@ function SortableCategoryItem({
   branchSchools: BranchSchool[];
   toggleCampusSelection: (categoryId: string, fieldId: string, schoolId: string, checked: boolean) => void;
   isStandard: boolean;
-  defaultFields: Array<{label: string, sort_order: number}>;
+  defaultFields: DefaultFieldEntry[];
   campusId?: string;
   onOrderSaved: () => void;
+  onDefaultRequiredToggle: (item: { id?: string; label: string; sort_order: number }, checked: boolean) => void;
 }) {
   const fieldLabels: MergedFieldOrderListLabels = {
     th_label: "Label",
@@ -683,6 +716,7 @@ function SortableCategoryItem({
             onRemoveField={(fieldId) => onRemoveField(category.id, fieldId)}
             toggleCampusSelection={(fieldId, schoolId, checked) => toggleCampusSelection(category.id, fieldId, schoolId, checked)}
             onOrderSaved={onOrderSaved}
+            onDefaultRequiredToggle={onDefaultRequiredToggle}
           />
         </CardContent>
       )}

@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto'
 import { supabase } from '../config/supabase'
 import { matchesFileSignature } from '../utils/file-signature'
+import { pushNotificationsService } from './push-notifications.service'
 import {
   Grievance,
   CreateGrievanceDTO,
@@ -55,7 +56,7 @@ export class GrievanceService {
         'application/vnd.ms-excel',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       ],
-      notification_channels: { in_app: true, email: false },
+      notification_channels: { in_app: true, email: false, push: true },
     }
 
     const { data: created, error } = await supabase
@@ -200,6 +201,48 @@ export class GrievanceService {
     await supabase.from('grievances').update({ updated_at: new Date().toISOString() }).eq('id', grievanceId)
   }
 
+  /** Pushes a notification to every watcher of a grievance except the actor who triggered it. */
+  private async notifyWatchers(
+    grievanceId: string,
+    schoolId: string,
+    excludeProfileId: string,
+    payload: { title: string; body: string }
+  ) {
+    try {
+      const settings = await this.getSettings(schoolId)
+      if (!settings.notification_channels?.push) return
+
+      const { data: watchers } = await supabase
+        .from('grievance_watchers')
+        .select('profile_id, profiles:profile_id(role)')
+        .eq('grievance_id', grievanceId)
+
+      const recipients = (watchers || []).filter((w) => w.profile_id !== excludeProfileId)
+      if (recipients.length === 0) return
+
+      // Route each recipient to their own role's grievances page (admin/teacher/student/parent all differ).
+      const byRole = new Map<string, string[]>()
+      for (const w of recipients) {
+        const role = (w as any).profiles?.role === 'admin' || (w as any).profiles?.role === 'super_admin'
+          ? 'admin'
+          : (w as any).profiles?.role || 'admin'
+        byRole.set(role, [...(byRole.get(role) || []), w.profile_id])
+      }
+
+      await Promise.all(
+        Array.from(byRole.entries()).map(([role, profileIds]) =>
+          pushNotificationsService.sendToProfiles(profileIds, {
+            ...payload,
+            url: `/${role}/grievances`,
+            tag: `grievance-${grievanceId}`,
+          })
+        )
+      )
+    } catch (err) {
+      console.error('Push notify (grievance watchers) failed:', err)
+    }
+  }
+
   // ── Permission checks ────────────────────────────────────────────────────
 
   private isAdmin(profile: GrievanceProfile): boolean {
@@ -303,6 +346,15 @@ export class GrievanceService {
 
     await this.addWatcher(data.id, dto.submitter_profile_id)
     await this.writeAudit(data.id, dto.submitter_profile_id, 'created', { complaint_number: complaintNumber })
+
+    if (settings.notification_channels?.push) {
+      pushNotificationsService.sendToRole(dto.school_id, 'admin', {
+        title: 'New complaint submitted',
+        body: `${complaintNumber}: ${dto.title}`,
+        url: '/admin/grievances',
+        tag: `grievance-${data.id}`,
+      }).catch((err) => console.error('Push notify (new grievance) failed:', err))
+    }
 
     return data as Grievance
   }
@@ -490,6 +542,13 @@ export class GrievanceService {
     await this.addWatcher(grievanceId, profile.id)
     await this.writeAudit(grievanceId, profile.id, 'comment_added', { comment_id: data.id, is_internal_note: isInternalNote })
 
+    if (!isInternalNote) {
+      this.notifyWatchers(grievanceId, profile.school_id, profile.id, {
+        title: 'New response on your complaint',
+        body: body.length > 120 ? `${body.slice(0, 117)}...` : body,
+      })
+    }
+
     return data
   }
 
@@ -644,6 +703,12 @@ export class GrievanceService {
     if (error) throw new Error(`Failed to update status: ${error.message}`)
 
     await this.writeAudit(grievanceId, profile.id, 'status_changed', { from: existing.status, to: newStatus, note })
+
+    this.notifyWatchers(grievanceId, data.school_id, profile.id, {
+      title: 'Your complaint status changed',
+      body: `${data.complaint_number}: now ${newStatus.replace(/_/g, ' ')}`,
+    })
+
     return data
   }
 

@@ -248,6 +248,10 @@ export interface Profile {
   last_name: string | null;
   father_name: string | null;
   grandfather_name: string | null;
+  gender: string | null;
+  date_of_birth: string | null;
+  national_id: string | null;
+  address: string | null;
   email: string | null;
   phone: string | null;
   avatar_url: string | null;
@@ -2142,7 +2146,7 @@ export interface GrievanceSettings {
   allow_reopen: boolean
   max_attachment_mb: number
   allowed_file_types: string[]
-  notification_channels: { in_app: boolean; email: boolean }
+  notification_channels: { in_app: boolean; email: boolean; push: boolean }
   updated_at: string
 }
 

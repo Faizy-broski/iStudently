@@ -19,8 +19,22 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
 import { FileUpload } from '@/components/ui/file-upload'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useCampus } from '@/context/CampusContext'
-import { generateSignupLink, buildSignupUrl, type SignupLink, type SignupCustomField } from '@/lib/api/signup-links'
+import {
+  generateSignupLink,
+  buildSignupUrl,
+  getProfileFields,
+  type SignupLink,
+  type SignupCustomField,
+  type ProfileFieldDef,
+} from '@/lib/api/signup-links'
 import { getGradeLevels, type GradeLevel } from '@/lib/api/academics'
 import { useRouter } from 'next/navigation'
 
@@ -46,7 +60,15 @@ export default function NewSignupLinkPage() {
     poster_url: '',
     description: '',
     selected_grade_ids: [] as string[],
-    custom_fields: [] as Array<{ id: string; label: string; type: 'text' | 'select'; required: boolean; options: string }>,
+    custom_fields: [] as Array<{
+      id: string
+      label: string
+      type: 'text' | 'select' | 'textarea' | 'date'
+      required: boolean
+      options: string
+      source?: 'custom' | 'profile_field'
+      mapping?: { table: 'profiles' | 'parents' | 'staff'; column: string }
+    }>,
     standard_fields: {
       first_name_required: true,
       last_name_required: true,
@@ -57,6 +79,8 @@ export default function NewSignupLinkPage() {
   const [generating, setGenerating] = React.useState(false)
   const [generatedLink, setGeneratedLink] = React.useState<SignupLink | null>(null)
   const [copiedId, setCopiedId] = React.useState<string | null>(null)
+  const [profileFields, setProfileFields] = React.useState<ProfileFieldDef[]>([])
+  const [profileFieldPickerOpen, setProfileFieldPickerOpen] = React.useState(false)
 
   React.useEffect(() => {
     if (campusId) {
@@ -66,6 +90,41 @@ export default function NewSignupLinkPage() {
       setForm(f => ({ ...f, campus_id: campusId }))
     }
   }, [campusId])
+
+  React.useEffect(() => {
+    getProfileFields(form.role).then(res => {
+      if (res.success && res.data) setProfileFields(res.data)
+    })
+  }, [form.role])
+
+  const addedProfileColumns = new Set(
+    form.custom_fields.filter(f => f.mapping).map(f => `${f.mapping!.table}.${f.mapping!.column}`)
+  )
+  const availableProfileFields = profileFields.filter(
+    f => !addedProfileColumns.has(`${f.table}.${f.column}`)
+  )
+
+  const addProfileField = (field: ProfileFieldDef) => {
+    setForm(f => ({
+      ...f,
+      custom_fields: [
+        ...f.custom_fields,
+        {
+          id: field.column,
+          label: isAr ? field.label_ar : field.label_en,
+          type: field.type,
+          required: false,
+          // Option *values* must match the underlying column's stored values (e.g. the
+          // `gender` CHECK constraint expects 'male'/'female'/'other'), so use option ids,
+          // not their localized display labels.
+          options: field.options ? field.options.map(o => o.id).join(', ') : '',
+          source: 'profile_field',
+          mapping: { table: field.table, column: field.column },
+        },
+      ],
+    }))
+    setProfileFieldPickerOpen(false)
+  }
 
   const execCommandCopy = (url: string) => {
     const container = document.body
@@ -124,6 +183,8 @@ export default function NewSignupLinkPage() {
             type: cf.type,
             required: cf.required,
             options: cf.type === 'select' ? cf.options.split(',').map(s => s.trim()).filter(Boolean) : undefined,
+            source: cf.source ?? 'custom',
+            mapping: cf.mapping,
           })
         }
       })
@@ -438,19 +499,32 @@ export default function NewSignupLinkPage() {
               <div className="pt-4 space-y-4 border-t border-gray-100 dark:border-slate-800">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-semibold">{isAr ? 'حقول مخصصة إضافية' : 'Additional Custom Fields'}</h4>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-xs bg-white dark:bg-slate-900"
-                    onClick={() => setForm(f => ({
-                      ...f,
-                      custom_fields: [...f.custom_fields, { id: `field_${Date.now()}`, label: '', type: 'text', required: false, options: '' }]
-                    }))}
-                  >
-                    <Plus className="h-3.5 w-3.5 me-1.5" />
-                    {isAr ? 'إضافة حقل' : 'Add Field'}
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs bg-white dark:bg-slate-900"
+                      >
+                        <Plus className="h-3.5 w-3.5 me-1.5" />
+                        {isAr ? 'إضافة حقل' : 'Add Field'}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => setForm(f => ({
+                          ...f,
+                          custom_fields: [...f.custom_fields, { id: `field_${Date.now()}`, label: '', type: 'text', required: false, options: '', source: 'custom' }]
+                        }))}
+                      >
+                        {isAr ? 'حقل مخصص جديد' : 'New Custom Field'}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setProfileFieldPickerOpen(true)}>
+                        {isAr ? 'حقل موجود من الملف الشخصي' : 'Existing Profile Field'}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
                 
                 {form.custom_fields.length === 0 ? (
@@ -488,29 +562,35 @@ export default function NewSignupLinkPage() {
                           </div>
                           <div className="space-y-2">
                             <Label className="text-xs">{isAr ? 'نوع الحقل' : 'Field Type'}</Label>
-                            <Select
-                              value={field.type}
-                              onValueChange={(v: 'text' | 'select') => {
-                                setForm(f => ({
-                                  ...f,
-                                  custom_fields: f.custom_fields.map((fld, i) =>
-                                    i === idx ? { ...fld, type: v } : fld
-                                  ),
-                                }))
-                              }}
-                            >
-                              <SelectTrigger className="h-9">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="text">{isAr ? 'نص' : 'Text Input'}</SelectItem>
-                                <SelectItem value="select">{isAr ? 'قائمة منسدلة' : 'Dropdown (Select)'}</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            {field.source === 'profile_field' ? (
+                              <div className="h-9 flex items-center px-3 rounded-md border dark:border-slate-800 bg-gray-50 dark:bg-slate-800 text-xs text-muted-foreground">
+                                {isAr ? 'يرتبط بـ: ' : 'Maps to: '}{field.mapping?.table}.{field.mapping?.column}
+                              </div>
+                            ) : (
+                              <Select
+                                value={field.type}
+                                onValueChange={(v: 'text' | 'select') => {
+                                  setForm(f => ({
+                                    ...f,
+                                    custom_fields: f.custom_fields.map((fld, i) =>
+                                      i === idx ? { ...fld, type: v } : fld
+                                    ),
+                                  }))
+                                }}
+                              >
+                                <SelectTrigger className="h-9">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="text">{isAr ? 'نص' : 'Text Input'}</SelectItem>
+                                  <SelectItem value="select">{isAr ? 'قائمة منسدلة' : 'Dropdown (Select)'}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )}
                           </div>
                         </div>
 
-                        {field.type === 'select' && (
+                        {field.type === 'select' && field.source !== 'profile_field' && (
                           <div className="space-y-2 pr-10">
                             <Label className="text-xs">{isAr ? 'الخيارات (مفصولة بفاصلة)' : 'Options (comma separated)'}</Label>
                             <Input
@@ -604,6 +684,33 @@ export default function NewSignupLinkPage() {
           </div>
         </div>
       </div>
+
+      <Dialog open={profileFieldPickerOpen} onOpenChange={setProfileFieldPickerOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{isAr ? 'اختر حقلاً من الملف الشخصي' : 'Choose an Existing Profile Field'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {availableProfileFields.length === 0 ? (
+              <p className="text-sm text-muted-foreground p-4 text-center">
+                {isAr ? 'لا توجد حقول متاحة لهذا الدور' : 'No available fields for this role'}
+              </p>
+            ) : (
+              availableProfileFields.map(field => (
+                <button
+                  key={`${field.table}.${field.column}`}
+                  type="button"
+                  className="w-full text-start p-3 rounded-lg border dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-900 transition-colors"
+                  onClick={() => addProfileField(field)}
+                >
+                  <div className="text-sm font-medium">{isAr ? field.label_ar : field.label_en}</div>
+                  <div className="text-xs text-muted-foreground">{field.table}.{field.column}</div>
+                </button>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

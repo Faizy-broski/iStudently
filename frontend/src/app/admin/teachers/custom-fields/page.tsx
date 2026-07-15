@@ -12,46 +12,47 @@ import { useCampus } from "@/context/CampusContext";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { getFieldOrders, getEffectiveFieldOrder, DefaultFieldOrder } from '@/lib/utils/field-ordering';
+import { getFieldOrders, getEffectiveFieldOrder, updateFieldRequired, DefaultFieldOrder } from '@/lib/utils/field-ordering';
 import { useTranslations } from "next-intl";
 import { MergedFieldOrderList, type MergedFieldOrderListLabels } from "@/components/admin/custom-fields/MergedFieldOrderList";
 
 // Default/Standard Fields for Teachers
-const DEFAULT_FIELDS_BY_CATEGORY: Record<string, Array<{label: string, sort_order: number}>> = {
+type DefaultFieldEntry = { label: string; id: string; sort_order: number; required: boolean };
+const DEFAULT_FIELDS_BY_CATEGORY: Record<string, DefaultFieldEntry[]> = {
   personal: [
-    { label: "First Name", sort_order: 1 },
-    { label: "Last Name", sort_order: 2 },
-    { label: "CNIC", sort_order: 3 },
-    { label: "Date of Birth", sort_order: 4 },
-    { label: "Gender", sort_order: 5 },
-    { label: "Phone", sort_order: 6 },
-    { label: "Email", sort_order: 7 },
-    { label: "Address", sort_order: 8 },
+    { label: "First Name", id: "firstName", sort_order: 1, required: true },
+    { label: "Last Name", id: "lastName", sort_order: 2, required: true },
+    { label: "CNIC", id: "cnic", sort_order: 3, required: true },
+    { label: "Date of Birth", id: "dateOfBirth", sort_order: 4, required: false },
+    { label: "Gender", id: "gender", sort_order: 5, required: false },
+    { label: "Phone", id: "phone", sort_order: 6, required: false },
+    { label: "Email", id: "email", sort_order: 7, required: true },
+    { label: "Address", id: "address", sort_order: 8, required: false },
   ],
   professional: [
-    { label: "Employee ID", sort_order: 1 },
-    { label: "Designation", sort_order: 2 },
-    { label: "Department", sort_order: 3 },
-    { label: "Joining Date", sort_order: 4 },
-    { label: "Employment Type", sort_order: 5 },
+    { label: "Employee ID", id: "employeeId", sort_order: 1, required: true },
+    { label: "Designation", id: "designation", sort_order: 2, required: true },
+    { label: "Department", id: "department", sort_order: 3, required: false },
+    { label: "Joining Date", id: "joiningDate", sort_order: 4, required: false },
+    { label: "Employment Type", id: "employmentType", sort_order: 5, required: false },
   ],
   qualifications: [
-    { label: "Highest Degree", sort_order: 1 },
-    { label: "Major/Field", sort_order: 2 },
-    { label: "University", sort_order: 3 },
-    { label: "Year of Graduation", sort_order: 4 },
-    { label: "Certifications", sort_order: 5 },
+    { label: "Highest Degree", id: "highestDegree", sort_order: 1, required: false },
+    { label: "Major/Field", id: "majorField", sort_order: 2, required: false },
+    { label: "University", id: "university", sort_order: 3, required: false },
+    { label: "Year of Graduation", id: "yearOfGraduation", sort_order: 4, required: false },
+    { label: "Certifications", id: "certifications", sort_order: 5, required: false },
   ],
   employment: [
-    { label: "Base Salary", sort_order: 1 },
-    { label: "Bank Account", sort_order: 2 },
-    { label: "Working Hours", sort_order: 3 },
-    { label: "Contract Type", sort_order: 4 },
+    { label: "Base Salary", id: "baseSalary", sort_order: 1, required: false },
+    { label: "Bank Account", id: "bankAccount", sort_order: 2, required: false },
+    { label: "Working Hours", id: "workingHours", sort_order: 3, required: false },
+    { label: "Contract Type", id: "contractType", sort_order: 4, required: false },
   ],
   system: [
-    { label: "Username", sort_order: 1 },
-    { label: "Password", sort_order: 2 },
-    { label: "User Role", sort_order: 3 },
+    { label: "Username", id: "username", sort_order: 1, required: true },
+    { label: "Password", id: "password", sort_order: 2, required: true },
+    { label: "User Role", id: "userRole", sort_order: 3, required: false },
   ],
 };
 
@@ -73,7 +74,7 @@ export default function TeacherCustomFieldsPage() {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [savedDefaultOrders, setSavedDefaultOrders] = useState<DefaultFieldOrder[]>([]);
-  const [defaultFieldsByCategory, setDefaultFieldsByCategory] = useState<Record<string, Array<{label: string, sort_order: number}>>>(DEFAULT_FIELDS_BY_CATEGORY);
+  const [defaultFieldsByCategory, setDefaultFieldsByCategory] = useState<Record<string, DefaultFieldEntry[]>>(DEFAULT_FIELDS_BY_CATEGORY);
 
   const STANDARD_CATEGORIES = ['personal', 'professional', 'qualifications', 'employment', 'system'];
 
@@ -93,7 +94,7 @@ export default function TeacherCustomFieldsPage() {
         const [fieldsResponse, branchesResponse, defaultOrdersResponse] = await Promise.all([
           customFieldsApi.getFieldDefinitions('teacher', campusId),
           customFieldsApi.getBranchSchools(),
-          getFieldOrders('teacher')
+          getFieldOrders('teacher', undefined, campusId)
         ]);
 
         // Load saved default field orders if any
@@ -101,7 +102,7 @@ export default function TeacherCustomFieldsPage() {
           setSavedDefaultOrders(defaultOrdersResponse.data);
 
           // Apply saved orders to default fields
-          const updatedDefaults: Record<string, Array<{label: string, sort_order: number}>> = {};
+          const updatedDefaults: Record<string, DefaultFieldEntry[]> = {};
           Object.keys(DEFAULT_FIELDS_BY_CATEGORY).forEach(categoryId => {
             const effective = getEffectiveFieldOrder(
               defaultOrdersResponse.data!,
@@ -419,11 +420,12 @@ export default function TeacherCustomFieldsPage() {
   };
 
   const refreshDefaultFieldOrders = async () => {
-    const response = await getFieldOrders('teacher');
+    const campusId = selectedCampus?.id;
+    const response = await getFieldOrders('teacher', undefined, campusId);
     if (response.success && response.data) {
       setSavedDefaultOrders(response.data);
 
-      const updatedDefaults: Record<string, Array<{label: string, sort_order: number}>> = {};
+      const updatedDefaults: Record<string, DefaultFieldEntry[]> = {};
       Object.keys(DEFAULT_FIELDS_BY_CATEGORY).forEach(catId => {
         const effective = getEffectiveFieldOrder(
           response.data!,
@@ -433,6 +435,34 @@ export default function TeacherCustomFieldsPage() {
         updatedDefaults[catId] = effective;
       });
       setDefaultFieldsByCategory(updatedDefaults);
+    }
+  };
+
+  const handleDefaultRequiredToggle = async (
+    categoryId: string,
+    item: { id?: string; label: string; sort_order: number },
+    checked: boolean
+  ) => {
+    const fieldKey = item.id ?? item.label;
+    const campusId = selectedCampus?.id;
+    const applyLocal = (required: boolean) => {
+      setDefaultFieldsByCategory(prev => ({
+        ...prev,
+        [categoryId]: (prev[categoryId] || []).map(f =>
+          (f.id ?? f.label) === fieldKey ? { ...f, required } : f
+        ),
+      }));
+    };
+    applyLocal(checked);
+    try {
+      const res = await updateFieldRequired('teacher', categoryId, fieldKey, checked, item.sort_order, campusId);
+      if (!res.success) {
+        applyLocal(!checked);
+        toast.error(res.error || t("customFields.failedSave"));
+      }
+    } catch {
+      applyLocal(!checked);
+      toast.error(t("customFields.failedSave"));
     }
   };
 
@@ -549,6 +579,7 @@ export default function TeacherCustomFieldsPage() {
                 defaultFields={defaultFieldsByCategory[category.id] || []}
                 campusId={selectedCampus?.id}
                 onOrderSaved={handleOrderSaved}
+                onDefaultRequiredToggle={(item, checked) => handleDefaultRequiredToggle(category.id, item, checked)}
               />
             ))}
           </div>
@@ -572,7 +603,8 @@ function SortableCategoryItem({
   isStandard,
   defaultFields,
   campusId,
-  onOrderSaved
+  onOrderSaved,
+  onDefaultRequiredToggle
 }: {
   category: ExtendedCategory;
   expanded: boolean;
@@ -584,9 +616,10 @@ function SortableCategoryItem({
   branchSchools: BranchSchool[];
   toggleCampusSelection: (categoryId: string, fieldId: string, schoolId: string, checked: boolean) => void;
   isStandard: boolean;
-  defaultFields: Array<{label: string, sort_order: number}>;
+  defaultFields: DefaultFieldEntry[];
   campusId?: string;
   onOrderSaved: () => void;
+  onDefaultRequiredToggle: (item: { id?: string; label: string; sort_order: number }, checked: boolean) => void;
 }) {
   const t = useTranslations("teachers");
 
@@ -692,6 +725,7 @@ function SortableCategoryItem({
             onRemoveField={(fieldId) => onRemoveField(category.id, fieldId)}
             toggleCampusSelection={(fieldId, schoolId, checked) => toggleCampusSelection(category.id, fieldId, schoolId, checked)}
             onOrderSaved={onOrderSaved}
+            onDefaultRequiredToggle={onDefaultRequiredToggle}
           />
         </CardContent>
       )}

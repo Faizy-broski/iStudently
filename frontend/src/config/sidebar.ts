@@ -542,6 +542,7 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "user_agreements", href: "/admin/settings/user-agreements", icon: FileText },
       { title: "user_profiles", href: "/admin/settings/user-profiles", icon: ShieldCheck },
       { title: "id_card_designer", href: "/admin/id-card", icon: CreditCard },
+      { title: "push_notifications", href: "/admin/settings/push-notifications", icon: Bell },
       // email_reminders, email_smtp, public_pages are injected by their plugins — see config/plugins.ts
       { title: "profile", href: "/admin/profile", icon: UserCircle },
     ],

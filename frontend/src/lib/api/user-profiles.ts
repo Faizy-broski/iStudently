@@ -1,5 +1,6 @@
 import { getAuthToken } from './schools'
 import { UserRole } from '@/types'
+import { getImpersonationHeaders } from './abortable-fetch'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
 
@@ -36,6 +37,7 @@ async function apiRequest<T = unknown>(
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
+        ...getImpersonationHeaders(),
         ...options.headers,
       },
     })

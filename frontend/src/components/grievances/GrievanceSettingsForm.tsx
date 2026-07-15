@@ -105,6 +105,13 @@ export function GrievanceSettingsForm() {
             />
             <span className="text-sm">{t("email_notifications")}</span>
           </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <Checkbox
+              checked={settings.notification_channels.push}
+              onCheckedChange={(v) => patch({ notification_channels: { ...settings.notification_channels, push: !!v } })}
+            />
+            <span className="text-sm">{t("push_notifications")}</span>
+          </label>
         </div>
 
         <Button onClick={handleSave} disabled={saving} className="gap-2">

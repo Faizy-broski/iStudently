@@ -12,33 +12,34 @@ import { useCampus } from "@/context/CampusContext";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { getFieldOrders, getEffectiveFieldOrder } from '@/lib/utils/field-ordering';
+import { getFieldOrders, getEffectiveFieldOrder, updateFieldRequired, DefaultFieldOrder } from '@/lib/utils/field-ordering';
 import { useTranslations } from "next-intl";
 import { MergedFieldOrderList, type MergedFieldOrderListLabels } from "@/components/admin/custom-fields/MergedFieldOrderList";
 
 // Default/Standard Fields for Staff
-const DEFAULT_FIELDS_BY_CATEGORY: Record<string, Array<{label: string, sort_order: number}>> = {
+type DefaultFieldEntry = { label: string; id: string; sort_order: number; required: boolean };
+const DEFAULT_FIELDS_BY_CATEGORY: Record<string, DefaultFieldEntry[]> = {
   personal: [
-    { label: "First Name", sort_order: 1 },
-    { label: "Last Name", sort_order: 2 },
-    { label: "Email", sort_order: 3 },
-    { label: "Phone", sort_order: 4 },
-    { label: "Date of Birth", sort_order: 5 },
-    { label: "Gender", sort_order: 6 },
-    { label: "CNIC", sort_order: 7 },
-    { label: "Address", sort_order: 8 },
+    { label: "First Name", id: "firstName", sort_order: 1, required: true },
+    { label: "Last Name", id: "lastName", sort_order: 2, required: true },
+    { label: "Email", id: "email", sort_order: 3, required: true },
+    { label: "Phone", id: "phone", sort_order: 4, required: false },
+    { label: "Date of Birth", id: "dateOfBirth", sort_order: 5, required: false },
+    { label: "Gender", id: "gender", sort_order: 6, required: false },
+    { label: "CNIC", id: "cnic", sort_order: 7, required: true },
+    { label: "Address", id: "address", sort_order: 8, required: false },
   ],
   employment: [
-    { label: "Designation", sort_order: 1 },
-    { label: "Department", sort_order: 2 },
-    { label: "Employment Type", sort_order: 3 },
-    { label: "Date of Joining", sort_order: 4 },
-    { label: "Base Salary", sort_order: 5 },
+    { label: "Designation", id: "designation", sort_order: 1, required: true },
+    { label: "Department", id: "department", sort_order: 2, required: false },
+    { label: "Employment Type", id: "employmentType", sort_order: 3, required: false },
+    { label: "Date of Joining", id: "dateOfJoining", sort_order: 4, required: false },
+    { label: "Base Salary", id: "baseSalary", sort_order: 5, required: false },
   ],
   system: [
-    { label: "Username", sort_order: 1 },
-    { label: "Password", sort_order: 2 },
-    { label: "User Role", sort_order: 3 },
+    { label: "Username", id: "username", sort_order: 1, required: true },
+    { label: "Password", id: "password", sort_order: 2, required: true },
+    { label: "User Role", id: "userRole", sort_order: 3, required: false },
   ],
 };
 
@@ -60,9 +61,9 @@ export default function StaffCustomFieldsPage() {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [newCategoryName, setNewCategoryName] = useState('');
   const [showAddCategory, setShowAddCategory] = useState(false);
-  const [defaultFieldsByCategory, setDefaultFieldsByCategory] = useState<Record<string, Array<{label: string, sort_order: number}>>>(DEFAULT_FIELDS_BY_CATEGORY);
+  const [defaultFieldsByCategory, setDefaultFieldsByCategory] = useState<Record<string, DefaultFieldEntry[]>>(DEFAULT_FIELDS_BY_CATEGORY);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [savedDefaultOrders, setSavedDefaultOrders] = useState<Array<{ entity_type: string; category_id: string; field_label: string; sort_order: number }>>([]);
+  const [savedDefaultOrders, setSavedDefaultOrders] = useState<DefaultFieldOrder[]>([]);
 
   const STANDARD_CATEGORIES = ['personal', 'employment', 'system'];
 
@@ -81,13 +82,13 @@ export default function StaffCustomFieldsPage() {
         const [fieldsResponse, branchesResponse, defaultOrdersResponse] = await Promise.all([
           customFieldsApi.getFieldDefinitions('staff', campusId),
           customFieldsApi.getBranchSchools(),
-          getFieldOrders('staff')
+          getFieldOrders('staff', undefined, campusId)
         ]);
 
         if (defaultOrdersResponse.success && defaultOrdersResponse.data) {
           setSavedDefaultOrders(defaultOrdersResponse.data);
 
-          const updatedDefaults: Record<string, Array<{label: string, sort_order: number}>> = {};
+          const updatedDefaults: Record<string, DefaultFieldEntry[]> = {};
           Object.keys(DEFAULT_FIELDS_BY_CATEGORY).forEach(categoryId => {
             const effective = getEffectiveFieldOrder(
               defaultOrdersResponse.data!,
@@ -400,11 +401,12 @@ export default function StaffCustomFieldsPage() {
   };
 
   const refreshDefaultFieldOrders = async () => {
-    const response = await getFieldOrders('staff');
+    const campusId = selectedCampus?.id;
+    const response = await getFieldOrders('staff', undefined, campusId);
     if (response.success && response.data) {
       setSavedDefaultOrders(response.data);
 
-      const updatedDefaults: Record<string, Array<{label: string, sort_order: number}>> = {};
+      const updatedDefaults: Record<string, DefaultFieldEntry[]> = {};
       Object.keys(DEFAULT_FIELDS_BY_CATEGORY).forEach(catId => {
         const effective = getEffectiveFieldOrder(
           response.data!,
@@ -414,6 +416,34 @@ export default function StaffCustomFieldsPage() {
         updatedDefaults[catId] = effective;
       });
       setDefaultFieldsByCategory(updatedDefaults);
+    }
+  };
+
+  const handleDefaultRequiredToggle = async (
+    categoryId: string,
+    item: { id?: string; label: string; sort_order: number },
+    checked: boolean
+  ) => {
+    const fieldKey = item.id ?? item.label;
+    const campusId = selectedCampus?.id;
+    const applyLocal = (required: boolean) => {
+      setDefaultFieldsByCategory(prev => ({
+        ...prev,
+        [categoryId]: (prev[categoryId] || []).map(f =>
+          (f.id ?? f.label) === fieldKey ? { ...f, required } : f
+        ),
+      }));
+    };
+    applyLocal(checked);
+    try {
+      const res = await updateFieldRequired('staff', categoryId, fieldKey, checked, item.sort_order, campusId);
+      if (!res.success) {
+        applyLocal(!checked);
+        toast.error(res.error || t("customFields.errors.save"));
+      }
+    } catch {
+      applyLocal(!checked);
+      toast.error(t("customFields.errors.save"));
     }
   };
 
@@ -530,6 +560,7 @@ export default function StaffCustomFieldsPage() {
                 defaultFields={defaultFieldsByCategory[category.id] || []}
                 campusId={selectedCampus?.id}
                 onOrderSaved={handleOrderSaved}
+                onDefaultRequiredToggle={(item, checked) => handleDefaultRequiredToggle(category.id, item, checked)}
               />
             ))}
           </div>
@@ -553,7 +584,8 @@ function SortableCategoryItem({
   isStandard,
   defaultFields,
   campusId,
-  onOrderSaved
+  onOrderSaved,
+  onDefaultRequiredToggle
 }: {
   category: ExtendedCategory;
   expanded: boolean;
@@ -565,9 +597,10 @@ function SortableCategoryItem({
   branchSchools: BranchSchool[];
   toggleCampusSelection: (categoryId: string, fieldId: string, schoolId: string, checked: boolean) => void;
   isStandard: boolean;
-  defaultFields: Array<{label: string, sort_order: number}>;
+  defaultFields: DefaultFieldEntry[];
   campusId?: string;
   onOrderSaved: () => void;
+  onDefaultRequiredToggle: (item: { id?: string; label: string; sort_order: number }, checked: boolean) => void;
 }) {
   const t = useTranslations("staff");
 
@@ -672,6 +705,7 @@ function SortableCategoryItem({
             onRemoveField={(fieldId) => onRemoveField(category.id, fieldId)}
             toggleCampusSelection={(fieldId, schoolId, checked) => toggleCampusSelection(category.id, fieldId, schoolId, checked)}
             onOrderSaved={onOrderSaved}
+            onDefaultRequiredToggle={onDefaultRequiredToggle}
           />
         </CardContent>
       )}
