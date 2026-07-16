@@ -68,12 +68,15 @@ export function useRegistrations(
   filters: {
     status?: string
     payment_status?: string
+    paid?: boolean
     search?: string
     page?: number
     limit?: number
   } = {}
 ) {
   const { user } = useAuth()
+  const campusContext = useCampus()
+  const selectedCampusId = campusContext?.selectedCampus?.id
 
   const cacheKey =
     user && sessionId
@@ -81,8 +84,10 @@ export function useRegistrations(
           'training-registrations',
           sessionId,
           user.id,
+          selectedCampusId,
           filters.status,
           filters.payment_status,
+          filters.paid,
           filters.search,
           filters.page,
         ]
@@ -91,7 +96,7 @@ export function useRegistrations(
   const { data, error, isLoading, mutate } = useSWR(
     cacheKey,
     async () => {
-      const res = await trainingApi.listRegistrations(sessionId!, filters)
+      const res = await trainingApi.listRegistrations(sessionId!, { ...filters, campus_id: selectedCampusId })
       if (!res.success) throw new Error(res.error ?? 'Failed to fetch registrations')
       return {
         registrations: (res as any).data ?? [],

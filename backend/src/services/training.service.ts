@@ -79,13 +79,18 @@ export class TrainingService {
     // Fetch registration counts per status
     const { data: counts } = await supabase
       .from('course_registrations')
-      .select('registration_status')
+      .select('registration_status, payment_status')
       .eq('session_id', sessionId)
 
-    const registration_counts = { confirmed: 0, waiting_list: 0, cancelled: 0 }
+    const registration_counts = { confirmed_paid: 0, confirmed_unpaid: 0, waiting_list: 0, cancelled: 0 }
     for (const row of counts ?? []) {
-      if (row.registration_status in registration_counts) {
-        registration_counts[row.registration_status as keyof typeof registration_counts]++
+      if (row.registration_status === 'confirmed') {
+        if (row.payment_status === 'paid') registration_counts.confirmed_paid++
+        else registration_counts.confirmed_unpaid++
+      } else if (row.registration_status === 'waiting_list') {
+        registration_counts.waiting_list++
+      } else if (row.registration_status === 'cancelled') {
+        registration_counts.cancelled++
       }
     }
 
@@ -147,17 +152,20 @@ export class TrainingService {
     filters: {
       registration_status?: string
       payment_status?: string
+      paid?: string
       search?: string
     },
     page: number = 1,
-    limit: number = 20
+    limit: number = 20,
+    parentSchoolId?: string
   ): Promise<{ data: CourseRegistration[]; pagination: object }> {
-    // Verify session belongs to school
+    // Verify session belongs to school (or its parent school, for campus-scoped viewing)
+    const ids = parentSchoolId ? [schoolId, parentSchoolId] : [schoolId]
     const { data: session } = await supabase
       .from('training_sessions')
       .select('id')
       .eq('id', sessionId)
-      .eq('school_id', schoolId)
+      .in('school_id', ids)
       .single()
 
     if (!session) throw new Error('Session not found')
@@ -178,6 +186,11 @@ export class TrainingService {
     }
     if (filters.payment_status) {
       query = query.eq('payment_status', filters.payment_status)
+    }
+    if (filters.paid === 'true') {
+      query = query.eq('payment_status', 'paid')
+    } else if (filters.paid === 'false') {
+      query = query.neq('payment_status', 'paid')
     }
 
     const { data, error, count } = await query
@@ -204,12 +217,13 @@ export class TrainingService {
     }
   }
 
-  async exportRegistrationsCSV(sessionId: string, schoolId: string): Promise<string> {
+  async exportRegistrationsCSV(sessionId: string, schoolId: string, parentSchoolId?: string): Promise<string> {
+    const ids = parentSchoolId ? [schoolId, parentSchoolId] : [schoolId]
     const { data: session } = await supabase
       .from('training_sessions')
       .select('title')
       .eq('id', sessionId)
-      .eq('school_id', schoolId)
+      .in('school_id', ids)
       .single()
 
     if (!session) throw new Error('Session not found')

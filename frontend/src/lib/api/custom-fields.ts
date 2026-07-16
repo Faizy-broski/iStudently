@@ -192,9 +192,13 @@ export async function deleteFieldDefinition(fieldId: string, campusId?: string):
  */
 export async function reorderFields(
     categoryId: string,
-    items: { id: string; sort_order: number }[]
+    items: { id: string; sort_order: number }[],
+    campusId?: string
 ): Promise<ApiResponse<void>> {
-    return apiRequest<void>('/custom-fields/reorder', {
+    const url = campusId
+        ? `/custom-fields/reorder?campus_id=${campusId}`
+        : '/custom-fields/reorder'
+    return apiRequest<void>(url, {
         method: 'POST',
         body: JSON.stringify({ category_id: categoryId, items })
     })

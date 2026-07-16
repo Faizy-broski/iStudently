@@ -154,6 +154,7 @@ class PushNotificationsService {
     subscriptions: { id: string; profile_id: string; endpoint: string; p256dh: string; auth: string }[],
     payload: PushPayload
   ): Promise<void> {
+    console.log(`[push] dispatch: configured=${this.isConfigured()} subscriptions=${subscriptions.length}`)
     if (!this.isConfigured() || subscriptions.length === 0) return
 
     const body = JSON.stringify(payload)
@@ -161,6 +162,7 @@ class PushNotificationsService {
 
     await Promise.allSettled(
       subscriptions.map(async (sub) => {
+        console.log(`[push] sending to subscription ${sub.id} (${sub.endpoint.slice(0, 60)}...)`)
         try {
           await webpush.sendNotification(
             {
@@ -169,12 +171,14 @@ class PushNotificationsService {
             },
             body
           )
+          console.log(`[push] sent OK to subscription ${sub.id}`)
         } catch (err: any) {
           // 404/410 = the browser revoked or expired this subscription — prune it.
           if (err?.statusCode === 404 || err?.statusCode === 410) {
+            console.error(`[push] subscription ${sub.id} stale (status ${err.statusCode}), pruning. body:`, err?.body)
             staleIds.push(sub.id)
           } else {
-            console.error(`Push send failed for subscription ${sub.id}:`, err?.message || err)
+            console.error(`[push] send failed for subscription ${sub.id}: statusCode=${err?.statusCode} message=${err?.message} body=${err?.body}`, err)
           }
         }
       })

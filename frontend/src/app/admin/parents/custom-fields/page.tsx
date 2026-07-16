@@ -13,6 +13,7 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { getFieldOrders, getEffectiveFieldOrder, updateFieldRequired, DefaultFieldOrder } from '@/lib/utils/field-ordering';
+import { getCategoryOrders, saveCategoryOrders } from '@/lib/api/custom-field-category-orders';
 import { useTranslations } from "next-intl";
 import { MergedFieldOrderList, type MergedFieldOrderListLabels } from "@/components/admin/custom-fields/MergedFieldOrderList";
 
@@ -20,28 +21,28 @@ import { MergedFieldOrderList, type MergedFieldOrderListLabels } from "@/compone
 type DefaultFieldEntry = { label: string; id: string; sort_order: number; required: boolean };
 const DEFAULT_FIELDS_BY_CATEGORY: Record<string, DefaultFieldEntry[]> = {
   personal: [
-    { label: "First Name", id: "firstName", sort_order: 1, required: true },
-    { label: "Last Name", id: "lastName", sort_order: 2, required: true },
-    { label: "CNIC", id: "cnic", sort_order: 3, required: true },
-    { label: "Phone Number", id: "phoneNumber", sort_order: 4, required: true },
-    { label: "Email Address", id: "emailAddress", sort_order: 5, required: true },
+    { label: "First Name", id: "primaryFirstName", sort_order: 1, required: true },
+    { label: "Last Name", id: "primaryLastName", sort_order: 2, required: true },
+    { label: "CNIC", id: "primaryCNIC", sort_order: 3, required: true },
+    { label: "Phone Number", id: "primaryPhone", sort_order: 4, required: true },
+    { label: "Email Address", id: "primaryEmail", sort_order: 5, required: true },
   ],
   professional: [
-    { label: "Occupation", id: "occupation", sort_order: 1, required: false },
-    { label: "Workplace", id: "workplace", sort_order: 2, required: false },
-    { label: "Monthly Income", id: "monthlyIncome", sort_order: 3, required: false },
+    { label: "Occupation", id: "primaryOccupation", sort_order: 1, required: false },
+    { label: "Workplace", id: "primaryWorkplace", sort_order: 2, required: false },
+    { label: "Monthly Income", id: "primaryIncome", sort_order: 3, required: false },
   ],
   contact: [
-    { label: "Home Address", id: "homeAddress", sort_order: 1, required: false },
+    { label: "Home Address", id: "address", sort_order: 1, required: false },
     { label: "City", id: "city", sort_order: 2, required: false },
-    { label: "State/Province", id: "stateProvince", sort_order: 3, required: false },
-    { label: "ZIP/Postal Code", id: "zipPostalCode", sort_order: 4, required: false },
+    { label: "State/Province", id: "state", sort_order: 3, required: false },
+    { label: "ZIP/Postal Code", id: "zipCode", sort_order: 4, required: false },
     { label: "Country", id: "country", sort_order: 5, required: false },
   ],
   emergency: [
     { label: "Emergency Contact Name", id: "emergencyContactName", sort_order: 1, required: false },
-    { label: "Relationship", id: "relationship", sort_order: 2, required: false },
-    { label: "Phone", id: "emergencyPhone", sort_order: 3, required: false },
+    { label: "Relationship", id: "emergencyContactRelation", sort_order: 2, required: false },
+    { label: "Phone", id: "emergencyContactPhone", sort_order: 3, required: false },
   ],
   system: [
     { label: "Username", id: "username", sort_order: 1, required: true },
@@ -58,6 +59,11 @@ export default function ParentCustomFieldsPage() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDataLoadedRef = useRef(false);
+  // Set synchronously right before any setCategories() call triggered by
+  // loading data from the server, so the auto-save effect below can
+  // deterministically skip that render's categories-change instead of
+  // racing a setTimeout against React's effect flush order.
+  const skipNextAutoSaveRef = useRef(false);
   const isSavingRef = useRef(false);
   const pendingSaveRef = useRef(false);
   const categoriesRef = useRef(categories);
@@ -84,11 +90,17 @@ export default function ParentCustomFieldsPage() {
       try {
         // Pass campus_id to get campus-specific custom fields
         const campusId = selectedCampus?.id;
-        const [fieldsResponse, branchesResponse, defaultOrdersResponse] = await Promise.all([
+        const [fieldsResponse, branchesResponse, defaultOrdersResponse, categoryOrdersResponse] = await Promise.all([
           customFieldsApi.getFieldDefinitions('parent', campusId),
           customFieldsApi.getBranchSchools(),
-          getFieldOrders('parent', undefined, campusId)
+          getFieldOrders('parent', undefined, campusId),
+          getCategoryOrders('parent', campusId)
         ]);
+
+        const savedCategoryOrderMap: Record<string, number> = {};
+        if (categoryOrdersResponse.success && categoryOrdersResponse.data) {
+          categoryOrdersResponse.data.forEach(c => { savedCategoryOrderMap[c.category_id] = c.category_order; });
+        }
 
         // Load saved default field orders if any
         if (defaultOrdersResponse.success && defaultOrdersResponse.data) {
@@ -138,15 +150,19 @@ export default function ParentCustomFieldsPage() {
             fieldsByCategory[field.category_id].push(customField);
 
             // Track category order from database
-            if (!categoryOrderMap[field.category_id] && field.category_order !== undefined) {
+            if (!(field.category_id in categoryOrderMap) && field.category_order !== undefined) {
               categoryOrderMap[field.category_id] = field.category_order;
             }
           });
 
+          // Explicitly saved category orders (custom_field_category_orders) always
+          // win over the legacy per-field category_order fallback above.
+          Object.assign(categoryOrderMap, savedCategoryOrderMap);
+
           const mergedCategories = standardCategories.map(stdCat => ({
             ...stdCat,
             fields: (fieldsByCategory[stdCat.id] || []).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
-            order: categoryOrderMap[stdCat.id] || stdCat.order,
+            order: categoryOrderMap[stdCat.id] ?? stdCat.order,
           }));
 
           const customCategoryIds = Object.keys(fieldsByCategory).filter(id => !STANDARD_CATEGORIES.includes(id));
@@ -157,7 +173,7 @@ export default function ParentCustomFieldsPage() {
                 id: catId,
                 name: firstField.category_name,
                 fields: fieldsByCategory[catId].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)),
-                order: categoryOrderMap[catId] || (standardCategories.length + idx + 1)
+                order: categoryOrderMap[catId] ?? (standardCategories.length + idx + 1)
               });
             }
           });
@@ -165,11 +181,16 @@ export default function ParentCustomFieldsPage() {
           // Sort by order
           mergedCategories.sort((a, b) => a.order - b.order);
 
+          skipNextAutoSaveRef.current = true;
           setCategories(mergedCategories);
           const withFields = new Set(mergedCategories.filter(c => c.fields.length > 0).map(c => c.id));
           setExpandedCategories(withFields);
         } else {
-          setCategories(standardCategories);
+          skipNextAutoSaveRef.current = true;
+          setCategories(standardCategories.map(cat => ({
+            ...cat,
+            order: savedCategoryOrderMap[cat.id] ?? cat.order,
+          })).sort((a, b) => a.order - b.order));
         }
 
         if (branchesResponse.success && branchesResponse.data) {
@@ -180,10 +201,8 @@ export default function ParentCustomFieldsPage() {
         toast.error(t("customFieldsPage.toasts.failedLoad"));
       } finally {
         setIsLoading(false);
-        setTimeout(() => {
-          isDataLoadedRef.current = true;
-          console.log('[CF:parent] isDataLoadedRef → true (initial load done)');
-        }, 0);
+        isDataLoadedRef.current = true;
+        console.log('[CF:parent] isDataLoadedRef → true (initial load done)');
       }
     };
     isDataLoadedRef.current = false;
@@ -194,6 +213,11 @@ export default function ParentCustomFieldsPage() {
   useEffect(() => { categoriesRef.current = categories; }, [categories]);
 
   useEffect(() => {
+    if (skipNextAutoSaveRef.current) {
+      skipNextAutoSaveRef.current = false;
+      console.log('[CF:parent] auto-save skipped — this categories change came from loading data, not a user edit');
+      return;
+    }
     if (!isDataLoadedRef.current) {
       console.log('[CF:parent] auto-save skipped — data not loaded yet');
       return;
@@ -227,9 +251,23 @@ export default function ParentCustomFieldsPage() {
         const oldIndex = items.findIndex((item) => item.id === active.id);
         const newIndex = items.findIndex((item) => item.id === over.id);
 
-        const reordered = arrayMove(items, oldIndex, newIndex);
-        // Update order values
-        return reordered.map((cat, idx) => ({ ...cat, order: idx + 1 }));
+        const reordered = arrayMove(items, oldIndex, newIndex).map((cat, idx) => ({ ...cat, order: idx + 1 }));
+
+        saveCategoryOrders(
+          'parent',
+          reordered.map(cat => ({ category_id: cat.id, category_order: cat.order })),
+          selectedCampus?.id
+        ).then(res => {
+          if (!res.success) {
+            console.error('[CF:parent] Failed to save category order', res.error);
+            toast.error(t("customFieldsPage.toasts.failedSave"));
+          }
+        }).catch(err => {
+          console.error('[CF:parent] Failed to save category order', err);
+          toast.error(t("customFieldsPage.toasts.failedSave"));
+        });
+
+        return reordered;
       });
     }
   };
@@ -340,11 +378,11 @@ export default function ParentCustomFieldsPage() {
       const currentIds = new Set<string>();
       let newFieldsCreated = false;
 
-      const allFields: { categoryId: string; categoryName: string; categoryOrder: number; field: CustomField }[] = [];
+      const allFields: { categoryId: string; categoryName: string; field: CustomField }[] = [];
       categoriesRef.current.forEach(cat => {
         cat.fields.forEach(field => {
           if (field.label.trim()) {
-            allFields.push({ categoryId: cat.id, categoryName: cat.name, categoryOrder: cat.order, field });
+            allFields.push({ categoryId: cat.id, categoryName: cat.name, field });
             if (!field.id.startsWith('field-')) currentIds.add(field.id);
           }
         });
@@ -356,12 +394,11 @@ export default function ParentCustomFieldsPage() {
         toDelete: [...existingIds].filter(id => !currentIds.has(id)),
       });
 
-      for (const { categoryId, categoryName, categoryOrder, field } of allFields) {
+      for (const { categoryId, categoryName, field } of allFields) {
         if (existingIds.has(field.id)) {
           await customFieldsApi.updateFieldDefinition(field.id, {
             label: field.label, type: field.type, options: field.options,
             required: field.required, sort_order: field.sort_order,
-            category_order: categoryOrder,
             campus_scope: field.campus_scope, applicable_school_ids: field.applicable_school_ids,
           }, campusId);
         } else {
@@ -369,7 +406,6 @@ export default function ParentCustomFieldsPage() {
             entity_type: 'parent', category_id: categoryId, category_name: categoryName,
             label: field.label, type: field.type, options: field.options,
             required: field.required, sort_order: field.sort_order,
-            category_order: categoryOrder,
             campus_scope: field.campus_scope, applicable_school_ids: field.applicable_school_ids,
           }, campusId);
           console.log(`[CF:parent] created field tempId=${field.id} label="${field.label}"`);

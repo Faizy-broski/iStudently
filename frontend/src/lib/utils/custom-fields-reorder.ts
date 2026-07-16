@@ -88,7 +88,8 @@ export async function saveMergedOrder(
     customOrder.filter((c) => !c.id.startsWith('field-')).length
       ? customFieldsApi.reorderFields(
           categoryId,
-          customOrder.filter((c) => !c.id.startsWith('field-'))
+          customOrder.filter((c) => !c.id.startsWith('field-')),
+          campusId
         )
       : Promise.resolve({ success: true }),
   ])

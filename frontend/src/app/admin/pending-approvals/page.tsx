@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { toast } from 'sonner'
-import { Check, X, RefreshCw, Search, Filter, UserCheck } from 'lucide-react'
+import { Check, X, RefreshCw, Search, Filter, UserCheck, Database, Tag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -299,7 +299,7 @@ export default function PendingApprovalsPage() {
 
       {/* Detail Drawer */}
       <Dialog open={!!detailItem} onOpenChange={(o) => { if (!o) setDetailItem(null) }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           {detailItem && (
             <>
               <DialogHeader>
@@ -351,6 +351,59 @@ export default function PendingApprovalsPage() {
                     </div>
                   )}
                 </div>
+
+                {/* ── Extra data submitted by applicant ── */}
+                {(() => {
+                  const extraEntries = Object.entries(detailItem.extra_data ?? {}).filter(
+                    ([key]) => key !== '__grade_level_id__'
+                  )
+                  if (extraEntries.length === 0) return null
+
+                  // Build a label map from link_meta
+                  const fieldDefs = detailItem.link_meta?.custom_fields ?? []
+                  const defMap = new Map(fieldDefs.map(f => [f.id, f]))
+
+                  return (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        {isAr ? 'المعلومات المُقدَّمة' : 'Submitted Information'}
+                      </p>
+                      <div className="rounded-xl border dark:border-slate-700 divide-y dark:divide-slate-700 overflow-hidden">
+                        {extraEntries.map(([key, value]) => {
+                          const def = defMap.get(key)
+                          const label = def?.label ?? key
+                          const isProfileField = def?.source === 'profile_field'
+                          const displayValue = Array.isArray(value)
+                            ? value.join(', ')
+                            : (value == null || value === '')
+                              ? <span className="italic text-muted-foreground">{isAr ? '(فارغ)' : '(empty)'}</span>
+                              : String(value)
+                          return (
+                            <div key={key} className="flex items-start justify-between gap-3 px-3 py-2.5 bg-white dark:bg-slate-900/60">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{label}</span>
+                                  {isProfileField ? (
+                                    <span className="inline-flex items-center gap-0.5 text-[10px] font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 px-1.5 py-0.5 rounded-full">
+                                      <Database className="h-2.5 w-2.5" />
+                                      {isAr ? 'حقل الملف الشخصي' : 'Profile Field'}
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-0.5 text-[10px] font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 px-1.5 py-0.5 rounded-full">
+                                      <Tag className="h-2.5 w-2.5" />
+                                      {isAr ? 'مخصص' : 'Custom'}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-sm text-gray-900 dark:text-gray-100 mt-0.5 break-words">{displayValue}</p>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
               {detailItem.status === 'pending' && (
                 <DialogFooter className="gap-2">

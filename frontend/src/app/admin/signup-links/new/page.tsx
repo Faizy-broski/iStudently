@@ -19,13 +19,7 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
 import { FileUpload } from '@/components/ui/file-upload'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+
 import { useCampus } from '@/context/CampusContext'
 import {
   generateSignupLink,
@@ -49,6 +43,10 @@ export default function NewSignupLinkPage() {
   const campusId = campusContext?.selectedCampus?.id
 
   const [gradeLevels, setGradeLevels] = React.useState<GradeLevel[]>([])
+  // per-profile-field toggles: keyed by `${table}.${column}`
+  const [profileFieldConfig, setProfileFieldConfig] = React.useState<
+    Record<string, { shown: boolean; required: boolean }>
+  >({})
   const [form, setForm] = React.useState({
     role: 'teacher' as string,
     label: '',
@@ -66,8 +64,7 @@ export default function NewSignupLinkPage() {
       type: 'text' | 'select' | 'textarea' | 'date'
       required: boolean
       options: string
-      source?: 'custom' | 'profile_field'
-      mapping?: { table: 'profiles' | 'parents' | 'staff'; column: string }
+      source?: 'custom'
     }>,
     standard_fields: {
       first_name_required: true,
@@ -80,7 +77,6 @@ export default function NewSignupLinkPage() {
   const [generatedLink, setGeneratedLink] = React.useState<SignupLink | null>(null)
   const [copiedId, setCopiedId] = React.useState<string | null>(null)
   const [profileFields, setProfileFields] = React.useState<ProfileFieldDef[]>([])
-  const [profileFieldPickerOpen, setProfileFieldPickerOpen] = React.useState(false)
 
   React.useEffect(() => {
     if (campusId) {
@@ -93,38 +89,24 @@ export default function NewSignupLinkPage() {
 
   React.useEffect(() => {
     getProfileFields(form.role).then(res => {
-      if (res.success && res.data) setProfileFields(res.data)
+      if (res.success && res.data) {
+        setProfileFields(res.data)
+        // Reset config for newly loaded fields (preserve any the user already toggled)
+        setProfileFieldConfig(prev => {
+          const next: Record<string, { shown: boolean; required: boolean }> = {}
+          for (const f of res.data!) {
+            const key = `${f.table}.${f.column}`
+            next[key] = prev[key] ?? { shown: false, required: false }
+          }
+          return next
+        })
+      }
     })
   }, [form.role])
 
-  const addedProfileColumns = new Set(
-    form.custom_fields.filter(f => f.mapping).map(f => `${f.mapping!.table}.${f.mapping!.column}`)
-  )
-  const availableProfileFields = profileFields.filter(
-    f => !addedProfileColumns.has(`${f.table}.${f.column}`)
-  )
+  const setPFC = (key: string, patch: Partial<{ shown: boolean; required: boolean }>) =>
+    setProfileFieldConfig(prev => ({ ...prev, [key]: { ...prev[key], ...patch } }))
 
-  const addProfileField = (field: ProfileFieldDef) => {
-    setForm(f => ({
-      ...f,
-      custom_fields: [
-        ...f.custom_fields,
-        {
-          id: field.column,
-          label: isAr ? field.label_ar : field.label_en,
-          type: field.type,
-          required: false,
-          // Option *values* must match the underlying column's stored values (e.g. the
-          // `gender` CHECK constraint expects 'male'/'female'/'other'), so use option ids,
-          // not their localized display labels.
-          options: field.options ? field.options.map(o => o.id).join(', ') : '',
-          source: 'profile_field',
-          mapping: { table: field.table, column: field.column },
-        },
-      ],
-    }))
-    setProfileFieldPickerOpen(false)
-  }
 
   const execCommandCopy = (url: string) => {
     const container = document.body
@@ -175,6 +157,23 @@ export default function NewSignupLinkPage() {
         })
       }
 
+      // Profile fields that the admin toggled ON
+      for (const pf of profileFields) {
+        const key = `${pf.table}.${pf.column}`
+        const cfg = profileFieldConfig[key]
+        if (!cfg?.shown) continue
+        custom_fields.push({
+          id: pf.column,
+          label: isAr ? pf.label_ar : pf.label_en,
+          type: pf.type,
+          required: cfg.required,
+          options: pf.options ? pf.options.map(o => o.id) : undefined,
+          source: 'profile_field',
+          mapping: { table: pf.table, column: pf.column },
+        })
+      }
+
+      // Freeform custom fields
       form.custom_fields.forEach(cf => {
         if (cf.label.trim()) {
           custom_fields.push({
@@ -183,8 +182,7 @@ export default function NewSignupLinkPage() {
             type: cf.type,
             required: cf.required,
             options: cf.type === 'select' ? cf.options.split(',').map(s => s.trim()).filter(Boolean) : undefined,
-            source: cf.source ?? 'custom',
-            mapping: cf.mapping,
+            source: 'custom',
           })
         }
       })
@@ -434,97 +432,135 @@ export default function NewSignupLinkPage() {
               <CardTitle>{isAr ? 'إعدادات النموذج' : 'Form Configuration'}</CardTitle>
               <CardDescription>{isAr ? 'اختر الحقول التي تظهر في صفحة التسجيل' : 'Choose which fields appear on the signup page'}</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-4 border dark:border-slate-800 rounded-xl bg-gray-50/50 dark:bg-slate-900/50">
+            <CardContent className="space-y-4">
+              {/* ── Fixed standard fields ── */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
+                  {isAr ? 'الحقول الأساسية' : 'Standard Fields'}
+                </p>
+
+                {/* Always-on read-only indicators */}
+                {[{ label: isAr ? 'البريد الإلكتروني' : 'Email', note: isAr ? 'مطلوب دائماً' : 'Always required' },
+                  { label: isAr ? 'كلمة المرور' : 'Password', note: isAr ? 'مطلوب دائماً' : 'Always required' }].map(f => (
+                  <div key={f.label} className="flex items-center justify-between px-4 py-3 border dark:border-slate-800 rounded-xl bg-gray-50/30 dark:bg-slate-900/30 opacity-60">
+                    <span className="text-sm font-medium">{f.label}</span>
+                    <span className="text-xs text-muted-foreground italic">{f.note}</span>
+                  </div>
+                ))}
+
+                {/* First Name */}
+                <div className="flex items-center justify-between px-4 py-3 border dark:border-slate-800 rounded-xl bg-gray-50/50 dark:bg-slate-900/50">
                   <span className="text-sm font-medium">{isAr ? 'الاسم الأول' : 'First Name'}</span>
                   <div className="flex items-center gap-3">
-                    <Label htmlFor="fn-req" className="text-sm text-muted-foreground cursor-pointer">
-                      {isAr ? 'إلزامي' : 'Required'}
-                    </Label>
-                    <Switch
-                      id="fn-req"
-                      checked={form.standard_fields.first_name_required}
-                      onCheckedChange={(c) => setForm(f => ({ ...f, standard_fields: { ...f.standard_fields, first_name_required: c } }))}
-                    />
+                    <Label htmlFor="fn-req" className="text-xs text-muted-foreground cursor-pointer">{isAr ? 'إلزامي' : 'Required'}</Label>
+                    <Switch id="fn-req" checked={form.standard_fields.first_name_required}
+                      onCheckedChange={(c) => setForm(f => ({ ...f, standard_fields: { ...f.standard_fields, first_name_required: c } }))} />
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-4 border dark:border-slate-800 rounded-xl bg-gray-50/50 dark:bg-slate-900/50">
+                {/* Last Name */}
+                <div className="flex items-center justify-between px-4 py-3 border dark:border-slate-800 rounded-xl bg-gray-50/50 dark:bg-slate-900/50">
                   <span className="text-sm font-medium">{isAr ? 'اسم العائلة' : 'Last Name'}</span>
                   <div className="flex items-center gap-3">
-                    <Label htmlFor="ln-req" className="text-sm text-muted-foreground cursor-pointer">
-                      {isAr ? 'إلزامي' : 'Required'}
-                    </Label>
-                    <Switch
-                      id="ln-req"
-                      checked={form.standard_fields.last_name_required}
-                      onCheckedChange={(c) => setForm(f => ({ ...f, standard_fields: { ...f.standard_fields, last_name_required: c } }))}
-                    />
+                    <Label htmlFor="ln-req" className="text-xs text-muted-foreground cursor-pointer">{isAr ? 'إلزامي' : 'Required'}</Label>
+                    <Switch id="ln-req" checked={form.standard_fields.last_name_required}
+                      onCheckedChange={(c) => setForm(f => ({ ...f, standard_fields: { ...f.standard_fields, last_name_required: c } }))} />
                   </div>
                 </div>
 
-                <div className="p-4 border dark:border-slate-800 rounded-xl bg-gray-50/50 dark:bg-slate-900/50 space-y-4">
+                {/* Phone */}
+                <div className="p-4 border dark:border-slate-800 rounded-xl bg-gray-50/50 dark:bg-slate-900/50 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">{isAr ? 'رقم الهاتف' : 'Phone Number'}</span>
                     <div className="flex items-center gap-3">
-                      <Label htmlFor="ph-enabled" className="text-sm text-muted-foreground cursor-pointer">
-                        {isAr ? 'إظهار' : 'Show'}
-                      </Label>
-                      <Switch
-                        id="ph-enabled"
-                        checked={form.standard_fields.phone_enabled}
-                        onCheckedChange={(c) => setForm(f => ({
-                          ...f,
-                          standard_fields: { ...f.standard_fields, phone_enabled: c, phone_required: c ? f.standard_fields.phone_required : false },
-                        }))}
-                      />
+                      <Label htmlFor="ph-enabled" className="text-xs text-muted-foreground cursor-pointer">{isAr ? 'إظهار' : 'Show'}</Label>
+                      <Switch id="ph-enabled" checked={form.standard_fields.phone_enabled}
+                        onCheckedChange={(c) => setForm(f => ({ ...f, standard_fields: { ...f.standard_fields, phone_enabled: c, phone_required: c ? f.standard_fields.phone_required : false } }))} />
                     </div>
                   </div>
                   {form.standard_fields.phone_enabled && (
-                    <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-200 dark:border-slate-800">
-                      <Label htmlFor="ph-req" className="text-sm text-muted-foreground cursor-pointer">
-                        {isAr ? 'إلزامي' : 'Required'}
-                      </Label>
-                      <Switch
-                        id="ph-req"
-                        checked={form.standard_fields.phone_required}
-                        onCheckedChange={(c) => setForm(f => ({ ...f, standard_fields: { ...f.standard_fields, phone_required: c } }))}
-                      />
+                    <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-200 dark:border-slate-700">
+                      <Label htmlFor="ph-req" className="text-xs text-muted-foreground cursor-pointer">{isAr ? 'إلزامي' : 'Required'}</Label>
+                      <Switch id="ph-req" checked={form.standard_fields.phone_required}
+                        onCheckedChange={(c) => setForm(f => ({ ...f, standard_fields: { ...f.standard_fields, phone_required: c } }))} />
                     </div>
                   )}
                 </div>
               </div>
 
+              {/* ── Profile fields for this role ── */}
+              {profileFields.length > 0 && (
+                <div className="space-y-2 pt-4 border-t border-gray-100 dark:border-slate-800">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
+                    {isAr ? 'حقول الملف الشخصي' : 'Profile Fields'}
+                  </p>
+                  <p className="text-xs text-muted-foreground px-1 pb-1">
+                    {isAr
+                      ? 'شغّل الحقول التي تريد ظهورها في النموذج. ستُكتب الإجابات مباشرة في ملف المستخدم عند الموافقة.'
+                      : 'Toggle fields to include in the form. Answers will be written directly to the user profile on approval.'}
+                  </p>
+                  <div className="space-y-2">
+                    {profileFields.map(pf => {
+                      const key = `${pf.table}.${pf.column}`
+                      const cfg = profileFieldConfig[key] ?? { shown: false, required: false }
+                      return (
+                        <div key={key} className={cn(
+                          'border dark:border-slate-800 rounded-xl overflow-hidden transition-all',
+                          cfg.shown ? 'bg-white dark:bg-slate-900 shadow-sm' : 'bg-gray-50/50 dark:bg-slate-900/30'
+                        )}>
+                          <div className="flex items-center justify-between px-4 py-3">
+                            <div>
+                              <span className="text-sm font-medium">{isAr ? pf.label_ar : pf.label_en}</span>
+                              <span className="ms-2 text-[10px] text-muted-foreground bg-gray-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-full">
+                                {pf.type}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <Label htmlFor={`pf-show-${key}`} className="text-xs text-muted-foreground cursor-pointer">{isAr ? 'إظهار' : 'Show'}</Label>
+                              <Switch
+                                id={`pf-show-${key}`}
+                                checked={cfg.shown}
+                                onCheckedChange={(c) => setPFC(key, { shown: c, required: c ? cfg.required : false })}
+                              />
+                            </div>
+                          </div>
+                          {cfg.shown && (
+                            <div className="flex items-center justify-end gap-3 px-4 py-2 border-t border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900/50">
+                              <Label htmlFor={`pf-req-${key}`} className="text-xs text-muted-foreground cursor-pointer">{isAr ? 'إلزامي' : 'Required'}</Label>
+                              <Switch
+                                id={`pf-req-${key}`}
+                                checked={cfg.required}
+                                onCheckedChange={(c) => setPFC(key, { required: c })}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Additional freeform custom fields ── */}
               <div className="pt-4 space-y-4 border-t border-gray-100 dark:border-slate-800">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold">{isAr ? 'حقول مخصصة إضافية' : 'Additional Custom Fields'}</h4>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-8 text-xs bg-white dark:bg-slate-900"
-                      >
-                        <Plus className="h-3.5 w-3.5 me-1.5" />
-                        {isAr ? 'إضافة حقل' : 'Add Field'}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => setForm(f => ({
-                          ...f,
-                          custom_fields: [...f.custom_fields, { id: `field_${Date.now()}`, label: '', type: 'text', required: false, options: '', source: 'custom' }]
-                        }))}
-                      >
-                        {isAr ? 'حقل مخصص جديد' : 'New Custom Field'}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setProfileFieldPickerOpen(true)}>
-                        {isAr ? 'حقل موجود من الملف الشخصي' : 'Existing Profile Field'}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <div>
+                    <h4 className="text-sm font-semibold">{isAr ? 'حقول مخصصة إضافية' : 'Additional Custom Fields'}</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">{isAr ? 'حقول لا تنتمي لملف المستخدم' : 'Fields not tied to the user profile'}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs bg-white dark:bg-slate-900"
+                    onClick={() => setForm(f => ({
+                      ...f,
+                      custom_fields: [...f.custom_fields, { id: `field_${Date.now()}`, label: '', type: 'text', required: false, options: '', source: 'custom' }]
+                    }))}
+                  >
+                    <Plus className="h-3.5 w-3.5 me-1.5" />
+                    {isAr ? 'إضافة حقل' : 'Add Field'}
+                  </Button>
                 </div>
                 
                 {form.custom_fields.length === 0 ? (
@@ -684,33 +720,6 @@ export default function NewSignupLinkPage() {
           </div>
         </div>
       </div>
-
-      <Dialog open={profileFieldPickerOpen} onOpenChange={setProfileFieldPickerOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{isAr ? 'اختر حقلاً من الملف الشخصي' : 'Choose an Existing Profile Field'}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {availableProfileFields.length === 0 ? (
-              <p className="text-sm text-muted-foreground p-4 text-center">
-                {isAr ? 'لا توجد حقول متاحة لهذا الدور' : 'No available fields for this role'}
-              </p>
-            ) : (
-              availableProfileFields.map(field => (
-                <button
-                  key={`${field.table}.${field.column}`}
-                  type="button"
-                  className="w-full text-start p-3 rounded-lg border dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-900 transition-colors"
-                  onClick={() => addProfileField(field)}
-                >
-                  <div className="text-sm font-medium">{isAr ? field.label_ar : field.label_en}</div>
-                  <div className="text-xs text-muted-foreground">{field.table}.{field.column}</div>
-                </button>
-              ))
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

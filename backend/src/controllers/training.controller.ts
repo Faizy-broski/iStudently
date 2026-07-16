@@ -105,14 +105,23 @@ export class TrainingController {
       const filters = {
         registration_status: req.query.status as string | undefined,
         payment_status: req.query.payment_status as string | undefined,
+        paid: req.query.paid as string | undefined,
         search: req.query.search as string | undefined,
       }
+      const requestedCampusId = req.query.campus_id as string | undefined
+      const adminBaseSchoolId = req.profile?.school_id as string
+      const effectiveId = requestedCampusId ?? this.schoolId(req)
+      const parentSchoolId =
+        requestedCampusId && requestedCampusId !== adminBaseSchoolId
+          ? adminBaseSchoolId
+          : undefined
       const result = await trainingService.listRegistrations(
         req.params.id,
-        this.effectiveId(req, 'query'),
+        effectiveId,
         filters,
         page,
-        limit
+        limit,
+        parentSchoolId
       )
       res.json({ success: true, ...result })
     } catch (err: any) {
@@ -123,7 +132,14 @@ export class TrainingController {
 
   async exportCSV(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const csv = await trainingService.exportRegistrationsCSV(req.params.id, this.effectiveId(req, 'query'))
+      const requestedCampusId = req.query.campus_id as string | undefined
+      const adminBaseSchoolId = req.profile?.school_id as string
+      const effectiveId = requestedCampusId ?? this.schoolId(req)
+      const parentSchoolId =
+        requestedCampusId && requestedCampusId !== adminBaseSchoolId
+          ? adminBaseSchoolId
+          : undefined
+      const csv = await trainingService.exportRegistrationsCSV(req.params.id, effectiveId, parentSchoolId)
       res.setHeader('Content-Type', 'text/csv')
       res.setHeader(
         'Content-Disposition',
@@ -131,7 +147,8 @@ export class TrainingController {
       )
       res.send(csv)
     } catch (err: any) {
-      res.status(500).json({ success: false, error: err.message })
+      const status = err.message === 'Session not found' ? 404 : 500
+      res.status(status).json({ success: false, error: err.message })
     }
   }
 

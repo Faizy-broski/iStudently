@@ -83,10 +83,12 @@ export default function TrainingDetailPage() {
   const campusId = useCampus()?.selectedCampus?.id
 
   const { session, isLoading, mutate: mutateSession } = useTrainingSession(sessionId)
-  const [activeTab, setActiveTab] = useState<string>('confirmed')
-  const { registrations, isLoading: loadingRegs, mutate: mutateRegs } = useRegistrations(sessionId, {
-    status: activeTab,
-  })
+  const [activeTab, setActiveTab] = useState<string>('confirmed_paid')
+  const activeFilters =
+    activeTab === 'confirmed_paid' ? { status: 'confirmed', paid: true }
+    : activeTab === 'confirmed_unpaid' ? { status: 'confirmed', paid: false }
+    : { status: activeTab }
+  const { registrations, isLoading: loadingRegs, mutate: mutateRegs } = useRegistrations(sessionId, activeFilters)
 
   const [editOpen, setEditOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -121,7 +123,7 @@ export default function TrainingDetailPage() {
   const handleExport = async () => {
     setIsExporting(true)
     try {
-      await trainingApi.exportCSV(sessionId)
+      await trainingApi.exportCSV(sessionId, campusId)
     } catch {
       toast.error('Export failed')
     }
@@ -242,7 +244,9 @@ export default function TrainingDetailPage() {
     ? Math.round((session.registered_seats / session.total_seats) * 100)
     : 0
 
-  const counts = session.registration_counts ?? { confirmed: 0, waiting_list: 0, cancelled: 0 }
+  const counts = session.registration_counts ?? {
+    confirmed_paid: 0, confirmed_unpaid: 0, waiting_list: 0, cancelled: 0,
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -303,7 +307,8 @@ export default function TrainingDetailPage() {
             />
           </div>
           <div className="flex gap-6 text-xs text-muted-foreground pt-1">
-            <span>Confirmed: {counts.confirmed}</span>
+            <span>Confirmed (Paid): {counts.confirmed_paid}</span>
+            <span>Pending (Unpaid): {counts.confirmed_unpaid}</span>
             <span>Waitlisted: {counts.waiting_list}</span>
             <span>Cancelled: {counts.cancelled}</span>
           </div>
@@ -313,12 +318,13 @@ export default function TrainingDetailPage() {
       {/* Registrations Table */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="confirmed">Confirmed ({counts.confirmed})</TabsTrigger>
+          <TabsTrigger value="confirmed_paid">Confirmed (Paid) ({counts.confirmed_paid})</TabsTrigger>
+          <TabsTrigger value="confirmed_unpaid">Pending (Unpaid) ({counts.confirmed_unpaid})</TabsTrigger>
           <TabsTrigger value="waiting_list">Waitlist ({counts.waiting_list})</TabsTrigger>
           <TabsTrigger value="cancelled">Cancelled ({counts.cancelled})</TabsTrigger>
         </TabsList>
 
-        {(['confirmed', 'waiting_list', 'cancelled'] as const).map((tab) => (
+        {(['confirmed_paid', 'confirmed_unpaid', 'waiting_list', 'cancelled'] as const).map((tab) => (
           <TabsContent key={tab} value={tab}>
             {loadingRegs ? (
               <div className="flex justify-center py-12">
@@ -326,7 +332,9 @@ export default function TrainingDetailPage() {
               </div>
             ) : registrations.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground text-sm">
-                No {tab.replace('_', ' ')} registrations
+                No {tab === 'confirmed_paid' ? 'confirmed (paid)'
+                  : tab === 'confirmed_unpaid' ? 'pending (unpaid)'
+                  : tab.replace('_', ' ')} registrations
               </div>
             ) : (
               <div className="rounded-md border overflow-x-auto">

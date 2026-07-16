@@ -28,7 +28,8 @@ export interface TrainingSession {
   created_at: string
   updated_at: string
   registration_counts?: {
-    confirmed: number
+    confirmed_paid: number
+    confirmed_unpaid: number
     waiting_list: number
     cancelled: number
   }
@@ -122,6 +123,7 @@ export const trainingApi = {
     params: {
       status?: string
       payment_status?: string
+      paid?: boolean
       search?: string
       page?: number
       limit?: number
@@ -132,6 +134,7 @@ export const trainingApi = {
     if (params.campus_id) qs.set('campus_id', params.campus_id)
     if (params.status) qs.set('status', params.status)
     if (params.payment_status) qs.set('payment_status', params.payment_status)
+    if (params.paid !== undefined) qs.set('paid', String(params.paid))
     if (params.search) qs.set('search', params.search)
     if (params.page) qs.set('page', String(params.page))
     if (params.limit) qs.set('limit', String(params.limit))
@@ -177,9 +180,10 @@ export const trainingApi = {
     }),
 
   /** Downloads CSV via Blob to avoid exposing auth token in URL */
-  exportCSV: async (sessionId: string): Promise<void> => {
+  exportCSV: async (sessionId: string, campusId?: string): Promise<void> => {
     const token = await getAuthToken()
-    const res = await fetch(`${API_URL}/training/sessions/${sessionId}/export`, {
+    const qs = campusId ? `?campus_id=${campusId}` : ''
+    const res = await fetch(`${API_URL}/training/sessions/${sessionId}/export${qs}`, {
       headers: { Authorization: `Bearer ${token}`, ...getImpersonationHeaders() },
     })
     if (!res.ok) throw new Error('Export failed')

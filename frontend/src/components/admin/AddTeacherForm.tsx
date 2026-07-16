@@ -131,7 +131,7 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
         const campusId = selectedCampus?.id;
         const [fieldsResponse, ordersResponse] = await Promise.all([
           getFieldDefinitions('teacher', campusId),
-          getFieldOrders('teacher')
+          getFieldOrders('teacher', undefined, campusId)
         ]);
 
         if (ordersResponse.success && ordersResponse.data) {
@@ -139,8 +139,13 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
 
           const orderedFields = STANDARD_FIELDS.map(field => {
             const categoryOrders = ordersResponse.data!.filter(o => o.category_id === field.category);
-            const savedOrder = categoryOrders.find(o => o.field_label === field.label);
-            return savedOrder ? { ...field, sort_order: savedOrder.sort_order } : field;
+            const savedOrder = categoryOrders.find(o => o.field_label === field.id);
+            if (!savedOrder) return field;
+            return {
+              ...field,
+              sort_order: savedOrder.sort_order,
+              required: typeof savedOrder.required === 'boolean' ? savedOrder.required : field.required,
+            };
           });
 
           setOrderedStandardFields(orderedFields);
@@ -499,17 +504,20 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
   const isLastTab = currentTabIndex === tabs.length - 1;
 
   // Validate current tab
+  const isStandardFieldRequired = (fieldId: string): boolean =>
+    orderedStandardFields.find(f => f.id === fieldId)?.required ?? true;
+
   const validateCurrentTab = (): boolean => {
     const errors: Record<string, string> = {};
 
     if (activeTab === 'personal') {
-      if (!formData.first_name || formData.first_name.length < 2) {
+      if (isStandardFieldRequired('first_name') && (!formData.first_name || formData.first_name.length < 2)) {
         errors.first_name = t('validation.firstNameMin');
       }
-      if (!formData.last_name || formData.last_name.length < 2) {
+      if (isStandardFieldRequired('last_name') && (!formData.last_name || formData.last_name.length < 2)) {
         errors.last_name = t('validation.lastNameMin');
       }
-      if (!formData.email) {
+      if (isStandardFieldRequired('email') && !formData.email) {
         errors.email = t('validation.emailRequired');
       }
 
@@ -520,13 +528,13 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
         }
       });
     } else if (activeTab === 'professional') {
-      if (!formData.employment_type) {
+      if (isStandardFieldRequired('employment_type') && !formData.employment_type) {
         errors.employment_type = t('validation.employmentTypeRequired');
       }
-      if (!formData.payment_type) {
+      if (isStandardFieldRequired('payment_type') && !formData.payment_type) {
         errors.payment_type = t('validation.paymentTypeRequired');
       }
-      if (formData.payment_type === 'fixed_salary' && (!formData.base_salary || formData.base_salary <= 0)) {
+      if (isStandardFieldRequired('base_salary') && formData.payment_type === 'fixed_salary' && (!formData.base_salary || formData.base_salary <= 0)) {
         errors.base_salary = t('validation.baseSalaryRequiredForFixed');
       }
 

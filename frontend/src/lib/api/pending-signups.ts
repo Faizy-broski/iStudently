@@ -1,5 +1,15 @@
 import { apiRequest } from './index'
 
+export interface SignupLinkCustomFieldDef {
+  id: string
+  label: string
+  type: 'text' | 'select' | 'textarea' | 'date'
+  required: boolean
+  options?: string[]
+  source?: 'custom' | 'profile_field'
+  mapping?: { table: string; column: string }
+}
+
 export interface PendingSignup {
   id: string
   school_id: string
@@ -18,6 +28,8 @@ export interface PendingSignup {
   created_at: string
   updated_at: string
   link_label?: string | null
+  /** The signup link's meta JSONB — includes custom_fields definitions for labelling extra_data */
+  link_meta?: { custom_fields?: SignupLinkCustomFieldDef[]; standard_fields?: Record<string, unknown> } | null
   reviewer_name?: string | null
   campus_name?: string | null
 }

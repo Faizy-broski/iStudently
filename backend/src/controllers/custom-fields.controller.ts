@@ -258,9 +258,12 @@ export class CustomFieldsController {
      */
     async reorderFields(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
         try {
-            const schoolId = req.profile?.school_id
+            const adminSchoolId = req.profile?.school_id
+            // Use campus_id if provided, otherwise fall back to admin's school_id
+            const campusId = req.query.campus_id as string | undefined
+            const effectiveSchoolId = campusId || adminSchoolId
 
-            if (!schoolId) {
+            if (!effectiveSchoolId) {
                 res.status(400).json({
                     success: false,
                     error: 'School context required'
@@ -278,7 +281,7 @@ export class CustomFieldsController {
                 return
             }
 
-            await customFieldsService.reorderFields(schoolId, category_id, items)
+            await customFieldsService.reorderFields(effectiveSchoolId, category_id, items)
 
             res.json({
                 success: true,

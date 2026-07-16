@@ -32,13 +32,15 @@ const parentSchema = z.object({
   }),
   guardianRelationship: z.string().optional(),
 
-  // Primary Guardian (Mother/Guardian 1)
-  primaryFirstName: z.string().min(2, "First name must be at least 2 characters"),
-  primaryLastName: z.string().min(2, "Last name must be at least 2 characters"),
-  primaryEmail: z.string().email("Invalid email address"),
-  primaryPhone: z.string().min(1, "Phone number is required"),
-  primaryCNIC: z.string().min(1, "CNIC/ID number is required"),
-  primaryOccupation: z.string().min(1, "Occupation is required"),
+  // Primary Guardian (Mother/Guardian 1) — presence/required-ness for these is
+  // enforced separately in handleSubmit via orderedStandardFields (so admins
+  // can toggle "Req" off per field in Settings); only format is validated here.
+  primaryFirstName: z.string().min(2, "First name must be at least 2 characters").or(z.literal("")),
+  primaryLastName: z.string().min(2, "Last name must be at least 2 characters").or(z.literal("")),
+  primaryEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
+  primaryPhone: z.string(),
+  primaryCNIC: z.string(),
+  primaryOccupation: z.string(),
 
   // Secondary Guardian (Father/Guardian 2) - optional
   secondaryFirstName: z.string().optional(),
@@ -149,7 +151,7 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
         const campusId = selectedCampus?.id;
         const [fieldsResponse, ordersResponse] = await Promise.all([
           getFieldDefinitions('parent', campusId),
-          getFieldOrders('parent')
+          getFieldOrders('parent', undefined, campusId)
         ]);
 
         // Apply saved default field orders
@@ -160,9 +162,14 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
           const orderedFields = STANDARD_FIELDS.map(field => {
             // Get effective order for this field
             const categoryOrders = ordersResponse.data!.filter(o => o.category_id === field.category);
-            const savedOrder = categoryOrders.find(o => o.field_label === field.label);
+            const savedOrder = categoryOrders.find(o => o.field_label === field.id);
+            if (!savedOrder) return field;
 
-            return savedOrder ? { ...field, sort_order: savedOrder.sort_order } : field;
+            return {
+              ...field,
+              sort_order: savedOrder.sort_order,
+              required: typeof savedOrder.required === 'boolean' ? savedOrder.required : field.required,
+            };
           });
 
           setOrderedStandardFields(orderedFields);
@@ -219,6 +226,20 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
 
       const validatedData = parentSchema.parse(validationPayload);
 
+      // Standard-field required-ness is admin-configurable (Settings → Req
+      // toggle), so it's enforced here against orderedStandardFields rather
+      // than baked into the Zod schema above.
+      const requiredErrors: Record<string, string> = {};
+      const primaryFieldIds: (keyof typeof formData)[] = [
+        'primaryFirstName', 'primaryLastName', 'primaryEmail', 'primaryPhone', 'primaryCNIC', 'primaryOccupation',
+      ];
+      primaryFieldIds.forEach((fieldId) => {
+        const isRequired = orderedStandardFields.find(f => f.id === fieldId)?.required ?? true;
+        if (isRequired && !formData[fieldId]) {
+          requiredErrors[fieldId] = t('validation.fieldRequired', { field: STANDARD_FIELDS.find(f => f.id === fieldId)?.label ?? fieldId });
+        }
+      });
+
       // Validate required custom fields
       const customErrors: Record<string, string> = {};
       customFields.forEach(field => {
@@ -230,8 +251,8 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
         }
       });
 
-      if (Object.keys(customErrors).length > 0) {
-        setFormErrors(customErrors);
+      if (Object.keys(requiredErrors).length > 0 || Object.keys(customErrors).length > 0) {
+        setFormErrors({ ...requiredErrors, ...customErrors });
         toast.error(t('validation.fillRequiredCustomFields'));
         return;
       }

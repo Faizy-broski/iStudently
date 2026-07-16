@@ -171,6 +171,8 @@ export async function getStudents(params?: {
   campus_id?: string
   /** Scope results to a specific section (used by teacher dashboard) */
   section_id?: string
+  /** Filter by active status. Omit to include both active and inactive students. */
+  is_active?: boolean
 }) {
   const queryParams = new URLSearchParams()
   if (params?.page) queryParams.append('page', params.page.toString())
@@ -185,6 +187,7 @@ export async function getStudents(params?: {
   }
   if (params?.campus_id) queryParams.append('campus_id', params.campus_id)
   if (params?.section_id) queryParams.append('section_id', params.section_id)
+  if (params?.is_active !== undefined) queryParams.append('is_active', String(params.is_active))
 
   const query = queryParams.toString()
   return apiRequest<Student[]>(`/students${query ? `?${query}` : ''}`)

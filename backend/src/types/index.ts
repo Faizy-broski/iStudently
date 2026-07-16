@@ -1984,7 +1984,8 @@ export interface TrainingSession {
   updated_at: string
   available_seats?: number
   registration_counts?: {
-    confirmed: number
+    confirmed_paid: number
+    confirmed_unpaid: number
     waiting_list: number
     cancelled: number
   }

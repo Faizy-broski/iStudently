@@ -280,7 +280,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
         const campusId = selectedCampus?.id;
         const [fieldsResponse, ordersResponse] = await Promise.all([
           getFieldDefinitions('student', campusId),
-          getFieldOrders('student')
+          getFieldOrders('student', undefined, campusId)
         ]);
 
         // Apply saved default field orders
@@ -1271,28 +1271,31 @@ customFields.forEach((field) => {
   const isLastTab = currentTabIndex === tabs.length - 1;
 
   // Validate required fields for current tab
+  const isStandardFieldRequired = (fieldId: string): boolean =>
+    orderedStandardFields.find(f => f.id === fieldId)?.required ?? true;
+
   const validateCurrentTab = (): boolean => {
     const errors: Record<string, string> = {};
 
     if (activeTab === 'personal') {
-      if (!formData.firstName || formData.firstName.length < 2) {
+      if (isStandardFieldRequired('firstName') && (!formData.firstName || formData.firstName.length < 2)) {
         errors.firstName = t("validation.first_name_min");
       }
-      if (!formData.fatherName || formData.fatherName.length < 2) {
+      if (isStandardFieldRequired('fatherName') && (!formData.fatherName || formData.fatherName.length < 2)) {
         errors.fatherName = t("validation.father_name_min");
       }
-      if (!formData.lastName || formData.lastName.length < 2) {
+      if (isStandardFieldRequired('lastName') && (!formData.lastName || formData.lastName.length < 2)) {
         errors.lastName = t("validation.last_name_min");
       }
-      if (!formData.dateOfBirth) {
+      if (isStandardFieldRequired('dateOfBirth') && !formData.dateOfBirth) {
         errors.dateOfBirth = t("validation.dob_required");
       }
-      if (!formData.gender) {
+      if (isStandardFieldRequired('gender') && !formData.gender) {
         errors.gender = t("validation.gender_required");
       }
-      if (!formData.email || formData.email.trim() === '') {
+      if (isStandardFieldRequired('email') && (!formData.email || formData.email.trim() === '')) {
         errors.email = t("validation.email_required");
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      } else if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
         errors.email = t("validation.email_invalid");
       }
       // Validate custom fields in personal category (API-based)
@@ -1305,13 +1308,13 @@ customFields.forEach((field) => {
           }
         });
     } else if (activeTab === 'academic') {
-      if (!formData.grade_level_id) {
+      if (isStandardFieldRequired('grade_level_id') && !formData.grade_level_id) {
         errors.grade_level_id = t("validation.grade_required");
       }
-      if (!formData.section_id) {
+      if (isStandardFieldRequired('section_id') && !formData.section_id) {
         errors.section_id = t("validation.section_required");
       }
-      if (!formData.admissionDate) {
+      if (isStandardFieldRequired('admissionDate') && !formData.admissionDate) {
         errors.admissionDate = t("validation.admission_date_required");
       }
       // Validate custom fields in academic category (API-based)
@@ -1324,7 +1327,7 @@ customFields.forEach((field) => {
           }
         });
     } else if (activeTab === 'medical') {
-      if (!formData.bloodGroup) {
+      if (isStandardFieldRequired('bloodGroup') && !formData.bloodGroup) {
         errors.bloodGroup = t("validation.blood_group_required");
       }
       if (formData.hasAllergies && formData.allergiesList.length === 0) {

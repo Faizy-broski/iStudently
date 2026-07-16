@@ -28,7 +28,8 @@ export class StudentService {
     limit: number = 10,
     search?: string,
     gradeLevel?: string | string[],
-    sectionId?: string
+    sectionId?: string,
+    isActive?: boolean
   ) {
     const offset = (page - 1) * limit
 
@@ -57,6 +58,9 @@ export class StudentService {
             } else {
               filtered = filtered.filter((s: any) => s.grade_level === gradeLevel);
             }
+          }
+          if (isActive !== undefined) {
+            filtered = filtered.filter((s: any) => !!s.is_active === isActive);
           }
 
           // Apply pagination
@@ -133,7 +137,7 @@ export class StudentService {
       .from('students')
       .select(`
         *,
-        profile:profiles(
+        profile:profiles${isActive !== undefined ? '!inner' : ''}(
           id,
           first_name,
           last_name,
@@ -181,6 +185,11 @@ export class StudentService {
     // Apply section filter
     if (sectionId) {
       query = query.eq('section_id', sectionId)
+    }
+
+    // Apply active/inactive filter (requires inner join on profile, added above)
+    if (isActive !== undefined) {
+      query = query.eq('profile.is_active', isActive)
     }
 
     // Apply pagination

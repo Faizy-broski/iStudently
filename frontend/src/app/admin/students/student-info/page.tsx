@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -135,6 +135,8 @@ export default function StudentInfoPage() {
         ? [studentFilters.gradeName]
         : undefined,
     section_id: studentFilters.sectionId || undefined,
+    // Undefined = include both active and inactive; true = active only
+    is_active: showInactive ? undefined : true,
   });
 
   // Show error toast if there's an error, but only for persistent errors
@@ -268,11 +270,8 @@ export default function StudentInfoPage() {
     );
   };
 
-  // Filter by active/inactive status (client-side)
-  const filteredStudents = useMemo(() => {
-    if (showInactive) return students;
-    return students.filter(s => s.profile?.is_active !== false);
-  }, [students, showInactive]);
+  // Active/inactive filtering is applied server-side via the is_active param
+  const filteredStudents = students;
 
   return (
     <div className="p-6 space-y-6">
@@ -307,7 +306,7 @@ export default function StudentInfoPage() {
                   <input
                     type="checkbox"
                     checked={showInactive}
-                    onChange={(e) => setShowInactive(e.target.checked)}
+                    onChange={(e) => { setShowInactive(e.target.checked); setCurrentPage(1); }}
                     className="rounded border-gray-300"
                   />
                   {tCommon("showInactive")}

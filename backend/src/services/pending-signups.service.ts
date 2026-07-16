@@ -26,6 +26,7 @@ export interface PendingSignup {
   updated_at: string
   // joined
   link_label?: string | null
+  link_meta?: Record<string, unknown> | null
   reviewer_name?: string | null
   campus_name?: string | null
 }
@@ -113,7 +114,7 @@ export async function getPendingSignups(
       id, school_id, campus_id, signup_link_id, role, first_name, last_name,
       email, phone, extra_data, status, reviewed_by, reviewed_at, rejection_reason,
       created_at, updated_at,
-      link:signup_link_id ( label ),
+      link:signup_link_id ( label, meta ),
       reviewer:reviewed_by ( first_name, last_name ),
       campus:campus_id ( name )
     `, { count: 'exact' })
@@ -136,6 +137,7 @@ export async function getPendingSignups(
   const rows = (data || []).map((row: any) => ({
     ...row,
     link_label: row.link?.label ?? null,
+    link_meta: row.link?.meta ?? null,
     reviewer_name: row.reviewer
       ? `${row.reviewer.first_name ?? ''} ${row.reviewer.last_name ?? ''}`.trim()
       : null,
@@ -156,7 +158,7 @@ export async function getPendingSignupById(id: string, schoolId: string): Promis
       id, school_id, campus_id, signup_link_id, role, first_name, last_name,
       email, phone, extra_data, status, reviewed_by, reviewed_at, rejection_reason,
       created_at, updated_at,
-      link:signup_link_id ( label, token, role ),
+      link:signup_link_id ( label, token, role, meta ),
       reviewer:reviewed_by ( first_name, last_name ),
       campus:campus_id ( name )
     `)
@@ -170,6 +172,7 @@ export async function getPendingSignupById(id: string, schoolId: string): Promis
   return {
     ...(data as any),
     link_label: (data as any).link?.label ?? null,
+    link_meta: (data as any).link?.meta ?? null,
     reviewer_name: (data as any).reviewer
       ? `${(data as any).reviewer.first_name ?? ''} ${(data as any).reviewer.last_name ?? ''}`.trim()
       : null,
