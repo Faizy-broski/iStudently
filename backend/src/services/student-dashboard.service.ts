@@ -1,17 +1,5 @@
 import { supabase } from '../config/supabase'
-
-// Helper: Get main school ID (handles campus hierarchy)
-const getMainSchoolId = async (schoolId: string): Promise<string> => {
-  const { data: school } = await supabase
-    .from('schools')
-    .select('id, parent_school_id')
-    .eq('id', schoolId)
-    .single()
-  
-  // If this school has a parent, return the parent (main school)
-  // Otherwise, this is already the main school
-  return school?.parent_school_id || schoolId
-}
+import { getMainSchoolId } from '../utils/campus.util'
 
 export class StudentDashboardService {
   /**

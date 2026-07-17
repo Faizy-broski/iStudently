@@ -498,6 +498,52 @@ export async function bulkImportTimetable(
   return response.json()
 }
 
+// ============================================================================
+// LOCK / UNLOCK GENERATED TIMETABLE ENTRIES
+// ============================================================================
+
+export async function lockTimetableEntry(id: string, locked: boolean): Promise<TimetableEntry> {
+  const token = await getAuthToken()
+  const response = await fetch(`${API_URL}/timetable/${id}/lock`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ locked })
+  })
+
+  const result: ApiResponse<TimetableEntry> = await response.json()
+  if (!result.success || !result.data) {
+    throw new Error(result.error || 'Failed to update lock state')
+  }
+
+  return result.data
+}
+
+export async function bulkLockTimetableEntries(params: {
+  locked: boolean
+  entry_ids?: string[]
+  section_id?: string
+}): Promise<{ updated_count: number }> {
+  const token = await getAuthToken()
+  const response = await fetch(`${API_URL}/timetable/bulk-lock`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(params)
+  })
+
+  const result: ApiResponse<{ updated_count: number }> = await response.json()
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to bulk update lock state')
+  }
+
+  return result.data || { updated_count: 0 }
+}
+
 export function downloadTimetableImportTemplate() {
   const headers = ['grade_name', 'section_name', 'subject_name', 'subject_code', 'teacher_email', 'day_of_week', 'period_number', 'room_number']
   const example = ['Grade 10', 'A', 'Mathematics', 'MATH10', 'teacher@school.com', 'Monday', '1', 'Room 101']

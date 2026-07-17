@@ -13,12 +13,16 @@ import { TextStyle } from '@tiptap/extension-text-style'
 import { Color } from '@tiptap/extension-color'
 import TiptapLink from '@tiptap/extension-link'
 import TiptapImage from '@tiptap/extension-image'
+import { Table as TiptapTable } from '@tiptap/extension-table'
+import { TableRow as TiptapTableRow } from '@tiptap/extension-table-row'
+import { TableCell as TiptapTableCell } from '@tiptap/extension-table-cell'
+import { TableHeader as TiptapTableHeader } from '@tiptap/extension-table-header'
 import { Input } from './input'
 import { Label } from './label'
 import { Button } from './button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select'
-import { Link2, Image as ImageIcon, Mic, Video } from 'lucide-react'
+import { Link2, Image as ImageIcon, Mic, Video, Table2, Eraser, Minus, Trash2 } from 'lucide-react'
 import FormulaEditorDialog from '@/components/formula/FormulaEditorDialog'
 import AudioVideoRecorderDialog, { type RecordingType } from '@/components/media/AudioVideoRecorderDialog'
 import { AudioNode } from '@/lib/tiptap-extensions/AudioNode'
@@ -166,7 +170,7 @@ function Toolbar({ editor, campusId, showEditorPlugins, showMediaRecorder }: { e
 
   const toggleSource = () => {
     if (!showSource) setSourceHtml(editor.getHTML())
-    else editor.commands.setContent(sourceHtml, false)
+    else editor.commands.setContent(sourceHtml, { emitUpdate: false })
     setShowSource((v) => !v)
   }
 
@@ -182,7 +186,7 @@ function Toolbar({ editor, campusId, showEditorPlugins, showMediaRecorder }: { e
           className="w-full p-3 font-mono text-xs bg-transparent outline-none resize-none min-h-40"
           value={sourceHtml}
           onChange={(e) => setSourceHtml(e.target.value)}
-          onBlur={() => editor.commands.setContent(sourceHtml, false)}
+          onBlur={() => editor.commands.setContent(sourceHtml, { emitUpdate: false })}
         />
       </div>
     )
@@ -289,6 +293,40 @@ function Toolbar({ editor, campusId, showEditorPlugins, showMediaRecorder }: { e
 
           <span className="mx-1 text-border">|</span>
 
+          <TB onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()} title="Clear formatting">
+            <Eraser className="h-3.5 w-3.5" />
+          </TB>
+          <TB onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Insert horizontal line">
+            <Minus className="h-3.5 w-3.5" />
+          </TB>
+
+          <span className="mx-1 text-border">|</span>
+
+          {editor.isActive('table') ? (
+            <>
+              <TB onClick={() => editor.chain().focus().addColumnAfter().run()} title="Add column">
+                <span className="inline-flex items-center gap-0.5"><Table2 className="h-3.5 w-3.5" /><span className="text-xs">+col</span></span>
+              </TB>
+              <TB onClick={() => editor.chain().focus().addRowAfter().run()} title="Add row">
+                <span className="inline-flex items-center gap-0.5"><Table2 className="h-3.5 w-3.5" /><span className="text-xs">+row</span></span>
+              </TB>
+              <TB onClick={() => editor.chain().focus().deleteTable().run()} title="Delete table">
+                <Trash2 className="h-3.5 w-3.5" />
+              </TB>
+            </>
+          ) : (
+            <TB
+              onClick={() =>
+                editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+              }
+              title="Insert table"
+            >
+              <Table2 className="h-3.5 w-3.5" />
+            </TB>
+          )}
+
+          <span className="mx-1 text-border">|</span>
+
           <label title="Text color" className="relative px-1.5 py-1 cursor-pointer rounded hover:bg-muted text-sm text-muted-foreground hover:text-foreground">
             A
             <input
@@ -307,7 +345,7 @@ function Toolbar({ editor, campusId, showEditorPlugins, showMediaRecorder }: { e
 
         <EditorContent
           editor={editor}
-          className="min-h-40 px-3 py-2 text-sm prose prose-sm max-w-none focus-within:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-36"
+          className="min-h-40 px-3 py-2 text-sm prose prose-sm max-w-none focus-within:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-36 [&_table]:border-collapse [&_table]:w-full [&_td]:border [&_td]:border-border [&_td]:p-1.5 [&_th]:border [&_th]:border-border [&_th]:p-1.5 [&_th]:bg-muted"
         />
       </div>
     </>
@@ -342,6 +380,10 @@ export function RichTextEditor({ value, onChange, campusId, showEditorPlugins, s
       Color,
       TiptapLink.configure({ openOnClick: false }),
       TiptapImage,
+      TiptapTable.configure({ resizable: false }),
+      TiptapTableRow,
+      TiptapTableHeader,
+      TiptapTableCell,
       AudioNode,
       VideoNode,
     ],
@@ -362,7 +404,7 @@ export function RichTextEditor({ value, onChange, campusId, showEditorPlugins, s
       return
     }
     if (editor && value !== editor.getHTML()) {
-      editor.commands.setContent(value || '', false)
+      editor.commands.setContent(value || '', { emitUpdate: false })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value])

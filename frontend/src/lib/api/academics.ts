@@ -19,6 +19,7 @@ export type SubjectType = 'theory' | 'lab' | 'practical'
 export interface GradeLevel {
   id: string
   school_id: string
+  campus_id?: string | null
   name: string
   order_index: number
   base_fee: number
@@ -37,6 +38,7 @@ export interface GradeLevel {
 export interface Section {
   id: string
   school_id: string
+  campus_id?: string | null
   grade_level_id: string
   name: string
   capacity: number

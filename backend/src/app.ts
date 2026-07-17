@@ -3,6 +3,7 @@ import path from "path";
 
 import { config } from "./config/env";
 import { cronService } from "./services/cron.service";
+import { reconcileOrphanedJobs } from "./services/timetable-generation.service";
 import schoolRoutes from "./routes/school.routes";
 import dashboardRoutes from "./routes/dashboard.routes";
 import loginPageConfigRoutes from "./routes/login-page-config.routes";
@@ -397,6 +398,14 @@ app.listen(PORT, () => {
   // Initialize automated cron jobs for payroll
   console.log("\n⏰ Starting automated services...");
   cronService.init();
+
+  // Reconcile any timetable generation jobs left 'running'/'queued' from
+  // before a restart (crash-safety — see timetable-generation.service.ts).
+  // Fire-and-forget, non-blocking.
+  reconcileOrphanedJobs().catch((err) =>
+    console.error("Error reconciling orphaned timetable generation jobs:", err)
+  );
+
   console.log("=================================\n");
 });
 

@@ -90,6 +90,15 @@ export class CustomFieldsService {
             .single()
 
         const parentSchoolId = school?.parent_school_id
+        const rootSchoolId = parentSchoolId || schoolId;
+
+        // Find all schools in this family (the parent + all branches)
+        const { data: familySchools } = await supabase
+            .from('schools')
+            .select('id')
+            .or(`id.eq.${rootSchoolId},parent_school_id.eq.${rootSchoolId}`)
+            
+        const familySchoolIds = (familySchools || []).map(s => s.id);
 
         // Fetch all active fields for the entity type, then filter in code
         const { data, error } = await supabase
@@ -108,14 +117,14 @@ export class CustomFieldsService {
 
         // Filter to include:
         // 1. Fields from this school
-        // 2. Fields from parent with all_campuses scope
+        // 2. Fields from any school in the same family with all_campuses scope
         // 3. Fields that include this school in applicable_school_ids
         const filtered = (data || []).filter(field => {
             // This school's own fields
             if (field.school_id === schoolId) return true
 
-            // Parent's fields with all_campuses scope
-            if (parentSchoolId && field.school_id === parentSchoolId && field.campus_scope === 'all_campuses') {
+            // Fields with all_campuses scope created by ANY school in our family
+            if (field.campus_scope === 'all_campuses' && familySchoolIds.includes(field.school_id)) {
                 return true
             }
 

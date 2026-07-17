@@ -14,6 +14,7 @@ import type {
   SetTeacherAvailabilityDTO,
 } from '../types/scheduling.types'
 import type { ApiResponse } from '../types'
+import { getMainSchoolId } from '../utils/campus.util'
 
 interface StudentProfileRecord {
   first_name?: string | null
@@ -31,14 +32,6 @@ interface StudentNameRecord {
 // Individual student enrollment in course_periods + teacher availability
 // ============================================================================
 
-const getMainSchoolId = async (schoolId: string): Promise<string> => {
-  const { data: school } = await supabase
-    .from('schools')
-    .select('id, parent_school_id')
-    .eq('id', schoolId)
-    .single()
-  return school?.parent_school_id || schoolId
-}
 
 const getStudentNamesByIds = async (studentIds: string[]): Promise<Map<string, string>> => {
   if (studentIds.length === 0) return new Map()

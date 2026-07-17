@@ -2,6 +2,10 @@ import { Request, Response } from 'express'
 import * as timetableService from '../services/timetable.service'
 import * as attendanceService from '../services/attendance.service'
 import { ApiResponse, DayOfWeek } from '../types'
+import {
+  lockTimetableEntrySchema,
+  bulkLockTimetableEntriesSchema
+} from '../schemas/timetable-generator.schemas'
 
 interface AuthRequest extends Request {
   profile?: {
@@ -190,6 +194,37 @@ export const deleteTimetableEntry = async (req: Request, res: Response) => {
       success: false,
       error: error.message
     } as ApiResponse)
+  }
+}
+
+// ============================================================================
+// LOCK / UNLOCK (Phase 2 — timetable generator)
+// ============================================================================
+
+export const lockTimetableEntry = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params
+    const { locked } = lockTimetableEntrySchema.parse(req.body)
+
+    const result = await timetableService.setTimetableEntryLock(id, locked)
+    if (!result.success) return res.status(400).json(result)
+    res.json(result)
+  } catch (error: any) {
+    console.error('Error setting timetable entry lock:', error)
+    res.status(400).json({ success: false, error: error.message })
+  }
+}
+
+export const bulkLockTimetableEntries = async (req: Request, res: Response) => {
+  try {
+    const { locked, entry_ids, section_id } = bulkLockTimetableEntriesSchema.parse(req.body)
+
+    const result = await timetableService.bulkSetTimetableEntryLock(locked, entry_ids, section_id)
+    if (!result.success) return res.status(400).json(result)
+    res.json(result)
+  } catch (error: any) {
+    console.error('Error bulk setting timetable entry lock:', error)
+    res.status(400).json({ success: false, error: error.message })
   }
 }
 

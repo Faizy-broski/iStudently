@@ -53,22 +53,17 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
   const [recipientOptions, setRecipientOptions] = useState<MessageRecipientOption[]>([])
   const [loadingRecipients, setLoadingRecipients] = useState(false)
   const [selectedProfileIds, setSelectedProfileIds] = useState<Set<string>>(new Set())
-  const [knownRecipientNames, setKnownRecipientNames] = useState<Record<string, string>>({})
   const [replyToMessageId, setReplyToMessageId] = useState<string | undefined>(undefined)
   const [attachments, setAttachments] = useState<MessageAttachmentUploadResult[]>([])
   const [uploadingCount, setUploadingCount] = useState(0)
 
   useEffect(() => {
     const replyTo = searchParams.get("reply_to")
-    const replyName = searchParams.get("reply_name")
     const replySubject = searchParams.get("subject")
     const replyToMsgId = searchParams.get("reply_to_message_id")
 
     if (replyTo) {
       setSelectedProfileIds((prev) => new Set(prev).add(replyTo))
-      if (replyName) {
-        setKnownRecipientNames((prev) => ({ ...prev, [replyTo]: replyName }))
-      }
     }
     if (replySubject) {
       setSubject(replySubject)
@@ -103,13 +98,6 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
       )
       const options = res.success && res.data ? res.data : []
       setRecipientOptions(options)
-      if (options.length > 0) {
-        setKnownRecipientNames((prev) => {
-          const next = { ...prev }
-          for (const option of options) next[option.profileId] = option.name
-          return next
-        })
-      }
     } finally {
       setLoadingRecipients(false)
     }
@@ -139,6 +127,20 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
     setSelectedProfileIds((prev) => {
       const next = new Set(prev)
       next.has(profileId) ? next.delete(profileId) : next.add(profileId)
+      return next
+    })
+  }
+
+  const allVisibleSelected = recipientOptions.length > 0 && recipientOptions.every((o) => selectedProfileIds.has(o.profileId))
+
+  const toggleSelectAllVisible = () => {
+    setSelectedProfileIds((prev) => {
+      const next = new Set(prev)
+      if (allVisibleSelected) {
+        for (const option of recipientOptions) next.delete(option.profileId)
+      } else {
+        for (const option of recipientOptions) next.add(option.profileId)
+      }
       return next
     })
   }
@@ -371,24 +373,6 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          {selectedProfileIds.size > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {Array.from(selectedProfileIds).map((id) => (
-                <Badge key={id} variant="secondary" className="gap-1">
-                  {knownRecipientNames[id] || "Unnamed"}
-                  <button
-                    type="button"
-                    onClick={() => toggleRecipient(id)}
-                    className="ml-0.5 hover:text-destructive"
-                    aria-label="Remove recipient"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
-            </div>
-          )}
-
           <Tabs
             value={recipientTab}
             onValueChange={(v) => {
@@ -450,6 +434,8 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
                 items={recipientOptions}
                 selected={selectedProfileIds}
                 onToggle={toggleRecipient}
+                allSelected={allVisibleSelected}
+                onToggleSelectAll={toggleSelectAllVisible}
               />
             </TabsContent>
             <TabsContent value="staff" className="mt-3">
@@ -458,6 +444,8 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
                 items={recipientOptions}
                 selected={selectedProfileIds}
                 onToggle={toggleRecipient}
+                allSelected={allVisibleSelected}
+                onToggleSelectAll={toggleSelectAllVisible}
               />
             </TabsContent>
             <TabsContent value="parents" className="mt-3">
@@ -466,6 +454,8 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
                 items={recipientOptions}
                 selected={selectedProfileIds}
                 onToggle={toggleRecipient}
+                allSelected={allVisibleSelected}
+                onToggleSelectAll={toggleSelectAllVisible}
               />
             </TabsContent>
             {canMessageStudents && (
@@ -490,11 +480,15 @@ function RecipientList({
   items,
   selected,
   onToggle,
+  allSelected,
+  onToggleSelectAll,
 }: {
   loading: boolean
   items: { profileId: string; name: string; subtitle?: string }[]
   selected: Set<string>
   onToggle: (profileId: string) => void
+  allSelected: boolean
+  onToggleSelectAll: () => void
 }) {
   if (loading) {
     return <div className="text-center py-8 text-muted-foreground text-sm">Loading...</div>
@@ -504,6 +498,15 @@ function RecipientList({
   }
   return (
     <div className="rounded-md border divide-y max-h-80 overflow-auto">
+      <div
+        className="flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors hover:bg-muted/40 bg-muted/20"
+        onClick={onToggleSelectAll}
+      >
+        <Checkbox checked={allSelected} onCheckedChange={onToggleSelectAll} onClick={(e) => e.stopPropagation()} />
+        <div className="text-sm font-medium">
+          Select all {items.length} {items.length === 1 ? "result" : "results"}
+        </div>
+      </div>
       {items.map((item) => {
         const isSelected = selected.has(item.profileId)
         return (

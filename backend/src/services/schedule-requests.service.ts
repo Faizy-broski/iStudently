@@ -13,21 +13,13 @@ import type {
 } from '../types/scheduling.types'
 import type { ApiResponse } from '../types'
 import { enrollStudent } from './scheduling.service'
+import { getMainSchoolId } from '../utils/campus.util'
 
 // ============================================================================
 // SCHEDULE REQUESTS SERVICE
 // Handles course requests, the auto-scheduler (inspired by RosarioSIS),
 // and timetable templates.
 // ============================================================================
-
-const getMainSchoolId = async (schoolId: string): Promise<string> => {
-  const { data: school } = await supabase
-    .from('schools')
-    .select('id, parent_school_id')
-    .eq('id', schoolId)
-    .single()
-  return school?.parent_school_id || schoolId
-}
 
 // ──────────────────────────────────────────────────────────────────────────
 // SCHEDULE REQUESTS CRUD

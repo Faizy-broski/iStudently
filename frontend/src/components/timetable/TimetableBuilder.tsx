@@ -34,8 +34,22 @@ import {
     Copy,
     Trash2,
     AlertCircle,
-    Eraser
+    Eraser,
+    Lock,
+    Unlock,
+    Sparkles
 } from "lucide-react";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger
+} from "@/components/ui/alert-dialog";
 import { TimetableEntry, DayOfWeek } from "@/lib/api/timetable";
 import { GlobalPeriod, Staff } from "@/lib/api/teachers";
 import * as timetableApi from "@/lib/api/timetable";
@@ -108,9 +122,18 @@ export function TimetableBuilder({
 
     // Erase mode state
     const [eraseMode, setEraseMode] = useState(false);
-    
+
     // Operation state
     const [saving, setSaving] = useState(false);
+
+    // Lock/unlock state — optimistic overrides keyed by entry id, cleared once
+    // the parent's `entries` prop reflects the server state after refetch.
+    const [lockOverrides, setLockOverrides] = useState<Record<string, boolean>>({});
+    const [lockingEntryId, setLockingEntryId] = useState<string | null>(null);
+    const [bulkLocking, setBulkLocking] = useState(false);
+
+    // Keyboard navigation: map of "day::periodId" -> cell element
+    const cellRefs = React.useRef<Map<string, HTMLTableCellElement>>(new Map());
 
     // Helper functions for period display
     const getPeriodShortLabel = (period: GlobalPeriod): string => {
@@ -159,6 +182,48 @@ export function TimetableBuilder({
         return entries.find(e => e.day_of_week === dayNumber && e.period_id === periodId);
     }, [entries]);
 
+    // Clear stale optimistic overrides once fresh data arrives from the parent
+    useEffect(() => {
+        setLockOverrides({});
+    }, [entries]);
+
+    const isEntryLocked = useCallback((entry: TimetableEntry): boolean => {
+        if (entry.id in lockOverrides) return lockOverrides[entry.id];
+        return !!entry.locked;
+    }, [lockOverrides]);
+
+    // Toggle lock on a single cell — optimistic UI update + toast, reverts on failure
+    const handleToggleLock = useCallback(async (entry: TimetableEntry, e?: React.MouseEvent) => {
+        e?.stopPropagation();
+        const nextLocked = !isEntryLocked(entry);
+        setLockOverrides(prev => ({ ...prev, [entry.id]: nextLocked }));
+        setLockingEntryId(entry.id);
+        try {
+            await timetableApi.lockTimetableEntry(entry.id, nextLocked);
+            toast.success(nextLocked ? 'Cell locked' : 'Cell unlocked');
+            onEntriesChange();
+        } catch (error: any) {
+            setLockOverrides(prev => ({ ...prev, [entry.id]: !nextLocked }));
+            toast.error(error.message || 'Failed to update lock state');
+        } finally {
+            setLockingEntryId(null);
+        }
+    }, [isEntryLocked, onEntriesChange]);
+
+    // Bulk lock/unlock every entry currently in this section's grid
+    const handleBulkLock = useCallback(async (locked: boolean) => {
+        setBulkLocking(true);
+        try {
+            const result = await timetableApi.bulkLockTimetableEntries({ section_id: sectionId, locked });
+            toast.success(`${locked ? 'Locked' : 'Unlocked'} ${result.updated_count} cell${result.updated_count === 1 ? '' : 's'}`);
+            onEntriesChange();
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to bulk update lock state');
+        } finally {
+            setBulkLocking(false);
+        }
+    }, [sectionId, onEntriesChange]);
+
     // Check for conflicts when teacher changes in dialog
     useEffect(() => {
         const checkConflict = async () => {
@@ -194,6 +259,11 @@ export function TimetableBuilder({
     const handleSlotClick = (day: string, period: GlobalPeriod) => {
         const existingEntry = getEntryForSlot(day, period.id);
 
+        if (existingEntry && isEntryLocked(existingEntry)) {
+            toast.info('This cell is locked. Unlock it first to edit.');
+            return;
+        }
+
         if (eraseMode) {
             // In erase mode, delete the entry directly
             if (existingEntry) {
@@ -215,6 +285,48 @@ export function TimetableBuilder({
         }
         setConflictWarning("");
         setDialogOpen(true);
+    };
+
+    // Keyboard navigation across the grid (arrow keys move focus between
+    // cells; Enter/Space activates the same click handler). Defined as a
+    // plain function (not memoized) so it always closes over the latest
+    // `eraseMode`/`orientation` state without needing a large dependency list.
+    const handleCellKeyDown = (e: React.KeyboardEvent<HTMLTableCellElement>, day: string, period: GlobalPeriod) => {
+        const arrowKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+        if (!arrowKeys.includes(e.key)) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleSlotClick(day, period);
+            }
+            return;
+        }
+        e.preventDefault();
+
+        const dayIdx = DAYS.indexOf(day);
+        const periodIdx = sortedPeriods.findIndex(p => p.id === period.id);
+
+        let nextDayIdx = dayIdx;
+        let nextPeriodIdx = periodIdx;
+
+        // Vertical: periods are rows, days are columns. Horizontal: days are
+        // rows, periods are columns — swap which arrow moves which axis.
+        const moveAcrossDays = (orientation === 'vertical' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) ||
+            (orientation === 'horizontal' && (e.key === 'ArrowUp' || e.key === 'ArrowDown'));
+
+        if (moveAcrossDays) {
+            const delta = (e.key === 'ArrowRight' || e.key === 'ArrowDown') ? 1 : -1;
+            nextDayIdx = Math.min(Math.max(dayIdx + delta, 0), DAYS.length - 1);
+        } else {
+            const delta = (e.key === 'ArrowDown' || e.key === 'ArrowRight') ? 1 : -1;
+            nextPeriodIdx = Math.min(Math.max(periodIdx + delta, 0), sortedPeriods.length - 1);
+        }
+
+        const nextDay = DAYS[nextDayIdx];
+        const nextPeriod = sortedPeriods[nextPeriodIdx];
+        if (nextDay && nextPeriod) {
+            const key = `${nextDay}::${nextPeriod.id}`;
+            cellRefs.current.get(key)?.focus();
+        }
     };
 
     // Handle save from dialog
@@ -384,14 +496,31 @@ export function TimetableBuilder({
     // Render a builder slot cell (reused in both orientations)
     const renderBuilderSlot = (day: string, period: GlobalPeriod) => {
         const entry = getEntryForSlot(day, period.id);
+        const locked = entry ? isEntryLocked(entry) : false;
+        const isGenerated = !!entry?.generated_by_job_id;
+        const cellKey = `${day}::${period.id}`;
+        const ariaLabel = entry
+            ? `${daysT(day)}, ${period.title || period.short_name}: ${getSlotDisplayInfo(entry).subjectName} with ${getSlotDisplayInfo(entry).teacherName}${locked ? ' (locked)' : ''}`
+            : `${daysT(day)}, ${period.title || period.short_name}: empty slot`;
+
         return (
             <td
-                key={`${day}-${period.id}`}
-                className={`border p-2 cursor-pointer transition-all duration-150 ${
+                key={cellKey}
+                ref={(node) => {
+                    if (node) cellRefs.current.set(cellKey, node);
+                    else cellRefs.current.delete(cellKey);
+                }}
+                role="gridcell"
+                tabIndex={0}
+                aria-label={ariaLabel}
+                onKeyDown={(e) => handleCellKeyDown(e, day, period)}
+                className={`border p-2 cursor-pointer transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-[#57A3CC] focus:ring-inset ${
                     entry
-                        ? eraseMode
-                            ? 'bg-red-50 hover:bg-red-100 border-red-200'
-                            : 'bg-blue-50 hover:bg-blue-100'
+                        ? locked
+                            ? 'bg-amber-50 hover:bg-amber-100 border-amber-200 dark:bg-amber-950/20 dark:hover:bg-amber-950/30'
+                            : eraseMode
+                                ? 'bg-red-50 hover:bg-red-100 border-red-200'
+                                : 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/20 dark:hover:bg-blue-950/30'
                         : 'hover:bg-muted/50'
                 }`}
                 onClick={() => handleSlotClick(day, period)}
@@ -400,8 +529,25 @@ export function TimetableBuilder({
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <div className="relative group min-h-[40px]">
-                                <div className="font-medium text-[#022172] truncate">
-                                    {getSlotDisplayInfo(entry).subjectName}
+                                <div className="flex items-center justify-between gap-1">
+                                    <div className="font-medium text-[#022172] dark:text-blue-300 truncate">
+                                        {getSlotDisplayInfo(entry).subjectName}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        aria-label={locked ? 'Unlock this cell' : 'Lock this cell'}
+                                        className="opacity-60 hover:opacity-100 transition-opacity flex-shrink-0 disabled:opacity-30"
+                                        disabled={lockingEntryId === entry.id}
+                                        onClick={(e) => handleToggleLock(entry, e)}
+                                    >
+                                        {lockingEntryId === entry.id ? (
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : locked ? (
+                                            <Lock className="h-3 w-3 text-amber-600" />
+                                        ) : (
+                                            <Unlock className="h-3 w-3 text-muted-foreground" />
+                                        )}
+                                    </button>
                                 </div>
                                 <div className="text-xs text-muted-foreground truncate flex items-center gap-1">
                                     <User className="h-3 w-3 flex-shrink-0" />
@@ -412,6 +558,11 @@ export function TimetableBuilder({
                                         {entry.room_number}
                                     </div>
                                 )}
+                                {isGenerated && (
+                                    <Badge variant="secondary" className="mt-1 text-[9px] px-1 py-0 h-4 gap-0.5 bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300">
+                                        <Sparkles className="h-2.5 w-2.5" /> Generated
+                                    </Badge>
+                                )}
                             </div>
                         </TooltipTrigger>
                         <TooltipContent>
@@ -419,7 +570,11 @@ export function TimetableBuilder({
                                 <div><strong>{getSlotDisplayInfo(entry).subjectName}</strong></div>
                                 <div>{t('tip_teacher', { name: getSlotDisplayInfo(entry).teacherName })}</div>
                                 {entry.room_number && <div>{t('tip_room', { room: entry.room_number })}</div>}
-                                <div className="text-xs text-muted-foreground mt-1">{t('tip_click_edit')}</div>
+                                {locked ? (
+                                    <div className="text-xs text-amber-600 mt-1">Locked — unlock to edit</div>
+                                ) : (
+                                    <div className="text-xs text-muted-foreground mt-1">{t('tip_click_edit')}</div>
+                                )}
                             </div>
                         </TooltipContent>
                     </Tooltip>
@@ -455,8 +610,38 @@ export function TimetableBuilder({
                         </span>
                     </CardTitle>
 
-                    {/* Erase Mode Toggle */}
-                    <div className="flex items-center gap-2">
+                    {/* Erase Mode Toggle + Bulk Lock */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="outline" size="sm" disabled={bulkLocking || entries.length === 0}>
+                                    {bulkLocking ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Lock className="h-4 w-4 mr-1" />}
+                                    Lock All
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>Lock all cells in {sectionName}?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Every currently-assigned cell in this section's timetable will be locked and
+                                        skipped by future automatic generations until individually unlocked.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleBulkLock(true)}>Lock All</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={bulkLocking || entries.length === 0}
+                            onClick={() => handleBulkLock(false)}
+                        >
+                            {bulkLocking ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Unlock className="h-4 w-4 mr-1" />}
+                            Unlock All
+                        </Button>
                         <Button
                             variant={eraseMode ? 'destructive' : 'outline'}
                             size="sm"
@@ -482,7 +667,7 @@ export function TimetableBuilder({
                 {/* Timetable Grid */}
                 <TooltipProvider>
                     <div className="overflow-x-auto">
-                        <table className="w-full border-collapse text-sm">
+                        <table className="w-full border-collapse text-sm" role="grid" aria-label={`Timetable for ${sectionName}`}>
                             {orientation === 'vertical' ? (
                                 /* Vertical: Periods as rows, Days as columns (default) */
                                 <>
@@ -753,7 +938,7 @@ export function TimetableBuilder({
                             <Button
                                 onClick={handleDialogSave}
                                 disabled={!selectedSubject || !selectedTeacher || !!conflictWarning || saving}
-                                className="bg-[#022172] hover:bg-[#022172]/90"
+                                className="bg-[#022172] hover:bg-[#022172]/90 text-white"
                             >
                                 {saving ? t('btn_saving') : (selectedSlot?.existingEntry ? t('btn_update') : t('btn_assign'))}
                             </Button>

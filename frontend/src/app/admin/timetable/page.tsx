@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import { Calendar, Loader2, RefreshCw, Settings, ChevronLeft, ChevronRight, LayoutGrid, Maximize2, Download, FileText, ExternalLink, Pencil, RotateCcw } from "lucide-react"
+import { Calendar, Loader2, RefreshCw, Settings, ChevronLeft, ChevronRight, LayoutGrid, Maximize2, Download, FileText, ExternalLink, Pencil, RotateCcw, ListChecks, Sparkles, DoorOpen } from "lucide-react"
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { SectionTimetableCard, AssignSlotDialog, TimetableBuilder } from "@/components/timetable"
@@ -399,6 +399,24 @@ export default function TimetablePage() {
               <ExternalLink className="h-3 w-3 ml-1" />
             </Button>
           </Link>
+          <Link href="/admin/rooms">
+            <Button variant="outline" size="sm">
+              <DoorOpen className="h-4 w-4 mr-2" />
+              Rooms
+            </Button>
+          </Link>
+          <Link href="/admin/timetable/requirements">
+            <Button variant="outline" size="sm">
+              <ListChecks className="h-4 w-4 mr-2" />
+              Requirements
+            </Button>
+          </Link>
+          <Link href="/admin/timetable/generate">
+            <Button variant="default" size="sm" className="bg-[#022172] hover:bg-[#022172]/90 text-white">
+              <Sparkles className="h-4 w-4 mr-2" />
+              Auto-Generate
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
@@ -458,7 +476,7 @@ export default function TimetablePage() {
                 <Button
                   variant={viewMode === 'grid' ? 'default' : 'outline'}
                   size="sm"
-                  className={viewMode === 'grid' ? 'bg-[#022172]' : ''}
+                  className={viewMode === 'grid' ? 'bg-[#022172] text-white' : ''}
                   onClick={() => setViewMode('grid')}
                 >
                   <LayoutGrid className="h-4 w-4 mr-1" />
@@ -467,7 +485,7 @@ export default function TimetablePage() {
                 <Button
                   variant={viewMode === 'single' ? 'default' : 'outline'}
                   size="sm"
-                  className={viewMode === 'single' ? 'bg-green-600' : ''}
+                  className={viewMode === 'single' ? 'bg-green-600 text-white' : ''}
                   onClick={() => setViewMode('single')}
                 >
                   <Pencil className="h-4 w-4 mr-1" />
@@ -482,7 +500,7 @@ export default function TimetablePage() {
                 <Button
                   variant={orientation === 'vertical' ? 'default' : 'outline'}
                   size="sm"
-                  className={orientation === 'vertical' ? 'bg-[#022172]' : ''}
+                  className={orientation === 'vertical' ? 'bg-[#022172] text-white' : ''}
                   onClick={() => setOrientation('vertical')}
                   title={t('layout_vertical_tip')}
                 >
@@ -492,7 +510,7 @@ export default function TimetablePage() {
                 <Button
                   variant={orientation === 'horizontal' ? 'default' : 'outline'}
                   size="sm"
-                  className={orientation === 'horizontal' ? 'bg-[#022172]' : ''}
+                  className={orientation === 'horizontal' ? 'bg-[#022172] text-white' : ''}
                   onClick={() => setOrientation('horizontal')}
                   title={t('layout_horizontal_tip')}
                 >
@@ -561,7 +579,7 @@ export default function TimetablePage() {
               {t('no_periods_desc')}
             </p>
             <Link href="/admin/periods">
-              <Button variant="default" className="bg-[#022172]">
+              <Button variant="default" className="bg-[#022172] text-white">
                 <Settings className="h-4 w-4 mr-2" />
                 {t('btn_configure_periods')}
               </Button>

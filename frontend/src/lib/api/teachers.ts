@@ -240,6 +240,9 @@ export interface TimetableEntry {
   period_id: string
   day_of_week: DayOfWeek
   room_number: string | null
+  room_id?: string | null
+  locked?: boolean
+  generated_by_job_id?: string | null
   is_active: boolean
   created_at: string
   created_by: string | null

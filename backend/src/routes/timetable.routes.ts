@@ -1,5 +1,8 @@
 import { Router } from 'express'
 import * as timetableController from '../controllers/timetable.controller'
+import * as requirementsController from '../controllers/timetable-requirements.controller'
+import * as constraintsController from '../controllers/teacher-constraints.controller'
+import * as generationController from '../controllers/timetable-generation.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 import { requireAdmin, requireTeacher } from '../middlewares/role.middleware'
 
@@ -7,6 +10,46 @@ const router = Router()
 
 // All routes require authentication
 router.use(authenticate)
+
+// ============================================================================
+// TIMETABLE GENERATOR — GENERATION JOBS (Phase 2)
+// ============================================================================
+
+router.post('/generate', requireAdmin, generationController.startGeneration)
+router.get('/generate/jobs', requireAdmin, generationController.listJobs)
+router.get('/generate/:jobId/status', requireAdmin, generationController.getJobStatus)
+router.post('/generate/:jobId/cancel', requireAdmin, generationController.cancelJob)
+router.post('/generate/:jobId/rollback', requireAdmin, generationController.rollbackJob)
+
+// ============================================================================
+// TIMETABLE GENERATOR — REQUIREMENTS (Phase 2)
+// ============================================================================
+
+router.get('/requirements', requireAdmin, requirementsController.listRequirements)
+router.post('/requirements', requireAdmin, requirementsController.createRequirement)
+router.post('/requirements/bulk', requireAdmin, requirementsController.bulkCreateRequirements)
+router.post('/requirements/seed-from-assignments', requireAdmin, requirementsController.seedFromAssignments)
+router.get('/requirements/coverage', requireAdmin, requirementsController.getCoverage)
+router.put('/requirements/:id', requireAdmin, requirementsController.updateRequirement)
+router.delete('/requirements/:id', requireAdmin, requirementsController.deleteRequirement)
+
+// ============================================================================
+// TIMETABLE GENERATOR — TEACHER CONSTRAINTS + GENERATION SETTINGS (Phase 2)
+// ============================================================================
+
+router.get('/teacher-constraints', requireAdmin, constraintsController.listTeacherConstraints)
+router.get('/teacher-constraints/:teacherId', requireAdmin, constraintsController.getTeacherConstraints)
+router.put('/teacher-constraints/:teacherId', requireAdmin, constraintsController.upsertTeacherConstraints)
+
+router.get('/generation-settings', requireAdmin, constraintsController.getGenerationSettings)
+router.put('/generation-settings', requireAdmin, constraintsController.updateGenerationSettings)
+
+// ============================================================================
+// TIMETABLE GENERATOR — LOCK / UNLOCK (Phase 2)
+// ============================================================================
+
+router.put('/:id/lock', requireAdmin, timetableController.lockTimetableEntry)
+router.post('/bulk-lock', requireAdmin, timetableController.bulkLockTimetableEntries)
 
 // ============================================================================
 // BULK IMPORT ROUTES

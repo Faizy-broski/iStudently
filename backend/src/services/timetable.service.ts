@@ -8,22 +8,7 @@ import {
   DayOfWeek,
   ApiResponse
 } from '../types'
-
-// ============================================================================
-// HELPER: Get main school ID (handles campus hierarchy)
-// ============================================================================
-
-const getMainSchoolId = async (schoolId: string): Promise<string> => {
-  const { data: school } = await supabase
-    .from('schools')
-    .select('id, parent_school_id')
-    .eq('id', schoolId)
-    .single()
-  
-  // If this school has a parent, return the parent (main school)
-  // Otherwise, this is already the main school
-  return school?.parent_school_id || schoolId
-}
+import { getMainSchoolId } from '../utils/campus.util'
 
 // ============================================================================
 // STEP 2: TIMETABLE CONSTRUCTION (Section ↔ Period ↔ Subject with Schedule)
@@ -849,5 +834,56 @@ export const getNextClassForTeacher = async (
       success: false,
       error: error.message
     }
+  }
+}
+
+// ============================================================================
+// LOCK / UNLOCK (Phase 2 — timetable generator)
+// ============================================================================
+// Locked entries are preserved untouched by the generator; unlocking makes
+// them eligible to be overwritten by a future generation run.
+
+export const setTimetableEntryLock = async (
+  entryId: string,
+  locked: boolean
+): Promise<ApiResponse<TimetableEntry>> => {
+  return updateTimetableEntry(entryId, { locked })
+}
+
+export interface BulkLockResult {
+  updated_count: number
+}
+
+export const bulkSetTimetableEntryLock = async (
+  locked: boolean,
+  entryIds?: string[],
+  sectionId?: string
+): Promise<ApiResponse<BulkLockResult>> => {
+  try {
+    let query = supabase
+      .from('timetable_entries')
+      .update({ locked })
+      .eq('is_active', true)
+
+    if (entryIds && entryIds.length > 0) {
+      query = query.in('id', entryIds)
+    } else if (sectionId) {
+      query = query.eq('section_id', sectionId)
+    } else {
+      return { success: false, error: 'Either entry_ids or section_id is required' }
+    }
+
+    const { data, error } = await query.select('id')
+
+    if (error) throw error
+
+    return {
+      success: true,
+      data: { updated_count: data?.length || 0 },
+      message: `${locked ? 'Locked' : 'Unlocked'} ${data?.length || 0} timetable entr${(data?.length || 0) === 1 ? 'y' : 'ies'}`
+    }
+  } catch (error: any) {
+    console.error('Error bulk setting timetable entry lock:', error)
+    return { success: false, error: error.message }
   }
 }

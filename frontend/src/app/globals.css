@@ -2,6 +2,29 @@
 
 @config "../../tailwind.config.ts";
 
+/* Print-only-the-timetable-grid helper. Any element with class "print-area"
+   becomes the only thing rendered when the user prints; everything else
+   (nav, filters, buttons) is hidden. Used by the timetable export/print
+   actions (per-section / per-teacher / per-room views). */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
+
 @plugin "tailwindcss-animate";
 
 @custom-variant dark (&:is(.dark *));

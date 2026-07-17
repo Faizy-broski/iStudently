@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { X, Copy, Download, Printer, Eye, EyeOff } from "lucide-react";
-import html2canvas from "html2canvas";
+import { X, Download, Printer, Eye, EyeOff } from "lucide-react";
+import html2canvas from "html2canvas-pro";
 import QRCode from "react-qr-code";
 
 const LOGIN_URL = "https://www.istudent.ly";
@@ -23,20 +23,44 @@ interface AdminCredentialsCardProps {
   onClose: () => void;
 }
 
-// Rendered with inline styles only (no Tailwind classes) inside the printable
-// area — html2canvas can't parse Tailwind v4's oklch/lab color functions, and
-// plain inline hex/rgb styles sidestep that entirely.
+// Uses html2canvas-pro (not html2canvas) because it walks the whole document,
+// and Tailwind v4's oklch-based utility classes elsewhere on the page make
+// stock html2canvas throw "unsupported color function" during capture.
 export default function AdminCredentialsCard({ data, onClose }: AdminCredentialsCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
 
-  const copyToClipboard = () => {
-    const text = `School: ${data.schoolName}\nAdmin: ${data.adminName}\nUsername: ${data.username}\nPassword: ${data.password}\nLogin: ${LOGIN_URL}`;
-    navigator.clipboard.writeText(text).then(
-      () => toast.success("Credentials copied to clipboard"),
-      () => toast.error("Failed to copy credentials")
-    );
-  };
+  // html2canvas taints the canvas (and toDataURL then throws) when it draws an
+  // image from another origin, even with useCORS/allowTaint set — so the logo
+  // is fetched and inlined as a data URI up front to sidestep CORS entirely.
+  useEffect(() => {
+    if (!data.logoUrl) {
+      setLogoDataUrl(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(data.logoUrl)
+      .then((res) => res.blob())
+      .then(
+        (blob) =>
+          new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          })
+      )
+      .then((dataUrl) => {
+        if (!cancelled) setLogoDataUrl(dataUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setLogoDataUrl(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [data.logoUrl]);
 
   const downloadAsImage = async () => {
     if (!cardRef.current) return;
@@ -44,7 +68,6 @@ export default function AdminCredentialsCard({ data, onClose }: AdminCredentials
       const canvas = await html2canvas(cardRef.current, {
         scale: 3,
         useCORS: true,
-        allowTaint: true,
         logging: false,
         backgroundColor: "#ffffff",
       });
@@ -82,10 +105,10 @@ export default function AdminCredentialsCard({ data, onClose }: AdminCredentials
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-              {data.logoUrl && (
+              {logoDataUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={data.logoUrl}
+                  src={logoDataUrl}
                   alt={data.schoolName}
                   style={{ width: 40, height: 40, borderRadius: 8, objectFit: "cover", background: "#ffffff" }}
                 />
@@ -137,10 +160,7 @@ export default function AdminCredentialsCard({ data, onClose }: AdminCredentials
             </button>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 mt-4 print:hidden">
-            <Button type="button" variant="outline" size="sm" onClick={copyToClipboard}>
-              <Copy className="h-4 w-4 mr-1" /> Copy
-            </Button>
+          <div className="grid grid-cols-2 gap-2 mt-4 print:hidden">
             <Button type="button" variant="outline" size="sm" onClick={downloadAsImage}>
               <Download className="h-4 w-4 mr-1" /> Download
             </Button>

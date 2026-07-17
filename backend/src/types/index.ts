@@ -871,6 +871,8 @@ export interface UpdateTimetableEntryDTO {
   period_id?: string;
   day_of_week?: DayOfWeek;
   room_number?: string;
+  room_id?: string | null;
+  locked?: boolean;
   is_active?: boolean;
 }
 

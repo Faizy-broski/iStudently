@@ -5,19 +5,11 @@ import type {
   UpdateRoomDTO,
 } from '../types/scheduling.types'
 import type { ApiResponse } from '../types'
+import { getMainSchoolId } from '../utils/campus.util'
 
 // ============================================================================
 // ROOMS SERVICE
 // ============================================================================
-
-const getMainSchoolId = async (schoolId: string): Promise<string> => {
-  const { data: school } = await supabase
-    .from('schools')
-    .select('id, parent_school_id')
-    .eq('id', schoolId)
-    .single()
-  return school?.parent_school_id || schoolId
-}
 
 // ──────────────────────────────────────────────────────────────────────────
 // CRUD
