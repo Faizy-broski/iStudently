@@ -1,8 +1,8 @@
 import { notFound, redirect } from 'next/navigation'
 import type { Metadata } from 'next'
-import Image from 'next/image'
 import Link from 'next/link'
 import PublicNav from '@/components/public/PublicNav'
+import { SchoolLogo } from '@/components/shared/SchoolLogo'
 import { getPublicSchool } from '@/lib/api/public-pages'
 import { MapPin, Phone, Globe, Mail, User2, Hash, Building2 } from 'lucide-react'
 
@@ -61,19 +61,20 @@ export default async function PublicSchoolPage({ params }: Props) {
       <main className="max-w-4xl mx-auto px-4 py-10">
         {/* School header */}
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-10">
-          {school.logo_url ? (
-            <Image
-              src={school.logo_url}
-              alt={`${school.name} logo`}
-              width={96}
-              height={96}
-              className="rounded-xl object-contain border border-gray-200 dark:border-gray-700 bg-white p-1"
-            />
-          ) : (
-            <div className="flex h-24 w-24 items-center justify-center rounded-xl bg-linear-to-br from-[#57A3CC] to-[#022172] text-white">
-              <Building2 className="h-12 w-12" />
-            </div>
-          )}
+          <SchoolLogo
+            logoUrl={school.logo_url}
+            alt={`${school.name} logo`}
+            shape={school.logo_shape}
+            borderWidth={school.logo_border_width}
+            borderColor={school.logo_border_color}
+            size={96}
+            className="border border-gray-200 dark:border-gray-700 bg-white p-1"
+            fallback={
+              <div className="flex h-full w-full items-center justify-center rounded-xl bg-linear-to-br from-[#57A3CC] to-[#022172] text-white">
+                <Building2 className="h-12 w-12" />
+              </div>
+            }
+          />
           <div>
             <h1 className="text-3xl font-bold text-[#022172] dark:text-white">{school.name}</h1>
             {school.short_name && <p className="text-gray-500 mt-1">{school.short_name}</p>}

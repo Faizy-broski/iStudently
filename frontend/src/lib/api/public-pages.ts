@@ -26,6 +26,9 @@ export interface PublicSchoolInfo {
   name: string
   slug: string
   logo_url: string | null
+  logo_shape?: 'circle' | 'rounded' | 'square' | 'rectangle'
+  logo_border_width?: number
+  logo_border_color?: string
   address: string | null
   city: string | null
   state: string | null

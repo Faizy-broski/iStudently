@@ -284,6 +284,74 @@ export class SchoolSettingsController {
   }
 
   /**
+   * GET /api/school-settings/jitsi
+   * Get the custom Jitsi Meet domain for the current school/campus
+   */
+  async getJitsiSettings(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const schoolId = req.profile?.school_id
+      if (!schoolId) { res.status(403).json({ success: false, error: 'No school associated' }); return }
+
+      const campusId = req.query.campus_id as string | undefined
+
+      let query = supabase
+        .from('school_settings')
+        .select('jitsi_domain')
+        .eq('school_id', schoolId)
+
+      if (campusId) {
+        query = query.eq('campus_id', campusId)
+      } else {
+        query = query.is('campus_id', null)
+      }
+
+      const { data } = await query.maybeSingle()
+
+      res.json({
+        success: true,
+        data: { jitsi_domain: data?.jitsi_domain || '' },
+      })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  }
+
+  /**
+   * PUT /api/school-settings/jitsi
+   * Save the custom Jitsi Meet domain for the current school/campus
+   */
+  async updateJitsiSettings(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const schoolId = req.profile?.school_id
+      if (!schoolId) { res.status(403).json({ success: false, error: 'No school associated' }); return }
+
+      const campusId = (req.query.campus_id as string | undefined) || req.body.campus_id || null
+      const { jitsi_domain } = req.body
+
+      const updates: Record<string, any> = {
+        updated_at: new Date().toISOString(),
+        jitsi_domain: jitsi_domain || null,
+      }
+
+      let updateQ = supabase.from('school_settings').update(updates).eq('school_id', schoolId)
+      updateQ = campusId ? updateQ.eq('campus_id', campusId) : updateQ.is('campus_id', null)
+      const { data: updatedRows, error: updateError } = await updateQ.select('id')
+      if (updateError) throw new Error(updateError.message)
+
+      if (!updatedRows || updatedRows.length === 0) {
+        const { error: insertError } = await supabase
+          .from('school_settings')
+          .insert({ school_id: schoolId, campus_id: campusId ?? null, ...updates })
+        if (insertError) throw new Error(insertError.message)
+      }
+
+      res.json({ success: true, message: 'Jitsi settings saved' })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  }
+
+  /**
    * GET /api/school-settings/pdf-header-footer
    * Get PDF header/footer settings for the current school/campus
    */

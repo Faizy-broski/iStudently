@@ -32,6 +32,8 @@ router.get('/slug/:slug', requireSuperAdmin, (req, res) => schoolController.getS
 router.get('/:id', requireSuperAdmin, (req, res) => schoolController.getSchoolById(req, res))
 router.patch('/:id', requireSuperAdmin, (req, res) => schoolController.updateSchool(req, res))
 router.patch('/:id/status', requireSuperAdmin, (req, res) => schoolController.updateSchoolStatus(req, res))
+router.get('/:id/logo-appearance', requireSuperAdmin, (req, res) => schoolController.getLogoAppearance(req, res))
+router.patch('/:id/logo-appearance', requireSuperAdmin, (req, res) => schoolController.updateLogoAppearance(req, res))
 
 // Admin management routes
 router.get('/:id/admin', requireSuperAdmin, (req, res) => schoolController.getSchoolAdmin(req, res))

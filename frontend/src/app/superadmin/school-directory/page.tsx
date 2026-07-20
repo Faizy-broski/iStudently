@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { schoolApi } from "@/lib/api/schools";
+import { SchoolLogo } from "@/components/shared/SchoolLogo";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -310,17 +311,20 @@ export default function SchoolDirectoryPage() {
                       {/* School Info */}
                       <TableCell className="align-top pt-5 pb-5">
                         <div className="flex items-start gap-4">
-                          {root.logo_url ? (
-                            <img
-                              src={root.logo_url}
-                              alt={`${root.name} logo`}
-                              className="w-12 h-12 object-cover rounded-md border border-gray-200 dark:border-gray-700 shadow-sm bg-white"
-                            />
-                          ) : (
-                            <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-md flex items-center justify-center shadow-sm border border-gray-200 dark:border-gray-700">
-                              <Building2 className="h-6 w-6 text-[#022172] dark:text-[#57A3CC]" />
-                            </div>
-                          )}
+                          <SchoolLogo
+                            logoUrl={root.logo_url}
+                            alt={`${root.name} logo`}
+                            shape={root.logo_shape}
+                            borderWidth={root.logo_border_width}
+                            borderColor={root.logo_border_color}
+                            size={48}
+                            className="shadow-sm border border-gray-200 dark:border-gray-700"
+                            fallback={
+                              <div className="w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                                <Building2 className="h-6 w-6 text-[#022172] dark:text-[#57A3CC]" />
+                              </div>
+                            }
+                          />
                           <div className="flex flex-col gap-1">
                             <span className="font-bold text-gray-900 dark:text-gray-100 text-base leading-tight">{root.name}</span>
                             <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">@{root.slug}</span>

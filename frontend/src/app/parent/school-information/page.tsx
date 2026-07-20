@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   Building2, MapPin, Phone, Mail, Users, Hash, Globe, ExternalLink,
 } from 'lucide-react'
-import Image from 'next/image'
+import { SchoolLogo } from '@/components/shared/SchoolLogo'
 
 export default function ParentSchoolInformationPage() {
   const { selectedStudentData, isLoading: studentsLoading } = useParentDashboard()
@@ -104,19 +104,19 @@ export default function ParentSchoolInformationPage() {
         <CardHeader>
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-4">
-              {campus.logo_url ? (
-                <Image
-                  src={campus.logo_url}
-                  alt={`${campus.name} logo`}
-                  width={64}
-                  height={64}
-                  className="rounded object-contain border"
-                />
-              ) : (
-                <div className="w-16 h-16 rounded bg-[#EEA831]/20 flex items-center justify-center border">
-                  <Building2 className="h-8 w-8 text-[#022172]" />
-                </div>
-              )}
+              <SchoolLogo
+                logoUrl={campus.logo_url}
+                alt={`${campus.name} logo`}
+                shape={campus.logo_shape}
+                borderWidth={campus.logo_border_width}
+                borderColor={campus.logo_border_color}
+                size={64}
+                fallback={
+                  <div className="w-16 h-16 rounded bg-[#EEA831]/20 flex items-center justify-center border">
+                    <Building2 className="h-8 w-8 text-[#022172]" />
+                  </div>
+                }
+              />
               <div>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Building2 className="h-5 w-5 text-[#022172]" />

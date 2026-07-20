@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
+import { SchoolLogo } from "@/components/shared/SchoolLogo"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -435,11 +436,15 @@ export default function CampusesPage() {
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-2">
                                         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#57A3CC] to-[#022172] flex items-center justify-center overflow-hidden">
-                                            {campus.logo_url ? (
-                                                <Image src={campus.logo_url} alt={campus.name} width={40} height={40} className="object-contain w-full h-full" />
-                                            ) : (
-                                                <Building2 className="h-5 w-5 text-white" />
-                                            )}
+                                            <SchoolLogo
+                                                logoUrl={campus.logo_url}
+                                                alt={campus.name}
+                                                shape={campus.logo_shape}
+                                                borderWidth={campus.logo_border_width}
+                                                borderColor={campus.logo_border_color}
+                                                className="w-full h-full"
+                                                fallback={<Building2 className="h-5 w-5 text-white" />}
+                                            />
                                         </div>
                                         <div>
                                             <CardTitle className="text-lg">{campus.name}</CardTitle>

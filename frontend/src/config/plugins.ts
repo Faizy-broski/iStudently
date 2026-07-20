@@ -43,6 +43,7 @@ import {
   FlaskConical,
   ShieldCheck,
   MessageSquareWarning,
+  Video,
   type LucideIcon,
 } from 'lucide-react'
 import type { SidebarMenuItem } from './sidebar'
@@ -93,6 +94,22 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     icon: MessageSquareWarning,
     category: 'Communication',
     settingsHref: '/admin/grievances/settings',
+    sidebarInjections: [],
+  },
+
+  // ── Live Class ────────────────────────────────────────────────────────────
+  // Standalone module with its own top-level sidebar entry per role (added
+  // directly in sidebar.ts, gated by pluginRequired: 'live_class'), so no
+  // sidebarInjections are needed here — this entry exists so it shows up in
+  // the Plugins settings page and carries the settings deep-link.
+  {
+    id: 'live_class',
+    name: 'Jitsi',
+    description:
+      'Video class sessions (Jitsi Meet) bound to a course period, with a co-editable Excalidraw whiteboard and live in-class polls. Teachers start/host sessions from their course periods; enrolled students join from their Jitsi menu.',
+    icon: Video,
+    category: 'Classes',
+    settingsHref: '/admin/jitsi-meet/configuration',
     sidebarInjections: [],
   },
 

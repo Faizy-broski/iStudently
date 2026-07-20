@@ -406,6 +406,26 @@ export async function testSmtpSettings(params: Partial<SmtpSettings> & { test_em
   })
 }
 
+// ─── Jitsi Meet Domain ────────────────────────────────────────────────────────
+
+export interface JitsiSettings {
+  /** Custom self-hosted Jitsi Meet domain. Empty = fall back to meet.jit.si. */
+  jitsi_domain: string
+}
+
+export async function getJitsiSettings(campusId?: string | null) {
+  const qs = campusId ? `?campus_id=${encodeURIComponent(campusId)}` : ''
+  return apiRequest<JitsiSettings>(`/school-settings/jitsi${qs}`)
+}
+
+export async function updateJitsiSettings(settings: JitsiSettings, campusId?: string | null) {
+  const qs = campusId ? `?campus_id=${encodeURIComponent(campusId)}` : ''
+  return apiRequest<{ message: string }>(`/school-settings/jitsi${qs}`, {
+    method: 'PUT',
+    body: JSON.stringify({ ...settings, campus_id: campusId || undefined }),
+  })
+}
+
 // ─── Social Login Credentials ─────────────────────────────────────────────────
 
 export interface SocialLoginSettings {

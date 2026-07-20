@@ -6,6 +6,7 @@ import { useStudentDashboard, useStudentInfo, useStudentFees } from '@/hooks/use
 import { FinancialWidget } from '@/components/shared/FinancialWidget'
 import { PerformanceMeter } from '@/components/student/PerformanceMeter'
 import { ProfilePhoto } from '@/components/shared/ProfilePhoto'
+import { SchoolLogo } from '@/components/shared/SchoolLogo'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import { useAcademic } from '@/context/AcademicContext'
@@ -327,11 +328,15 @@ export default function StudentDashboardPage() {
               <div className="p-6 space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 rounded-xl bg-gray-50 dark:bg-slate-800 flex items-center justify-center overflow-hidden border dark:border-slate-700 p-2">
-                    {campus?.logo_url ? (
-                      <img src={campus.logo_url} alt="Campus Logo" className="w-full h-full object-contain" />
-                    ) : (
-                      <Building2 className="w-8 h-8 text-gray-300 dark:text-slate-600" />
-                    )}
+                    <SchoolLogo
+                      logoUrl={campus?.logo_url}
+                      alt="Campus Logo"
+                      shape={campus?.logo_shape}
+                      borderWidth={campus?.logo_border_width}
+                      borderColor={campus?.logo_border_color}
+                      className="w-full h-full"
+                      fallback={<Building2 className="w-8 h-8 text-gray-300 dark:text-slate-600" />}
+                    />
                   </div>
                   <div>
                     <h4 className="font-bold text-gray-900 dark:text-slate-100 leading-tight">{campus?.name || studentInfo?.school_name}</h4>

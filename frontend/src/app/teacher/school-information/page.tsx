@@ -7,7 +7,7 @@ import { Separator } from '@/components/ui/separator'
 import {
   Building2, MapPin, Phone, Mail, Users, Hash, Globe, ExternalLink,
 } from 'lucide-react'
-import Image from 'next/image'
+import { SchoolLogo } from '@/components/shared/SchoolLogo'
 
 export default function TeacherSchoolInformationPage() {
   const campusContext = useCampus()
@@ -56,12 +56,13 @@ export default function TeacherSchoolInformationPage() {
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-4">
               {campus.logo_url && (
-                <Image
-                  src={campus.logo_url}
+                <SchoolLogo
+                  logoUrl={campus.logo_url}
                   alt={`${campus.name} logo`}
-                  width={64}
-                  height={64}
-                  className="rounded object-contain border"
+                  shape={campus.logo_shape}
+                  borderWidth={campus.logo_border_width}
+                  borderColor={campus.logo_border_color}
+                  size={64}
                 />
               )}
               <div>

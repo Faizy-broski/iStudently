@@ -270,6 +270,11 @@ export interface School {
   slug: string;
   status: SchoolStatus;
   logo_url: string | null;
+  // Merged in from school_settings by attachLogoAppearance() — not a real
+  // schools-table column. See logo-appearance.service.ts.
+  logo_shape?: 'circle' | 'rounded' | 'square' | 'rectangle';
+  logo_border_width?: number;
+  logo_border_color?: string;
   website: string | null;
   contact_email: string;
   address: string | null;

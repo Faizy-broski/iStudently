@@ -9,6 +9,8 @@ export interface SidebarConfig {
   bg_color: string | null
   bg_image_url: string | null
   bg_image_opacity: number
+  text_color: string | null
+  bg_image_position: string | null
   created_at: string
   updated_at: string
 }
@@ -17,6 +19,8 @@ export interface UpdateSidebarConfigDTO {
   bg_color?: string | null
   bg_image_url?: string | null
   bg_image_opacity?: number
+  text_color?: string | null
+  bg_image_position?: string | null
 }
 
 export async function getSuperadminSidebarConfig() {

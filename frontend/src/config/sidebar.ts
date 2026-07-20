@@ -62,6 +62,7 @@ import {
   Mic,
   MessageSquareWarning,
   Palette,
+  Video,
   type LucideIcon,
 } from "lucide-react";
 import { UserRole } from "@/types";
@@ -223,6 +224,17 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "premium", href: "#", icon: BarChart3, isLabel: true },
       { title: "answer_breakdown", href: "/admin/quiz/answer-breakdown", icon: BarChart3 },
       { title: "configuration", href: "/admin/quiz/configuration", icon: Settings },
+    ],
+  },
+  {
+    title: "jitsi_meet",
+    href: "/admin/jitsi-meet",
+    icon: Video,
+    pluginRequired: "live_class",
+    subItems: [
+      { title: "meet", href: "/admin/jitsi-meet", icon: Video },
+      { title: "my_rooms", href: "/admin/jitsi-meet/rooms", icon: Settings },
+      { title: "configuration", href: "/admin/jitsi-meet/configuration", icon: Settings },
     ],
   },
   {
@@ -700,6 +712,16 @@ const teacherMenuItems: SidebarMenuItem[] = [
       { title: "submissions", href: "/teacher/submissions", icon: CheckSquare },
       { title: "exams_grading", href: "/teacher/exams", icon: Award },
       { title: "quizzes", href: "/teacher/quiz", icon: HelpCircle },
+    ],
+  },
+  {
+    title: "jitsi_meet",
+    href: "/teacher/jitsi-meet",
+    icon: Video,
+    pluginRequired: "live_class",
+    subItems: [
+      { title: "meet", href: "/teacher/jitsi-meet", icon: Video },
+      { title: "my_rooms", href: "/teacher/jitsi-meet/rooms", icon: Settings },
     ],
   },
   {

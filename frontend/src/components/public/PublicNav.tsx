@@ -1,11 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import type { PublicPageId, PublicSchoolInfo } from '@/lib/api/public-pages'
 import { ALL_PUBLIC_PAGES } from '@/lib/api/public-pages'
 import { LogIn, School } from 'lucide-react'
+import { SchoolLogo } from '@/components/shared/SchoolLogo'
 
 interface PublicNavProps {
   slug: string
@@ -31,20 +31,19 @@ export default function PublicNav({ slug, school, enabledPages, customPageTitle 
     <header className="border-b bg-white dark:bg-gray-900 shadow-sm sticky top-0 z-50">
       {/* School branding bar */}
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
-        {school.logo_url && (
-          <Image
-            src={school.logo_url}
-            alt={`${school.name} logo`}
-            width={36}
-            height={36}
-            className="rounded object-contain"
-          />
-        )}
-        {!school.logo_url && (
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#022172] text-white">
-            <School className="h-5 w-5" />
-          </div>
-        )}
+        <SchoolLogo
+          logoUrl={school.logo_url}
+          alt={`${school.name} logo`}
+          shape={school.logo_shape}
+          borderWidth={school.logo_border_width}
+          borderColor={school.logo_border_color}
+          size={36}
+          fallback={
+            <div className="flex h-full w-full items-center justify-center rounded-lg bg-[#022172] text-white">
+              <School className="h-5 w-5" />
+            </div>
+          }
+        />
         <span className="font-semibold text-[#022172] dark:text-white text-lg">
           {school.short_name || school.name}
         </span>

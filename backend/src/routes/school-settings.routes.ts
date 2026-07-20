@@ -70,6 +70,22 @@ router.post('/smtp/test', requireRole('admin', 'super_admin'), (req, res) =>
 )
 
 /**
+ * GET /api/school-settings/jitsi
+ * Get the custom Jitsi Meet domain
+ */
+router.get('/jitsi', requireRole('admin', 'super_admin'), (req, res) =>
+  controller.getJitsiSettings(req, res)
+)
+
+/**
+ * PUT /api/school-settings/jitsi
+ * Save the custom Jitsi Meet domain
+ */
+router.put('/jitsi', requireRole('admin', 'super_admin'), (req, res) =>
+  controller.updateJitsiSettings(req, res)
+)
+
+/**
  * GET /api/school-settings/social-login
  * Get social login OAuth credentials (secrets masked)
  */

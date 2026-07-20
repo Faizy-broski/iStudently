@@ -4,6 +4,7 @@ import { SchoolService } from '../services/school.service'
 import { CreateSchoolDTO, UpdateSchoolDTO } from '../types'
 import { getStoredCredentialsAsSuperAdmin } from '../services/username.service'
 import { copySchoolSettings, type CopySchoolSettingsOptions } from '../services/school-settings-copy.service'
+import * as logoAppearanceService from '../services/logo-appearance.service'
 import { supabase } from '../config/supabase'
 
 const schoolService = new SchoolService()
@@ -242,6 +243,53 @@ export class SchoolController {
       res.status(400).json({
         success: false,
         error: error.message || 'Failed to update school'
+      })
+    }
+  }
+
+  /**
+   * Get a school's logo display appearance (shape/border)
+   * GET /api/schools/:id/logo-appearance
+   * Super Admin only
+   */
+  async getLogoAppearance(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params
+      const appearance = await logoAppearanceService.getLogoAppearance(id)
+      res.json({ success: true, data: appearance })
+    } catch (error: any) {
+      console.error('Get logo appearance error:', error)
+      res.status(400).json({
+        success: false,
+        error: error.message || 'Failed to get logo appearance'
+      })
+    }
+  }
+
+  /**
+   * Update a school's logo display appearance (shape/border)
+   * PATCH /api/schools/:id/logo-appearance
+   * Super Admin only
+   */
+  async updateLogoAppearance(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params
+      const { logo_shape, logo_border_width, logo_border_color } = req.body
+
+      const appearance = await logoAppearanceService.updateLogoAppearance(id, {
+        logo_shape, logo_border_width, logo_border_color,
+      })
+
+      res.json({
+        success: true,
+        data: appearance,
+        message: 'Logo appearance updated successfully'
+      })
+    } catch (error: any) {
+      console.error('Update logo appearance error:', error)
+      res.status(400).json({
+        success: false,
+        error: error.message || 'Failed to update logo appearance'
       })
     }
   }

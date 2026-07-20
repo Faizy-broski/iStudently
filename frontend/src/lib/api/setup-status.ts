@@ -23,6 +23,10 @@ export interface Campus {
     school_number?: string
     website?: string | null
     logo_url?: string | null
+    // Merged in from school_settings by the backend — see logo-appearance.service.ts
+    logo_shape?: 'circle' | 'rounded' | 'square' | 'rectangle'
+    logo_border_width?: number
+    logo_border_color?: string
     status: string
     parent_school_id: string
     custom_fields?: Record<string, any>

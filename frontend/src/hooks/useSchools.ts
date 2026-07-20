@@ -13,6 +13,10 @@ export interface School {
   name: string;
   slug: string;
   logo_url: string | null;
+  // Merged in from school_settings by the backend — see logo-appearance.service.ts
+  logo_shape?: 'circle' | 'rounded' | 'square' | 'rectangle';
+  logo_border_width?: number;
+  logo_border_color?: string;
   website: string | null;
   contact_email: string;
   address: string | null;

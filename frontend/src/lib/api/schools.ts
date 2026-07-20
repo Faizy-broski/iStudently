@@ -250,6 +250,26 @@ export async function updateSchoolStatus(id: string, status: 'active' | 'suspend
 }
 
 
+export interface LogoAppearance {
+  logo_shape: 'circle' | 'rounded' | 'square' | 'rectangle'
+  logo_border_width: number
+  logo_border_color: string
+}
+
+export async function getLogoAppearance(schoolId: string): Promise<ApiResponse<LogoAppearance>> {
+  return await apiRequest<LogoAppearance>(`/schools/${schoolId}/logo-appearance`)
+}
+
+export async function updateLogoAppearance(
+  schoolId: string,
+  data: Partial<LogoAppearance>
+): Promise<ApiResponse<LogoAppearance>> {
+  return await apiRequest<LogoAppearance>(`/schools/${schoolId}/logo-appearance`, {
+    method: 'PATCH',
+    body: JSON.stringify(data)
+  })
+}
+
 export async function deleteSchool(id: string): Promise<ApiResponse<void>> {
   return await apiRequest<void>(`/schools/${id}`, {
     method: 'DELETE'
@@ -289,6 +309,8 @@ export const schoolApi = {
   getAll: getAllSchoolsData,
   update: updateSchool,
   updateStatus: updateSchoolStatus,
+  getLogoAppearance,
+  updateLogoAppearance,
   delete: deleteSchool,
   getAdmin,
   getAdminCredentials,

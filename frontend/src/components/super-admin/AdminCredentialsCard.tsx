@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { X, Download, Printer, Eye, EyeOff } from "lucide-react";
 import html2canvas from "html2canvas-pro";
 import QRCode from "react-qr-code";
+import { flushSync } from "react-dom";
 
 const LOGIN_URL = "https://www.istudent.ly";
 
@@ -28,7 +29,7 @@ interface AdminCredentialsCardProps {
 // stock html2canvas throw "unsupported color function" during capture.
 export default function AdminCredentialsCard({ data, onClose }: AdminCredentialsCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(true);
   const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
 
   // html2canvas taints the canvas (and toDataURL then throws) when it draws an
@@ -65,12 +66,23 @@ export default function AdminCredentialsCard({ data, onClose }: AdminCredentials
   const downloadAsImage = async () => {
     if (!cardRef.current) return;
     try {
+      const wasHidden = !showPassword;
+      if (wasHidden) {
+        flushSync(() => {
+          setShowPassword(true);
+        });
+      }
+
       const canvas = await html2canvas(cardRef.current, {
         scale: 3,
         useCORS: true,
         logging: false,
         backgroundColor: "#ffffff",
       });
+
+      if (wasHidden) {
+        setShowPassword(false);
+      }
       const link = document.createElement("a");
       link.download = `${data.schoolName.replace(/\s+/g, "-").toLowerCase()}-admin-credentials.png`;
       link.href = canvas.toDataURL("image/png");
@@ -138,7 +150,10 @@ export default function AdminCredentialsCard({ data, onClose }: AdminCredentials
 
                 <div style={{ fontSize: 11, opacity: 0.75 }}>Password</div>
                 <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: 1 }}>
-                  {showPassword ? data.password : "•".repeat(data.password.length)}
+                  <span className="print:hidden">
+                    {showPassword ? data.password : "•".repeat(data.password.length)}
+                  </span>
+                  <span className="hidden print:inline">{data.password}</span>
                 </div>
               </div>
               <div style={{ background: "#ffffff", padding: 6, borderRadius: 6 }}>

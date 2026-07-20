@@ -53,6 +53,8 @@ interface PreviewState {
   bg_color: string | null
   bg_image_url: string | null
   bg_image_opacity: number
+  text_color: string | null
+  bg_image_position: string | null
 }
 
 function SidebarPreview({ state }: { state: PreviewState }) {
@@ -89,16 +91,19 @@ function SidebarPreview({ state }: { state: PreviewState }) {
       {/* Custom image overlay */}
       {state.bg_image_url && (
         <div
-          className="absolute inset-0 bg-cover bg-center pointer-events-none"
+          className="absolute inset-0 pointer-events-none"
           style={{
             backgroundImage: `url(${state.bg_image_url})`,
             opacity: state.bg_image_opacity,
+            backgroundPosition: state.bg_image_position || 'center',
+            backgroundSize: 'cover',
+            backgroundRepeat: 'no-repeat',
           }}
         />
       )}
 
       {/* Content */}
-      <div className="relative z-10 flex flex-col h-full p-3">
+      <div className="relative z-10 flex flex-col h-full p-3" style={{ color: state.text_color || '#ffffff' }}>
         {/* Logo area */}
         <div className="mb-3 pb-3 border-b border-white/20">
           <div className="w-11 h-8 bg-white/20 rounded-lg mx-auto" />
@@ -117,8 +122,9 @@ function SidebarPreview({ state }: { state: PreviewState }) {
                   'flex items-center gap-2 px-2.5 py-1.5 rounded-l-full text-[11px]',
                   item.active
                     ? 'bg-white text-[#022172] font-semibold shadow-sm'
-                    : 'text-white/80'
+                    : 'opacity-80'
                 )}
+                style={!item.active && state.text_color ? { color: state.text_color } : {}}
               >
                 <Icon className="h-3 w-3 shrink-0" />
                 <span className="truncate">{item.label}</span>
@@ -131,8 +137,8 @@ function SidebarPreview({ state }: { state: PreviewState }) {
         </div>
 
         {/* Footer */}
-        <div className="pt-2 border-t border-white/20 text-center">
-          <span className="text-white/30 text-[8px]">iStudently</span>
+        <div className="pt-2 border-t border-current/20 text-center">
+          <span className="opacity-40 text-[8px]">iStudently</span>
         </div>
       </div>
     </div>
@@ -430,6 +436,12 @@ export function SidebarConfigEditor({
   const [bgImageOpacity, setBgImageOpacity] = React.useState<number>(
     initialConfig?.bg_image_opacity ?? 0.15
   )
+  const [textColor, setTextColor] = React.useState<string | null>(
+    initialConfig?.text_color ?? null
+  )
+  const [bgImagePosition, setBgImagePosition] = React.useState<string | null>(
+    initialConfig?.bg_image_position ?? 'center'
+  )
   const [hexInput, setHexInput] = React.useState<string>(
     initialConfig?.bg_color ?? '#022172'
   )
@@ -439,6 +451,8 @@ export function SidebarConfigEditor({
     setBgColor(initialConfig?.bg_color ?? null)
     setBgImageUrl(initialConfig?.bg_image_url ?? null)
     setBgImageOpacity(initialConfig?.bg_image_opacity ?? 0.15)
+    setTextColor(initialConfig?.text_color ?? null)
+    setBgImagePosition(initialConfig?.bg_image_position ?? 'center')
     setHexInput(initialConfig?.bg_color ?? '#022172')
   }, [initialConfig])
 
@@ -446,6 +460,8 @@ export function SidebarConfigEditor({
     bg_color: bgColor,
     bg_image_url: bgImageUrl,
     bg_image_opacity: bgImageOpacity,
+    text_color: textColor,
+    bg_image_position: bgImagePosition,
   }
 
   const handleColorPreset = (color: string) => {
@@ -475,6 +491,8 @@ export function SidebarConfigEditor({
       bg_color: bgColor,
       bg_image_url: bgImageUrl,
       bg_image_opacity: bgImageOpacity,
+      text_color: textColor,
+      bg_image_position: bgImagePosition,
     })
   }
 
@@ -569,10 +587,46 @@ export function SidebarConfigEditor({
               </div>
               <p className="text-xs text-gray-400">{t('clear_color_hint')}</p>
             </div>
+
+            {/* Custom Text Color */}
+            <div className="space-y-2 border-t pt-4 border-gray-100">
+              <Label className="text-sm font-medium text-gray-700">
+                Text Color
+              </Label>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <input
+                    type="color"
+                    value={textColor ?? '#ffffff'}
+                    onChange={(e) => setTextColor(e.target.value)}
+                    className="h-10 w-12 rounded-lg cursor-pointer border border-gray-300 p-0.5 bg-white"
+                    title="Pick text color"
+                  />
+                </div>
+                <Input
+                  value={textColor ?? '#ffffff'}
+                  onChange={(e) => setTextColor(e.target.value)}
+                  placeholder="#ffffff"
+                  className="flex-1 font-mono text-sm border-gray-300 focus:border-[#57A3CC] focus:ring-[#57A3CC]"
+                  maxLength={7}
+                  spellCheck={false}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setTextColor(null)}
+                  disabled={!textColor}
+                  className="shrink-0 border-gray-300 text-gray-600"
+                >
+                  {t('clear_color')}
+                </Button>
+              </div>
+            </div>
           </TabsContent>
 
           {/* ── Image Tab ── */}
-          <TabsContent value="image" className="pt-5">
+          <TabsContent value="image" className="space-y-5 pt-5">
             <ImageUploadSection
               imageUrl={bgImageUrl}
               opacity={bgImageOpacity}
@@ -580,6 +634,33 @@ export function SidebarConfigEditor({
               onImageChange={setBgImageUrl}
               onOpacityChange={setBgImageOpacity}
             />
+
+            {bgImageUrl && (
+              <div className="space-y-2 border-t pt-4 border-gray-100">
+                <Label className="text-sm font-medium text-gray-700">
+                  Image Position
+                </Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {['top', 'center', 'bottom', 'left', 'right'].map((pos) => (
+                    <Button
+                      key={pos}
+                      type="button"
+                      variant={bgImagePosition === pos ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setBgImagePosition(pos)}
+                      className={cn(
+                        'capitalize text-xs',
+                        bgImagePosition === pos
+                          ? 'bg-[#57A3CC] hover:bg-[#468bafeed]'
+                          : 'text-gray-600 border-gray-300 hover:bg-gray-50'
+                      )}
+                    >
+                      {pos}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
 

@@ -33,6 +33,14 @@ import {
 } from "lucide-react";
 import ConfirmationDialog from "@/components/super-admin/ConfirmationDialog";
 import { Spinner } from "@/components/ui/spinner";
+import { SchoolLogo } from "@/components/shared/SchoolLogo";
+
+const LOGO_SHAPE_OPTIONS: { value: "circle" | "rounded" | "square" | "rectangle"; label: string }[] = [
+  { value: "circle", label: "Circle" },
+  { value: "rounded", label: "Rounded" },
+  { value: "square", label: "Square" },
+  { value: "rectangle", label: "Rectangle" },
+];
 
 const schoolSchema = z.object({
   name: z.string().min(2, "School name must be at least 2 characters"),
@@ -69,6 +77,9 @@ interface School {
   name: string;
   slug: string;
   logo_url: string | null;
+  logo_shape?: "circle" | "rounded" | "square" | "rectangle";
+  logo_border_width?: number;
+  logo_border_color?: string;
   website: string | null;
   contact_email: string;
   address: string | null;
@@ -95,6 +106,9 @@ export default function EditSchoolModal({
   const [fetchingAdmin, setFetchingAdmin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
+  const [logoShape, setLogoShape] = useState<"circle" | "rounded" | "square" | "rectangle">("circle");
+  const [logoBorderWidth, setLogoBorderWidth] = useState(0);
+  const [logoBorderColor, setLogoBorderColor] = useState("#000000");
 
   const schoolForm = useForm<SchoolFormData>({
     resolver: zodResolver(schoolSchema),
@@ -145,6 +159,18 @@ export default function EditSchoolModal({
     };
 
     fetchAdmin();
+  }, [school.id]);
+
+  useEffect(() => {
+    const fetchLogoAppearance = async () => {
+      const response = await schoolApi.getLogoAppearance(school.id);
+      if (response.success && response.data) {
+        setLogoShape(response.data.logo_shape);
+        setLogoBorderWidth(response.data.logo_border_width);
+        setLogoBorderColor(response.data.logo_border_color);
+      }
+    };
+    fetchLogoAppearance();
   }, [school.id]);
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -243,6 +269,18 @@ export default function EditSchoolModal({
       if (!schoolResponse.success) {
         toast.error("Failed to update school", { description: schoolResponse.error });
         return;
+      }
+
+      // Update logo display appearance
+      const logoAppearanceResponse = await schoolApi.updateLogoAppearance(school.id, {
+        logo_shape: logoShape,
+        logo_border_width: logoBorderWidth,
+        logo_border_color: logoBorderColor,
+      });
+      if (!logoAppearanceResponse.success) {
+        toast.error("School updated but failed to update logo appearance", {
+          description: logoAppearanceResponse.error,
+        });
       }
 
       // Update admin info
@@ -372,6 +410,66 @@ export default function EditSchoolModal({
                     />
                   </label>
                 )}
+              </div>
+
+              {/* Logo Display */}
+              <div className="space-y-3">
+                <Label className="text-gray-700">Logo Display</Label>
+                <div className="flex items-center gap-4">
+                  <SchoolLogo
+                    logoUrl={logoPreview}
+                    alt="Logo preview"
+                    shape={logoShape}
+                    borderWidth={logoBorderWidth}
+                    borderColor={logoBorderColor}
+                    size={72}
+                  />
+                  <div className="flex-1 grid grid-cols-2 gap-2">
+                    {LOGO_SHAPE_OPTIONS.map((opt) => (
+                      <Button
+                        key={opt.value}
+                        type="button"
+                        variant={logoShape === opt.value ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setLogoShape(opt.value)}
+                        disabled={busy}
+                      >
+                        {opt.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-gray-500">Border Width (px)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={10}
+                      value={logoBorderWidth}
+                      onChange={(e) => setLogoBorderWidth(Math.max(0, Math.min(10, Number(e.target.value) || 0)))}
+                      disabled={busy}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-gray-500">Border Color</Label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={logoBorderColor}
+                        onChange={(e) => setLogoBorderColor(e.target.value)}
+                        className="h-9 w-10 rounded-md cursor-pointer border border-gray-300 p-0.5 bg-white"
+                        disabled={busy}
+                      />
+                      <Input
+                        value={logoBorderColor}
+                        onChange={(e) => setLogoBorderColor(e.target.value)}
+                        className="flex-1 font-mono text-sm"
+                        disabled={busy}
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* School Name */}

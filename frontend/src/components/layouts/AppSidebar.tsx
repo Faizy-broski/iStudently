@@ -2,7 +2,6 @@
 
 import * as React from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { Menu, X, ChevronLeft, ChevronRight, ChevronDown, Calendar, GraduationCap, User, BookOpen } from 'lucide-react'
 import { useTranslations, useMessages, useLocale } from 'next-intl'
@@ -18,6 +17,7 @@ import { getGradeLevels } from '@/lib/api/academics'
 import { getStudentById } from '@/lib/api/students'
 import { getMyCoursePeriods, type CoursePeriod } from '@/lib/api/courses'
 import { useCampus } from '@/context/CampusContext'
+import { SchoolLogo } from '@/components/shared/SchoolLogo'
 import { useSchoolSettings } from '@/context/SchoolSettingsContext'
 import { ProfileViewContext } from '@/context/ProfileViewContext'
 import { useParentDashboardSafe } from '@/context/ParentDashboardContext'
@@ -166,12 +166,20 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
         <div className="w-12 h-10 rounded-lg overflow-hidden ring-2 ring-white/20 bg-white">
           {!selectedCampus ? (
             <div className="w-full h-full bg-white/20 animate-pulse" />
-          ) : selectedCampus.logo_url ? (
-            <Image src={selectedCampus.logo_url} alt={selectedCampus.name} width={48} height={40} className="object-contain w-full h-full" />
           ) : (
-            <div className="w-full h-full bg-white flex items-center justify-center">
-              <span className="text-[#022172] font-bold text-xs">{initials}</span>
-            </div>
+            <SchoolLogo
+              logoUrl={selectedCampus.logo_url}
+              alt={selectedCampus.name}
+              shape={selectedCampus.logo_shape}
+              borderWidth={selectedCampus.logo_border_width}
+              borderColor={selectedCampus.logo_border_color}
+              className="w-full h-full"
+              fallback={
+                <div className="w-full h-full bg-white flex items-center justify-center">
+                  <span className="text-[#022172] font-bold text-xs">{initials}</span>
+                </div>
+              }
+            />
           )}
         </div>
       </div>
@@ -184,12 +192,20 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
       <div className="w-28 h-20 rounded-xl overflow-hidden ring-2 ring-white/30 shadow-lg mb-3 bg-white">
         {!selectedCampus ? (
           <div className="w-full h-full bg-white/20 animate-pulse" />
-        ) : selectedCampus.logo_url ? (
-          <Image src={selectedCampus.logo_url} alt={selectedCampus.name} width={112} height={80} className="object-contain w-full h-full" />
         ) : (
-          <div className="w-full h-full bg-white flex items-center justify-center">
-            <span className="text-[#022172] font-bold text-2xl">{initials}</span>
-          </div>
+          <SchoolLogo
+            logoUrl={selectedCampus.logo_url}
+            alt={selectedCampus.name}
+            shape={selectedCampus.logo_shape}
+            borderWidth={selectedCampus.logo_border_width}
+            borderColor={selectedCampus.logo_border_color}
+            className="w-full h-full"
+            fallback={
+              <div className="w-full h-full bg-white flex items-center justify-center">
+                <span className="text-[#022172] font-bold text-2xl">{initials}</span>
+              </div>
+            }
+          />
         )}
       </div>
 

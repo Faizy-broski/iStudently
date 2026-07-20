@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase'
+import { attachLogoAppearance, getLogoAppearance } from './logo-appearance.service'
 
 export interface SetupStatus {
     hasCampuses: boolean
@@ -120,7 +121,7 @@ class SetupStatusService {
             throw new Error('Failed to fetch campuses')
         }
 
-        return data || []
+        return attachLogoAppearance(data || [])
     }
 
     /**
@@ -184,7 +185,8 @@ class SetupStatusService {
             throw new Error('Failed to fetch campus')
         }
 
-        return data
+        const appearance = await getLogoAppearance(campusId)
+        return { ...data, ...appearance }
     }
 
     /**

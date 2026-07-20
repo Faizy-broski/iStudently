@@ -2,6 +2,7 @@ import { supabase } from '../config/supabase'
 import { CreateSchoolDTO, UpdateSchoolDTO, School, SchoolStats } from '../types'
 import bcrypt from 'bcrypt'
 import { encryptSecret } from '../utils/crypto'
+import { attachLogoAppearance } from './logo-appearance.service'
 
 export class SchoolService {
   /**
@@ -371,7 +372,7 @@ export class SchoolService {
       throw new Error('Failed to fetch schools')
     }
 
-    return (data || []) as School[]
+    return (await attachLogoAppearance(data || [])) as School[]
   }
 
   /**

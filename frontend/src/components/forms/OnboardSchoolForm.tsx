@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { onboardSchool } from "@/lib/api/schools";
+import { onboardSchool, schoolApi } from "@/lib/api/schools";
+import { SchoolLogo } from "@/components/shared/SchoolLogo";
 import { handleApiError } from "@/lib/utils/error-handler";
 import { createClient } from "@/lib/supabase/client";
 import { billingPlansApi, BillingPlan, calculateBillingAmount, calculateDueDate } from "@/lib/api/billing";
@@ -25,6 +26,13 @@ function generateSuggestedPassword(): string {
 function generateSuggestedUsername(): string {
   return Math.floor(10000000 + Math.random() * 90000000).toString();
 }
+
+const LOGO_SHAPE_OPTIONS: { value: "circle" | "rounded" | "square" | "rectangle"; label: string }[] = [
+  { value: "circle", label: "Circle" },
+  { value: "rounded", label: "Rounded" },
+  { value: "square", label: "Square" },
+  { value: "rectangle", label: "Rectangle" },
+];
 
 export interface OnboardSuccessResult {
   schoolId: string;
@@ -86,6 +94,9 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoShape, setLogoShape] = useState<"circle" | "rounded" | "square" | "rectangle">("circle");
+  const [logoBorderWidth, setLogoBorderWidth] = useState(0);
+  const [logoBorderColor, setLogoBorderColor] = useState("#000000");
   const [billingPlans, setBillingPlans] = useState<BillingPlan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
   const submitButtonRef = useRef<HTMLButtonElement>(null);
@@ -352,6 +363,18 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
         },
       });
 
+      // Logo display appearance — best-effort, doesn't block onboarding success
+      const appearanceResponse = await schoolApi.updateLogoAppearance(createdSchool.id, {
+        logo_shape: logoShape,
+        logo_border_width: logoBorderWidth,
+        logo_border_color: logoBorderColor,
+      });
+      if (!appearanceResponse.success) {
+        toast.error("School onboarded, but failed to save logo appearance", {
+          description: appearanceResponse.error,
+        });
+      }
+
       toast.success("School onboarded successfully!", {
         description: `${data.schoolName} has been created with admin account and billing`
       });
@@ -583,6 +606,65 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
                   </label>
                 </div>
               )}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <Label className="text-gray-700 dark:text-gray-300">Logo Display</Label>
+            <div className="flex items-center gap-4">
+              <SchoolLogo
+                logoUrl={logoPreview}
+                alt="Logo preview"
+                shape={logoShape}
+                borderWidth={logoBorderWidth}
+                borderColor={logoBorderColor}
+                size={72}
+              />
+              <div className="flex-1 grid grid-cols-2 gap-2">
+                {LOGO_SHAPE_OPTIONS.map((opt) => (
+                  <Button
+                    key={opt.value}
+                    type="button"
+                    variant={logoShape === opt.value ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setLogoShape(opt.value)}
+                    disabled={isSubmitting}
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs text-gray-500">Border Width (px)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={10}
+                  value={logoBorderWidth}
+                  onChange={(e) => setLogoBorderWidth(Math.max(0, Math.min(10, Number(e.target.value) || 0)))}
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-gray-500">Border Color</Label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={logoBorderColor}
+                    onChange={(e) => setLogoBorderColor(e.target.value)}
+                    className="h-9 w-10 rounded-md cursor-pointer border border-gray-300 p-0.5 bg-white"
+                    disabled={isSubmitting}
+                  />
+                  <Input
+                    value={logoBorderColor}
+                    onChange={(e) => setLogoBorderColor(e.target.value)}
+                    className="flex-1 font-mono text-sm"
+                    disabled={isSubmitting}
+                  />
+                </div>
+              </div>
             </div>
           </div>
 

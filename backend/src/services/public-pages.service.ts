@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase'
 import crypto from 'crypto'
+import { getLogoAppearance } from './logo-appearance.service'
 
 // ============================================================================
 // TYPES
@@ -63,7 +64,9 @@ export async function getSchoolBySlug(slug: string) {
     .maybeSingle()
 
   if (error || !data) return null
-  return data
+
+  const appearance = await getLogoAppearance(data.id)
+  return { ...data, ...appearance }
 }
 
 // ============================================================================
