@@ -19,6 +19,9 @@ export interface School {
   contact_email: string
   parent_school_id: string | null
   logo_url?: string
+  logo_shape?: 'circle' | 'square' | 'rounded' | 'rectangle'
+  logo_border_width?: number
+  logo_border_color?: string
   is_trial?: boolean
   trial_ends_at?: string | null
 }

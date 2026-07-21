@@ -141,6 +141,13 @@ export interface Profile {
   section_id?: string // For students - their assigned class section
   campus_id?: string // For students - their campus
   user_profile_id?: string | null // Assigned permission profile (for staff roles)
+  school?: {
+    name: string
+    logo_url: string | null
+    logo_shape?: 'circle' | 'square' | 'rounded' | 'rectangle' | null
+    logo_border_width?: number | null
+    logo_border_color?: string | null
+  } // Joined from schools table
 }
 
 export interface School {

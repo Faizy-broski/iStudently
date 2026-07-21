@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Calendar, CreditCard, DollarSign, Save } from "lucide-react";
@@ -119,41 +118,23 @@ export default function SettingsPage() {
         <CardContent className="space-y-6">
           <div className="space-y-4">
             <Label className="text-base font-semibold">Hijri Date Offset</Label>
-            <RadioGroup
+            <Select
               value={hijriOffset.toString()}
               onValueChange={(value) => setHijriOffset(parseInt(value))}
-              className="space-y-3"
             >
-              <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-                <RadioGroupItem value="-1" id="minus-1" />
-                <Label htmlFor="minus-1" className="flex-1 cursor-pointer">
-                  <div className="font-medium">-1 Day</div>
-                  <div className="text-sm text-muted-foreground">
-                    Display Hijri dates one day earlier
-                  </div>
-                </Label>
-              </div>
-
-              <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-                <RadioGroupItem value="0" id="zero" />
-                <Label htmlFor="zero" className="flex-1 cursor-pointer">
-                  <div className="font-medium">No Adjustment (0)</div>
-                  <div className="text-sm text-muted-foreground">
-                    Use standard Hijri calendar conversion
-                  </div>
-                </Label>
-              </div>
-
-              <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-                <RadioGroupItem value="1" id="plus-1" />
-                <Label htmlFor="plus-1" className="flex-1 cursor-pointer">
-                  <div className="font-medium">+1 Day</div>
-                  <div className="text-sm text-muted-foreground">
-                    Display Hijri dates one day later
-                  </div>
-                </Label>
-              </div>
-            </RadioGroup>
+              <SelectTrigger className="w-72">
+                <SelectValue placeholder="Select offset" />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 11 }, (_, i) => i - 5).map((offset) => (
+                  <SelectItem key={offset} value={offset.toString()}>
+                    {offset === 0
+                      ? 'No Adjustment (0)'
+                      : `${offset > 0 ? '+' : ''}${offset} Day${Math.abs(offset) > 1 ? 's' : ''}`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
               <p className="text-sm text-blue-900 dark:text-blue-100">

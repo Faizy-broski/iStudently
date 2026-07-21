@@ -529,7 +529,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Fetch profile from database
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
-            .select('*')
+            .select('*, school:schools(name, logo_url, logo_shape, logo_border_width, logo_border_color)')
             .eq('id', user.id)
             .single()
 
@@ -541,7 +541,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await new Promise(resolve => setTimeout(resolve, 500))
             const { data: retryProfile, error: retryError } = await supabase
               .from('profiles')
-              .select('*')
+              .select('*, school:schools(name, logo_url, logo_shape, logo_border_width, logo_border_color)')
               .eq('id', user.id)
               .single()
 

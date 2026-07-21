@@ -56,11 +56,31 @@ export interface QuizQuestion {
   sort_order: number
   grade_level_id?: string | null
   subject_id?: string | null
+  chapter_id?: string | null
   difficulty_level?: DifficultyLevel
   created_at: string
   updated_at: string
   category?: { title: string } | null
   creator?: { first_name: string; last_name: string } | null
+}
+
+export interface Chapter {
+  id: string
+  school_id: string
+  subject_id: string
+  title: string
+  order_index: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface DraftQuestion {
+  title: string
+  type: QuestionType
+  description: string
+  answer: string
+  difficulty_level: DifficultyLevel
 }
 
 export interface Quiz {
@@ -229,6 +249,7 @@ export const getQuestions = (
     createdBy?: string
     gradeLevelId?: string
     subjectId?: string
+    chapterId?: string
     difficulty?: DifficultyLevel
   }
 ) =>
@@ -241,6 +262,7 @@ export const getQuestions = (
       created_by: filters?.createdBy,
       grade_level_id: filters?.gradeLevelId,
       subject_id: filters?.subjectId,
+      chapter_id: filters?.chapterId,
       difficulty: filters?.difficulty,
     })}`
   )
@@ -389,3 +411,81 @@ export const getStudentQuizForm = (quizId: string) =>
 
 export const getStudentQuizStatus = (quizId: string) =>
   apiFetch<QuizAccessState>(`/quiz/student/${quizId}/status`)
+
+// ============================================================================
+// CHAPTERS
+// ============================================================================
+
+export const getChapters = (subjectId: string, schoolId: string) =>
+  apiFetch<Chapter[]>(`/quiz/chapters${qs({ subject_id: subjectId, school_id: schoolId })}`)
+
+export const createChapter = (data: Pick<Chapter, 'school_id' | 'subject_id' | 'title' | 'order_index'>) =>
+  apiFetch<Chapter>('/quiz/chapters', { method: 'POST', body: JSON.stringify(data) })
+
+export const updateChapter = (id: string, data: Partial<Pick<Chapter, 'title' | 'order_index' | 'is_active'>>) =>
+  apiFetch<Chapter>(`/quiz/chapters/${id}`, { method: 'PUT', body: JSON.stringify(data) })
+
+export const deleteChapter = (id: string) =>
+  apiFetch<null>(`/quiz/chapters/${id}`, { method: 'DELETE' })
+
+// ============================================================================
+// AI: EXTRACT / GENERATE / BULK
+// ============================================================================
+
+export async function extractQuestions(
+  file: File,
+  opts?: {
+    allowedTypes?: QuestionType[]
+    gradeLevelId?: string
+    subjectId?: string
+    chapterId?: string
+  }
+): Promise<ApiResponse<DraftQuestion[]>> {
+  try {
+    const token = await getAuthToken()
+    const form = new FormData()
+    form.append('file', file)
+    if (opts?.allowedTypes) form.append('allowed_types', JSON.stringify(opts.allowedTypes))
+    if (opts?.gradeLevelId) form.append('grade_level_id', opts.gradeLevelId)
+    if (opts?.subjectId) form.append('subject_id', opts.subjectId)
+    if (opts?.chapterId) form.append('chapter_id', opts.chapterId)
+
+    const res = await fetch(`${API_URL}/quiz/questions/extract`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...getImpersonationHeaders(),
+      },
+      body: form,
+    })
+    if (res.status === 401) {
+      handleSessionExpiry()
+      return { data: null, error: 'Session expired' }
+    }
+    const json = await res.json()
+    if (!res.ok) return { data: null, error: json.error || 'Extraction failed' }
+    return json
+  } catch (e: any) {
+    return { data: null, error: e.message }
+  }
+}
+
+export const generateQuestionsAI = (data: {
+  school_id: string
+  grade_level_id?: string | null
+  subject_id?: string | null
+  chapter_ids?: string[]
+  count: number
+  allowed_types?: QuestionType[]
+  prompt?: string
+}) =>
+  apiFetch<DraftQuestion[]>('/quiz/questions/generate', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+
+export const bulkCreateQuestions = (questions: Array<Omit<QuizQuestion, 'id' | 'created_at' | 'updated_at' | 'category' | 'creator'>>) =>
+  apiFetch<QuizQuestion[]>('/quiz/questions/bulk', {
+    method: 'POST',
+    body: JSON.stringify({ questions }),
+  })

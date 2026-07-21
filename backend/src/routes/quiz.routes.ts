@@ -1,10 +1,24 @@
-import { Router } from 'express'
+import { Router, Request, Response, NextFunction } from 'express'
+import multer from 'multer'
 import * as ctrl from '../controllers/quiz.controller'
 import { authenticate } from '../middlewares/auth.middleware'
 import { requireAdmin, requireTeacher } from '../middlewares/role.middleware'
 
 const router = Router()
 router.use(authenticate)
+
+// File upload config (memory storage — same pattern as media-upload.routes.ts)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25 MB
+})
+
+// Extend timeout for AI endpoints (Claude calls can take 30–60s)
+const extendTimeout = (req: Request, res: Response, next: NextFunction) => {
+  req.setTimeout(120000)
+  res.setTimeout(120000)
+  next()
+}
 
 // Student quiz list — authenticated students only (no teacher role required)
 router.get('/student/quizzes', ctrl.getStudentQuizzes)
@@ -16,11 +30,22 @@ router.get('/helpers/assignments', requireTeacher, ctrl.getAssignments)
 router.get('/helpers/course-periods', requireTeacher, ctrl.getCoursePeriods)
 router.get('/helpers/course-period-context', requireTeacher, ctrl.getCoursePeriodContext)
 
+// Chapters
+router.get('/chapters', requireTeacher, ctrl.getChapters)
+router.post('/chapters', requireTeacher, ctrl.createChapter)
+router.put('/chapters/:id', requireTeacher, ctrl.updateChapter)
+router.delete('/chapters/:id', requireAdmin, ctrl.deleteChapter)
+
 // Categories (teachers can manage their own categories)
 router.get('/categories', requireTeacher, ctrl.getCategories)
 router.post('/categories', requireTeacher, ctrl.createCategory)
 router.put('/categories/:id', requireTeacher, ctrl.updateCategory)
 router.delete('/categories/:id', requireAdmin, ctrl.deleteCategory)
+
+// AI: Extract / Generate / Bulk
+router.post('/questions/extract', requireTeacher, extendTimeout, upload.single('file'), ctrl.extractQuestions)
+router.post('/questions/generate', requireTeacher, extendTimeout, ctrl.generateQuestionsAI)
+router.post('/questions/bulk', requireTeacher, ctrl.bulkCreateQuestions)
 
 // Questions
 router.get('/questions', requireTeacher, ctrl.getQuestions)

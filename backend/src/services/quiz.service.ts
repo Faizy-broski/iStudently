@@ -33,6 +33,7 @@ export interface QuizQuestion {
   sort_order: number
   grade_level_id?: string | null
   subject_id?: string | null
+  chapter_id?: string | null
   difficulty_level: DifficultyLevel
   created_at: string
   updated_at: string
@@ -196,6 +197,7 @@ export const getQuestions = async (
     createdBy?: string
     gradeLevelId?: string
     subjectId?: string
+    chapterId?: string
     difficulty?: DifficultyLevel
   }
 ) => {
@@ -215,6 +217,7 @@ export const getQuestions = async (
   if (filters?.createdBy) q = q.eq('created_by', filters.createdBy)
   if (filters?.gradeLevelId) q = q.eq('grade_level_id', filters.gradeLevelId)
   if (filters?.subjectId) q = q.eq('subject_id', filters.subjectId)
+  if (filters?.chapterId) q = q.eq('chapter_id', filters.chapterId)
   if (filters?.difficulty) q = q.eq('difficulty_level', filters.difficulty)
   if (filters?.search) q = q.ilike('title', `%${filters.search}%`)
 
@@ -247,7 +250,7 @@ export const createQuestion = async (
 
 export const updateQuestion = async (
   id: string,
-  dto: Partial<Pick<QuizQuestion, 'title' | 'type' | 'description' | 'answer' | 'sort_order' | 'category_id' | 'grade_level_id' | 'subject_id' | 'difficulty_level'>>
+  dto: Partial<Pick<QuizQuestion, 'title' | 'type' | 'description' | 'answer' | 'sort_order' | 'category_id' | 'grade_level_id' | 'subject_id' | 'chapter_id' | 'difficulty_level'>>
 ) => {
   const { data, error } = await supabase
     .from('quiz_questions')

@@ -260,21 +260,13 @@ function FormDialog({
     setUploadError('')
     setUploading(true)
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      const { getAuthToken } = await import('@/lib/api/schools')
-      const token = await getAuthToken()
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/media/upload-image`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      })
-      const data = await res.json()
-      if (data.success) {
-        setImageUrl(data.data.url)
+      const { uploadImage } = await import('@/lib/api/media-upload')
+      const res = await uploadImage(file)
+      if (res.success && res.data) {
+        setImageUrl(res.data.url)
         setUrlError('')
       } else {
-        setUploadError(data.error ?? 'Upload failed')
+        setUploadError(res.error ?? 'Upload failed')
       }
     } catch {
       setUploadError('Upload failed. Please try again.')

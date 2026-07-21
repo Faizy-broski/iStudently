@@ -99,7 +99,7 @@ export const uploadMediaRecording = async (
   }
 }
 
-const ATTACHMENT_BUCKET = 'message-attachments'
+const ATTACHMENT_BUCKET = 'school-assets'
 
 const ALLOWED_ATTACHMENT_TYPES: Record<string, string> = {
   'application/pdf': 'pdf',
@@ -127,7 +127,7 @@ const MAX_ATTACHMENT_SIZE_BYTES = 15 * 1024 * 1024 // 15 MB
  *
  * Accepts a multipart form-data upload with field name "file".
  * Stores the file in Supabase Storage under:
- *   message-attachments/{school_id}/{uuid}.{ext}
+ *   school-assets/{school_id}/message-attachments/{uuid}.{ext}
  *
  * Returns the public URL plus the original filename so the UI can show a
  * real file name instead of the storage path.
@@ -164,7 +164,7 @@ export const uploadMessageAttachment = async (
     const campus_id = req.body?.campus_id as string | undefined
     const effectiveSchoolId = await getEffectiveSchoolId(adminSchoolId, campus_id)
 
-    const fileName = `${effectiveSchoolId}/${randomUUID()}.${ext}`
+    const fileName = `${effectiveSchoolId}/message-attachments/${randomUUID()}.${ext}`
 
     const { error: uploadError } = await supabase.storage
       .from(ATTACHMENT_BUCKET)
@@ -221,10 +221,14 @@ export const uploadImageAsset = async (
   res: Response
 ): Promise<void> => {
   try {
-    const adminSchoolId = req.profile?.school_id
+    let adminSchoolId = req.profile?.school_id
     if (!adminSchoolId) {
-      res.status(401).json({ success: false, error: 'Unauthorized' })
-      return
+      if (req.profile?.role === 'super_admin') {
+        adminSchoolId = 'system'
+      } else {
+        res.status(401).json({ success: false, error: 'Unauthorized' })
+        return
+      }
     }
 
     const file = (req as any).file as Express.Multer.File | undefined

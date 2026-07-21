@@ -149,6 +149,26 @@ export default function SchoolDirectoryPage() {
     localStorage.removeItem('selectedCampusId');
     sessionStorage.setItem('impersonatedSchoolId', school.id);
     sessionStorage.setItem('impersonatedSchoolName', school.name);
+    if (school.logo_url) {
+      sessionStorage.setItem('impersonatedSchoolLogoUrl', school.logo_url);
+    } else {
+      sessionStorage.removeItem('impersonatedSchoolLogoUrl');
+    }
+    if (school.logo_shape) {
+      sessionStorage.setItem('impersonatedSchoolLogoShape', school.logo_shape);
+    } else {
+      sessionStorage.removeItem('impersonatedSchoolLogoShape');
+    }
+    if (school.logo_border_width !== undefined && school.logo_border_width !== null) {
+      sessionStorage.setItem('impersonatedSchoolLogoBorderWidth', school.logo_border_width.toString());
+    } else {
+      sessionStorage.removeItem('impersonatedSchoolLogoBorderWidth');
+    }
+    if (school.logo_border_color) {
+      sessionStorage.setItem('impersonatedSchoolLogoBorderColor', school.logo_border_color);
+    } else {
+      sessionStorage.removeItem('impersonatedSchoolLogoBorderColor');
+    }
     router.push('/admin/dashboard');
   };
 

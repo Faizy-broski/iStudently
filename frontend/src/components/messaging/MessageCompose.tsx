@@ -21,7 +21,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { Send, Search, Users, GraduationCap, Save, X, Paperclip, FileText } from "lucide-react"
 
-const MAX_ATTACHMENTS = 5
+const MAX_ATTACHMENTS = 10
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 import { MessageSquareWarning, Loader2, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
@@ -20,23 +21,22 @@ const STATUS_COLORS: Record<FeedbackReport['status'], string> = {
   resolved:    'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
 }
 
-const STATUS_LABELS: Record<FeedbackReport['status'], string> = {
-  open: 'Open',
-  in_progress: 'In Progress',
-  resolved: 'Resolved',
-}
-
 const CATEGORY_COLORS: Record<FeedbackReport['category'], string> = {
   feature_request: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
   bug:              'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
 }
 
-const CATEGORY_LABELS: Record<FeedbackReport['category'], string> = {
-  feature_request: 'Feature Request',
-  bug: 'Bug',
-}
-
 export default function SuperAdminFeedbackPage() {
+  const t = useTranslations('superadmin.feedback')
+  const STATUS_LABELS: Record<FeedbackReport['status'], string> = {
+    open: t('status_open'),
+    in_progress: t('status_in_progress'),
+    resolved: t('status_resolved'),
+  }
+  const CATEGORY_LABELS: Record<FeedbackReport['category'], string> = {
+    feature_request: t('feature_request'),
+    bug: t('bug'),
+  }
   const [reports, setReports] = useState<FeedbackReport[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -51,7 +51,7 @@ export default function SuperAdminFeedbackPage() {
         categoryFilter !== 'all' ? categoryFilter : undefined
       )
       if (res.success) setReports(res.data || [])
-      else toast.error(res.error || 'Failed to load feedback')
+      else toast.error(res.error || t('load_failed'))
     } finally {
       setLoading(false)
     }
@@ -63,9 +63,9 @@ export default function SuperAdminFeedbackPage() {
     setUpdatingId(id)
     try {
       const res = await updateFeedbackStatus(id, status)
-      if (!res.success) { toast.error(res.error || 'Failed to update status'); return }
+      if (!res.success) { toast.error(res.error || t('update_failed')); return }
       setReports(prev => prev.map(r => r.id === id ? { ...r, status } : r))
-      toast.success('Status updated')
+      toast.success(t('status_updated'))
     } finally {
       setUpdatingId(null)
     }
@@ -77,32 +77,32 @@ export default function SuperAdminFeedbackPage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2 text-[#022172] dark:text-white">
             <MessageSquareWarning className="h-7 w-7" />
-            Feedback & Bug Reports
+            {t('title')}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Bug reports and feature suggestions submitted by users across all schools.
+            {t('subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
             <SelectTrigger className="w-44">
-              <SelectValue placeholder="Filter by category" />
+              <SelectValue placeholder={t('filter_by_category')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              <SelectItem value="feature_request">Suggest a new feature</SelectItem>
-              <SelectItem value="bug">Bug</SelectItem>
+              <SelectItem value="all">{t('all_categories')}</SelectItem>
+              <SelectItem value="feature_request">{t('feature_request')}</SelectItem>
+              <SelectItem value="bug">{t('bug')}</SelectItem>
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-44">
-              <SelectValue placeholder="Filter by status" />
+              <SelectValue placeholder={t('filter_by_status')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="open">Open</SelectItem>
-              <SelectItem value="in_progress">In Progress</SelectItem>
-              <SelectItem value="resolved">Resolved</SelectItem>
+              <SelectItem value="all">{t('all_statuses')}</SelectItem>
+              <SelectItem value="open">{t('status_open')}</SelectItem>
+              <SelectItem value="in_progress">{t('status_in_progress')}</SelectItem>
+              <SelectItem value="resolved">{t('status_resolved')}</SelectItem>
             </SelectContent>
           </Select>
           <Button variant="outline" size="icon" onClick={fetchReports} disabled={loading}>
@@ -119,18 +119,20 @@ export default function SuperAdminFeedbackPage() {
             </div>
           ) : reports.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground">
-              No feedback reports {statusFilter !== 'all' ? `with status "${STATUS_LABELS[statusFilter as FeedbackReport['status']]}"` : 'yet'}.
+              {statusFilter !== 'all'
+                ? t('no_reports_with_status', { status: STATUS_LABELS[statusFilter as FeedbackReport['status']] })
+                : t('no_reports_yet')}
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Submitted By</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>{t('column_category')}</TableHead>
+                  <TableHead>{t('column_title')}</TableHead>
+                  <TableHead>{t('column_description')}</TableHead>
+                  <TableHead>{t('column_submitted_by')}</TableHead>
+                  <TableHead>{t('column_date')}</TableHead>
+                  <TableHead>{t('column_status')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -147,7 +149,7 @@ export default function SuperAdminFeedbackPage() {
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
-                        <div className="font-medium">{r.submitter_name || 'Unknown'}</div>
+                        <div className="font-medium">{r.submitter_name || t('unknown_submitter')}</div>
                         <div className="text-xs text-muted-foreground">
                           {r.submitter_role || '—'}{r.submitter_email ? ` · ${r.submitter_email}` : ''}
                         </div>
@@ -170,9 +172,9 @@ export default function SuperAdminFeedbackPage() {
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="open">Open</SelectItem>
-                          <SelectItem value="in_progress">In Progress</SelectItem>
-                          <SelectItem value="resolved">Resolved</SelectItem>
+                          <SelectItem value="open">{t('status_open')}</SelectItem>
+                          <SelectItem value="in_progress">{t('status_in_progress')}</SelectItem>
+                          <SelectItem value="resolved">{t('status_resolved')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </TableCell>

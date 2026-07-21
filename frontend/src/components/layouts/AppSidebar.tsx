@@ -124,18 +124,61 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
     return () => window.removeEventListener('hijri-offset-changed', handler)
   }, [])
 
-  // Campus initials fallback
-  const initials = selectedCampus
-    ? (selectedCampus.short_name ||
-        selectedCampus.name.split(' ').map((w) => w[0]).join('').slice(0, 2)
-      ).toUpperCase()
-    : '?'
-
   // When super_admin is impersonating a school, show that school's name even if no campus is loaded
   const impersonatedSchoolId =
     typeof window !== 'undefined' ? sessionStorage.getItem('impersonatedSchoolId') : null
   const impersonatedSchoolName =
     typeof window !== 'undefined' ? sessionStorage.getItem('impersonatedSchoolName') : null
+  const impersonatedSchoolLogoUrl =
+    typeof window !== 'undefined' ? sessionStorage.getItem('impersonatedSchoolLogoUrl') : null
+  const impersonatedSchoolLogoShape =
+    typeof window !== 'undefined' ? sessionStorage.getItem('impersonatedSchoolLogoShape') : null
+  const impersonatedSchoolLogoBorderWidth =
+    typeof window !== 'undefined' ? sessionStorage.getItem('impersonatedSchoolLogoBorderWidth') : null
+  const impersonatedSchoolLogoBorderColor =
+    typeof window !== 'undefined' ? sessionStorage.getItem('impersonatedSchoolLogoBorderColor') : null
+
+  // Base fallbacks (Regular user's profile school)
+  let resolvedLogoUrl = profile?.school?.logo_url ?? null
+  let resolvedLogoShape = profile?.school?.logo_shape ?? 'square'
+  let resolvedBorderWidth = profile?.school?.logo_border_width ?? 0
+  let resolvedBorderColor = profile?.school?.logo_border_color ?? '#ffffff'
+
+  // Impersonated school (Super Admin) - overrides profile
+  if (impersonatedSchoolId) {
+    if (impersonatedSchoolLogoUrl) resolvedLogoUrl = impersonatedSchoolLogoUrl
+    if (impersonatedSchoolLogoShape) resolvedLogoShape = impersonatedSchoolLogoShape
+    if (impersonatedSchoolLogoBorderWidth) resolvedBorderWidth = parseInt(impersonatedSchoolLogoBorderWidth)
+    if (impersonatedSchoolLogoBorderColor) resolvedBorderColor = impersonatedSchoolLogoBorderColor
+  }
+
+  // Selected campus - overrides root school IF it has its own logo
+  // If a campus doesn't have its own logo URL, we want it to inherit not just the parent's
+  // image, but also the parent's frame shape and border, instead of defaulting to a circle.
+  if (selectedCampus) {
+    if (selectedCampus.logo_url) {
+      resolvedLogoUrl = selectedCampus.logo_url
+      resolvedLogoShape = selectedCampus.logo_shape ?? resolvedLogoShape
+      resolvedBorderWidth = selectedCampus.logo_border_width ?? resolvedBorderWidth
+      resolvedBorderColor = selectedCampus.logo_border_color ?? resolvedBorderColor
+    } else if (!resolvedLogoUrl) {
+      // Only if NO ONE has a logo do we use the campus's default shape for the initials fallback
+      resolvedLogoShape = selectedCampus.logo_shape ?? resolvedLogoShape
+      resolvedBorderWidth = selectedCampus.logo_border_width ?? resolvedBorderWidth
+      resolvedBorderColor = selectedCampus.logo_border_color ?? resolvedBorderColor
+    }
+  }
+
+  const displayLogoUrl = resolvedLogoUrl
+  const logoShape = resolvedLogoShape as any
+  const logoBorderWidth = resolvedBorderWidth
+  const logoBorderColor = resolvedBorderColor
+
+  const displayName = selectedCampus?.name || impersonatedSchoolName || profile?.school?.name || 'No Campus'
+  const rawInitialsString = selectedCampus?.short_name || displayName
+  const initials = rawInitialsString !== 'No Campus'
+    ? rawInitialsString.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
+    : '?'
 
   const adminName = profile
     ? profile.role === 'super_admin' && impersonatedSchoolId
@@ -160,24 +203,26 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
   const hijriMonths = isAr ? HIJRI_MONTHS_AR : HIJRI_MONTHS_EN
   const hijriStr = `${h.day} ${hijriMonths[h.month - 1]} ${h.year}`
 
+  const isLoadingCampuses = campusContext?.loading ?? true
+  const showPulse = !selectedCampus && isLoadingCampuses
+
   if (isCollapsed) {
     return (
       <div className="flex flex-col items-center py-4 mb-2">
-        <div className="w-12 h-10 rounded-lg overflow-hidden ring-2 ring-white/20 bg-white">
-          {!selectedCampus ? (
-            <div className="w-full h-full bg-white/20 animate-pulse" />
+        <div className="flex justify-center items-center">
+          {showPulse ? (
+            <div className="w-10 h-10 rounded-lg bg-white/20 animate-pulse" />
           ) : (
             <SchoolLogo
-              logoUrl={selectedCampus.logo_url}
-              alt={selectedCampus.name}
-              shape={selectedCampus.logo_shape}
-              borderWidth={selectedCampus.logo_border_width}
-              borderColor={selectedCampus.logo_border_color}
-              className="w-full h-full"
+              logoUrl={displayLogoUrl}
+              alt={displayName}
+              shape={logoShape}
+              borderWidth={logoBorderWidth}
+              borderColor={logoBorderColor}
+              size={40}
+              className="ring-2 ring-white/20 shadow-md"
               fallback={
-                <div className="w-full h-full bg-white flex items-center justify-center">
-                  <span className="text-[#022172] font-bold text-xs">{initials}</span>
-                </div>
+                <span className="text-[#022172] font-bold text-xs">{initials}</span>
               }
             />
           )}
@@ -188,22 +233,21 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
 
   return (
     <div className="px-4 pt-6 pb-5 mb-1 border-b border-white/10 flex flex-col items-center text-center">
-      {/* Campus logo — centered, square/rectangle */}
-      <div className="w-28 h-20 rounded-xl overflow-hidden ring-2 ring-white/30 shadow-lg mb-3 bg-white">
-        {!selectedCampus ? (
-          <div className="w-full h-full bg-white/20 animate-pulse" />
+      {/* Campus logo — centered, properly respecting its own shape */}
+      <div className="mb-3 flex justify-center items-center">
+        {showPulse ? (
+          <div className="w-24 h-24 rounded-xl bg-white/20 animate-pulse" />
         ) : (
           <SchoolLogo
-            logoUrl={selectedCampus.logo_url}
-            alt={selectedCampus.name}
-            shape={selectedCampus.logo_shape}
-            borderWidth={selectedCampus.logo_border_width}
-            borderColor={selectedCampus.logo_border_color}
-            className="w-full h-full"
+            logoUrl={displayLogoUrl}
+            alt={displayName}
+            shape={logoShape}
+            borderWidth={logoBorderWidth}
+            borderColor={logoBorderColor}
+            size={90}
+            className="ring-2 ring-white/30 shadow-lg"
             fallback={
-              <div className="w-full h-full bg-white flex items-center justify-center">
-                <span className="text-[#022172] font-bold text-2xl">{initials}</span>
-              </div>
+              <span className="text-[#022172] font-bold text-2xl tracking-wider">{initials}</span>
             }
           />
         )}
@@ -211,7 +255,7 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
 
       {/* Admin name */}
       <p className="text-white font-semibold text-sm leading-tight truncate w-full">{adminName}</p>
-      <p className="text-white/50 text-xs mt-0.5 truncate w-full">{selectedCampus?.name || impersonatedSchoolName || 'No Campus'}</p>
+      <p className="text-white/50 text-xs mt-0.5 truncate w-full">{displayName}</p>
 
       {/* Date / time */}
       <div className="mt-3 w-full bg-white/10 rounded-lg px-3 py-2.5 space-y-1.5 text-center rtl:text-center">

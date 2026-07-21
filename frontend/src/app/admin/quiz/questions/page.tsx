@@ -52,7 +52,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, Trash2, Pencil, FolderOpen, BookOpen, Search } from 'lucide-react'
+import { Plus, Trash2, Pencil, FolderOpen, BookOpen, Search, Upload, FileText, Sparkles } from 'lucide-react'
+import Link from 'next/link'
 
 const NONE = '__none__'
 
@@ -347,7 +348,21 @@ export default function QuestionsPage() {
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-bold">{t('questionBank')}</h1>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h1 className="text-2xl font-bold">{t('questionBank')}</h1>
+        <div className="flex gap-2">
+          <Link href="/admin/quiz/bulk-import">
+            <Button variant="outline" size="sm">
+              <Sparkles className="w-3.5 h-3.5 mr-1.5" /> AI Import
+            </Button>
+          </Link>
+          <Link href="/admin/quiz/exam-builder">
+            <Button variant="outline" size="sm">
+              <FileText className="w-3.5 h-3.5 mr-1.5" /> Exam Builder
+            </Button>
+          </Link>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* ── Categories Sidebar ── */}

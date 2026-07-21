@@ -1,5 +1,7 @@
 import { Request, Response } from 'express'
 import * as svc from '../services/quiz.service'
+import * as chapterSvc from '../services/chapters.service'
+import * as aiSvc from '../services/ai-question.service'
 
 const ok = (res: Response, data: unknown) => res.json({ data, error: null })
 const err = (res: Response, e: unknown, status = 500) =>
@@ -38,7 +40,7 @@ export const deleteCategory = async (req: Request, res: Response) => {
 
 export const getQuestions = async (req: Request, res: Response) => {
   try {
-    const { school_id, campus_id, category_id, search, created_by, grade_level_id, subject_id, difficulty } = req.query as Record<string, string>
+    const { school_id, campus_id, category_id, search, created_by, grade_level_id, subject_id, chapter_id, difficulty } = req.query as Record<string, string>
     if (!school_id) return err(res, { message: 'school_id required' }, 400)
     ok(res, await svc.getQuestions(school_id, {
       campusId: campus_id,
@@ -47,6 +49,7 @@ export const getQuestions = async (req: Request, res: Response) => {
       createdBy: created_by,
       gradeLevelId: grade_level_id,
       subjectId: subject_id,
+      chapterId: chapter_id,
       difficulty: difficulty as svc.DifficultyLevel | undefined,
     }))
   } catch (e) { err(res, e) }
@@ -277,4 +280,107 @@ export const getCoursePeriodContext = async (req: Request, res: Response) => {
     if (!course_period_id) return err(res, { message: 'course_period_id required' }, 400)
     ok(res, await svc.getCoursePeriodContext(course_period_id))
   } catch (e) { err(res, e) }
+}
+
+// ============================================================================
+// AI: EXTRACT + GENERATE + BULK CREATE
+// ============================================================================
+
+export const extractQuestions = async (req: Request, res: Response) => {
+  try {
+    const file = (req as any).file as Express.Multer.File | undefined
+    if (!file) return err(res, { message: 'No file uploaded (field name must be "file")' }, 400)
+
+    const { allowed_types, grade_level_id, subject_id, chapter_id } = req.body
+    const allowedTypes = allowed_types
+      ? (typeof allowed_types === 'string' ? JSON.parse(allowed_types) : allowed_types)
+      : ['select', 'multiple', 'gap', 'text', 'textarea', 'matching']
+
+    const drafts = await aiSvc.extractQuestionsFromDocument({
+      fileBuffer: file.buffer,
+      mimeType: file.mimetype,
+      allowedTypes,
+      gradeLevelId: grade_level_id || null,
+      subjectId: subject_id || null,
+      chapterId: chapter_id || null,
+    })
+
+    ok(res, drafts)
+  } catch (e) { err(res, e) }
+}
+
+export const generateQuestionsAI = async (req: Request, res: Response) => {
+  try {
+    const {
+      school_id, grade_level_id, subject_id, chapter_ids,
+      count, allowed_types, prompt,
+    } = req.body
+
+    if (!school_id) return err(res, { message: 'school_id required' }, 400)
+    if (!count || count < 1 || count > 50) return err(res, { message: 'count must be 1-50' }, 400)
+
+    const allowedTypes = allowed_types && allowed_types.length > 0
+      ? allowed_types
+      : ['select', 'multiple', 'gap', 'text', 'textarea', 'matching']
+
+    const drafts = await aiSvc.generateQuestions({
+      schoolId: school_id,
+      gradeLevelId: grade_level_id || null,
+      subjectId: subject_id || null,
+      chapterIds: chapter_ids || [],
+      count,
+      allowedTypes,
+      prompt,
+    })
+
+    ok(res, drafts)
+  } catch (e) { err(res, e) }
+}
+
+export const bulkCreateQuestions = async (req: Request, res: Response) => {
+  try {
+    const { questions } = req.body
+    if (!Array.isArray(questions) || questions.length === 0) {
+      return err(res, { message: 'questions array required' }, 400)
+    }
+
+    const results: svc.QuizQuestion[] = []
+    // Process in batches of 3 (per project pattern)
+    for (let i = 0; i < questions.length; i += 3) {
+      const batch = questions.slice(i, i + 3)
+      const created = await Promise.all(
+        batch.map((q: any) => svc.createQuestion(q))
+      )
+      results.push(...created)
+    }
+
+    ok(res, results)
+  } catch (e) { err(res, e) }
+}
+
+// ============================================================================
+// CHAPTERS
+// ============================================================================
+
+export const getChapters = async (req: Request, res: Response) => {
+  try {
+    const { subject_id, school_id } = req.query as Record<string, string>
+    if (!subject_id || !school_id) return err(res, { message: 'subject_id and school_id required' }, 400)
+    ok(res, await chapterSvc.getChapters(subject_id, school_id))
+  } catch (e) { err(res, e) }
+}
+
+export const createChapter = async (req: Request, res: Response) => {
+  try { ok(res, await chapterSvc.createChapter(req.body)) }
+  catch (e) { err(res, e) }
+}
+
+export const updateChapter = async (req: Request, res: Response) => {
+  try { ok(res, await chapterSvc.updateChapter(req.params.id, req.body)) }
+  catch (e) { err(res, e) }
+}
+
+export const deleteChapter = async (req: Request, res: Response) => {
+  try { await chapterSvc.deleteChapter(req.params.id); ok(res, null) }
+  catch (e) { err(res, e) }
 }
