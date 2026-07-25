@@ -253,6 +253,14 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
   };
 
   const handleSubmit = async () => {
+    // Email is mandatory — students log in with it, regardless of any
+    // per-school "required field" configuration for custom fields.
+    if (!formData.email || !formData.email.trim()) {
+      toast.error("Email is required — students cannot log in without one.");
+      setActiveTab("personal");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const updateData = {
@@ -407,13 +415,14 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
                   />
                 </div>
                 <div>
-                  <Label htmlFor="email">{tFields("email")}</Label>
+                  <Label htmlFor="email">{tFields("email")} *</Label>
                   <Input
                     id="email"
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
                     placeholder={tFields("email")}
+                    required
                   />
                 </div>
                 <div>

@@ -104,15 +104,18 @@ export class TrainingService {
   async updateSession(
     sessionId: string,
     schoolId: string,
-    dto: UpdateTrainingSessionDTO
+    dto: UpdateTrainingSessionDTO,
+    parentSchoolId?: string
   ): Promise<TrainingSession> {
+    const ids = parentSchoolId ? [schoolId, parentSchoolId] : [schoolId]
+
     // Validate seat reduction doesn't undercut current registrations
     if (dto.total_seats !== undefined) {
       const { data: current } = await supabase
         .from('training_sessions')
         .select('registered_seats')
         .eq('id', sessionId)
-        .eq('school_id', schoolId)
+        .in('school_id', ids)
         .single()
 
       if (current && dto.total_seats < current.registered_seats) {
@@ -126,7 +129,7 @@ export class TrainingService {
       .from('training_sessions')
       .update({ ...dto, updated_at: new Date().toISOString() })
       .eq('id', sessionId)
-      .eq('school_id', schoolId)
+      .in('school_id', ids)
       .select()
       .single()
 
@@ -134,14 +137,21 @@ export class TrainingService {
     return { ...data, available_seats: data.total_seats - data.registered_seats }
   }
 
-  async deleteSession(sessionId: string, schoolId: string): Promise<void> {
-    const { error } = await supabase
+  // Returns whether a row was actually deleted — a delete that matches zero
+  // rows (e.g. wrong school scope) does not error, it just silently affects
+  // nothing, so the caller needs an explicit signal to report that as a 404
+  // instead of a false "success".
+  async deleteSession(sessionId: string, schoolId: string, parentSchoolId?: string): Promise<boolean> {
+    const ids = parentSchoolId ? [schoolId, parentSchoolId] : [schoolId]
+    const { data, error } = await supabase
       .from('training_sessions')
       .delete()
       .eq('id', sessionId)
-      .eq('school_id', schoolId)
+      .in('school_id', ids)
+      .select('id')
 
     if (error) throw error
+    return (data?.length ?? 0) > 0
   }
 
   // ─── Admin: Registrations ─────────────────────────────────────────────────

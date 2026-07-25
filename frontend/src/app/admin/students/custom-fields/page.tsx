@@ -554,6 +554,12 @@ export default function CustomFieldsPage() {
     const fieldKey = item.id ?? item.label;
     const campusId = selectedCampus?.id;
 
+    // Email is how students log in — it can never be made optional.
+    if (fieldKey === 'email' && !checked) {
+      toast.error("Email can't be made optional — students log in with it.");
+      return;
+    }
+
     const applyLocal = (required: boolean) => {
       setDefaultFieldsByCategory(prev => ({
         ...prev,

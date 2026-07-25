@@ -19,6 +19,24 @@ export class TrainingController {
     return override ?? this.schoolId(req)
   }
 
+  // A session can be stored under the parent school's id (school-wide,
+  // visible from every campus) or under a specific campus id. Any lookup
+  // that scopes by a single id must also accept the parent id, or it'll
+  // silently match zero rows for school-wide sessions viewed from a campus —
+  // exactly what caused delete/update to no-op instead of erroring.
+  private resolveIds(req: AuthRequest, source: 'query' | 'body' = 'query'): { effectiveId: string; parentSchoolId?: string } {
+    const requestedCampusId = source === 'query'
+      ? (req.query.campus_id as string | undefined)
+      : (req.body.campus_id as string | undefined)
+    const adminBaseSchoolId = req.profile?.school_id as string
+    const effectiveId = requestedCampusId ?? this.schoolId(req)
+    const parentSchoolId =
+      requestedCampusId && requestedCampusId !== adminBaseSchoolId
+        ? adminBaseSchoolId
+        : undefined
+    return { effectiveId, parentSchoolId }
+  }
+
   // ─── Admin: Sessions ──────────────────────────────────────────────────────
 
   async listSessions(req: AuthRequest, res: Response): Promise<void> {
@@ -79,7 +97,8 @@ export class TrainingController {
   async updateSession(req: AuthRequest, res: Response): Promise<void> {
     try {
       const dto: UpdateTrainingSessionDTO = req.body
-      const data = await trainingService.updateSession(req.params.id, this.effectiveId(req, 'body'), dto)
+      const { effectiveId, parentSchoolId } = this.resolveIds(req, 'body')
+      const data = await trainingService.updateSession(req.params.id, effectiveId, dto, parentSchoolId)
       res.json({ success: true, data })
     } catch (err: any) {
       const status = err.message.includes('Cannot reduce') ? 400 : 500
@@ -89,7 +108,12 @@ export class TrainingController {
 
   async deleteSession(req: AuthRequest, res: Response): Promise<void> {
     try {
-      await trainingService.deleteSession(req.params.id, this.effectiveId(req, 'query'))
+      const { effectiveId, parentSchoolId } = this.resolveIds(req, 'query')
+      const deleted = await trainingService.deleteSession(req.params.id, effectiveId, parentSchoolId)
+      if (!deleted) {
+        res.status(404).json({ success: false, error: 'Session not found' })
+        return
+      }
       res.status(204).send()
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message })

@@ -84,6 +84,7 @@ interface School {
   contact_email: string;
   address: string | null;
   status: "active" | "suspended";
+  parent_school_id?: string | null;
 }
 
 interface EditSchoolModalProps {
@@ -97,6 +98,9 @@ export default function EditSchoolModal({
   onClose,
   onSuccess,
 }: EditSchoolModalProps) {
+  // Campuses (branch schools) don't have their own admin — the parent
+  // school's admin manages all its campuses — so admin editing doesn't apply.
+  const isCampus = !!school.parent_school_id;
   const [activeTab, setActiveTab] = useState("school");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -132,6 +136,11 @@ export default function EditSchoolModal({
   });
 
   useEffect(() => {
+    if (isCampus) {
+      setFetchingAdmin(false);
+      return;
+    }
+
     const fetchAdmin = async () => {
       try {
         setFetchingAdmin(true);
@@ -228,7 +237,7 @@ export default function EditSchoolModal({
 
   const handleSaveClick = async () => {
     const schoolValid = await schoolForm.trigger();
-    const adminValid = await adminForm.trigger();
+    const adminValid = isCampus || (await adminForm.trigger());
 
     if (!schoolValid) {
       setActiveTab("school");
@@ -283,25 +292,28 @@ export default function EditSchoolModal({
         });
       }
 
-      // Update admin info
-      const adminUpdate: Record<string, string> = {
-        admin_name: adminData.admin_name,
-        admin_email: adminData.admin_email,
-      };
-      if (adminData.username?.trim()) {
-        adminUpdate.username = adminData.username;
-      }
-      if (adminData.password?.trim()) {
-        adminUpdate.password = adminData.password;
-      }
+      // Update admin info — campuses don't have their own admin, so this
+      // step doesn't apply to them (the parent school's admin manages them).
+      if (!isCampus) {
+        const adminUpdate: Record<string, string> = {
+          admin_name: adminData.admin_name,
+          admin_email: adminData.admin_email,
+        };
+        if (adminData.username?.trim()) {
+          adminUpdate.username = adminData.username;
+        }
+        if (adminData.password?.trim()) {
+          adminUpdate.password = adminData.password;
+        }
 
-      const adminResponse = await schoolApi.updateAdmin(school.id, adminUpdate);
+        const adminResponse = await schoolApi.updateAdmin(school.id, adminUpdate);
 
-      if (!adminResponse.success) {
-        toast.error("School updated but failed to update admin", {
-          description: adminResponse.error,
-        });
-        return;
+        if (!adminResponse.success) {
+          toast.error("School updated but failed to update admin", {
+            description: adminResponse.error,
+          });
+          return;
+        }
       }
 
       toast.success("School updated successfully");
@@ -327,15 +339,17 @@ export default function EditSchoolModal({
 
         <div className="mt-6 space-y-6">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-2 w-full">
+            <TabsList className={`grid w-full ${isCampus ? "grid-cols-1" : "grid-cols-2"}`}>
               <TabsTrigger value="school" className="flex items-center gap-2">
                 <Building2 className="h-4 w-4" />
                 School Info
               </TabsTrigger>
-              <TabsTrigger value="admin" className="flex items-center gap-2">
-                <User className="h-4 w-4" />
-                Admin Credentials
-              </TabsTrigger>
+              {!isCampus && (
+                <TabsTrigger value="admin" className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Admin Credentials
+                </TabsTrigger>
+              )}
             </TabsList>
 
             {/* School Info Tab */}

@@ -158,7 +158,7 @@ function StaffSearch({
     setSearching(true);
     try {
       const res = await getAllStaff(1, 20, q, role, campusId);
-      setResults(res.data ?? []);
+      setResults(res.data?.data ?? []);
     } catch {
       setResults([]);
     } finally {
@@ -410,9 +410,16 @@ export default function AddReferralForm({ targetKind }: { targetKind: Discipline
 
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
 
-  // Single vs. multiple-student targeting (only applies when targetKind === 'student')
+  // Single vs. multiple targeting — lets an admin log the same incident for
+  // several teachers/staff (or students) at once instead of repeating the
+  // whole form for each person involved.
   const [targetMode, setTargetMode] = useState<'single' | 'multiple'>('single');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+
+  // Multiple-teacher/staff mode: full roster for the campus, multi-select
+  const [multiStaffOptions, setMultiStaffOptions] = useState<StudentOption[]>([]);
+  const [loadingStaffRoster, setLoadingStaffRoster] = useState(false);
+  const [multiStaffIds, setMultiStaffIds] = useState<string[]>([]);
 
   // Multiple-student mode: scope the roster to one grade/section and multi-select
   const [sections, setSections] = useState<Section[]>([]);
@@ -480,6 +487,29 @@ export default function AddReferralForm({ targetKind }: { targetKind: Discipline
       .finally(() => setLoadingRoster(false));
   }, [targetMode, campusId, gradeFilter, multiSectionId]);
 
+  // Multiple-teacher/staff mode: load the full campus roster for that role
+  useEffect(() => {
+    if (targetMode !== 'multiple' || (targetKind !== 'teacher' && targetKind !== 'staff')) {
+      setMultiStaffOptions([]);
+      setMultiStaffIds([]);
+      return;
+    }
+    setLoadingStaffRoster(true);
+    getAllStaff(1, 500, undefined, targetKind, campusId)
+      .then((res) => {
+        const options: StudentOption[] = (res.data?.data ?? []).map((s: Staff) => ({
+          id: s.id,
+          name: s.profile
+            ? `${(s.profile as any).first_name ?? ''} ${(s.profile as any).last_name ?? ''}`.trim() || s.employee_number
+            : s.employee_number,
+          subtitle: s.employee_number,
+        }));
+        setMultiStaffOptions(options);
+        setMultiStaffIds([]);
+      })
+      .finally(() => setLoadingStaffRoster(false));
+  }, [targetMode, targetKind, campusId]);
+
   async function fetchFields() {
     setLoadingFields(true);
     try {
@@ -513,12 +543,52 @@ export default function AddReferralForm({ targetKind }: { targetKind: Discipline
     }
 
     if (targetKind === 'teacher' || targetKind === 'staff') {
-      if (!selectedStaff) {
-        toast.error(t('validation.selectStudent'));
+      const personType = t(`personTypeLabel.${targetKind}`);
+
+      if (!campusId) {
+        toast.error(t('validation.personNoCampus', { type: personType.charAt(0).toUpperCase() + personType.slice(1) }));
         return;
       }
-      if (!campusId) {
-        toast.error(t('validation.studentNoCampus'));
+
+      if (targetMode === 'multiple') {
+        if (multiStaffIds.length === 0) {
+          toast.error(t('validation.selectPerson', { type: personType }));
+          return;
+        }
+
+        setSubmitting(true);
+        setSuccess(false);
+        try {
+          const res = await createDisciplineReferral({
+            school_id: schoolId,
+            campus_id: campusId,
+            target_type: targetKind,
+            staff_ids: multiStaffIds,
+            reporter_id: user?.id ?? null,
+            incident_date: incidentDate,
+            field_values: fieldValues,
+          });
+
+          if (res.error) {
+            toast.error(res.error);
+            return;
+          }
+
+          toast.success(`Referral added for ${multiStaffIds.length} ${targetKind === 'teacher' ? 'teachers' : 'staff members'}`);
+          setSuccess(true);
+          setMultiStaffIds([]);
+          setIncidentDate(new Date().toISOString().slice(0, 10));
+          setFieldValues({});
+        } catch {
+          toast.error(t('errors.addReferral'));
+        } finally {
+          setSubmitting(false);
+        }
+        return;
+      }
+
+      if (!selectedStaff) {
+        toast.error(t('validation.selectPerson', { type: personType }));
         return;
       }
 
@@ -648,7 +718,7 @@ export default function AddReferralForm({ targetKind }: { targetKind: Discipline
             {t(`addReferralTitles.${targetKind}`)}
           </h1>
           <p className="text-muted-foreground mt-1">
-            {t('addSubtitle')}
+            {t('addSubtitle', { type: t(`personTypeLabel.${targetKind}`) })}
             {campusId && (
               <span className="ml-1 text-xs">
                 ({t('campus')}: {campusCtx?.selectedCampus?.name})
@@ -681,7 +751,7 @@ export default function AddReferralForm({ targetKind }: { targetKind: Discipline
           </CardHeader>
           <CardContent className="space-y-5">
 
-            {/* Target mode toggle (student mode only: single vs. multiple in same class/section) */}
+            {/* Target mode toggle: single vs. multiple in one submission */}
             {targetKind === 'student' && (
             <div className="space-y-1.5">
               <Label>{t('student')} <span className="text-destructive">*</span></Label>
@@ -703,6 +773,32 @@ export default function AddReferralForm({ targetKind }: { targetKind: Discipline
                   }`}
                 >
                   Multiple Students (same class/section)
+                </button>
+              </div>
+            </div>
+            )}
+
+            {(targetKind === 'teacher' || targetKind === 'staff') && (
+            <div className="space-y-1.5">
+              <Label>{targetKind === 'teacher' ? 'Teacher' : 'Staff Member'} <span className="text-destructive">*</span></Label>
+              <div className="grid grid-cols-2 gap-2 max-w-sm">
+                <button
+                  type="button"
+                  onClick={() => setTargetMode('single')}
+                  className={`py-1.5 px-3 rounded-md text-sm font-medium border transition-colors ${
+                    targetMode === 'single' ? 'border-primary bg-primary text-primary-foreground' : 'border-input hover:bg-muted'
+                  }`}
+                >
+                  Single {targetKind === 'teacher' ? 'Teacher' : 'Staff Member'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTargetMode('multiple')}
+                  className={`py-1.5 px-3 rounded-md text-sm font-medium border transition-colors ${
+                    targetMode === 'multiple' ? 'border-primary bg-primary text-primary-foreground' : 'border-input hover:bg-muted'
+                  }`}
+                >
+                  Multiple {targetKind === 'teacher' ? 'Teachers' : 'Staff'}
                 </button>
               </div>
             </div>
@@ -828,8 +924,34 @@ export default function AddReferralForm({ targetKind }: { targetKind: Discipline
             {/* Teacher/Staff selector */}
             {(targetKind === 'teacher' || targetKind === 'staff') && (
             <div className="space-y-1.5">
-              <Label>{targetKind === 'teacher' ? 'Teacher' : 'Staff Member'} <span className="text-destructive">*</span></Label>
-              {selectedStaff ? (
+              {targetMode === 'multiple' ? (
+                loadingStaffRoster ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                    <Loader2 className="h-4 w-4 animate-spin" /> {t('loadingFields')}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <StudentMultiSelect
+                      options={multiStaffOptions}
+                      value={multiStaffIds}
+                      onChange={setMultiStaffIds}
+                      placeholder={`Select ${targetKind === 'teacher' ? 'teachers' : 'staff'}...`}
+                      searchPlaceholder={`Search ${targetKind === 'teacher' ? 'teachers' : 'staff'}...`}
+                      emptyText={targetKind === 'teacher' ? 'No teachers found' : 'No staff members found'}
+                    />
+                    {multiStaffOptions.length > 0 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setMultiStaffIds(multiStaffOptions.map((o) => o.id))}
+                      >
+                        Select all ({multiStaffOptions.length})
+                      </Button>
+                    )}
+                  </div>
+                )
+              ) : selectedStaff ? (
                 <div className="flex items-center gap-3 p-3 rounded-md border bg-muted/40">
                   <User className="h-5 w-5 text-muted-foreground" />
                   <div className="flex-1">
@@ -948,7 +1070,7 @@ export default function AddReferralForm({ targetKind }: { targetKind: Discipline
             disabled={
               submitting ||
               (targetKind === 'teacher' || targetKind === 'staff'
-                ? !selectedStaff
+                ? (targetMode === 'single' ? !selectedStaff : multiStaffIds.length === 0)
                 : targetMode === 'single' ? !selectedStudent : multiStudentIds.length === 0)
             }
           >
@@ -960,7 +1082,13 @@ export default function AddReferralForm({ targetKind }: { targetKind: Discipline
             ) : (
               <>
                 <AlertCircle className="h-4 w-4 mr-2" />
-                {t('addReferralForSelectedStudent')}
+                {targetKind === 'teacher' || targetKind === 'staff'
+                  ? (targetMode === 'multiple'
+                      ? `Add Referral for ${multiStaffIds.length} Selected ${targetKind === 'teacher' ? 'Teachers' : 'Staff'}`
+                      : `Add Referral for Selected ${targetKind === 'teacher' ? 'Teacher' : 'Staff Member'}`)
+                  : targetMode === 'multiple'
+                    ? `Add Referral for ${multiStudentIds.length} Selected Students`
+                    : t('addReferralForSelectedStudent')}
               </>
             )}
           </Button>

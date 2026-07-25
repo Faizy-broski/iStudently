@@ -52,7 +52,14 @@ export async function apiRequest<T = unknown>(
       return { success: false, error: data?.error || 'Permission denied' };
     }
 
-    const data = await response.json();
+    // A 204 (or any other empty body) has nothing for response.json() to parse —
+    // calling it would throw and get swallowed as a false "Network error" below.
+    if (response.status === 204) {
+      return { success: true } as ApiResponse<T>;
+    }
+
+    const text = await response.text();
+    const data = text ? JSON.parse(text) : {};
     if (!response.ok) {
       return { success: false, error: data?.error || "Request failed" };
     }

@@ -7394,11 +7394,16 @@
     "addRecord": "Add Record",
     "addRecords": "Add Records",
     "add": "Add Referral",
-    "addSubtitle": "Record a new discipline incident for a student.",
+    "addSubtitle": "Record a new discipline incident for a {type}.",
     "addReferralTitles": {
       "student": "Add Student Referral",
       "teacher": "Add Teacher Referral",
       "staff": "Add Staff Referral"
+    },
+    "personTypeLabel": {
+      "student": "student",
+      "teacher": "teacher",
+      "staff": "staff member"
     },
     "targetTypes": {
       "student": "Student",
@@ -7502,8 +7507,10 @@
     },
     "validation": {
       "selectStudent": "Please select a student",
+      "selectPerson": "Please select a {type}",
       "schoolNotFound": "School not found",
       "studentNoCampus": "Student has no campus assigned; please update their record",
+      "personNoCampus": "{type} has no campus assigned; please update their record",
       "fieldNameRequired": "Field name is required"
     },
     "errors": {

@@ -7402,11 +7402,16 @@
     "addRecord": "إضافة سجل",
     "addRecords": "إضافة سجلات",
     "add": "إضافة إحالة",
-    "addSubtitle": "تسجيل حادثة انضباط جديدة لطالب.",
+    "addSubtitle": "تسجيل حادثة انضباط جديدة لـ {type}.",
     "addReferralTitles": {
       "student": "إضافة إحالة طالب",
       "teacher": "إضافة إحالة معلم",
       "staff": "إضافة إحالة موظف"
+    },
+    "personTypeLabel": {
+      "student": "طالب",
+      "teacher": "معلم",
+      "staff": "موظف"
     },
     "targetTypes": {
       "student": "طالب",
@@ -7510,8 +7515,10 @@
     },
     "validation": {
       "selectStudent": "يرجى اختيار طالب",
+      "selectPerson": "يرجى اختيار {type}",
       "schoolNotFound": "لم يتم العثور على المدرسة",
       "studentNoCampus": "الطالب غير مرتبط بحرم دراسي؛ يرجى تحديث سجله",
+      "personNoCampus": "{type} غير مرتبط بحرم دراسي؛ يرجى تحديث السجل",
       "fieldNameRequired": "اسم الحقل مطلوب"
     },
     "errors": {

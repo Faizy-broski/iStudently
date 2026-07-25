@@ -20,9 +20,10 @@ export interface StudentOption {
 
 interface Props {
   options: StudentOption[];
-  value: string[]; // selected student ids
+  value: string[]; // selected student/teacher/staff ids
   onChange: (value: string[]) => void;
   placeholder?: string;
+  searchPlaceholder?: string;
   emptyText?: string;
   disabled?: boolean;
 }
@@ -37,6 +38,7 @@ export function StudentMultiSelect({
   value,
   onChange,
   placeholder = "All students in section",
+  searchPlaceholder = "Search students...",
   emptyText = "No students found",
   disabled,
 }: Props) {
@@ -94,7 +96,7 @@ export function StudentMultiSelect({
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <div className="p-2 border-b">
           <Input
-            placeholder="Search students..."
+            placeholder={searchPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="h-8"

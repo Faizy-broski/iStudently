@@ -162,6 +162,7 @@ function LoginForm() {
 
   // Super-admin-configured page appearance
   const [pageConfig, setPageConfig] = useState<LoginPageConfig>(DEFAULT_LOGIN_PAGE_CONFIG)
+  const [pageConfigLoaded, setPageConfigLoaded] = useState(false)
 
   const error = searchParams.get('error')
 
@@ -217,7 +218,10 @@ function LoginForm() {
 
   // Fetch super-admin-configured page appearance (falls back to defaults on any failure)
   useEffect(() => {
-    getLoginPageConfig().then(setPageConfig)
+    getLoginPageConfig().then((config) => {
+      setPageConfig(config)
+      setPageConfigLoaded(true)
+    })
   }, [])
 
   // Trigger animations on mount
@@ -352,6 +356,14 @@ function LoginForm() {
   const titleText = (locale === 'ar' ? pageConfig.title_ar : pageConfig.title_en) || t('title')
   const subtitleText = (locale === 'ar' ? pageConfig.subtitle_ar : pageConfig.subtitle_en) || t('subtitle')
   const headingText = (locale === 'ar' ? pageConfig.heading_ar : pageConfig.heading_en) || t('heading')
+
+  if (!pageConfigLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <Loader2 className="h-8 w-8 animate-spin text-brand-blue" />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-white overflow-hidden" dir={dir}>

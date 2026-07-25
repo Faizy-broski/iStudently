@@ -299,6 +299,14 @@ export class StudentController {
         return
       }
 
+      if (error.message.includes('required')) {
+        res.status(400).json({
+          success: false,
+          error: error.message
+        })
+        return
+      }
+
       res.status(500).json({
         success: false,
         error: error.message || 'Failed to update student'

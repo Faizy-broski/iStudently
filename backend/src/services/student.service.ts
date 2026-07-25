@@ -501,6 +501,12 @@ export class StudentService {
       existing = data
     }
 
+    // Email is required for every student — it's how they log in. Never allow it
+    // to be cleared, regardless of what any per-school "required field" config says.
+    if (updateData.email !== undefined && !updateData.email.trim()) {
+      throw new Error('Email is required for student records — students cannot log in without one')
+    }
+
     // Update profile if profile data is provided
     if (updateData.first_name || updateData.father_name || updateData.grandfather_name ||
         updateData.last_name || updateData.email || updateData.phone || updateData.profile_photo_url ||

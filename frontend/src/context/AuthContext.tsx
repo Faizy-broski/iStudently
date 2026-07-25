@@ -155,6 +155,23 @@ export async function handleSessionExpiry() {
   expiryHandledAt = now
 
   try {
+    // A single 401 can be caused by a transient backend hiccup or a request
+    // racing the auth bootstrap right after a page load/refresh — verify the
+    // session is actually gone before signing the user out.
+    try {
+      const { data: { session: currentSession } } = await supabase.auth.getSession()
+      if (currentSession) {
+        const { data, error: refreshError } = await supabase.auth.refreshSession()
+        if (!refreshError && data.session) {
+          // Session is still valid — the 401 was transient, don't log out
+          isHandlingExpiry = false
+          return
+        }
+      }
+    } catch {
+      // Fall through to sign-out below if the verification itself fails
+    }
+
     // Clear all caches and reset ALL module-level state
     profileCache = null
     isRefreshing = false
@@ -527,25 +544,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         } else {
           // Fetch profile from database
+          // NOTE: intentionally NOT embedding `school:schools(...)` here — that embed
+          // depends on PostgREST's FK relationship cache and can 400 independently of
+          // whether the session/profile is actually valid. A 400 here must never be
+          // treated as "no profile" (which used to sign the user out on every refresh).
+          // School info is fetched separately below instead.
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
-            .select('*, school:schools(name, logo_url, logo_shape, logo_border_width, logo_border_color)')
+            .select('*')
             .eq('id', user.id)
             .single()
 
-          // Check for error OR missing profile (406 error may not set profileError correctly)
-          if (profileError || !profile) {
+          // Only "no row found" means the profile genuinely doesn't exist.
+          // Any other error (network hiccup, schema/relationship error, etc.) is
+          // transient and must not destroy an otherwise valid session.
+          const isMissingRow = profileError?.code === 'PGRST116' || (!profileError && !profile)
+
+          if (profileError && !isMissingRow) {
+            console.warn('⚠️ Profile fetch failed with a transient error, will retry on next auth event:', profileError)
+            if (isMounted) {
+              setProfileFetchPending(true)
+              setLoading(false)
+              clearLoadingTimeout()
+            }
+            return
+          }
+
+          if (isMissingRow) {
             console.warn('⚠️ Profile fetch failed, retrying once...')
 
             // Retry once after a short delay (could be temporary network issue)
             await new Promise(resolve => setTimeout(resolve, 500))
             const { data: retryProfile, error: retryError } = await supabase
               .from('profiles')
-              .select('*, school:schools(name, logo_url, logo_shape, logo_border_width, logo_border_color)')
+              .select('*')
               .eq('id', user.id)
               .single()
 
-            if (retryError || !retryProfile) {
+            const retryIsMissingRow = retryError?.code === 'PGRST116' || (!retryError && !retryProfile)
+
+            if (retryError && !retryIsMissingRow) {
+              // Transient error on retry too — don't sign out, just mark pending
+              console.warn('⚠️ Profile fetch retry failed with a transient error, will retry on next auth event:', retryError)
+              if (isMounted) {
+                setProfileFetchPending(true)
+                setLoading(false)
+                clearLoadingTimeout()
+              }
+              return
+            }
+
+            if (retryIsMissingRow) {
               // Still no profile - sign out silently and redirect to login
               // Don't show scary error - just let user log in again
               console.warn('⚠️ Profile not found after retry - signing out silently')
@@ -566,7 +615,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             // Retry succeeded - use the profile
-            if (isMounted) {
+            if (isMounted && retryProfile) {
               // Continue with the retry profile
               // For teachers, staff, and librarians, fetch their staff_id and campus_id (school_id in staff table IS the campus)
               if (retryProfile.role === 'teacher' || retryProfile.role === 'staff' || retryProfile.role === 'librarian') {
@@ -582,6 +631,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 }
               }
 
+              if (retryProfile.school_id) {
+                const { data: schoolData } = await supabase
+                  .from('schools')
+                  .select('name, logo_url, logo_shape, logo_border_width, logo_border_color')
+                  .eq('id', retryProfile.school_id)
+                  .single()
+                if (schoolData) retryProfile.school = schoolData
+              }
+
               // Cache and set the profile
               profileCache = {
                 profile: retryProfile,
@@ -594,7 +652,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               clearLoadingTimeout()
             }
             return
-          } else {
+          } else if (profile) {
             // For teachers, staff, and librarians, fetch their staff_id and campus_id (school_id in staff table IS the campus)
             if (profile.role === 'teacher' || profile.role === 'staff' || profile.role === 'librarian') {
               const { data: staffData } = await supabase
@@ -640,6 +698,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // Adding custom property for parents
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 ; (profile as any).campus_ids = [profile.school_id] // Main school only
+            }
+
+            if (profile.school_id) {
+              const { data: schoolData } = await supabase
+                .from('schools')
+                .select('name, logo_url, logo_shape, logo_border_width, logo_border_color')
+                .eq('id', profile.school_id)
+                .single()
+              if (schoolData) profile.school = schoolData
             }
 
             if (isMounted) {

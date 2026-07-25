@@ -189,7 +189,10 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
       })),
     }).superRefine((data, ctx) => {
       orderedStandardFields.forEach(field => {
-        if (!field.required) return;
+        // Email is always mandatory — students log in with it — regardless of
+        // whether a campus admin has marked it optional on the Custom Fields page.
+        const isRequired = field.required || field.id === 'email';
+        if (!isRequired) return;
         if (!(field.id in data)) return;
         const value = (data as Record<string, unknown>)[field.id];
         if (isEmptyValue(value)) {
@@ -1271,8 +1274,10 @@ customFields.forEach((field) => {
   const isLastTab = currentTabIndex === tabs.length - 1;
 
   // Validate required fields for current tab
+  // Email is always mandatory — students log in with it — regardless of
+  // whether a campus admin has marked it optional on the Custom Fields page.
   const isStandardFieldRequired = (fieldId: string): boolean =>
-    orderedStandardFields.find(f => f.id === fieldId)?.required ?? true;
+    fieldId === 'email' || (orderedStandardFields.find(f => f.id === fieldId)?.required ?? true);
 
   const validateCurrentTab = (): boolean => {
     const errors: Record<string, string> = {};
