@@ -676,7 +676,15 @@ class FeesService {
                 student_number,
                 profiles(first_name, last_name),
                 grade_levels(id, name),
-                sections(name)
+                sections(name),
+                parent_student_links(
+                    parent_id,
+                    relationship,
+                    parents(
+                        id,
+                        profiles(first_name, last_name)
+                    )
+                )
             `)
             .eq('school_id', schoolId)
             .order('student_number')
@@ -693,18 +701,27 @@ class FeesService {
 
         const studentIds = students.map((s: any) => s.id)
 
+        // final_amount/amount_paid are pulled here (not just id/student_id) so we can also
+        // surface each student's current outstanding balance alongside their payment history —
+        // used by the printed receipt to show "remaining balance", not just what was paid.
         const { data: fees } = await supabase
             .from('student_fees')
-            .select('id, student_id')
+            .select('id, student_id, final_amount, amount_paid')
             .eq('school_id', schoolId)
             .in('student_id', studentIds)
 
         if (!fees || fees.length === 0) {
-            return students.map((s: any) => ({ ...s, payments: [] }))
+            return students.map((s: any) => ({ ...s, payments: [], balance: 0 }))
         }
 
         const feeIds = fees.map((f: any) => f.id)
         const feeToStudent = new Map(fees.map((f: any) => [f.id, f.student_id]))
+
+        const balanceByStudent = new Map<string, number>()
+        fees.forEach((f: any) => {
+            const bal = Number(f.final_amount || 0) - Number(f.amount_paid || 0)
+            balanceByStudent.set(f.student_id, (balanceByStudent.get(f.student_id) || 0) + bal)
+        })
 
         const { data: payments } = await supabase
             .from('fee_payments')
@@ -734,7 +751,8 @@ class FeesService {
 
         return students.map((s: any) => ({
             ...s,
-            payments: studentPayments.get(s.id) || []
+            payments: studentPayments.get(s.id) || [],
+            balance: balanceByStudent.get(s.id) || 0
         }))
     }
 

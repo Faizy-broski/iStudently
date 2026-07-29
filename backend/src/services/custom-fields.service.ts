@@ -10,7 +10,7 @@ export type EntityType =
     | 'hostel_room'
     | 'hostel_building'
     | 'school'
-export type CampusScope = 'this_campus' | 'selected_campuses' | 'all_campuses'
+export type CampusScope = 'this_campus' | 'selected_campuses' | 'all_campuses' | 'all_schools'
 
 export interface CustomFieldDefinition {
     id: string
@@ -130,6 +130,11 @@ export class CustomFieldsService {
 
             // Fields from any school that include this school in selected_campuses
             if (field.campus_scope === 'selected_campuses' && field.applicable_school_ids?.includes(schoolId)) {
+                return true
+            }
+
+            // Fields scoped to all_schools apply system-wide, regardless of family
+            if (field.campus_scope === 'all_schools') {
                 return true
             }
 

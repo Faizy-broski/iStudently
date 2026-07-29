@@ -10,8 +10,10 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { useCampus } from "@/context/CampusContext"
+import { useAuth } from "@/context/AuthContext"
 import { getAuthToken } from "@/lib/api/schools"
 import { getFieldDefinitions, type CustomFieldDefinition } from "@/lib/api/custom-fields"
+import { SchoolCustomFieldsButton } from "@/components/superadmin/SchoolCustomFieldsButton"
 import {
   Select,
   SelectContent,
@@ -68,6 +70,8 @@ interface CampusFormData {
 export default function SchoolDetailsPage() {
   const t = useTranslations("school.details")
   const campusContext = useCampus()
+  const { profile } = useAuth()
+  const isSuperAdmin = profile?.role === 'super_admin'
   const [loading, setLoading] = useState(false)
   const [stats, setStats] = useState<CampusStats | null>(null)
   const [isEditing, setIsEditing] = useState(false)
@@ -109,11 +113,16 @@ export default function SchoolDetailsPage() {
     }
   }, [selectedCampus])
 
-  useEffect(() => {
+  const refreshCustomFieldDefinitions = () => {
     if (!selectedCampus?.id) { setCustomFields([]); return }
     getFieldDefinitions('school', selectedCampus.id).then((res) => {
       if (res.success) setCustomFields(res.data ?? [])
     })
+  }
+
+  useEffect(() => {
+    refreshCustomFieldDefinitions()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCampus?.id])
 
   useEffect(() => {
@@ -306,14 +315,25 @@ export default function SchoolDetailsPage() {
           </p>
         </div>
         {selectedCampus && !isEditing && (
-          <Button 
-            type="button"
-            onClick={() => setIsEditing(true)}
-            className="bg-gray-900 hover:bg-gray-800 text-white"
-          >
-            <Edit className="h-4 w-4 mr-2" />
-            {t("edit_campus")}
-          </Button>
+          <div className="flex gap-2">
+            {isSuperAdmin && (
+              <div className="shrink-0 [&>button]:w-auto">
+                <SchoolCustomFieldsButton
+                  schoolId={selectedCampus.id}
+                  schoolName={selectedCampus.name}
+                  onFieldsChanged={refreshCustomFieldDefinitions}
+                />
+              </div>
+            )}
+            <Button
+              type="button"
+              onClick={() => setIsEditing(true)}
+              className="bg-gray-900 hover:bg-gray-800 text-white"
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              {t("edit_campus")}
+            </Button>
+          </div>
         )}
         {isEditing && (
           <div className="flex gap-2">

@@ -246,7 +246,7 @@ export type CustomFieldType =
   | "select"
   | "multi-select"
   | "file";
-export type CampusScope = "this_campus" | "selected_campuses" | "all_campuses";
+export type CampusScope = "this_campus" | "selected_campuses" | "all_campuses" | "all_schools";
 
 export interface CustomField {
   id: string;

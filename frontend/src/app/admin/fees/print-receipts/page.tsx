@@ -48,6 +48,18 @@ interface Payment {
     student_fee_id: string
 }
 
+interface ParentLink {
+    parent_id: string
+    relationship: string
+    parents: {
+        id: string
+        profiles: {
+            first_name: string
+            last_name: string
+        }
+    }
+}
+
 interface StudentWithPayments {
     id: string
     student_number: string
@@ -63,6 +75,25 @@ interface StudentWithPayments {
         name: string
     }
     payments: Payment[]
+    balance: number
+    parent_student_links?: ParentLink[]
+}
+
+// One printed page's worth of receipt content for a single student: every
+// selected payment for them, plus their current outstanding balance (not
+// just what's being receipted here) so the printout doubles as a balance statement.
+interface StudentReceiptGroup {
+    student: StudentWithPayments
+    payments: Payment[]
+    totalPaid: number
+    balance: number
+}
+
+interface FamilyReceiptGroup {
+    familyId: string
+    familyName: string
+    members: StudentReceiptGroup[]
+    totalFamilyBalance: number
 }
 
 async function fetchGrades(schoolId: string): Promise<GradeLevel[]> {
@@ -130,7 +161,8 @@ export default function PrintReceiptsPage() {
     const [dateTo, setDateTo] = useState<string>('')
     const [minAmount, setMinAmount] = useState<string>('')
     const [maxAmount, setMaxAmount] = useState<string>('')
-    
+    const [combineByFamily, setCombineByFamily] = useState(false)
+
     const printRef = useRef<HTMLDivElement>(null)
 
     // Fetch grades
@@ -233,6 +265,73 @@ export default function PrintReceiptsPage() {
     // Get selected payments for printing
     const paymentsToPrint = filteredPayments.filter(p => selectedPayments.has(p.id))
 
+    // Group the selected payments by student — one printed page per student,
+    // listing every one of their selected payments (with dates) together,
+    // instead of the old one-page-per-payment layout.
+    const studentReceiptGroups: StudentReceiptGroup[] = (() => {
+        const map = new Map<string, StudentReceiptGroup>()
+        paymentsToPrint.forEach(p => {
+            const sid = p.student.id
+            let group = map.get(sid)
+            if (!group) {
+                group = { student: p.student, payments: [], totalPaid: 0, balance: p.student.balance }
+                map.set(sid, group)
+            }
+            group.payments.push(p)
+            group.totalPaid += p.amount
+        })
+        return Array.from(map.values())
+    })()
+
+    // Family lookup built from the whole loaded roster (not just selected payments) so a
+    // family's total balance reflects every sibling, even ones with nothing selected here.
+    const familyByStudentId = (() => {
+        const map = new Map<string, { familyId: string; familyName: string }>()
+        studentsWithPayments?.forEach(s => {
+            const link = s.parent_student_links?.[0]
+            const parent = link?.parents
+            if (!link || !parent) return
+            const familyName = `${parent.profiles?.first_name || ''} ${parent.profiles?.last_name || ''}`.trim()
+            map.set(s.id, { familyId: link.parent_id, familyName: familyName || t('title') })
+        })
+        return map
+    })()
+
+    // Families to print: seeded from students with selected payments, then expanded to
+    // include every other sibling on the loaded roster so the family total is complete.
+    const familyReceiptGroups: FamilyReceiptGroup[] = combineByFamily ? (() => {
+        const byFamily = new Map<string, { familyName: string; studentIds: Set<string> }>()
+        studentReceiptGroups.forEach(g => {
+            const fam = familyByStudentId.get(g.student.id)
+            if (!fam) return
+            if (!byFamily.has(fam.familyId)) byFamily.set(fam.familyId, { familyName: fam.familyName, studentIds: new Set() })
+            byFamily.get(fam.familyId)!.studentIds.add(g.student.id)
+        })
+        studentsWithPayments?.forEach(s => {
+            const fam = familyByStudentId.get(s.id)
+            if (fam && byFamily.has(fam.familyId)) byFamily.get(fam.familyId)!.studentIds.add(s.id)
+        })
+        return Array.from(byFamily.entries()).map(([familyId, fam]) => {
+            const members: StudentReceiptGroup[] = Array.from(fam.studentIds).map(sid => {
+                const existing = studentReceiptGroups.find(g => g.student.id === sid)
+                if (existing) return existing
+                const studentRecord = studentsWithPayments!.find(s => s.id === sid)!
+                return { student: studentRecord, payments: [], totalPaid: 0, balance: studentRecord.balance }
+            })
+            return {
+                familyId,
+                familyName: fam.familyName,
+                members,
+                totalFamilyBalance: members.reduce((sum, m) => sum + m.balance, 0),
+            }
+        })
+    })() : []
+
+    // Students with selected payments but no family link at all still get their own page in family mode.
+    const soloReceiptGroups: StudentReceiptGroup[] = combineByFamily
+        ? studentReceiptGroups.filter(g => !familyByStudentId.has(g.student.id))
+        : studentReceiptGroups
+
     // Download PDF handler using openPdfDownload
     const handlePrint = useCallback(() => {
         const printContent = printRef.current
@@ -251,12 +350,27 @@ export default function PrintReceiptsPage() {
             .header .receipt-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #888; margin-top: 4px; }
             .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
             .info-grid .right { text-align: right; }
-            .amount-box { background: #f0f0f0; border: 1px solid #ddd; padding: 24px; text-align: center; margin-bottom: 24px; }
-            .amount-box .label { color: #666; font-size: 14px; margin-bottom: 8px; }
-            .amount-box .amount { font-size: 32px; font-weight: bold; color: #16a34a; }
+            .amount-box { background: #f0f0f0; border: 1px solid #ddd; padding: 16px 24px; text-align: center; margin-bottom: 24px; display: flex; justify-content: space-around; }
+            .amount-box .stat .label { color: #666; font-size: 13px; margin-bottom: 6px; }
+            .amount-box .stat .amount { font-size: 26px; font-weight: bold; }
+            .amount-box .stat.paid .amount { color: #16a34a; }
+            .amount-box .stat.balance .amount { color: #dc2626; }
+            .amount-box .stat.balance.zero .amount { color: #16a34a; }
             table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
             th, td { border: 1px solid #333; padding: 8px; text-align: left; }
-            th { background: #f0f0f0; width: 40%; }
+            th { background: #f0f0f0; }
+            .payments-table th { width: auto; font-size: 12px; text-transform: uppercase; }
+            .payments-table td.amount-col { text-align: right; font-weight: 600; }
+            .payments-table tfoot td { font-weight: bold; background: #fafafa; }
+            .info-table th { width: 40%; }
+            .member-block { border: 1px solid #ccc; padding: 16px; margin-bottom: 16px; }
+            .member-block h3 { display: flex; justify-content: space-between; font-size: 15px; margin: 0 0 10px; }
+            .member-block h3 .member-balance { color: #dc2626; }
+            .member-block h3 .member-balance.zero { color: #16a34a; }
+            .family-total { background: #f0f0f0; border: 2px solid #333; padding: 16px 24px; text-align: center; margin-bottom: 24px; }
+            .family-total .label { color: #666; font-size: 14px; margin-bottom: 8px; }
+            .family-total .amount { font-size: 28px; font-weight: bold; color: #dc2626; }
+            .family-total .amount.zero { color: #16a34a; }
             .footer { display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid #333; padding-top: 16px; }
             .footer .date { font-size: 12px; color: #666; }
             .footer .signature { text-align: center; }
@@ -283,6 +397,89 @@ export default function PrintReceiptsPage() {
             pluginActive: false,
         })
     }, [pdfSettings, selectedCampus, isPluginActive])
+
+    const renderReceiptHeader = (isFamily: boolean) => (
+        <div className="header">
+            <p className="receipt-date">{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+            <div className="logo-wrap">
+                {selectedCampus?.logo_url
+                    ? <img src={selectedCampus.logo_url} alt="" />
+                    : <div className="logo-initial">{(selectedCampus?.name || 'S').charAt(0).toUpperCase()}</div>
+                }
+            </div>
+            <h1>{selectedCampus?.name || 'School Name'}</h1>
+            <p className="receipt-label">{isFamily ? t('familyReceiptLabel') : t('receiptTitle')}</p>
+        </div>
+    )
+
+    const renderReceiptFooter = () => (
+        <div className="footer">
+            <div className="date">
+                <p>{t('generatedOn')}: {new Date().toLocaleDateString()}</p>
+            </div>
+            <div className="signature">
+                <div className="signature-line">
+                    <p>{t('authorizedSignature')}</p>
+                </div>
+            </div>
+        </div>
+    )
+
+    const renderPaymentsTable = (payments: Payment[]) => (
+        <table className="payments-table">
+            <thead>
+                <tr>
+                    <th>{t('th_paymentDate')}</th>
+                    <th>{t('th_receipt')}</th>
+                    <th>{t('th_method')}</th>
+                    <th>{t('th_comment')}</th>
+                    <th className="amount-col">{t('amountPaid')}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {payments.map((p) => (
+                    <tr key={p.id}>
+                        <td>{formatDate(p.payment_date)}</td>
+                        <td>{p.receipt_number || `RCP-${p.id.substring(0, 8).toUpperCase()}`}</td>
+                        <td>{p.payment_method || t('cash')}</td>
+                        <td>{p.comment || '-'}</td>
+                        <td className="amount-col">{formatCurrency(p.amount)}</td>
+                    </tr>
+                ))}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colSpan={4}>{t('totalPaid')}</td>
+                    <td className="amount-col">{formatCurrency(payments.reduce((sum, p) => sum + p.amount, 0))}</td>
+                </tr>
+            </tfoot>
+        </table>
+    )
+
+    const renderStudentReceipt = (group: StudentReceiptGroup) => (
+        <div key={group.student.id} className="receipt">
+            {renderReceiptHeader(false)}
+            <div className="info-grid">
+                <div>
+                    <p><strong>{t('student')}:</strong> {formatStudentName(group.student)}</p>
+                    <p><strong>ID:</strong> {group.student.student_number || '-'}</p>
+                    <p><strong>{t('th_gradeLevel')}:</strong> {group.student.grade_levels?.name || '-'}</p>
+                </div>
+            </div>
+            {renderPaymentsTable(group.payments)}
+            <div className="amount-box">
+                <div className="stat paid">
+                    <p className="label">{t('totalPaid')}</p>
+                    <p className="amount">{formatCurrency(group.totalPaid)}</p>
+                </div>
+                <div className={`stat balance ${group.balance > 0 ? '' : 'zero'}`}>
+                    <p className="label">{t('remainingBalance')}</p>
+                    <p className="amount">{formatCurrency(group.balance)}</p>
+                </div>
+            </div>
+            {renderReceiptFooter()}
+        </div>
+    )
 
     if (campusLoading) {
         return (
@@ -418,6 +615,17 @@ export default function PrintReceiptsPage() {
                             />
                         </div>
                     </div>
+                    {/* Row 3: Combine by family */}
+                    <div className="flex items-center gap-2">
+                        <Checkbox
+                            id="combine-by-family"
+                            checked={combineByFamily}
+                            onCheckedChange={(checked) => setCombineByFamily(checked as boolean)}
+                        />
+                        <Label htmlFor="combine-by-family" className="cursor-pointer font-normal">
+                            {tp('groupByFamily')}
+                        </Label>
+                    </div>
                 </CardContent>
             </Card>
 
@@ -485,76 +693,45 @@ export default function PrintReceiptsPage() {
             {/* Print Template (Hidden) */}
             <div className="hidden">
                 <div ref={printRef}>
-                    {paymentsToPrint.map((payment) => (
-                        <div key={payment.id} className="receipt">
-                            {/* Receipt Header */}
-                            <div className="header">
-                                <p className="receipt-date">{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
-                                <div className="logo-wrap">
-                                    {selectedCampus?.logo_url
-                                        ? <img src={selectedCampus.logo_url} alt="" />
-                                        : <div className="logo-initial">{(selectedCampus?.name || 'S').charAt(0).toUpperCase()}</div>
-                                    }
-                                </div>
-                                <h1>{selectedCampus?.name || 'School Name'}</h1>
-                                <p className="receipt-label">PAYMENT RECEIPT</p>
-                            </div>
-
-                            {/* Receipt Info */}
-                            <div className="info-grid">
-                                <div>
-                                    <p><strong>Student Name:</strong> {formatStudentName(payment.student)}</p>
-                                    <p><strong>Student ID:</strong> {payment.student.student_number || '-'}</p>
-                                    <p><strong>Grade:</strong> {payment.student.grade_levels?.name || '-'}</p>
-                                </div>
-                                <div className="right">
-                                    <p><strong>{t('receiptNo')}:</strong> {payment.receipt_number || `RCP-${payment.id.substring(0, 8).toUpperCase()}`}</p>
-                                    <p><strong>{t('th_paymentDate')}:</strong> {formatDate(payment.payment_date)}</p>
-                                    <p><strong>{t('th_method')}:</strong> {payment.payment_method || 'Cash'}</p>
-                                </div>
-                            </div>
-
-                            {/* Payment Amount */}
-                            <div className="amount-box">
-                                <p className="label">{t('amountPaid')}</p>
-                                <p className="amount">{formatCurrency(payment.amount)}</p>
-                            </div>
-
-                            {/* Additional Details */}
-                            <table>
-                                <tbody>
-                                    <tr>
-                                        <th>Payment Type</th>
-                                        <td>{payment.is_lunch_payment ? 'Lunch Payment' : 'Fee Payment'}</td>
-                                    </tr>
-                                    {payment.comment && (
-                                        <tr>
-                                            <th>Comment</th>
-                                            <td>{payment.comment}</td>
-                                        </tr>
-                                    )}
-                                    {payment.created_by_profile && (
-                                        <tr>
-                                            <th>Received By</th>
-                                            <td>{payment.created_by_profile.first_name} {payment.created_by_profile.last_name}</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-
-                            {/* Footer */}
-                            <div className="footer">
-                                <div className="date">
-                                    <p>{t('generatedOn')}: {new Date().toLocaleDateString()}</p>
-                                </div>
-                                <div className="signature">
-                                    <div className="signature-line">
-                                        <p>{t('authorizedSignature')}</p>
+                    {combineByFamily ? (
+                        <>
+                            {familyReceiptGroups.map((family) => (
+                                <div key={family.familyId} className="receipt">
+                                    {renderReceiptHeader(true)}
+                                    <p style={{ textAlign: 'center', fontWeight: 600, marginBottom: 16 }}>
+                                        {tp('familyOf', { name: family.familyName })}
+                                    </p>
+                                    {family.members.map((member) => (
+                                        <div key={member.student.id} className="member-block">
+                                            <h3>
+                                                <span>
+                                                    {formatStudentName(member.student)} ({member.student.student_number || '-'}) — {member.student.grade_levels?.name || '-'}
+                                                </span>
+                                                <span className={`member-balance ${member.balance > 0 ? '' : 'zero'}`}>
+                                                    {t('remainingBalance')}: {formatCurrency(member.balance)}
+                                                </span>
+                                            </h3>
+                                            {member.payments.length > 0 ? (
+                                                renderPaymentsTable(member.payments)
+                                            ) : (
+                                                <p style={{ fontStyle: 'italic', color: '#888', fontSize: 13 }}>{t('noPayments')}</p>
+                                            )}
+                                        </div>
+                                    ))}
+                                    <div className="family-total">
+                                        <p className="label">{t('familyTotalBalance')}</p>
+                                        <p className={`amount ${family.totalFamilyBalance > 0 ? '' : 'zero'}`}>
+                                            {formatCurrency(family.totalFamilyBalance)}
+                                        </p>
                                     </div>
+                                    {renderReceiptFooter()}
                                 </div>
-                            </div>
-                        </div>
-                    ))}
+                            ))}
+                            {soloReceiptGroups.map((group) => renderStudentReceipt(group))}
+                        </>
+                    ) : (
+                        studentReceiptGroups.map((group) => renderStudentReceipt(group))
+                    )}
                 </div>
             </div>
         </div>

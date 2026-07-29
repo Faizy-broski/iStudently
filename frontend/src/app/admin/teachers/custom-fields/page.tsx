@@ -8,7 +8,9 @@ import { Plus, Trash2, Save, Settings2, ChevronDown, ChevronRight, GripVertical,
 import { toast } from "sonner";
 import { CustomFieldCategory, CustomField } from "@/types";
 import { customFieldsApi, CustomFieldDefinition, BranchSchool } from "@/lib/api/custom-fields";
+import { getAllSchoolsData } from "@/lib/api/schools";
 import { useCampus } from "@/context/CampusContext";
+import { useAuth } from "@/context/AuthContext";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -62,6 +64,8 @@ type ExtendedCategory = CustomFieldCategory & { order: number };
 export default function TeacherCustomFieldsPage() {
   const t = useTranslations("teachers");
   const { selectedCampus } = useCampus();
+  const { profile } = useAuth();
+  const isSuperAdmin = profile?.role === 'super_admin';
   const [categories, setCategories] = useState<ExtendedCategory[]>([]);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -76,6 +80,7 @@ export default function TeacherCustomFieldsPage() {
   const categoriesRef = useRef(categories);
   const [isLoading, setIsLoading] = useState(true);
   const [branchSchools, setBranchSchools] = useState<BranchSchool[]>([]);
+  const [allSchools, setAllSchools] = useState<BranchSchool[]>([]);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [newCategoryName, setNewCategoryName] = useState('');
   const [showAddCategory, setShowAddCategory] = useState(false);
@@ -97,11 +102,12 @@ export default function TeacherCustomFieldsPage() {
       try {
         // Pass campus_id to get campus-specific custom fields
         const campusId = selectedCampus?.id;
-        const [fieldsResponse, branchesResponse, defaultOrdersResponse, categoryOrdersResponse] = await Promise.all([
+        const [fieldsResponse, branchesResponse, defaultOrdersResponse, categoryOrdersResponse, allSchoolsResponse] = await Promise.all([
           customFieldsApi.getFieldDefinitions('teacher', campusId),
           customFieldsApi.getBranchSchools(),
           getFieldOrders('teacher', undefined, campusId),
-          getCategoryOrders('teacher', campusId)
+          getCategoryOrders('teacher', campusId),
+          isSuperAdmin ? getAllSchoolsData() : Promise.resolve(null)
         ]);
 
         const savedCategoryOrderMap: Record<string, number> = {};
@@ -203,6 +209,10 @@ export default function TeacherCustomFieldsPage() {
         if (branchesResponse.success && branchesResponse.data) {
           setBranchSchools(branchesResponse.data);
         }
+
+        if (allSchoolsResponse?.success && allSchoolsResponse.data) {
+          setAllSchools(allSchoolsResponse.data.map(s => ({ id: s.id, name: s.name })));
+        }
       } catch (error) {
         console.error('Error loading custom fields:', error);
         toast.error(t('errors.loadCustomFields'));
@@ -215,7 +225,7 @@ export default function TeacherCustomFieldsPage() {
     isDataLoadedRef.current = false;
     console.log('[CF:teacher] loadData start — isDataLoadedRef → false');
     loadData();
-  }, [selectedCampus?.id]);
+  }, [selectedCampus?.id, isSuperAdmin]);
 
   useEffect(() => { categoriesRef.current = categories; }, [categories]);
 
@@ -610,6 +620,8 @@ export default function TeacherCustomFieldsPage() {
                 onRemoveField={removeCustomField}
                 onDeleteCategory={deleteCategory}
                 branchSchools={branchSchools}
+                allSchools={allSchools}
+                isSuperAdmin={isSuperAdmin}
                 toggleCampusSelection={toggleCampusSelection}
                 isStandard={STANDARD_CATEGORIES.includes(category.id)}
                 defaultFields={defaultFieldsByCategory[category.id] || []}
@@ -635,6 +647,8 @@ function SortableCategoryItem({
   onRemoveField,
   onDeleteCategory,
   branchSchools,
+  allSchools,
+  isSuperAdmin,
   toggleCampusSelection,
   isStandard,
   defaultFields,
@@ -650,6 +664,8 @@ function SortableCategoryItem({
   onRemoveField: (catId: string, fieldId: string) => void;
   onDeleteCategory: (id: string) => void;
   branchSchools: BranchSchool[];
+  allSchools: BranchSchool[];
+  isSuperAdmin: boolean;
   toggleCampusSelection: (categoryId: string, fieldId: string, schoolId: string, checked: boolean) => void;
   isStandard: boolean;
   defaultFields: DefaultFieldEntry[];
@@ -671,7 +687,9 @@ function SortableCategoryItem({
     scope_this: t("customFields.thisOnly"),
     scope_selected: t("customFields.selected"),
     scope_all: t("customFields.all"),
+    scope_all_schools: t("customFields.allSchools", { defaultValue: "All Schools" }),
     select_campuses: t("selectCampuses"),
+    select_schools: t("customFields.selectSchools", { defaultValue: "Select Schools" }),
     no_fields: t("customFields.noCustomFieldsYet"),
     default_badge: t("customFields.defaultFieldsDragToReorder"),
     type_text: t("customFields.types.text"),
@@ -756,6 +774,8 @@ function SortableCategoryItem({
             defaultFields={defaultFields}
             customFields={category.fields}
             branchSchools={branchSchools}
+            allSchools={allSchools}
+            isSuperAdmin={isSuperAdmin}
             labels={fieldLabels}
             onUpdateField={(fieldId, updates) => onUpdateField(category.id, fieldId, updates)}
             onRemoveField={(fieldId) => onRemoveField(category.id, fieldId)}

@@ -111,6 +111,14 @@ export class CustomFieldsController {
                 return
             }
 
+            if (campus_scope === 'all_schools' && req.profile?.role !== 'super_admin') {
+                res.status(403).json({
+                    success: false,
+                    error: 'Only Super Admin can scope a field to all schools'
+                })
+                return
+            }
+
             const field = await customFieldsService.createFieldDefinition(effectiveSchoolId, {
                 entity_type,
                 category_id,
@@ -169,6 +177,14 @@ export class CustomFieldsController {
                 res.status(403).json({
                     success: false,
                     error: 'Only Super Admin can manage school custom fields'
+                })
+                return
+            }
+
+            if (updates.campus_scope === 'all_schools' && req.profile?.role !== 'super_admin') {
+                res.status(403).json({
+                    success: false,
+                    error: 'Only Super Admin can scope a field to all schools'
                 })
                 return
             }

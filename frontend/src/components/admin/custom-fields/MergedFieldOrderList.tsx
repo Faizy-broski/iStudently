@@ -31,7 +31,11 @@ export interface MergedFieldOrderListLabels {
   scope_this: string
   scope_selected: string
   scope_all: string
+  // Only needed on pages that pass isSuperAdmin — optional so pages that
+  // don't wire up the super-admin scope don't have to supply them.
+  scope_all_schools?: string
   select_campuses: string
+  select_schools?: string
   no_fields: string
   default_badge: string
   type_text: string
@@ -51,6 +55,11 @@ interface MergedFieldOrderListProps {
   defaultFields: DefaultFieldMeta[]
   customFields: CustomField[]
   branchSchools: BranchSchool[]
+  // Super-admin only: every school in the system, for scoping a field to
+  // "all schools" or a hand-picked set of schools rather than just this
+  // school's own branches. Omitted (or empty) for non-super-admin callers.
+  allSchools?: BranchSchool[]
+  isSuperAdmin?: boolean
   labels: MergedFieldOrderListLabels
   translateDefaultLabel?: (label: string) => string
   onUpdateField: (fieldId: string, updates: Partial<CustomField>) => void
@@ -71,6 +80,8 @@ export function MergedFieldOrderList({
   defaultFields,
   customFields,
   branchSchools,
+  allSchools,
+  isSuperAdmin,
   labels,
   translateDefaultLabel,
   onUpdateField,
@@ -182,6 +193,8 @@ export function MergedFieldOrderList({
                 key={item.key}
                 item={item}
                 branchSchools={branchSchools}
+                allSchools={allSchools}
+                isSuperAdmin={isSuperAdmin}
                 labels={labels}
                 onUpdateField={onUpdateField}
                 onRemoveField={onRemoveField}
@@ -241,6 +254,8 @@ function DefaultFieldRow({
 function CustomFieldRow({
   item,
   branchSchools,
+  allSchools,
+  isSuperAdmin,
   labels,
   onUpdateField,
   onRemoveField,
@@ -249,6 +264,8 @@ function CustomFieldRow({
 }: {
   item: Extract<MergedFieldItem, { kind: 'custom' }>
   branchSchools: BranchSchool[]
+  allSchools?: BranchSchool[]
+  isSuperAdmin?: boolean
   labels: MergedFieldOrderListLabels
   onUpdateField: (fieldId: string, updates: Partial<CustomField>) => void
   onRemoveField: (fieldId: string) => void
@@ -256,6 +273,9 @@ function CustomFieldRow({
   onRequiredToggle: (field: CustomField, checked: boolean) => void
 }) {
   const field = item.field
+  // Super admins pick from every school in the system for "selected" scope;
+  // regular admins only pick from their own school's branches.
+  const pickableSchools = isSuperAdmin ? (allSchools ?? []) : branchSchools
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.key })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 }
 
@@ -308,11 +328,12 @@ function CustomFieldRow({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="this_campus">{labels.scope_this}</SelectItem>
-            {branchSchools.length > 0 && <SelectItem value="selected_campuses">{labels.scope_selected}</SelectItem>}
+            {pickableSchools.length > 0 && <SelectItem value="selected_campuses">{labels.scope_selected}</SelectItem>}
             <SelectItem value="all_campuses">{labels.scope_all}</SelectItem>
+            {isSuperAdmin && <SelectItem value="all_schools">{labels.scope_all_schools || 'All Schools'}</SelectItem>}
           </SelectContent>
         </Select>
-        {field.campus_scope === 'selected_campuses' && branchSchools.length > 0 && (
+        {field.campus_scope === 'selected_campuses' && pickableSchools.length > 0 && (
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" size="sm" className="h-7 px-1">
@@ -322,9 +343,9 @@ function CustomFieldRow({
             </PopoverTrigger>
             <PopoverContent className="w-56 p-2" align="start">
               <div className="space-y-2">
-                <span className="text-xs font-semibold dark:text-gray-200">{labels.select_campuses}</span>
+                <span className="text-xs font-semibold dark:text-gray-200">{isSuperAdmin ? (labels.select_schools || 'Select Schools') : labels.select_campuses}</span>
                 <div className="max-h-40 overflow-y-auto space-y-1">
-                  {branchSchools.map((school) => (
+                  {pickableSchools.map((school) => (
                     <label key={school.id} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded dark:text-gray-200">
                       <Checkbox
                         checked={field.applicable_school_ids?.includes(school.id) || false}

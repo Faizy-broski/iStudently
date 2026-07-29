@@ -507,6 +507,10 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "school_inventory", href: "/admin/resources/school-inventory", icon: Package },
       { title: "inventory_snapshots", href: "/admin/resources/inventory-snapshots", icon: Camera },
       { title: "physics_labs", href: "/admin/physics-labs", icon: FlaskConical },
+      { title: "physics_virtual_labs", href: "/admin/resources/physics-virtual-labs", icon: Globe },
+      { title: "chemistry_virtual_labs", href: "/admin/resources/chemistry-virtual-labs", icon: FlaskConical },
+      { title: "virtual_labs", href: "/admin/resources/virtual-labs", icon: FlaskConical },
+      { title: "periodic_table", href: "/admin/resources/jperiod", icon: Table2 },
     ],
   },
   {
@@ -680,6 +684,10 @@ const teacherMenuItems: SidebarMenuItem[] = [
       { title: "resources", href: "/teacher/resources", icon: Link2 },
       { title: "learning_resources", href: "/teacher/learning-resources", icon: Upload },
       { title: "class_reports", href: "/teacher/reports", icon: BarChart3 },
+      { title: "physics_virtual_labs", href: "/teacher/resources/physics-virtual-labs", icon: Globe },
+      { title: "chemistry_virtual_labs", href: "/teacher/resources/chemistry-virtual-labs", icon: FlaskConical },
+      { title: "virtual_labs", href: "/teacher/resources/virtual-labs", icon: FlaskConical },
+      { title: "periodic_table", href: "/teacher/resources/jperiod", icon: Table2 },
     ],
   },
   {
@@ -1007,6 +1015,10 @@ const parentMenuItems: SidebarMenuItem[] = [
     icon: FolderOpen,
     subItems: [
       { title: "resources", href: "/parent/resources", icon: Link2 },
+      { title: "physics_virtual_labs", href: "/parent/resources/physics-virtual-labs", icon: Globe },
+      { title: "chemistry_virtual_labs", href: "/parent/resources/chemistry-virtual-labs", icon: FlaskConical },
+      { title: "virtual_labs", href: "/parent/resources/virtual-labs", icon: FlaskConical },
+      { title: "periodic_table", href: "/parent/resources/jperiod", icon: Table2 },
     ],
   },
   { title: "settings", href: "/parent/settings", icon: Settings },
@@ -1059,6 +1071,12 @@ export const getSidebarConfig = (role: UserRole): SidebarMenuItem[] => {
       return parentMenuItems;
     case "librarian":
       return librarianMenuItems;
+    case "staff":
+      // Staff accounts have no dedicated /staff/* routes — they log into the
+      // admin app shell and are scoped down entirely by their User Profile
+      // permissions (see usePermissions/canUse in DashboardLayout), so they
+      // need the full admin menu as their base before that filter applies.
+      return adminMenuItems;
     default:
       return [];
   }

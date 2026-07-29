@@ -29,10 +29,14 @@ import {
   type CampusScope,
   type BranchSchool,
 } from '@/lib/api/custom-fields'
+import { getAllSchoolsData } from '@/lib/api/schools'
 
 interface SchoolCustomFieldsButtonProps {
   schoolId: string
   schoolName: string
+  // Called after a field is created, edited, or deleted so a parent page
+  // that also renders these fields (e.g. Campus Details) can refresh.
+  onFieldsChanged?: () => void
 }
 
 const FIELD_TYPES: CustomFieldType[] = ['text', 'long-text', 'number', 'date', 'checkbox', 'select', 'multi-select', 'file']
@@ -56,12 +60,12 @@ const emptyForm = (): FieldFormState => ({
   applicable_school_ids: [],
 })
 
-export function SchoolCustomFieldsButton({ schoolId, schoolName }: SchoolCustomFieldsButtonProps) {
+export function SchoolCustomFieldsButton({ schoolId, schoolName, onFieldsChanged }: SchoolCustomFieldsButtonProps) {
   const [open, setOpen] = React.useState(false)
   const [loading, setLoading] = React.useState(false)
   const [saving, setSaving] = React.useState(false)
   const [fields, setFields] = React.useState<CustomFieldDefinition[]>([])
-  const [branchSchools, setBranchSchools] = React.useState<BranchSchool[]>([])
+  const [allSchools, setAllSchools] = React.useState<BranchSchool[]>([])
 
   const [showForm, setShowForm] = React.useState(false)
   const [editingField, setEditingField] = React.useState<CustomFieldDefinition | null>(null)
@@ -70,12 +74,12 @@ export function SchoolCustomFieldsButton({ schoolId, schoolName }: SchoolCustomF
   const loadFields = React.useCallback(async () => {
     setLoading(true)
     try {
-      const [fieldsRes, branchesRes] = await Promise.all([
+      const [fieldsRes, allSchoolsRes] = await Promise.all([
         customFieldsApi.getFieldDefinitions('school', schoolId),
-        customFieldsApi.getBranchSchools(),
+        getAllSchoolsData(),
       ])
       if (fieldsRes.success) setFields(fieldsRes.data ?? [])
-      if (branchesRes.success) setBranchSchools(branchesRes.data ?? [])
+      if (allSchoolsRes.success) setAllSchools((allSchoolsRes.data ?? []).map((s) => ({ id: s.id, name: s.name })))
     } finally {
       setLoading(false)
     }
@@ -128,6 +132,7 @@ export function SchoolCustomFieldsButton({ schoolId, schoolName }: SchoolCustomF
         }, schoolId)
         if (!res.success) { toast.error(res.error ?? 'Failed to update field'); return }
         toast.success('Field updated')
+        onFieldsChanged?.()
       } else {
         const res = await customFieldsApi.createFieldDefinition({
           entity_type: 'school',
@@ -142,6 +147,7 @@ export function SchoolCustomFieldsButton({ schoolId, schoolName }: SchoolCustomF
         }, schoolId)
         if (!res.success) { toast.error(res.error ?? 'Failed to create field'); return }
         toast.success('Field added')
+        onFieldsChanged?.()
       }
       setShowForm(false)
       loadFields()
@@ -155,6 +161,7 @@ export function SchoolCustomFieldsButton({ schoolId, schoolName }: SchoolCustomF
     if (!res.success) { toast.error(res.error ?? 'Failed to delete field'); return }
     toast.success('Field deleted')
     setFields((prev) => prev.filter((f) => f.id !== field.id))
+    onFieldsChanged?.()
   }
 
   function toggleBranchSchool(id: string) {
@@ -237,19 +244,20 @@ export function SchoolCustomFieldsButton({ schoolId, schoolName }: SchoolCustomF
                   <SelectContent>
                     <SelectItem value="this_campus">Only this exact row (not its branch campuses)</SelectItem>
                     <SelectItem value="all_campuses">All campuses (branches) — recommended</SelectItem>
-                    <SelectItem value="selected_campuses">Selected campuses</SelectItem>
+                    <SelectItem value="selected_campuses">Selected schools</SelectItem>
+                    <SelectItem value="all_schools">All schools (every school in the system)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               {form.campus_scope === 'selected_campuses' && (
                 <div className="space-y-1.5">
-                  <Label>Choose Campuses</Label>
+                  <Label>Choose Schools</Label>
                   <div className="border rounded-md p-2 max-h-40 overflow-y-auto space-y-1">
-                    {branchSchools.length === 0 ? (
-                      <p className="text-xs text-muted-foreground px-1">No branch campuses found.</p>
+                    {allSchools.length === 0 ? (
+                      <p className="text-xs text-muted-foreground px-1">No schools found.</p>
                     ) : (
-                      branchSchools.map((b) => (
+                      allSchools.map((b) => (
                         <label key={b.id} className="flex items-center gap-2 text-sm px-1 py-1 cursor-pointer">
                           <input
                             type="checkbox"
