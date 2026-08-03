@@ -6,6 +6,22 @@ import {
   CreateParentStudentLinkDTO,
   StudentWithRelationship
 } from '../types'
+import { generatePlaceholderEmail, redactPlaceholderEmail, withRedactedEmail } from '../utils/email.util'
+
+// Loosely typed (matches this file's existing `any` casts around nested
+// `profile` joins) since Supabase's generated types sometimes infer a
+// to-one profile join as an array depending on the select shape, even
+// though it's a single row at runtime.
+function redactProfileEmail<T extends Record<string, any>>(record: T): T {
+  if (!record) return record
+  if (Array.isArray(record.profile)) {
+    return { ...record, profile: record.profile.map((p: any) => withRedactedEmail(p)) }
+  }
+  if (record.profile) {
+    return { ...record, profile: withRedactedEmail(record.profile) }
+  }
+  return record
+}
 
 export class ParentService {
   /**
@@ -73,7 +89,7 @@ export class ParentService {
     }
 
     return {
-      parents: filteredData,
+      parents: filteredData.map(redactProfileEmail),
       pagination: {
         total: count || 0,
         page,
@@ -197,7 +213,7 @@ export class ParentService {
     }
 
     return {
-      parents: filteredParents,
+      parents: filteredParents.map(redactProfileEmail),
       pagination: {
         total: count || 0,
         page,
@@ -245,7 +261,7 @@ export class ParentService {
       last_sign_in = authUser?.user?.last_sign_in_at ?? null
     }
 
-    return { ...data, last_sign_in }
+    return redactProfileEmail({ ...data, last_sign_in })
   }
 
   /**
@@ -292,7 +308,9 @@ export class ParentService {
         student_id: link.student_id,
         student_number: link.student?.student_number || '',
         grade_level: link.student?.grade_level || null,
-        profile: link.student?.profile,
+        profile: Array.isArray(link.student?.profile)
+          ? link.student.profile.map((p: any) => withRedactedEmail(p))
+          : withRedactedEmail(link.student?.profile),
         relationship: link.relationship,
         is_emergency_contact: link.is_emergency_contact
       })) || []
@@ -312,7 +330,7 @@ export class ParentService {
     // Create profile if not provided
     if (!profileId && parentData.first_name && parentData.last_name) {
       // Generate a temporary email if not provided (required for auth user)
-      const tempEmail = parentData.email || `${parentData.first_name.toLowerCase()}.${parentData.last_name.toLowerCase()}@temp.local`
+      const tempEmail = parentData.email || generatePlaceholderEmail(parentData.first_name, parentData.last_name)
       const tempPassword = parentData.password || Math.random().toString(36).slice(-12) + 'A1!' // Use provided or generate strong password
 
       // Create auth user first (this creates the user in auth.users)
@@ -399,7 +417,7 @@ export class ParentService {
       throw new Error(`Failed to create parent: ${error.message}`)
     }
 
-    return data
+    return redactProfileEmail(data)
   }
 
   /**
@@ -483,7 +501,7 @@ export class ParentService {
         throw new Error(`Failed to update parent: ${error.message}`)
       }
 
-      return data
+      return redactProfileEmail(data)
     }
 
     // If only profile was updated, fetch and return the parent
@@ -755,23 +773,25 @@ export class ParentService {
 
     // If no query, return all parents
     if (!query || query.trim() === '') {
-      return parentsWithChildren
+      return parentsWithChildren.map(redactProfileEmail)
     }
 
     // Filter in memory
     const queryLower = query.toLowerCase()
-    return parentsWithChildren.filter(parent => {
-      const profile: any = parent.profile
-      if (!profile) return false
+    return parentsWithChildren
+      .filter(parent => {
+        const profile: any = parent.profile
+        if (!profile) return false
 
-      return (
-        profile.first_name?.toLowerCase().includes(queryLower) ||
-        profile.last_name?.toLowerCase().includes(queryLower) ||
-        profile.email?.toLowerCase().includes(queryLower) ||
-        profile.phone?.includes(query) ||
-        parent.id.toLowerCase().includes(queryLower)
-      )
-    })
+        return (
+          profile.first_name?.toLowerCase().includes(queryLower) ||
+          profile.last_name?.toLowerCase().includes(queryLower) ||
+          profile.email?.toLowerCase().includes(queryLower) ||
+          profile.phone?.includes(query) ||
+          parent.id.toLowerCase().includes(queryLower)
+        )
+      })
+      .map(redactProfileEmail)
   }
 
   /**
@@ -982,7 +1002,7 @@ export async function getStudentRelatives(
       first_name: l.parent?.profile?.first_name ?? null,
       last_name: l.parent?.profile?.last_name ?? null,
       phone: l.parent?.profile?.phone ?? null,
-      email: l.parent?.profile?.email ?? null,
+      email: redactPlaceholderEmail(l.parent?.profile?.email ?? null),
       profile_photo_url: l.parent?.profile?.profile_photo_url ?? null,
     }))
   }

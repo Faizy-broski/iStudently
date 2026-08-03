@@ -19,6 +19,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
 import { type Student, updateStudent } from "@/lib/api/students";
 import { getFieldDefinitions, type CustomFieldDefinition } from "@/lib/api/custom-fields";
+import { getFieldOrders } from "@/lib/utils/field-ordering";
 import { useTranslations } from "next-intl";
 import { useGradeLevels } from "@/hooks/useAcademics";
 import { StudentPhotoUpload } from "@/components/ui/student-photo-upload";
@@ -95,9 +96,22 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
     () => JSON.parse(JSON.stringify(student.custom_fields ?? {}))
   );
 
+  // Per-school override for whether the standard "email" field is required —
+  // same source of truth (default_field_orders) that AddStudentForm reads,
+  // so Edit and Add agree on whether email can be left blank.
+  const [isEmailRequired, setIsEmailRequired] = useState(false);
+
   useEffect(() => {
     getFieldDefinitions('student', campusContext?.selectedCampus?.id).then((res) => {
       if (res.success && res.data) setCustomFieldDefs(res.data);
+    });
+    getFieldOrders('student', undefined, campusContext?.selectedCampus?.id).then((res) => {
+      if (res.success && res.data) {
+        const emailOrder = res.data.find(o => o.category_id === 'personal' && o.field_label === 'email');
+        if (emailOrder && typeof emailOrder.required === 'boolean') {
+          setIsEmailRequired(emailOrder.required);
+        }
+      }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campusContext?.selectedCampus?.id]);
@@ -221,6 +235,11 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
     emergencyAddress: student.custom_fields?.family?.emergency_contacts?.[0]?.address || '',
   });
 
+  // The backend redacts synthetic placeholder emails to '' before sending
+  // student data to the frontend, so any non-empty value here at load time
+  // is a genuine email the student can log in with.
+  const [originalEmail] = useState(student.profile?.email || '');
+
   const currentTabIndex = tabs.findIndex(tab => tab.id === activeTab);
   const isFirstTab = currentTabIndex === 0;
   const isLastTab = currentTabIndex === tabs.length - 1;
@@ -253,12 +272,23 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
   };
 
   const handleSubmit = async () => {
-    // Email is mandatory — students log in with it, regardless of any
-    // per-school "required field" configuration for custom fields.
-    if (!formData.email || !formData.email.trim()) {
-      toast.error("Email is required — students cannot log in without one.");
+    // Email required-ness now follows the per-school field config (same
+    // source AddStudentForm reads), not a hardcoded override.
+    if (isEmailRequired && (!formData.email || !formData.email.trim())) {
+      toast.error(tFields("email") + " " + tCommon("is_required", { defaultValue: "is required" }));
       setActiveTab("personal");
       return;
+    }
+
+    // If an existing REAL email is being cleared, confirm — the student will
+    // lose email login and switch to username-only login.
+    if (originalEmail && (!formData.email || !formData.email.trim())) {
+      const confirmed = window.confirm(
+        "This student will lose email login and switch to username-only login. Continue?"
+      );
+      if (!confirmed) {
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -415,15 +445,20 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
                   />
                 </div>
                 <div>
-                  <Label htmlFor="email">{tFields("email")} *</Label>
+                  <Label htmlFor="email">{tFields("email")} {isEmailRequired && <span className="text-red-500">*</span>}</Label>
                   <Input
                     id="email"
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
                     placeholder={tFields("email")}
-                    required
+                    required={isEmailRequired}
                   />
+                  {!isEmailRequired && !formData.email && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Leave blank — student will log in with an auto-generated username.
+                    </p>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="phone">{tFields("phone_number")}</Label>

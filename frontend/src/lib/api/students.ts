@@ -115,6 +115,10 @@ export interface Student {
   grade?: { id: string; name: string } | null
   section?: { id: string; name: string } | null
   custom_fields?: Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
+  // Present only on create, when no username/password was supplied and the
+  // backend auto-generated one (e.g. when email was left blank).
+  generated_username?: string
+  generated_password?: string
 }
 
 export interface CreateStudentDTO {

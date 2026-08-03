@@ -68,6 +68,10 @@ export default function AddStaffPage() {
     const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({})
     const [loadingFields, setLoadingFields] = useState(true)
     const [defaultFieldOrders, setDefaultFieldOrders] = useState<DefaultFieldOrder[]>([])
+    // Per-school override for whether the standard "email" field is required.
+    const isEmailRequired = defaultFieldOrders.find(
+        o => o.category_id === 'personal' && o.field_label === 'email'
+    )?.required ?? false
 
     const [formData, setFormData] = useState<CreateStaffDTO>({
         first_name: '',
@@ -179,7 +183,11 @@ export default function AddStaffPage() {
     }
 
     const handleSubmit = async () => {
-        if (!formData.first_name || !formData.last_name || !formData.email || !formData.title) {
+        if (!formData.first_name || !formData.last_name || !formData.title) {
+            toast.error(t('errors.fillRequiredFields'))
+            return
+        }
+        if (isEmailRequired && !formData.email) {
             toast.error(t('errors.fillRequiredFields'))
             return
         }
@@ -380,7 +388,7 @@ export default function AddStaffPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>{t('emailRequired')} <span className="text-red-500">*</span></Label>
+                                <Label>{t('emailRequired')} {isEmailRequired && <span className="text-red-500">*</span>}</Label>
                                 <div className="relative">
                                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 rtl:right-3 rtl:left-auto" />
                                     <Input
@@ -391,6 +399,11 @@ export default function AddStaffPage() {
                                         placeholder={t('placeholders.email')}
                                     />
                                 </div>
+                                {!isEmailRequired && !formData.email && (
+                                    <p className="text-xs text-muted-foreground">
+                                        Leave blank — staff will log in with an auto-generated username.
+                                    </p>
+                                )}
                             </div>
                             <div className="space-y-2">
                                 <Label>{t('phone')}</Label>

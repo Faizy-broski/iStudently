@@ -465,6 +465,8 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
                   items={recipientOptions}
                   selected={selectedProfileIds}
                   onToggle={toggleRecipient}
+                  allSelected={allVisibleSelected}
+                  onToggleSelectAll={toggleSelectAllVisible}
                 />
               </TabsContent>
             )}

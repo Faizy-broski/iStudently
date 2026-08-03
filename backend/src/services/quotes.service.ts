@@ -21,15 +21,19 @@ export const getActiveQuotes = async () => {
   return data;
 };
 
+const DEFAULT_QUOTE_SETTINGS = { id: null, rotation: 'weekly' as const, updated_at: null };
+
 export const getQuoteSettings = async () => {
+  // maybeSingle (not single) — a fresh install has no settings row until an
+  // admin explicitly changes the rotation, and .single() throws on 0 rows.
   const { data, error } = await supabase
     .from('login_quote_settings')
     .select('*')
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (error) throw new Error(error.message);
-  return data;
+  return data ?? DEFAULT_QUOTE_SETTINGS;
 };
 
 export const getCurrentQuote = async () => {

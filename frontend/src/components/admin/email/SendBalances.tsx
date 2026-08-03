@@ -132,9 +132,10 @@ export function SendBalances({ toParents = false }: { toParents?: boolean }) {
 
       if (res.success && res.data) {
         setResult(res.data)
+        const skippedSuffix = res.data.skipped_count ? `, ${res.data.skipped_count} skipped (no email on file)` : ""
         res.data.fail_count === 0
-          ? toast.success(`${res.data.success_count} balance email(s) sent`)
-          : toast.warning(`${res.data.success_count} sent, ${res.data.fail_count} failed`)
+          ? toast.success(`${res.data.success_count} balance email(s) sent${skippedSuffix}`)
+          : toast.warning(`${res.data.success_count} sent, ${res.data.fail_count} failed${skippedSuffix}`)
       } else {
         toast.error(res.error || "Failed to send emails")
       }
@@ -154,7 +155,7 @@ export function SendBalances({ toParents = false }: { toParents?: boolean }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
-          <div className="grid grid-cols-3 gap-4">
+          <div className={`grid gap-4 ${result.skipped_count ? "grid-cols-4" : "grid-cols-3"}`}>
             <div className="rounded-lg border p-4 text-center">
               <div className="text-3xl font-bold">{result.total}</div>
               <div className="text-sm text-muted-foreground mt-1">Total</div>
@@ -167,7 +168,25 @@ export function SendBalances({ toParents = false }: { toParents?: boolean }) {
               <div className="text-3xl font-bold text-red-600">{result.fail_count}</div>
               <div className="text-sm text-muted-foreground mt-1">Failed</div>
             </div>
+            {!!result.skipped_count && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 p-4 text-center">
+                <div className="text-3xl font-bold text-amber-600">{result.skipped_count}</div>
+                <div className="text-sm text-muted-foreground mt-1">Skipped</div>
+              </div>
+            )}
           </div>
+
+          {!!result.skipped?.length && (
+            <div>
+              <h4 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
+                <AlertTriangle className="h-4 w-4 text-amber-500" /> Skipped — no email on file
+              </h4>
+              <p className="text-sm text-muted-foreground">
+                {result.skipped.slice(0, 10).map(s => s.name).join(", ")}
+                {result.skipped.length > 10 && ` +${result.skipped.length - 10} more`}
+              </p>
+            </div>
+          )}
 
           {result.errors.length > 0 && (
             <div>

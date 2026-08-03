@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import * as StaffService from '../services/staff.service'
 import { CreateStaffDTO } from '../types'
 import { getEffectiveSchoolId, validateCampusAccess } from '../utils/campus-validation'
+import { generatePlaceholderEmail } from '../utils/email.util'
 
 // Create a Supabase Admin client for Auth operations
 // process.env.SUPABASE_URL and process.env.SUPABASE_SERVICE_ROLE_KEY should be available
@@ -91,8 +92,10 @@ export const createStaff = async (req: Request, res: Response) => {
         }
 
         // 2. Create Auth User
+        const emailForAuth = (data.email && data.email.trim()) || generatePlaceholderEmail(data.first_name, data.last_name)
+
         const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-            email: data.email,
+            email: emailForAuth,
             password: data.password || 'TempPass123!', // Should be provided or generated
             email_confirm: true,
             user_metadata: {
@@ -117,7 +120,7 @@ export const createStaff = async (req: Request, res: Response) => {
         const newStaff = await StaffService.createStaffRecord(
             effectiveSchoolId,
             authUser.user.id,
-            data,
+            { ...data, email: emailForAuth },
             creatorId
         )
 

@@ -6,6 +6,15 @@ import {
     ApiResponse,
     UserRole
 } from '../types'
+import { generatePlaceholderEmail, withRedactedEmail } from '../utils/email.util'
+
+// Redacts profile.email on nested { profile: { email } } shapes (staff records
+// joined with their profile) before returning to the API layer.
+function redactProfileEmail<T extends { profile?: { email?: string | null } | null }>(record: T): T {
+    if (!record) return record
+    if (record.profile) return { ...record, profile: withRedactedEmail(record.profile) }
+    return record
+}
 
 
 // ============================================================================
@@ -127,7 +136,7 @@ export const getAllStaff = async (
             return {
                 success: true,
                 data: {
-                    data: filteredStaff as Staff[],
+                    data: (filteredStaff as Staff[]).map(redactProfileEmail),
                     total,
                     page,
                     totalPages
@@ -141,7 +150,7 @@ export const getAllStaff = async (
         return {
             success: true,
             data: {
-                data: filteredStaff as Staff[],
+                data: (filteredStaff as Staff[]).map(redactProfileEmail),
                 total,
                 page,
                 totalPages
@@ -176,7 +185,7 @@ export const getStaffById = async (id: string, schoolId?: string): Promise<ApiRe
             const { data: authUser } = await supabase.auth.admin.getUserById(rpcResult.profile_id)
             rpcResult.last_sign_in = authUser?.user?.last_sign_in_at ?? null
             rpcResult.user_profile = await fetchUserProfile(rpcResult.user_profile_id)
-            return { success: true, data: rpcResult as Staff }
+            return { success: true, data: redactProfileEmail(rpcResult as Staff) }
         }
 
         // Fallback: Manual query WITHOUT school_id filter
@@ -219,7 +228,7 @@ export const getStaffById = async (id: string, schoolId?: string): Promise<ApiRe
         const { data: authUser } = await supabase.auth.admin.getUserById(data.profile_id)
         staffWithSalary.last_sign_in = authUser?.user?.last_sign_in_at ?? null
 
-        return { success: true, data: staffWithSalary as Staff }
+        return { success: true, data: redactProfileEmail(staffWithSalary as Staff) }
     } catch (error: any) {
         console.error('❌ getStaffById error:', error)
         return { success: false, message: error.message }
@@ -241,7 +250,7 @@ export const getStaffByProfileId = async (profileId: string, schoolId: string): 
 
         if (error) throw error
 
-        return { success: true, data: data as Staff }
+        return { success: true, data: redactProfileEmail(data as Staff) }
     } catch (error: any) {
         return { success: false, message: error.message }
     }
@@ -512,12 +521,12 @@ export const updateStaff = async (
                 .eq('is_current', true)
                 .maybeSingle()
             
-            return { 
-                success: true, 
-                data: {
+            return {
+                success: true,
+                data: redactProfileEmail({
                     ...updatedStaff,
                     base_salary: salaryData?.base_salary || 0
-                } as Staff 
+                } as Staff)
             }
         } else {
             // Check if only password/salary was updated
@@ -533,12 +542,12 @@ export const updateStaff = async (
                 .eq('is_current', true)
                 .maybeSingle()
             
-            return { 
-                success: true, 
-                data: {
+            return {
+                success: true,
+                data: redactProfileEmail({
                     ...existingStaff,
                     base_salary: salaryData?.base_salary || 0
-                } as Staff 
+                } as Staff)
             }
         }
 
@@ -623,7 +632,6 @@ export const bulkImportStaff = async (
         const missing: string[] = []
         if (!raw.first_name?.toString().trim()) missing.push('first_name')
         if (!raw.last_name?.toString().trim()) missing.push('last_name')
-        if (!raw.email?.toString().trim()) missing.push('email')
 
         if (missing.length > 0) {
             results.errors.push({ row: rowNum, email: raw.email?.toString().trim(), error: `Missing required fields: ${missing.join(', ')}` })
@@ -631,22 +639,31 @@ export const bulkImportStaff = async (
             continue
         }
 
-        const email = raw.email.toString().trim().toLowerCase()
+        const rawEmail = raw.email?.toString().trim()
         const firstName = raw.first_name.toString().trim()
         const lastName = raw.last_name.toString().trim()
 
-        if (!emailRegex.test(email)) {
-            results.errors.push({ row: rowNum, email, error: `Invalid email format: ${email}` })
-            results.error_count++
-            continue
-        }
+        // Email is optional — only validate format/dedupe when a row actually
+        // supplies one. Blank rows get a synthetic placeholder later.
+        let email: string
+        if (rawEmail) {
+            email = rawEmail.toLowerCase()
 
-        if (seenEmails.has(email)) {
-            results.errors.push({ row: rowNum, email, error: 'Duplicate email within this file' })
-            results.error_count++
-            continue
+            if (!emailRegex.test(email)) {
+                results.errors.push({ row: rowNum, email, error: `Invalid email format: ${email}` })
+                results.error_count++
+                continue
+            }
+
+            if (seenEmails.has(email)) {
+                results.errors.push({ row: rowNum, email, error: 'Duplicate email within this file' })
+                results.error_count++
+                continue
+            }
+            seenEmails.add(email)
+        } else {
+            email = generatePlaceholderEmail(firstName, lastName)
         }
-        seenEmails.add(email)
 
         // Validate explicit role override (optional column)
         const rawRole = raw.role?.toString().trim().toLowerCase()

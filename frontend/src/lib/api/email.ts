@@ -12,12 +12,21 @@ export interface EmailSendError {
   error: string
 }
 
+export interface EmailSkippedRecipient {
+  id: string
+  name: string
+  reason: string
+}
+
 export interface EmailSendResult {
   success_count: number
   fail_count: number
   total: number
   errors: EmailSendError[]
   log_id?: string
+  // Recipients skipped entirely (never attempted) — e.g. no email on file.
+  skipped_count?: number
+  skipped?: EmailSkippedRecipient[]
 }
 
 export interface EmailLogEntry {

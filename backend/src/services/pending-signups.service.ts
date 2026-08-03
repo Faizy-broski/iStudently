@@ -4,6 +4,7 @@ import { sendEmail } from './mail'
 import { getSchoolMailer } from './email.service'
 import { generateCredentials } from './username.service'
 import type { SignupLinkMeta } from './signup-links.service'
+import { generatePlaceholderEmail, redactPlaceholderEmail, hasRealEmail, withRedactedEmail } from '../utils/email.util'
 import bcrypt from 'bcrypt'
 
 export interface PendingSignup {
@@ -14,7 +15,7 @@ export interface PendingSignup {
   role: string
   first_name: string
   last_name: string
-  email: string
+  email: string | null
   phone: string | null
   // password_hash is never returned to callers — stripped before returning
   extra_data: Record<string, unknown>
@@ -38,7 +39,7 @@ export interface CreatePendingSignupDTO {
   role: string
   firstName: string
   lastName: string
-  email: string
+  email: string | null
   phone: string | null
   encryptedPassword: string
   extraData: Record<string, unknown>
@@ -134,7 +135,7 @@ export async function getPendingSignups(
   const { data, error, count } = await query
   if (error) throw error
 
-  const rows = (data || []).map((row: any) => ({
+  const rows = (data || []).map((row: any) => withRedactedEmail({
     ...row,
     link_label: row.link?.label ?? null,
     link_meta: row.link?.meta ?? null,
@@ -169,7 +170,7 @@ export async function getPendingSignupById(id: string, schoolId: string): Promis
   if (error) throw error
   if (!data) return null
 
-  return {
+  return withRedactedEmail({
     ...(data as any),
     link_label: (data as any).link?.label ?? null,
     link_meta: (data as any).link?.meta ?? null,
@@ -181,14 +182,14 @@ export async function getPendingSignupById(id: string, schoolId: string): Promis
     reviewer: undefined,
     campus: undefined,
     password_hash: undefined,
-  } as PendingSignup
+  }) as PendingSignup
 }
 
 export async function approvePendingSignup(
   id: string,
   schoolId: string,
   reviewedBy: string
-): Promise<{ profile: Record<string, unknown>; pendingSignup: PendingSignup; plainPassword?: string }> {
+): Promise<{ profile: Record<string, unknown>; pendingSignup: PendingSignup; plainPassword?: string; emailNote?: string }> {
   // Fetch the row WITH password_hash for account creation
   const { data: row, error: fetchError } = await supabase
     .from('pending_signups')
@@ -203,9 +204,13 @@ export async function approvePendingSignup(
   // Decrypt password
   const password = decryptPassword(row.password_hash)
 
+  // Supabase Auth requires SOME email — fall back to a synthetic placeholder
+  // when the signup didn't provide a real one (email is optional on this form).
+  const effectiveEmail: string = row.email || generatePlaceholderEmail(row.first_name, row.last_name)
+
   // 1. Create Supabase auth user
   const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-    email: row.email,
+    email: effectiveEmail,
     password,
     email_confirm: true,
     user_metadata: {
@@ -269,7 +274,7 @@ export async function approvePendingSignup(
       role: row.role,
       first_name: row.first_name,
       last_name: row.last_name,
-      email: row.email,
+      email: effectiveEmail,
       phone: row.phone,
       is_active: true,
       ...profileUpdates,
@@ -411,10 +416,21 @@ export async function approvePendingSignup(
     // Non-fatal — user can still log in with their signup password
   }
 
-  // 7. Send approval email to user (non-blocking — never breaks the approval)
-  sendApprovalEmail(row.school_id, row.email, row.first_name, row.role).catch(() => {})
+  // 7. Send approval email to user (non-blocking — never breaks the approval).
+  // Skip entirely (never fake-send) when there's no real email on file.
+  let emailNote: string | undefined
+  if (hasRealEmail(row.email)) {
+    sendApprovalEmail(row.school_id, row.email as string, row.first_name, row.role).catch(() => {})
+  } else {
+    emailNote = 'No email on file — approval email was not sent. Credentials must be retrieved via the admin credential lookup.'
+  }
 
-  return { profile, pendingSignup: stripPasswordHash(updated) as PendingSignup, plainPassword }
+  return {
+    profile,
+    pendingSignup: stripPasswordHash(updated) as PendingSignup,
+    plainPassword,
+    emailNote,
+  }
 }
 
 export async function rejectPendingSignup(
@@ -452,8 +468,13 @@ export async function rejectPendingSignup(
 
   if (error) throw error
 
-  // Send rejection email to user (non-blocking — never breaks the rejection)
-  sendRejectionEmail(schoolId, existing.email, existing.first_name, reason).catch(() => {})
+  // Send rejection email to user (non-blocking — never breaks the rejection).
+  // Skip entirely (never fake-send) when there's no real email on file.
+  if (hasRealEmail(existing.email)) {
+    sendRejectionEmail(schoolId, existing.email as string, existing.first_name, reason).catch(() => {})
+  } else {
+    console.log(`Pending signup ${id} rejected with no email on file — rejection email was not sent.`)
+  }
 
   return stripPasswordHash(data) as PendingSignup
 }
@@ -476,6 +497,30 @@ export async function isEmailAlreadyUsed(email: string, schoolId: string): Promi
     .eq('email', email)
     .eq('school_id', schoolId)
     .in('status', ['pending', 'approved'])
+    .maybeSingle()
+
+  return !!pending
+}
+
+/**
+ * Best-effort fallback dedupe for signups submitted without an email — checks
+ * for an existing STILL-PENDING row (not 'approved', which already consumed
+ * its slot and shouldn't block a fresh attempt) matching first + last name
+ * for this school. Name comparison is case-insensitive, matching the
+ * convention used for the `search` filter in getPendingSignups (ilike).
+ */
+export async function isDuplicatePendingSignup(
+  firstName: string,
+  lastName: string,
+  schoolId: string
+): Promise<boolean> {
+  const { data: pending } = await supabase
+    .from('pending_signups')
+    .select('id')
+    .ilike('first_name', firstName)
+    .ilike('last_name', lastName)
+    .eq('school_id', schoolId)
+    .eq('status', 'pending')
     .maybeSingle()
 
   return !!pending
@@ -626,7 +671,7 @@ export async function notifyAdminOfNewSignup(
   schoolId: string,
   firstName: string,
   lastName: string,
-  email: string,
+  email: string | null,
   role: string
 ): Promise<void> {
   const { data: admin } = await supabase
@@ -660,7 +705,7 @@ export async function notifyAdminOfNewSignup(
       </tr>
       <tr>
         <td style="padding:12px 16px;color:#64748b;font-size:13px;font-weight:600;border-bottom:1px solid #e2e8f0;">Email</td>
-        <td style="padding:12px 16px;color:#1e293b;font-size:14px;border-bottom:1px solid #e2e8f0;">${email}</td>
+        <td style="padding:12px 16px;color:#1e293b;font-size:14px;border-bottom:1px solid #e2e8f0;">${email ?? 'Not provided'}</td>
       </tr>
       <tr style="background:#f8fafc;">
         <td style="padding:12px 16px;color:#64748b;font-size:13px;font-weight:600;">Role</td>

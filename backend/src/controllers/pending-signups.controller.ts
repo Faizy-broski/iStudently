@@ -48,14 +48,14 @@ export const approvePendingSignup = async (req: AuthRequest, res: Response): Pro
     const reviewedBy = req.profile?.id
     if (!schoolId || !reviewedBy) { res.status(403).json({ success: false, error: 'No school associated' } as ApiResponse); return }
 
-    const { profile, pendingSignup, plainPassword } = await pendingSignupsService.approvePendingSignup(
+    const { profile, pendingSignup, plainPassword, emailNote } = await pendingSignupsService.approvePendingSignup(
       req.params.id, schoolId, reviewedBy
     )
 
     res.json({
       success: true,
-      data: { pendingSignup, profile, plainPassword },
-      message: 'Account approved successfully',
+      data: { pendingSignup, profile, plainPassword, emailNote },
+      message: emailNote ? `Account approved successfully. ${emailNote}` : 'Account approved successfully',
     } as ApiResponse)
   } catch (error: any) {
     const status = error.message?.includes('not found') ? 404 : 500

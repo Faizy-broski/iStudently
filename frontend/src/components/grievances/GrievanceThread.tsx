@@ -18,6 +18,7 @@ import { AttachmentList, type AttachmentItem } from "@/components/shared/Attachm
 import { grievancesApi, type GrievanceDetail, type GrievanceStatus } from "@/lib/api/grievances"
 import { messagingApi, type MessageRecipientOption } from "@/lib/api/messaging"
 import { useAuth } from "@/context/AuthContext"
+import { useCampus } from "@/context/CampusContext"
 
 const STATUS_OPTIONS: GrievanceStatus[] = [
   "pending_review", "assigned", "under_investigation", "awaiting_info",
@@ -36,6 +37,8 @@ export function GrievanceThread({ grievanceId, listHref }: GrievanceThreadProps)
   const tList = useTranslations("grievances.list")
   const router = useRouter()
   const { profile } = useAuth()
+  const campusContext = useCampus()
+  const selectedCampusId = campusContext?.selectedCampus?.id
   const [grievance, setGrievance] = useState<GrievanceDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [replyBody, setReplyBody] = useState("")
@@ -66,10 +69,10 @@ export function GrievanceThread({ grievanceId, listHref }: GrievanceThreadProps)
 
   useEffect(() => {
     if (!isAdminRole) return
-    messagingApi.listRecipients("staff").then((res) => {
+    messagingApi.listRecipients("staff", undefined, selectedCampusId).then((res) => {
       if (res.success && res.data) setStaffOptions(res.data)
     })
-  }, [isAdminRole])
+  }, [isAdminRole, selectedCampusId])
 
   const handleAssign = async () => {
     if (!assigneeId) return

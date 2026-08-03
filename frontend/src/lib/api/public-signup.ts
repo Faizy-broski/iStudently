@@ -27,6 +27,9 @@ export interface SignupLinkInfo {
   label: string | null
   school_name: string
   school_logo_url: string | null
+  logo_shape?: 'circle' | 'rounded' | 'square' | 'rectangle'
+  logo_border_width?: number
+  logo_border_color?: string
   campus_name: string | null
   expires_at?: string | null
   max_uses?: number | null

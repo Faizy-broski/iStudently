@@ -2,6 +2,7 @@ import { supabase } from '../config/supabase'
 import { sendEmail } from './mail'
 import { createTransporter, SmtpConfig } from '../config/mail'
 import type { Transporter } from 'nodemailer'
+import { hasRealEmail } from '../utils/email.util'
 
 // ─── Per-school SMTP loader ───────────────────────────────────────────────────
 
@@ -101,6 +102,8 @@ export interface EmailSendResult {
   total: number
   errors: Array<{ id: string; email: string; name: string; error: string }>
   log_id?: string
+  skipped_count: number
+  skipped: Array<{ id: string; name: string; reason: string }>
 }
 
 interface SendOptions {
@@ -186,24 +189,39 @@ export async function sendEmailToStudents(options: SendOptions): Promise<EmailSe
     console.log('[EMAIL:students] first student profile: email=%s', s0?.profile?.email ?? 'null')
   }
 
+  const skipped: EmailSendResult['skipped'] = []
+  const validStudents = (students ?? []).filter((student) => {
+    const profile = student.profile as any
+    if (!hasRealEmail(profile?.email)) {
+      skipped.push({
+        id: student.id,
+        name: `${profile?.first_name ?? ''} ${profile?.last_name ?? ''}`.trim(),
+        reason: 'No email address on file',
+      })
+      return false
+    }
+    return true
+  })
+
   const result: EmailSendResult = {
     success_count: 0,
     fail_count: 0,
-    total: students?.length ?? 0,
+    total: validStudents.length,
     errors: [],
+    skipped_count: skipped.length,
+    skipped,
   }
 
   const sentAddresses: string[] = []
 
   // Process in batches of 5 to respect SMTP rate limits
   const batchSize = 5
-  for (let i = 0; i < (students ?? []).length; i += batchSize) {
-    const batch = (students ?? []).slice(i, i + batchSize)
+  for (let i = 0; i < validStudents.length; i += batchSize) {
+    const batch = validStudents.slice(i, i + batchSize)
 
     const settled = await Promise.allSettled(
       batch.map(async (student) => {
         const profile = student.profile as any
-        if (!profile?.email) throw new Error('No email address')
 
         const to = testEmail || profile.email
         const subs = {
@@ -306,23 +324,38 @@ export async function sendEmailToStaff(options: SendOptions): Promise<EmailSendR
 
   if (error) throw new Error(`Failed to fetch staff: ${error.message}`)
 
+  const skipped: EmailSendResult['skipped'] = []
+  const validStaff = (staffList ?? []).filter((staff) => {
+    const profile = staff.profile as any
+    if (!hasRealEmail(profile?.email)) {
+      skipped.push({
+        id: staff.id,
+        name: `${profile?.first_name ?? ''} ${profile?.last_name ?? ''}`.trim(),
+        reason: 'No email address on file',
+      })
+      return false
+    }
+    return true
+  })
+
   const result: EmailSendResult = {
     success_count: 0,
     fail_count: 0,
-    total: staffList?.length ?? 0,
+    total: validStaff.length,
     errors: [],
+    skipped_count: skipped.length,
+    skipped,
   }
 
   const sentAddresses: string[] = []
 
   const batchSize = 5
-  for (let i = 0; i < (staffList ?? []).length; i += batchSize) {
-    const batch = (staffList ?? []).slice(i, i + batchSize)
+  for (let i = 0; i < validStaff.length; i += batchSize) {
+    const batch = validStaff.slice(i, i + batchSize)
 
     const settled = await Promise.allSettled(
       batch.map(async (staff) => {
         const profile = staff.profile as any
-        if (!profile?.email) throw new Error('No email address')
 
         const to = testEmail || profile.email
         const subs = {
@@ -523,16 +556,29 @@ export async function sendDisciplineLog(options: {
     refMap.get(r.student_id)!.push(r)
   }
 
-  const result: EmailSendResult = { success_count: 0, fail_count: 0, total: students?.length ?? 0, errors: [] }
+  const skipped: EmailSendResult['skipped'] = []
+  const validStudents = (students ?? []).filter((student) => {
+    const profile = student.profile as any
+    if (!hasRealEmail(profile?.email)) {
+      skipped.push({
+        id: student.id,
+        name: `${profile?.first_name ?? ''} ${profile?.last_name ?? ''}`.trim(),
+        reason: 'No email address on file',
+      })
+      return false
+    }
+    return true
+  })
+
+  const result: EmailSendResult = { success_count: 0, fail_count: 0, total: validStudents.length, errors: [], skipped_count: skipped.length, skipped }
   const sentAddresses: string[] = []
 
   const batchSize = 5
-  for (let i = 0; i < (students ?? []).length; i += batchSize) {
-    const batch = (students ?? []).slice(i, i + batchSize)
+  for (let i = 0; i < validStudents.length; i += batchSize) {
+    const batch = validStudents.slice(i, i + batchSize)
     const settled = await Promise.allSettled(
       batch.map(async (student) => {
         const profile = student.profile as any
-        if (!profile?.email) throw new Error('No email address')
         const to = testEmail || profile.email
         const referrals = refMap.get(student.id) || []
         const subs = {
@@ -640,16 +686,29 @@ export async function sendReportCards(options: {
     gradesMap.get(g.student_id)!.push(g)
   }
 
-  const result: EmailSendResult = { success_count: 0, fail_count: 0, total: students?.length ?? 0, errors: [] }
+  const skipped: EmailSendResult['skipped'] = []
+  const validStudents = (students ?? []).filter((student) => {
+    const profile = student.profile as any
+    if (!hasRealEmail(profile?.email)) {
+      skipped.push({
+        id: student.id,
+        name: `${profile?.first_name ?? ''} ${profile?.last_name ?? ''}`.trim(),
+        reason: 'No email address on file',
+      })
+      return false
+    }
+    return true
+  })
+
+  const result: EmailSendResult = { success_count: 0, fail_count: 0, total: validStudents.length, errors: [], skipped_count: skipped.length, skipped }
   const sentAddresses: string[] = []
 
   const batchSize = 5
-  for (let i = 0; i < (students ?? []).length; i += batchSize) {
-    const batch = (students ?? []).slice(i, i + batchSize)
+  for (let i = 0; i < validStudents.length; i += batchSize) {
+    const batch = validStudents.slice(i, i + batchSize)
     const settled = await Promise.allSettled(
       batch.map(async (student) => {
         const profile = student.profile as any
-        if (!profile?.email) throw new Error('No email address')
         const to = testEmail || profile.email
         const grades = gradesMap.get(student.id) || []
         const subs = {
@@ -714,16 +773,29 @@ export async function sendBalances(options: {
     feesMap.get(f.student_id)!.push(f)
   }
 
-  const result: EmailSendResult = { success_count: 0, fail_count: 0, total: students?.length ?? 0, errors: [] }
+  const skipped: EmailSendResult['skipped'] = []
+  const validStudents = (students ?? []).filter((student) => {
+    const profile = student.profile as any
+    if (!hasRealEmail(profile?.email)) {
+      skipped.push({
+        id: student.id,
+        name: `${profile?.first_name ?? ''} ${profile?.last_name ?? ''}`.trim(),
+        reason: 'No email address on file',
+      })
+      return false
+    }
+    return true
+  })
+
+  const result: EmailSendResult = { success_count: 0, fail_count: 0, total: validStudents.length, errors: [], skipped_count: skipped.length, skipped }
   const sentAddresses: string[] = []
 
   const batchSize = 5
-  for (let i = 0; i < (students ?? []).length; i += batchSize) {
-    const batch = (students ?? []).slice(i, i + batchSize)
+  for (let i = 0; i < validStudents.length; i += batchSize) {
+    const batch = validStudents.slice(i, i + batchSize)
     const settled = await Promise.allSettled(
       batch.map(async (student) => {
         const profile = student.profile as any
-        if (!profile?.email) throw new Error('No email address')
         const to = testEmail || profile.email
         const fees = feesMap.get(student.id) || []
         const totalBalance = fees.reduce((sum, f) => sum + (parseFloat(f.balance) || 0), 0)
@@ -838,10 +910,15 @@ export async function saveNotificationSettings(
 // ─── Parent email helpers ─────────────────────────────────────────────────────
 
 /**
- * For a set of student IDs, return a map: studentId → parent { id, name, email }[]
+ * For a set of student IDs, return a map: studentId → parent { id, name, email }[],
+ * plus a list of parents that were excluded because they have no real (non-placeholder)
+ * email address on file.
  */
-async function lookupParentsForStudents(studentIds: string[]): Promise<Map<string, Array<{ parentId: string; name: string; email: string }>>> {
-  if (!studentIds.length) return new Map()
+async function lookupParentsForStudents(studentIds: string[]): Promise<{
+  parentMap: Map<string, Array<{ parentId: string; name: string; email: string }>>
+  skipped: Array<{ id: string; name: string; reason: string }>
+}> {
+  if (!studentIds.length) return { parentMap: new Map(), skipped: [] }
 
   const { data: links } = await supabase
     .from('parent_student_links')
@@ -856,18 +933,27 @@ async function lookupParentsForStudents(studentIds: string[]): Promise<Map<strin
     .eq('is_active', true)
 
   const map = new Map<string, Array<{ parentId: string; name: string; email: string }>>()
+  const skipped: Array<{ id: string; name: string; reason: string }> = []
+  const skippedParentIds = new Set<string>()
   for (const link of links || []) {
     const p = link.parent as any
-    if (!p?.profile?.email) continue
+    const name = `${p?.profile?.first_name ?? ''} ${p?.profile?.last_name ?? ''}`.trim()
+    if (!hasRealEmail(p?.profile?.email)) {
+      if (p?.id && !skippedParentIds.has(p.id)) {
+        skippedParentIds.add(p.id)
+        skipped.push({ id: p.id, name, reason: 'No email address on file' })
+      }
+      continue
+    }
     const entry = {
       parentId: p.id,
-      name: `${p.profile.first_name ?? ''} ${p.profile.last_name ?? ''}`.trim(),
+      name,
       email: p.profile.email as string,
     }
     if (!map.has(link.student_id)) map.set(link.student_id, [])
     map.get(link.student_id)!.push(entry)
   }
-  return map
+  return { parentMap: map, skipped }
 }
 
 // ─── Send Days Absent to Parents ──────────────────────────────────────────────
@@ -913,9 +999,9 @@ export async function sendDaysAbsent(options: {
   }
 
   // Look up parents
-  const parentMap = await lookupParentsForStudents(recipientStudentIds)
+  const { parentMap, skipped } = await lookupParentsForStudents(recipientStudentIds)
 
-  const result: EmailSendResult = { success_count: 0, fail_count: 0, total: 0, errors: [] }
+  const result: EmailSendResult = { success_count: 0, fail_count: 0, total: 0, errors: [], skipped_count: skipped.length, skipped }
   const sentAddresses: string[] = []
 
   // Deduplicate: one email per parent (they may have multiple children selected)
@@ -1015,8 +1101,8 @@ export async function sendDisciplineLogToParents(options: {
     refMap.get(r.student_id)!.push(r)
   }
 
-  const parentMap = await lookupParentsForStudents(recipientIds)
-  const result: EmailSendResult = { success_count: 0, fail_count: 0, total: 0, errors: [] }
+  const { parentMap, skipped } = await lookupParentsForStudents(recipientIds)
+  const result: EmailSendResult = { success_count: 0, fail_count: 0, total: 0, errors: [], skipped_count: skipped.length, skipped }
   const sentAddresses: string[] = []
   const parentEmailsSent = new Set<string>()
   const batchSize = 5
@@ -1092,8 +1178,8 @@ export async function sendReportCardsToParents(options: {
     gradesMap.get(g.student_id)!.push(g)
   }
 
-  const parentMap = await lookupParentsForStudents(recipientIds)
-  const result: EmailSendResult = { success_count: 0, fail_count: 0, total: 0, errors: [] }
+  const { parentMap, skipped } = await lookupParentsForStudents(recipientIds)
+  const result: EmailSendResult = { success_count: 0, fail_count: 0, total: 0, errors: [], skipped_count: skipped.length, skipped }
   const sentAddresses: string[] = []
   const parentEmailsSent = new Set<string>()
   const batchSize = 5
@@ -1165,8 +1251,8 @@ export async function sendBalancesToParents(options: {
     feesMap.get(f.student_id)!.push(f)
   }
 
-  const parentMap = await lookupParentsForStudents(recipientIds)
-  const result: EmailSendResult = { success_count: 0, fail_count: 0, total: 0, errors: [] }
+  const { parentMap, skipped } = await lookupParentsForStudents(recipientIds)
+  const result: EmailSendResult = { success_count: 0, fail_count: 0, total: 0, errors: [], skipped_count: skipped.length, skipped }
   const sentAddresses: string[] = []
   const parentEmailsSent = new Set<string>()
   const batchSize = 5

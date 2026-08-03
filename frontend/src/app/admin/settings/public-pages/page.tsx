@@ -16,6 +16,7 @@ import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import { Globe, Save, Loader2, ExternalLink, Eye, Info } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
+import { useCampus } from '@/context/CampusContext'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
@@ -35,6 +36,12 @@ const getPageOptions = (t: any) => [
 export default function PublicPagesSettingsPage() {
   const t = useTranslations('school.public_pages')
   const { profile } = useAuth()
+  const campusContext = useCampus()
+  // Same source used by the Plugins page (Settings → Plugins) to scope
+  // active_plugins.public_pages — this config must land on the SAME
+  // school_settings row that toggle activates, or the public site will
+  // report "public pages are not enabled" even with pages fully configured.
+  const selectedCampusId = campusContext?.selectedCampus?.id ?? null
 
   const [config, setConfig] = useState<PublicPagesConfig>(DEFAULT_CONFIG)
   const [loading, setLoading] = useState(true)
@@ -43,10 +50,10 @@ export default function PublicPagesSettingsPage() {
 
   useEffect(() => {
     setLoading(true)
-    getPublicPagesSettings().then((res) => {
+    getPublicPagesSettings(selectedCampusId).then((res) => {
       if (res.success && res.data) setConfig(res.data.config)
     }).finally(() => setLoading(false))
-  }, [])
+  }, [selectedCampusId])
 
   // Fetch school slug for the preview link
   useEffect(() => {
@@ -76,7 +83,7 @@ export default function PublicPagesSettingsPage() {
 
   const handleSave = async () => {
     setSaving(true)
-    const res = await savePublicPagesSettings(config)
+    const res = await savePublicPagesSettings(config, selectedCampusId)
     if (res.success) {
       toast.success(t('msg_save_success'))
     } else {

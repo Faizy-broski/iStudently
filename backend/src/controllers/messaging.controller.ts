@@ -154,7 +154,14 @@ export class MessagingController {
         return
       }
 
-      const schoolId = await getEffectiveSchoolId(req.profile.school_id, campusId)
+      // Parents aren't a per-campus entity (they're created and stored under
+      // the admin's root school_id — see AddParentForm.tsx / parent.service.ts),
+      // unlike teachers/staff/students which do belong to a specific campus.
+      // Applying campus-aware scoping to parents would filter them out
+      // entirely whenever a non-root campus is selected.
+      const schoolId = type === 'parents'
+        ? req.profile.school_id
+        : await getEffectiveSchoolId(req.profile.school_id, campusId)
       const recipients = await messagingService.listRecipients(
         schoolId,
         req.profile.role,

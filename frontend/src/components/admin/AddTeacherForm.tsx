@@ -25,7 +25,7 @@ const STANDARD_FIELDS = [
   // PERSONAL INFO (Category: personal)
   { id: 'first_name', label: 'First Name', type: 'text', category: 'personal', sort_order: 1, required: true, width: 'half' },
   { id: 'last_name', label: 'Last Name', type: 'text', category: 'personal', sort_order: 2, required: true, width: 'half' },
-  { id: 'email', label: 'Email', type: 'email', category: 'personal', sort_order: 3, required: true, width: 'half' },
+  { id: 'email', label: 'Email', type: 'email', category: 'personal', sort_order: 3, required: false, width: 'half' },
   { id: 'phone', label: 'Phone', type: 'tel', category: 'personal', sort_order: 4, required: false, width: 'half' },
   { id: 'gender', label: 'Gender', type: 'select', category: 'personal', sort_order: 5, required: false, width: 'half', options: ['male', 'female', 'other'] },
   { id: 'date_of_birth', label: 'Date of Birth', type: 'date', category: 'personal', sort_order: 6, required: false, width: 'half' },
@@ -467,6 +467,11 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
           </div>
         ) : null}
 
+        {field.id === 'email' && !field.required && !value && (
+          <p className="text-xs text-muted-foreground">
+            Leave blank — teacher will log in with an auto-generated username.
+          </p>
+        )}
         {field.help && <p className="text-xs text-muted-foreground">{field.help}</p>}
         {error && <p className="text-sm text-red-500">{error}</p>}
       </div>

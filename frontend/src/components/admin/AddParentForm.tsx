@@ -56,7 +56,7 @@ const STANDARD_FIELDS = [
   { id: 'primaryLastName', label: 'Last Name', type: 'text', category: 'personal', sort_order: 2, required: true, width: 'half' },
   { id: 'primaryCNIC', label: 'CNIC / ID Number', type: 'text', category: 'personal', sort_order: 3, required: true, width: 'half', placeholder: 'XXXXX-XXXXXXX-X' },
   { id: 'primaryPhone', label: 'Phone Number', type: 'tel', category: 'personal', sort_order: 4, required: true, width: 'half', placeholder: '+92 XXX XXXXXXX' },
-  { id: 'primaryEmail', label: 'Email Address', type: 'email', category: 'personal', sort_order: 5, required: true, width: 'half', placeholder: 'email@example.com' },
+  { id: 'primaryEmail', label: 'Email Address', type: 'email', category: 'personal', sort_order: 5, required: false, width: 'half', placeholder: 'email@example.com' },
   { id: 'primaryOccupation', label: 'Occupation', type: 'text', category: 'professional', sort_order: 1, required: true, width: 'half', placeholder: 'e.g., Teacher' },
   { id: 'primaryWorkplace', label: 'Workplace', type: 'text', category: 'professional', sort_order: 2, required: false, width: 'half' },
   { id: 'primaryIncome', label: 'Monthly Income', type: 'number', category: 'professional', sort_order: 3, required: false, width: 'half' },
@@ -498,6 +498,11 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
           />
         ) : null}
 
+        {field.id === 'primaryEmail' && !field.required && !value && (
+          <p className="text-xs text-muted-foreground">
+            Leave blank — parent will log in with an auto-generated username.
+          </p>
+        )}
         {field.help && <p className="text-xs text-muted-foreground">{field.help}</p>}
         {error && <p className="text-sm text-red-500">{error}</p>}
       </div>

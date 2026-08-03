@@ -3,6 +3,17 @@ import bcrypt from 'bcrypt'
 import { Student, CreateStudentDTO, UpdateStudentDTO } from '../types'
 import { generateCredentials } from './username.service'
 import { encryptSecret } from '../utils/crypto'
+import { generatePlaceholderEmail, redactPlaceholderEmail, withRedactedEmail } from '../utils/email.util'
+
+/**
+ * Redacts a placeholder email on a profile object nested under `.profile`,
+ * used for records shaped like `{ ...student, profile: { ...profileFields } }`.
+ */
+function redactProfileEmail<T extends { profile?: { email?: string | null } | null }>(record: T): T {
+  if (!record) return record
+  if (record.profile) return { ...record, profile: withRedactedEmail(record.profile) }
+  return record
+}
 
 export class StudentService {
   /**
@@ -100,7 +111,7 @@ export class StudentService {
           });
 
           // Enrich student data with parent links
-          const enrichedData = paginatedData.map((student: any) => ({
+          const enrichedData = paginatedData.map((student: any) => redactProfileEmail({
             id: student.student_id,
             student_number: student.student_number,
             grade_level: student.grade_level,
@@ -202,7 +213,7 @@ export class StudentService {
     }
 
     return {
-      students: data || [],
+      students: (data || []).map((student: any) => redactProfileEmail(student)),
       pagination: {
         total: count || 0,
         page,
@@ -264,7 +275,7 @@ export class StudentService {
       last_sign_in = authUser?.user?.last_sign_in_at ?? null
     }
 
-    return { ...data, last_sign_in }
+    return redactProfileEmail({ ...data, last_sign_in })
   }
 
   /**
@@ -302,7 +313,7 @@ export class StudentService {
       throw new Error(`Failed to fetch student: ${error.message}`)
     }
 
-    return data
+    return redactProfileEmail(data)
   }
 
   /**
@@ -316,10 +327,12 @@ export class StudentService {
 
     // Create profile if not provided
     if (!profileId && studentData.first_name && studentData.last_name) {
-      // Email is now required for student creation
-      if (!studentData.email || !studentData.email.trim()) {
-        throw new Error('Email is required for student creation')
-      }
+      // Email is optional for student creation. Supabase Auth still requires
+      // an email on every auth.users row (and login always resolves through
+      // it), so when no real email is given we generate a synthetic
+      // placeholder that is never shown to the frontend or emailed to.
+      const emailForAuth = (studentData.email && studentData.email.trim()) ||
+        generatePlaceholderEmail(studentData.first_name, studentData.last_name)
 
       let username = studentData.username
       let plainPassword = studentData.password
@@ -333,7 +346,7 @@ export class StudentService {
 
       // Create auth user first (this creates the user in auth.users)
       const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-        email: studentData.email,
+        email: emailForAuth,
         password: plainPassword,
         email_confirm: true, // Auto-confirm email
         user_metadata: {
@@ -362,7 +375,7 @@ export class StudentService {
           father_name: studentData.father_name,
           grandfather_name: studentData.grandfather_name,
           last_name: studentData.last_name,
-          email: studentData.email,
+          email: emailForAuth,
           phone: studentData.phone,
           profile_photo_url: studentData.profile_photo_url,
           username: username || studentData.student_number || null,
@@ -454,9 +467,11 @@ export class StudentService {
       }
     }
 
+    const redactedData = redactProfileEmail(data)
+
     return generatedUsername
-      ? { ...data, generated_username: generatedUsername, generated_password: generatedPassword }
-      : data
+      ? { ...redactedData, generated_username: generatedUsername, generated_password: generatedPassword }
+      : redactedData
   }
 
   /**
@@ -501,10 +516,14 @@ export class StudentService {
       existing = data
     }
 
-    // Email is required for every student — it's how they log in. Never allow it
-    // to be cleared, regardless of what any per-school "required field" config says.
+    // Email is optional for students, but Supabase Auth (and login, including
+    // username login which resolves through signInWithPassword({ email, ... }))
+    // still requires SOME email on the row. If the caller explicitly clears
+    // email (empty string), swap in a fresh synthetic placeholder instead of
+    // rejecting the update.
+    let emailForUpdate: string | undefined = updateData.email
     if (updateData.email !== undefined && !updateData.email.trim()) {
-      throw new Error('Email is required for student records — students cannot log in without one')
+      emailForUpdate = generatePlaceholderEmail(existing.profile?.first_name, existing.profile?.last_name)
     }
 
     // Update profile if profile data is provided
@@ -516,7 +535,7 @@ export class StudentService {
       if (updateData.father_name !== undefined) profileUpdates.father_name = updateData.father_name
       if (updateData.grandfather_name !== undefined) profileUpdates.grandfather_name = updateData.grandfather_name
       if (updateData.last_name !== undefined) profileUpdates.last_name = updateData.last_name
-      if (updateData.email !== undefined) profileUpdates.email = updateData.email
+      if (updateData.email !== undefined) profileUpdates.email = emailForUpdate
       if (updateData.phone !== undefined) profileUpdates.phone = updateData.phone
       if (updateData.profile_photo_url !== undefined) profileUpdates.profile_photo_url = updateData.profile_photo_url
       if (updateData.is_active !== undefined) profileUpdates.is_active = updateData.is_active
@@ -584,7 +603,7 @@ export class StudentService {
       throw new Error(`Failed to update student: ${queryError.message}`)
     }
 
-    return data
+    return redactProfileEmail(data)
   }
 
   /**
@@ -630,7 +649,7 @@ export class StudentService {
       throw new Error(`Failed to fetch students by grade: ${error.message}`)
     }
 
-    return data || []
+    return (data || []).map((student: any) => redactProfileEmail(student))
   }
 
   /**
@@ -719,7 +738,7 @@ export class StudentService {
         last_name: profile?.last_name || '',
         father_name: profile?.father_name || '',
         grandfather_name: profile?.grandfather_name || '',
-        email: profile?.email || '',
+        email: redactPlaceholderEmail(profile?.email) || '',
         phone: profile?.phone || '',
         is_active: profile?.is_active || false,
         grade_level_id: student.grade_level_id,
@@ -875,7 +894,7 @@ export class StudentService {
           father_name: profile?.father_name || '',
           grandfather_name: profile?.grandfather_name || '',
           last_name: profile?.last_name || '',
-          email: profile?.email || '',
+          email: redactPlaceholderEmail(profile?.email) || '',
           phone: profile?.phone || '',
           profile_photo_url: profile?.profile_photo_url || null,
           is_active: profile?.is_active || false

@@ -18,6 +18,7 @@ import { StudentPhotoUpload } from "@/components/ui/student-photo-upload";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Separator } from "@/components/ui/separator";
 import { Combobox, ComboboxOption } from "@/components/ui/combobox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Plus, Trash2, Save, Loader2, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
@@ -76,7 +77,7 @@ const STANDARD_FIELDS = [
   { id: 'gender', label: 'gender', type: 'select', category: 'personal', sort_order: 6, required: true, width: 'half', options: ['male', 'female'] },
   { id: 'studentPhoto', label: 'student_photo', type: 'photo', category: 'personal', sort_order: 7, required: false, width: 'full' },
   { id: 'address', label: 'address', type: 'textarea', category: 'personal', sort_order: 8, required: false, width: 'full' },
-  { id: 'email', label: 'email', type: 'email', category: 'personal', sort_order: 9, required: true, width: 'half' },
+  { id: 'email', label: 'email', type: 'email', category: 'personal', sort_order: 9, required: false, width: 'half' },
   { id: 'phoneNumber', label: 'phone_number', type: 'tel', category: 'personal', sort_order: 10, required: false, width: 'half' },
   { id: 'nationalId', label: 'national_id', type: 'text', category: 'personal', sort_order: 11, required: false, width: 'half' },
 
@@ -189,9 +190,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
       })),
     }).superRefine((data, ctx) => {
       orderedStandardFields.forEach(field => {
-        // Email is always mandatory — students log in with it — regardless of
-        // whether a campus admin has marked it optional on the Custom Fields page.
-        const isRequired = field.required || field.id === 'email';
+        const isRequired = field.required;
         if (!isRequired) return;
         if (!(field.id in data)) return;
         const value = (data as Record<string, unknown>)[field.id];
@@ -248,6 +247,7 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
   const [generateFirstChallan, setGenerateFirstChallan] = useState(false);
   const [generatedFeeId, setGeneratedFeeId] = useState<string | null>(null);
   const [showChallanModal, setShowChallanModal] = useState(false);
+  const [generatedCredentials, setGeneratedCredentials] = useState<{ username: string; password?: string } | null>(null);
   const [challanDueDate, setChallanDueDate] = useState<string>(() => {
     const nextMonth = new Date();
     nextMonth.setDate(10); // Due on 10th
@@ -679,6 +679,15 @@ customFields.forEach((field) => {
       });
 
       if (response.success && response.data) {
+        // Surface auto-generated username/password (issued when no email/username
+        // was supplied) so the admin can hand them to the student.
+        if (response.data.generated_username) {
+          setGeneratedCredentials({
+            username: response.data.generated_username,
+            password: response.data.generated_password,
+          });
+        }
+
         // SUBSCRIBE TO SERVICES if any selected
         if (selectedServices.length > 0) {
           try {
@@ -723,7 +732,9 @@ customFields.forEach((field) => {
         }
 
         toast.success(tAdd("msg_enroll_success"));
-        onSuccess();
+        if (!response.data.generated_username) {
+          onSuccess();
+        }
       } else {
         toast.error(response.error || tAdd("msg_enroll_error"));
       }
@@ -1092,6 +1103,11 @@ customFields.forEach((field) => {
           />
         ) : null}
 
+        {field.id === 'email' && !field.required && !value && (
+          <p className="text-xs text-muted-foreground">
+            {tAdd("help_email_optional", { defaultValue: "Leave blank — student will log in with an auto-generated username." })}
+          </p>
+        )}
         {field.help && <p className="text-xs text-muted-foreground">{field.help}</p>}
         {error && <p className="text-sm text-red-500">{error}</p>}
       </div>
@@ -1274,10 +1290,8 @@ customFields.forEach((field) => {
   const isLastTab = currentTabIndex === tabs.length - 1;
 
   // Validate required fields for current tab
-  // Email is always mandatory — students log in with it — regardless of
-  // whether a campus admin has marked it optional on the Custom Fields page.
   const isStandardFieldRequired = (fieldId: string): boolean =>
-    fieldId === 'email' || (orderedStandardFields.find(f => f.id === fieldId)?.required ?? true);
+    orderedStandardFields.find(f => f.id === fieldId)?.required ?? true;
 
   const validateCurrentTab = (): boolean => {
     const errors: Record<string, string> = {};
@@ -2077,12 +2091,63 @@ customFields.forEach((field) => {
             setShowChallanModal(false);
             setGeneratedFeeId(null);
             toast.success(tAdd("msg_enroll_success"));
-            onSuccess();
+            if (!generatedCredentials) {
+              onSuccess();
+            }
           }}
           feeId={generatedFeeId}
           schoolId={profile?.school_id || ''}
         />
       )}
+
+      {/* Generated Credentials Dialog - shown when the backend auto-generated a
+          username/password (e.g. no email was provided) so the admin can hand
+          them to the student. */}
+      <Dialog
+        open={!!generatedCredentials}
+        onOpenChange={(open) => {
+          if (!open) {
+            setGeneratedCredentials(null);
+            if (!showChallanModal) {
+              onSuccess();
+            }
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{tAdd("credentials_title", { defaultValue: "Student Login Credentials" })}</DialogTitle>
+            <DialogDescription>
+              {tAdd("credentials_desc", { defaultValue: "No email was provided, so a username and password were auto-generated. Share these with the student — they won't be shown again." })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <span className="text-sm text-muted-foreground">{tCommon("username", { defaultValue: "Username" })}</span>
+              <span className="font-mono font-semibold">{generatedCredentials?.username}</span>
+            </div>
+            {generatedCredentials?.password && (
+              <div className="flex items-center justify-between rounded-md border p-3">
+                <span className="text-sm text-muted-foreground">{tCommon("password", { defaultValue: "Password" })}</span>
+                <span className="font-mono font-semibold">{generatedCredentials.password}</span>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              onClick={() => {
+                setGeneratedCredentials(null);
+                if (!showChallanModal) {
+                  onSuccess();
+                }
+              }}
+            >
+              {tCommon("done", { defaultValue: "Done" })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

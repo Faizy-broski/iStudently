@@ -82,7 +82,12 @@ router.get(
       const schoolId = profile?.school_id
       if (!schoolId) return res.status(403).json({ success: false, error: 'No school associated with account' })
 
-      const campusId = profile?.campus_id || null
+      // Campus scoping must come from the currently-selected campus (like every
+      // other campus-aware setting — see school-settings.controller.ts), not
+      // profile.campus_id (a static value that doesn't track the campus
+      // switcher and previously caused this config to be saved under a
+      // different school_settings row than the one the Plugins page activates).
+      const campusId = (req.query.campus_id as string | undefined) || null
       const { config } = await getPublicPagesConfig(schoolId, campusId)
 
       res.json({ success: true, data: { config, available_pages: ALL_PUBLIC_PAGES } })
@@ -106,7 +111,7 @@ router.put(
       const schoolId = profile?.school_id
       if (!schoolId) return res.status(403).json({ success: false, error: 'No school associated with account' })
 
-      const campusId = profile?.campus_id || null
+      const campusId = (req.query.campus_id as string | undefined) || req.body.campus_id || null
       const { enabled, pages, default_page, custom_page_title, custom_page_content } = req.body
 
       const config = {

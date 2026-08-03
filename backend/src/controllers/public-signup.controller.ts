@@ -3,8 +3,10 @@ import { validateSignupToken } from '../services/signup-links.service'
 import {
   createPendingSignup,
   isEmailAlreadyUsed,
+  isDuplicatePendingSignup,
 } from '../services/pending-signups.service'
 import { encryptPassword } from '../services/public-signup.service'
+import { getLogoAppearance } from '../services/logo-appearance.service'
 import { supabase } from '../config/supabase'
 import type { ApiResponse } from '../types'
 
@@ -47,6 +49,11 @@ export const getSignupLinkInfo = async (req: Request, res: Response): Promise<vo
       ? Math.max(0, result.link.max_uses - result.link.use_count)
       : null
 
+    // Same shape/border settings used everywhere else the school logo is
+    // rendered (see logo-appearance.service.ts / SchoolLogo.tsx), so the
+    // signup page's logo matches the school's configured appearance.
+    const logoAppearance = await getLogoAppearance(result.link.school_id)
+
     res.json({
       success: true,
       data: {
@@ -54,6 +61,9 @@ export const getSignupLinkInfo = async (req: Request, res: Response): Promise<vo
         label: result.link.label,
         school_name: school?.name ?? 'School',
         school_logo_url: school?.logo_url ?? null,
+        logo_shape: logoAppearance.logo_shape,
+        logo_border_width: logoAppearance.logo_border_width,
+        logo_border_color: logoAppearance.logo_border_color,
         campus_name: campusName,
         expires_at: result.link.expires_at,
         max_uses: result.link.max_uses,
@@ -75,7 +85,8 @@ export const submitSignup = async (req: Request, res: Response): Promise<void> =
     // Validate the fields that are never optional, regardless of link config
     const errors: string[] = []
     if (!token) errors.push('token is required')
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push('valid email is required')
+    // Email is optional — only validate its format when one was actually provided.
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) errors.push('valid email format is required')
     if (!password || String(password).length < 8) errors.push('password must be at least 8 characters')
     if (password !== confirm_password) errors.push('passwords do not match')
 
@@ -132,14 +143,30 @@ export const submitSignup = async (req: Request, res: Response): Promise<void> =
       return
     }
 
-    // Check email uniqueness for this school
-    const emailUsed = await isEmailAlreadyUsed(email.toLowerCase().trim(), link.school_id)
-    if (emailUsed) {
-      res.status(409).json({
-        success: false,
-        error: 'email_already_registered',
-      } as ApiResponse)
-      return
+    const trimmedFirstName = first_name ? String(first_name).trim() : ''
+    const trimmedLastName = last_name ? String(last_name).trim() : ''
+    const trimmedEmail = email ? String(email).trim().toLowerCase() : ''
+
+    // Check for duplicates for this school — by email when one was provided,
+    // otherwise fall back to a best-effort name-based dedupe.
+    if (trimmedEmail) {
+      const emailUsed = await isEmailAlreadyUsed(trimmedEmail, link.school_id)
+      if (emailUsed) {
+        res.status(409).json({
+          success: false,
+          error: 'email_already_registered',
+        } as ApiResponse)
+        return
+      }
+    } else {
+      const isDupe = await isDuplicatePendingSignup(trimmedFirstName, trimmedLastName, link.school_id)
+      if (isDupe) {
+        res.status(409).json({
+          success: false,
+          error: 'signup_already_pending',
+        } as ApiResponse)
+        return
+      }
     }
 
     // Encrypt password (AES-256 — reversible, so we can create the auth account on approval)
@@ -151,9 +178,9 @@ export const submitSignup = async (req: Request, res: Response): Promise<void> =
       campusId: link.campus_id,
       signupLinkId: link.id,
       role: link.role,
-      firstName: first_name ? String(first_name).trim() : '',
-      lastName: last_name ? String(last_name).trim() : '',
-      email: email.toLowerCase().trim(),
+      firstName: trimmedFirstName,
+      lastName: trimmedLastName,
+      email: trimmedEmail || null,
       phone: phoneEnabled ? (phone?.trim() || null) : null,
       encryptedPassword,
       extraData: extra_fields ?? {},

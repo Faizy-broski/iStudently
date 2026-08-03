@@ -1256,9 +1256,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Ignore if sessionStorage not available
     }
 
-    // Clear Remember Me credentials on logout
-    localStorage.removeItem('studentlyRememberEmail')
-    localStorage.removeItem('studentlyRememberPassword')
+    // Remember Me credentials are intentionally left in localStorage on
+    // logout — that's the entire point of "remember me": survive a logout
+    // (or session-expiry-triggered signOut) so the login form is still
+    // pre-filled next time. They're only cleared when the user explicitly
+    // logs in with the checkbox unchecked (see login/page.tsx handleSubmit).
 
     // Sign out from Supabase (local only — does not revoke other devices' sessions)
     await supabase.auth.signOut({ scope: 'local' })

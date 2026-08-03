@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
+import { SchoolLogo } from '@/components/shared/SchoolLogo'
 import {
   getSignupLinkInfo,
   submitSignup,
@@ -267,19 +268,20 @@ export default function SignupPage() {
               )}
             </div>
 
-            {linkInfo?.school_logo_url ? (
-              <img
-                src={linkInfo.school_logo_url}
-                alt={linkInfo.school_name}
-                className="w-16 h-16 rounded-xl mx-auto mb-3 object-contain bg-white p-1"
-              />
-            ) : (
-              <div className="w-16 h-16 rounded-xl mx-auto mb-3 bg-white/20 flex items-center justify-center">
-                <span className="text-2xl font-bold text-white">
+            <SchoolLogo
+              logoUrl={linkInfo?.school_logo_url}
+              alt={linkInfo?.school_name ?? 'School'}
+              shape={linkInfo?.logo_shape}
+              borderWidth={linkInfo?.logo_border_width}
+              borderColor={linkInfo?.logo_border_color}
+              size={64}
+              className="mx-auto mb-3"
+              fallback={
+                <span className="text-2xl font-bold text-[#022172]">
                   {(linkInfo?.school_name ?? 'S').charAt(0)}
                 </span>
-              </div>
-            )}
+              }
+            />
             <h1 className="text-xl font-bold text-white">{linkInfo?.school_name}</h1>
             {linkInfo?.label && (
               <p className="text-white/70 text-sm mt-0.5">{linkInfo.label}</p>

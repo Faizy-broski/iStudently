@@ -176,14 +176,16 @@ export async function getPublicCustomPage(slug: string) {
 // ADMIN CONFIG API FUNCTIONS
 // ============================================================================
 
-export async function getPublicPagesSettings() {
+export async function getPublicPagesSettings(campusId?: string | null) {
+  const query = campusId ? `?campus_id=${encodeURIComponent(campusId)}` : ''
   return authFetch<{ config: PublicPagesConfig; available_pages: { id: PublicPageId; label: string }[] }>(
-    '/public/config/settings'
+    `/public/config/settings${query}`
   )
 }
 
-export async function savePublicPagesSettings(config: PublicPagesConfig) {
-  return authFetch<PublicPagesConfig>('/public/config/settings', {
+export async function savePublicPagesSettings(config: PublicPagesConfig, campusId?: string | null) {
+  const query = campusId ? `?campus_id=${encodeURIComponent(campusId)}` : ''
+  return authFetch<PublicPagesConfig>(`/public/config/settings${query}`, {
     method: 'PUT',
     body: JSON.stringify(config),
   })

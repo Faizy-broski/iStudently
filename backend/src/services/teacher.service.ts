@@ -14,10 +14,23 @@ import {
   ApiResponse
 } from '../types'
 import { getMainSchoolId } from '../utils/campus.util'
+import { generatePlaceholderEmail, withRedactedEmail } from '../utils/email.util'
+import { generateCredentials } from './username.service'
 
 // ============================================================================
 // STAFF / TEACHER MANAGEMENT
 // ============================================================================
+
+/**
+ * Redacts a placeholder email on a record that carries the profile nested
+ * under `.profile` (e.g. staff rows joined with profiles). Never exposes
+ * synthetic placeholder emails to the frontend.
+ */
+function redactProfileEmail<T extends { profile?: { email?: string | null } | null }>(record: T): T {
+  if (!record) return record
+  if (record.profile) return { ...record, profile: withRedactedEmail(record.profile) }
+  return record
+}
 
 export const getAllTeachers = async (
   schoolId: string,
@@ -100,6 +113,9 @@ export const getAllTeachers = async (
     const total = teachers.length
     const totalPages = Math.ceil(total / limit)
 
+    // Never expose synthetic placeholder emails to the frontend
+    teachers = teachers.map((teacher: any) => redactProfileEmail(teacher))
+
     return {
       success: true,
       data: {
@@ -158,7 +174,7 @@ export const getTeacherById = async (teacherId: string, schoolId?: string): Prom
       const fallbackData = { ...staffData, base_salary: salaryData?.base_salary || 0 } as any
       const { data: authUser } = await supabase.auth.admin.getUserById(fallbackData.profile_id)
       fallbackData.last_sign_in = authUser?.user?.last_sign_in_at ?? null
-      return { success: true, data: fallbackData as Staff }
+      return { success: true, data: redactProfileEmail(fallbackData) as Staff }
     }
 
     if (!data || (Array.isArray(data) && data.length === 0)) {
@@ -176,7 +192,7 @@ export const getTeacherById = async (teacherId: string, schoolId?: string): Prom
 
     return {
       success: true,
-      data: { ...teacherData, last_sign_in } as Staff
+      data: redactProfileEmail({ ...teacherData, last_sign_in }) as Staff
     }
   } catch (error: any) {
     console.error('Error fetching teacher:', error)
@@ -194,34 +210,40 @@ export const createTeacher = async (dto: CreateStaffDTO): Promise<ApiResponse<St
     let finalUsername: string
 
     // If no profile_id provided, create a new user
-    if (!profileId && dto.email) {
-      // Check if user with this email already exists
-      const { data: existingProfile, error: checkError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', dto.email)
-        .maybeSingle()
+    if (!profileId && dto.first_name && dto.last_name) {
+      // Check if user with this email already exists (only when a real email was given)
+      if (dto.email) {
+        const { data: existingProfile, error: checkError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', dto.email)
+          .maybeSingle()
 
-      if (checkError) throw checkError
+        if (checkError) throw checkError
 
-      if (existingProfile) {
-        throw new Error(`A user with email ${dto.email} already exists`)
+        if (existingProfile) {
+          throw new Error(`A user with email ${dto.email} already exists`)
+        }
       }
 
+      // Email is optional — fall back to a synthetic placeholder so Supabase
+      // Auth (which requires an email on every auth.users row) is satisfied.
+      const emailForAuth = (dto.email && dto.email.trim()) || generatePlaceholderEmail(dto.first_name, dto.last_name)
+
+      let generatedPassword: string | undefined
       if (dto.username) {
         finalUsername = dto.username
-      } else if (dto.first_name && dto.last_name) {
-        // Auto-generate firstname.lastname username
-        finalUsername = `${dto.first_name.toLowerCase().replace(/\s+/g, '')}.${dto.last_name.toLowerCase().replace(/\s+/g, '')}`
       } else {
-        finalUsername = dto.email
+        const credentials = await generateCredentials()
+        finalUsername = credentials.username
+        generatedPassword = credentials.plainPassword
       }
 
-      // Use provided password or generate one
-      finalPassword = dto.password || generateSecurePassword()
+      // Use provided password, or the one generated alongside the username, or generate one
+      finalPassword = dto.password || generatedPassword || generateSecurePassword()
 
       const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-        email: dto.email,
+        email: emailForAuth,
         password: finalPassword,
         email_confirm: true,
         user_metadata: {
@@ -243,7 +265,7 @@ export const createTeacher = async (dto: CreateStaffDTO): Promise<ApiResponse<St
           role: 'teacher',
           first_name: dto.first_name,
           last_name: dto.last_name,
-          email: dto.email,
+          email: emailForAuth,
           phone: dto.phone,
           username: finalUsername || null,
           profile_photo_url: dto.profile_photo_url || null,
@@ -323,7 +345,7 @@ export const createTeacher = async (dto: CreateStaffDTO): Promise<ApiResponse<St
 
     return {
       success: true,
-      data: data as Staff,
+      data: redactProfileEmail(data) as Staff,
       message: 'Teacher created successfully'
     }
   } catch (error: any) {
@@ -485,10 +507,10 @@ export const updateTeacher = async (
 
     return {
       success: true,
-      data: {
+      data: redactProfileEmail({
         ...data,
         base_salary: salaryData?.base_salary || 0
-      } as Staff,
+      }) as Staff,
       message: 'Teacher updated successfully'
     }
   } catch (error: any) {
@@ -965,7 +987,6 @@ export const bulkImportTeachers = async (
     const missing: string[] = []
     if (!raw.first_name?.toString().trim()) missing.push('first_name')
     if (!raw.last_name?.toString().trim())  missing.push('last_name')
-    if (!raw.email?.toString().trim())      missing.push('email')
 
     if (missing.length > 0) {
       results.errors.push({ row: rowNum, email: raw.email?.toString().trim(), error: `Missing required fields: ${missing.join(', ')}` })
@@ -973,19 +994,27 @@ export const bulkImportTeachers = async (
       continue
     }
 
-    const email = raw.email.toString().trim().toLowerCase()
-    if (!EMAIL_REGEX_TEACHER.test(email)) {
-      results.errors.push({ row: rowNum, email, error: `Invalid email format: ${email}` })
-      results.error_count++
-      continue
-    }
+    const rawEmail = raw.email?.toString().trim()
+    let email = rawEmail ? rawEmail.toLowerCase() : ''
 
-    if (seenEmails.has(email)) {
-      results.errors.push({ row: rowNum, email, error: 'Duplicate email within this file' })
-      results.error_count++
-      continue
+    if (email) {
+      if (!EMAIL_REGEX_TEACHER.test(email)) {
+        results.errors.push({ row: rowNum, email, error: `Invalid email format: ${email}` })
+        results.error_count++
+        continue
+      }
+
+      if (seenEmails.has(email)) {
+        results.errors.push({ row: rowNum, email, error: 'Duplicate email within this file' })
+        results.error_count++
+        continue
+      }
+      seenEmails.add(email)
+    } else {
+      // No email given — generate a placeholder so downstream code (which
+      // expects createTeacher's DTO to carry an email) always gets one.
+      email = generatePlaceholderEmail(raw.first_name.toString().trim(), raw.last_name.toString().trim())
     }
-    seenEmails.add(email)
 
     const empNum = raw.employee_number?.toString().trim()
     if (empNum && seenEmployeeNumbers.has(empNum)) {
