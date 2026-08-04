@@ -36,7 +36,7 @@ const DEFAULT_FIELDS_BY_CATEGORY: Record<string, Array<{label: string, id: strin
     { label: 'Gender', id: 'gender', sort_order: 6, required: true },
     { label: 'Student Photo', id: 'studentPhoto', sort_order: 7, required: false },
     { label: 'Address', id: 'address', sort_order: 8, required: false },
-    { label: 'Email', id: 'email', sort_order: 9, required: true },
+    { label: 'Email', id: 'email', sort_order: 9, required: false },
     { label: 'Phone Number', id: 'phoneNumber', sort_order: 10, required: false },
   ],
   academic: [
@@ -563,12 +563,6 @@ export default function CustomFieldsPage() {
   ) => {
     const fieldKey = item.id ?? item.label;
     const campusId = selectedCampus?.id;
-
-    // Email is how students log in — it can never be made optional.
-    if (fieldKey === 'email' && !checked) {
-      toast.error("Email can't be made optional — students log in with it.");
-      return;
-    }
 
     const applyLocal = (required: boolean) => {
       setDefaultFieldsByCategory(prev => ({

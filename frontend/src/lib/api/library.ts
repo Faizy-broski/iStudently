@@ -4,6 +4,26 @@ import { API_URL } from '@/config/api'
 // Re-export types
 export type { Book, BookCopy, BookLoan, LibraryCategory, LibraryDocumentField };
 
+/**
+ * Orders categories parent-then-children (each subcategory right after its
+ * parent) with an indent-prefixed label, for rendering in a flat <select> —
+ * used wherever a book picks a category, so subcategories stay visible while
+ * the parent itself remains directly selectable (an <optgroup> can't do that,
+ * since its label isn't selectable).
+ */
+export function orderCategoriesForSelect(categories: LibraryCategory[]): { id: string; label: string }[] {
+  const topLevel = categories.filter((c) => !c.parent_category_id);
+  const childrenOf = (parentId: string) => categories.filter((c) => c.parent_category_id === parentId);
+  const result: { id: string; label: string }[] = [];
+  for (const top of topLevel) {
+    result.push({ id: top.id, label: top.name });
+    for (const child of childrenOf(top.id)) {
+      result.push({ id: child.id, label: `— ${child.name}` });
+    }
+  }
+  return result;
+}
+
 interface ApiResponse<T = any> {
   success: boolean;
   data?: T;

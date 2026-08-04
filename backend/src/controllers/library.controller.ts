@@ -472,7 +472,7 @@ export class LibraryController {
     try {
       const schoolId = libSchoolId(req);
       if (!schoolId) return res.status(400).json({ error: 'School ID is required' });
-      const data = await libraryService.createCategory(req.body, schoolId);
+      const data = await libraryService.createCategory(req.body, schoolId, req.profile?.role);
       res.json({ success: true, data });
     } catch (error: any) {
       res.status(400).json({ success: false, error: error.message });
@@ -483,7 +483,7 @@ export class LibraryController {
     try {
       const schoolId = libSchoolId(req);
       if (!schoolId) return res.status(400).json({ error: 'School ID is required' });
-      const data = await libraryService.updateCategory(req.params.id, req.body, schoolId);
+      const data = await libraryService.updateCategory(req.params.id, req.body, schoolId, req.profile?.role);
       res.json({ success: true, data });
     } catch (error: any) {
       res.status(400).json({ success: false, error: error.message });
@@ -494,7 +494,7 @@ export class LibraryController {
     try {
       const schoolId = libSchoolId(req);
       if (!schoolId) return res.status(400).json({ error: 'School ID is required' });
-      await libraryService.deleteCategory(req.params.id, schoolId);
+      await libraryService.deleteCategory(req.params.id, schoolId, req.profile?.role);
       res.json({ success: true });
     } catch (error: any) {
       res.status(400).json({ success: false, error: error.message });

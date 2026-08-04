@@ -1453,11 +1453,15 @@ export class LibraryService {
   // PREMIUM: CATEGORY CRUD
   // ============================================================================
 
+  // Books are returned for a school's OWN categories plus every is_global
+  // one — mirrors custom-fields.service.ts's 'all_schools' scoping, just
+  // simpler (no campus-family resolution needed here).
   async getCategories(schoolId: string) {
     const { data, error } = await supabase
       .from('library_categories')
       .select('*')
-      .eq('school_id', schoolId)
+      .eq('is_active', true)
+      .or(`school_id.eq.${schoolId},is_global.eq.true`)
       .order('sort_order', { ascending: true });
     if (error) throw error;
     return data || [];
@@ -1468,13 +1472,67 @@ export class LibraryService {
       .from('library_categories')
       .select('*')
       .eq('id', categoryId)
-      .eq('school_id', schoolId)
+      .or(`school_id.eq.${schoolId},is_global.eq.true`)
       .single();
     if (error) throw error;
     return data;
   }
 
-  async createCategory(categoryData: Partial<LibraryCategory>, schoolId: string) {
+  /** True if `role` is allowed to see/nest under `category` (own school, or anyone can see a global one). */
+  private canSeeCategory(category: { school_id: string }, schoolId: string): boolean {
+    return category.school_id === schoolId;
+  }
+
+  /** Walks parent_category_id up from `startId`, throwing if `targetId` is found (would create a cycle). */
+  private async assertNoCycle(startParentId: string, targetId: string) {
+    let currentId: string | null = startParentId;
+    const seen = new Set<string>();
+    while (currentId) {
+      if (currentId === targetId) throw new Error('A category cannot be nested under itself or one of its own subcategories');
+      if (seen.has(currentId)) break; // defensive: pre-existing bad data, don't loop forever
+      seen.add(currentId);
+      const { data }: { data: { parent_category_id: string | null } | null } = await supabase
+        .from('library_categories')
+        .select('parent_category_id')
+        .eq('id', currentId)
+        .single();
+      currentId = data?.parent_category_id ?? null;
+    }
+  }
+
+  /** Fetches the featured-category count, excluding `excludeId` if given (used when re-saving an already-featured row). */
+  private async countFeatured(excludeId?: string): Promise<number> {
+    let query = supabase
+      .from('library_categories')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_featured', true);
+    if (excludeId) query = query.neq('id', excludeId);
+    const { count } = await query;
+    return count || 0;
+  }
+
+  async createCategory(categoryData: Partial<LibraryCategory>, schoolId: string, role?: string) {
+    if ((categoryData.is_global || categoryData.is_featured) && role !== 'super_admin') {
+      throw new Error('Only Super Admin can create a category visible to all schools');
+    }
+    if (categoryData.is_featured && (await this.countFeatured()) >= 10) {
+      throw new Error('Maximum of 10 featured categories reached — unfeature one before adding another');
+    }
+
+    let parentCategoryId: string | null = null;
+    if (categoryData.parent_category_id) {
+      const { data: parent, error: parentError } = await supabase
+        .from('library_categories')
+        .select('id, school_id, is_global')
+        .eq('id', categoryData.parent_category_id)
+        .single();
+      if (parentError || !parent) throw new Error('Parent category not found');
+      if (!parent.is_global && !this.canSeeCategory(parent, schoolId)) {
+        throw new Error('Cannot nest under a category from another school');
+      }
+      parentCategoryId = parent.id;
+    }
+
     const { data, error } = await supabase
       .from('library_categories')
       .insert({
@@ -1484,6 +1542,10 @@ export class LibraryService {
         sort_order: categoryData.sort_order || 0,
         visible_to_roles: categoryData.visible_to_roles || [],
         visible_to_grade_levels: categoryData.visible_to_grade_levels || [],
+        parent_category_id: parentCategoryId,
+        is_global: role === 'super_admin' ? !!categoryData.is_global : false,
+        is_featured: role === 'super_admin' ? !!categoryData.is_featured : false,
+        featured_order: categoryData.featured_order ?? null,
       })
       .select()
       .single();
@@ -1491,7 +1553,28 @@ export class LibraryService {
     return data;
   }
 
-  async updateCategory(categoryId: string, categoryData: Partial<LibraryCategory>, schoolId: string) {
+  async updateCategory(categoryId: string, categoryData: Partial<LibraryCategory>, schoolId: string, role?: string) {
+    const { data: existing, error: fetchError } = await supabase
+      .from('library_categories')
+      .select('*')
+      .eq('id', categoryId)
+      .single();
+    if (fetchError || !existing) throw new Error('Category not found');
+
+    const isOwnCategory = existing.school_id === schoolId;
+    const canManageAsSuperAdmin = existing.is_global && role === 'super_admin';
+    if (!isOwnCategory && !canManageAsSuperAdmin) {
+      throw new Error('Category not found or access denied');
+    }
+
+    if ((categoryData.is_global !== undefined || categoryData.is_featured !== undefined)
+        && (categoryData.is_global || categoryData.is_featured) && role !== 'super_admin') {
+      throw new Error('Only Super Admin can make a category visible to all schools or feature it');
+    }
+    if (categoryData.is_featured && !existing.is_featured && (await this.countFeatured(categoryId)) >= 10) {
+      throw new Error('Maximum of 10 featured categories reached — unfeature one before adding another');
+    }
+
     const updates: any = {};
     if (categoryData.name !== undefined) updates.name = categoryData.name;
     if (categoryData.color_code !== undefined) updates.color_code = categoryData.color_code;
@@ -1499,25 +1582,68 @@ export class LibraryService {
     if (categoryData.visible_to_roles !== undefined) updates.visible_to_roles = categoryData.visible_to_roles;
     if (categoryData.visible_to_grade_levels !== undefined) updates.visible_to_grade_levels = categoryData.visible_to_grade_levels;
     if (categoryData.is_active !== undefined) updates.is_active = categoryData.is_active;
+    if (role === 'super_admin') {
+      if (categoryData.is_global !== undefined) updates.is_global = categoryData.is_global;
+      if (categoryData.is_featured !== undefined) updates.is_featured = categoryData.is_featured;
+      if (categoryData.featured_order !== undefined) updates.featured_order = categoryData.featured_order;
+    }
+    if (categoryData.parent_category_id !== undefined) {
+      if (categoryData.parent_category_id === categoryId) {
+        throw new Error('A category cannot be nested under itself');
+      }
+      if (categoryData.parent_category_id) {
+        const { data: parent, error: parentError } = await supabase
+          .from('library_categories')
+          .select('id, school_id, is_global')
+          .eq('id', categoryData.parent_category_id)
+          .single();
+        if (parentError || !parent) throw new Error('Parent category not found');
+        if (!parent.is_global && !this.canSeeCategory(parent, schoolId)) {
+          throw new Error('Cannot nest under a category from another school');
+        }
+        await this.assertNoCycle(categoryData.parent_category_id, categoryId);
+      }
+      updates.parent_category_id = categoryData.parent_category_id;
+    }
 
     const { data, error } = await supabase
       .from('library_categories')
       .update(updates)
       .eq('id', categoryId)
-      .eq('school_id', schoolId)
       .select()
       .single();
     if (error) throw error;
     return data;
   }
 
-  async deleteCategory(categoryId: string, schoolId: string) {
-    // Check if any documents use this category
+  async deleteCategory(categoryId: string, schoolId: string, role?: string) {
+    const { data: existing, error: fetchError } = await supabase
+      .from('library_categories')
+      .select('id, school_id, is_global')
+      .eq('id', categoryId)
+      .single();
+    if (fetchError || !existing) throw new Error('Category not found');
+
+    const isOwnCategory = existing.school_id === schoolId;
+    const canManageAsSuperAdmin = existing.is_global && role === 'super_admin';
+    if (!isOwnCategory && !canManageAsSuperAdmin) {
+      throw new Error('Category not found or access denied');
+    }
+
+    const { count: childCount } = await supabase
+      .from('library_categories')
+      .select('*', { count: 'exact', head: true })
+      .eq('parent_category_id', categoryId);
+    if (childCount && childCount > 0) {
+      throw new Error(`Cannot delete: ${childCount} subcategor${childCount > 1 ? 'ies' : 'y'} exist under this category. Delete or move them first.`);
+    }
+
+    // Check if any documents use this category (across all schools for a
+    // global category, since it may be assigned to books anywhere).
     const { count } = await supabase
       .from('library_books')
       .select('*', { count: 'exact', head: true })
-      .eq('category_id', categoryId)
-      .eq('school_id', schoolId);
+      .eq('category_id', categoryId);
 
     if (count && count > 0) {
       throw new Error(`Cannot delete: ${count} document(s) use this category. Reassign them first.`);
@@ -1526,8 +1652,7 @@ export class LibraryService {
     const { error } = await supabase
       .from('library_categories')
       .delete()
-      .eq('id', categoryId)
-      .eq('school_id', schoolId);
+      .eq('id', categoryId);
     if (error) throw error;
   }
 

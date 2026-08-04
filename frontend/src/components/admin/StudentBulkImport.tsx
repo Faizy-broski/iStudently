@@ -29,6 +29,7 @@ import { useCampus } from "@/context/CampusContext"
 import { useGradeLevels, useSections } from "@/hooks/useAcademics"
 import { useTranslations } from "next-intl"
 import { getFieldDefinitions, type CustomFieldDefinition } from "@/lib/api/custom-fields"
+import { getFieldOrders } from "@/lib/api/default-field-orders"
 
 // ─── Field definitions ────────────────────────────────────────────────────────
 
@@ -39,10 +40,13 @@ interface FieldDef {
   hintKey?: string
 }
 
-const FIELD_DEFS: FieldDef[] = [
+// `email.required` here is just the built-in baseline — overridden at render/
+// validation time by the per-school "required" setting (default_field_orders),
+// same source of truth AddStudentForm/EditStudentForm read from.
+const BASE_FIELD_DEFS: FieldDef[] = [
   { key: "first_name",        labelKey: "first_name",        required: true },
   { key: "last_name",         labelKey: "last_name",         required: true },
-  { key: "email",             labelKey: "email",             required: true },
+  { key: "email",             labelKey: "email",             required: false },
   { key: "father_name",       labelKey: "father_name",       required: false },
   { key: "grandfather_name",  labelKey: "grandfather_name",  required: false },
   { key: "phone",             labelKey: "phone",             required: false },
@@ -106,7 +110,8 @@ function applyMappingAndValidate(
   rawRows: Record<string, any>[],
   mapping: Record<string, string>,   // fieldKey → csvColumn | SKIP
   t: (key: string) => string,
-  customFieldDefs: CustomFieldDefinition[]
+  customFieldDefs: CustomFieldDefinition[],
+  isEmailRequired: boolean
 ): ParsedRow[] {
   const seenEmails = new Set<string>()
 
@@ -135,9 +140,13 @@ function applyMappingAndValidate(
 
     if (!firstName)      errors.push(t("error_first_name_req"))
     if (!lastName)       errors.push(t("error_last_name_req"))
-    if (!email)          errors.push(t("error_email_req"))
-    else if (!EMAIL_RE.test(email)) errors.push(`${t("error_invalid_email")}: ${email}`)
-    else if (seenEmails.has(email)) errors.push(t("error_duplicate_email"))
+    if (!email) {
+      if (isEmailRequired) errors.push(t("error_email_req"))
+    } else if (!EMAIL_RE.test(email)) {
+      errors.push(`${t("error_invalid_email")}: ${email}`)
+    } else if (seenEmails.has(email)) {
+      errors.push(t("error_duplicate_email"))
+    }
 
     if (email && EMAIL_RE.test(email)) seenEmails.add(email)
 
@@ -219,6 +228,23 @@ export function StudentBulkImport() {
     })
   }, [campusId])
 
+  // Per-school override for whether email is required — same source of truth
+  // (default_field_orders) that AddStudentForm/EditStudentForm read, so bulk
+  // import agrees with the single-student forms on whether email can be blank.
+  const [isEmailRequired, setIsEmailRequired] = useState(false)
+  useEffect(() => {
+    getFieldOrders('student', undefined, campusId).then(res => {
+      if (res.success && res.data) {
+        const emailOrder = res.data.find(o => o.category_id === 'personal' && o.field_label === 'email')
+        if (emailOrder && typeof emailOrder.required === 'boolean') {
+          setIsEmailRequired(emailOrder.required)
+        }
+      }
+    })
+  }, [campusId])
+
+  const fieldDefs = BASE_FIELD_DEFS.map(f => f.key === 'email' ? { ...f, required: isEmailRequired } : f)
+
   const STEPS = [
     t("step_upload"), 
     t("step_map"), 
@@ -283,7 +309,7 @@ export function StudentBulkImport() {
       toast.error(t("msg_target_grade_required"))
       return
     }
-    const requiredMissing = FIELD_DEFS.filter(
+    const requiredMissing = fieldDefs.filter(
       f => f.required && (!mapping[f.key] || mapping[f.key] === SKIP)
     )
     if (requiredMissing.length > 0) {
@@ -297,7 +323,7 @@ export function StudentBulkImport() {
       toast.error(`${t("msg_map_required")}: ${requiredCustomMissing.map(f => f.label).join(", ")}`)
       return
     }
-    const rows = applyMappingAndValidate(rawRows, mapping, t, customFieldDefs)
+    const rows = applyMappingAndValidate(rawRows, mapping, t, customFieldDefs, isEmailRequired)
     setParsedRows(rows)
     setStep(3)
   }
@@ -478,7 +504,7 @@ export function StudentBulkImport() {
           <Card>
             <CardContent className="pt-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {FIELD_DEFS.map(field => {
+                {fieldDefs.map(field => {
                   const currentVal = mapping[field.key] ?? SKIP
                   return (
                     <div key={field.key} className="space-y-1">

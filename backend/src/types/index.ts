@@ -155,6 +155,14 @@ export interface LibraryCategory {
   visible_to_roles: string[];
   visible_to_grade_levels: string[];
   is_active: boolean;
+  // Subcategory support — nullable, points at another library_categories row.
+  parent_category_id: string | null;
+  // Super-admin-curated category visible to every school (school_id still
+  // points at the creating school; inclusion is filter-driven, not FK-driven).
+  is_global: boolean;
+  // Only meaningful on is_global rows — capped at 10 by the service layer.
+  is_featured: boolean;
+  featured_order: number | null;
   created_at: string;
   updated_at: string;
 }

@@ -114,6 +114,10 @@ export interface LibraryCategory {
   visible_to_roles: string[];
   visible_to_grade_levels: string[];
   is_active: boolean;
+  parent_category_id: string | null;
+  is_global: boolean;
+  is_featured: boolean;
+  featured_order: number | null;
   created_at: string;
   updated_at: string;
 }

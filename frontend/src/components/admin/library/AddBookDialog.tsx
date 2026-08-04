@@ -24,7 +24,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useAuth } from "@/context/AuthContext";
-import { createBook, getCategories } from "@/lib/api/library";
+import { createBook, getCategories, orderCategoriesForSelect } from "@/lib/api/library";
 import { uploadLibraryCoverImage, uploadLibraryDocument } from "@/lib/api/storage";
 import { LibraryCategory } from "@/types";
 import { toast } from "sonner";
@@ -292,9 +292,9 @@ export function AddBookDialog({ open, onOpenChange, onBookAdded }: AddBookDialog
                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       >
                         <option value="">No category</option>
-                        {categories.map((cat) => (
+                        {orderCategoriesForSelect(categories).map((cat) => (
                           <option key={cat.id} value={cat.id}>
-                            {cat.name}
+                            {cat.label}
                           </option>
                         ))}
                       </select>
