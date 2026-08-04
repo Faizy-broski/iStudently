@@ -118,6 +118,13 @@ export const bulkAssignUsernames = async (
     for (const profile of profiles) {
       try {
         const { username, plainPassword } = await usernameService.generateCredentials()
+
+        // Sync Supabase auth password FIRST — only persist the new username/password
+        // once the sync succeeds, so we never store credentials that don't work.
+        const { error: authError } = await supabase.auth.admin
+          .updateUserById(profile.id, { password: plainPassword })
+        if (authError) throw authError
+
         const hashedPassword = await bcrypt.hash(plainPassword, 10)
 
         await supabase
@@ -131,12 +138,9 @@ export const bulkAssignUsernames = async (
           })
           .eq('id', profile.id)
 
-        await supabase.auth.admin
-          .updateUserById(profile.id, { password: plainPassword })
-          .catch(() => {})
-
         assigned++
-      } catch {
+      } catch (err: any) {
+        console.error('bulkAssignUsernames failed for profile', profile.id, err?.message ?? err)
         // Continue — don't let one failure break the batch
       }
     }

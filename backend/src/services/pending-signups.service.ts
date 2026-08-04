@@ -5,6 +5,7 @@ import { getSchoolMailer } from './email.service'
 import { generateCredentials } from './username.service'
 import type { SignupLinkMeta } from './signup-links.service'
 import { generatePlaceholderEmail, redactPlaceholderEmail, hasRealEmail, withRedactedEmail } from '../utils/email.util'
+import { encryptSecret } from '../utils/crypto'
 import bcrypt from 'bcrypt'
 
 export interface PendingSignup {
@@ -397,6 +398,14 @@ export async function approvePendingSignup(
   let plainPassword: string | undefined
   try {
     const creds = await generateCredentials()
+
+    // Sync Supabase auth password FIRST — only persist/display the new username
+    // and password once the sync succeeds, so we never show credentials that
+    // don't actually match what Supabase Auth has on file.
+    const { error: authSyncError } = await supabase.auth.admin
+      .updateUserById(profileId, { password: creds.plainPassword })
+    if (authSyncError) throw authSyncError
+
     plainPassword = creds.plainPassword
     const hashedPassword = await bcrypt.hash(creds.plainPassword, 10)
     await supabase
@@ -404,16 +413,14 @@ export async function approvePendingSignup(
       .update({
         username: creds.username,
         system_password: hashedPassword,
+        login_password_enc: encryptSecret(creds.plainPassword),
         force_password_change: true,
         username_generated_at: new Date().toISOString(),
       })
       .eq('id', profileId)
-    // Sync Supabase auth password so username-based login works immediately
-    await supabase.auth.admin
-      .updateUserById(profileId, { password: creds.plainPassword })
-      .catch(() => {})
-  } catch {
-    // Non-fatal — user can still log in with their signup password
+  } catch (err: any) {
+    console.error(`⚠️ Failed to generate/sync login credentials for approved signup ${profileId}:`, err?.message ?? err)
+    // Non-fatal — user can still log in with their original signup email/password
   }
 
   // 7. Send approval email to user (non-blocking — never breaks the approval).

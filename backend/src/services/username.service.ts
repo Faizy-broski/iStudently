@@ -45,6 +45,12 @@ export async function regenerateCredentials(
   if (!hasAccess) throw new Error('Access denied')
 
   const { username, plainPassword } = await generateCredentials()
+
+  // Sync Supabase auth password FIRST — if this fails, bail out before persisting/
+  // displaying credentials that wouldn't actually work for username→email→signIn.
+  const { error: authError } = await supabase.auth.admin.updateUserById(profileId, { password: plainPassword })
+  if (authError) throw new Error(`Failed to update auth password: ${authError.message}`)
+
   const hashedPassword = await bcrypt.hash(plainPassword, 10)
 
   const { error: updateError } = await supabase
@@ -59,10 +65,6 @@ export async function regenerateCredentials(
     .eq('id', profileId)
 
   if (updateError) throw updateError
-
-  // Update Supabase auth password so username→email→signInWithPassword works
-  await supabase.auth.admin.updateUserById(profileId, { password: plainPassword })
-    .catch(() => {})
 
   return { username, plainPassword }
 }
