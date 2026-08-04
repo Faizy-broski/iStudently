@@ -15,7 +15,7 @@ import {
 } from '../types'
 import { getMainSchoolId } from '../utils/campus.util'
 import { generatePlaceholderEmail, withRedactedEmail } from '../utils/email.util'
-import { generateCredentials } from './username.service'
+import { generateCredentials, applyCredentialUpdate } from './username.service'
 
 // ============================================================================
 // STAFF / TEACHER MANAGEMENT
@@ -443,14 +443,12 @@ export const updateTeacher = async (
       if (profileError) throw profileError
     }
 
-    // Update password if provided
-    if (dto.password && dto.password.length >= 8) {
-      const { error: authError } = await supabase.auth.admin.updateUserById(
-        existingStaff.profile_id,
-        { password: dto.password }
-      )
-
-      if (authError) throw authError
+    // Update login credentials (username and/or password) if provided
+    if (dto.username !== undefined || dto.password !== undefined) {
+      await applyCredentialUpdate(existingStaff.profile_id, {
+        username: dto.username,
+        password: dto.password,
+      })
     }
 
     // Update base_salary if provided - Use optimized approach

@@ -47,7 +47,7 @@ export default function ParentInfoPage() {
   const { user } = useAuth();
   const schoolId = user?.school_id || '';
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
-  const [credentialsData, setCredentialsData] = useState<{ id: string, name: string } | null>(null);
+  const [credentialsData, setCredentialsData] = useState<{ id: string, name: string, profileId?: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [showInactive, setShowInactive] = useState(false);
@@ -289,7 +289,8 @@ export default function ParentInfoPage() {
                                 <DropdownMenuItem onClick={() => {
                                   setCredentialsData({
                                     id: parent.id,
-                                    name: `${parent.profile?.first_name || ''} ${parent.profile?.last_name || ''}`
+                                    name: `${parent.profile?.first_name || ''} ${parent.profile?.last_name || ''}`,
+                                    profileId: parent.profile_id || undefined
                                   });
                                   setShowCredentialsModal(true);
                                 }}>
@@ -602,6 +603,7 @@ export default function ParentInfoPage() {
           entityName={credentialsData.name}
           entityType="parent"
           schoolId={schoolId}
+          profileId={credentialsData.profileId}
           onSuccess={() => { }}
         />
       )}

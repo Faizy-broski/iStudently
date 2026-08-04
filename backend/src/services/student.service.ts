@@ -1,7 +1,7 @@
 import { supabase } from '../config/supabase'
 import bcrypt from 'bcrypt'
 import { Student, CreateStudentDTO, UpdateStudentDTO } from '../types'
-import { generateCredentials } from './username.service'
+import { generateCredentials, applyCredentialUpdate } from './username.service'
 import { encryptSecret } from '../utils/crypto'
 import { generatePlaceholderEmail, redactPlaceholderEmail, withRedactedEmail } from '../utils/email.util'
 
@@ -240,7 +240,8 @@ export class StudentService {
           avatar_url,
           profile_photo_url,
           is_active,
-          role
+          role,
+          username
         ),
         parent_links:parent_student_links!inner(
           parent:parents(
@@ -503,7 +504,8 @@ export class StudentService {
             email,
             phone,
             avatar_url,            profile_photo_url,            is_active,
-            role
+            role,
+            username
           )
         `)
         .eq('id', studentId)
@@ -529,7 +531,7 @@ export class StudentService {
     // Update profile if profile data is provided
     if (updateData.first_name || updateData.father_name || updateData.grandfather_name ||
         updateData.last_name || updateData.email || updateData.phone || updateData.profile_photo_url ||
-        updateData.is_active !== undefined || updateData.username !== undefined) {
+        updateData.is_active !== undefined) {
       const profileUpdates: any = {}
       if (updateData.first_name !== undefined) profileUpdates.first_name = updateData.first_name
       if (updateData.father_name !== undefined) profileUpdates.father_name = updateData.father_name
@@ -539,7 +541,6 @@ export class StudentService {
       if (updateData.phone !== undefined) profileUpdates.phone = updateData.phone
       if (updateData.profile_photo_url !== undefined) profileUpdates.profile_photo_url = updateData.profile_photo_url
       if (updateData.is_active !== undefined) profileUpdates.is_active = updateData.is_active
-      if (updateData.username !== undefined) profileUpdates.username = updateData.username || null
 
       if (Object.keys(profileUpdates).length > 0 && existing.profile_id) {
         const { error: profileError } = await supabase
@@ -553,16 +554,15 @@ export class StudentService {
       }
     }
 
-    // Update password if provided
-    if (updateData.password && updateData.password.length >= 8) {
-      if (existing.profile_id) {
-        const { error: authError } = await supabase.auth.admin.updateUserById(
-          existing.profile_id,
-          { password: updateData.password }
-        )
-
-        if (authError) throw new Error(`Failed to update password: ${authError.message}`)
-      }
+    // Update login credentials (username and/or password) if provided — routed
+    // through the shared helper so Supabase Auth, the display-cache columns,
+    // and username-conflict errors all stay consistent with the other
+    // "Edit Credentials" flows (parent/teacher/staff).
+    if ((updateData.username !== undefined || updateData.password !== undefined) && existing.profile_id) {
+      await applyCredentialUpdate(existing.profile_id, {
+        username: updateData.username,
+        password: updateData.password,
+      })
     }
 
     // Update student record

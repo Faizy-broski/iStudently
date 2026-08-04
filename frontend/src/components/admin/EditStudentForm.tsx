@@ -219,7 +219,10 @@ export function EditStudentForm({ student, onSuccess, onCancel }: EditStudentFor
 studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.personal?.student_photo || '',
     studentNumber: student.student_number || '',
     gradeLevel: student.grade_level || '',
-    username: student.custom_fields?.system?.username || '',
+    // profile.username is the real login username (source of truth for resolve-username);
+    // custom_fields.system.username is a legacy display-only copy that can drift out of
+    // sync with it, so only fall back to that when the real field isn't populated.
+    username: student.profile?.username || student.custom_fields?.system?.username || '',
     admissionDate: student.custom_fields?.academic?.admission_date ?
       new Date(student.custom_fields.academic.admission_date).toISOString().split('T')[0] : '',
     previousSchool: student.custom_fields?.academic?.previous_school?.schoolName || '',

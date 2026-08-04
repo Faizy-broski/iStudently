@@ -610,6 +610,7 @@ export default function StaffPage() {
                     entityName={`${credentialsStaff.profile?.first_name} ${credentialsStaff.profile?.last_name}`}
                     entityType="staff"
                     schoolId={profile?.school_id || ''}
+                    profileId={credentialsStaff.profile_id}
                     onSuccess={() => mutate()}
                 />
             )}

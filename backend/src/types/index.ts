@@ -537,6 +537,7 @@ export interface UpdateParentDTO {
   email?: string;
   phone?: string;
   password?: string; // Optional password update
+  username?: string; // Login username
   profile_photo_url?: string;
 }
 
@@ -726,6 +727,7 @@ export interface UpdateStaffDTO {
   email?: string;
   phone?: string;
   password?: string; // Optional password update
+  username?: string; // Login username
   base_salary?: number; // Optional base salary update
   profile_photo_url?: string;
   gender?: string;

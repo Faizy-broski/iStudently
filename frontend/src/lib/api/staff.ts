@@ -59,6 +59,7 @@ export interface UpdateStaffDTO {
     email?: string
     phone?: string
     password?: string
+    username?: string // Login username
 }
 
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {

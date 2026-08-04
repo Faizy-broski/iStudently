@@ -2,11 +2,9 @@ import { supabase } from '../config/supabase'
 import { decryptPassword } from './public-signup.service'
 import { sendEmail } from './mail'
 import { getSchoolMailer } from './email.service'
-import { generateCredentials } from './username.service'
+import { generateCredentials, syncPasswordDisplayCache } from './username.service'
 import type { SignupLinkMeta } from './signup-links.service'
 import { generatePlaceholderEmail, redactPlaceholderEmail, hasRealEmail, withRedactedEmail } from '../utils/email.util'
-import { encryptSecret } from '../utils/crypto'
-import bcrypt from 'bcrypt'
 
 export interface PendingSignup {
   id: string
@@ -407,17 +405,20 @@ export async function approvePendingSignup(
     if (authSyncError) throw authSyncError
 
     plainPassword = creds.plainPassword
-    const hashedPassword = await bcrypt.hash(creds.plainPassword, 10)
+
+    // Username/flags need no encryption — persist unconditionally now that
+    // auth is confirmed in sync.
     await supabase
       .from('profiles')
       .update({
         username: creds.username,
-        system_password: hashedPassword,
-        login_password_enc: encryptSecret(creds.plainPassword),
         force_password_change: true,
         username_generated_at: new Date().toISOString(),
       })
       .eq('id', profileId)
+
+    // Best-effort only — must not undo the auth password change above if it fails.
+    await syncPasswordDisplayCache(profileId, creds.plainPassword)
   } catch (err: any) {
     console.error(`⚠️ Failed to generate/sync login credentials for approved signup ${profileId}:`, err?.message ?? err)
     // Non-fatal — user can still log in with their original signup email/password

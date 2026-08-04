@@ -111,6 +111,9 @@ export interface Student {
     avatar_url: string | null
     profile_photo_url: string | null
     is_active: boolean
+    // The actual login username (source of truth for resolve-username / signIn).
+    // May be absent on older API responses — fall back to custom_fields.system.username.
+    username?: string | null
   }
   grade?: { id: string; name: string } | null
   section?: { id: string; name: string } | null
@@ -155,6 +158,7 @@ export interface UpdateStudentDTO {
   phone?: string
   profile_photo_url?: string // NEW
   password?: string // NEW: Optional password update
+  username?: string // Login username
   is_active?: boolean // NEW: Toggle student active/inactive status
   gender?: 'male' | 'female' | 'other'
   date_of_birth?: string

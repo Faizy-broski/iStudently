@@ -108,6 +108,7 @@ export interface UpdateStaffDTO {
   email?: string
   phone?: string
   password?: string // NEW: Optional password update
+  username?: string // Login username
   base_salary?: number // NEW: Optional base salary update
   custom_fields?: Record<string, any>
 }

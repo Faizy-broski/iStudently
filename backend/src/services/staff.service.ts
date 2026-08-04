@@ -7,6 +7,7 @@ import {
     UserRole
 } from '../types'
 import { generatePlaceholderEmail, withRedactedEmail } from '../utils/email.util'
+import { applyCredentialUpdate } from './username.service'
 
 // Redacts profile.email on nested { profile: { email } } shapes (staff records
 // joined with their profile) before returning to the API layer.
@@ -422,7 +423,7 @@ export const updateStaff = async (
 ): Promise<ApiResponse<Staff>> => {
     try {
         // Update Profile if any profile fields changed
-        if (data.first_name || data.last_name || data.email || data.password || data.phone !== undefined || data.gender !== undefined || data.date_of_birth !== undefined) {
+        if (data.first_name || data.last_name || data.email || data.password || data.username !== undefined || data.phone !== undefined || data.gender !== undefined || data.date_of_birth !== undefined) {
             // Get profile_id
             const { data: staff } = await supabase.from('staff').select('profile_id').eq('id', id).single()
             if (staff) {
@@ -437,13 +438,12 @@ export const updateStaff = async (
                     await supabase.from('profiles').update(profileUpdate).eq('id', staff.profile_id)
                 }
 
-                // Update Password if provided
-                if (data.password && data.password.length >= 8) {
-                    const { error: authError } = await supabase.auth.admin.updateUserById(
-                        staff.profile_id,
-                        { password: data.password }
-                    )
-                    if (authError) throw authError
+                // Update login credentials (username and/or password) if provided
+                if (data.username !== undefined || data.password !== undefined) {
+                    await applyCredentialUpdate(staff.profile_id, {
+                        username: data.username,
+                        password: data.password,
+                    })
                 }
             }
         }

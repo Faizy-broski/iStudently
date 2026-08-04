@@ -7,6 +7,7 @@ import {
   StudentWithRelationship
 } from '../types'
 import { generatePlaceholderEmail, redactPlaceholderEmail, withRedactedEmail } from '../utils/email.util'
+import { applyCredentialUpdate } from './username.service'
 
 // Loosely typed (matches this file's existing `any` casts around nested
 // `profile` joins) since Supabase's generated types sometimes infer a
@@ -455,16 +456,12 @@ export class ParentService {
       }
     }
 
-    // Update password if provided
-    if (updateData.password && updateData.password.length >= 8) {
-      if (existing.profile_id) {
-        const { error: authError } = await supabase.auth.admin.updateUserById(
-          existing.profile_id,
-          { password: updateData.password }
-        )
-
-        if (authError) throw new Error(`Failed to update password: ${authError.message}`)
-      }
+    // Update login credentials (username and/or password) if provided
+    if ((updateData.username !== undefined || updateData.password !== undefined) && existing.profile_id) {
+      await applyCredentialUpdate(existing.profile_id, {
+        username: updateData.username,
+        password: updateData.password,
+      })
     }
 
     // Update parent record

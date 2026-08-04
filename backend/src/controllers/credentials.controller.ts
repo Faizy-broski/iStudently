@@ -3,8 +3,6 @@ import { AuthRequest } from '../middlewares/auth.middleware'
 import { supabase } from '../config/supabase'
 import * as usernameService from '../services/username.service'
 import { ApiResponse } from '../types'
-import bcrypt from 'bcrypt'
-import { encryptSecret } from '../utils/crypto'
 
 export const regenerateCredentials = async (
   req: AuthRequest,
@@ -119,24 +117,23 @@ export const bulkAssignUsernames = async (
       try {
         const { username, plainPassword } = await usernameService.generateCredentials()
 
-        // Sync Supabase auth password FIRST — only persist the new username/password
+        // Sync Supabase auth password FIRST — only persist the new username
         // once the sync succeeds, so we never store credentials that don't work.
         const { error: authError } = await supabase.auth.admin
           .updateUserById(profile.id, { password: plainPassword })
         if (authError) throw authError
 
-        const hashedPassword = await bcrypt.hash(plainPassword, 10)
-
         await supabase
           .from('profiles')
           .update({
             username,
-            system_password: hashedPassword,
-            login_password_enc: encryptSecret(plainPassword),
             force_password_change: true,
             username_generated_at: new Date().toISOString(),
           })
           .eq('id', profile.id)
+
+        // Best-effort only — must not undo the auth password change above if it fails.
+        await usernameService.syncPasswordDisplayCache(profile.id, plainPassword)
 
         assigned++
       } catch (err: any) {

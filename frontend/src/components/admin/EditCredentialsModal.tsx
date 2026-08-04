@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,7 @@ import { updateStudent } from '@/lib/api/students';
 import { updateParent } from '@/lib/api/parents';
 import { updateTeacher } from '@/lib/api/teachers';
 import { updateStaff } from '@/lib/api/staff';
+import { getUsername } from '@/lib/api/credentials';
 import { useAuth } from "@/context/AuthContext";
 
 interface EditCredentialsModalProps {
@@ -18,6 +19,9 @@ interface EditCredentialsModalProps {
     entityType: 'student' | 'parent' | 'teacher' | 'staff';
     schoolId: string;
     campusId?: string; // NEW: For student campus context
+    // profiles.id for this entity — used only to prefill the current username.
+    // If omitted, the username field starts blank (still editable).
+    profileId?: string;
     onSuccess?: () => void;
 }
 
@@ -29,22 +33,44 @@ export function EditCredentialsModal({
     entityType,
     schoolId,
     campusId, // NEW
+    profileId,
     onSuccess
 }: EditCredentialsModalProps) {
     const [loading, setLoading] = useState(false);
+    const [loadingUsername, setLoadingUsername] = useState(false);
+    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Prefill the current username so the admin can see/edit it — this is the
+    // only login identifier for accounts that don't have a real email.
+    useEffect(() => {
+        if (!isOpen || !profileId) {
+            setUsername('');
+            return;
+        }
+        setLoadingUsername(true);
+        getUsername(profileId)
+            .then((res) => setUsername((res.success && res.data?.username) || ''))
+            .catch(() => {})
+            .finally(() => setLoadingUsername(false));
+    }, [isOpen, profileId]);
 
     if (!isOpen) return null;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!password) {
-            setError('Password is required');
+
+        const trimmedUsername = username.trim();
+        const usernameChanged = trimmedUsername.length > 0;
+        const passwordChanged = password.length > 0;
+
+        if (!usernameChanged && !passwordChanged) {
+            setError('Enter a username and/or a new password to update');
             return;
         }
-        if (password.length < 8) {
+        if (passwordChanged && password.length < 8) {
             setError('Password must be at least 8 characters long');
             return;
         }
@@ -53,24 +79,28 @@ export function EditCredentialsModal({
         setError(null);
 
         try {
+            const payload: { username?: string; password?: string } = {};
+            if (usernameChanged) payload.username = trimmedUsername;
+            if (passwordChanged) payload.password = password;
+
             if (entityType === 'student') {
-                await updateStudent(entityId, { password }, campusId);
+                await updateStudent(entityId, payload, campusId);
             } else if (entityType === 'parent') {
-                await updateParent(entityId, { password });
+                await updateParent(entityId, payload);
             } else if (entityType === 'teacher') {
-                await updateTeacher(entityId, { password });
+                await updateTeacher(entityId, payload);
             } else if (entityType === 'staff') {
-                await updateStaff(entityId, { password });
+                await updateStaff(entityId, payload);
             }
 
-            toast.success(`Password updated for ${entityName}`);
+            toast.success(`Credentials updated for ${entityName}`);
             setPassword('');
             if (onSuccess) onSuccess();
             onClose();
         } catch (err: any) {
             console.error('Failed to update credentials:', err);
-            toast.error(err.message || 'Failed to update password');
-            setError(err.message || 'Failed to update password');
+            toast.error(err.message || 'Failed to update credentials');
+            setError(err.message || 'Failed to update credentials');
         } finally {
             setLoading(false);
         }
@@ -104,6 +134,24 @@ export function EditCredentialsModal({
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     <div className="space-y-2">
+                        <Label htmlFor="edit-username">Username</Label>
+                        <Input
+                            id="edit-username"
+                            type="text"
+                            value={username}
+                            onChange={(e) => {
+                                setUsername(e.target.value);
+                                if (error) setError(null);
+                            }}
+                            placeholder={loadingUsername ? "Loading current username…" : "Username"}
+                            disabled={loading || loadingUsername}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            This is what the user logs in with if they don&apos;t have a real email on file.
+                        </p>
+                    </div>
+
+                    <div className="space-y-2">
                         <Label htmlFor="new-password">New Password</Label>
                         <div className="relative">
                             <Input
@@ -114,7 +162,7 @@ export function EditCredentialsModal({
                                     setPassword(e.target.value);
                                     if (error) setError(null);
                                 }}
-                                placeholder="Enter new password"
+                                placeholder="Leave blank to keep current password"
                                 className={error ? "border-red-500 focus-visible:ring-red-500" : ""}
                                 disabled={loading}
                             />
@@ -131,7 +179,7 @@ export function EditCredentialsModal({
                             <p className="text-sm text-red-500 animate-in slide-in-from-top-1">{error}</p>
                         )}
                         <p className="text-xs text-muted-foreground">
-                            Password must be at least 8 characters long. This will update the user's login credentials immediately.
+                            If set, password must be at least 8 characters long. Changes apply immediately.
                         </p>
                     </div>
 
@@ -146,7 +194,7 @@ export function EditCredentialsModal({
                         </Button>
                         <Button
                             type="submit"
-                            disabled={loading || !password}
+                            disabled={loading || (!password && !username.trim())}
                             className="bg-blue-600 hover:bg-blue-700"
                         >
                             {loading ? (
@@ -155,7 +203,7 @@ export function EditCredentialsModal({
                                     Updating...
                                 </>
                             ) : (
-                                'Update Password'
+                                'Update Credentials'
                             )}
                         </Button>
                     </div>

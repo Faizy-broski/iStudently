@@ -153,6 +153,7 @@ export interface UpdateParentDTO {
   last_name?: string
   email?: string
   password?: string // NEW: Optional password update
+  username?: string // Login username
   phone?: string
   occupation?: string
   workplace?: string

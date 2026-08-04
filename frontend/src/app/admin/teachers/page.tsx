@@ -57,12 +57,13 @@ export default function TeachersPage() {
 
   // State for Edit Credentials Modal
   const [showEditCredentialsModal, setShowEditCredentialsModal] = useState(false)
-  const [credentialsEntity, setCredentialsEntity] = useState<{ id: string, name: string } | null>(null)
+  const [credentialsEntity, setCredentialsEntity] = useState<{ id: string, name: string, profileId?: string } | null>(null)
 
   const handleEditCredentials = (teacher: teachersApi.Staff) => {
     setCredentialsEntity({
       id: teacher.id,
-      name: `${teacher.profile?.first_name || ""} ${teacher.profile?.last_name || ""}`
+      name: `${teacher.profile?.first_name || ""} ${teacher.profile?.last_name || ""}`,
+      profileId: teacher.profile_id || undefined
     })
     setShowEditCredentialsModal(true)
   }
@@ -399,6 +400,7 @@ export default function TeachersPage() {
           entityName={credentialsEntity.name}
           entityType="teacher"
           schoolId=""
+          profileId={credentialsEntity.profileId}
           onSuccess={() => refreshTeachers()}
         />
       )}

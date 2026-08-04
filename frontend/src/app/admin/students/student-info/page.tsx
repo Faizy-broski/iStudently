@@ -100,7 +100,7 @@ export default function StudentInfoPage() {
   const schoolId = user?.school_id || '';
   const isSuperAdmin = profile?.role === 'super_admin';
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
-  const [credentialsData, setCredentialsData] = useState<{ id: string, name: string } | null>(null);
+  const [credentialsData, setCredentialsData] = useState<{ id: string, name: string, profileId?: string } | null>(null);
   const [studentFilters, setStudentFilters] = useState<FilterState>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -472,7 +472,8 @@ export default function StudentInfoPage() {
                                   <DropdownMenuItem onClick={() => {
                                     setCredentialsData({
                                       id: student.id,
-                                      name: `${student.profile?.first_name || ''} ${student.profile?.last_name || ''}`
+                                      name: `${student.profile?.first_name || ''} ${student.profile?.last_name || ''}`,
+                                      profileId: student.profile_id || undefined
                                     });
                                     setShowCredentialsModal(true);
                                   }}>
@@ -624,6 +625,7 @@ export default function StudentInfoPage() {
           entityType="student"
           schoolId={schoolId}
           campusId={campusContext?.selectedCampus?.id}
+          profileId={credentialsData.profileId}
           onSuccess={() => { }}
         />
       )}
