@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import { getSalaryRecords, getPayslipByPeriod, type SalaryRecord, type PayslipByPeriod } from '@/lib/api/salary'
@@ -11,11 +12,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Loader2, Printer, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 import { PayslipPreviewDialog } from '@/components/admin/PayslipDocument'
-
-const MONTH_NAMES = [
-  '', 'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-]
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
@@ -28,6 +24,8 @@ function fmt(n: number) {
 }
 
 export default function TeacherPayslipsPage() {
+  const t = useTranslations('teacherPortal.accounting.payslips')
+  const tCommon = useTranslations('common')
   const { profile } = useAuth()
   const campusCtx = useCampus()
 
@@ -42,6 +40,12 @@ export default function TeacherPayslipsPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
+  const STATUS_LABELS: Record<string, string> = {
+    pending: tCommon('pending'),
+    approved: tCommon('approved'),
+    paid: tCommon('paid'),
+  }
+
   useEffect(() => {
     if (!staffId || !schoolId) {
       setLoading(false)
@@ -49,7 +53,7 @@ export default function TeacherPayslipsPage() {
     }
     getSalaryRecords(schoolId, { staff_id: staffId, campus_id: campusId, limit: 50 })
       .then((res) => setRecords(res.data))
-      .catch(() => toast.error('Failed to load your salary records'))
+      .catch(() => toast.error(t('load_error')))
       .finally(() => setLoading(false))
   }, [staffId, schoolId, campusId])
 
@@ -61,7 +65,7 @@ export default function TeacherPayslipsPage() {
       setDialogPayslip(payslip)
       setDialogOpen(true)
     } catch (err: any) {
-      toast.error(err.message || 'Failed to load pay stub')
+      toast.error(err.message || t('print_error'))
     } finally {
       setLoadingId(null)
     }
@@ -70,14 +74,14 @@ export default function TeacherPayslipsPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-2 mb-4 text-brand-teal">
-        <div className="h-8 w-8 rounded bg-teal-100 flex items-center justify-center flex-shrink-0">
+        <div className="h-8 w-8 rounded bg-teal-100 flex items-center justify-center shrink-0">
           <FileText className="h-5 w-5 text-teal-600" />
         </div>
-        <h1 className="text-3xl font-light">My Pay Stubs</h1>
+        <h1 className="text-3xl font-light">{t('title')}</h1>
       </div>
 
       <p className="text-sm text-muted-foreground -mt-4">
-        View and print your official monthly payslips. Each pay stub includes a full itemized breakdown of earnings and deductions.
+        {t('subtitle')}
       </p>
 
       <Card>
@@ -88,32 +92,32 @@ export default function TeacherPayslipsPage() {
             </div>
           ) : records.length === 0 ? (
             <div className="py-16 text-center text-muted-foreground text-sm">
-              No salary records found yet. Contact your administrator for payroll enquiries.
+              {t('no_records')}
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Period</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Base Salary</TableHead>
-                  <TableHead className="text-right">Deductions</TableHead>
-                  <TableHead className="text-right font-bold">Net Payable</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t('col_period')}</TableHead>
+                  <TableHead>{t('col_status')}</TableHead>
+                  <TableHead className="text-right">{t('col_base_salary')}</TableHead>
+                  <TableHead className="text-right">{t('col_deductions')}</TableHead>
+                  <TableHead className="text-right font-bold">{t('col_net_payable')}</TableHead>
+                  <TableHead className="text-right">{t('col_actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {records.map((record) => (
                   <TableRow key={record.id}>
                     <TableCell className="font-medium">
-                      {MONTH_NAMES[record.month]} {record.year}
+                      {tCommon(`months.${record.month - 1}`)} {record.year}
                     </TableCell>
                     <TableCell>
                       <Badge
                         variant="outline"
                         className={`text-xs ${STATUS_COLORS[record.status] || ''}`}
                       >
-                        {record.status}
+                        {STATUS_LABELS[record.status] || record.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right text-sm">{fmt(record.base_salary)}</TableCell>
@@ -134,7 +138,7 @@ export default function TeacherPayslipsPage() {
                         {loadingId === record.id
                           ? <Loader2 className="h-3 w-3 animate-spin" />
                           : <Printer className="h-3 w-3 mr-1" />}
-                        Print Pay Stub
+                        {t('print_pay_stub')}
                       </Button>
                     </TableCell>
                   </TableRow>

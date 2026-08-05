@@ -19,7 +19,8 @@ router.use(authenticate)
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
-    const campusId = (req.query.campus_id as string | undefined) || req.profile?.campus_id
+    const campusId = (req.query.campus_id as string | undefined)
+      || (req.profile?.role === 'teacher' ? undefined : req.profile?.campus_id)
     const groupId = req.query.group_id as string | undefined
 
     if (!schoolId) {
@@ -42,7 +43,8 @@ router.get('/', async (req: AuthRequest, res: Response) => {
 router.get('/grouped', async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
-    const campusId = (req.query.campus_id as string | undefined) || req.profile?.campus_id
+    const campusId = (req.query.campus_id as string | undefined)
+      || (req.profile?.role === 'teacher' ? undefined : req.profile?.campus_id)
     const groupId = req.query.group_id as string | undefined
 
     if (!schoolId) {
@@ -65,7 +67,8 @@ router.get('/grouped', async (req: AuthRequest, res: Response) => {
 router.get('/current', async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
-    const campusId = (req.query.campus_id as string | undefined) || req.profile?.campus_id
+    const campusId = (req.query.campus_id as string | undefined)
+      || (req.profile?.role === 'teacher' ? undefined : req.profile?.campus_id)
     const mpType = req.query.mp_type as MarkingPeriodType | undefined
     const groupId = req.query.group_id as string | undefined
 

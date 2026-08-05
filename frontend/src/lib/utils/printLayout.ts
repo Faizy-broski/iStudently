@@ -208,24 +208,24 @@ function formatAddress(school: PrintSchool): string {
  * Right of logo: school name (bold, accent colour) + address + phone.
  * Bottom border: 3 px solid accent line.
  */
-export function buildAutoHeaderHtml(school: PrintSchool, accentColor = DEFAULT_ACCENT): string {
+export function buildAutoHeaderHtml(school: PrintSchool, accentColor = DEFAULT_ACCENT, reportLabel = "Student Report"): string {
   const addr = formatAddress(school)
   const logoEl = school.logo_url
-    ? `<img src="${school.logo_url}" alt="" style="height:68px;width:68px;object-fit:contain;border-radius:6px;flex-shrink:0;" />`
+    ? `<img src="${school.logo_url}" alt="" crossorigin="anonymous" style="height:68px;width:68px;object-fit:contain;border-radius:6px;flex-shrink:0;" />`
     : `<div style="height:68px;width:68px;display:flex;align-items:center;justify-content:center;background:${accentColor};border-radius:8px;color:#fff;font-size:26px;font-weight:800;flex-shrink:0;">${escapeHtml((school.name || "S").charAt(0).toUpperCase())}</div>`
 
   const infoLines: string[] = []
-  if (addr)         infoLines.push(`<div style="font-size:13px;color:#444;margin-top:4px;line-height:1.4;">${escapeHtml(addr)}</div>`)
-  if (school.phone) infoLines.push(`<div style="font-size:13px;color:#444;margin-top:2px;">${escapeHtml(school.phone)}</div>`)
+  if (addr)         infoLines.push(`<div dir="auto" style="font-size:13px;color:#444;margin-top:4px;line-height:1.4;">${escapeHtml(addr)}</div>`)
+  if (school.phone) infoLines.push(`<div dir="auto" style="font-size:13px;color:#444;margin-top:2px;">${escapeHtml(school.phone)}</div>`)
 
-  return `<div style="padding:14px 28px 12px;border-bottom:3px solid ${accentColor};display:flex;align-items:center;gap:18px;background:#fff;font-family:'Segoe UI',Arial,sans-serif;">` +
+  return `<div style="padding:14px 28px 12px;border-bottom:3px solid ${accentColor};display:flex;align-items:center;gap:18px;background:#fff;font-family:'Segoe UI',Tahoma,Arial,sans-serif;">` +
     logoEl +
     `<div style="flex:1;min-width:0;">` +
-      `<div style="font-size:22px;font-weight:800;color:${accentColor};line-height:1.2;letter-spacing:-0.3px;">${escapeHtml(school.name || "")}</div>` +
+      `<div dir="auto" style="font-size:22px;font-weight:800;color:${accentColor};line-height:1.2;letter-spacing:-0.3px;">${escapeHtml(school.name || "")}</div>` +
       infoLines.join("") +
     `</div>` +
     `<div style="text-align:right;flex-shrink:0;">` +
-      `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:${accentColor};font-weight:700;opacity:0.75;">Student Report</div>` +
+      `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:${accentColor};font-weight:700;opacity:0.75;">${escapeHtml(reportLabel)}</div>` +
     `</div>` +
   `</div>`
 }
@@ -338,6 +338,8 @@ export interface OpenPrintOptions {
   pdfSettings?: PdfHeaderFooterSettings | null
   /** Defaults to #1e3a5f (dark navy). Only used for auto-generated header/footer. */
   accentColor?: string
+  /** Small uppercase label shown top-right of the auto-generated header. Defaults to "Student Report". */
+  reportLabel?: string
   /**
    * Whether the pdf_header_footer plugin is active for this campus.
    * When false, all header/footer branding is suppressed — no auto-generated
@@ -389,6 +391,7 @@ export function openPrintPreview(options: OpenPrintOptions): void {
   const {
     title, bodyHtml, bodyStyles, school,
     pdfSettings, accentColor = DEFAULT_ACCENT, pluginActive = true,
+    reportLabel = "Student Report",
   } = options
 
   const printWindow = window.open("", "_blank")
@@ -435,7 +438,7 @@ ${bodyHtml}
 
   const headerHtml = usingCustomHeader
     ? resolvePdfTokens(pdfSettings!.pdf_header_html, school)
-    : buildAutoHeaderHtml(school, accentColor)
+    : buildAutoHeaderHtml(school, accentColor, reportLabel)
 
   const footerHtml = usingCustomFooter
     ? resolvePdfTokens(pdfSettings!.pdf_footer_html, school)
@@ -525,7 +528,7 @@ export async function openPdfDownload(
   const {
     title, bodyHtml, bodyStyles, school,
     pdfSettings, accentColor = DEFAULT_ACCENT, pluginActive = true,
-    landscape = false,
+    landscape = false, reportLabel = "Student Report",
   } = options
 
   // A4 portrait: 794px wide @96dpi (210mm).  A4 landscape: 1123px wide (297mm).
@@ -547,7 +550,7 @@ export async function openPdfDownload(
     const usingCustomFooter = !!pdfSettings?.pdf_footer_html
     const hHtml = usingCustomHeader
       ? resolvePdfTokens(pdfSettings!.pdf_header_html, school)
-      : buildAutoHeaderHtml(school, accentColor)
+      : buildAutoHeaderHtml(school, accentColor, reportLabel)
     const fHtml = usingCustomFooter
       ? resolvePdfTokens(pdfSettings!.pdf_footer_html, school)
       : buildAutoFooterHtml(school, accentColor)

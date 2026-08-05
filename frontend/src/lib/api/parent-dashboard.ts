@@ -13,57 +13,51 @@ async function apiRequest<T = unknown>(endpoint: string): Promise<T> {
     throw new Error('Authentication required')
   }
 
+  let response: Response
   try {
-    const response = await simpleFetch(`${API_URL}${endpoint}`, {
+    response = await simpleFetch(`${API_URL}${endpoint}`, {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`
       },
       timeout: 30000 // 30 second timeout
     })
-
-    // Handle 401 Unauthorized - session expired
-    if (response.status === 401) {
-      await handleSessionExpiry()
-      throw new Error('Session expired')
-    }
-
-    // Handle 403 — dispatch 2FA events so AuthContext can redirect immediately
-    if (response.status === 403) {
-      const data = await response.json().catch(() => ({}))
-      if (data.code === 'TWO_FA_SETUP_REQUIRED') {
-        window.dispatchEvent(new CustomEvent('studently:two_fa_setup_required'))
-        throw new Error('__2FA_SETUP_REQUIRED__')
-      }
-      if (data.code === 'TWO_FA_REQUIRED') {
-        window.dispatchEvent(new CustomEvent('studently:two_fa_required'))
-        throw new Error('__2FA_REQUIRED__')
-      }
-      throw new Error('Permission denied')
-    }
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}))
-      throw new Error(error.error || 'Request failed')
-    }
-
-    const result = await response.json()
-    if (!result.success) {
-      throw new Error(result.error || 'Request failed')
-    }
-
-    return result.data
   } catch (error) {
-    if (error instanceof Error && (
-      error.message === 'Session expired' ||
-      error.message === 'Permission denied' ||
-      error.message === '__2FA_REQUIRED__' ||
-      error.message === '__2FA_SETUP_REQUIRED__'
-    )) {
-      throw error
-    }
+    // Only a genuine fetch failure (DNS/CORS/offline/timeout) is a real network error.
     throw new Error('Network error')
   }
+
+  // Handle 401 Unauthorized - session expired
+  if (response.status === 401) {
+    await handleSessionExpiry()
+    throw new Error('Session expired')
+  }
+
+  // Handle 403 — dispatch 2FA events so AuthContext can redirect immediately
+  if (response.status === 403) {
+    const data = await response.json().catch(() => ({}))
+    if (data.code === 'TWO_FA_SETUP_REQUIRED') {
+      window.dispatchEvent(new CustomEvent('studently:two_fa_setup_required'))
+      throw new Error('__2FA_SETUP_REQUIRED__')
+    }
+    if (data.code === 'TWO_FA_REQUIRED') {
+      window.dispatchEvent(new CustomEvent('studently:two_fa_required'))
+      throw new Error('__2FA_REQUIRED__')
+    }
+    throw new Error('Permission denied')
+  }
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error(error.error || `Request failed (${response.status})`)
+  }
+
+  const result = await response.json()
+  if (!result.success) {
+    throw new Error(result.error || 'Request failed')
+  }
+
+  return result.data
 }
 
 // Types

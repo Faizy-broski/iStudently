@@ -1,19 +1,26 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Loader2, User, Bell, Lock, Save, Mail, Phone, Clock } from 'lucide-react'
+import { Loader2, User, Bell, Lock, Save, Mail, Phone, Clock, Camera } from 'lucide-react'
 import { toast } from 'sonner'
 import { updateProfile, changePassword } from '@/lib/api/auth'
 import { UserQRCode } from '@/components/shared/UserQRCode'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { createClient } from '@/lib/supabase/client'
+
+const ALLOWED_PHOTO_TYPES = ['image/svg+xml', 'image/png', 'image/jpeg', 'image/webp']
+const MAX_PHOTO_SIZE_BYTES = 2 * 1024 * 1024 // 2MB
 
 export default function SettingsPage() {
   const { profile, user } = useAuth()
   const [loading, setLoading] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [profileForm, setProfileForm] = useState({
     first_name: '',
     last_name: '',
@@ -35,8 +42,56 @@ export default function SettingsPage() {
         email: profile.email || '',
         phone: profile.phone || ''
       })
+      setPhotoUrl((profile as any).profile_photo_url || profile.avatar_url || null)
     }
   }, [profile])
+
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!ALLOWED_PHOTO_TYPES.includes(file.type)) {
+      toast.error('Invalid file type. Allowed: PNG, JPEG, WebP, SVG')
+      return
+    }
+    if (file.size > MAX_PHOTO_SIZE_BYTES) {
+      toast.error('File too large. Maximum size is 2MB')
+      return
+    }
+
+    setUploadingPhoto(true)
+    try {
+      const supabase = createClient()
+      const fileExt = file.name.split('.').pop()
+      const fileName = `staff-${Date.now()}.${fileExt}`
+      const filePath = `${profile?.campus_id || profile?.school_id}/${fileName}`
+
+      const { data, error } = await supabase.storage
+        .from('staff_profile_photos')
+        .upload(filePath, file, { cacheControl: '3600', upsert: true })
+
+      if (error) {
+        toast.error(`Upload failed: ${error.message}`)
+        return
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('staff_profile_photos')
+        .getPublicUrl(data.path)
+      const publicUrl = urlData.publicUrl
+
+      const result = await updateProfile({ profile_photo_url: publicUrl })
+      if (!result.success) throw new Error(result.error)
+
+      setPhotoUrl(publicUrl)
+      toast.success('Photo updated successfully')
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to upload photo')
+    } finally {
+      setUploadingPhoto(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
 
   const handleSaveProfile = async () => {
     setLoading(true)
@@ -93,14 +148,39 @@ export default function SettingsPage() {
         <div className="space-y-4">
           {/* Avatar */}
           <div className="flex items-center gap-6">
-            <Avatar className="h-24 w-24">
-              <AvatarImage src={profile?.profile_photo_url || ''} />
-              <AvatarFallback className="bg-[#57A3CC] text-white text-2xl">
-                {profile?.first_name?.[0]}{profile?.last_name?.[0]}
-              </AvatarFallback>
-            </Avatar>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/svg+xml,image/png,image/jpeg,image/webp"
+              onChange={handlePhotoChange}
+              className="hidden"
+              id="teacher-photo-upload"
+              disabled={uploadingPhoto}
+            />
+            <div className="relative">
+              <Avatar className="h-24 w-24">
+                <AvatarImage src={photoUrl || ''} />
+                <AvatarFallback className="bg-[#57A3CC] text-white text-2xl">
+                  {profile?.first_name?.[0]}{profile?.last_name?.[0]}
+                </AvatarFallback>
+              </Avatar>
+              {uploadingPhoto && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
+                  <Loader2 className="h-6 w-6 text-white animate-spin" />
+                </div>
+              )}
+            </div>
             <div>
-              <Button variant="outline" size="sm">Change Photo</Button>
+              <Button variant="outline" size="sm" asChild disabled={uploadingPhoto}>
+                <label htmlFor="teacher-photo-upload" className="cursor-pointer">
+                  {uploadingPhoto ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Camera className="h-4 w-4 mr-2" />
+                  )}
+                  Change Photo
+                </label>
+              </Button>
               <p className="text-xs text-gray-500 mt-2">JPG, PNG or GIF. Max size 2MB</p>
             </div>
           </div>

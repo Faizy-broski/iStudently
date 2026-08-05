@@ -18,8 +18,14 @@ export interface ProfileFieldOption {
 }
 
 export interface ProfileFieldDef {
-  table: 'profiles' | 'parents' | 'staff'
-  column: string
+  // Registry-sourced fields (source omitted/'registry') map onto a real named
+  // column and carry table/column. School-defined custom fields (source
+  // 'custom_field') have no fixed column — they're stored in the entity's
+  // custom_fields JSONB, keyed by field_key.
+  source?: 'registry' | 'custom_field'
+  table?: 'profiles' | 'parents' | 'staff'
+  column?: string
+  field_key?: string
   label_en: string
   label_ar: string
   type: 'text' | 'select' | 'textarea' | 'date'

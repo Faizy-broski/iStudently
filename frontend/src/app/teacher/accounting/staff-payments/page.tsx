@@ -2,15 +2,19 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
+import { useTranslations } from 'next-intl'
 import { getStaffOwnSalaries, getStaffOwnPayments, type AccountingExpense } from '@/lib/api/accounting'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table'
-import { DownloadCloud, Loader2, Search } from 'lucide-react'
+import { DownloadCloud, Loader2, Search, CreditCard } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 
 export default function TeacherStaffPaymentsPage() {
+  const t = useTranslations('teacherPortal.accounting.staff_payments')
+  const tTotals = useTranslations('teacherPortal.accounting.totals')
+  const tCommon = useTranslations('common')
   const [searchQuery, setSearchQuery] = useState('')
 
   const { data: salariesRes } = useSWR(
@@ -46,24 +50,24 @@ export default function TeacherStaffPaymentsPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-2 mb-4 text-brand-teal">
-        <div className="h-8 w-8 rounded bg-teal-100 flex items-center justify-center flex-shrink-0">
-          <span className="text-xl">💳</span>
+        <div className="h-8 w-8 rounded bg-teal-100 flex items-center justify-center shrink-0">
+          <CreditCard className="h-5 w-5 text-teal-600" />
         </div>
-        <h1 className="text-3xl font-light">Staff Payments</h1>
+        <h1 className="text-3xl font-light">{t('title')}</h1>
       </div>
 
       <div className="flex justify-between items-center bg-gray-50 border-y py-2 px-1">
         <p className="text-sm font-semibold">
-          {filteredPayments.length === 0 ? 'No payments were found.' : `${filteredPayments.length} payment(s) found.`}
+          {filteredPayments.length === 0 ? t('no_payments') : t('found_count', { count: filteredPayments.length })}
         </p>
         <div className="flex gap-4 items-center">
-          <Button variant="ghost" size="icon" onClick={handlePrint} title="Print/Export to PDF">
+          <Button variant="ghost" size="icon" onClick={handlePrint} title={t('print_export')}>
             <DownloadCloud className="h-5 w-5" />
           </Button>
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Search..." 
+            <Input
+              placeholder={tCommon('search')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-64 bg-white"
@@ -77,11 +81,11 @@ export default function TeacherStaffPaymentsPage() {
             <Table>
               <TableHeader className="bg-gray-50">
                 <TableRow>
-                  <TableHead className="text-brand-blue font-bold">PAYMENT</TableHead>
-                  <TableHead className="text-brand-blue font-bold">AMOUNT</TableHead>
-                  <TableHead className="text-brand-blue font-bold">DATE</TableHead>
-                  <TableHead className="text-brand-blue font-bold">COMMENT</TableHead>
-                  <TableHead className="text-brand-blue font-bold">FILE ATTACHED</TableHead>
+                  <TableHead className="text-brand-blue font-bold">{t('col_payment')}</TableHead>
+                  <TableHead className="text-brand-blue font-bold">{t('col_amount')}</TableHead>
+                  <TableHead className="text-brand-blue font-bold">{t('col_date')}</TableHead>
+                  <TableHead className="text-brand-blue font-bold">{t('col_comment')}</TableHead>
+                  <TableHead className="text-brand-blue font-bold">{t('col_file_attached')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -98,7 +102,7 @@ export default function TeacherStaffPaymentsPage() {
                       <TableCell>${Number(payment.amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
                       <TableCell>{format(parseISO(payment.payment_date), 'MMMM d, yyyy')}</TableCell>
                       <TableCell>{payment.comments || '-'}</TableCell>
-                      <TableCell>{payment.file_attached ? 'Yes' : ''}</TableCell>
+                      <TableCell>{payment.file_attached ? tCommon('yes') : ''}</TableCell>
                     </TableRow>
                   ))
                 )}
@@ -107,18 +111,18 @@ export default function TeacherStaffPaymentsPage() {
           </Card>
       )}
 
-      <Card className={`bg-gray-50 border border-gray-200 rounded-none w-max min-w-[400px] ${filteredPayments.length === 0 ? 'mt-0' : 'mt-8'}`}>
+      <Card className={`bg-gray-50 border border-gray-200 rounded-none w-max min-w-100 ${filteredPayments.length === 0 ? 'mt-0' : 'mt-8'}`}>
         <CardContent className="p-4 space-y-1 text-sm font-medium">
           <div className="flex justify-between">
-            <span className="text-right flex-1 pr-6">Total from Salaries:</span>
+            <span className="text-right flex-1 pr-6">{tTotals('total_salaries')}</span>
             <span className="w-24 text-right">${totalSalaries.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-right flex-1 pr-6">Less: Total from Staff Payments:</span>
+            <span className="text-right flex-1 pr-6">{tTotals('less_total_payments')}</span>
             <span className="w-24 text-right">${totalPayments.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
           </div>
           <div className="flex justify-between font-bold pt-2">
-            <span className="text-right flex-1 pr-6">Balance:</span>
+            <span className="text-right flex-1 pr-6">{tTotals('balance')}</span>
             <span className="w-24 text-right">${balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
           </div>
         </CardContent>

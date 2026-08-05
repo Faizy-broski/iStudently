@@ -294,11 +294,10 @@ function AcademicSelectors() {
   // Students/Teachers/Parents are bound to their assigned campus (or the main school if null).
   const isImpersonating = typeof window !== 'undefined' && !!sessionStorage.getItem('impersonatedSchoolId')
   const isAdminLike = profile?.role === 'admin' || profile?.role === 'librarian' || (profile?.role === 'super_admin' && isImpersonating)
+  const isTeacher = profile?.role === 'teacher'
   const campusId = isAdminLike
     ? (campusContext?.selectedCampus?.id || profile?.campus_id)
-    : profile?.campus_id
-
-  const isTeacher = profile?.role === 'teacher'
+    : (isTeacher ? undefined : profile?.campus_id)
   const isVisible =
     isAdminLike ||
     profile?.role === 'student' ||

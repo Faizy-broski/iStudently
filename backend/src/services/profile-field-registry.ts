@@ -9,8 +9,14 @@ export interface ProfileFieldOption {
 }
 
 export interface ProfileFieldDef {
-  table: 'profiles' | 'parents' | 'staff'
-  column: string
+  // Registry-sourced fields (source omitted/'registry') map onto a real named
+  // column and carry table/column. School-defined custom fields (source
+  // 'custom_field') have no fixed column — they're stored in the entity's
+  // custom_fields JSONB, keyed by field_key.
+  source?: 'registry' | 'custom_field'
+  table?: 'profiles' | 'parents' | 'staff'
+  column?: string
+  field_key?: string
   label_en: string
   label_ar: string
   type: 'text' | 'select' | 'textarea' | 'date'
@@ -48,7 +54,9 @@ export const PROFILE_FIELD_REGISTRY: ProfileFieldDef[] = [
     label_en: 'National ID',
     label_ar: 'رقم الهوية',
     type: 'text',
-    appliesToRoles: ALL_ROLES,
+    // Only surfaced on the student form today — not present on
+    // teacher/staff/librarian/counselor profile pages.
+    appliesToRoles: ['student'],
   },
   {
     table: 'profiles',
@@ -56,7 +64,9 @@ export const PROFILE_FIELD_REGISTRY: ProfileFieldDef[] = [
     label_en: 'Address',
     label_ar: 'العنوان',
     type: 'textarea',
-    appliesToRoles: ALL_ROLES,
+    // Only surfaced on the student and parent forms today — not present on
+    // teacher/staff/librarian/counselor profile pages.
+    appliesToRoles: ['student', 'parent'],
   },
   {
     table: 'parents',

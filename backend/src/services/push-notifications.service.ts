@@ -100,7 +100,9 @@ class PushNotificationsService {
       .eq('school_id', schoolId)
       .eq('is_active', true)
 
-    if (campusId) query = query.eq('campus_id', campusId)
+    // Include school-wide subscriptions (campus_id IS NULL, e.g. from admins who
+    // aren't tied to a specific campus) alongside subscriptions for this campus.
+    if (campusId) query = query.or(`campus_id.eq.${campusId},campus_id.is.null`)
 
     const { data, error } = await query
     if (error) throw new Error(`Failed to load push subscription stats: ${error.message}`)

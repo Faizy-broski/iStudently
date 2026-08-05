@@ -174,6 +174,7 @@ export default function FinancialStatementsPage() {
         school,
         pdfSettings,
         pluginActive: isPluginActive('pdf_header_footer'),
+        reportLabel: 'Staff Report',
       })
     } catch (err: any) {
       toast.error(err.message || t('err_bulk'))

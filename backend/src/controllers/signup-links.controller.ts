@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import * as signupLinksService from '../services/signup-links.service'
-import { getProfileFieldsForRole } from '../services/profile-field-registry'
+import { getProfileFieldsForRole, type ProfileFieldDef } from '../services/profile-field-registry'
+import { customFieldsService, type EntityType } from '../services/custom-fields.service'
 import type { ApiResponse } from '../types'
 
 interface AuthRequest extends Request {
@@ -77,6 +78,27 @@ export const activateLink = async (req: AuthRequest, res: Response): Promise<voi
   }
 }
 
+// Maps a signup-link `role` onto the custom-fields entity type whose
+// definitions should be offered when building a link for that role.
+function roleToCustomFieldEntityType(role: string): EntityType | null {
+  if (role === 'student') return 'student'
+  if (role === 'teacher') return 'teacher'
+  if (role === 'parent') return 'parent'
+  if (role === 'staff' || role === 'librarian' || role === 'counselor') return 'staff'
+  return null
+}
+
+// Custom field types that the public signup form can actually render today
+// (see frontend/src/app/signup/[token]/page.tsx: only 'select' gets a
+// dropdown, everything else falls back to a plain text/date input).
+const SUPPORTED_CUSTOM_FIELD_TYPES: Record<string, ProfileFieldDef['type']> = {
+  text: 'text',
+  'long-text': 'textarea',
+  number: 'text',
+  date: 'date',
+  select: 'select',
+}
+
 export const getProfileFields = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const role = req.query.role as string | undefined
@@ -85,7 +107,30 @@ export const getProfileFields = async (req: AuthRequest, res: Response): Promise
       return
     }
 
-    res.json({ success: true, data: getProfileFieldsForRole(role) } as ApiResponse)
+    const fields: ProfileFieldDef[] = [...getProfileFieldsForRole(role)]
+
+    const schoolId = req.profile?.school_id
+    const entityType = roleToCustomFieldEntityType(role)
+    if (schoolId && entityType) {
+      const definitions = await customFieldsService.getFieldDefinitions(schoolId, entityType)
+      for (const def of definitions) {
+        if (!def.is_active) continue
+        const mappedType = SUPPORTED_CUSTOM_FIELD_TYPES[def.type]
+        if (!mappedType) continue // skip types the public signup form can't render (checkbox, multi-select, file)
+
+        fields.push({
+          source: 'custom_field',
+          field_key: def.field_key,
+          label_en: def.label,
+          label_ar: def.label,
+          type: mappedType,
+          options: mappedType === 'select' ? def.options.map(o => ({ id: o, label_en: o, label_ar: o })) : undefined,
+          appliesToRoles: [role],
+        })
+      }
+    }
+
+    res.json({ success: true, data: fields } as ApiResponse)
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message } as ApiResponse)
   }

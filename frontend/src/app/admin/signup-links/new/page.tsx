@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { toast } from 'sonner'
-import { Check, Copy, ArrowLeft, Plus, Trash2 } from 'lucide-react'
+import { Check, Copy, ArrowLeft, Plus, Trash2, ChevronsUpDown, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -19,6 +19,8 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
 import { FileUpload } from '@/components/ui/file-upload'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Badge } from '@/components/ui/badge'
 
 import { useCampus } from '@/context/CampusContext'
 import {
@@ -34,6 +36,10 @@ import { useRouter } from 'next/navigation'
 
 const ROLES = ['teacher', 'student', 'parent', 'staff', 'librarian'] as const
 
+// Custom-field-sourced defs have no fixed table/column — key them by field_key instead.
+const profileFieldKey = (f: ProfileFieldDef) =>
+  f.source === 'custom_field' ? `custom_field.${f.field_key}` : `${f.table}.${f.column}`
+
 export default function NewSignupLinkPage() {
   const t = useTranslations('signupLinks')
   const locale = useLocale()
@@ -43,6 +49,7 @@ export default function NewSignupLinkPage() {
   const campusId = campusContext?.selectedCampus?.id
 
   const [gradeLevels, setGradeLevels] = React.useState<GradeLevel[]>([])
+  const [gradeDropdownOpen, setGradeDropdownOpen] = React.useState(false)
   // per-profile-field toggles: keyed by `${table}.${column}`
   const [profileFieldConfig, setProfileFieldConfig] = React.useState<
     Record<string, { shown: boolean; required: boolean }>
@@ -95,7 +102,7 @@ export default function NewSignupLinkPage() {
         setProfileFieldConfig(prev => {
           const next: Record<string, { shown: boolean; required: boolean }> = {}
           for (const f of res.data!) {
-            const key = `${f.table}.${f.column}`
+            const key = profileFieldKey(f)
             next[key] = prev[key] ?? { shown: false, required: false }
           }
           return next
@@ -159,17 +166,30 @@ export default function NewSignupLinkPage() {
 
       // Profile fields that the admin toggled ON
       for (const pf of profileFields) {
-        const key = `${pf.table}.${pf.column}`
+        const key = profileFieldKey(pf)
         const cfg = profileFieldConfig[key]
         if (!cfg?.shown) continue
+        if (pf.source === 'custom_field') {
+          // School-defined custom field — no fixed column, so no mapping.
+          // On approval this falls through into the entity's custom_fields JSONB,
+          // keyed by field_key, same storage the Custom Fields feature reads from.
+          custom_fields.push({
+            id: pf.field_key!,
+            label: isAr ? pf.label_ar : pf.label_en,
+            type: pf.type,
+            required: cfg.required,
+            options: pf.options ? pf.options.map(o => o.id) : undefined,
+          })
+          continue
+        }
         custom_fields.push({
-          id: pf.column,
+          id: pf.column!,
           label: isAr ? pf.label_ar : pf.label_en,
           type: pf.type,
           required: cfg.required,
           options: pf.options ? pf.options.map(o => o.id) : undefined,
           source: 'profile_field',
-          mapping: { table: pf.table, column: pf.column },
+          mapping: { table: pf.table!, column: pf.column! },
         })
       }
 
@@ -328,33 +348,69 @@ export default function NewSignupLinkPage() {
                       {isAr ? 'لا توجد صفوف دراسية لهذا الفرع' : 'No grade levels found for this campus'}
                     </p>
                   ) : (
-                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-3 border dark:border-slate-800 rounded-xl bg-gray-50/50 dark:bg-slate-900/50">
-                      {gradeLevels.map((g) => {
-                        const checked = form.selected_grade_ids.includes(g.id)
-                        return (
-                          <label
-                            key={g.id}
-                            className={cn(
-                              'flex items-center gap-3 text-sm px-3 py-2.5 rounded-lg border cursor-pointer transition-all',
-                              checked
-                                ? 'border-[#022172] bg-white shadow-sm dark:bg-slate-800'
-                                : 'border-transparent bg-transparent hover:bg-white dark:hover:bg-slate-800'
+                    <Popover open={gradeDropdownOpen} onOpenChange={setGradeDropdownOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={gradeDropdownOpen}
+                          className="w-full justify-between h-auto min-h-10 bg-gray-50/50 dark:bg-slate-900/50"
+                        >
+                          <div className="flex flex-wrap gap-1 flex-1 items-center">
+                            {form.selected_grade_ids.length > 0 ? (
+                              gradeLevels
+                                .filter((g) => form.selected_grade_ids.includes(g.id))
+                                .map((g) => (
+                                  <Badge
+                                    key={g.id}
+                                    variant="secondary"
+                                    className="bg-[#022172]/10 text-[#022172] border border-[#022172]/20 whitespace-nowrap"
+                                  >
+                                    {g.name}
+                                    <span
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setForm(f => ({ ...f, selected_grade_ids: f.selected_grade_ids.filter(id => id !== g.id) }))
+                                      }}
+                                      className="ml-1 rounded-full hover:bg-[#022172]/20 cursor-pointer inline-flex shrink-0"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </span>
+                                  </Badge>
+                                ))
+                            ) : (
+                              <span className="text-muted-foreground text-sm">
+                                {isAr ? 'اختر الصفوف الدراسية...' : 'Select grade levels...'}
+                              </span>
                             )}
-                          >
-                            <Checkbox
-                              checked={checked}
-                              onCheckedChange={(c) => setForm(f => ({
-                                ...f,
-                                selected_grade_ids: c
-                                  ? [...f.selected_grade_ids, g.id]
-                                  : f.selected_grade_ids.filter(id => id !== g.id),
-                              }))}
-                            />
-                            <span className="truncate">{g.name}</span>
-                          </label>
-                        )
-                      })}
-                    </div>
+                          </div>
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                        <div className="max-h-64 overflow-auto p-2">
+                          {gradeLevels.map((g) => {
+                            const checked = form.selected_grade_ids.includes(g.id)
+                            return (
+                              <div
+                                key={g.id}
+                                className="flex items-center gap-2 p-2 hover:bg-accent rounded cursor-pointer"
+                                onClick={() => setForm(f => ({
+                                  ...f,
+                                  selected_grade_ids: checked
+                                    ? f.selected_grade_ids.filter(id => id !== g.id)
+                                    : [...f.selected_grade_ids, g.id],
+                                }))}
+                              >
+                                <Checkbox checked={checked} onCheckedChange={() => {}} />
+                                <label className="flex-1 cursor-pointer text-sm">{g.name}</label>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   )}
                 </div>
               )}
@@ -501,7 +557,7 @@ export default function NewSignupLinkPage() {
                   </p>
                   <div className="space-y-2">
                     {profileFields.map(pf => {
-                      const key = `${pf.table}.${pf.column}`
+                      const key = profileFieldKey(pf)
                       const cfg = profileFieldConfig[key] ?? { shown: false, required: false }
                       return (
                         <div key={key} className={cn(
@@ -514,6 +570,11 @@ export default function NewSignupLinkPage() {
                               <span className="ms-2 text-[10px] text-muted-foreground bg-gray-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-full">
                                 {pf.type}
                               </span>
+                              {pf.source === 'custom_field' && (
+                                <span className="ms-1 text-[10px] text-[#022172] bg-[#022172]/10 px-1.5 py-0.5 rounded-full">
+                                  {isAr ? 'حقل مخصص' : 'Custom Field'}
+                                </span>
+                              )}
                             </div>
                             <div className="flex items-center gap-3">
                               <Label htmlFor={`pf-show-${key}`} className="text-xs text-muted-foreground cursor-pointer">{isAr ? 'إظهار' : 'Show'}</Label>

@@ -13,8 +13,8 @@ router.post('/catalog',     requireAdmin, ctrl.createAction)
 router.put('/catalog/:id',  requireAdmin, ctrl.updateAction)
 router.delete('/catalog/:id', requireAdmin, ctrl.deleteAction)
 
-// ── Incident logs (admin-only) ───────────────────────────────────────────────
-router.get('/logs',        requireAdmin, ctrl.getLogs)
+// ── Incident logs (admin: any staff; teacher/staff: own logs only) ───────────
+router.get('/logs',        requireRole('teacher', 'staff', 'admin', 'super_admin'), ctrl.getLogs)
 router.get('/logs/:id',    requireAdmin, ctrl.getLogById)
 router.post('/logs',       requireAdmin, ctrl.createLog)
 router.delete('/logs/:id', requireAdmin, ctrl.deleteLog)

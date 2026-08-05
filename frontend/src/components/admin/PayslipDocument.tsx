@@ -254,6 +254,7 @@ export function PayslipPreviewDialog({ payslip, open, onClose }: PayslipPreviewD
         school,
         pdfSettings,
         pluginActive: isPluginActive('pdf_header_footer'),
+        reportLabel: 'Staff Report',
       })
     } finally {
       setPrinting(false)

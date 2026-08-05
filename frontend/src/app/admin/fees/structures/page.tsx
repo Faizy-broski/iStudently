@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Checkbox } from '@/components/ui/checkbox'
 import { IconArrowLeft, IconPlus, IconTrash, IconEdit, IconDeviceFloppy } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
@@ -53,8 +54,12 @@ export default function FeeStructuresPage() {
     const [isAddingNew, setIsAddingNew] = useState(false)
 
     // Form state
+    // grade_level_id: used when editing an existing structure (one row = one grade)
+    // grade_level_ids: used when creating new structures — selecting multiple grades
+    //   that share the same fee creates one structure row per selected grade.
     const [formData, setFormData] = useState({
         grade_level_id: '',
+        grade_level_ids: [] as string[],
         fee_category_id: '',
         period_type: 'monthly',
         amount: '',
@@ -104,7 +109,11 @@ export default function FeeStructuresPage() {
     )
 
     const handleSave = async () => {
-        if (!formData.grade_level_id || !formData.fee_category_id || !formData.amount || !formData.due_date) {
+        const selectedGradeIds = editingStructure
+            ? (formData.grade_level_id ? [formData.grade_level_id] : [])
+            : formData.grade_level_ids
+
+        if (selectedGradeIds.length === 0 || !formData.fee_category_id || !formData.amount || !formData.due_date) {
             toast.error(t('fillRequired'))
             return
         }
@@ -112,35 +121,61 @@ export default function FeeStructuresPage() {
         try {
             const { createClient } = await import('@/lib/supabase/client')
             const token = (await createClient().auth.getSession()).data.session?.access_token
-            
-            const url = editingStructure
-                ? `${API_BASE}/api/fees/structures/${editingStructure.id}`
-                : `${API_BASE}/api/fees/structures`
 
-            const method = editingStructure ? 'PUT' : 'POST'
+            const basePayload = {
+                school_id: schoolId,
+                academic_year: academicYear,
+                fee_category_id: formData.fee_category_id,
+                period_type: formData.period_type,
+                amount: parseFloat(formData.amount),
+                due_date: formData.due_date,
+            }
 
-            const response = await fetch(url, {
-                method,
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    school_id: schoolId,
-                    academic_year: academicYear,
-                    ...formData,
-                    amount: parseFloat(formData.amount)
+            if (editingStructure) {
+                const response = await fetch(`${API_BASE}/api/fees/structures/${editingStructure.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ ...basePayload, grade_level_id: selectedGradeIds[0] })
                 })
-            })
+                const result = await response.json()
+                if (result.success) {
+                    toast.success(t('updateSuccess'))
+                    mutateStructures()
+                    resetForm()
+                } else {
+                    toast.error(result.error || t('failed'))
+                }
+                return
+            }
 
-            const result = await response.json()
+            // Create mode: one structure row per selected grade level.
+            const results = await Promise.all(selectedGradeIds.map(async (gradeLevelId) => {
+                const response = await fetch(`${API_BASE}/api/fees/structures`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ ...basePayload, grade_level_id: gradeLevelId })
+                })
+                return response.json()
+            }))
 
-            if (result.success) {
-                toast.success(editingStructure ? t('updateSuccess') : t('createSuccess'))
+            const failures = results.filter((r) => !r.success)
+            const successCount = results.length - failures.length
+
+            if (successCount > 0) {
+                toast.success(t('createSuccess'))
                 mutateStructures()
+            }
+            if (failures.length > 0) {
+                toast.error(failures[0].error || t('failed'))
+            }
+            if (successCount > 0) {
                 resetForm()
-            } else {
-                toast.error(result.error || t('failed'))
             }
         } catch (error: any) {
             toast.error(error.message || t('failed'))
@@ -176,6 +211,7 @@ export default function FeeStructuresPage() {
         setEditingStructure(structure)
         setFormData({
             grade_level_id: structure.grade_level_id,
+            grade_level_ids: [],
             fee_category_id: structure.fee_category_id,
             period_type: structure.period_type,
             amount: structure.amount.toString(),
@@ -189,11 +225,21 @@ export default function FeeStructuresPage() {
         setIsAddingNew(false)
         setFormData({
             grade_level_id: '',
+            grade_level_ids: [],
             fee_category_id: '',
             period_type: 'monthly',
             amount: '',
             due_date: ''
         })
+    }
+
+    const toggleGradeSelection = (gradeId: string) => {
+        setFormData((prev) => ({
+            ...prev,
+            grade_level_ids: prev.grade_level_ids.includes(gradeId)
+                ? prev.grade_level_ids.filter((id) => id !== gradeId)
+                : [...prev.grade_level_ids, gradeId]
+        }))
     }
 
     const formatCurrency = (amount: number) => {
@@ -249,19 +295,46 @@ export default function FeeStructuresPage() {
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <Label>{t('selectGrade')} *</Label>
-                                <Select
-                                    value={formData.grade_level_id}
-                                    onValueChange={(v) => setFormData({ ...formData, grade_level_id: v })}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder={t('selectGrade')} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {gradeLevels?.map((grade) => (
-                                            <SelectItem key={grade.id} value={grade.id}>{grade.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                {editingStructure ? (
+                                    <Select
+                                        value={formData.grade_level_id}
+                                        onValueChange={(v) => setFormData({ ...formData, grade_level_id: v })}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder={t('selectGrade')} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {gradeLevels?.map((grade) => (
+                                                <SelectItem key={grade.id} value={grade.id}>{grade.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                ) : (
+                                    <div className="border rounded-md p-2 max-h-48 overflow-auto space-y-1">
+                                        {gradeLevels && gradeLevels.length > 0 ? (
+                                            gradeLevels.map((grade) => (
+                                                <div
+                                                    key={grade.id}
+                                                    className="flex items-center gap-2 p-1.5 hover:bg-accent rounded cursor-pointer"
+                                                    onClick={() => toggleGradeSelection(grade.id)}
+                                                >
+                                                    <Checkbox
+                                                        checked={formData.grade_level_ids.includes(grade.id)}
+                                                        onCheckedChange={() => toggleGradeSelection(grade.id)}
+                                                    />
+                                                    <label className="flex-1 cursor-pointer text-sm">{grade.name}</label>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground p-1.5">{t('notAvailable')}</p>
+                                        )}
+                                    </div>
+                                )}
+                                {!editingStructure && (
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        {t('selectMultipleGradesHint')}
+                                    </p>
+                                )}
                             </div>
 
                             <div>

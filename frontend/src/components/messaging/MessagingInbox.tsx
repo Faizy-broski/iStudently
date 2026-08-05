@@ -9,6 +9,7 @@ import { useMessagingNotifications } from "@/context/MessagingNotificationContex
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   AlertDialog,
@@ -20,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Inbox, Archive, Send as SendIcon, Trash2, ArrowLeft, PenSquare, MailOpen, Mail, Reply, Paperclip, FileText } from "lucide-react"
+import { Inbox, Archive, Send as SendIcon, Trash2, ArrowLeft, PenSquare, MailOpen, Mail, Reply, Paperclip, FileText, Search, ArrowUpNarrowWide, ArrowDownWideNarrow } from "lucide-react"
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -63,6 +64,9 @@ export function MessagingInbox({ writeHref }: MessagingInboxProps) {
   const [view, setView] = useState<MessageView>("inbox")
   const [items, setItems] = useState<MessageListItem[]>([])
   const [loading, setLoading] = useState(false)
+  const [searchInput, setSearchInput] = useState("")
+  const [search, setSearch] = useState("")
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
   const [openMessageId, setOpenMessageId] = useState<string | null>(null)
   const [thread, setThread] = useState<ThreadMessage[] | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
@@ -72,16 +76,22 @@ export function MessagingInbox({ writeHref }: MessagingInboxProps) {
   const fetchMessages = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await messagingApi.listMessages(view)
+      const res = await messagingApi.listMessages(view, 1, 50, search, sortOrder)
       if (res.success && res.data) setItems(res.data)
     } finally {
       setLoading(false)
     }
-  }, [view])
+  }, [view, search, sortOrder])
 
   useEffect(() => {
     fetchMessages()
   }, [fetchMessages])
+
+  // Debounce the search box so we don't fire a request on every keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput), 350)
+    return () => clearTimeout(t)
+  }, [searchInput])
 
   // The global MessagingNotificationProvider owns the poll interval and the
   // "new message" sound/toast — here we just refresh the visible list when
@@ -286,6 +296,32 @@ export function MessagingInbox({ writeHref }: MessagingInboxProps) {
         </Button>
       </div>
 
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Search messages..."
+            className="pl-8 h-9"
+          />
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-9"
+          onClick={() => setSortOrder((o) => (o === "desc" ? "asc" : "desc"))}
+          title={sortOrder === "desc" ? "Newest first" : "Oldest first"}
+        >
+          {sortOrder === "desc" ? (
+            <ArrowDownWideNarrow className="h-3.5 w-3.5 mr-1.5" />
+          ) : (
+            <ArrowUpNarrowWide className="h-3.5 w-3.5 mr-1.5" />
+          )}
+          {sortOrder === "desc" ? "Newest first" : "Oldest first"}
+        </Button>
+      </div>
+
       <Card className="overflow-hidden">
         <CardContent className="p-0">
           {loading ? (
@@ -293,7 +329,7 @@ export function MessagingInbox({ writeHref }: MessagingInboxProps) {
           ) : items.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-14 text-muted-foreground">
               <Mail className="h-8 w-8 opacity-40" />
-              <span className="text-sm">No messages</span>
+              <span className="text-sm">{search ? "No messages match your search" : "No messages"}</span>
             </div>
           ) : (
             <div className="divide-y">

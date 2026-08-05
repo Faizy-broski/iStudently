@@ -130,22 +130,56 @@ export class MessagingService {
     return message
   }
 
-  async listMessages(profileId: string, view: 'inbox' | 'read' | 'archived' | 'sent', page = 1, limit = 50) {
+  async listMessages(
+    profileId: string,
+    view: 'inbox' | 'read' | 'archived' | 'sent',
+    page = 1,
+    limit = 50,
+    search?: string,
+    order: 'asc' | 'desc' = 'desc'
+  ) {
     const status = view === 'inbox' ? 'unread' : view
     const from = (page - 1) * limit
     const to = from + limit - 1
 
-    const { data, error, count } = await supabase
-      .from('message_recipients')
-      .select('id, status, read_at, messages(id, subject, body, created_at, sender_profile_id)', { count: 'exact' })
-      .eq('recipient_profile_id', profileId)
-      .eq('status', status)
-      .order('created_at', { referencedTable: 'messages', ascending: false })
+    // Queried from `messages` (not `message_recipients`) because ordering by a
+    // referenced/embedded table's column (`.order(..., { referencedTable })`)
+    // does not reliably reorder the parent rows for this relationship — ordering
+    // directly on the base table does. `message_recipients!inner` both applies
+    // the recipient/status filter and lets us select that row's id/status/read_at.
+    let query = supabase
+      .from('messages')
+      .select(
+        'id, subject, body, created_at, sender_profile_id, message_recipients!inner(id, status, read_at)',
+        { count: 'exact' }
+      )
+      .eq('message_recipients.recipient_profile_id', profileId)
+      .eq('message_recipients.status', status)
+
+    if (search?.trim()) {
+      const term = `%${search.trim().replace(/[%_]/g, (c) => `\\${c}`)}%`
+      query = query.or(`subject.ilike.${term},body.ilike.${term}`)
+    }
+
+    const { data: rawData, error, count } = await query
+      .order('created_at', { ascending: order === 'asc' })
       .range(from, to)
 
     if (error) {
       throw new Error(`Failed to list messages: ${error.message}`)
     }
+
+    // Reshape back to the { id, status, read_at, messages: {...} } shape the
+    // rest of this method (and the frontend) expects — one row per recipient.
+    const data = (rawData || []).map((row: any) => {
+      const recipient = Array.isArray(row.message_recipients) ? row.message_recipients[0] : row.message_recipients
+      return {
+        id: recipient?.id,
+        status: recipient?.status,
+        read_at: recipient?.read_at,
+        messages: { id: row.id, subject: row.subject, body: row.body, created_at: row.created_at, sender_profile_id: row.sender_profile_id },
+      }
+    })
 
     const senderIds = (data || [])
       .map((item: any) => item.messages?.sender_profile_id)

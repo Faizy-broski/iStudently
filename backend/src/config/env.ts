@@ -29,15 +29,16 @@ export const config = {
     // 2. Otherwise, use the smart defaults below
     origins: process.env.CORS_ORIGINS
       ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
-      : (isProduction 
+      : (isProduction
           ? [
-              'http://102.213.183.100:8080', 
+              'http://102.213.183.100:8080',
               'http://102.213.183.100',
-              'https://istudent.ly' // Add your domain here if you have one
+              'https://istudent.ly', // Add your domain here if you have one
+              'https://demo.istudent.ly',
             ]
           : [
-              'http://localhost:3000', 
-              'http://localhost:3005', 
+              'http://localhost:3000',
+              'http://localhost:3005',
               'http://127.0.0.1:3000'
             ]
         ),

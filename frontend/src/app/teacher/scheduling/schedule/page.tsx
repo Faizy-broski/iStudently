@@ -1,7 +1,7 @@
 "use client"
 
-// Teacher: Schedule — same as admin/scheduling/student-schedule
-// Shows all students (teacher can look up any student's schedule)
+// Teacher: Schedule — same as admin/scheduling/student-schedule,
+// but scoped to only the students in the teacher's own course periods/sections.
 import { useState } from "react"
 import { StudentScheduleList } from "@/components/scheduling/StudentScheduleList"
 import { StudentScheduleDetail } from "@/components/scheduling/StudentScheduleDetail"
@@ -25,5 +25,5 @@ export default function TeacherSchedulePage() {
     )
   }
 
-  return <StudentScheduleList onSelectStudent={setSelectedStudent} />
+  return <StudentScheduleList onSelectStudent={setSelectedStudent} scope="teacher" />
 }

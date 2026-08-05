@@ -1267,7 +1267,11 @@ export default function IdCardDesignerPage() {
 
       for (let i = 0; i < cardEls.length; i++) {
         const c = await html2canvas(cardEls[i], {
-          scale: 3, useCORS: true, allowTaint: true, logging: false,
+          // allowTaint intentionally omitted (defaults to false): with useCORS enabled,
+          // any image that fails CORS is simply skipped instead of tainting the canvas —
+          // a tainted canvas throws a SecurityError from toDataURL() below, which used to
+          // surface as a generic "PDF export failed" for any cross-origin student/logo photo.
+          scale: 3, useCORS: true, logging: false,
           width: cardEls[i].offsetWidth, height: cardEls[i].offsetHeight,
           onclone: (clonedDoc) => stripTailwindColors(clonedDoc),
         })
@@ -2128,7 +2132,7 @@ export default function IdCardDesignerPage() {
                                 const imgSrc = resolveImage(field.token, u)
                                 return imgSrc ? (
                                   // eslint-disable-next-line @next/next/no-img-element
-                                  <img src={imgSrc} alt=""
+                                  <img src={imgSrc} alt="" crossOrigin="anonymous"
                                     style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: field.borderRadius }} />
                                 ) : (
                                   <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#e5e7eb', color: '#9ca3af', borderRadius: field.borderRadius }}>

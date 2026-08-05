@@ -75,7 +75,13 @@ export async function getLogs(req: Request, res: Response): Promise<void> {
     const adminProfile  = (req as AuthRequest).profile
     if (!adminProfile) { res.status(401).json({ success: false, error: 'Unauthorized' }); return }
 
+    const isAdmin = adminProfile.role === 'admin' || adminProfile.role === 'super_admin'
+    if (!isAdmin && !adminProfile.staff_id) { res.status(403).json({ success: false, error: 'Forbidden' }); return }
+
     const { staff_id, campus_id, academic_year_id, start_date, end_date, page, limit, unpaginated } = req.query
+
+    // Non-admins (teacher/staff) may only view their own logs — ignore any staff_id they pass.
+    const effectiveStaffId = isAdmin ? (staff_id as string | undefined) : adminProfile.staff_id
 
     // Validate and resolve campus_id the same way as staff controller
     const effectiveCampusId = campus_id
@@ -84,7 +90,7 @@ export async function getLogs(req: Request, res: Response): Promise<void> {
 
     const result = await svc.getLogs({
       schoolId:       adminProfile.school_id,
-      staffId:        staff_id as string | undefined,
+      staffId:        effectiveStaffId,
       campusId:       effectiveCampusId,
       academicYearId: academic_year_id as string | undefined,
       startDate:      start_date as string | undefined,

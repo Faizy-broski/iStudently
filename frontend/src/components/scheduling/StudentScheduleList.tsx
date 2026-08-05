@@ -6,6 +6,8 @@ import useSWR from "swr"
 import { useAuth } from "@/context/AuthContext"
 import { useCampus } from "@/context/CampusContext"
 import * as studentsApi from "@/lib/api/students"
+import { useTeacherStudents } from "@/hooks/useTeacherStudents"
+import type { CoursePeriodStudent } from "@/lib/api/courses"
 import { Search, Download, CalendarDays } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -17,22 +19,36 @@ interface SelectedStudent {
   grade_level?: string | null
 }
 
-interface StudentScheduleListProps {
-  onSelectStudent: (student: SelectedStudent) => void
+type ListStudent = studentsApi.Student | CoursePeriodStudent
+
+function getStudentFullName(student: ListStudent): string {
+  return [
+    student.profile?.first_name,
+    (student.profile as { father_name?: string | null } | undefined)?.father_name,
+    student.profile?.last_name,
+  ]
+    .filter(Boolean)
+    .join(" ")
 }
 
-export function StudentScheduleList({ onSelectStudent }: StudentScheduleListProps) {
+interface StudentScheduleListProps {
+  onSelectStudent: (student: SelectedStudent) => void
+  /** "teacher" restricts the list to students in the teacher's own course periods/sections. */
+  scope?: "all" | "teacher"
+}
+
+export function StudentScheduleList({ onSelectStudent, scope = "all" }: StudentScheduleListProps) {
   const { user } = useAuth()
   const campusContext = useCampus()
   const [search, setSearch] = useState("")
 
   const t = useTranslations("school.scheduling.student_schedule")
 
-  const cacheKey = user
+  const cacheKey = user && scope === "all"
     ? ["students-schedule-list", user.id, campusContext?.selectedCampus?.id]
     : null
 
-  const { data, isLoading } = useSWR(cacheKey, async () => {
+  const { data: allStudentsData, isLoading: isLoadingAll } = useSWR(cacheKey, async () => {
     const response = await studentsApi.getStudents({
       limit: 1000,
       campus_id: campusContext?.selectedCampus?.id,
@@ -45,19 +61,19 @@ export function StudentScheduleList({ onSelectStudent }: StudentScheduleListProp
     keepPreviousData: true,
   })
 
+  const { students: teacherStudents, isLoading: isLoadingTeacher } = useTeacherStudents({
+    limit: 1000,
+  })
+
+  const data = scope === "teacher" ? teacherStudents : allStudentsData
+  const isLoading = scope === "teacher" ? isLoadingTeacher : isLoadingAll
+
   const filteredStudents = useMemo(() => {
     const students = data || []
     if (!search.trim()) return students
     const q = search.toLowerCase()
     return students.filter((s) => {
-      const name = [
-        s.profile?.first_name,
-        s.profile?.father_name,
-        s.profile?.last_name,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
+      const name = getStudentFullName(s).toLowerCase()
       return (
         name.includes(q) ||
         s.student_number.toLowerCase().includes(q) ||
@@ -66,14 +82,8 @@ export function StudentScheduleList({ onSelectStudent }: StudentScheduleListProp
     })
   }, [data, search])
 
-  const handleSelectStudent = (student: studentsApi.Student) => {
-    const name = [
-      student.profile?.first_name,
-      student.profile?.father_name,
-      student.profile?.last_name,
-    ]
-      .filter(Boolean)
-      .join(" ")
+  const handleSelectStudent = (student: ListStudent) => {
+    const name = getStudentFullName(student)
 
     onSelectStudent({
       id: student.id,
@@ -145,13 +155,7 @@ export function StudentScheduleList({ onSelectStudent }: StudentScheduleListProp
                 </tr>
               ) : (
                 filteredStudents.map((student, idx) => {
-                  const name = [
-                    student.profile?.first_name,
-                    student.profile?.father_name,
-                    student.profile?.last_name,
-                  ]
-                    .filter(Boolean)
-                    .join(" ")
+                  const name = getStudentFullName(student)
 
                   return (
                     <tr

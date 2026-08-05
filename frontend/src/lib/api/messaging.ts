@@ -143,8 +143,16 @@ export const messagingApi = {
     })
   },
 
-  listMessages: async (view: MessageView, page = 1, limit = 50) => {
-    return apiRequest<MessageListItem[]>(`/messaging?view=${view}&page=${page}&limit=${limit}`)
+  listMessages: async (
+    view: MessageView,
+    page = 1,
+    limit = 50,
+    search?: string,
+    order: 'asc' | 'desc' = 'desc'
+  ) => {
+    const params = new URLSearchParams({ view, page: String(page), limit: String(limit), order })
+    if (search?.trim()) params.set('search', search.trim())
+    return apiRequest<MessageListItem[]>(`/messaging?${params.toString()}`)
   },
 
   getUnreadCount: async () => {

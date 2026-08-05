@@ -56,13 +56,15 @@ export class MessagingController {
       const view = (req.query.view as string) || 'inbox'
       const page = req.query.page ? parseInt(req.query.page as string, 10) : 1
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50
+      const search = req.query.search as string | undefined
+      const order = req.query.order === 'asc' ? 'asc' : 'desc'
 
       if (!['inbox', 'read', 'archived', 'sent'].includes(view)) {
         res.status(400).json({ success: false, error: 'Invalid view' })
         return
       }
 
-      const result = await messagingService.listMessages(req.profile.id, view as any, page, limit)
+      const result = await messagingService.listMessages(req.profile.id, view as any, page, limit, search, order)
 
       res.json({
         success: true,

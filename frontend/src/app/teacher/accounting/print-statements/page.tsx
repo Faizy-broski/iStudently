@@ -82,7 +82,7 @@ export default function TeacherPrintStatementsAutoPage() {
 
       // Build HTML for the PDF engine
       let bodyHtml = `
-      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 900px; margin: 0 auto; color: #1a1a1a;">
+      <div style="font-family: 'Segoe UI', Tahoma, Arial, sans-serif; max-width: 900px; margin: 0 auto; color: #1a1a1a;">
         <div style="text-align: center; margin-bottom: 30px;">
           <h1 style="font-size: 28px; font-weight: 300; margin: 0; color: #1a1a1a;">Staff Statement</h1>
           <p style="color: #64748b; margin-top: 5px; font-size: 15px;">Historical Ledger of Salaries & Payments</p>
@@ -91,7 +91,7 @@ export default function TeacherPrintStatementsAutoPage() {
         <div style="display: flex; justify-content: space-between; background: #f8fafc; padding: 20px; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 25px;">
           <div>
             <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #64748b; letter-spacing: 1px; margin-bottom: 4px;">Staff Member</div>
-            <div style="font-size: 20px; font-weight: 500; color: #1e3a5f;">${profile?.first_name || ''} ${profile?.last_name || ''}</div>
+            <div dir="auto" style="font-size: 20px; font-weight: 500; color: #1e3a5f;">${profile?.first_name || ''} ${profile?.last_name || ''}</div>
             <div style="font-size: 13px; color: #64748b; margin-top: 4px;">${profile?.email || ''}</div>
           </div>
           <div style="text-align: right;">
@@ -127,8 +127,8 @@ export default function TeacherPrintStatementsAutoPage() {
           bodyHtml += `
             <tr style="border-bottom: 1px solid #f1f5f9;">
               <td style="padding: 12px;">${format(parseISO(t.displayDate), 'MMM d, yyyy')}</td>
-              <td style="padding: 12px; font-weight: 500;">${t.type === 'salary' ? 'Salary Generated' : 'Payment Issued'}: ${t.title || 'Adjustment'}</td>
-              <td style="padding: 12px; color: #64748b; font-size: 12px;">${t.comments || '-'}</td>
+              <td dir="auto" style="padding: 12px; font-weight: 500;">${t.type === 'salary' ? 'Salary Generated' : 'Payment Issued'}: ${t.title || 'Adjustment'}</td>
+              <td dir="auto" style="padding: 12px; color: #64748b; font-size: 12px;">${t.comments || '-'}</td>
               <td style="padding: 12px; text-align: right;">${t.debit > 0 ? '$' + t.debit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
               <td style="padding: 12px; text-align: right; color: #16a34a;">${t.credit > 0 ? '$' + t.credit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
               <td style="padding: 12px; text-align: right; font-weight: 700; color: #1e3a5f;">$${runningBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
@@ -169,6 +169,7 @@ export default function TeacherPrintStatementsAutoPage() {
           school: campus ?? { name: campusName },
           pdfSettings,
           pluginActive: isPluginActive('pdf_header_footer'),
+          reportLabel: "Staff Report",
         })
         toast.success("Statement generated directly to PDF!")
       } catch (err) {
