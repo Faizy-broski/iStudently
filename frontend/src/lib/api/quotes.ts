@@ -31,7 +31,7 @@ function authHeaders(token: string) {
 }
 
 export async function getCurrentQuote(): Promise<LoginQuote | null> {
-  const res = await fetch(`${API}/api/quotes/current`);
+  const res = await fetch(`${API}/quotes/current`);
   const json = await res.json();
   if (!json.success) return null;
   return json.data;
@@ -39,7 +39,7 @@ export async function getCurrentQuote(): Promise<LoginQuote | null> {
 
 export async function getAllQuotes(): Promise<LoginQuote[]> {
   const token = await getAuthToken();
-  const res = await fetch(`${API}/api/quotes`, {
+  const res = await fetch(`${API}/quotes`, {
     headers: authHeaders(token),
   });
   const json = await res.json();
@@ -49,7 +49,7 @@ export async function getAllQuotes(): Promise<LoginQuote[]> {
 
 export async function getQuoteSettings(): Promise<QuoteSettings> {
   const token = await getAuthToken();
-  const res = await fetch(`${API}/api/quotes/settings`, {
+  const res = await fetch(`${API}/quotes/settings`, {
     headers: authHeaders(token),
   });
   const json = await res.json();
@@ -64,7 +64,7 @@ export async function createQuote(payload: {
   is_active?: boolean;
 }): Promise<LoginQuote> {
   const token = await getAuthToken();
-  const res = await fetch(`${API}/api/quotes`, {
+  const res = await fetch(`${API}/quotes`, {
     method: 'POST',
     headers: authHeaders(token),
     body: JSON.stringify(payload),
@@ -79,7 +79,7 @@ export async function updateQuote(
   payload: Partial<Pick<LoginQuote, 'text_en' | 'text_ar' | 'sort_order' | 'is_active'>>
 ): Promise<LoginQuote> {
   const token = await getAuthToken();
-  const res = await fetch(`${API}/api/quotes/${id}`, {
+  const res = await fetch(`${API}/quotes/${id}`, {
     method: 'PUT',
     headers: authHeaders(token),
     body: JSON.stringify(payload),
@@ -91,7 +91,7 @@ export async function updateQuote(
 
 export async function deleteQuote(id: string): Promise<void> {
   const token = await getAuthToken();
-  const res = await fetch(`${API}/api/quotes/${id}`, {
+  const res = await fetch(`${API}/quotes/${id}`, {
     method: 'DELETE',
     headers: authHeaders(token),
   });
@@ -101,7 +101,7 @@ export async function deleteQuote(id: string): Promise<void> {
 
 export async function reorderQuotes(orderedIds: string[]): Promise<void> {
   const token = await getAuthToken();
-  const res = await fetch(`${API}/api/quotes/reorder`, {
+  const res = await fetch(`${API}/quotes/reorder`, {
     method: 'PUT',
     headers: authHeaders(token),
     body: JSON.stringify({ ordered_ids: orderedIds }),
@@ -112,7 +112,7 @@ export async function reorderQuotes(orderedIds: string[]): Promise<void> {
 
 export async function updateQuoteSettings(rotation: 'weekly' | 'monthly'): Promise<QuoteSettings> {
   const token = await getAuthToken();
-  const res = await fetch(`${API}/api/quotes/settings`, {
+  const res = await fetch(`${API}/quotes/settings`, {
     method: 'PUT',
     headers: authHeaders(token),
     body: JSON.stringify({ rotation }),

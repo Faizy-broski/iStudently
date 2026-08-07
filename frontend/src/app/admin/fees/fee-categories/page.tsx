@@ -13,7 +13,6 @@ import { IconArrowLeft, IconPlus, IconEdit, IconDeviceFloppy, IconX, IconFolderO
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
-import { useCampus } from '@/context/CampusContext'
 import { useTranslations } from 'next-intl'
 
 interface FeeCategory {
@@ -27,9 +26,10 @@ interface FeeCategory {
 export default function FeeCategoriesPage() {
     const t = useTranslations('fees.feeCategories')
     const { profile } = useAuth()
-    const campusContext = useCampus()
-    const selectedCampus = campusContext?.selectedCampus
-    const schoolId = selectedCampus?.id || profile?.school_id || null
+    // Fee categories are scoped to the school, not the campus — the backend
+    // validates school_id against the caller's own profile.school_id, so a
+    // campus id here would always be rejected as a mismatch (403).
+    const schoolId = profile?.school_id || null
 
     const { data: categories, mutate: mutateCategories, isLoading } = useFeeCategories(schoolId)
 

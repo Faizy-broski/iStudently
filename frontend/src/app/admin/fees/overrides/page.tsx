@@ -69,7 +69,12 @@ export default function FeeOverridesPage() {
     const tc = useTranslations('fees.balances') // for some shared table headers
     const { profile } = useAuth()
     const { selectedCampus, loading: campusLoading } = useCampus() || {}
-    const schoolId = selectedCampus?.id || profile?.school_id
+    // Fee overrides/categories are scoped to the school only — the backend
+    // rejects anything but the caller's own profile.school_id (no campus support).
+    const schoolId = profile?.school_id
+    // Grade levels, sections, academic years and the student list, however,
+    // are looked up per-campus when one is selected.
+    const gradeScopeId = selectedCampus?.id || schoolId
 
     // State
     const [searchQuery, setSearchQuery] = useState('')
@@ -89,11 +94,11 @@ export default function FeeOverridesPage() {
 
     // Fetch grade levels
     const { data: gradeLevels } = useSWR<GradeLevel[]>(
-        schoolId ? `grade-levels-override-${schoolId}` : null,
+        gradeScopeId ? `grade-levels-override-${gradeScopeId}` : null,
         async () => {
             const supabase = createClient()
             const token = (await supabase.auth.getSession()).data.session?.access_token
-            const res = await fetch(`${API_BASE}/api/academics/grades?school_id=${schoolId}`, {
+            const res = await fetch(`${API_BASE}/academics/grades?school_id=${gradeScopeId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const json = await res.json()
@@ -107,7 +112,7 @@ export default function FeeOverridesPage() {
         async () => {
             const supabase = createClient()
             const token = (await supabase.auth.getSession()).data.session?.access_token
-            const res = await fetch(`${API_BASE}/api/academics/sections?grade_level_id=${selectedGradeId}`, {
+            const res = await fetch(`${API_BASE}/academics/sections?grade_level_id=${selectedGradeId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const json = await res.json()
@@ -117,11 +122,11 @@ export default function FeeOverridesPage() {
 
     // Fetch academic years
     const { data: academicYears } = useSWR<AcademicYear[]>(
-        schoolId ? `academic-years-override-${schoolId}` : null,
+        gradeScopeId ? `academic-years-override-${gradeScopeId}` : null,
         async () => {
             const supabase = createClient()
             const token = (await supabase.auth.getSession()).data.session?.access_token
-            const res = await fetch(`${API_BASE}/api/academics/academic-years?school_id=${schoolId}`, {
+            const res = await fetch(`${API_BASE}/academics/academic-years?school_id=${gradeScopeId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const json = await res.json()
@@ -138,10 +143,10 @@ export default function FeeOverridesPage() {
 
     // Load students when campus or grade changes
     useEffect(() => {
-        if (schoolId && gradeLevels) {
+        if (gradeScopeId && gradeLevels) {
             loadStudents()
         }
-    }, [schoolId, selectedGradeId, gradeLevels])
+    }, [gradeScopeId, selectedGradeId, gradeLevels])
 
     // Load overrides when academic year changes
     useEffect(() => {
@@ -158,16 +163,16 @@ export default function FeeOverridesPage() {
     }, [schoolId])
 
     const loadStudents = async () => {
-        if (!schoolId) return
+        if (!gradeScopeId) return
         setLoading(true)
         setStudents([]) // Clear students on reload
         try {
             const supabase = createClient()
             const token = (await supabase.auth.getSession()).data.session?.access_token
-            
+
             const params = new URLSearchParams()
             // Use campus_id for campus-specific filtering (backend expects campus_id, not school_id)
-            params.append('campus_id', schoolId)
+            params.append('campus_id', gradeScopeId)
             // Backend expects grade_level (name), not grade_level_id
             if (selectedGradeId && selectedGradeId !== 'all' && gradeLevels) {
                 const selectedGrade = gradeLevels.find(g => g.id === selectedGradeId)
@@ -177,7 +182,7 @@ export default function FeeOverridesPage() {
             }
             params.append('limit', '500')
 
-            const res = await fetch(`${API_BASE}/api/students?${params}`, {
+            const res = await fetch(`${API_BASE}/students?${params}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const json = await res.json()

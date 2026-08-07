@@ -35,7 +35,7 @@ interface ApiResponse<T> {
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     const token = await getAuthToken()
     
-    const response = await fetch(`${API_URL}/api/staff-designations${endpoint}`, {
+    const response = await fetch(`${API_URL}/staff-designations${endpoint}`, {
         ...options,
         headers: {
             'Content-Type': 'application/json',

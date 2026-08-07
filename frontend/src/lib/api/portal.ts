@@ -169,19 +169,19 @@ export async function getNotes(options: {
 
   const query = params.toString()
   const data = await apiRequest<{ notes: PortalNote[]; pagination: any }>(
-    `/api/portal/notes${query ? `?${query}` : ''}`
+    `/portal/notes${query ? `?${query}` : ''}`
   )
 
   return data
 }
 
 export async function getNoteById(id: string) {
-  const data = await apiRequest<{ data: PortalNote }>(`/api/portal/notes/${id}`)
+  const data = await apiRequest<{ data: PortalNote }>(`/portal/notes/${id}`)
   return data.data
 }
 
 export async function createNote(dto: CreateNoteDTO) {
-  const data = await apiRequest<{ data: PortalNote }>('/api/portal/notes', {
+  const data = await apiRequest<{ data: PortalNote }>('/portal/notes', {
     method: 'POST',
     body: JSON.stringify(dto),
   })
@@ -189,7 +189,7 @@ export async function createNote(dto: CreateNoteDTO) {
 }
 
 export async function updateNote(id: string, dto: Partial<CreateNoteDTO>) {
-  const data = await apiRequest<{ data: PortalNote }>(`/api/portal/notes/${id}`, {
+  const data = await apiRequest<{ data: PortalNote }>(`/portal/notes/${id}`, {
     method: 'PUT',
     body: JSON.stringify(dto),
   })
@@ -197,7 +197,7 @@ export async function updateNote(id: string, dto: Partial<CreateNoteDTO>) {
 }
 
 export async function deleteNote(id: string) {
-  await apiRequest(`/api/portal/notes/${id}`, { method: 'DELETE' })
+  await apiRequest(`/portal/notes/${id}`, { method: 'DELETE' })
 }
 
 // ================================================================
@@ -218,19 +218,19 @@ export async function getPolls(options: {
 
   const query = params.toString()
   const data = await apiRequest<{ polls: PortalPoll[]; pagination: any }>(
-    `/api/portal/polls${query ? `?${query}` : ''}`
+    `/portal/polls${query ? `?${query}` : ''}`
   )
 
   return data
 }
 
 export async function getPollById(id: string) {
-  const data = await apiRequest<{ data: PortalPoll }>(`/api/portal/polls/${id}`)
+  const data = await apiRequest<{ data: PortalPoll }>(`/portal/polls/${id}`)
   return data.data
 }
 
 export async function createPoll(dto: CreatePollDTO) {
-  const data = await apiRequest<{ data: PortalPoll }>('/api/portal/polls', {
+  const data = await apiRequest<{ data: PortalPoll }>('/portal/polls', {
     method: 'POST',
     body: JSON.stringify(dto),
   })
@@ -238,7 +238,7 @@ export async function createPoll(dto: CreatePollDTO) {
 }
 
 export async function updatePoll(id: string, dto: Partial<CreatePollDTO>) {
-  const data = await apiRequest<{ data: PortalPoll }>(`/api/portal/polls/${id}`, {
+  const data = await apiRequest<{ data: PortalPoll }>(`/portal/polls/${id}`, {
     method: 'PUT',
     body: JSON.stringify(dto),
   })
@@ -246,23 +246,23 @@ export async function updatePoll(id: string, dto: Partial<CreatePollDTO>) {
 }
 
 export async function deletePoll(id: string) {
-  await apiRequest(`/api/portal/polls/${id}`, { method: 'DELETE' })
+  await apiRequest(`/portal/polls/${id}`, { method: 'DELETE' })
 }
 
 export async function getPollResults(pollId: string) {
-  const data = await apiRequest<{ data: PollResults }>(`/api/portal/polls/${pollId}/results`)
+  const data = await apiRequest<{ data: PollResults }>(`/portal/polls/${pollId}/results`)
   return data.data
 }
 
 export async function submitPollResponses(pollId: string, responses: PollResponseDTO[]) {
-  await apiRequest(`/api/portal/polls/${pollId}/respond`, {
+  await apiRequest(`/portal/polls/${pollId}/respond`, {
     method: 'POST',
     body: JSON.stringify({ responses }),
   })
 }
 
 export async function getMyPollResponses(pollId: string) {
-  const data = await apiRequest<{ data: any[] }>(`/api/portal/polls/${pollId}/my-responses`)
+  const data = await apiRequest<{ data: any[] }>(`/portal/polls/${pollId}/my-responses`)
   return data.data
 }
 
@@ -272,7 +272,7 @@ export async function getMyPollResponses(pollId: string) {
 
 export async function addPollQuestion(pollId: string, dto: CreateQuestionDTO) {
   const data = await apiRequest<{ data: PollQuestion }>(
-    `/api/portal/polls/${pollId}/questions`,
+    `/portal/polls/${pollId}/questions`,
     {
       method: 'POST',
       body: JSON.stringify(dto),
@@ -283,7 +283,7 @@ export async function addPollQuestion(pollId: string, dto: CreateQuestionDTO) {
 
 export async function updatePollQuestion(questionId: string, dto: Partial<CreateQuestionDTO>) {
   const data = await apiRequest<{ data: PollQuestion }>(
-    `/api/portal/questions/${questionId}`,
+    `/portal/questions/${questionId}`,
     {
       method: 'PUT',
       body: JSON.stringify(dto),
@@ -293,5 +293,5 @@ export async function updatePollQuestion(questionId: string, dto: Partial<Create
 }
 
 export async function deletePollQuestion(questionId: string) {
-  await apiRequest(`/api/portal/questions/${questionId}`, { method: 'DELETE' })
+  await apiRequest(`/portal/questions/${questionId}`, { method: 'DELETE' })
 }

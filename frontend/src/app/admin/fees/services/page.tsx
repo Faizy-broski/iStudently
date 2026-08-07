@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
-import { useCampus } from '@/context/CampusContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -34,8 +33,9 @@ interface Service {
 
 export default function ServicesPage() {
     const { profile } = useAuth()
-    const { selectedCampus } = useCampus()
-    const schoolId = selectedCampus?.id || profile?.school_id || ''
+    // School services are scoped to the school, not the campus — the backend
+    // validates school_id against the caller's own profile.school_id.
+    const schoolId = profile?.school_id || ''
 
     const [isAdding, setIsAdding] = useState(false)
     const [editingService, setEditingService] = useState<Service | null>(null)
@@ -56,7 +56,7 @@ export default function ServicesPage() {
     const { data: services, mutate, isLoading } = useSWR<Service[]>(
         schoolId ? `services-${schoolId}` : null,
         async () => {
-            const res = await fetch(`${API_BASE}/api/school-services`, {
+            const res = await fetch(`${API_BASE}/school-services`, {
                 headers: { 'Authorization': `Bearer ${(await import('@/lib/supabase/client')).createClient().auth.getSession().then(s => s.data.session?.access_token)}` }
             })
             const json = await res.json()
@@ -105,8 +105,8 @@ export default function ServicesPage() {
             const token = (await createClient().auth.getSession()).data.session?.access_token
             
             const url = editingService
-                ? `${API_BASE}/api/school-services/${editingService.id}`
-                : `${API_BASE}/api/school-services`
+                ? `${API_BASE}/school-services/${editingService.id}`
+                : `${API_BASE}/school-services`
 
             const method = editingService ? 'PUT' : 'POST'
 
@@ -143,7 +143,7 @@ export default function ServicesPage() {
             const { createClient } = await import('@/lib/supabase/client')
             const token = (await createClient().auth.getSession()).data.session?.access_token
             
-            const response = await fetch(`${API_BASE}/api/school-services/${id}`, {
+            const response = await fetch(`${API_BASE}/school-services/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             })

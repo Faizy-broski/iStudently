@@ -76,7 +76,7 @@ async function authHeaders(): Promise<HeadersInit> {
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<{ success: boolean; data?: T; error?: string; pagination?: { total: number } }> {
-  const res  = await fetch(`${API}/api${path}`, init)
+  const res  = await fetch(`${API}${path}`, init)
   const json = await res.json()
   return json
 }

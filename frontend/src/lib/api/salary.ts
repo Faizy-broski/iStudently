@@ -126,7 +126,7 @@ export async function getPayrollSettings(schoolId: string, campusId?: string): P
     const headers = await getHeaders()
     const params = new URLSearchParams({ school_id: schoolId })
     if (campusId) params.append('campus_id', campusId)
-    const url = `${API_BASE}/api/salary/settings?${params.toString()}`
+    const url = `${API_BASE}/salary/settings?${params.toString()}`
     const res = await fetch(url, { headers })
     const json = await res.json()
     if (!json.success) throw new Error(json.error)
@@ -137,7 +137,7 @@ export async function updatePayrollSettings(schoolId: string, settings: Partial<
     const headers = await getHeaders()
     const body: any = { school_id: schoolId, ...settings }
     if (campusId) body.campus_id = campusId
-    const res = await fetch(`${API_BASE}/api/salary/settings`, {
+    const res = await fetch(`${API_BASE}/salary/settings`, {
         method: 'PUT',
         headers,
         body: JSON.stringify(body)
@@ -149,7 +149,7 @@ export async function updatePayrollSettings(schoolId: string, settings: Partial<
 
 export async function getSalaryStructures(schoolId: string): Promise<SalaryStructure[]> {
     const headers = await getHeaders()
-    const res = await fetch(`${API_BASE}/api/salary/structures?school_id=${schoolId}`, { headers })
+    const res = await fetch(`${API_BASE}/salary/structures?school_id=${schoolId}`, { headers })
     const json = await res.json()
     if (!json.success) throw new Error(json.error)
     return json.data
@@ -157,7 +157,7 @@ export async function getSalaryStructures(schoolId: string): Promise<SalaryStruc
 
 export async function getSalaryStructureByStaff(staffId: string, schoolId: string): Promise<SalaryStructure | null> {
     const headers = await getHeaders()
-    const res = await fetch(`${API_BASE}/api/salary/structures/${staffId}?school_id=${schoolId}`, { headers })
+    const res = await fetch(`${API_BASE}/salary/structures/${staffId}?school_id=${schoolId}`, { headers })
     const json = await res.json()
     if (!json.success) throw new Error(json.error)
     return json.data
@@ -172,7 +172,7 @@ export async function createSalaryStructure(data: {
     effective_from?: string
 }): Promise<SalaryStructure> {
     const headers = await getHeaders()
-    const res = await fetch(`${API_BASE}/api/salary/structures`, {
+    const res = await fetch(`${API_BASE}/salary/structures`, {
         method: 'POST',
         headers,
         body: JSON.stringify(data)
@@ -189,7 +189,7 @@ export async function requestAdvance(data: {
     reason?: string
 }): Promise<SalaryAdvance> {
     const headers = await getHeaders()
-    const res = await fetch(`${API_BASE}/api/salary/advances`, {
+    const res = await fetch(`${API_BASE}/salary/advances`, {
         method: 'POST',
         headers,
         body: JSON.stringify(data)
@@ -202,8 +202,8 @@ export async function requestAdvance(data: {
 export async function getPendingAdvances(schoolId: string, campusId?: string): Promise<SalaryAdvance[]> {
     const headers = await getHeaders()
     const url = campusId
-        ? `${API_BASE}/api/salary/advances/pending?school_id=${schoolId}&campus_id=${campusId}`
-        : `${API_BASE}/api/salary/advances/pending?school_id=${schoolId}`
+        ? `${API_BASE}/salary/advances/pending?school_id=${schoolId}&campus_id=${campusId}`
+        : `${API_BASE}/salary/advances/pending?school_id=${schoolId}`
     const res = await fetch(url, { headers })
     const json = await res.json()
     if (!json.success) throw new Error(json.error)
@@ -215,7 +215,7 @@ export async function processAdvance(
     data: { school_id: string; action: 'approve' | 'reject'; admin_id: string; recovery_month?: number; recovery_year?: number }
 ): Promise<SalaryAdvance> {
     const headers = await getHeaders()
-    const res = await fetch(`${API_BASE}/api/salary/advances/${advanceId}`, {
+    const res = await fetch(`${API_BASE}/salary/advances/${advanceId}`, {
         method: 'PUT',
         headers,
         body: JSON.stringify(data)
@@ -232,7 +232,7 @@ export async function generateSalary(data: {
     year: number
 }): Promise<SalaryRecord> {
     const headers = await getHeaders()
-    const res = await fetch(`${API_BASE}/api/salary/generate`, {
+    const res = await fetch(`${API_BASE}/salary/generate`, {
         method: 'POST',
         headers,
         body: JSON.stringify(data)
@@ -252,7 +252,7 @@ export async function generateBulkSalaries(data: {
     const headers = await getHeaders()
     console.log('Headers:', headers)
     
-    const res = await fetch(`${API_BASE}/api/salary/generate-bulk`, {
+    const res = await fetch(`${API_BASE}/salary/generate-bulk`, {
         method: 'POST',
         headers,
         body: JSON.stringify(data)
@@ -289,7 +289,7 @@ export async function getSalaryRecords(
     if (options?.staff_id) params.append('staff_id', options.staff_id)
 
     const headers = await getHeaders()
-    const res = await fetch(`${API_BASE}/api/salary/records?${params}`, { headers })
+    const res = await fetch(`${API_BASE}/salary/records?${params}`, { headers })
     const json = await res.json()
     if (!json.success) throw new Error(json.error)
     return { data: json.data, pagination: json.pagination }
@@ -297,7 +297,7 @@ export async function getSalaryRecords(
 
 export async function getPaySlip(salaryRecordId: string, schoolId: string): Promise<PaySlip> {
     const headers = await getHeaders()
-    const res = await fetch(`${API_BASE}/api/salary/records/${salaryRecordId}/payslip?school_id=${schoolId}`, { headers })
+    const res = await fetch(`${API_BASE}/salary/records/${salaryRecordId}/payslip?school_id=${schoolId}`, { headers })
     const json = await res.json()
     if (!json.success) throw new Error(json.error)
     return json.data
@@ -313,7 +313,7 @@ export async function getPayslipByPeriod(
     const headers = await getHeaders()
     const params = new URLSearchParams({ staff_id: staffId, month: String(month), year: String(year), school_id: schoolId })
     if (campusId) params.append('campus_id', campusId)
-    const res = await fetch(`${API_BASE}/api/salary/payslip/by-period?${params}`, { headers })
+    const res = await fetch(`${API_BASE}/salary/payslip/by-period?${params}`, { headers })
     const json = await res.json()
     if (!json.success) throw new Error(json.error || 'No salary record found for this period')
     return json.data
@@ -328,7 +328,7 @@ export async function getPayslipByPeriod(
 export async function getMyPayslip(month: number, year: number): Promise<PayslipByPeriod> {
     const headers = await getHeaders()
     const params = new URLSearchParams({ month: String(month), year: String(year) })
-    const res = await fetch(`${API_BASE}/api/accounting/staff/payslip?${params}`, { headers })
+    const res = await fetch(`${API_BASE}/accounting/staff/payslip?${params}`, { headers })
     const json = await res.json()
     if (!json.success) throw new Error(json.error || 'No salary record found for this period')
     return json.data
@@ -340,7 +340,7 @@ export async function getMyPayslip(month: number, year: number): Promise<Payslip
  */
 export async function requestMyAdvance(data: { amount: number; reason?: string }): Promise<SalaryAdvance> {
     const headers = await getHeaders()
-    const res = await fetch(`${API_BASE}/api/accounting/staff/advances`, {
+    const res = await fetch(`${API_BASE}/accounting/staff/advances`, {
         method: 'POST',
         headers,
         body: JSON.stringify(data)
@@ -352,7 +352,7 @@ export async function requestMyAdvance(data: { amount: number; reason?: string }
 
 export async function approveSalary(salaryRecordId: string, schoolId: string): Promise<SalaryRecord> {
     const headers = await getHeaders()
-    const res = await fetch(`${API_BASE}/api/salary/records/${salaryRecordId}/approve`, {
+    const res = await fetch(`${API_BASE}/salary/records/${salaryRecordId}/approve`, {
         method: 'PUT',
         headers,
         body: JSON.stringify({ school_id: schoolId })
@@ -367,7 +367,7 @@ export async function markSalaryPaid(
     data: { school_id: string; payment_method?: string; payment_reference?: string }
 ): Promise<SalaryRecord> {
     const headers = await getHeaders()
-    const res = await fetch(`${API_BASE}/api/salary/records/${salaryRecordId}/paid`, {
+    const res = await fetch(`${API_BASE}/salary/records/${salaryRecordId}/paid`, {
         method: 'PUT',
         headers,
         body: JSON.stringify(data)
@@ -392,7 +392,7 @@ export async function getSalaryDashboardStats(
     if (year) params.append('year', year.toString())
 
     const headers = await getHeaders()
-    const res = await fetch(`${API_BASE}/api/salary/dashboard?${params}`, { headers })
+    const res = await fetch(`${API_BASE}/salary/dashboard?${params}`, { headers })
     const json = await res.json()
     if (!json.success) throw new Error(json.error)
     return json.data
@@ -451,7 +451,7 @@ export async function getPolicyGroups(schoolId: string, campusId?: string): Prom
     const headers = await getHeaders()
     const params = new URLSearchParams({ school_id: schoolId })
     if (campusId) params.append('campus_id', campusId)
-    const res = await fetch(`${API_BASE}/api/salary/policies?${params}`, { headers })
+    const res = await fetch(`${API_BASE}/salary/policies?${params}`, { headers })
     const json = await res.json()
     if (!json.success) throw new Error(json.error)
     return json.data
@@ -459,7 +459,7 @@ export async function getPolicyGroups(schoolId: string, campusId?: string): Prom
 
 export async function getPolicyGroupWithTeachers(groupId: string): Promise<SalaryPolicyGroupWithTeachers> {
     const headers = await getHeaders()
-    const res = await fetch(`${API_BASE}/api/salary/policies/${groupId}`, { headers })
+    const res = await fetch(`${API_BASE}/salary/policies/${groupId}`, { headers })
     const json = await res.json()
     if (!json.success) throw new Error(json.error)
     return json.data
@@ -467,7 +467,7 @@ export async function getPolicyGroupWithTeachers(groupId: string): Promise<Salar
 
 export async function createPolicyGroup(schoolId: string, data: Omit<SalaryPolicyGroup, 'id' | 'school_id' | 'created_at' | 'updated_at'>): Promise<SalaryPolicyGroup> {
     const headers = await getHeaders()
-    const res = await fetch(`${API_BASE}/api/salary/policies`, {
+    const res = await fetch(`${API_BASE}/salary/policies`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ school_id: schoolId, ...data })
@@ -479,7 +479,7 @@ export async function createPolicyGroup(schoolId: string, data: Omit<SalaryPolic
 
 export async function updatePolicyGroup(groupId: string, schoolId: string, data: Partial<SalaryPolicyGroup>): Promise<SalaryPolicyGroup> {
     const headers = await getHeaders()
-    const res = await fetch(`${API_BASE}/api/salary/policies/${groupId}`, {
+    const res = await fetch(`${API_BASE}/salary/policies/${groupId}`, {
         method: 'PUT',
         headers,
         body: JSON.stringify({ school_id: schoolId, ...data })
@@ -491,7 +491,7 @@ export async function updatePolicyGroup(groupId: string, schoolId: string, data:
 
 export async function deletePolicyGroup(groupId: string, schoolId: string): Promise<void> {
     const headers = await getHeaders()
-    const res = await fetch(`${API_BASE}/api/salary/policies/${groupId}?school_id=${schoolId}`, {
+    const res = await fetch(`${API_BASE}/salary/policies/${groupId}?school_id=${schoolId}`, {
         method: 'DELETE',
         headers
     })
@@ -501,7 +501,7 @@ export async function deletePolicyGroup(groupId: string, schoolId: string): Prom
 
 export async function assignTeachersToPolicy(groupId: string, schoolId: string, staffIds: string[]): Promise<void> {
     const headers = await getHeaders()
-    const res = await fetch(`${API_BASE}/api/salary/policies/${groupId}/assign`, {
+    const res = await fetch(`${API_BASE}/salary/policies/${groupId}/assign`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ school_id: schoolId, staff_ids: staffIds })
@@ -512,7 +512,7 @@ export async function assignTeachersToPolicy(groupId: string, schoolId: string, 
 
 export async function removeTeacherFromPolicy(groupId: string, staffId: string): Promise<void> {
     const headers = await getHeaders()
-    const res = await fetch(`${API_BASE}/api/salary/policies/${groupId}/teachers/${staffId}`, {
+    const res = await fetch(`${API_BASE}/salary/policies/${groupId}/teachers/${staffId}`, {
         method: 'DELETE',
         headers
     })
@@ -524,7 +524,7 @@ export async function getTeachersWithPolicyInfo(schoolId: string, campusId?: str
     const headers = await getHeaders()
     const params = new URLSearchParams({ school_id: schoolId })
     if (campusId) params.append('campus_id', campusId)
-    const res = await fetch(`${API_BASE}/api/salary/policies/teachers?${params}`, { headers })
+    const res = await fetch(`${API_BASE}/salary/policies/teachers?${params}`, { headers })
     const json = await res.json()
     if (!json.success) throw new Error(json.error)
     return json.data

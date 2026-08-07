@@ -47,7 +47,11 @@ export default function FeeStructuresPage() {
     const t = useTranslations('fees.structures')
     const { profile } = useAuth()
     const { selectedCampus } = useCampus()
-    const schoolId = selectedCampus?.id || profile?.school_id || ''
+    // Fee categories/structures are scoped to the school only — the backend
+    // rejects anything but the caller's own profile.school_id (no campus support).
+    const schoolId = profile?.school_id || ''
+    // Grade levels, however, are looked up per-campus when one is selected.
+    const gradeScopeId = selectedCampus?.id || schoolId
 
     const [academicYear, setAcademicYear] = useState('2025-2026')
     const [editingStructure, setEditingStructure] = useState<FeeStructure | null>(null)
@@ -68,11 +72,11 @@ export default function FeeStructuresPage() {
 
     // Fetch grade levels
     const { data: gradeLevels } = useSWR<GradeLevel[]>(
-        schoolId ? `grade-levels-${schoolId}` : null,
+        gradeScopeId ? `grade-levels-${gradeScopeId}` : null,
         async () => {
             const { createClient } = await import('@/lib/supabase/client')
             const token = (await createClient().auth.getSession()).data.session?.access_token
-            const res = await fetch(`${API_BASE}/api/academics/grades?school_id=${schoolId}`, {
+            const res = await fetch(`${API_BASE}/academics/grades?school_id=${gradeScopeId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const json = await res.json()
@@ -86,7 +90,7 @@ export default function FeeStructuresPage() {
         async () => {
             const { createClient } = await import('@/lib/supabase/client')
             const token = (await createClient().auth.getSession()).data.session?.access_token
-            const res = await fetch(`${API_BASE}/api/fees/categories?school_id=${schoolId}`, {
+            const res = await fetch(`${API_BASE}/fees/categories?school_id=${schoolId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const json = await res.json()
@@ -100,7 +104,7 @@ export default function FeeStructuresPage() {
         async () => {
             const { createClient } = await import('@/lib/supabase/client')
             const token = (await createClient().auth.getSession()).data.session?.access_token
-            const res = await fetch(`${API_BASE}/api/fees/structures?school_id=${schoolId}&academic_year=${academicYear}`, {
+            const res = await fetch(`${API_BASE}/fees/structures?school_id=${schoolId}&academic_year=${academicYear}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const json = await res.json()
@@ -132,7 +136,7 @@ export default function FeeStructuresPage() {
             }
 
             if (editingStructure) {
-                const response = await fetch(`${API_BASE}/api/fees/structures/${editingStructure.id}`, {
+                const response = await fetch(`${API_BASE}/fees/structures/${editingStructure.id}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -153,7 +157,7 @@ export default function FeeStructuresPage() {
 
             // Create mode: one structure row per selected grade level.
             const results = await Promise.all(selectedGradeIds.map(async (gradeLevelId) => {
-                const response = await fetch(`${API_BASE}/api/fees/structures`, {
+                const response = await fetch(`${API_BASE}/fees/structures`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -189,7 +193,7 @@ export default function FeeStructuresPage() {
             const { createClient } = await import('@/lib/supabase/client')
             const token = (await createClient().auth.getSession()).data.session?.access_token
             
-            const response = await fetch(`${API_BASE}/api/fees/structures/${id}?school_id=${schoolId}`, {
+            const response = await fetch(`${API_BASE}/fees/structures/${id}?school_id=${schoolId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             })

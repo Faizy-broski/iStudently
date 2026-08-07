@@ -64,7 +64,7 @@ async function fetchGrades(schoolId: string): Promise<GradeLevel[]> {
     const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
     
-    const res = await fetch(`${API_BASE}/api/academics/grades?school_id=${schoolId}`, {
+    const res = await fetch(`${API_BASE}/academics/grades?school_id=${schoolId}`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
     })
     const json = await res.json()
@@ -78,7 +78,7 @@ async function fetchSections(schoolId: string): Promise<Section[]> {
     const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
-    const res = await fetch(`${API_BASE}/api/academics/sections?school_id=${schoolId}`, {
+    const res = await fetch(`${API_BASE}/academics/sections?school_id=${schoolId}`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
     })
     const json = await res.json()
@@ -93,7 +93,7 @@ async function fetchFees(schoolId: string, params: { gradeIds?: string[]; sectio
     if (params.gradeIds && params.gradeIds.length > 0) queryParams.append('grade_level_id', params.gradeIds.join(','))
     if (params.sectionIds && params.sectionIds.length > 0) queryParams.append('section_id', params.sectionIds.join(','))
 
-    const res = await fetch(`${API_BASE}/api/fees/by-grade?${queryParams}`, {
+    const res = await fetch(`${API_BASE}/fees/by-grade?${queryParams}`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
     })
     const json = await res.json()

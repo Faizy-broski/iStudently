@@ -78,7 +78,7 @@ export default function StudentFeeOverrideModal({
             // Load academic years
             const supabase = createClient()
             const token = (await supabase.auth.getSession()).data.session?.access_token
-            const res = await fetch(`${API_BASE}/api/academics/academic-years?school_id=${schoolId}`, {
+            const res = await fetch(`${API_BASE}/academics/academic-years?school_id=${schoolId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const json = await res.json()

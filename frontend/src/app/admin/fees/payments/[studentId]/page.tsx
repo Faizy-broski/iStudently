@@ -69,7 +69,7 @@ interface NewPayment {
 async function fetchStudentList(schoolId: string): Promise<{ id: string; student_number: string; profiles: { first_name: string; last_name: string } }[]> {
     const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
-    const res = await fetch(`${API_BASE}/api/fees/payments/students?school_id=${schoolId}&limit=500`, {
+    const res = await fetch(`${API_BASE}/fees/payments/students?school_id=${schoolId}&limit=500`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
     })
     const json = await res.json()
@@ -81,7 +81,7 @@ async function fetchStudentPayments(studentId: string, schoolId: string): Promis
     const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
     
-    const res = await fetch(`${API_BASE}/api/fees/payments/student/${studentId}?school_id=${schoolId}`, {
+    const res = await fetch(`${API_BASE}/fees/payments/student/${studentId}?school_id=${schoolId}`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
     })
     const json = await res.json()
@@ -320,7 +320,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
         try {
             const supabase = createClient()
             const { data: { session } } = await supabase.auth.getSession()
-            const res = await fetch(`${API_BASE}/api/fees/payments/${paymentId}`, {
+            const res = await fetch(`${API_BASE}/fees/payments/${paymentId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -384,7 +384,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                     }
                 }
 
-                const res = await fetch(`${API_BASE}/api/fees/payments/record`, {
+                const res = await fetch(`${API_BASE}/fees/payments/record`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -452,7 +452,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                 .from('fee-attachments')
                 .getPublicUrl(fileName)
 
-            const res = await fetch(`${API_BASE}/api/fees/payments/${paymentId}`, {
+            const res = await fetch(`${API_BASE}/fees/payments/${paymentId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -486,7 +486,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
         const { data: { session } } = await supabase.auth.getSession()
 
         try {
-            const res = await fetch(`${API_BASE}/api/fees/payments/${paymentId}?school_id=${schoolId}`, {
+            const res = await fetch(`${API_BASE}/fees/payments/${paymentId}?school_id=${schoolId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${session?.access_token}` }
             })

@@ -34,7 +34,11 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 export default function BrowseFeesByGradePage() {
     const { profile } = useAuth()
     const { selectedCampus } = useCampus()
-    const schoolId = selectedCampus?.id || profile?.school_id || ''
+    // Fee records are scoped to the school only — the backend rejects
+    // anything but the caller's own profile.school_id (no campus support).
+    const schoolId = profile?.school_id || ''
+    // Grade levels/sections, however, are looked up per-campus when one is selected.
+    const gradeScopeId = selectedCampus?.id || schoolId
 
     const [gradeLevelId, setGradeLevelId] = useState<string>('all')
     const [sectionId, setSectionId] = useState<string>('all')
@@ -53,11 +57,11 @@ export default function BrowseFeesByGradePage() {
 
     // Fetch grade levels
     const { data: gradeLevels } = useSWR<GradeLevel[]>(
-        schoolId ? `grade-levels-${schoolId}` : null,
+        gradeScopeId ? `grade-levels-${gradeScopeId}` : null,
         async () => {
             const { createClient } = await import('@/lib/supabase/client')
             const token = (await createClient().auth.getSession()).data.session?.access_token
-            const res = await fetch(`${API_BASE}/api/academics/grades?school_id=${schoolId}`, {
+            const res = await fetch(`${API_BASE}/academics/grades?school_id=${gradeScopeId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const json = await res.json()
@@ -71,7 +75,7 @@ export default function BrowseFeesByGradePage() {
         async () => {
             const { createClient } = await import('@/lib/supabase/client')
             const token = (await createClient().auth.getSession()).data.session?.access_token
-            const res = await fetch(`${API_BASE}/api/academics/sections?grade_level_id=${gradeLevelId}`, {
+            const res = await fetch(`${API_BASE}/academics/sections?grade_level_id=${gradeLevelId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const json = await res.json()

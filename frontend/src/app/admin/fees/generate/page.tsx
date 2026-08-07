@@ -103,7 +103,7 @@ export default function GenerateFeesPage() {
         async () => {
             const { createClient } = await import('@/lib/supabase/client')
             const token = (await createClient().auth.getSession()).data.session?.access_token
-            const res = await fetch(`${API_BASE}/api/academics/grades?school_id=${schoolId}`, {
+            const res = await fetch(`${API_BASE}/academics/grades?school_id=${schoolId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const json = await res.json()
@@ -117,7 +117,7 @@ export default function GenerateFeesPage() {
         async () => {
             const { createClient } = await import('@/lib/supabase/client')
             const token = (await createClient().auth.getSession()).data.session?.access_token
-            const res = await fetch(`${API_BASE}/api/academics/sections?grade_level_id=${gradeLevel}`, {
+            const res = await fetch(`${API_BASE}/academics/sections?grade_level_id=${gradeLevel}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const json = await res.json()
@@ -125,13 +125,14 @@ export default function GenerateFeesPage() {
         }
     )
 
-    // Fetch fee categories
+    // Fetch fee categories — categories are scoped to the school only (the
+    // backend rejects a campus id here), unlike grades/sections/generation above.
     const { data: categories } = useSWR<FeeCategory[]>(
-        schoolId ? `fee-categories-${schoolId}` : null,
+        profile?.school_id ? `fee-categories-${profile.school_id}` : null,
         async () => {
             const { createClient } = await import('@/lib/supabase/client')
             const token = (await createClient().auth.getSession()).data.session?.access_token
-            const res = await fetch(`${API_BASE}/api/fees/categories?school_id=${schoolId}`, {
+            const res = await fetch(`${API_BASE}/fees/categories?school_id=${profile?.school_id}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const json = await res.json()
@@ -146,7 +147,7 @@ export default function GenerateFeesPage() {
         async () => {
             const { createClient } = await import('@/lib/supabase/client')
             const token = (await createClient().auth.getSession()).data.session?.access_token
-            const res = await fetch(`${API_BASE}/api/students?campus_id=${schoolId}&search=${encodeURIComponent(studentSearch)}&limit=10`, {
+            const res = await fetch(`${API_BASE}/students?campus_id=${schoolId}&search=${encodeURIComponent(studentSearch)}&limit=10`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const json = await res.json()
@@ -220,7 +221,7 @@ export default function GenerateFeesPage() {
                 allCategoryIds.every(id => selectedCategories.includes(id)) &&
                 selectedCategories.length === allCategoryIds.length
             
-            const response = await fetch(`${API_BASE}/api/fees/generate-monthly`, {
+            const response = await fetch(`${API_BASE}/fees/generate-monthly`, {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -267,7 +268,7 @@ export default function GenerateFeesPage() {
             const { createClient } = await import('@/lib/supabase/client')
             const token = (await createClient().auth.getSession()).data.session?.access_token
             
-            const response = await fetch(`${API_BASE}/api/fees/students/${feeId}?school_id=${actualSchoolId}`, {
+            const response = await fetch(`${API_BASE}/fees/students/${feeId}?school_id=${actualSchoolId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             
@@ -465,7 +466,7 @@ export default function GenerateFeesPage() {
                 allCategoryIds.every(id => selectedCategories.includes(id)) &&
                 selectedCategories.length === allCategoryIds.length
             
-            const response = await fetch(`${API_BASE}/api/fees/generate-for-student`, {
+            const response = await fetch(`${API_BASE}/fees/generate-for-student`, {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',

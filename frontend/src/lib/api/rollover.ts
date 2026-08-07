@@ -29,7 +29,7 @@ async function rolloverFetch<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const token = await getAuthToken();
-  const response = await fetch(`${API_BASE}/api${path}`, {
+  const response = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',

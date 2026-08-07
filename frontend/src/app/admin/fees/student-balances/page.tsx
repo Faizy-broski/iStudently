@@ -67,7 +67,7 @@ async function fetchStudentsWithParents(schoolId: string) {
     
     const params = new URLSearchParams({ school_id: schoolId, limit: '500' })
     
-    const res = await fetch(`${API_BASE}/api/fees/payments/students?${params}`, {
+    const res = await fetch(`${API_BASE}/fees/payments/students?${params}`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
     })
     const json = await res.json()

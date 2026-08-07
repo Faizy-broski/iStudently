@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
-import { useCampus } from '@/context/CampusContext'
 import { useFeeDashboardStats } from '@/hooks/useFees'
 import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 import { getBalanceDisplay, StudentFee, getFeesByGrade } from '@/lib/api/fees'
@@ -39,9 +38,10 @@ export default function FeesPage() {
     const t = useTranslations('admin.fees.page')
     const tCommon = useTranslations('common')
     const { profile } = useAuth()
-    const { selectedCampus } = useCampus()
     const { formatCurrency, isLoading: settingsLoading } = useSchoolSettings()
-    const schoolId = selectedCampus?.id || profile?.school_id || null
+    // Fees are scoped to the school, not the campus — the backend validates
+    // school_id against the caller's own profile.school_id.
+    const schoolId = profile?.school_id || null
 
     // Filter states
     const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -78,7 +78,7 @@ export default function FeesPage() {
         async () => {
             const { createClient } = await import('@/lib/supabase/client')
             const token = (await createClient().auth.getSession()).data.session?.access_token
-            const res = await fetch(`${API_BASE}/api/academics/grades?school_id=${schoolId}`, {
+            const res = await fetch(`${API_BASE}/academics/grades?school_id=${schoolId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const json = await res.json()
@@ -92,7 +92,7 @@ export default function FeesPage() {
         async () => {
             const { createClient } = await import('@/lib/supabase/client')
             const token = (await createClient().auth.getSession()).data.session?.access_token
-            const res = await fetch(`${API_BASE}/api/academics/sections?grade_level_id=${gradeLevelId}`, {
+            const res = await fetch(`${API_BASE}/academics/sections?grade_level_id=${gradeLevelId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const json = await res.json()

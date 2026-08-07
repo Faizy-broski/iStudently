@@ -100,7 +100,7 @@ async function fetchGrades(schoolId: string): Promise<GradeLevel[]> {
     const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
     
-    const res = await fetch(`${API_BASE}/api/academics/grades?school_id=${schoolId}`, {
+    const res = await fetch(`${API_BASE}/academics/grades?school_id=${schoolId}`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
     })
     const json = await res.json()
@@ -114,7 +114,7 @@ async function fetchSections(schoolId: string): Promise<Section[]> {
     const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
-    const res = await fetch(`${API_BASE}/api/academics/sections?school_id=${schoolId}`, {
+    const res = await fetch(`${API_BASE}/academics/sections?school_id=${schoolId}`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
     })
     const json = await res.json()
@@ -129,7 +129,7 @@ async function fetchStudentsWithPayments(schoolId: string, gradeIds?: string[], 
     if (gradeIds && gradeIds.length > 0) params.set('grade_id', gradeIds.join(','))
     if (sectionIds && sectionIds.length > 0) params.set('section_id', sectionIds.join(','))
 
-    const res = await fetch(`${API_BASE}/api/fees/payments/all-with-students?${params}`, {
+    const res = await fetch(`${API_BASE}/fees/payments/all-with-students?${params}`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
     })
     const json = await res.json()
