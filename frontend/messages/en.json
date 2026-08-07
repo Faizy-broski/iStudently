@@ -6,7 +6,8 @@
     "enabling": "Enabling...",
     "notNow": "Not now",
     "dismiss": "Dismiss",
-    "enabledSuccess": "Notifications enabled"
+    "enabledSuccess": "Notifications enabled",
+    "enabledFailure": "Couldn't enable notifications"
   },
   "login": {
     "title": "iStudent.ly Login",
@@ -704,6 +705,8 @@
     "grade_breakdown": "Grade Breakdown",
     "gpa_class_rank_list": "GPA & Class Rank List",
     "staff_payroll": "Staff Payroll",
+    "my_payroll": "My Payroll",
+    "category_rollup": "Category Rollup",
     "salaries": "Salaries",
     "print_statements": "Print Statements",
     "learning_resources": "Learning Resources",
@@ -1477,6 +1480,18 @@
         "balance": "Balance:",
         "general_balance": "General Balance:"
       },
+      "reports": {
+        "title": "Category Rollup",
+        "subtitle": "Income and expense totals grouped by category • {campus}",
+        "select_campus": "Please select a campus to view the category rollup.",
+        "period": "Timeframe:",
+        "incomes_by_category": "Incomes by Category",
+        "expenses_by_category": "Expenses by Category",
+        "col_category": "Category",
+        "col_total": "Total",
+        "no_income_data": "No income data for the selected period.",
+        "no_expense_data": "No expense data for the selected period."
+      },
       "staff_balances": {
         "title": "Staff Balances",
         "subtitle": "View payment summary for each staff member • {campus}",
@@ -1838,6 +1853,10 @@
         "comment": "Comment",
         "total": "Total",
         "dash": "—",
+        "reverse": "Reverse Transaction",
+        "reverse_confirm": "Reverse this transaction? This will remove the payment and recalculate the student's balance.",
+        "reverse_success": "Transaction reversed",
+        "reverse_failed": "Failed to reverse transaction",
         "toast": {
           "fetch_failed": "Failed to fetch transactions"
         }
@@ -2150,7 +2169,10 @@
       "status_partial": "Partial",
       "status_overdue": "Overdue",
       "status_pending": "Pending",
-      "error_loading": "Error loading fees"
+      "status_waived": "Waived",
+      "error_loading": "Error loading fees",
+      "additional_charges": "Additional Charges",
+      "col_charge": "Charge"
     },
     "payments": {
       "title": "Payments",
@@ -8787,7 +8809,14 @@
         "col_file_attached": "File Attached",
         "col_actions": "Actions",
         "print_pay_stub": "Print Pay Stub",
-        "print_export": "Print/Export to PDF"
+        "print_export": "Print/Export to PDF",
+        "request_advance": "Request Advance",
+        "request_advance_title": "Request a Salary Advance",
+        "advance_amount": "Amount",
+        "advance_reason": "Reason (optional)",
+        "advance_amount_required": "Please enter a valid amount",
+        "advance_requested": "Advance request submitted",
+        "advance_request_error": "Failed to submit advance request"
       },
       "staff_payments": {
         "title": "Staff Payments",
@@ -9358,6 +9387,13 @@
     "firstName": "First Name",
     "lastName": "Last Name",
     "email": "Email Address",
+    "username": "Username",
+    "emailOrUsernameNote": "Enter at least an email or a username to log in with.",
+    "emailOrUsernameRequired": "Please provide an email or a username",
+    "usernameOptionalNote": "Choose a username to log in with — you'll be issued one automatically if you leave this blank.",
+    "usernameInvalid": "Username must be at least 3 characters and contain only letters, numbers, dots, hyphens, and underscores",
+    "usernameRequired": "Username is required",
+    "usernameAlreadyTaken": "This username is already taken — please choose another.",
     "phone": "Phone Number",
     "phoneOptional": "Phone Number (optional)",
     "password": "Password",

@@ -49,6 +49,7 @@ export interface AccountingPayment {
     payment_date: string
     comments?: string
     file_attached?: string
+    receipt_number?: string
     payment_method?: string
     created_by?: string
     created_at: string
@@ -231,6 +232,15 @@ class AccountingService {
     }
 
     async deleteCategory(id: string, campusId: string): Promise<void> {
+        const [{ count: incomeCount }, { count: paymentCount }] = await Promise.all([
+            supabase.from('accounting_incomes').select('id', { count: 'exact', head: true }).eq('category_id', id).eq('campus_id', campusId),
+            supabase.from('accounting_payments').select('id', { count: 'exact', head: true }).eq('category_id', id).eq('campus_id', campusId)
+        ])
+
+        if ((incomeCount || 0) > 0 || (paymentCount || 0) > 0) {
+            throw new Error('Cannot delete category: it is still referenced by existing income/expense records. Deactivate it instead.')
+        }
+
         const { error } = await supabase
             .from('accounting_categories')
             .delete()
@@ -535,6 +545,7 @@ class AccountingService {
                 comments: dto.comments,
                 file_attached: dto.file_attached,
                 receipt_number: receipt,
+                payment_method: dto.payment_method || 'cash',
                 created_by: dto.created_by
             })
             .select(`
@@ -561,7 +572,9 @@ class AccountingService {
                 amount: updates.amount,
                 payment_date: updates.payment_date,
                 comments: updates.comments,
-                file_attached: updates.file_attached
+                file_attached: updates.file_attached,
+                receipt_number: updates.receipt_number,
+                payment_method: updates.payment_method
             })
             .eq('id', id)
             .eq('campus_id', campusId)
@@ -607,7 +620,12 @@ class AccountingService {
             })
 
         if (error) {
-            // Fallback to basic totals if function doesn't exist
+            // PGRST202 = Supabase "function not found" — expected until the RPC migration
+            // is applied. Any other error (permissions, bad params, etc.) is unexpected
+            // and should be surfaced, not silently swallowed by the fallback.
+            if (error.code !== 'PGRST202' && !/function .* does not exist/i.test(error.message || '')) {
+                console.error('Unexpected error calling get_accounting_totals_with_fees:', error)
+            }
             return this.calculateTotalsManually(campusId, academicYear, startDate, endDate)
         }
 
@@ -668,13 +686,92 @@ class AccountingService {
         const { data: staffPayments } = await staffQuery
         const totalStaffPayments = (staffPayments || []).reduce((sum, s) => sum + Number(s.amount), 0)
 
+        // Student fee payments: resolve this campus's student_fees for the academic year,
+        // then sum the fee_payments referencing them (fee_payments.school_id can drift from
+        // its parent student_fees row historically, so join via student_fee_id like
+        // fees.service.ts does rather than filtering fee_payments by school_id directly).
+        let totalStudentPayments = 0
+        const { data: studentFees } = await supabase
+            .from('student_fees')
+            .select('id')
+            .eq('school_id', campusId)
+            .eq('academic_year', academicYear)
+
+        const feeIds = (studentFees || []).map((f: any) => f.id)
+        if (feeIds.length > 0) {
+            let paymentsQuery = supabase
+                .from('fee_payments')
+                .select('amount')
+                .in('student_fee_id', feeIds)
+
+            if (startDate) paymentsQuery = paymentsQuery.gte('payment_date', startDate)
+            if (endDate) paymentsQuery = paymentsQuery.lte('payment_date', endDate)
+
+            const { data: feePayments } = await paymentsQuery
+            totalStudentPayments = (feePayments || []).reduce((sum: number, p: any) => sum + Number(p.amount), 0)
+        }
+
         return {
             total_incomes: totalIncomes,
-            total_student_payments: 0, // Would need to query fee_payments
+            total_student_payments: totalStudentPayments,
             total_expenses: totalExpenses,
             total_staff_payments: totalStaffPayments,
-            balance: totalIncomes - totalExpenses,
-            general_balance: totalIncomes - (totalExpenses + totalStaffPayments)
+            balance: totalIncomes + totalStudentPayments - totalExpenses,
+            general_balance: totalIncomes + totalStudentPayments - (totalExpenses + totalStaffPayments)
+        }
+    }
+
+    /**
+     * Minimum-viable P&L-shaped report: sums incomes and expenses (general + staff)
+     * by category for a date range. Not a full P&L/balance-sheet statement — see the
+     * financial-systems audit's completeness gaps for that larger, separate scope.
+     */
+    async getCategoryRollup(
+        campusId: string,
+        academicYear: string,
+        startDate?: string,
+        endDate?: string
+    ): Promise<{ incomes: any[]; expenses: any[] }> {
+        let incomesQuery = supabase
+            .from('accounting_incomes')
+            .select('amount, category:accounting_categories(id, name)')
+            .eq('campus_id', campusId)
+            .eq('academic_year', academicYear)
+        if (startDate) incomesQuery = incomesQuery.gte('income_date', startDate)
+        if (endDate) incomesQuery = incomesQuery.lte('income_date', endDate)
+
+        let expensesQuery = supabase
+            .from('accounting_payments')
+            .select('amount, category:accounting_categories(id, name)')
+            .eq('campus_id', campusId)
+            .eq('academic_year', academicYear)
+        if (startDate) expensesQuery = expensesQuery.gte('payment_date', startDate)
+        if (endDate) expensesQuery = expensesQuery.lte('payment_date', endDate)
+
+        const [{ data: incomeRows }, { data: expenseRows }] = await Promise.all([incomesQuery, expensesQuery])
+
+        const rollUp = (rows: any[] | null) => {
+            const byCategory = new Map<string, { category_id: string | null; category_name: string; total: number }>()
+            for (const row of rows || []) {
+                const categoryId = row.category?.id ?? null
+                const key = categoryId || 'uncategorized'
+                const existing = byCategory.get(key)
+                if (existing) {
+                    existing.total += Number(row.amount)
+                } else {
+                    byCategory.set(key, {
+                        category_id: categoryId,
+                        category_name: row.category?.name || 'Uncategorized',
+                        total: Number(row.amount)
+                    })
+                }
+            }
+            return Array.from(byCategory.values()).map(c => ({ ...c, total: Math.round((c.total + Number.EPSILON) * 100) / 100 }))
+        }
+
+        return {
+            incomes: rollUp(incomeRows),
+            expenses: rollUp(expenseRows)
         }
     }
 
@@ -1140,6 +1237,7 @@ class AccountingService {
         description?: string
         reference_number?: string
         file_attached?: string
+        payment_method?: string
     }, creatorId: string): Promise<any> {
         const { data, error } = await supabase
             .from('payee_payments')
@@ -1152,6 +1250,7 @@ class AccountingService {
                 description: paymentData.description,
                 reference_number: paymentData.reference_number,
                 file_attached: paymentData.file_attached,
+                payment_method: paymentData.payment_method || 'cash',
                 created_by: creatorId
             })
             .select()

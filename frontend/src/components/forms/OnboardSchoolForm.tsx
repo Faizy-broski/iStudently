@@ -57,7 +57,7 @@ const onboardSchoolSchema = z.object({
   // Admin Credentials
   adminFirstName: z.string().min(2, "First name must be at least 2 characters"),
   adminLastName: z.string().min(2, "Last name must be at least 2 characters"),
-  adminEmail: z.string().email("Invalid email address"),
+  adminEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
   adminUsername: z.string()
     .min(3, "Username must be at least 3 characters")
     .regex(/^[a-zA-Z0-9._-]+$/, "Username can only contain letters, numbers, dots, hyphens, and underscores")
@@ -349,7 +349,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
         admin: {
           first_name: data.adminFirstName,
           last_name: data.adminLastName,
-          email: data.adminEmail,
+          email: data.adminEmail || undefined,
           password: data.adminPassword,
           username: data.adminUsername || undefined,
         },
@@ -384,8 +384,10 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
         schoolName: data.schoolName,
         logoUrl,
         adminName: `${data.adminFirstName} ${data.adminLastName}`,
-        adminEmail: data.adminEmail,
-        username: data.adminUsername || "",
+        adminEmail: data.adminEmail || "",
+        // Fall back to the server-generated username when the admin left the
+        // field blank — the backend always derives/generates one.
+        username: data.adminUsername || createdSchool.admin?.username || "",
         password: data.adminPassword,
       };
 
@@ -738,7 +740,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
 
           <div className="space-y-2">
             <Label htmlFor="adminEmail" className="text-gray-700 dark:text-gray-300">
-              Email <span className="text-red-500">*</span>
+              Email <span className="text-gray-400 dark:text-gray-500 text-xs font-normal">(optional)</span>
             </Label>
             <div className="relative">
               <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -751,8 +753,12 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
                 disabled={isSubmitting}
               />
             </div>
-            {errors.adminEmail && (
+            {errors.adminEmail ? (
               <p className="text-sm text-red-500">{errors.adminEmail.message}</p>
+            ) : (
+              <p className="text-xs text-gray-400">
+                Leave blank to log in with a username instead — one will be generated below.
+              </p>
             )}
           </div>
 

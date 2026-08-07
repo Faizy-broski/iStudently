@@ -5,7 +5,7 @@ export async function getVapidPublicKey(): Promise<string | null> {
   return res.success && res.data ? res.data.publicKey : null
 }
 
-export async function subscribeToPush(subscription: PushSubscriptionJSON): Promise<boolean> {
+export async function subscribeToPush(subscription: PushSubscriptionJSON): Promise<{ success: boolean; error?: string }> {
   const res = await apiRequest('/push/subscribe', {
     method: 'POST',
     body: JSON.stringify({
@@ -13,7 +13,7 @@ export async function subscribeToPush(subscription: PushSubscriptionJSON): Promi
       keys: subscription.keys,
     }),
   })
-  return res.success
+  return { success: res.success, error: res.error }
 }
 
 export async function unsubscribeFromPush(endpoint: string): Promise<boolean> {

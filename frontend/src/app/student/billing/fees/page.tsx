@@ -1,7 +1,7 @@
 'use client'
 
-import { useStudentFees } from '@/hooks/useStudentDashboard'
-import { Receipt, Loader2, AlertCircle, DollarSign } from 'lucide-react'
+import { useStudentFees, useStudentBillingElements } from '@/hooks/useStudentDashboard'
+import { Receipt, Loader2, AlertCircle, DollarSign, ReceiptText } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { format, parseISO } from 'date-fns'
@@ -10,6 +10,7 @@ import { useTranslations } from 'next-intl'
 
 export default function StudentFeesPage() {
   const { fees, isLoading, error } = useStudentFees()
+  const { billingElements } = useStudentBillingElements()
   const t = useTranslations('student_billing.fees')
 
   function statusBadge(status: string) {
@@ -17,6 +18,7 @@ export default function StudentFeesPage() {
       case 'paid': return <Badge className="bg-green-100 text-green-700">{t('status_paid')}</Badge>
       case 'partial': return <Badge className="bg-yellow-100 text-yellow-700">{t('status_partial')}</Badge>
       case 'overdue': return <Badge className="bg-red-100 text-red-700">{t('status_overdue')}</Badge>
+      case 'waived': return <Badge className="bg-blue-100 text-blue-700">{t('status_waived')}</Badge>
       default: return <Badge className="bg-orange-100 text-orange-700">{t('status_pending')}</Badge>
     }
   }
@@ -126,6 +128,43 @@ export default function StudentFeesPage() {
           )}
         </CardContent>
       </Card>
+
+      {billingElements.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ReceiptText className="h-5 w-5" /> {t('additional_charges')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="border-b">
+                  <tr className="text-xs text-muted-foreground uppercase">
+                    <th className="text-start py-3 pe-4 font-semibold">{t('col_charge')}</th>
+                    <th className="text-end py-3 pe-4 font-semibold">{t('col_amount')}</th>
+                    <th className="text-end py-3 pe-4 font-semibold">{t('col_paid')}</th>
+                    <th className="text-center py-3 font-semibold">{t('col_status')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {billingElements.map(el => (
+                    <tr key={el.id} className="hover:bg-accent/30">
+                      <td className="py-3 pe-4">
+                        <p className="font-medium">{el.element_title}</p>
+                        {el.category_title && <p className="text-xs text-muted-foreground">{el.category_title}</p>}
+                      </td>
+                      <td className="py-3 pe-4 text-end font-medium">${el.amount.toFixed(2)}</td>
+                      <td className="py-3 pe-4 text-end text-green-600">${el.amount_paid.toFixed(2)}</td>
+                      <td className="py-3 text-center">{statusBadge(el.status)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

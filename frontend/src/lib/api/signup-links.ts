@@ -3,7 +3,7 @@ import { apiRequest } from './index'
 export interface SignupCustomField {
   id: string
   label: string
-  type: 'text' | 'select' | 'textarea' | 'date'
+  type: 'text' | 'select' | 'textarea' | 'date' | 'checkbox' | 'multi-select'
   required: boolean
   options?: string[]
   placeholder?: string
@@ -28,7 +28,7 @@ export interface ProfileFieldDef {
   field_key?: string
   label_en: string
   label_ar: string
-  type: 'text' | 'select' | 'textarea' | 'date'
+  type: 'text' | 'select' | 'textarea' | 'date' | 'checkbox' | 'multi-select'
   options?: ProfileFieldOption[]
   appliesToRoles: string[]
 }
@@ -41,6 +41,8 @@ export interface SignupLinkMeta {
     first_name?: { required: boolean }
     last_name?: { required: boolean }
     phone?: { enabled: boolean; required: boolean }
+    email?: { enabled: boolean; required: boolean }
+    username?: { enabled: boolean; required: boolean }
   }
 }
 

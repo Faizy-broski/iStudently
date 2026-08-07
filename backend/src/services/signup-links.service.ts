@@ -23,6 +23,15 @@ export interface SignupLinkMeta {
     first_name?: { required: boolean }
     last_name?: { required: boolean }
     phone?: { enabled: boolean; required: boolean }
+    // Defaults to enabled+optional when absent (pre-existing links didn't have
+    // this key and previously hardcoded email as always-required) — applicants
+    // without an email are issued a username instead (see pending-signups.service.ts).
+    email?: { enabled: boolean; required: boolean }
+    // Defaults to DISABLED when absent (this is a brand-new field, unlike email/
+    // phone/name which existed on every link already) — admins opt in per link.
+    // When enabled, the applicant's chosen username is carried through to
+    // profiles.username on approval instead of an auto-generated one.
+    username?: { enabled: boolean; required: boolean }
   }
 }
 

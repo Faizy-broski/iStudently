@@ -16,6 +16,7 @@ export interface PendingSignup {
   last_name: string
   email: string | null
   phone: string | null
+  username: string | null
   // password_hash is never returned to callers — stripped before returning
   extra_data: Record<string, unknown>
   status: 'pending' | 'approved' | 'rejected'
@@ -40,6 +41,7 @@ export interface CreatePendingSignupDTO {
   lastName: string
   email: string | null
   phone: string | null
+  username: string | null
   encryptedPassword: string
   extraData: Record<string, unknown>
 }
@@ -70,6 +72,7 @@ export async function createPendingSignup(dto: CreatePendingSignupDTO): Promise<
       last_name: dto.lastName,
       email: dto.email,
       phone: dto.phone,
+      username: dto.username,
       password_hash: dto.encryptedPassword,
       extra_data: dto.extraData,
     })
@@ -396,6 +399,11 @@ export async function approvePendingSignup(
   let plainPassword: string | undefined
   try {
     const creds = await generateCredentials()
+    // Respect the username the applicant chose at signup time (already
+    // uniqueness-checked in submitSignup) instead of overwriting it with a
+    // fresh random one — only fall back to a generated username when they
+    // didn't set one.
+    const finalUsername = row.username || creds.username
 
     // Sync Supabase auth password FIRST — only persist/display the new username
     // and password once the sync succeeds, so we never show credentials that
@@ -411,7 +419,7 @@ export async function approvePendingSignup(
     await supabase
       .from('profiles')
       .update({
-        username: creds.username,
+        username: finalUsername,
         force_password_change: true,
         username_generated_at: new Date().toISOString(),
       })
@@ -504,6 +512,33 @@ export async function isEmailAlreadyUsed(email: string, schoolId: string): Promi
     .select('id')
     .eq('email', email)
     .eq('school_id', schoolId)
+    .in('status', ['pending', 'approved'])
+    .maybeSingle()
+
+  return !!pending
+}
+
+/**
+ * Usernames are the login identifier and are looked up globally (across
+ * every school — see resolve-username in public-pages.routes.ts, which has
+ * no school_id filter), so uniqueness must be checked globally too, unlike
+ * email which is scoped per school.
+ */
+export async function isUsernameAlreadyUsed(username: string): Promise<boolean> {
+  // Check profiles table (existing users, any school)
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id')
+    .ilike('username', username)
+    .maybeSingle()
+
+  if (profile) return true
+
+  // Check pending_signups (already applied or approved, any school)
+  const { data: pending } = await supabase
+    .from('pending_signups')
+    .select('id')
+    .ilike('username', username)
     .in('status', ['pending', 'approved'])
     .maybeSingle()
 

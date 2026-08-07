@@ -26,12 +26,16 @@ export function PushNotificationPrompt() {
   }
 
   const handleEnable = async () => {
-    const ok = await subscribe()
-    if (ok) {
+    const { success, reason } = await subscribe()
+    if (success) {
       toast.success(t("enabledSuccess"))
       setVisible(false)
     } else {
-      dismiss()
+      // Don't permanently dismiss (localStorage flag) on failure — that silently
+      // suppresses the prompt forever with no way for the user to see why it
+      // failed or retry after the underlying issue (server config, network) is
+      // fixed. Only the explicit "Not now" button should dismiss permanently.
+      toast.error(t("enabledFailure"), { description: reason })
     }
   }
 

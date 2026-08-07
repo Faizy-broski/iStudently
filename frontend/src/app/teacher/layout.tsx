@@ -14,7 +14,7 @@ export default function TeacherLayout({
 }) {
   return (
     <AuthLoadingGuard>
-      <RoleGuard allowedRoles={['teacher']}>
+      <RoleGuard allowedRoles={['teacher', 'staff']}>
         <CampusProvider>
           <SchoolSettingsProvider>
             <DashboardLayout role="teacher">

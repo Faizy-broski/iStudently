@@ -180,6 +180,9 @@ class SalaryService {
         // Also filter staff by campus to ensure they belong to the selected campus
         query = query.eq('staff.school_id', targetSchoolId)
 
+        // Exclude terminated/inactive staff from bulk salary generation
+        query = query.eq('staff.is_active', true)
+
         const { data, error } = await query
 
         if (error) throw new Error(`Failed to get salary structures: ${error.message}`)
@@ -401,8 +404,15 @@ class SalaryService {
         }
 
         if (action === 'approve') {
-            updates.recovery_month = recoveryMonth || new Date().getMonth() + 2 // Next month
-            updates.recovery_year = recoveryYear || new Date().getFullYear()
+            const now = new Date()
+            let nextMonth = now.getMonth() + 2 // intended: month after next, 1-indexed
+            let nextYear = now.getFullYear()
+            if (nextMonth > 12) {
+                nextMonth -= 12
+                nextYear += 1
+            }
+            updates.recovery_month = recoveryMonth || nextMonth
+            updates.recovery_year = recoveryYear || nextYear
         }
 
         const { data, error } = await supabase
@@ -565,14 +575,56 @@ class SalaryService {
         }
 
         // Mark advances as recovered
+        // NOTE: this is not wrapped in a DB transaction with the salary_records
+        // upsert above (no generic transaction helper exists in this codebase).
+        // The salary record has already been created successfully at this point,
+        // so we deliberately do NOT throw on failure here — that would misleadingly
+        // fail an otherwise-successful salary generation. We just log loudly so any
+        // orphaned advances (approved but not marked recovered) are visible.
         if (advances && advances.length > 0) {
-            await supabase
+            const { error: advanceError } = await supabase
                 .from('salary_advances')
                 .update({ status: 'recovered' })
                 .in('id', advances.map((a: any) => a.id))
+
+            if (advanceError) {
+                console.error(
+                    `Failed to mark advances as recovered for staff ${staffId} (salary record ${salaryRecord.id}):`,
+                    advanceError.message
+                )
+            }
         }
 
         return salaryRecord
+    }
+
+    /**
+     * Find approved salary advances whose recovery period (recovery_month/recovery_year)
+     * has already passed relative to now, but which are still sitting in 'approved'
+     * status (i.e. they should have been recovered by generateMonthlySalary by now
+     * but weren't — e.g. because no salary run happened for that staff member/month).
+     * This is a detection query only; it does not attempt automated recovery.
+     */
+    async findOrphanedAdvances(schoolId: string): Promise<any[]> {
+        const now = new Date()
+        const currentMonth = now.getMonth() + 1
+        const currentYear = now.getFullYear()
+
+        const { data, error } = await supabase
+            .from('salary_advances')
+            .select('*')
+            .eq('school_id', schoolId)
+            .eq('status', 'approved')
+            .not('recovery_month', 'is', null)
+            .not('recovery_year', 'is', null)
+
+        if (error) throw new Error(`Failed to find orphaned advances: ${error.message}`)
+
+        return (data || []).filter((adv: any) => {
+            if (adv.recovery_year < currentYear) return true
+            if (adv.recovery_year === currentYear && adv.recovery_month < currentMonth) return true
+            return false
+        })
     }
 
     async generateBulkSalaries(schoolId: string, month: number, year: number, campusId?: string): Promise<{ success: number; failed: number; errors: string[] }> {

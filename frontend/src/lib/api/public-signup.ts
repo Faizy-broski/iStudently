@@ -5,7 +5,7 @@ import { API_URL } from '@/config/api'
 export interface SignupCustomField {
   id: string
   label: string
-  type: 'text' | 'select' | 'textarea' | 'date'
+  type: 'text' | 'select' | 'textarea' | 'date' | 'checkbox' | 'multi-select'
   required: boolean
   options?: string[]
   placeholder?: string
@@ -19,6 +19,8 @@ export interface SignupLinkMeta {
     first_name?: { required: boolean }
     last_name?: { required: boolean }
     phone?: { enabled: boolean; required: boolean }
+    email?: { enabled: boolean; required: boolean }
+    username?: { enabled: boolean; required: boolean }
   }
 }
 
@@ -42,8 +44,9 @@ export interface SignupSubmitDTO {
   token: string
   first_name: string
   last_name: string
-  email: string
+  email?: string
   phone?: string
+  username?: string
   password: string
   confirm_password: string
   extra_fields?: Record<string, any>

@@ -9,6 +9,9 @@ import { twoFAService } from "./two-fa.service";
 import { sweepAllExpiredQuizzes } from "./quiz.service";
 import { GrievanceService } from "./grievance.service";
 
+// TODO: no per-school timezone column exists yet; all schools share this cron timezone until schools/school_settings gains one
+const DEFAULT_CRON_TIMEZONE = "Asia/Karachi";
+
 /**
  * AUTOMATED CRON SERVICE
  *
@@ -41,7 +44,7 @@ class CronService {
       },
       {
         scheduled: true,
-        timezone: "Asia/Karachi",
+        timezone: DEFAULT_CRON_TIMEZONE,
       },
     );
 
@@ -53,7 +56,7 @@ class CronService {
       },
       {
         scheduled: true,
-        timezone: "Asia/Karachi", // Change to your timezone
+        timezone: DEFAULT_CRON_TIMEZONE, // Change to your timezone
       },
     );
 
@@ -66,7 +69,7 @@ class CronService {
       },
       {
         scheduled: true,
-        timezone: "Asia/Karachi",
+        timezone: DEFAULT_CRON_TIMEZONE,
       },
     );
 
@@ -79,7 +82,7 @@ class CronService {
       },
       {
         scheduled: true,
-        timezone: "Asia/Karachi",
+        timezone: DEFAULT_CRON_TIMEZONE,
       },
     );
 
@@ -91,7 +94,7 @@ class CronService {
       },
       {
         scheduled: true,
-        timezone: "Asia/Karachi",
+        timezone: DEFAULT_CRON_TIMEZONE,
       },
     );
 
@@ -104,7 +107,7 @@ class CronService {
       },
       {
         scheduled: true,
-        timezone: "Asia/Karachi",
+        timezone: DEFAULT_CRON_TIMEZONE,
       },
     );
 
@@ -117,7 +120,7 @@ class CronService {
       },
       {
         scheduled: true,
-        timezone: "Asia/Karachi",
+        timezone: DEFAULT_CRON_TIMEZONE,
       },
     );
 
@@ -130,7 +133,7 @@ class CronService {
       },
       {
         scheduled: true,
-        timezone: "Asia/Karachi",
+        timezone: DEFAULT_CRON_TIMEZONE,
       },
     );
 
@@ -142,7 +145,7 @@ class CronService {
       },
       {
         scheduled: true,
-        timezone: "Asia/Karachi",
+        timezone: DEFAULT_CRON_TIMEZONE,
       },
     );
 
@@ -160,7 +163,7 @@ class CronService {
       },
       {
         scheduled: true,
-        timezone: "Asia/Karachi",
+        timezone: DEFAULT_CRON_TIMEZONE,
       },
     );
 
@@ -180,7 +183,7 @@ class CronService {
       },
       {
         scheduled: true,
-        timezone: "Asia/Karachi",
+        timezone: DEFAULT_CRON_TIMEZONE,
       },
     );
 
@@ -303,8 +306,10 @@ class CronService {
    */
   async generateMonthlySalariesForAllSchools() {
     const now = new Date();
-    const month = now.getMonth() + 1; // Current month (1-12)
-    const year = now.getFullYear();
+    // Runs on the 1st of the month (or a few days after) to close out the
+    // PREVIOUS month, not the month that's just starting.
+    const month = now.getMonth() === 0 ? 12 : now.getMonth();
+    const year = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
 
     try {
       // Get all active schools
@@ -425,8 +430,9 @@ class CronService {
    */
   async retryFailedGenerations() {
     const now = new Date();
-    const month = now.getMonth() + 1;
-    const year = now.getFullYear();
+    // Closes out the PREVIOUS month, not the month that's just starting.
+    const month = now.getMonth() === 0 ? 12 : now.getMonth();
+    const year = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
 
     try {
       // Get all active schools
@@ -438,8 +444,25 @@ class CronService {
       if (!schools || schools.length === 0) return;
 
       for (const school of schools) {
+        // Fetch staff_ids that already have a salary record for this month/year
+        const { data: existingRecords, error: existingError } = await supabase
+          .from("salary_records")
+          .select("staff_id")
+          .eq("school_id", school.id)
+          .eq("month", month)
+          .eq("year", year);
+
+        if (existingError) {
+          console.error(`   ❌ Error checking existing records for ${school.name}:`, existingError);
+          continue;
+        }
+
+        const existingStaffIds = new Set(
+          (existingRecords || []).map((r: any) => r.staff_id),
+        );
+
         // Check if school has staff with salary structures but no salary records for this month
-        const { data: structuresWithoutSalary, error } = await supabase
+        const { data: structures, error } = await supabase
           .from("salary_structures")
           .select(
             `
@@ -450,24 +473,18 @@ class CronService {
                     `,
           )
           .eq("school_id", school.id)
-          .eq("is_current", true)
-          .not(
-            "staff_id",
-            "in",
-            `(
-                        SELECT staff_id FROM salary_records 
-                        WHERE school_id = '${school.id}' 
-                        AND month = ${month} 
-                        AND year = ${year}
-                    )`,
-          );
+          .eq("is_current", true);
 
         if (error) {
           console.error(`   ❌ Error checking ${school.name}:`, error);
           continue;
         }
 
-        if (structuresWithoutSalary && structuresWithoutSalary.length > 0) {
+        const structuresWithoutSalary = (structures || []).filter(
+          (s: any) => !existingStaffIds.has(s.staff_id),
+        );
+
+        if (structuresWithoutSalary.length > 0) {
           await salaryService.generateBulkSalaries(school.id, month, year);
         }
       }
@@ -479,8 +496,25 @@ class CronService {
   /**
    * Store automation log in database
    */
-  private async logAutomationRun(_jobName: string, _details: any) {
-    // TODO: persist to automation_logs table
+  private async logAutomationRun(jobName: string, details: any) {
+    try {
+      const success =
+        details && typeof details.total_failed === "number"
+          ? details.total_failed === 0
+          : details?.success !== false;
+
+      const { error } = await supabase.from("automation_logs").insert({
+        job_name: jobName,
+        details,
+        success,
+      });
+
+      if (error) {
+        console.error(`Failed to log automation run for ${jobName}:`, error.message);
+      }
+    } catch (err: any) {
+      console.error(`Failed to log automation run for ${jobName}:`, err.message);
+    }
   }
 
   /**
@@ -488,8 +522,9 @@ class CronService {
    */
   async manualTriggerMonthlySalary(schoolId?: string) {
     const now = new Date();
-    const month = now.getMonth() + 1;
-    const year = now.getFullYear();
+    // Closes out the PREVIOUS month, not the month that's just starting.
+    const month = now.getMonth() === 0 ? 12 : now.getMonth();
+    const year = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
 
     if (schoolId) {
       const result = await salaryService.generateBulkSalaries(

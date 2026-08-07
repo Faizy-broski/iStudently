@@ -9,9 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
+import { MultiSelectPopover } from '@/components/shared/MultiSelectPopover'
 import { IconLoader, IconSearch, IconReceipt, IconFilter, IconRefresh, IconDownload } from '@tabler/icons-react'
 import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
@@ -107,24 +107,27 @@ async function fetchGrades(schoolId: string): Promise<GradeLevel[]> {
     return json.success ? json.data : []
 }
 
-async function fetchSections(gradeId: string, schoolId: string): Promise<Section[]> {
+// Fetches all sections for the campus (no grade filter) — the grade↔section
+// cascade is applied client-side since a receipts filter may span multiple
+// selected grades at once.
+async function fetchSections(schoolId: string): Promise<Section[]> {
     const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
-    const res = await fetch(`${API_BASE}/api/academics/sections?grade_id=${gradeId}&school_id=${schoolId}`, {
+    const res = await fetch(`${API_BASE}/api/academics/sections?school_id=${schoolId}`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
     })
     const json = await res.json()
     return json.success ? json.data : []
 }
 
-async function fetchStudentsWithPayments(schoolId: string, gradeId?: string, sectionId?: string): Promise<StudentWithPayments[]> {
+async function fetchStudentsWithPayments(schoolId: string, gradeIds?: string[], sectionIds?: string[]): Promise<StudentWithPayments[]> {
     const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     const params = new URLSearchParams({ school_id: schoolId })
-    if (gradeId && gradeId !== 'all') params.set('grade_id', gradeId)
-    if (sectionId && sectionId !== 'all') params.set('section_id', sectionId)
+    if (gradeIds && gradeIds.length > 0) params.set('grade_id', gradeIds.join(','))
+    if (sectionIds && sectionIds.length > 0) params.set('section_id', sectionIds.join(','))
 
     const res = await fetch(`${API_BASE}/api/fees/payments/all-with-students?${params}`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
@@ -152,8 +155,10 @@ export default function PrintReceiptsPage() {
         }
     }, [schoolId, isPluginActive])
 
-    const [gradeId, setGradeId] = useState<string>('all')
-    const [sectionId, setSectionId] = useState<string>('all')
+    const [gradeIds, setGradeIds] = useState<string[]>([])
+    const [sectionIds, setSectionIds] = useState<string[]>([])
+    const [gradePopoverOpen, setGradePopoverOpen] = useState(false)
+    const [sectionPopoverOpen, setSectionPopoverOpen] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedPayments, setSelectedPayments] = useState<Set<string>>(new Set())
     const [selectAll, setSelectAll] = useState(false)
@@ -171,16 +176,29 @@ export default function PrintReceiptsPage() {
         () => fetchGrades(schoolId!)
     )
 
-    // Fetch sections when grade changes
-    const { data: sections } = useSWR<Section[]>(
-        gradeId && gradeId !== 'all' && schoolId ? `sections-receipts-${gradeId}-${schoolId}` : null,
-        () => fetchSections(gradeId, schoolId!)
+    // Fetch all sections for the campus
+    const { data: allSections } = useSWR<Section[]>(
+        schoolId ? `sections-receipts-${schoolId}` : null,
+        () => fetchSections(schoolId!)
     )
+
+    // Sections available for the currently-selected grades (cascading filter).
+    const sections = gradeIds.length > 0
+        ? allSections?.filter(s => gradeIds.includes(s.grade_level_id))
+        : allSections
+
+    // Drop any selected section that's no longer visible once the grade selection narrows.
+    useEffect(() => {
+        if (gradeIds.length === 0 || !sections) return
+        const visibleIds = new Set(sections.map(s => s.id))
+        setSectionIds(prev => prev.filter(id => visibleIds.has(id)))
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [gradeIds.join(',')])
 
     // Fetch students with payments
     const { data: studentsWithPayments, isLoading } = useSWR<StudentWithPayments[]>(
-        schoolId ? ['students-payments-receipts', schoolId, gradeId, sectionId] : null,
-        () => fetchStudentsWithPayments(schoolId!, gradeId, sectionId)
+        schoolId ? ['students-payments-receipts', schoolId, gradeIds.join(','), sectionIds.join(',')] : null,
+        () => fetchStudentsWithPayments(schoolId!, gradeIds, sectionIds)
     )
 
     // Flatten payments with student info for table display
@@ -216,8 +234,8 @@ export default function PrintReceiptsPage() {
 
     // Reset filters
     const handleResetFilters = () => {
-        setGradeId('all')
-        setSectionId('all')
+        setGradeIds([])
+        setSectionIds([])
         setSearchQuery('')
         setDateFrom('')
         setDateTo('')
@@ -529,31 +547,27 @@ export default function PrintReceiptsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="space-y-2">
                             <Label>{tf('th_gradeLevel') || 'Grade Level'}</Label>
-                            <Select value={gradeId} onValueChange={(v) => { setGradeId(v); setSectionId('all') }}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder={t('allGrades')} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">{t('allGrades')}</SelectItem>
-                                    {grades?.map(g => (
-                                        <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <MultiSelectPopover
+                                options={(grades || []).map(g => ({ id: g.id, label: g.name }))}
+                                selectedIds={gradeIds}
+                                onChange={setGradeIds}
+                                placeholder={t('allGrades')}
+                                emptyMessage={t('allGrades')}
+                                open={gradePopoverOpen}
+                                onOpenChange={setGradePopoverOpen}
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label>{tf('section') || 'Section'}</Label>
-                            <Select value={sectionId} onValueChange={setSectionId} disabled={gradeId === 'all'}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder={gradeId === 'all' ? t('selectGradeFirst') : t('allSections')} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">{t('allSections')}</SelectItem>
-                                    {sections?.map(s => (
-                                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <MultiSelectPopover
+                                options={(sections || []).map(s => ({ id: s.id, label: s.name }))}
+                                selectedIds={sectionIds}
+                                onChange={setSectionIds}
+                                placeholder={t('allSections')}
+                                emptyMessage={gradeIds.length === 0 ? t('selectGradeFirst') : t('allSections')}
+                                open={sectionPopoverOpen}
+                                onOpenChange={setSectionPopoverOpen}
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label>{t('searchStudent') || 'Search Student'}</Label>

@@ -4,6 +4,7 @@ import { useCallback } from 'react'
 import useSWR from 'swr'
 import { useAuth } from '@/context/AuthContext'
 import * as studentDashboardApi from '@/lib/api/student-dashboard'
+import { getMyBillingElements } from '@/lib/api/billing-elements'
 
 /**
  * Fetch dashboard overview data
@@ -276,6 +277,20 @@ export const useStudentFees = () => {
     { revalidateOnFocus: false, dedupingInterval: 60000 }
   )
   return { fees: data || [], isLoading: authLoading || isLoading, error, refresh: mutate }
+}
+
+/**
+ * Hook for the student's own billing element charges (zero-trust self-service)
+ */
+export const useStudentBillingElements = () => {
+  const { user, loading: authLoading } = useAuth()
+  const swrKey = user && !authLoading ? ['student-billing-elements', user.id] : null
+  const { data, error, isLoading, mutate } = useSWR(
+    swrKey,
+    () => getMyBillingElements(),
+    { revalidateOnFocus: false, dedupingInterval: 60000 }
+  )
+  return { billingElements: data || [], isLoading: authLoading || isLoading, error, refresh: mutate }
 }
 
 /**

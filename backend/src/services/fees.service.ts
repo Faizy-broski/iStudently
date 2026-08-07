@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase'
+import { round2 } from '../utils/money'
 
 export interface FeeCategory {
     id: string
@@ -396,9 +397,9 @@ class FeesService {
 
         // Calculate discount
         if (applicableTier.discount_type === 'percentage') {
-            return (baseAmount * applicableTier.discount_value) / 100
+            return round2((baseAmount * applicableTier.discount_value) / 100)
         }
-        return applicableTier.discount_value
+        return round2(applicableTier.discount_value)
     }
 
     // ==========================================
@@ -515,6 +516,8 @@ class FeesService {
             .single()
 
         if (feeError || !fee) throw new Error('Student fee not found')
+
+        if (fee.status === 'waived') throw new Error('Cannot record payment against a waived fee')
 
         // Check if payment amount is valid
         const balance = fee.final_amount - fee.amount_paid
@@ -665,8 +668,8 @@ class FeesService {
 
     async getAllPaymentsWithStudents(
         schoolId: string,
-        gradeId?: string,
-        sectionId?: string
+        gradeIds?: string[],
+        sectionIds?: string[]
     ): Promise<any[]> {
         // Build students query
         let studentsQuery = supabase
@@ -689,11 +692,11 @@ class FeesService {
             .eq('school_id', schoolId)
             .order('student_number')
 
-        if (gradeId && gradeId !== 'all') {
-            studentsQuery = studentsQuery.eq('grade_level_id', gradeId) as any
+        if (gradeIds && gradeIds.length > 0) {
+            studentsQuery = studentsQuery.in('grade_level_id', gradeIds) as any
         }
-        if (sectionId && sectionId !== 'all') {
-            studentsQuery = studentsQuery.eq('section_id', sectionId) as any
+        if (sectionIds && sectionIds.length > 0) {
+            studentsQuery = studentsQuery.in('section_id', sectionIds) as any
         }
 
         const { data: students } = await studentsQuery
@@ -775,7 +778,15 @@ class FeesService {
 
         const feeIds = studentFees.map(f => f.id)
 
-        // Get all payments for these fees
+        // Get all payments for these fees. Scoping through student_fee_id IN feeIds
+        // (feeIds already filtered by student_id + school_id above) is sufficient —
+        // do NOT additionally filter fee_payments by school_id here. Some historical
+        // fee_payments rows have a school_id that drifted from their parent
+        // student_fees row (the same campus_id/school_id inconsistency seen
+        // elsewhere in this codebase); the FK to student_fee_id is what actually
+        // guarantees correct ownership, and an extra .eq('school_id', ...) here
+        // was silently hiding genuine old payments. getAllPaymentsWithStudents
+        // (below) already does it this way, which is why it doesn't have this bug.
         const { data: payments, error: paymentsError } = await supabase
             .from('fee_payments')
             .select(`
@@ -783,7 +794,6 @@ class FeesService {
                 created_by_profile:created_by(first_name, last_name)
             `)
             .in('student_fee_id', feeIds)
-            .eq('school_id', schoolId)
             .order('payment_date', { ascending: false })
 
         if (paymentsError) throw new Error(`Failed to get payments: ${paymentsError.message}`)
@@ -874,6 +884,8 @@ class FeesService {
             existingFee = newFee
         }
 
+        if (existingFee.status === 'waived') throw new Error('Cannot record payment against a waived fee')
+
         // Record the payment
         const receipt = payment.receipt_number || `RP-${crypto.randomUUID().split('-')[0]}`
         const { data, error } = await supabase
@@ -901,9 +913,52 @@ class FeesService {
     }
 
     /**
+     * Recompute a student_fee's amount_paid/status from the remaining fee_payments rows.
+     * Mirrors the logic of the DB trigger `update_fee_after_payment`, which only fires
+     * on INSERT — this keeps balances correct after payment edits/deletes too.
+     */
+    private async recomputeFeeBalance(studentFeeId: string, schoolId: string): Promise<void> {
+        const { data: payments, error: paymentsError } = await supabase
+            .from('fee_payments')
+            .select('amount')
+            .eq('student_fee_id', studentFeeId)
+
+        if (paymentsError) throw new Error(`Failed to recompute fee balance: ${paymentsError.message}`)
+
+        const { data: fee, error: feeError } = await supabase
+            .from('student_fees')
+            .select('final_amount')
+            .eq('id', studentFeeId)
+            .eq('school_id', schoolId)
+            .single()
+
+        if (feeError || !fee) throw new Error('Failed to recompute fee balance: student fee not found')
+
+        const totalPaid = round2((payments || []).reduce((sum, p: any) => sum + Number(p.amount || 0), 0))
+        const status = totalPaid >= fee.final_amount ? 'paid' : totalPaid > 0 ? 'partial' : 'pending'
+
+        const { error: updateError } = await supabase
+            .from('student_fees')
+            .update({ amount_paid: totalPaid, status, updated_at: new Date().toISOString() })
+            .eq('id', studentFeeId)
+            .eq('school_id', schoolId)
+
+        if (updateError) throw new Error(`Failed to update fee balance: ${updateError.message}`)
+    }
+
+    /**
      * Delete a payment
      */
     async deletePayment(paymentId: string, schoolId: string): Promise<void> {
+        const { data: payment, error: fetchError } = await supabase
+            .from('fee_payments')
+            .select('student_fee_id')
+            .eq('id', paymentId)
+            .eq('school_id', schoolId)
+            .single()
+
+        if (fetchError || !payment) throw new Error('Payment not found')
+
         const { error } = await supabase
             .from('fee_payments')
             .delete()
@@ -911,6 +966,8 @@ class FeesService {
             .eq('school_id', schoolId)
 
         if (error) throw new Error(`Failed to delete payment: ${error.message}`)
+
+        await this.recomputeFeeBalance(payment.student_fee_id, schoolId)
     }
 
     /**
@@ -941,12 +998,37 @@ class FeesService {
             .single()
 
         if (error) throw new Error(`Failed to update payment: ${error.message}`)
+
+        if (data?.student_fee_id) {
+            await this.recomputeFeeBalance(data.student_fee_id, schoolId)
+        }
+
         return data
     }
 
     // ==========================================
     // FEE GENERATION
     // ==========================================
+
+    /**
+     * Load active student_fee_overrides for a student/academic year as a
+     * fee_category_id -> override_amount map. Shared by all fee-generation
+     * paths so overrides are honored consistently everywhere.
+     */
+    private async getActiveOverrideMap(studentId: string, academicYear: string, schoolId: string): Promise<Map<string, number>> {
+        const { data, error } = await supabase
+            .from('student_fee_overrides')
+            .select('fee_category_id, override_amount')
+            .eq('student_id', studentId)
+            .eq('academic_year', academicYear)
+            .eq('is_active', true)
+
+        if (error) throw new Error(`Failed to load fee overrides: ${error.message}`)
+
+        const map = new Map<string, number>()
+        for (const row of data || []) map.set(row.fee_category_id, row.override_amount)
+        return map
+    }
 
     async generateFeesForStudent(
         studentId: string,
@@ -963,7 +1045,9 @@ class FeesService {
 
         if (structError || !structure) throw new Error('Fee structure not found')
 
-        const baseAmount = structure.amount
+        const overrideMap = await this.getActiveOverrideMap(studentId, academicYear, schoolId)
+        const hasOverride = overrideMap.has(structure.fee_category_id)
+        const baseAmount = hasOverride ? overrideMap.get(structure.fee_category_id)! : structure.amount
 
         // Calculate sibling discount
         const siblingDiscount = await this.calculateSiblingDiscount(
@@ -1127,15 +1211,15 @@ class FeesService {
             // Calculate late fee
             let lateFee = 0
             if (settings.late_fee_type === 'percentage') {
-                lateFee = (fee.final_amount * settings.late_fee_value) / 100
+                lateFee = round2((fee.final_amount * settings.late_fee_value) / 100)
             } else {
-                lateFee = settings.late_fee_value
+                lateFee = round2(settings.late_fee_value)
             }
 
             // Apply late fee
             const updates: any = {
                 late_fee_applied: lateFee,
-                final_amount: fee.final_amount + lateFee,
+                final_amount: round2(fee.final_amount + lateFee),
                 status: 'overdue',
                 updated_at: new Date().toISOString()
             }
@@ -1285,12 +1369,18 @@ class FeesService {
             // Process each student
             for (const student of students) {
                 // Check if fee already exists for this month
-                const { data: existingFee } = await supabase
+                const { data: existingFee, error: existingFeeError } = await supabase
                     .from('student_fees')
                     .select('id')
                     .eq('student_id', student.id)
                     .eq('fee_month', feeMonth)
+                    .eq('school_id', effectiveSchoolId)
                     .single();
+
+                if (existingFeeError && existingFeeError.code !== 'PGRST116') {
+                    console.error(`Failed to check existing fee for student ${student.id}:`, existingFeeError);
+                    continue; // Don't silently treat a real error as "not found"
+                }
 
                 if (existingFee) {
                     continue; // Skip if already generated
@@ -1317,20 +1407,7 @@ class FeesService {
                 }
 
                 // Fetch any student-specific fee overrides for this academic year
-                const { data: studentOverrides } = await supabase
-                    .from('student_fee_overrides')
-                    .select('fee_category_id, override_amount')
-                    .eq('student_id', student.id)
-                    .eq('academic_year', currentAcademicYear)
-                    .eq('is_active', true);
-
-                // Create a map of category_id -> override_amount for quick lookup
-                const overrideMap = new Map<string, number>();
-                if (studentOverrides) {
-                    for (const override of studentOverrides) {
-                        overrideMap.set(override.fee_category_id, override.override_amount);
-                    }
-                }
+                const overrideMap = await this.getActiveOverrideMap(student.id, currentAcademicYear!, effectiveSchoolId);
 
                 // Calculate total fee amount and create breakdown details
                 let totalFeeAmount = 0;
@@ -1375,7 +1452,9 @@ class FeesService {
                 }
 
                 // Create single fee record with breakdown details stored as JSON
-                const dueDate = new Date(targetYear, normalizedMonth - 1, 5); // 5th of the month
+                // Built directly as a string (not via Date + toISOString) to avoid UTC
+                // round-tripping shifting the date by a day depending on server timezone.
+                const dueDate = `${targetYear}-${String(normalizedMonth).padStart(2, '0')}-05`;
                 const { data: createdFee, error: createError } = await supabase
                     .from('student_fees')
                     .insert({
@@ -1384,7 +1463,7 @@ class FeesService {
                         fee_structure_id: feeStructures[0].id, // Primary structure reference
                         academic_year: currentAcademicYear,
                         fee_month: feeMonth,
-                        due_date: dueDate.toISOString().split('T')[0],
+                        due_date: dueDate,
                         base_amount: totalFeeAmount,
                         sibling_discount: totalSiblingDiscount,
                         custom_discount: 0,
@@ -1484,34 +1563,46 @@ class FeesService {
 
         if (fetchError || !fee) throw new Error('Fee record not found')
 
+        if (adjustment.newLateFee !== undefined && adjustment.newLateFee < 0) {
+            throw new Error('New late fee amount must not be negative')
+        }
+        if (adjustment.customDiscount !== undefined) {
+            if (adjustment.customDiscount < 0) {
+                throw new Error('Discount amount must not be negative')
+            }
+            if (adjustment.customDiscount > fee.base_amount) {
+                throw new Error('Discount amount must not exceed the fee base amount')
+            }
+        }
+
         const amountBefore = fee.final_amount
         let updates: any = { updated_at: new Date().toISOString() }
         let adjustmentAmount = 0
 
         switch (adjustment.type) {
             case 'late_fee_removed':
-                adjustmentAmount = -fee.late_fee_applied
+                adjustmentAmount = round2(-fee.late_fee_applied)
                 updates.late_fee_applied = 0
-                updates.final_amount = fee.base_amount - fee.sibling_discount - fee.custom_discount
+                updates.final_amount = Math.max(0, round2(fee.base_amount - fee.sibling_discount - fee.custom_discount))
                 break
 
             case 'late_fee_reduced':
                 if (adjustment.newLateFee === undefined) throw new Error('New late fee amount required')
-                adjustmentAmount = adjustment.newLateFee - fee.late_fee_applied
-                updates.late_fee_applied = adjustment.newLateFee
-                updates.final_amount = fee.base_amount - fee.sibling_discount - fee.custom_discount + adjustment.newLateFee
+                adjustmentAmount = round2(adjustment.newLateFee - fee.late_fee_applied)
+                updates.late_fee_applied = round2(adjustment.newLateFee)
+                updates.final_amount = Math.max(0, round2(fee.base_amount - fee.sibling_discount - fee.custom_discount + adjustment.newLateFee))
                 break
 
             case 'custom_discount':
                 if (adjustment.customDiscount === undefined) throw new Error('Discount amount required')
-                adjustmentAmount = -adjustment.customDiscount
-                updates.custom_discount = (fee.custom_discount || 0) + adjustment.customDiscount
+                adjustmentAmount = round2(-adjustment.customDiscount)
+                updates.custom_discount = round2((fee.custom_discount || 0) + adjustment.customDiscount)
                 updates.discount_reason = adjustment.reason
-                updates.final_amount = fee.base_amount - fee.sibling_discount - updates.custom_discount + fee.late_fee_applied
+                updates.final_amount = Math.max(0, round2(fee.base_amount - fee.sibling_discount - updates.custom_discount + fee.late_fee_applied))
                 break
 
             case 'fee_waived':
-                adjustmentAmount = -fee.final_amount
+                adjustmentAmount = round2(-fee.final_amount)
                 updates.status = 'waived'
                 updates.notes = adjustment.reason
                 break
@@ -1533,7 +1624,7 @@ class FeesService {
         if (updateError) throw new Error(`Failed to adjust fee: ${updateError.message}`)
 
         // Log the adjustment for audit
-        await supabase.from('fee_adjustments').insert({
+        const { error: adjustmentLogError } = await supabase.from('fee_adjustments').insert({
             school_id: schoolId,
             student_fee_id: feeId,
             adjusted_by: adminId,
@@ -1543,6 +1634,8 @@ class FeesService {
             adjustment_amount: adjustmentAmount,
             reason: adjustment.reason
         })
+
+        if (adjustmentLogError) throw new Error(`Failed to log fee adjustment: ${adjustmentLogError.message}`)
 
         return updatedFee
     }
@@ -1670,18 +1763,23 @@ class FeesService {
             )
         }
 
-        // Sum up all category amounts into a single base amount with breakdown
+        // Sum up all category amounts into a single base amount with breakdown,
+        // applying any active student-specific fee overrides
+        const overrideMap = await this.getActiveOverrideMap(studentId, options.academicYear, schoolId)
         let baseAmount = 0
         const feeBreakdown: any[] = []
         for (const structure of feeStructures) {
-            const categoryAmount = structure.amount || 0
+            const hasOverride = overrideMap.has(structure.fee_category_id)
+            const categoryAmount = hasOverride ? overrideMap.get(structure.fee_category_id)! : (structure.amount || 0)
             if (categoryAmount > 0) {
                 baseAmount += categoryAmount
                 feeBreakdown.push({
                     category_id: structure.fee_category_id,
                     category_name: structure.fee_categories?.name || 'Fee',
                     category_code: structure.fee_categories?.code || '',
-                    amount: categoryAmount
+                    amount: categoryAmount,
+                    is_override: hasOverride,
+                    original_amount: hasOverride ? structure.amount : undefined
                 })
             }
         }
@@ -1748,15 +1846,15 @@ class FeesService {
     async getFeesByGrade(
         schoolId: string,
         options: {
-            gradeLevelId?: string
-            sectionId?: string
+            gradeLevelIds?: string[]
+            sectionIds?: string[]
             feeMonth?: string
             status?: string
             page?: number
             limit?: number
         }
     ): Promise<{ data: any[]; total: number }> {
-        const { gradeLevelId, sectionId, feeMonth, status, page = 1, limit = 30 } = options
+        const { gradeLevelIds, sectionIds, feeMonth, status, page = 1, limit = 30 } = options
         const offset = (page - 1) * limit
 
         let query = supabase
@@ -1775,8 +1873,8 @@ class FeesService {
             .order('due_date', { ascending: false })
             .range(offset, offset + limit - 1)
 
-        if (gradeLevelId) query = query.eq('students.grade_level_id', gradeLevelId)
-        if (sectionId) query = query.eq('students.section_id', sectionId)
+        if (gradeLevelIds && gradeLevelIds.length > 0) query = query.in('students.grade_level_id', gradeLevelIds)
+        if (sectionIds && sectionIds.length > 0) query = query.in('students.section_id', sectionIds)
         if (feeMonth) query = query.like('fee_month', `%-${feeMonth}`)
         if (status) query = query.eq('status', status)
 

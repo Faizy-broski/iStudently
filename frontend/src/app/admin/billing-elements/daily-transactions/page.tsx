@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/context/AuthContext"
 import { toast } from "sonner"
-import { Loader2, Plus } from "lucide-react"
+import { Loader2, Plus, Undo2 } from "lucide-react"
 import { useTranslations } from "next-intl"
 import {
   getCategories,
   getTransactions,
+  reverseTransaction,
   type BillingElementCategory,
   type BillingElementTransaction,
 } from "@/lib/api/billing-elements"
@@ -34,6 +35,7 @@ export default function DailyTransactionsPage() {
 
   const [loading, setLoading] = useState(true)
   const [fetching, setFetching] = useState(false)
+  const [reversingId, setReversingId] = useState<string | null>(null)
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -68,6 +70,20 @@ export default function DailyTransactionsPage() {
     if (!loading && profile?.school_id) handleGo()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading])
+
+  const handleReverse = async (transactionId: string) => {
+    if (!confirm(t("reverse_confirm"))) return
+    setReversingId(transactionId)
+    try {
+      await reverseTransaction(transactionId)
+      toast.success(t("reverse_success"))
+      setTransactions((prev) => prev.filter((row) => row.id !== transactionId))
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : t("reverse_failed"))
+    } finally {
+      setReversingId(null)
+    }
+  }
 
   const totalFee = transactions.reduce((sum, t) => sum + (t.amount || 0), 0)
 
@@ -173,23 +189,39 @@ export default function DailyTransactionsPage() {
               <th className="px-3 py-2 text-right text-xs font-semibold text-[#022172] dark:text-sky-200 uppercase">{t("fee")}</th>
               <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] dark:text-sky-200 uppercase">{tCommon("date")}</th>
               <th className="px-3 py-2 text-left text-xs font-semibold text-[#022172] dark:text-sky-200 uppercase">{t("comment")}</th>
+              <th className="px-3 py-2 text-right text-xs font-semibold text-[#022172] dark:text-sky-200 uppercase">{tCommon("actions")}</th>
             </tr>
           </thead>
           <tbody>
-            {transactions.map((t) => (
-              <tr key={t.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+            {transactions.map((row) => (
+              <tr key={row.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
                 <td className="px-3 py-2">
                   <Plus className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
                 </td>
-                <td className="px-3 py-2 font-medium text-[#008B8B] dark:text-cyan-300">{t.student_name}</td>
-                <td className="px-3 py-2 text-gray-700 dark:text-gray-200">{t.grade_level}</td>
-                <td className="px-3 py-2 text-right font-mono font-bold text-gray-900 dark:text-gray-100">{t.amount.toFixed(2)}</td>
+                <td className="px-3 py-2 font-medium text-[#008B8B] dark:text-cyan-300">{row.student_name}</td>
+                <td className="px-3 py-2 text-gray-700 dark:text-gray-200">{row.grade_level}</td>
+                <td className="px-3 py-2 text-right font-mono font-bold text-gray-900 dark:text-gray-100">{row.amount.toFixed(2)}</td>
                 <td className="px-3 py-2 text-gray-500 dark:text-gray-400">
-                  {t.transaction_date ? new Date(t.transaction_date).toLocaleDateString("en-US", {
+                  {row.transaction_date ? new Date(row.transaction_date).toLocaleDateString("en-US", {
                     month: "short", day: "numeric", year: "numeric"
                   }) : t("dash")}
                 </td>
-                <td className="px-3 py-2 text-gray-400 dark:text-gray-500">{t.comment || ""}</td>
+                <td className="px-3 py-2 text-gray-400 dark:text-gray-500">{row.comment || ""}</td>
+                <td className="px-3 py-2 text-right">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title={t("reverse")}
+                    disabled={reversingId === row.id}
+                    onClick={() => handleReverse(row.id)}
+                  >
+                    {reversingId === row.id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Undo2 className="h-3.5 w-3.5 text-red-500" />
+                    )}
+                  </Button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -203,6 +235,7 @@ export default function DailyTransactionsPage() {
               <td className="px-3 py-3 text-right font-mono font-bold text-[#022172] dark:text-sky-200">
                 {totalFee.toFixed(2)}
               </td>
+              <td className="px-3 py-3"></td>
               <td className="px-3 py-3"></td>
               <td className="px-3 py-3"></td>
             </tr>

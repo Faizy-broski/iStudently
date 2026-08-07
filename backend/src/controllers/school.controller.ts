@@ -27,11 +27,12 @@ export class SchoolController {
         })
       }
 
-      // Validate required admin fields — email is required for Supabase auth
-      if (!admin?.email || !admin?.password || !admin?.first_name || !admin?.last_name) {
+      // Validate required admin fields — email is optional (a synthetic placeholder
+      // is generated for Supabase Auth when omitted; the admin logs in via username).
+      if (!admin?.password || !admin?.first_name || !admin?.last_name) {
         return res.status(400).json({
           success: false,
-          error: 'Missing required admin fields: email, password, first_name, last_name'
+          error: 'Missing required admin fields: password, first_name, last_name'
         })
       }
 

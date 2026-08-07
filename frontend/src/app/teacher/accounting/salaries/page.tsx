@@ -10,9 +10,19 @@ import { Button } from '@/components/ui/button'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table'
 import { DownloadCloud, Loader2, Search, Printer, Wallet } from 'lucide-react'
 import { format, parseISO, getMonth, getYear } from 'date-fns'
-import { getPayslipByPeriod, type PayslipByPeriod } from '@/lib/api/salary'
+import { getMyPayslip, requestMyAdvance, type PayslipByPeriod } from '@/lib/api/salary'
 import { useAuth } from '@/context/AuthContext'
 import { PayslipPreviewDialog } from '@/components/admin/PayslipDocument'
+import { toast } from 'sonner'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 
 export default function TeacherSalariesPage() {
   const t = useTranslations('teacherPortal.accounting.salaries')
@@ -22,20 +32,44 @@ export default function TeacherSalariesPage() {
   const { profile } = useAuth()
   const [previewPayslip, setPreviewPayslip] = useState<PayslipByPeriod | null>(null)
   const [printingId, setPrintingId] = useState<string | null>(null)
+  const [advanceOpen, setAdvanceOpen] = useState(false)
+  const [advanceAmount, setAdvanceAmount] = useState('')
+  const [advanceReason, setAdvanceReason] = useState('')
+  const [submittingAdvance, setSubmittingAdvance] = useState(false)
 
   const handlePrintPayStub = async (salary: AccountingSalary) => {
-    if (!profile?.staff_id || !profile?.school_id) return
+    if (!profile?.staff_id) return
     setPrintingId(salary.id)
     try {
       const d = parseISO(salary.assigned_date)
       const month = getMonth(d) + 1 // 1-12
       const year = getYear(d)
-      const payslip = await getPayslipByPeriod(profile.staff_id, month, year, profile.school_id, profile.campus_id || undefined)
+      const payslip = await getMyPayslip(month, year)
       setPreviewPayslip(payslip)
     } catch (e: any) {
       alert(e.message || 'Could not fetch pay stub.')
     } finally {
       setPrintingId(null)
+    }
+  }
+
+  const handleRequestAdvance = async () => {
+    const amount = parseFloat(advanceAmount)
+    if (!amount || amount <= 0) {
+      toast.error(t('advance_amount_required'))
+      return
+    }
+    setSubmittingAdvance(true)
+    try {
+      await requestMyAdvance({ amount, reason: advanceReason || undefined })
+      toast.success(t('advance_requested'))
+      setAdvanceOpen(false)
+      setAdvanceAmount('')
+      setAdvanceReason('')
+    } catch (e: any) {
+      toast.error(e.message || t('advance_request_error'))
+    } finally {
+      setSubmittingAdvance(false)
     }
   }
 
@@ -76,6 +110,9 @@ export default function TeacherSalariesPage() {
           <Wallet className="h-5 w-5 text-teal-600" />
         </div>
         <h1 className="text-3xl font-light">{t('title')}</h1>
+        <Button variant="outline" size="sm" className="ml-auto" onClick={() => setAdvanceOpen(true)}>
+          {t('request_advance')}
+        </Button>
       </div>
 
       <div className="flex justify-between items-center bg-gray-50 border-y py-2 px-1">
@@ -175,11 +212,47 @@ export default function TeacherSalariesPage() {
            button, input { display: none !important; }
         }
       `}} />
-      <PayslipPreviewDialog 
-        payslip={previewPayslip} 
-        open={!!previewPayslip} 
-        onClose={() => setPreviewPayslip(null)} 
+      <PayslipPreviewDialog
+        payslip={previewPayslip}
+        open={!!previewPayslip}
+        onClose={() => setPreviewPayslip(null)}
       />
+
+      <Dialog open={advanceOpen} onOpenChange={setAdvanceOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t('request_advance_title')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="advance-amount">{t('advance_amount')}</Label>
+              <Input
+                id="advance-amount"
+                type="number"
+                min="0"
+                step="0.01"
+                value={advanceAmount}
+                onChange={(e) => setAdvanceAmount(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="advance-reason">{t('advance_reason')}</Label>
+              <Textarea
+                id="advance-reason"
+                value={advanceReason}
+                onChange={(e) => setAdvanceReason(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAdvanceOpen(false)}>{tCommon('cancel')}</Button>
+            <Button onClick={handleRequestAdvance} disabled={submittingAdvance}>
+              {submittingAdvance ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : null}
+              {tCommon('submit')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { CreateSchoolDTO, UpdateSchoolDTO, School, SchoolStats } from '../types'
 import bcrypt from 'bcrypt'
 import { encryptSecret } from '../utils/crypto'
 import { attachLogoAppearance } from './logo-appearance.service'
+import { generatePlaceholderEmail } from '../utils/email.util'
 
 export class SchoolService {
   /**
@@ -12,7 +13,7 @@ export class SchoolService {
   async onboardSchool(
     schoolData: CreateSchoolDTO,
     adminData: {
-      email: string
+      email?: string
       password: string
       first_name: string
       last_name: string
@@ -72,15 +73,22 @@ export class SchoolService {
       const adminUsername = adminData.username ||
         `${adminData.first_name.toLowerCase().replace(/\s+/g, '')}.${adminData.last_name.toLowerCase().replace(/\s+/g, '')}`
 
+      // Email is optional — Supabase Auth still requires an email on every
+      // auth.users row, so when no real email is given we generate a synthetic
+      // placeholder (same pattern used for students/teachers/staff/parents in
+      // their respective *.service.ts). The admin logs in via username instead.
+      const emailForAuth = (adminData.email && adminData.email.trim()) ||
+        generatePlaceholderEmail(adminData.first_name, adminData.last_name)
+
       // 2. Create admin user in auth.users
       console.log('🔐 Creating admin user:', {
-        email: adminData.email,
+        hasEmail: !!(adminData.email && adminData.email.trim()),
         hasPassword: !!adminData.password,
         passwordLength: adminData.password?.length
       })
 
       const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-        email: adminData.email,
+        email: emailForAuth,
         password: adminData.password,
         email_confirm: true,
         user_metadata: {
@@ -142,7 +150,7 @@ export class SchoolService {
           .from('profiles')
           .insert({
             id: authUser.user.id,
-            email: adminData.email,
+            email: emailForAuth,
             role: 'admin',
             first_name: adminData.first_name,
             last_name: adminData.last_name,
@@ -264,6 +272,7 @@ export class SchoolService {
         admin: {
           id: authUser.user.id,
           email: authUser.user.email,
+          username: adminUsername,
           first_name: adminData.first_name,
           last_name: adminData.last_name
         },

@@ -1207,6 +1207,7 @@ function DesktopSidebar({ menuItems, className }: AppSidebarProps) {
 // --- Mobile Sidebar (Simplified to match) ---
 function MobileSidebar({ menuItems }: AppSidebarProps) {
   const pathname = usePathname()
+  const locale = useLocale()
   const { isMobileOpen, setIsMobileOpen } = useSidebarContext()
   const { config: theme } = useSidebarTheme()
   const [expandedItemKey, setExpandedItemKey] = React.useState<string | null>(() => {
@@ -1222,8 +1223,16 @@ function MobileSidebar({ menuItems }: AppSidebarProps) {
   return (
     <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
       <SheetContent
-        side="left"
-        className={cn('w-72 p-0 border-r-0', !theme?.bg_color ? 'sidebar-gradient' : '')}
+        // The hamburger trigger sits on the logical "start" side (Topbar.tsx uses
+        // -ms-2, which visually flips to the right under dir="rtl"), but the drawer
+        // itself used to always slide in from the physical left regardless of
+        // locale — so in Arabic it opened on the opposite side from the trigger.
+        side={locale === 'ar' ? 'right' : 'left'}
+        className={cn(
+          'w-72 p-0',
+          locale === 'ar' ? 'border-l-0' : 'border-r-0',
+          !theme?.bg_color ? 'sidebar-gradient' : ''
+        )}
         style={theme?.bg_color ? { background: theme.bg_color } : undefined}
       >
         <SheetTitle className="sr-only">Navigation Menu</SheetTitle>

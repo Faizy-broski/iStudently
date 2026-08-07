@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase'
+import { round2 } from '../utils/money'
 
 // ============================================================================
 // TYPES
@@ -512,6 +513,23 @@ class BillingElementsService {
   // ---------- TRANSACTIONS ----------
 
   async recordTransaction(dto: RecordTransactionDTO): Promise<BillingElementTransaction> {
+    // Read the student billing element as late as possible (right before the write)
+    // to narrow the read-modify-write race window. There's no generic DB transaction
+    // helper in this codebase — the established pattern for atomic updates is a
+    // Postgres RPC function, which is out of scope for this fix.
+    const { data: sbe, error: sbeError } = await supabase
+      .from('student_billing_elements')
+      .select('amount, amount_paid, status')
+      .eq('id', dto.student_billing_element_id)
+      .eq('school_id', dto.school_id)
+      .single()
+
+    if (sbeError || !sbe) throw new Error('Student billing element not found')
+
+    if (sbe.status === 'waived') {
+      throw new Error('Cannot record a transaction against a waived billing element')
+    }
+
     // 1. Create transaction
     const { data: txn, error: txnError } = await supabase
       .from('billing_element_transactions')
@@ -530,24 +548,71 @@ class BillingElementsService {
 
     if (txnError) throw new Error(`Failed to record transaction: ${txnError.message}`)
 
-    // 2. Update student element's amount_paid and status
-    const { data: sbe } = await supabase
-      .from('student_billing_elements')
-      .select('amount, amount_paid')
-      .eq('id', dto.student_billing_element_id)
-      .single()
+    // 2. Update student element's amount_paid and status, recomputed from the
+    // freshly-read row above.
+    const newPaid = round2((sbe.amount_paid || 0) + dto.amount)
+    const newStatus = newPaid >= sbe.amount ? 'paid' : newPaid > 0 ? 'partial' : 'pending'
 
-    if (sbe) {
-      const newPaid = (sbe.amount_paid || 0) + dto.amount
-      const newStatus = newPaid >= sbe.amount ? 'paid' : newPaid > 0 ? 'partial' : 'pending'
-      
-      await supabase
-        .from('student_billing_elements')
-        .update({ amount_paid: newPaid, status: newStatus })
-        .eq('id', dto.student_billing_element_id)
-    }
+    const { error: updateError } = await supabase
+      .from('student_billing_elements')
+      .update({ amount_paid: newPaid, status: newStatus })
+      .eq('id', dto.student_billing_element_id)
+      .eq('school_id', dto.school_id)
+
+    if (updateError) throw new Error(`Failed to update billing element balance: ${updateError.message}`)
 
     return txn
+  }
+
+  /**
+   * Reverse (delete) a billing element transaction and recompute the parent
+   * student_billing_elements amount_paid/status from the remaining transactions.
+   */
+  async reverseTransaction(transactionId: string, schoolId: string): Promise<void> {
+    const { data: txn, error: txnFetchError } = await supabase
+      .from('billing_element_transactions')
+      .select('student_billing_element_id, amount')
+      .eq('id', transactionId)
+      .eq('school_id', schoolId)
+      .single()
+
+    if (txnFetchError || !txn) throw new Error('Transaction not found')
+
+    const { error: deleteError } = await supabase
+      .from('billing_element_transactions')
+      .delete()
+      .eq('id', transactionId)
+      .eq('school_id', schoolId)
+
+    if (deleteError) throw new Error(`Failed to reverse transaction: ${deleteError.message}`)
+
+    const { data: remaining, error: remainingError } = await supabase
+      .from('billing_element_transactions')
+      .select('amount')
+      .eq('student_billing_element_id', txn.student_billing_element_id)
+      .eq('school_id', schoolId)
+
+    if (remainingError) throw new Error(`Failed to recompute balance: ${remainingError.message}`)
+
+    const { data: sbe, error: sbeError } = await supabase
+      .from('student_billing_elements')
+      .select('amount')
+      .eq('id', txn.student_billing_element_id)
+      .eq('school_id', schoolId)
+      .single()
+
+    if (sbeError || !sbe) throw new Error('Student billing element not found')
+
+    const newPaid = round2((remaining || []).reduce((sum, r: any) => sum + Number(r.amount || 0), 0))
+    const newStatus = newPaid >= sbe.amount ? 'paid' : newPaid > 0 ? 'partial' : 'pending'
+
+    const { error: updateError } = await supabase
+      .from('student_billing_elements')
+      .update({ amount_paid: newPaid, status: newStatus })
+      .eq('id', txn.student_billing_element_id)
+      .eq('school_id', schoolId)
+
+    if (updateError) throw new Error(`Failed to update billing element balance: ${updateError.message}`)
   }
 
   async getTransactions(

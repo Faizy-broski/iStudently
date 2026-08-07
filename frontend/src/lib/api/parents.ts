@@ -261,3 +261,50 @@ export async function unlinkParentFromStudent(parentId: string, studentId: strin
 export async function searchParents(query: string) {
   return apiRequest<Parent[]>(`/parents/search?q=${encodeURIComponent(query)}`)
 }
+
+// ============================================================================
+// PARENT SELF-SERVICE: MULTI-CHILD FEES
+// ============================================================================
+
+export interface ChildFeeRecord {
+  id: string
+  student_id: string
+  balance: number
+  final_amount: number
+  amount_paid: number
+  status: string
+  due_date: string
+  academic_year?: string
+  student?: {
+    id: string
+    student_number: string
+    grade_level: string | null
+    profile?: { first_name: string | null; last_name: string | null }
+  }
+  fee_structure?: {
+    name?: string
+    category?: { name: string; code: string }
+  }
+}
+
+export interface ChildFeesSummary {
+  id: string
+  name: string
+  grade_level: string | null
+  fees: ChildFeeRecord[]
+}
+
+export interface ChildrenFeesResult {
+  fees: ChildFeeRecord[]
+  children: ChildFeesSummary[]
+  totalDue: number
+  totalOverdue: number
+}
+
+/**
+ * GET /api/parents/my/children/fees
+ * Fees for all of the logged-in parent's children in one call.
+ */
+export async function getMyChildrenFees() {
+  return apiRequest<ChildrenFeesResult>('/parents/my/children/fees')
+}

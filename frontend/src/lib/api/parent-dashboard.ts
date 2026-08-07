@@ -316,6 +316,29 @@ export async function getPaymentHistory(studentId: string): Promise<FeeWithPayme
   return apiRequest<FeeWithPayments[]>(`/api/parent-dashboard/fees/${studentId}/payment-history`)
 }
 
+export interface ChildBillingElement {
+  id: string
+  school_id: string
+  student_id: string
+  billing_element_id: string | null
+  element_title: string
+  amount: number
+  due_date: string | null
+  assigned_date: string
+  comment: string | null
+  amount_paid: number
+  balance: number
+  status: 'pending' | 'partial' | 'paid' | 'overdue' | 'waived'
+  student_fee_id: string | null
+  created_at: string
+  updated_at: string
+  category_title?: string
+}
+
+export async function getChildBillingElements(studentId: string): Promise<ChildBillingElement[]> {
+  return apiRequest<ChildBillingElement[]>(`/api/parent-dashboard/billing-elements/${studentId}`)
+}
+
 export async function getStudentIdCard(studentId: string): Promise<StudentIdCardData> {
   return apiRequest<StudentIdCardData>(`/api/parent-dashboard/id-card/${studentId}`)
 }

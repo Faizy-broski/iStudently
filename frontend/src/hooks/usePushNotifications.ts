@@ -24,17 +24,17 @@ export function usePushNotifications() {
     setStatus(Notification.permission as PushSupportStatus)
   }, [isSupported])
 
-  const subscribe = useCallback(async (): Promise<boolean> => {
-    if (!isSupported) return false
+  const subscribe = useCallback(async (): Promise<{ success: boolean; reason?: string }> => {
+    if (!isSupported) return { success: false, reason: "Push notifications are not supported in this browser" }
 
     setSubscribing(true)
     try {
       const permission = await Notification.requestPermission()
       setStatus(permission as PushSupportStatus)
-      if (permission !== "granted") return false
+      if (permission !== "granted") return { success: false, reason: "Notification permission denied" }
 
       const publicKey = await getVapidPublicKey()
-      if (!publicKey) return false
+      if (!publicKey) return { success: false, reason: "Push notifications are not configured on the server (missing VAPID key)" }
 
       const registration = await navigator.serviceWorker.register("/sw.js")
       await navigator.serviceWorker.ready
@@ -47,10 +47,11 @@ export function usePushNotifications() {
         })
       }
 
-      return await subscribeToPush(subscription.toJSON() as PushSubscriptionJSON)
+      const result = await subscribeToPush(subscription.toJSON() as PushSubscriptionJSON)
+      return result.success ? { success: true } : { success: false, reason: result.error || "Failed to save subscription" }
     } catch (err) {
       console.error("Push subscription failed:", err)
-      return false
+      return { success: false, reason: err instanceof Error ? err.message : String(err) }
     } finally {
       setSubscribing(false)
     }

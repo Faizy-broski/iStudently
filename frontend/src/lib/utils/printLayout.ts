@@ -185,6 +185,15 @@ export interface PrintSchool {
 
 const DEFAULT_ACCENT = "#1e3a5f"
 
+// Shared font stack for all popup print/PDF documents. "Noto Sans Arabic" is
+// loaded as a webfont (see PDF_FONT_LINK) so Arabic renders correctly even on
+// systems without an Arabic-capable system font installed — Segoe UI/Tahoma
+// are Windows-only and commonly missing on macOS/Linux, which previously left
+// Arabic text falling back to Arial (no Arabic glyphs) or a tofu/mojibake font.
+export const PDF_FONT_STACK = "'Noto Sans Arabic','Segoe UI',Tahoma,Arial,sans-serif"
+export const PDF_FONT_LINK =
+  '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;700;800&display=swap">'
+
 function escapeHtml(str: string): string {
   return str.replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] ?? c)
@@ -218,14 +227,17 @@ export function buildAutoHeaderHtml(school: PrintSchool, accentColor = DEFAULT_A
   if (addr)         infoLines.push(`<div dir="auto" style="font-size:13px;color:#444;margin-top:4px;line-height:1.4;">${escapeHtml(addr)}</div>`)
   if (school.phone) infoLines.push(`<div dir="auto" style="font-size:13px;color:#444;margin-top:2px;">${escapeHtml(school.phone)}</div>`)
 
-  return `<div style="padding:14px 28px 12px;border-bottom:3px solid ${accentColor};display:flex;align-items:center;gap:18px;background:#fff;font-family:'Segoe UI',Tahoma,Arial,sans-serif;">` +
+  // No letter-spacing on Arabic-eligible text: non-zero letter-spacing forces
+  // Arabic letters into their isolated (unjoined) form even with dir set
+  // correctly, producing visibly broken/disconnected script.
+  return `<div style="padding:14px 28px 12px;border-bottom:3px solid ${accentColor};display:flex;align-items:center;gap:18px;background:#fff;font-family:${PDF_FONT_STACK};">` +
     logoEl +
     `<div style="flex:1;min-width:0;">` +
-      `<div dir="auto" style="font-size:22px;font-weight:800;color:${accentColor};line-height:1.2;letter-spacing:-0.3px;">${escapeHtml(school.name || "")}</div>` +
+      `<div dir="auto" style="font-size:22px;font-weight:800;color:${accentColor};line-height:1.2;">${escapeHtml(school.name || "")}</div>` +
       infoLines.join("") +
     `</div>` +
-    `<div style="text-align:right;flex-shrink:0;">` +
-      `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:${accentColor};font-weight:700;opacity:0.75;">${escapeHtml(reportLabel)}</div>` +
+    `<div dir="auto" style="text-align:right;flex-shrink:0;">` +
+      `<div style="font-size:10px;text-transform:uppercase;color:${accentColor};font-weight:700;opacity:0.75;">${escapeHtml(reportLabel)}</div>` +
     `</div>` +
   `</div>`
 }
@@ -247,7 +259,7 @@ export function buildAutoFooterHtml(school: PrintSchool, accentColor = DEFAULT_A
     ? `<div style="font-size:12px;color:#555;text-align:right;">${phone}</div>`
     : ""
 
-  return `<div style="border-top:2px solid ${accentColor};padding:10px 28px;background:#fff;font-family:'Segoe UI',Arial,sans-serif;display:flex;justify-content:space-between;align-items:center;">` +
+  return `<div dir="auto" style="border-top:2px solid ${accentColor};padding:10px 28px;background:#fff;font-family:${PDF_FONT_STACK};display:flex;justify-content:space-between;align-items:center;">` +
     `<div>${leftHtml}</div>` +
     (rightHtml ? `<div>${rightHtml}</div>` : "") +
   `</div>`
@@ -310,7 +322,7 @@ export function buildPdfLayoutCss(
  */
 export const BASE_PRINT_STYLES = `
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:'Segoe UI',Arial,sans-serif; color:#1a1a1a; }
+body { font-family:${PDF_FONT_STACK}; color:#1a1a1a; }
 @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
 
 /* ── RosarioSIS-style coloured record identifier band ── */
@@ -407,6 +419,7 @@ export function openPrintPreview(options: OpenPrintOptions): void {
 <head>
   <meta charset="utf-8" />
   <title>${escapeHtml(title)}</title>
+  ${PDF_FONT_LINK}
   <style>
     ${BASE_PRINT_STYLES}
     @page { margin: 15mm; }
@@ -449,6 +462,7 @@ ${bodyHtml}
 <head>
   <meta charset="utf-8" />
   <title>${escapeHtml(title)}</title>
+  ${PDF_FONT_LINK}
   <style>
     ${BASE_PRINT_STYLES}
     ${buildPdfLayoutCss(marginTop, marginBottom, excludePrint)}
@@ -554,8 +568,13 @@ export async function openPdfDownload(
     const fHtml = usingCustomFooter
       ? resolvePdfTokens(pdfSettings!.pdf_footer_html, school)
       : buildAutoFooterHtml(school, accentColor)
-    headerMarkup = `<div class="pdf-header">${hHtml}</div>`
-    footerMarkup = `<div class="pdf-footer">${fHtml}</div>`
+    // dir="auto" + the Arabic-capable font stack are applied here unconditionally
+    // so a school's custom header/footer HTML (Settings → PDF Header/Footer,
+    // authored via a plain Tiptap editor with no font-family of its own) gets the
+    // same Arabic-safe treatment as the auto-generated header/footer, instead of
+    // silently falling back to BASE_PRINT_STYLES' body font only.
+    headerMarkup = `<div class="pdf-header" dir="auto" style="font-family:${PDF_FONT_STACK};">${hHtml}</div>`
+    footerMarkup = `<div class="pdf-footer" dir="auto" style="font-family:${PDF_FONT_STACK};">${fHtml}</div>`
     // Keep header/footer in normal document flow so html2canvas can find them.
     layoutCss = `.pdf-header, .pdf-footer { position: relative !important; width: 100%; }`
   }
@@ -581,6 +600,11 @@ export async function openPdfDownload(
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"><\/script>
 <script>
 window.addEventListener('DOMContentLoaded', function() {
+  // Wait for the Arabic webfont (and everything else) to finish loading before
+  // rasterizing — otherwise a slow font fetch can lose the race against the
+  // capture and html2canvas paints with the pre-load fallback font instead.
+  var fontsReady = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+  fontsReady.then(function() {
   setTimeout(function() {
     var overlay  = document.getElementById('_pdf_overlay');
     var h2cOpts  = { scale: 2, useCORS: true, logging: false, windowWidth: ${captureWidth},
@@ -658,6 +682,7 @@ window.addEventListener('DOMContentLoaded', function() {
         + 'Failed to generate PDF:<br>' + err.message + '</div>';
     });
   }, 800);
+  });
 });
 <\/script>`
 
@@ -667,6 +692,7 @@ window.addEventListener('DOMContentLoaded', function() {
 <head>
   <meta charset="utf-8" />
   <title>${escapeHtml(title)}</title>
+  ${PDF_FONT_LINK}
   <style>
     ${BASE_PRINT_STYLES}
     ${layoutCss}

@@ -5,6 +5,7 @@ import { gradingScalesService } from './grading-scales.service'
 import { markingPeriodsService } from './marking-periods.service'
 import { customFieldsService, type EntityType } from './custom-fields.service'
 import { DefaultFieldOrderService } from './default-field-order.service'
+import { accountingService } from './accounting.service'
 
 export interface CopySchoolSettingsOptions {
   gradeLevels?: boolean
@@ -13,6 +14,7 @@ export interface CopySchoolSettingsOptions {
   defaultFieldOrders?: boolean
   customFields?: boolean
   markingPeriods?: boolean
+  accountingCategories?: boolean
 }
 
 export interface CopySchoolSettingsResult {
@@ -24,6 +26,7 @@ export interface CopySchoolSettingsResult {
     defaultFieldOrders: number
     customFields: number
     markingPeriods: number
+    accountingCategories: number
   }
   errors: string[]
 }
@@ -55,6 +58,7 @@ export async function copySchoolSettings(
     defaultFieldOrders: 0,
     customFields: 0,
     markingPeriods: 0,
+    accountingCategories: 0,
   }
   const errors: string[] = []
 
@@ -114,6 +118,16 @@ export async function copySchoolSettings(
       if (itemErrors.length > 0) errors.push(`Marking periods: ${itemErrors.length} failed — ${itemErrors.join('; ')}`)
     } catch (err: any) {
       errors.push(`Marking periods: ${err.message || err}`)
+    }
+  }
+
+  if (options.accountingCategories) {
+    try {
+      const { count, itemErrors } = await copyAccountingCategories(sourceSchoolId, targetSchoolId)
+      counts.accountingCategories = count
+      if (itemErrors.length > 0) errors.push(`Accounting categories: ${itemErrors.length} failed — ${itemErrors.join('; ')}`)
+    } catch (err: any) {
+      errors.push(`Accounting categories: ${err.message || err}`)
     }
   }
 
@@ -428,6 +442,42 @@ async function copyCustomFields(sourceSchoolId: string, targetSchoolId: string):
       count++
     } catch (err: any) {
       itemErrors.push(`"${field.label}": ${err.message || err}`)
+    }
+  }
+
+  return { count, itemErrors }
+}
+
+/**
+ * New campuses otherwise start with zero accounting categories (a completeness
+ * gap the financial-systems audit flagged), leaving no way to categorize
+ * income/expense entries until an admin manually recreates every category.
+ */
+async function copyAccountingCategories(sourceSchoolId: string, targetSchoolId: string): Promise<CategoryResult> {
+  const sourceCategories = await accountingService.getCategories(sourceSchoolId, undefined, false)
+  if (sourceCategories.length === 0) return { count: 0, itemErrors: [] }
+
+  const existingTargetCategories = await accountingService.getCategories(targetSchoolId, undefined, false)
+  // Natural identity within a campus is (name, category_type).
+  const existingByKey = new Map(existingTargetCategories.map((c) => [`${c.category_type}:${c.name}`, c]))
+
+  let count = 0
+  const itemErrors: string[] = []
+  for (const category of sourceCategories) {
+    try {
+      const existing = existingByKey.get(`${category.category_type}:${category.name}`)
+      if (!existing) {
+        await accountingService.createCategory({
+          campus_id: targetSchoolId,
+          name: category.name,
+          category_type: category.category_type,
+          description: category.description,
+          display_order: category.display_order,
+        })
+      }
+      count++
+    } catch (err: any) {
+      itemErrors.push(`"${category.name}": ${err.message || err}`)
     }
   }
 

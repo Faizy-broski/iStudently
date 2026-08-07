@@ -9,6 +9,7 @@ import { useSchoolSettings } from "@/context/SchoolSettingsContext"
 import { openPdfDownload } from "@/lib/utils/printLayout"
 import { type PdfHeaderFooterSettings, getPdfHeaderFooter } from "@/lib/api/school-settings"
 import * as studentsApi from "@/lib/api/students"
+import { useTeacherStudents } from "@/hooks/useTeacherStudents"
 import { getStudentSchedule, type StudentSchedule } from "@/lib/api/scheduling"
 import { getMarkingPeriods, type MarkingPeriod } from "@/lib/api/marking-periods"
 import { CalendarDays, Download, Search } from "lucide-react"
@@ -29,7 +30,20 @@ import { toast } from "sonner"
 
 import { useTranslations, useLocale } from "next-intl"
 
-export function PrintSchedules() {
+interface PrintSchedulesProps {
+  /** "teacher" restricts the roster to students in the teacher's own course periods/sections. */
+  scope?: "all" | "teacher"
+}
+
+// studentsApi.Student and CoursePeriodStudent (teacher scope) don't share an
+// exact profile type — father_name only exists on the former — so this reads
+// it defensively rather than widening both API types just for a display string.
+function getStudentFullName(profile: { first_name?: string | null; last_name?: string | null } | undefined | null): string {
+  const fatherName = (profile as { father_name?: string | null } | undefined)?.father_name
+  return [profile?.first_name, fatherName, profile?.last_name].filter(Boolean).join(" ")
+}
+
+export function PrintSchedules({ scope = "all" }: PrintSchedulesProps = {}) {
   const t = useTranslations("school.scheduling.print_schedules")
   const tCommon = useTranslations("common")
   const locale = useLocale()
@@ -75,12 +89,14 @@ export function PrintSchedules() {
   const [displayTitleOf, setDisplayTitleOf] = useState<"subject" | "course" | "course_period">("course")
   const [mailingLabels, setMailingLabels] = useState(false)
 
-  // Fetch students
-  const cacheKey = user
+  // Fetch students — "teacher" scope restricts the roster to the teacher's own
+  // course periods/sections instead of the whole campus (server-enforced, see
+  // useTeacherStudents).
+  const cacheKey = user && scope === "all"
     ? ["print-schedules-students", user.id, campusId]
     : null
 
-  const { data, isLoading } = useSWR(cacheKey, async () => {
+  const { data: allStudentsData, isLoading: isLoadingAll } = useSWR(cacheKey, async () => {
     const response = await studentsApi.getStudents({
       limit: 1000,
       campus_id: campusId,
@@ -88,6 +104,13 @@ export function PrintSchedules() {
     if (!response.success) throw new Error(response.error || "Failed to fetch students")
     return response.data || []
   }, { dedupingInterval: 10000, revalidateOnFocus: false, keepPreviousData: true })
+
+  const { students: teacherStudents, isLoading: isLoadingTeacher } = useTeacherStudents({
+    limit: 1000,
+  })
+
+  const data = scope === "teacher" ? teacherStudents : allStudentsData
+  const isLoading = scope === "teacher" ? isLoadingTeacher : isLoadingAll
 
   // Fetch marking periods
   const { data: markingPeriodsData } = useSWR(
@@ -103,8 +126,7 @@ export function PrintSchedules() {
     if (!search.trim()) return students
     const q = search.toLowerCase()
     return students.filter((s) => {
-      const name = [s.profile?.first_name, s.profile?.father_name, s.profile?.last_name]
-        .filter(Boolean).join(" ").toLowerCase()
+      const name = getStudentFullName(s.profile).toLowerCase()
       return name.includes(q) || s.student_number.toLowerCase().includes(q) || (s.grade_level || "").toLowerCase().includes(q)
     })
   }, [data, search])
@@ -168,8 +190,7 @@ export function PrintSchedules() {
       let bodyHtml = ""
 
       for (const { student, schedules } of studentSchedules) {
-        const studentName = [student.profile?.first_name, student.profile?.father_name, student.profile?.last_name]
-          .filter(Boolean).join(" ")
+        const studentName = getStudentFullName(student.profile)
 
         // Build period→day→course mapping
         const periodMap = new Map<string, Map<number, StudentSchedule>>()
@@ -479,8 +500,7 @@ export function PrintSchedules() {
                 </tr>
               ) : (
                 filteredStudents.map((student, idx) => {
-                  const name = [student.profile?.first_name, student.profile?.father_name, student.profile?.last_name]
-                    .filter(Boolean).join(" ")
+                  const name = getStudentFullName(student.profile)
                   return (
                     <tr
                       key={student.id}

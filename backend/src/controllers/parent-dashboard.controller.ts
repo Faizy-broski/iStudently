@@ -644,6 +644,56 @@ export class ParentDashboardController {
   }
 
   /**
+   * GET /api/parent-dashboard/billing-elements/:studentId
+   * Get billing element charges (extra/one-off charges) for a student
+   */
+  async getBillingElements(req: AuthRequest, res: Response) {
+    try {
+      const profileId = req.profile?.id
+      const { studentId } = req.params
+
+      if (!profileId) {
+        return res.status(401).json({
+          success: false,
+          error: 'Parent authentication required'
+        })
+      }
+
+      const parentId = await this.getParentId(profileId)
+      if (!parentId) {
+        return res.status(404).json({
+          success: false,
+          error: 'Parent record not found'
+        })
+      }
+
+      // Verify parent owns this student
+      const students = await parentDashboardService.getStudentsList(parentId)
+      const student = students.find(s => s.id === studentId)
+      if (!student) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied to this student'
+        })
+      }
+
+      const { billingElementsService } = await import('../services/billing-elements.service')
+      const data = await billingElementsService.getStudentElements(student.campus_id, studentId, {})
+
+      return res.json({
+        success: true,
+        data
+      })
+    } catch (error: any) {
+      console.error('Error fetching billing elements for parent:', error)
+      return res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to fetch billing elements'
+      })
+    }
+  }
+
+  /**
    * GET /api/parent-dashboard/id-card/:studentId
    * Get student's ID card data
    */

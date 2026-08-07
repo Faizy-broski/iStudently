@@ -1,15 +1,47 @@
 import { Router, Response } from 'express'
 import { billingElementsService } from '../services/billing-elements.service'
 import { authenticate, AuthRequest } from '../middlewares/auth.middleware'
+import { requireAdmin, requireStaff } from '../middlewares/role.middleware'
+import { supabase } from '../config/supabase'
 
 const router = Router()
 router.use(authenticate)
 
 // ============================================================================
+// STUDENT SELF-SERVICE (zero-trust: identity derived from req.user, never from client params)
+// ============================================================================
+
+router.get('/my', async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id
+    const schoolId = req.profile?.school_id
+    if (!userId || !schoolId) {
+      return res.status(403).json({ success: false, error: 'Not authenticated' })
+    }
+
+    const { data: student, error: studentError } = await supabase
+      .from('students')
+      .select('id')
+      .eq('profile_id', userId)
+      .single()
+
+    if (studentError || !student) {
+      return res.status(404).json({ success: false, error: 'Student record not found' })
+    }
+
+    const data = await billingElementsService.getStudentElements(schoolId, student.id, {})
+    res.json({ success: true, data })
+  } catch (error: any) {
+    console.error('Error fetching my billing elements:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
+// ============================================================================
 // CATEGORIES
 // ============================================================================
 
-router.get('/categories', async (req: AuthRequest, res: Response) => {
+router.get('/categories', requireStaff, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -22,7 +54,7 @@ router.get('/categories', async (req: AuthRequest, res: Response) => {
   }
 })
 
-router.post('/categories', async (req: AuthRequest, res: Response) => {
+router.post('/categories', requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -42,7 +74,7 @@ router.post('/categories', async (req: AuthRequest, res: Response) => {
   }
 })
 
-router.put('/categories/:id', async (req: AuthRequest, res: Response) => {
+router.put('/categories/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -56,7 +88,7 @@ router.put('/categories/:id', async (req: AuthRequest, res: Response) => {
   }
 })
 
-router.delete('/categories/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/categories/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -73,7 +105,7 @@ router.delete('/categories/:id', async (req: AuthRequest, res: Response) => {
 // ELEMENTS
 // ============================================================================
 
-router.get('/elements', async (req: AuthRequest, res: Response) => {
+router.get('/elements', requireStaff, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -87,7 +119,7 @@ router.get('/elements', async (req: AuthRequest, res: Response) => {
   }
 })
 
-router.get('/elements/:id', async (req: AuthRequest, res: Response) => {
+router.get('/elements/:id', requireStaff, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -101,7 +133,7 @@ router.get('/elements/:id', async (req: AuthRequest, res: Response) => {
   }
 })
 
-router.post('/elements', async (req: AuthRequest, res: Response) => {
+router.post('/elements', requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -129,7 +161,7 @@ router.post('/elements', async (req: AuthRequest, res: Response) => {
   }
 })
 
-router.put('/elements/:id', async (req: AuthRequest, res: Response) => {
+router.put('/elements/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -142,7 +174,7 @@ router.put('/elements/:id', async (req: AuthRequest, res: Response) => {
   }
 })
 
-router.delete('/elements/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/elements/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -159,7 +191,7 @@ router.delete('/elements/:id', async (req: AuthRequest, res: Response) => {
 // STUDENT BILLING ELEMENTS
 // ============================================================================
 
-router.get('/student-elements', async (req: AuthRequest, res: Response) => {
+router.get('/student-elements', requireStaff, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -175,7 +207,7 @@ router.get('/student-elements', async (req: AuthRequest, res: Response) => {
   }
 })
 
-router.post('/student-elements', async (req: AuthRequest, res: Response) => {
+router.post('/student-elements', requireStaff, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -201,7 +233,7 @@ router.post('/student-elements', async (req: AuthRequest, res: Response) => {
   }
 })
 
-router.post('/student-elements/mass-assign', async (req: AuthRequest, res: Response) => {
+router.post('/student-elements/mass-assign', requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -227,7 +259,7 @@ router.post('/student-elements/mass-assign', async (req: AuthRequest, res: Respo
   }
 })
 
-router.put('/student-elements/:id', async (req: AuthRequest, res: Response) => {
+router.put('/student-elements/:id', requireStaff, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -240,7 +272,7 @@ router.put('/student-elements/:id', async (req: AuthRequest, res: Response) => {
   }
 })
 
-router.delete('/student-elements/:id', async (req: AuthRequest, res: Response) => {
+router.delete('/student-elements/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -257,7 +289,7 @@ router.delete('/student-elements/:id', async (req: AuthRequest, res: Response) =
 // TRANSACTIONS
 // ============================================================================
 
-router.post('/transactions', async (req: AuthRequest, res: Response) => {
+router.post('/transactions', requireStaff, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -284,7 +316,7 @@ router.post('/transactions', async (req: AuthRequest, res: Response) => {
   }
 })
 
-router.get('/transactions', async (req: AuthRequest, res: Response) => {
+router.get('/transactions', requireStaff, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -300,11 +332,24 @@ router.get('/transactions', async (req: AuthRequest, res: Response) => {
   }
 })
 
+router.delete('/transactions/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const schoolId = req.profile?.school_id
+    if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
+
+    await billingElementsService.reverseTransaction(req.params.id, schoolId)
+    res.json({ success: true, message: 'Transaction reversed' })
+  } catch (error: any) {
+    console.error('Error reversing transaction:', error)
+    res.status(500).json({ success: false, error: error.message })
+  }
+})
+
 // ============================================================================
 // REPORTS
 // ============================================================================
 
-router.get('/reports/category-breakdown', async (req: AuthRequest, res: Response) => {
+router.get('/reports/category-breakdown', requireStaff, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })
@@ -328,7 +373,7 @@ router.get('/reports/category-breakdown', async (req: AuthRequest, res: Response
 // STUDENTS (for mass assign dropdown)
 // ============================================================================
 
-router.get('/students', async (req: AuthRequest, res: Response) => {
+router.get('/students', requireStaff, async (req: AuthRequest, res: Response) => {
   try {
     const schoolId = req.profile?.school_id
     if (!schoolId) return res.status(400).json({ success: false, error: 'School ID required' })

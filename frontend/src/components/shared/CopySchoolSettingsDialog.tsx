@@ -57,6 +57,7 @@ const CATEGORIES: { key: keyof CopySchoolSettingsOptions; label: string; default
     defaultChecked: false,
     note: "Copies the structure only — dates are left blank and must be set for the new school.",
   },
+  { key: "accountingCategories", label: "Accounting Categories", defaultChecked: true },
 ]
 
 const COUNT_LABELS: Record<keyof CopySchoolSettingsResult["counts"], string> = {
@@ -67,6 +68,7 @@ const COUNT_LABELS: Record<keyof CopySchoolSettingsResult["counts"], string> = {
   defaultFieldOrders: "default field settings",
   customFields: "custom fields",
   markingPeriods: "marking periods",
+  accountingCategories: "accounting categories",
 }
 
 export function CopySchoolSettingsDialog({

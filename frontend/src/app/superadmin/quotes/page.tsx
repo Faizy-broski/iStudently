@@ -74,8 +74,8 @@ export default function QuotesPage() {
       const [q, s] = await Promise.all([getAllQuotes(), getQuoteSettings()]);
       setQuotes(q);
       setSettings(s);
-    } catch {
-      toast.error("Failed to load quotes");
+    } catch (err) {
+      toast.error("Failed to load quotes", { description: err instanceof Error ? err.message : String(err) });
     } finally {
       setLoading(false);
     }
@@ -117,8 +117,8 @@ export default function QuotesPage() {
         toast.success("Quote added");
       }
       setDialogOpen(false);
-    } catch {
-      toast.error("Failed to save quote");
+    } catch (err) {
+      toast.error("Failed to save quote", { description: err instanceof Error ? err.message : String(err) });
     } finally {
       setSaving(false);
     }
@@ -130,8 +130,8 @@ export default function QuotesPage() {
       await deleteQuote(deleteId);
       setQuotes((prev) => prev.filter((q) => q.id !== deleteId));
       toast.success("Quote deleted");
-    } catch {
-      toast.error("Failed to delete quote");
+    } catch (err) {
+      toast.error("Failed to delete quote", { description: err instanceof Error ? err.message : String(err) });
     } finally {
       setDeleteId(null);
     }
@@ -141,8 +141,8 @@ export default function QuotesPage() {
     try {
       const updated = await updateQuote(q.id, { is_active: !q.is_active });
       setQuotes((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
-    } catch {
-      toast.error("Failed to update quote");
+    } catch (err) {
+      toast.error("Failed to update quote", { description: err instanceof Error ? err.message : String(err) });
     }
   };
 
@@ -152,8 +152,8 @@ export default function QuotesPage() {
       const updated = await updateQuoteSettings(rotation);
       setSettings(updated);
       toast.success("Rotation setting saved");
-    } catch {
-      toast.error("Failed to update settings");
+    } catch (err) {
+      toast.error("Failed to update settings", { description: err instanceof Error ? err.message : String(err) });
     }
   };
 
@@ -181,8 +181,8 @@ export default function QuotesPage() {
     try {
       await reorderQuotes(reordered.map((q) => q.id));
       toast.success("Order saved");
-    } catch {
-      toast.error("Failed to save order");
+    } catch (err) {
+      toast.error("Failed to save order", { description: err instanceof Error ? err.message : String(err) });
       load();
     }
   };

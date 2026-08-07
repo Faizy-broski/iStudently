@@ -1245,53 +1245,69 @@ export default function IdCardDesignerPage() {
         const style = clonedDoc.createElement('style')
         style.textContent = fontFaces + `\n* { font-family: ${computedFont} !important; }\nbody { color: #000 !important; background: #fff !important; }`
         clonedDoc.head.appendChild(style)
-
-        // Patch getComputedStyle to strip lab/oklch colors that crash html2canvas
-        const win = clonedDoc.defaultView;
-        if (win) {
-          const origGCS = win.getComputedStyle;
-          win.getComputedStyle = function(el, pseudo) {
-            const css = origGCS.call(this, el, pseudo);
-            const origGetProp = css.getPropertyValue;
-            css.getPropertyValue = function(prop: string) {
-              const val = origGetProp.call(this, prop);
-              if (val && (val.includes('lab(') || val.includes('oklch(') || val.includes('color('))) {
-                return 'rgba(0,0,0,0)';
-              }
-              return val;
-            };
-            return css;
-          };
-        }
       }
 
-      for (let i = 0; i < cardEls.length; i++) {
-        const c = await html2canvas(cardEls[i], {
-          // allowTaint intentionally omitted (defaults to false): with useCORS enabled,
-          // any image that fails CORS is simply skipped instead of tainting the canvas —
-          // a tainted canvas throws a SecurityError from toDataURL() below, which used to
-          // surface as a generic "PDF export failed" for any cross-origin student/logo photo.
-          scale: 3, useCORS: true, logging: false,
-          width: cardEls[i].offsetWidth, height: cardEls[i].offsetHeight,
-          onclone: (clonedDoc) => stripTailwindColors(clonedDoc),
+      // Patch getComputedStyle to strip lab/oklch colors that crash html2canvas.
+      // Despite rendering the clone inside an iframe, html2canvas's bundled module
+      // reads styles via the bare, unqualified `window.getComputedStyle` (see
+      // ElementContainer in html2canvas's source) — i.e. the *outer* page's window,
+      // not the iframe's contentWindow. Patching the iframe's window (as previously
+      // attempted) is a no-op; the outer window must be patched instead. html2canvas
+      // also reads colors via direct camelCase property access on the returned
+      // CSSStyleDeclaration (e.g. declaration.color), not via getPropertyValue(), so
+      // a Proxy is needed to catch both.
+      const origGetComputedStyle = window.getComputedStyle
+      const isUnsupportedColor = (val: unknown): val is string =>
+        typeof val === 'string' && (val.includes('lab(') || val.includes('oklch(') || val.includes('color('))
+      window.getComputedStyle = function(el: Element, pseudo?: string | null) {
+        const css = origGetComputedStyle.call(window, el, pseudo)
+        return new Proxy(css, {
+          get(target, prop) {
+            if (prop === 'getPropertyValue') {
+              return function(propName: string) {
+                const val = target.getPropertyValue(propName)
+                return isUnsupportedColor(val) ? 'rgba(0,0,0,0)' : val
+              }
+            }
+            const value = Reflect.get(target, prop, target)
+            if (isUnsupportedColor(value)) return 'rgba(0,0,0,0)'
+            return typeof value === 'function' ? value.bind(target) : value
+          },
         })
+      } as typeof window.getComputedStyle
 
-        if (i > 0 && i % perPage === 0) pdf.addPage([PAGE_W_IN, PAGE_H_IN])
+      try {
+        for (let i = 0; i < cardEls.length; i++) {
+          const c = await html2canvas(cardEls[i], {
+            // allowTaint intentionally omitted (defaults to false): with useCORS enabled,
+            // any image that fails CORS is simply skipped instead of tainting the canvas —
+            // a tainted canvas throws a SecurityError from toDataURL() below, which used to
+            // surface as a generic "PDF export failed" for any cross-origin student/logo photo.
+            scale: 3, useCORS: true, logging: false,
+            width: cardEls[i].offsetWidth, height: cardEls[i].offsetHeight,
+            onclone: (clonedDoc) => stripTailwindColors(clonedDoc),
+          })
 
-        const posInPage = i % perPage
-        const col = posInPage % cols
-        const row = Math.floor(posInPage / cols)
-        const x = MARGIN_IN + col * (wIn + GAP_IN)
-        const y = MARGIN_IN + row * (hIn + GAP_IN)
+          if (i > 0 && i % perPage === 0) pdf.addPage([PAGE_W_IN, PAGE_H_IN])
 
-        pdf.addImage(c.toDataURL('image/png'), 'PNG', x, y, wIn, hIn)
+          const posInPage = i % perPage
+          const col = posInPage % cols
+          const row = Math.floor(posInPage / cols)
+          const x = MARGIN_IN + col * (wIn + GAP_IN)
+          const y = MARGIN_IN + row * (hIn + GAP_IN)
+
+          pdf.addImage(c.toDataURL('image/png'), 'PNG', x, y, wIn, hIn)
+        }
+      } finally {
+        window.getComputedStyle = origGetComputedStyle
       }
 
       pdf.save('id-cards.pdf')
       toast.success(t('toast_pdf_exported', { count: cardEls.length }))
     } catch (err) {
       console.error(err)
-      toast.error(t('err_pdf_export'))
+      const message = err instanceof Error ? err.message : String(err)
+      toast.error(t('err_pdf_export'), { description: message })
     } finally {
       setIsExporting(false)
     }

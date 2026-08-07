@@ -2,11 +2,15 @@ import { Router } from 'express'
 import { salaryController } from '../controllers/salary.controller'
 import { cronService } from '../services/cron.service'
 import { authenticate } from '../middlewares/auth.middleware'
+import { requireAdmin } from '../middlewares/role.middleware'
 
 const router = Router()
 
 // Apply authentication to all routes
 router.use(authenticate)
+// This entire module is payroll administration — no self-service routes live here
+// (teacher self-service salary/payment views are under /api/accounting/staff/*)
+router.use(requireAdmin)
 
 // Payroll Settings
 router.get('/settings', (req, res) => salaryController.getPayrollSettings(req, res))

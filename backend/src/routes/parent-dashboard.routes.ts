@@ -120,6 +120,14 @@ router.get('/fees/:studentId/payment-history', (req, res) =>
 )
 
 /**
+ * GET /api/parent-dashboard/billing-elements/:studentId
+ * Get billing element charges (extra/one-off charges) for a student
+ */
+router.get('/billing-elements/:studentId', (req, res) =>
+  parentDashboardController.getBillingElements(req, res)
+)
+
+/**
  * GET /api/parent-dashboard/id-card/:studentId
  * Get student's ID card data
  */

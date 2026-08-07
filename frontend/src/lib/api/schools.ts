@@ -166,7 +166,7 @@ export interface OnboardSchoolData {
   admin: {
     first_name: string
     last_name: string
-    email: string
+    email?: string
     password: string
     username?: string
   }
@@ -180,7 +180,9 @@ export interface OnboardSchoolData {
   }
 }
 
-export async function onboardSchool(data: OnboardSchoolData): Promise<School> {
+export async function onboardSchool(
+  data: OnboardSchoolData
+): Promise<School & { admin?: { id: string; email: string | null; username: string; first_name: string; last_name: string } }> {
   const result = await apiRequest<School>('/schools/onboard', {
     method: 'POST',
     body: JSON.stringify(data)
@@ -202,6 +204,7 @@ export interface CopySchoolSettingsOptions {
   defaultFieldOrders?: boolean
   customFields?: boolean
   markingPeriods?: boolean
+  accountingCategories?: boolean
 }
 
 export interface CopySchoolSettingsResult {
@@ -213,6 +216,7 @@ export interface CopySchoolSettingsResult {
     defaultFieldOrders: number
     customFields: number
     markingPeriods: number
+    accountingCategories: number
   }
   errors: string[]
 }

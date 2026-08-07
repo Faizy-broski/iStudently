@@ -78,6 +78,10 @@ export default function NewSignupLinkPage() {
       last_name_required: true,
       phone_enabled: true,
       phone_required: false,
+      email_enabled: true,
+      email_required: false,
+      username_enabled: false,
+      username_required: false,
     },
   })
   const [generating, setGenerating] = React.useState(false)
@@ -153,14 +157,19 @@ export default function NewSignupLinkPage() {
     setGenerating(true)
     try {
       const custom_fields: SignupCustomField[] = []
-      if ((form.role === 'student' || form.role === 'parent') && form.selected_grade_ids.length > 0) {
-        const selectedGrades = gradeLevels.filter(g => form.selected_grade_ids.includes(g.id))
+      if ((form.role === 'student' || form.role === 'parent') && gradeLevels.length > 0) {
+        // If the admin restricted the link to specific grades, only offer those.
+        // Otherwise fall back to every grade at this campus so the applicant can
+        // still pick one instead of the form having no grade field at all.
+        const offeredGrades = form.selected_grade_ids.length > 0
+          ? gradeLevels.filter(g => form.selected_grade_ids.includes(g.id))
+          : gradeLevels
         custom_fields.push({
           id: 'grade_level',
           label: isAr ? 'الصف الدراسي' : 'Grade Level',
           type: 'select',
           required: true,
-          options: selectedGrades.map(g => g.name),
+          options: offeredGrades.map(g => g.name),
         })
       }
 
@@ -221,6 +230,8 @@ export default function NewSignupLinkPage() {
             first_name: { required: form.standard_fields.first_name_required },
             last_name: { required: form.standard_fields.last_name_required },
             phone: { enabled: form.standard_fields.phone_enabled, required: form.standard_fields.phone_required },
+            email: { enabled: form.standard_fields.email_enabled, required: form.standard_fields.email_required },
+            username: { enabled: form.standard_fields.username_enabled, required: form.standard_fields.username_required },
           },
         },
       })
@@ -495,14 +506,64 @@ export default function NewSignupLinkPage() {
                   {isAr ? 'الحقول الأساسية' : 'Standard Fields'}
                 </p>
 
-                {/* Always-on read-only indicators */}
-                {[{ label: isAr ? 'البريد الإلكتروني' : 'Email', note: isAr ? 'مطلوب دائماً' : 'Always required' },
-                  { label: isAr ? 'كلمة المرور' : 'Password', note: isAr ? 'مطلوب دائماً' : 'Always required' }].map(f => (
-                  <div key={f.label} className="flex items-center justify-between px-4 py-3 border dark:border-slate-800 rounded-xl bg-gray-50/30 dark:bg-slate-900/30 opacity-60">
-                    <span className="text-sm font-medium">{f.label}</span>
-                    <span className="text-xs text-muted-foreground italic">{f.note}</span>
+                {/* Always-on read-only indicator — password is the one field that can never be optional */}
+                <div className="flex items-center justify-between px-4 py-3 border dark:border-slate-800 rounded-xl bg-gray-50/30 dark:bg-slate-900/30 opacity-60">
+                  <span className="text-sm font-medium">{isAr ? 'كلمة المرور' : 'Password'}</span>
+                  <span className="text-xs text-muted-foreground italic">{isAr ? 'مطلوب دائماً' : 'Always required'}</span>
+                </div>
+
+                {/* Email — applicants who skip it are issued a username to log in with instead */}
+                <div className="p-4 border dark:border-slate-800 rounded-xl bg-gray-50/50 dark:bg-slate-900/50 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">{isAr ? 'البريد الإلكتروني' : 'Email'}</span>
+                    <div className="flex items-center gap-3">
+                      <Label htmlFor="em-enabled" className="text-xs text-muted-foreground cursor-pointer">{isAr ? 'إظهار' : 'Show'}</Label>
+                      <Switch id="em-enabled" checked={form.standard_fields.email_enabled}
+                        onCheckedChange={(c) => setForm(f => ({ ...f, standard_fields: { ...f.standard_fields, email_enabled: c, email_required: c ? f.standard_fields.email_required : false } }))} />
+                    </div>
                   </div>
-                ))}
+                  {form.standard_fields.email_enabled && (
+                    <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-200 dark:border-slate-700">
+                      <Label htmlFor="em-req" className="text-xs text-muted-foreground cursor-pointer">{isAr ? 'إلزامي' : 'Required'}</Label>
+                      <Switch id="em-req" checked={form.standard_fields.email_required}
+                        onCheckedChange={(c) => setForm(f => ({ ...f, standard_fields: { ...f.standard_fields, email_required: c } }))} />
+                    </div>
+                  )}
+                  {form.standard_fields.email_enabled && !form.standard_fields.email_required && (
+                    <p className="text-xs text-muted-foreground pt-1">
+                      {isAr
+                        ? 'المتقدمون الذين يتركون هذا الحقل فارغاً سيحصلون على اسم مستخدم لتسجيل الدخول بدلاً من ذلك.'
+                        : 'Applicants who skip this are issued a username to log in with instead.'}
+                    </p>
+                  )}
+                </div>
+
+                {/* Username — lets applicants choose their own login username instead of
+                    being issued a random one on approval */}
+                <div className="p-4 border dark:border-slate-800 rounded-xl bg-gray-50/50 dark:bg-slate-900/50 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">{isAr ? 'اسم المستخدم' : 'Username'}</span>
+                    <div className="flex items-center gap-3">
+                      <Label htmlFor="un-enabled" className="text-xs text-muted-foreground cursor-pointer">{isAr ? 'إظهار' : 'Show'}</Label>
+                      <Switch id="un-enabled" checked={form.standard_fields.username_enabled}
+                        onCheckedChange={(c) => setForm(f => ({ ...f, standard_fields: { ...f.standard_fields, username_enabled: c, username_required: c ? f.standard_fields.username_required : false } }))} />
+                    </div>
+                  </div>
+                  {form.standard_fields.username_enabled && (
+                    <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-200 dark:border-slate-700">
+                      <Label htmlFor="un-req" className="text-xs text-muted-foreground cursor-pointer">{isAr ? 'إلزامي' : 'Required'}</Label>
+                      <Switch id="un-req" checked={form.standard_fields.username_required}
+                        onCheckedChange={(c) => setForm(f => ({ ...f, standard_fields: { ...f.standard_fields, username_required: c } }))} />
+                    </div>
+                  )}
+                  {form.standard_fields.username_enabled && (
+                    <p className="text-xs text-muted-foreground pt-1">
+                      {isAr
+                        ? 'إذا تم تفعيله، سيتم استخدام اسم المستخدم الذي يختاره المتقدم بدلاً من إنشاء اسم عشوائي عند الموافقة.'
+                        : "If enabled, the applicant's chosen username is used instead of an auto-generated one on approval."}
+                    </p>
+                  )}
+                </div>
 
                 {/* First Name */}
                 <div className="flex items-center justify-between px-4 py-3 border dark:border-slate-800 rounded-xl bg-gray-50/50 dark:bg-slate-900/50">

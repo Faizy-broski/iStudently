@@ -436,6 +436,7 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "reports", href: "#", icon: BarChart3, isLabel: true },
       { title: "daily_transactions", href: "/admin/accounting/daily-transactions", icon: FileText },
       { title: "staff_balances", href: "/admin/accounting/staff-balances", icon: Users },
+      { title: "category_rollup", href: "/admin/accounting/reports", icon: BarChart3 },
       { title: "setup", href: "#", icon: Settings, isLabel: true },
       { title: "categories", href: "/admin/accounting/categories", icon: Layers },
     ],
@@ -1076,7 +1077,23 @@ export const getSidebarConfig = (role: UserRole): SidebarMenuItem[] => {
       // admin app shell and are scoped down entirely by their User Profile
       // permissions (see usePermissions/canUse in DashboardLayout), so they
       // need the full admin menu as their base before that filter applies.
-      return adminMenuItems;
+      // On top of that, give them the same self-service payroll section
+      // teachers get (reusing /teacher/accounting/* — the RoleGuard on that
+      // layout and the backend's requireStaff middleware both already permit
+      // the "staff" role, this was just missing a way to discover it).
+      return [
+        ...adminMenuItems,
+        {
+          title: "my_payroll",
+          href: "/teacher/accounting",
+          icon: DollarSign,
+          subItems: [
+            { title: "salaries", href: "/teacher/accounting/salaries", icon: DollarSign },
+            { title: "staff_payments", href: "/teacher/accounting/staff-payments", icon: DollarSign },
+            { title: "print_statements", href: "/teacher/accounting/print-statements", icon: FileText },
+          ],
+        },
+      ];
     default:
       return [];
   }

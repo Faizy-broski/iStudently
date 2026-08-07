@@ -319,6 +319,37 @@ export async function getPayslipByPeriod(
     return json.data
 }
 
+/**
+ * Self-service payslip for the logged-in staff/teacher — hits the zero-trust
+ * /api/accounting/staff/payslip route (identity derived from the auth token,
+ * never from client-supplied staff/school ids), unlike getPayslipByPeriod
+ * above which requires admin/staff-management permissions.
+ */
+export async function getMyPayslip(month: number, year: number): Promise<PayslipByPeriod> {
+    const headers = await getHeaders()
+    const params = new URLSearchParams({ month: String(month), year: String(year) })
+    const res = await fetch(`${API_BASE}/api/accounting/staff/payslip?${params}`, { headers })
+    const json = await res.json()
+    if (!json.success) throw new Error(json.error || 'No salary record found for this period')
+    return json.data
+}
+
+/**
+ * Self-service salary advance request for the logged-in staff/teacher — hits
+ * the zero-trust /api/accounting/staff/advances route.
+ */
+export async function requestMyAdvance(data: { amount: number; reason?: string }): Promise<SalaryAdvance> {
+    const headers = await getHeaders()
+    const res = await fetch(`${API_BASE}/api/accounting/staff/advances`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(data)
+    })
+    const json = await res.json()
+    if (!json.success) throw new Error(json.error)
+    return json.data
+}
+
 export async function approveSalary(salaryRecordId: string, schoolId: string): Promise<SalaryRecord> {
     const headers = await getHeaders()
     const res = await fetch(`${API_BASE}/api/salary/records/${salaryRecordId}/approve`, {

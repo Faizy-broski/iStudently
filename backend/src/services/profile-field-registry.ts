@@ -19,7 +19,7 @@ export interface ProfileFieldDef {
   field_key?: string
   label_en: string
   label_ar: string
-  type: 'text' | 'select' | 'textarea' | 'date'
+  type: 'text' | 'select' | 'textarea' | 'date' | 'checkbox' | 'multi-select'
   options?: ProfileFieldOption[]
   appliesToRoles: string[]
 }

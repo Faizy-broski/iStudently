@@ -72,6 +72,17 @@ export interface AccountingTotals {
     general_balance: number
 }
 
+export interface CategoryRollupRow {
+    category_id: string | null
+    category_name: string
+    total: number
+}
+
+export interface CategoryRollup {
+    incomes: CategoryRollupRow[]
+    expenses: CategoryRollupRow[]
+}
+
 export interface CreateCategoryDTO {
     campus_id: string
     name: string
@@ -793,6 +804,42 @@ export async function getDailyTransactions(
 
     const data = await response.json()
     return data.data || { incomes: [], expenses: [], staffPayments: [] }
+}
+
+export async function getCategoryRollup(
+    campusId: string,
+    academicYear: string,
+    startDate?: string,
+    endDate?: string
+): Promise<CategoryRollup> {
+    const token = await getAuthToken()
+    if (!token) {
+        await handleSessionExpiry()
+        throw new Error('Session expired')
+    }
+
+    const params = new URLSearchParams({
+        campus_id: campusId,
+        academic_year: academicYear
+    })
+    if (startDate) params.append('start_date', startDate)
+    if (endDate) params.append('end_date', endDate)
+
+    const response = await simpleFetch(`${API_URL}/accounting/reports/category-rollup?${params}`, {
+        headers: { Authorization: `Bearer ${token}` }
+    })
+
+    if (!response.ok) {
+        if (response.status === 401) {
+            await handleSessionExpiry()
+            throw new Error('Session expired')
+        }
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to fetch category rollup')
+    }
+
+    const data = await response.json()
+    return data.data || { incomes: [], expenses: [] }
 }
 
 export async function getStaffBalances(

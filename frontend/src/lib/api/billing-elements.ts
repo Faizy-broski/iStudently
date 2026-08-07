@@ -236,6 +236,16 @@ export async function deleteElement(id: string): Promise<void> {
 }
 
 // ============================================================================
+// STUDENT SELF-SERVICE
+// ============================================================================
+
+export async function getMyBillingElements(): Promise<StudentBillingElement[]> {
+  const res = await apiRequest<StudentBillingElement[]>('/billing-elements/my')
+  if (!res.success || !res.data) throw new Error(res.error || 'Failed to fetch billing elements')
+  return res.data
+}
+
+// ============================================================================
 // STUDENT BILLING ELEMENTS
 // ============================================================================
 
@@ -348,6 +358,12 @@ export async function getTransactions(filters?: {
   const res = await apiRequest<BillingElementTransaction[]>(`/billing-elements/transactions${query}`)
   if (!res.success || !res.data) throw new Error(res.error || 'Failed to fetch transactions')
   return res.data
+}
+
+/** Reverses (deletes) a transaction and recomputes the student billing element's balance/status. */
+export async function reverseTransaction(id: string): Promise<void> {
+  const res = await apiRequest(`/billing-elements/transactions/${id}`, { method: 'DELETE' })
+  if (!res.success) throw new Error(res.error || 'Failed to reverse transaction')
 }
 
 // ============================================================================

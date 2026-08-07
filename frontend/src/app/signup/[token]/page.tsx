@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select,
   SelectContent,
@@ -64,6 +65,7 @@ export default function SignupPage() {
     first_name: '',
     last_name: '',
     email: '',
+    username: '',
     phone: '',
     password: '',
     confirm_password: '',
@@ -83,6 +85,10 @@ export default function SignupPage() {
   const lastNameRequired = sf.last_name?.required ?? true
   const phoneEnabled = sf.phone?.enabled ?? true
   const phoneRequired = phoneEnabled && (sf.phone?.required ?? false)
+  const emailEnabled = sf.email?.enabled ?? true
+  const usernameEnabled = sf.username?.enabled ?? true
+  // Neither email nor username is individually required — the applicant just needs
+  // to provide at least one of them (enforced in validate() below).
 
   // Load link info on mount
   React.useEffect(() => {
@@ -103,7 +109,17 @@ export default function SignupPage() {
     const errs: Partial<typeof form> & { extra_fields?: Record<string, string> } = {}
     if (firstNameRequired && (!form.first_name.trim() || form.first_name.trim().length < 2)) errs.first_name = t('firstName') + ' is required'
     if (lastNameRequired && (!form.last_name.trim() || form.last_name.trim().length < 2)) errs.last_name = t('lastName') + ' is required'
-    if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = t('email') + ' is invalid'
+    if (form.email.trim()) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = t('email') + ' is invalid'
+    }
+    if (form.username.trim()) {
+      if (!/^[a-zA-Z0-9._-]{3,}$/.test(form.username.trim())) errs.username = t('usernameInvalid')
+    }
+    // At least one of email or username must be provided so the user has something to log in with.
+    if ((emailEnabled || usernameEnabled) && !form.email.trim() && !form.username.trim()) {
+      if (emailEnabled) errs.email = t('emailOrUsernameRequired')
+      if (usernameEnabled) errs.username = t('emailOrUsernameRequired')
+    }
     if (phoneRequired && !form.phone.trim()) errs.phone = t('phoneOptional') + ' is required'
     if (!form.password || form.password.length < 8) errs.password = t('passwordHint')
     if (form.password !== form.confirm_password) errs.confirm_password = t('passwordMismatch')
@@ -112,7 +128,9 @@ export default function SignupPage() {
     if (linkInfo?.meta?.custom_fields) {
       const extraErrs: Record<string, string> = {}
       for (const field of linkInfo.meta.custom_fields) {
-        if (field.required && !form.extra_fields[field.id]) {
+        const value = form.extra_fields[field.id]
+        const isEmpty = field.type === 'multi-select' ? !Array.isArray(value) || value.length === 0 : !value
+        if (field.required && isEmpty) {
           extraErrs[field.id] = `${field.label} is required`
         }
       }
@@ -133,7 +151,8 @@ export default function SignupPage() {
         token,
         first_name: form.first_name.trim(),
         last_name: form.last_name.trim(),
-        email: form.email.trim().toLowerCase(),
+        email: form.email.trim().toLowerCase() || undefined,
+        username: form.username.trim() || undefined,
         phone: form.phone.trim() || undefined,
         password: form.password,
         confirm_password: form.confirm_password,
@@ -146,6 +165,8 @@ export default function SignupPage() {
         const errKey = res.error ?? ''
         if (errKey === 'email_already_registered') {
           setErrors({ email: t('emailAlreadyRegistered') })
+        } else if (errKey === 'username_already_taken') {
+          setErrors({ username: t('usernameAlreadyTaken') })
         } else if (errKey === 'link_expired') {
           setInvalidReason('link_expired'); setPageState('invalid')
         } else if (errKey === 'link_maxed') {
@@ -335,9 +356,11 @@ export default function SignupPage() {
             {/* Custom Fields */}
             {linkInfo?.meta?.custom_fields?.map(field => (
               <div key={field.id} className="space-y-1.5">
-                <label htmlFor={field.id} className="block text-sm font-semibold text-gray-800">
-                  {field.label} {field.required && <span className="text-red-500">*</span>}
-                </label>
+                {field.type !== 'checkbox' && (
+                  <label htmlFor={field.id} className="block text-sm font-semibold text-gray-800">
+                    {field.label} {field.required && <span className="text-red-500">*</span>}
+                  </label>
+                )}
                 {field.type === 'select' ? (
                   <Select
                     value={form.extra_fields[field.id] || ''}
@@ -352,6 +375,36 @@ export default function SignupPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                ) : field.type === 'multi-select' ? (
+                  <div className={cn('space-y-1.5 rounded-md border p-2', (errors as any).extra_fields?.[field.id] ? 'border-red-400' : 'border-gray-300')}>
+                    {field.options?.map(opt => {
+                      const selected: string[] = Array.isArray(form.extra_fields[field.id]) ? form.extra_fields[field.id] : []
+                      const checked = selected.includes(opt)
+                      return (
+                        <label key={opt} className="flex items-center gap-2 text-sm text-gray-800">
+                          <Checkbox
+                            checked={checked}
+                            disabled={submitting}
+                            onCheckedChange={(val) => setForm(f => {
+                              const current: string[] = Array.isArray(f.extra_fields[field.id]) ? f.extra_fields[field.id] : []
+                              const next = val ? [...current, opt] : current.filter(o => o !== opt)
+                              return { ...f, extra_fields: { ...f.extra_fields, [field.id]: next } }
+                            })}
+                          />
+                          {opt}
+                        </label>
+                      )
+                    })}
+                  </div>
+                ) : field.type === 'checkbox' ? (
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+                    <Checkbox
+                      checked={!!form.extra_fields[field.id]}
+                      disabled={submitting}
+                      onCheckedChange={(val) => setForm(f => ({ ...f, extra_fields: { ...f.extra_fields, [field.id]: !!val } }))}
+                    />
+                    {field.label} {field.required && <span className="text-red-500">*</span>}
+                  </label>
                 ) : (
                   <Input
                     id={field.id}
@@ -368,21 +421,48 @@ export default function SignupPage() {
             ))}
 
             {/* Email */}
-            <div className="space-y-1.5">
-              <label htmlFor="email" className="block text-sm font-semibold text-gray-800">
-                {t('email')} <span className="text-red-500">*</span>
-              </label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={form.email}
-                onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
-                className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900! placeholder:text-gray-400', errors.email ? 'border-red-400' : '')}
-                disabled={submitting}
-              />
-              {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
-            </div>
+            {emailEnabled && (
+              <div className="space-y-1.5">
+                <label htmlFor="email" className="block text-sm font-semibold text-gray-800">
+                  {t('email')} <span className="text-gray-400 font-normal">{isAr ? '(اختياري)' : '(optional)'}</span>
+                </label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={form.email}
+                  onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
+                  className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900! placeholder:text-gray-400', errors.email ? 'border-red-400' : '')}
+                  disabled={submitting}
+                />
+                {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
+                {!errors.email && (
+                  <p className="text-xs text-gray-400">{t('emailOrUsernameNote')}</p>
+                )}
+              </div>
+            )}
+
+            {/* Username */}
+            {usernameEnabled && (
+              <div className="space-y-1.5">
+                <label htmlFor="username" className="block text-sm font-semibold text-gray-800">
+                  {t('username')} <span className="text-gray-400 font-normal">{isAr ? '(اختياري)' : '(optional)'}</span>
+                </label>
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder={isAr ? 'مثال: ahmad.ali' : 'e.g. ahmad.ali'}
+                  value={form.username}
+                  onChange={(e) => setForm(f => ({ ...f, username: e.target.value }))}
+                  className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900! placeholder:text-gray-400', errors.username ? 'border-red-400' : '')}
+                  disabled={submitting}
+                />
+                {errors.username && <p className="text-xs text-red-500">{errors.username}</p>}
+                {!errors.username && (
+                  <p className="text-xs text-gray-400">{t('usernameOptionalNote')}</p>
+                )}
+              </div>
+            )}
 
             {/* Phone */}
             {phoneEnabled && (

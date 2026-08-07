@@ -3,6 +3,7 @@ import useSWR from 'swr'
 import { useAuth } from '@/context/AuthContext'
 import { useParentDashboard } from '@/context/ParentDashboardContext'
 import * as api from '@/lib/api/parent-dashboard'
+import { getMyChildrenFees } from '@/lib/api/parents'
 
 /**
  * Hook to fetch parent's students list
@@ -366,6 +367,105 @@ export function usePaymentHistory() {
 
   return {
     fees: data || [],
+    isLoading,
+    error,
+    refresh
+  }
+}
+
+/**
+ * Hook to fetch fee status summary (total due, overdue, next due) for the selected child
+ */
+export function useFeeStatus() {
+  const { user, profile, loading: authLoading } = useAuth()
+  const { selectedStudent } = useParentDashboard()
+
+  const swrKey = !authLoading && user && profile?.role === 'parent' && selectedStudent
+    ? ['fee-status', selectedStudent]
+    : null
+
+  const { data, error, isLoading, mutate } = useSWR(
+    swrKey,
+    () => api.getFeeStatus(selectedStudent!),
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 60000
+    }
+  )
+
+  const refresh = useCallback(() => {
+    mutate()
+  }, [mutate])
+
+  return {
+    feeStatus: data,
+    isLoading,
+    error,
+    refresh
+  }
+}
+
+/**
+ * Hook to fetch billing element charges (extra/one-off charges) for the selected child
+ */
+export function useChildBillingElements() {
+  const { user, profile, loading: authLoading } = useAuth()
+  const { selectedStudent } = useParentDashboard()
+
+  const swrKey = !authLoading && user && profile?.role === 'parent' && selectedStudent
+    ? ['child-billing-elements', selectedStudent]
+    : null
+
+  const { data, error, isLoading, mutate } = useSWR(
+    swrKey,
+    () => api.getChildBillingElements(selectedStudent!),
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 120000
+    }
+  )
+
+  const refresh = useCallback(() => {
+    mutate()
+  }, [mutate])
+
+  return {
+    billingElements: data || [],
+    isLoading,
+    error,
+    refresh
+  }
+}
+
+/**
+ * Hook to fetch fees for ALL of the parent's children in one call (multi-child view)
+ */
+export function useAllChildrenFees() {
+  const { user, profile, loading: authLoading } = useAuth()
+
+  const swrKey = !authLoading && user && profile?.role === 'parent'
+    ? ['all-children-fees', user.id]
+    : null
+
+  const { data, error, isLoading, mutate } = useSWR(
+    swrKey,
+    async () => {
+      const res = await getMyChildrenFees()
+      if (!res.success || !res.data) throw new Error(res.error || 'Failed to fetch children fees')
+      return res.data
+    },
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 120000
+    }
+  )
+
+  const refresh = useCallback(() => {
+    mutate()
+  }, [mutate])
+
+  return {
+    childrenFees: data || { fees: [], children: [], totalDue: 0, totalOverdue: 0 },
     isLoading,
     error,
     refresh

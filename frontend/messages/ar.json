@@ -6,7 +6,8 @@
     "enabling": "جارٍ التفعيل...",
     "notNow": "ليس الآن",
     "dismiss": "إغلاق",
-    "enabledSuccess": "تم تفعيل الإشعارات"
+    "enabledSuccess": "تم تفعيل الإشعارات",
+    "enabledFailure": "تعذر تفعيل الإشعارات"
   },
   "login": {
     "title": "تسجيل الدخول - iStudent.ly",
@@ -693,6 +694,8 @@
     "grade_breakdown": "تحليل الدرجات",
     "gpa_class_rank_list": "قائمة المعدل التراكمي وترتيب الصف",
     "staff_payroll": "كشف رواتب الموظفين",
+    "my_payroll": "راتبي",
+    "category_rollup": "تفصيل الفئات",
     "salaries": "الرواتب",
     "print_statements": "طباعة الكشوف",
     "learning_resources": "موارد التعلم",
@@ -1466,6 +1469,18 @@
         "balance": "الرصيد:",
         "general_balance": "الرصيد العام:"
       },
+      "reports": {
+        "title": "تفصيل الفئات",
+        "subtitle": "إجماليات الإيرادات والمصروفات مجمعة حسب الفئة • {campus}",
+        "select_campus": "يرجى اختيار فرع لعرض تفصيل الفئات.",
+        "period": "الفترة الزمنية:",
+        "incomes_by_category": "الإيرادات حسب الفئة",
+        "expenses_by_category": "المصروفات حسب الفئة",
+        "col_category": "الفئة",
+        "col_total": "الإجمالي",
+        "no_income_data": "لا توجد بيانات إيرادات للفترة المحددة.",
+        "no_expense_data": "لا توجد بيانات مصروفات للفترة المحددة."
+      },
       "staff_balances": {
         "title": "أرصدة الموظفين",
         "subtitle": "عرض ملخص المدفوعات لكل موظف • {campus}",
@@ -1827,6 +1842,10 @@
         "comment": "ملاحظة",
         "total": "الإجمالي",
         "dash": "—",
+        "reverse": "عكس المعاملة",
+        "reverse_confirm": "عكس هذه المعاملة؟ سيتم حذف الدفعة وإعادة احتساب رصيد الطالب.",
+        "reverse_success": "تم عكس المعاملة",
+        "reverse_failed": "فشل عكس المعاملة",
         "toast": {
           "fetch_failed": "فشل جلب المعاملات"
         }
@@ -2139,7 +2158,10 @@
       "status_partial": "جزئي",
       "status_overdue": "متأخر",
       "status_pending": "معلق",
-      "error_loading": "خطأ في تحميل الرسوم"
+      "status_waived": "معفى",
+      "error_loading": "خطأ في تحميل الرسوم",
+      "additional_charges": "رسوم إضافية",
+      "col_charge": "الرسم"
     },
     "payments": {
       "title": "المدفوعات",
@@ -8795,7 +8817,14 @@
         "col_file_attached": "ملف مرفق",
         "col_actions": "الإجراءات",
         "print_pay_stub": "طباعة قسيمة الراتب",
-        "print_export": "طباعة / تصدير كملف PDF"
+        "print_export": "طباعة / تصدير كملف PDF",
+        "request_advance": "طلب سلفة",
+        "request_advance_title": "طلب سلفة على الراتب",
+        "advance_amount": "المبلغ",
+        "advance_reason": "السبب (اختياري)",
+        "advance_amount_required": "يرجى إدخال مبلغ صحيح",
+        "advance_requested": "تم إرسال طلب السلفة",
+        "advance_request_error": "فشل إرسال طلب السلفة"
       },
       "staff_payments": {
         "title": "مدفوعات الموظفين",
@@ -9348,6 +9377,13 @@
     "firstName": "الاسم الأول",
     "lastName": "اسم العائلة",
     "email": "البريد الإلكتروني",
+    "username": "اسم المستخدم",
+    "emailOrUsernameNote": "أدخل البريد الإلكتروني أو اسم المستخدم على الأقل لتسجيل الدخول به.",
+    "emailOrUsernameRequired": "يرجى إدخال بريد إلكتروني أو اسم مستخدم",
+    "usernameOptionalNote": "اختر اسم مستخدم لتسجيل الدخول به — سيتم إصدار واحد لك تلقائياً إذا تركت هذا الحقل فارغاً.",
+    "usernameInvalid": "يجب أن يتكون اسم المستخدم من 3 أحرف على الأقل ويحتوي فقط على أحرف وأرقام ونقاط وشرطات وشرطات سفلية",
+    "usernameRequired": "اسم المستخدم مطلوب",
+    "usernameAlreadyTaken": "اسم المستخدم هذا مستخدم بالفعل — يرجى اختيار اسم آخر.",
     "phone": "رقم الهاتف",
     "phoneOptional": "رقم الهاتف (اختياري)",
     "password": "كلمة المرور",

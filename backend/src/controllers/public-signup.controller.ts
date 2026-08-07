@@ -4,6 +4,7 @@ import {
   createPendingSignup,
   isEmailAlreadyUsed,
   isDuplicatePendingSignup,
+  isUsernameAlreadyUsed,
 } from '../services/pending-signups.service'
 import { encryptPassword } from '../services/public-signup.service'
 import { getLogoAppearance } from '../services/logo-appearance.service'
@@ -33,15 +34,19 @@ export const getSignupLinkInfo = async (req: Request, res: Response): Promise<vo
       .eq('id', result.link.school_id)
       .single()
 
-    // Fetch campus name if campus-specific
+    // Fetch campus info if campus-specific. A campus has its own logo_url
+    // row and, like AppSidebar.tsx, should override the parent/root
+    // school's logo whenever the campus has uploaded its own.
     let campusName: string | null = null
+    let campusLogoUrl: string | null = null
     if (result.link.campus_id) {
       const { data: campus } = await supabase
         .from('schools')
-        .select('name')
+        .select('name, logo_url')
         .eq('id', result.link.campus_id)
         .single()
       campusName = campus?.name ?? null
+      campusLogoUrl = campus?.logo_url ?? null
     }
 
     // Compute available seats
@@ -60,7 +65,7 @@ export const getSignupLinkInfo = async (req: Request, res: Response): Promise<vo
         role: result.link.role,
         label: result.link.label,
         school_name: school?.name ?? 'School',
-        school_logo_url: school?.logo_url ?? null,
+        school_logo_url: campusLogoUrl ?? school?.logo_url ?? null,
         logo_shape: logoAppearance.logo_shape,
         logo_border_width: logoAppearance.logo_border_width,
         logo_border_color: logoAppearance.logo_border_color,
@@ -80,13 +85,17 @@ export const getSignupLinkInfo = async (req: Request, res: Response): Promise<vo
 // POST /public-signup/submit — public, no auth
 export const submitSignup = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { token, first_name, last_name, email, phone, password, confirm_password, extra_fields } = req.body
+    const { token, first_name, last_name, email, phone, username, password, confirm_password, extra_fields } = req.body
 
     // Validate the fields that are never optional, regardless of link config
     const errors: string[] = []
     if (!token) errors.push('token is required')
     // Email is optional — only validate its format when one was actually provided.
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) errors.push('valid email format is required')
+    // Username is optional — only validate its shape when one was actually provided.
+    if (username && !/^[a-zA-Z0-9._-]{3,}$/.test(String(username).trim())) {
+      errors.push('username must be at least 3 characters and contain only letters, numbers, dots, hyphens, and underscores')
+    }
     if (!password || String(password).length < 8) errors.push('password must be at least 8 characters')
     if (password !== confirm_password) errors.push('passwords do not match')
 
@@ -107,13 +116,20 @@ export const submitSignup = async (req: Request, res: Response): Promise<void> =
 
     const link = validation.link
 
-    // Standard fields (first/last name, phone) can be made optional or hidden per link —
-    // defaults below reproduce the previously-hardcoded behavior for links with no config.
+    // Standard fields (first/last name, phone, email) can be made optional or hidden
+    // per link — defaults below reproduce the previously-hardcoded behavior for links
+    // with no config (email now defaults to enabled+optional rather than always-required;
+    // applicants who skip it are issued a username to log in with instead — see
+    // pending-signups.service.ts's approvePendingSignup).
     const standardFields = link.meta?.standard_fields ?? {}
     const firstNameRequired = standardFields.first_name?.required ?? true
     const lastNameRequired = standardFields.last_name?.required ?? true
     const phoneEnabled = standardFields.phone?.enabled ?? true
     const phoneRequired = phoneEnabled && (standardFields.phone?.required ?? false)
+    const emailEnabled = standardFields.email?.enabled ?? true
+    const emailRequired = false
+    const usernameEnabled = standardFields.username?.enabled ?? true
+    const usernameRequired = false
 
     const standardFieldErrors: string[] = []
     if (firstNameRequired && (!first_name || String(first_name).trim().length < 2)) {
@@ -124,6 +140,14 @@ export const submitSignup = async (req: Request, res: Response): Promise<void> =
     }
     if (phoneRequired && (!phone || !String(phone).trim())) {
       standardFieldErrors.push('phone is required')
+    }
+    if (emailRequired && (!email || !String(email).trim())) {
+      standardFieldErrors.push('email is required')
+    }
+    // At least one of email or username must be provided so the applicant has
+    // something to log in with once their account is approved.
+    if ((!emailEnabled || !email || !String(email).trim()) && (!usernameEnabled || !username || !String(username).trim())) {
+      standardFieldErrors.push('email or username is required')
     }
     if (standardFieldErrors.length > 0) {
       res.status(400).json({ success: false, error: standardFieldErrors.join('; ') } as ApiResponse)
@@ -145,7 +169,19 @@ export const submitSignup = async (req: Request, res: Response): Promise<void> =
 
     const trimmedFirstName = first_name ? String(first_name).trim() : ''
     const trimmedLastName = last_name ? String(last_name).trim() : ''
-    const trimmedEmail = email ? String(email).trim().toLowerCase() : ''
+    const trimmedEmail = emailEnabled && email ? String(email).trim().toLowerCase() : ''
+    const trimmedUsername = usernameEnabled && username ? String(username).trim() : ''
+
+    if (trimmedUsername) {
+      const usernameUsed = await isUsernameAlreadyUsed(trimmedUsername)
+      if (usernameUsed) {
+        res.status(409).json({
+          success: false,
+          error: 'username_already_taken',
+        } as ApiResponse)
+        return
+      }
+    }
 
     // Check for duplicates for this school — by email when one was provided,
     // otherwise fall back to a best-effort name-based dedupe.
@@ -158,7 +194,7 @@ export const submitSignup = async (req: Request, res: Response): Promise<void> =
         } as ApiResponse)
         return
       }
-    } else {
+    } else if (!trimmedUsername) {
       const isDupe = await isDuplicatePendingSignup(trimmedFirstName, trimmedLastName, link.school_id)
       if (isDupe) {
         res.status(409).json({
@@ -182,6 +218,7 @@ export const submitSignup = async (req: Request, res: Response): Promise<void> =
       lastName: trimmedLastName,
       email: trimmedEmail || null,
       phone: phoneEnabled ? (phone?.trim() || null) : null,
+      username: trimmedUsername || null,
       encryptedPassword,
       extraData: extra_fields ?? {},
     })

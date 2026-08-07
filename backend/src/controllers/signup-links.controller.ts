@@ -89,14 +89,16 @@ function roleToCustomFieldEntityType(role: string): EntityType | null {
 }
 
 // Custom field types that the public signup form can actually render today
-// (see frontend/src/app/signup/[token]/page.tsx: only 'select' gets a
-// dropdown, everything else falls back to a plain text/date input).
+// (see frontend/src/app/signup/[token]/page.tsx for the matching input per type).
+// 'file' is intentionally excluded — the public signup form has no upload storage flow.
 const SUPPORTED_CUSTOM_FIELD_TYPES: Record<string, ProfileFieldDef['type']> = {
   text: 'text',
   'long-text': 'textarea',
   number: 'text',
   date: 'date',
   select: 'select',
+  checkbox: 'checkbox',
+  'multi-select': 'multi-select',
 }
 
 export const getProfileFields = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -124,7 +126,7 @@ export const getProfileFields = async (req: AuthRequest, res: Response): Promise
           label_en: def.label,
           label_ar: def.label,
           type: mappedType,
-          options: mappedType === 'select' ? def.options.map(o => ({ id: o, label_en: o, label_ar: o })) : undefined,
+          options: (mappedType === 'select' || mappedType === 'multi-select') ? def.options.map(o => ({ id: o, label_en: o, label_ar: o })) : undefined,
           appliesToRoles: [role],
         })
       }
