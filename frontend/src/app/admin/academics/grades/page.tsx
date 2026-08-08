@@ -450,11 +450,12 @@ export default function GradeLevelsPage() {
                 <Input
                   id="order_index"
                   type="number"
-                  min="1"
+                  step="0.01"
+                  min="0"
                   placeholder={t('order_placeholder')}
-                  value={formData.order_index || ''}
+                  value={formData.order_index === 0 ? '0' : formData.order_index || ''}
                   onChange={(e) =>
-                    setFormData({ ...formData, order_index: parseInt(e.target.value) || 0 })
+                    setFormData({ ...formData, order_index: parseFloat(e.target.value) || 0 })
                   }
                   required
                 />

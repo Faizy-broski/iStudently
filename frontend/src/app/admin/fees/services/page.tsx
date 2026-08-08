@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
+import { useCampus } from '@/context/CampusContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,9 +34,11 @@ interface Service {
 
 export default function ServicesPage() {
     const { profile } = useAuth()
-    // School services are scoped to the school, not the campus — the backend
-    // validates school_id against the caller's own profile.school_id.
-    const schoolId = profile?.school_id || ''
+    const { selectedCampus } = useCampus()
+    // The backend now allows school services to target a campus other than
+    // the admin's own home school (validateCampusAccess) — it used to
+    // silently ignore the campus switcher entirely.
+    const schoolId = selectedCampus?.id || profile?.school_id || ''
 
     const [isAdding, setIsAdding] = useState(false)
     const [editingService, setEditingService] = useState<Service | null>(null)
@@ -56,8 +59,10 @@ export default function ServicesPage() {
     const { data: services, mutate, isLoading } = useSWR<Service[]>(
         schoolId ? `services-${schoolId}` : null,
         async () => {
-            const res = await fetch(`${API_BASE}/school-services`, {
-                headers: { 'Authorization': `Bearer ${(await import('@/lib/supabase/client')).createClient().auth.getSession().then(s => s.data.session?.access_token)}` }
+            const { createClient } = await import('@/lib/supabase/client')
+            const token = (await createClient().auth.getSession()).data.session?.access_token
+            const res = await fetch(`${API_BASE}/school-services?campus_id=${schoolId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
             })
             const json = await res.json()
             return json.success ? json.data : []
@@ -118,7 +123,9 @@ export default function ServicesPage() {
                 },
                 body: JSON.stringify({
                     ...formData,
-                    default_charge: parseFloat(formData.default_charge)
+                    default_charge: parseFloat(formData.default_charge),
+                    school_id: schoolId,
+                    campus_id: schoolId
                 })
             })
 
@@ -143,7 +150,7 @@ export default function ServicesPage() {
             const { createClient } = await import('@/lib/supabase/client')
             const token = (await createClient().auth.getSession()).data.session?.access_token
             
-            const response = await fetch(`${API_BASE}/school-services/${id}`, {
+            const response = await fetch(`${API_BASE}/school-services/${id}?school_id=${schoolId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             })

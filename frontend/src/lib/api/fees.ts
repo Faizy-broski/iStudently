@@ -370,9 +370,13 @@ export async function getFeeAdjustments(feeId: string, schoolId?: string): Promi
 
 export async function getStudentFeeHistory(
     studentId: string,
-    options?: { academicYear?: string; status?: string; page?: number; limit?: number }
+    options?: { schoolId?: string; academicYear?: string; status?: string; page?: number; limit?: number }
 ): Promise<StudentFeeHistory> {
     const params = new URLSearchParams()
+    // Without this the backend used to always resolve to the admin's own home
+    // school regardless of which campus the student actually belongs to,
+    // silently returning nothing for a student outside the admin's default campus.
+    if (options?.schoolId) params.append('school_id', options.schoolId)
     if (options?.academicYear) params.append('academic_year', options.academicYear)
     if (options?.status) params.append('status', options.status)
     if (options?.page) params.append('page', options.page.toString())
@@ -384,8 +388,13 @@ export async function getStudentFeeHistory(
 
 export async function getFeesByGrade(options?: {
     schoolId?: string
+    // Single-id filter, kept for existing callers.
     gradeLevelId?: string
     sectionId?: string
+    // Multi-id filter — the backend accepts a comma-separated list for both.
+    // If both a single id and an id list are passed, the list wins.
+    gradeLevelIds?: string[]
+    sectionIds?: string[]
     feeMonth?: string
     status?: string
     page?: number
@@ -393,8 +402,16 @@ export async function getFeesByGrade(options?: {
 }): Promise<{ data: StudentFee[]; pagination: { page: number; limit: number; total: number; totalPages: number } }> {
     const params = new URLSearchParams()
     if (options?.schoolId) params.append('school_id', options.schoolId)
-    if (options?.gradeLevelId) params.append('grade_level_id', options.gradeLevelId)
-    if (options?.sectionId) params.append('section_id', options.sectionId)
+    if (options?.gradeLevelIds && options.gradeLevelIds.length > 0) {
+        params.append('grade_level_id', options.gradeLevelIds.join(','))
+    } else if (options?.gradeLevelId) {
+        params.append('grade_level_id', options.gradeLevelId)
+    }
+    if (options?.sectionIds && options.sectionIds.length > 0) {
+        params.append('section_id', options.sectionIds.join(','))
+    } else if (options?.sectionId) {
+        params.append('section_id', options.sectionId)
+    }
     if (options?.feeMonth) params.append('fee_month', options.feeMonth)
     if (options?.status) params.append('status', options.status)
     if (options?.page) params.append('page', options.page.toString())

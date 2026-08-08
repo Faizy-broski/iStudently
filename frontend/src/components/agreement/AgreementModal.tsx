@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Loader2, FileText, X, Users } from 'lucide-react'
@@ -28,9 +28,18 @@ export function AgreementModal({
   const [accepting, setAccepting]             = useState(false)
   const [rejecting, setRejecting]             = useState(false)
   const [showRejectConfirm, setShowRejectConfirm] = useState(false)
+  // Shown when the user taps Accept before checking the confirmation box —
+  // otherwise the reason the button "doesn't do anything" isn't obvious.
+  const [showCheckHint, setShowCheckHint]     = useState(false)
+  const checkboxLabelRef = useRef<HTMLLabelElement>(null)
 
   const handleAccept = async () => {
-    if (!read) return
+    if (!read) {
+      setShowCheckHint(true)
+      checkboxLabelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
+    setShowCheckHint(false)
     setAccepting(true)
     try { await onAccept() } finally { setAccepting(false) }
   }
@@ -120,11 +129,16 @@ export function AgreementModal({
           {/* Footer */}
           <div className="px-6 py-5 border-t border-gray-200 dark:border-gray-700 shrink-0 space-y-4">
             {/* Read confirmation checkbox */}
-            <label className="flex items-start gap-3 cursor-pointer select-none">
+            <label
+              ref={checkboxLabelRef}
+              className={`flex items-start gap-3 cursor-pointer select-none rounded-lg p-2 -m-2 transition-colors ${
+                showCheckHint ? 'ring-2 ring-red-400 bg-red-50 dark:bg-red-950/30' : ''
+              }`}
+            >
               <Checkbox
                 id="agreement-read"
                 checked={read}
-                onCheckedChange={v => setRead(!!v)}
+                onCheckedChange={v => { setRead(!!v); if (v) setShowCheckHint(false) }}
                 className="mt-0.5"
               />
               <span className="text-sm text-gray-700 dark:text-gray-300">
@@ -133,6 +147,11 @@ export function AgreementModal({
                   : 'I have read and understand the agreement above'}
               </span>
             </label>
+            {showCheckHint && (
+              <p className="text-sm text-red-600 dark:text-red-400 -mt-2">
+                Please check the box above to confirm you've read {multiple ? 'the agreements' : 'the agreement'} before continuing.
+              </p>
+            )}
 
             {/* Action buttons */}
             <div className="flex gap-3 justify-end">
@@ -147,7 +166,7 @@ export function AgreementModal({
               </Button>
               <Button
                 onClick={handleAccept}
-                disabled={!read || accepting || rejecting}
+                disabled={accepting || rejecting}
                 className="bg-green-600 hover:bg-green-700 text-white"
               >
                 {accepting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

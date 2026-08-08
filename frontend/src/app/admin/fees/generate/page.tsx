@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import useSWR from 'swr'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { MultiSelectPopover } from '@/components/shared/MultiSelectPopover'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -71,20 +72,30 @@ export default function GenerateFeesPage() {
     const [selectedCategories, setSelectedCategories] = useState<string[]>([])
     const [generating, setGenerating] = useState(false)
 
-    // Bulk generation state
-    const [gradeLevel, setGradeLevel] = useState('all')
-    const [section, setSection] = useState('all')
+    // Bulk generation state — empty array means "all grades"/"all sections"
+    const [gradeLevelIds, setGradeLevelIds] = useState<string[]>([])
+    const [sectionIds, setSectionIds] = useState<string[]>([])
+    const [gradePopoverOpen, setGradePopoverOpen] = useState(false)
+    const [sectionPopoverOpen, setSectionPopoverOpen] = useState(false)
 
     // Individual student state
     const [studentSearch, setStudentSearch] = useState('')
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
     const [dueDate, setDueDate] = useState('')
 
-    // Generate academic year string
-    const academicYear = useMemo(() => {
+    // Academic year used to match against fee structures. Fee structures are
+    // tagged with an admin-chosen academic year (see /admin/fees/structures)
+    // that's independent of the calendar — so guessing it purely from the
+    // selected fee month breaks right around the rollover (e.g. this
+    // school's new academic year not existing yet while some fee months in
+    // the new year are still being generated). Default to the guess, but
+    // let the admin override it explicitly, same as the Fee Structures page.
+    const guessedAcademicYear = useMemo(() => {
         if (month >= 8) return `${year}-${year + 1}`
         return `${year - 1}-${year}`
     }, [month, year])
+    const [academicYearOverride, setAcademicYearOverride] = useState<string | null>(null)
+    const academicYear = academicYearOverride ?? guessedAcademicYear
 
     // Generate fee month string in YYYY-MM format for database (e.g., "2026-02")
     const feeMonth = useMemo(() => {
@@ -111,28 +122,41 @@ export default function GenerateFeesPage() {
         }
     )
 
-    // Fetch sections for selected grade
-    const { data: sections } = useSWR<Section[]>(
-        gradeLevel && gradeLevel !== 'all' ? `sections-${gradeLevel}` : null,
+    // Fetch all sections for the school (no grade filter) — the grade↔section
+    // cascade is applied client-side below since multiple grades can now be
+    // selected at once.
+    const { data: allSections } = useSWR<Section[]>(
+        schoolId ? `all-sections-${schoolId}` : null,
         async () => {
             const { createClient } = await import('@/lib/supabase/client')
             const token = (await createClient().auth.getSession()).data.session?.access_token
-            const res = await fetch(`${API_BASE}/academics/sections?grade_level_id=${gradeLevel}`, {
+            const res = await fetch(`${API_BASE}/academics/sections?school_id=${schoolId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const json = await res.json()
             return json.success ? json.data : []
         }
     )
+    const sections = gradeLevelIds.length > 0
+        ? (allSections || []).filter((s) => gradeLevelIds.includes(s.grade_level_id))
+        : allSections
 
-    // Fetch fee categories — categories are scoped to the school only (the
-    // backend rejects a campus id here), unlike grades/sections/generation above.
+    // Drop any selected sections that no longer belong to a selected grade
+    useEffect(() => {
+        if (gradeLevelIds.length === 0) return
+        setSectionIds((prev) => prev.filter((id) => (allSections || []).some((s) => s.id === id && gradeLevelIds.includes(s.grade_level_id))))
+    }, [gradeLevelIds, allSections])
+
+    // Fetch fee categories — the backend now allows targeting a campus other
+    // than the admin's home school (validateCampusAccess), matching how
+    // grades/sections/generation above already work, so this uses the same
+    // campus-aware schoolId instead of always the admin's own home school.
     const { data: categories } = useSWR<FeeCategory[]>(
-        profile?.school_id ? `fee-categories-${profile.school_id}` : null,
+        schoolId ? `fee-categories-${schoolId}` : null,
         async () => {
             const { createClient } = await import('@/lib/supabase/client')
             const token = (await createClient().auth.getSession()).data.session?.access_token
-            const res = await fetch(`${API_BASE}/fees/categories?school_id=${profile?.school_id}`, {
+            const res = await fetch(`${API_BASE}/fees/categories?school_id=${schoolId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const json = await res.json()
@@ -231,8 +255,17 @@ export default function GenerateFeesPage() {
                     school_id: schoolId,
                     month,
                     year,
-                    grade_level_id: gradeLevel === 'all' ? undefined : gradeLevel,
-                    section_id: section === 'all' ? undefined : section,
+                    // Without this the backend falls back to a default computed
+                    // from today's server date instead of the month/year picked
+                    // above, which silently matches zero fee structures (and thus
+                    // generates zero fees) whenever that differs from the academic
+                    // year the structures were actually created under (e.g. right
+                    // after an academic-year rollover).
+                    academic_year: academicYear,
+                    // Empty array = all grades/sections. Backend accepts a
+                    // single id or an array for each.
+                    grade_level_id: gradeLevelIds.length > 0 ? gradeLevelIds : undefined,
+                    section_id: sectionIds.length > 0 ? sectionIds : undefined,
                     category_ids: isAllCategoriesSelected ? null : selectedCategories
                 })
             })
@@ -240,10 +273,24 @@ export default function GenerateFeesPage() {
             const result = await response.json()
 
             if (result.success) {
-                const message = isAllCategoriesSelected 
-                    ? t('bulkSuccessComprehensive', { count: result.data?.feesCreated || 0, studentCount: result.data?.studentsProcessed || 0 })
-                    : t('bulkSuccess', { count: result.data?.feesCreated || 0, studentCount: result.data?.studentsProcessed || 0 })
-                toast.success(message)
+                if (result.data?.feesCreated > 0 && !result.data?.skippedNoGrade && !result.data?.skippedNoFeeStructures && !result.data?.skippedZeroAmount && !result.data?.skippedError) {
+                    // Clean success, nothing skipped for a real reason.
+                    const message = isAllCategoriesSelected
+                        ? t('bulkSuccessComprehensive', { count: result.data?.feesCreated || 0, studentCount: result.data?.studentsProcessed || 0 })
+                        : t('bulkSuccess', { count: result.data?.feesCreated || 0, studentCount: result.data?.studentsProcessed || 0 })
+                    toast.success(message)
+                } else {
+                    // Either 0 created, or some created but others skipped —
+                    // the backend's `message`/`severity` already distinguish
+                    // "nothing wrong, just nothing left to do" from real data
+                    // issues (missing grade / no matching fee structure /
+                    // etc.), so surface that directly instead of a generic
+                    // templated string that can't express partial results.
+                    const severity = result.severity || result.data?.severity
+                    if (severity === 'info') toast.info(result.message)
+                    else if (severity === 'success') toast.success(result.message)
+                    else toast.warning(result.message || t('generateFailed2'))
+                }
             } else {
                 toast.error(result.error || t('generateFailed'))
             }
@@ -253,27 +300,40 @@ export default function GenerateFeesPage() {
             setGenerating(false)
         }
     }
-    // Direct print function after fee generation
-    const printFeeChallan = async (feeId: string) => {
+    // Direct print function after fee generation. `printWindow` must be a
+    // window handle opened synchronously on the original click (see
+    // handleIndividualGenerate) — opening it here, after several awaited
+    // fetches, is no longer considered part of the user gesture by most
+    // browsers, so they silently block it and the admin just sees the
+    // "generated" toast with no challan ever appearing.
+    const printFeeChallan = async (feeId: string, printWindow: Window | null) => {
         try {
-            // Use profile.school_id (not campus id) since fees are stored with school_id
-            const actualSchoolId = profile?.school_id
-            
+            // Must match whichever school_id the fee was actually just created
+            // under (the campus-aware `schoolId`, not necessarily the admin's
+            // own home school) or fetching it back below 404s.
+            const actualSchoolId = schoolId
+
             if (!actualSchoolId) {
                 toast.error(t('missingInfo'))
+                printWindow?.close()
+                return
+            }
+
+            if (!printWindow) {
+                toast.error(t('allowPopups'))
                 return
             }
 
             // Fetch fee data directly
             const { createClient } = await import('@/lib/supabase/client')
             const token = (await createClient().auth.getSession()).data.session?.access_token
-            
+
             const response = await fetch(`${API_BASE}/fees/students/${feeId}?school_id=${actualSchoolId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
-            
+
             const result = await response.json()
-            
+
             if (!response.ok || !result.success || !result.data) {
                 throw new Error(result.error || `Failed to load fee details (${response.status})`)
             }
@@ -301,12 +361,6 @@ export default function GenerateFeesPage() {
                 } catch (e) {
                     // Failed to parse, will use base_amount instead
                 }
-            }
-
-            const printWindow = window.open('', '_blank')
-            if (!printWindow) {
-                toast.error(t('allowPopups'))
-                return
             }
 
             printWindow.document.write(`
@@ -430,8 +484,9 @@ export default function GenerateFeesPage() {
                 </html>
             `)
             printWindow.document.close()
-            
+
         } catch (error) {
+            printWindow?.close()
             toast.error(t('failedPrintChallan'))
         }
     }
@@ -456,19 +511,28 @@ export default function GenerateFeesPage() {
             return
         }
 
+        // Open the print window synchronously, still inside the click handler
+        // and before any awaits, so browsers count it as user-initiated and
+        // don't silently block it. It stays blank until printFeeChallan fills
+        // it in below; closed instead if generation fails or is blocked.
+        const printWindow = window.open('', '_blank')
+        if (!printWindow) {
+            toast.error(t('allowPopups'))
+        }
+
         setGenerating(true)
         try {
             const { createClient } = await import('@/lib/supabase/client')
             const token = (await createClient().auth.getSession()).data.session?.access_token
-            
+
             const allCategoryIds = categories?.map(cat => cat.id) || []
-            const isAllCategoriesSelected = selectedCategories.length > 0 && 
+            const isAllCategoriesSelected = selectedCategories.length > 0 &&
                 allCategoryIds.every(id => selectedCategories.includes(id)) &&
                 selectedCategories.length === allCategoryIds.length
-            
+
             const response = await fetch(`${API_BASE}/fees/generate-for-student`, {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
@@ -479,7 +543,12 @@ export default function GenerateFeesPage() {
                     category_ids: isAllCategoriesSelected ? null : selectedCategories,
                     academic_year: academicYear,
                     fee_month: feeMonth,
-                    due_date: dueDate || defaultDueDate
+                    due_date: dueDate || defaultDueDate,
+                    // Without this the backend used to always use the admin's
+                    // own home school, even for a student in a different
+                    // campus — causing "no active fee structure" for students
+                    // outside the admin's default campus.
+                    school_id: schoolId
                 })
             })
 
@@ -487,17 +556,19 @@ export default function GenerateFeesPage() {
 
             if (result.success && result.data?.id) {
                 toast.success(t('generated'))
-                
+
                 // Clear form
                 setSelectedStudent(null)
                 setStudentSearch('')
-                
+
                 // Auto-print the fee challan
-                await printFeeChallan(result.data.id)
+                await printFeeChallan(result.data.id, printWindow)
             } else {
+                printWindow?.close()
                 toast.error(result.error || t('generateFailed'))
             }
         } catch (error: any) {
+            printWindow?.close()
             toast.error(error.message || t('generateFailed'))
         } finally {
             setGenerating(false)
@@ -550,29 +621,45 @@ export default function GenerateFeesPage() {
 
     // Month/Year Selector Component (reusable)
     const MonthYearSelector = () => (
-        <div className="grid grid-cols-2 gap-4">
-            <div>
-                <Label>{t('month')}</Label>
-                <Select value={month.toString()} onValueChange={(v) => setMonth(parseInt(v))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                        {MONTH_KEYS.map((m, idx) => (
-                            <SelectItem key={m} value={(idx + 1).toString()}>{tm(m)}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+        <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <Label>{t('month')}</Label>
+                    <Select value={month.toString()} onValueChange={(v) => setMonth(parseInt(v))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            {MONTH_KEYS.map((m, idx) => (
+                                <SelectItem key={m} value={(idx + 1).toString()}>{tm(m)}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div>
+                    <Label>{t('yearRequired')}</Label>
+                    <Select value={year.toString()} onValueChange={(v) => setYear(parseInt(v))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="2024">2024</SelectItem>
+                            <SelectItem value="2025">2025</SelectItem>
+                            <SelectItem value="2026">2026</SelectItem>
+                            <SelectItem value="2027">2027</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
             <div>
-                <Label>{t('yearRequired')}</Label>
-                <Select value={year.toString()} onValueChange={(v) => setYear(parseInt(v))}>
+                <Label>{t('academicYear')}</Label>
+                <Select value={academicYear} onValueChange={setAcademicYearOverride}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="2024">2024</SelectItem>
-                        <SelectItem value="2025">2025</SelectItem>
-                        <SelectItem value="2026">2026</SelectItem>
-                        <SelectItem value="2027">2027</SelectItem>
+                        <SelectItem value="2024-2025">2024-2025</SelectItem>
+                        <SelectItem value="2025-2026">2025-2026</SelectItem>
+                        <SelectItem value="2026-2027">2026-2027</SelectItem>
                     </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                    {t('academicYearHint')}
+                </p>
             </div>
         </div>
     )
@@ -613,32 +700,32 @@ export default function GenerateFeesPage() {
 
                             <div>
                                 <Label>{t('selectGrade')}</Label>
-                                <Select value={gradeLevel} onValueChange={(v) => { setGradeLevel(v); setSection('all') }}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">{t('selectGradeAll')}</SelectItem>
-                                        {gradeLevels?.map((grade) => (
-                                            <SelectItem key={grade.id} value={grade.id}>{grade.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <MultiSelectPopover
+                                    options={(gradeLevels || []).map((grade) => ({ id: grade.id, label: grade.name }))}
+                                    selectedIds={gradeLevelIds}
+                                    onChange={setGradeLevelIds}
+                                    placeholder={t('selectGradeAll')}
+                                    emptyMessage={t('selectGradeAll')}
+                                    open={gradePopoverOpen}
+                                    onOpenChange={setGradePopoverOpen}
+                                />
                                 <p className="text-xs text-muted-foreground mt-1">
                                     {t('selectGradeHint')}
                                 </p>
                             </div>
 
-                            {gradeLevel !== 'all' && sections && sections.length > 0 && (
+                            {gradeLevelIds.length > 0 && sections && sections.length > 0 && (
                                 <div>
                                     <Label>{t('section')}</Label>
-                                    <Select value={section} onValueChange={setSection}>
-                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">{t('selectSectionAll')}</SelectItem>
-                                            {sections.map((sec) => (
-                                                <SelectItem key={sec.id} value={sec.id}>{sec.name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    <MultiSelectPopover
+                                        options={sections.map((sec) => ({ id: sec.id, label: sec.name }))}
+                                        selectedIds={sectionIds}
+                                        onChange={setSectionIds}
+                                        placeholder={t('selectSectionAll')}
+                                        emptyMessage={t('selectSectionAll')}
+                                        open={sectionPopoverOpen}
+                                        onOpenChange={setSectionPopoverOpen}
+                                    />
                                 </div>
                             )}
 

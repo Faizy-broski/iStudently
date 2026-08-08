@@ -69,12 +69,10 @@ export default function FeeOverridesPage() {
     const tc = useTranslations('fees.balances') // for some shared table headers
     const { profile } = useAuth()
     const { selectedCampus, loading: campusLoading } = useCampus() || {}
-    // Fee overrides/categories are scoped to the school only — the backend
-    // rejects anything but the caller's own profile.school_id (no campus support).
-    const schoolId = profile?.school_id
-    // Grade levels, sections, academic years and the student list, however,
-    // are looked up per-campus when one is selected.
-    const gradeScopeId = selectedCampus?.id || schoolId
+    // The backend now allows fee overrides/categories to target a campus
+    // other than the admin's own home school (validateCampusAccess).
+    const schoolId = selectedCampus?.id || profile?.school_id
+    const gradeScopeId = schoolId
 
     // State
     const [searchQuery, setSearchQuery] = useState('')

@@ -1291,14 +1291,24 @@ class FeesService {
         month?: number,
         year?: number,
         academicYear?: string,
-        gradeLevelId?: string,
-        sectionId?: string,
+        gradeLevelId?: string | string[],
+        sectionId?: string | string[],
         categoryIds?: string[],
         campusId?: string
     ): Promise<{
         studentsProcessed: number
         feesCreated: number
         totalAmount: number
+        // Diagnostics: when feesCreated is 0 despite students existing, these
+        // pinpoint which stage filtered everyone out (mismatched grade_level_id
+        // between students and fee_structures — e.g. created under a different
+        // campus context — is a common cause) instead of just "0 for 0".
+        studentsFound: number
+        skippedAlreadyExists: number
+        skippedNoFeeStructures: number
+        skippedZeroAmount: number
+        skippedNoGrade: number
+        skippedError: number
     }> {
         try {
             // Use campus-specific school ID if provided, otherwise use the provided school ID
@@ -1316,7 +1326,18 @@ class FeesService {
                 .eq('school_id', effectiveSchoolId);
 
             if (gradeLevelId) {
-                studentsQuery = studentsQuery.eq('grade_level_id', gradeLevelId);
+                studentsQuery = Array.isArray(gradeLevelId)
+                    ? studentsQuery.in('grade_level_id', gradeLevelId)
+                    : studentsQuery.eq('grade_level_id', gradeLevelId);
+            }
+
+            // NOTE: sectionId used to be accepted here but silently never applied
+            // to the query — the Section filter on the bulk-generate page did
+            // nothing. Now actually filters.
+            if (sectionId) {
+                studentsQuery = Array.isArray(sectionId)
+                    ? studentsQuery.in('section_id', sectionId)
+                    : studentsQuery.eq('section_id', sectionId);
             }
 
             const { data: students, error: studentsError } = await studentsQuery;
@@ -1326,7 +1347,13 @@ class FeesService {
                 return {
                     studentsProcessed: 0,
                     feesCreated: 0,
-                    totalAmount: 0
+                    totalAmount: 0,
+                    studentsFound: 0,
+                    skippedAlreadyExists: 0,
+                    skippedNoFeeStructures: 0,
+                    skippedZeroAmount: 0,
+                    skippedNoGrade: 0,
+                    skippedError: 0
                 };
             }
 
@@ -1365,9 +1392,26 @@ class FeesService {
             let studentsProcessed = 0;
             let feesCreated = 0;
             let totalAmount = 0;
+            let skippedAlreadyExists = 0;
+            let skippedNoFeeStructures = 0;
+            let skippedZeroAmount = 0;
+            let skippedNoGrade = 0;
+            let skippedError = 0;
 
             // Process each student
             for (const student of students) {
+              try {
+                // A student with no grade_level_id would make the fee_structures
+                // .eq('grade_level_id', student.grade_level_id) query below send a
+                // literal "null" string for a UUID column — Postgres rejects that
+                // ("invalid input syntax for type uuid: \"null\"") and, being
+                // unhandled, that error used to abort generation for every OTHER
+                // student in the batch too, not just this one. Skip explicitly.
+                if (!student.grade_level_id) {
+                    skippedNoGrade++;
+                    continue;
+                }
+
                 // Check if fee already exists for this month
                 const { data: existingFee, error: existingFeeError } = await supabase
                     .from('student_fees')
@@ -1379,10 +1423,12 @@ class FeesService {
 
                 if (existingFeeError && existingFeeError.code !== 'PGRST116') {
                     console.error(`Failed to check existing fee for student ${student.id}:`, existingFeeError);
+                    skippedError++;
                     continue; // Don't silently treat a real error as "not found"
                 }
 
                 if (existingFee) {
+                    skippedAlreadyExists++;
                     continue; // Skip if already generated
                 }
 
@@ -1403,6 +1449,8 @@ class FeesService {
                 if (structuresError) throw structuresError;
 
                 if (!feeStructures || feeStructures.length === 0) {
+                    skippedNoFeeStructures++;
+                    console.warn(`No matching fee structures for student ${student.id} (grade_level_id=${student.grade_level_id}, academic_year=${currentAcademicYear}, school_id=${effectiveSchoolId})`);
                     continue; // Skip if no fee structures found
                 }
 
@@ -1434,6 +1482,7 @@ class FeesService {
                 }
 
                 if (totalFeeAmount === 0) {
+                    skippedZeroAmount++;
                     continue; // Skip if no fees to charge
                 }
 
@@ -1448,6 +1497,7 @@ class FeesService {
                 const finalAmount = totalFeeAmount - totalSiblingDiscount;
 
                 if (finalAmount <= 0) {
+                    skippedZeroAmount++;
                     continue; // Skip if final amount is zero or negative
                 }
 
@@ -1478,18 +1528,42 @@ class FeesService {
 
                 if (createError) {
                     console.error(`Failed to create fee for student ${student.id}:`, createError);
+                    skippedError++;
                     continue;
                 }
 
                 studentsProcessed++;
                 feesCreated++;
                 totalAmount += finalAmount;
+              } catch (perStudentError: any) {
+                // A DB error for one student (e.g. an unexpected null/invalid
+                // field) must not abort generation for the rest of the batch.
+                console.error(`Error generating fee for student ${student.id}, skipping:`, perStudentError?.message || perStudentError);
+                skippedError++;
+              }
+            }
+
+            if (feesCreated === 0) {
+                console.warn(
+                    `generateMonthlyFees produced 0 fees for school_id=${effectiveSchoolId}, ` +
+                    `academic_year=${currentAcademicYear}, fee_month=${feeMonth}: ` +
+                    `${students.length} student(s) found, ${skippedNoGrade} had no grade assigned, ` +
+                    `${skippedAlreadyExists} already had a fee, ` +
+                    `${skippedNoFeeStructures} had no matching fee structure, ` +
+                    `${skippedZeroAmount} computed to a zero/negative amount, ${skippedError} hit an error.`
+                );
             }
 
             return {
                 studentsProcessed,
                 feesCreated,
-                totalAmount
+                totalAmount,
+                studentsFound: students.length,
+                skippedNoGrade,
+                skippedAlreadyExists,
+                skippedNoFeeStructures,
+                skippedZeroAmount,
+                skippedError
             };
 
         } catch (error: any) {

@@ -7,6 +7,7 @@ import { AgreementModal } from './AgreementModal'
 import { Button } from '@/components/ui/button'
 import { ShieldAlert, LogOut, Loader2 } from 'lucide-react'
 import Image from 'next/image'
+import { toast } from 'sonner'
 import type { RoleAgreementConfig, LinkedStudent } from '@/lib/api/user-agreement'
 
 // Roles subject to agreement gating (admins are excluded — they configure, not be gated)
@@ -79,7 +80,14 @@ export function AgreementGate({ children }: AgreementGateProps) {
   }, [loading, profile, signOut])
 
   const handleAccept = async () => {
-    await acceptUserAgreement()
+    // Don't silently clear the gate on failure — otherwise a network hiccup
+    // or expired session makes the popup vanish without the acceptance ever
+    // being recorded, and it just reappears (looking "stuck") next login.
+    const res = await acceptUserAgreement()
+    if (!res.success) {
+      toast.error(res.error || 'Could not save your acceptance. Please check your connection and try again.')
+      return // leave the modal open so the user can retry
+    }
     if (profile) profile.agreement_status = 'accepted'
     setGate({ status: 'clear' })
   }

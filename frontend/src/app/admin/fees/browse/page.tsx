@@ -34,11 +34,12 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 export default function BrowseFeesByGradePage() {
     const { profile } = useAuth()
     const { selectedCampus } = useCampus()
-    // Fee records are scoped to the school only — the backend rejects
-    // anything but the caller's own profile.school_id (no campus support).
-    const schoolId = profile?.school_id || ''
-    // Grade levels/sections, however, are looked up per-campus when one is selected.
-    const gradeScopeId = selectedCampus?.id || schoolId
+    // The backend now allows fee records to be queried for a campus other
+    // than the admin's own home school (validateCampusAccess), so this uses
+    // the same campus-aware id as grades/sections below instead of always
+    // the admin's home school.
+    const schoolId = selectedCampus?.id || profile?.school_id || ''
+    const gradeScopeId = schoolId
 
     const [gradeLevelId, setGradeLevelId] = useState<string>('all')
     const [sectionId, setSectionId] = useState<string>('all')

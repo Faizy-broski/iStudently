@@ -15,14 +15,16 @@ import { IconArrowLeft, IconPlus, IconTrash, IconDeviceFloppy } from '@tabler/ic
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
+import { useCampus } from '@/context/CampusContext'
 import { useTranslations } from 'next-intl'
 
 export default function FeeSettingsPage() {
     const t = useTranslations('fees.settings')
     const { profile } = useAuth()
-    // Fee settings are scoped to the school, not the campus — the backend
-    // validates school_id against the caller's own profile.school_id.
-    const schoolId = profile?.school_id || null
+    const { selectedCampus } = useCampus()
+    // The backend now allows fee settings to target a campus other than the
+    // admin's own home school (validateCampusAccess).
+    const schoolId = selectedCampus?.id || profile?.school_id || null
 
     const { data: settings, mutate: mutateSettings } = useFeeSettings(schoolId)
     const { data: siblingTiers, mutate: mutateTiers } = useSiblingDiscountTiers(schoolId)

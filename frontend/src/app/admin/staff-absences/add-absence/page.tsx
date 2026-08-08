@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select'
+import { MultiSelectPopover } from '@/components/shared/MultiSelectPopover'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
@@ -37,13 +38,18 @@ export default function AddAbsencePage() {
   const [saving, setSaving] = useState(false)
 
   const [form, setForm] = useState({
-    staff_id: '',
     start_date: today,
     end_date: today,
     reason: '',
     notes: '',
     status: 'pending' as api.AbsenceStatus,
   })
+  // Multiple staff can be marked absent at once (same dates/reason/notes/status
+  // applied to each). Cancelled-course-period selection only makes sense when
+  // exactly one staff member is selected, since different teachers teach
+  // different course periods.
+  const [staffIds, setStaffIds] = useState<string[]>([])
+  const [staffPopoverOpen, setStaffPopoverOpen] = useState(false)
   const [selectedCPs, setSelectedCPs] = useState<Set<string>>(new Set())
 
   // Load staff
@@ -56,20 +62,23 @@ export default function AddAbsencePage() {
     })
   }, [schoolId, campusId])
 
-  // Load course periods when staff changes
+  // Load course periods when exactly one staff member is selected — with
+  // multiple staff selected there's no single "whose classes" to show, so
+  // that section is hidden instead (see below).
+  const singleStaffId = staffIds.length === 1 ? staffIds[0] : null
   useEffect(() => {
-    if (!form.staff_id || !schoolId) {
+    if (!singleStaffId || !schoolId) {
       setCoursePeriods([])
       setSelectedCPs(new Set())
       return
     }
     setLoadingCPs(true)
-    api.getStaffCoursePeriods(form.staff_id, schoolId, campusId).then((res) => {
+    api.getStaffCoursePeriods(singleStaffId, schoolId, campusId).then((res) => {
       setCoursePeriods(res.data || [])
       setSelectedCPs(new Set())
       setLoadingCPs(false)
     })
-  }, [form.staff_id, schoolId, campusId])
+  }, [singleStaffId, schoolId, campusId])
 
   const toggleCP = (id: string) => {
     setSelectedCPs((prev) => {
@@ -81,28 +90,45 @@ export default function AddAbsencePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.staff_id) return toast.error(t('validation.selectStaff'))
+    if (staffIds.length === 0) return toast.error(t('validation.selectStaff'))
     if (!form.start_date || !form.end_date) return toast.error(t('validation.startEndRequired'))
     if (form.start_date > form.end_date) return toast.error(t('validation.endAfterStart'))
 
     setSaving(true)
-    const res = await api.createAbsence({
-      school_id: schoolId,
-      campus_id: campusId,
-      staff_id: form.staff_id,
-      start_date: form.start_date + 'T00:00:00',
-      end_date: form.end_date + 'T23:59:59',
-      reason: form.reason || undefined,
-      notes: form.notes || undefined,
-      status: form.status,
-      cancelled_course_period_ids: Array.from(selectedCPs),
-    })
+    // One absence row per selected staff member (same dates/reason/notes/status
+    // applied to each) — cancelled course periods only apply when a single
+    // staff member was selected, since they're specific to that person's schedule.
+    const results = await Promise.all(
+      staffIds.map((staffId) =>
+        api.createAbsence({
+          school_id: schoolId,
+          campus_id: campusId,
+          staff_id: staffId,
+          start_date: form.start_date + 'T00:00:00',
+          end_date: form.end_date + 'T23:59:59',
+          reason: form.reason || undefined,
+          notes: form.notes || undefined,
+          status: form.status,
+          cancelled_course_period_ids: singleStaffId ? Array.from(selectedCPs) : [],
+        })
+      )
+    )
     setSaving(false)
 
-    if (res.error) {
-      toast.error(res.error)
-    } else {
-      toast.success(t('toasts.absenceAdded'))
+    const failures = results.filter((r) => r.error)
+    const successCount = results.length - failures.length
+
+    if (successCount > 0) {
+      toast.success(
+        successCount === 1
+          ? t('toasts.absenceAdded')
+          : t('toasts.absencesAdded', { count: successCount })
+      )
+    }
+    if (failures.length > 0) {
+      toast.error(failures[0].error || t('validation.selectStaff'))
+    }
+    if (successCount > 0) {
       router.push('/admin/staff-absences/absences')
     }
   }
@@ -127,32 +153,45 @@ export default function AddAbsencePage() {
             <CardTitle className="text-base">{t('absenceDetails')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Staff member */}
+            {/* Staff member(s) — select one, several, or all at once */}
             <div className="space-y-1.5">
-              <Label htmlFor="staff_id">
-                {t('fields.staffMember')} <span className="text-destructive">*</span>
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="staff_id">
+                  {t('fields.staffMember')} <span className="text-destructive">*</span>
+                </Label>
+                {!loadingStaff && staffList.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() =>
+                      setStaffIds((prev) =>
+                        prev.length === staffList.length ? [] : staffList.map((s) => s.id)
+                      )
+                    }
+                  >
+                    {staffIds.length === staffList.length ? t('deselectAll') : t('selectAll')}
+                  </Button>
+                )}
+              </div>
               {loadingStaff ? (
                 <Skeleton className="h-9 w-full" />
               ) : (
-                <Select
-                  value={form.staff_id}
-                  onValueChange={(v) => setForm((f) => ({ ...f, staff_id: v }))}
-                >
-                  <SelectTrigger id="staff_id">
-                    <SelectValue placeholder={t('placeholders.selectStaff')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {staffList.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.name}
-                        <span className="ml-2 text-xs text-muted-foreground capitalize">
-                          ({s.role})
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <MultiSelectPopover
+                  options={staffList.map((s) => ({ id: s.id, label: `${s.name} (${s.role})` }))}
+                  selectedIds={staffIds}
+                  onChange={setStaffIds}
+                  placeholder={t('placeholders.selectStaff')}
+                  emptyMessage={t('placeholders.selectStaff')}
+                  open={staffPopoverOpen}
+                  onOpenChange={setStaffPopoverOpen}
+                />
+              )}
+              {staffIds.length > 1 && (
+                <p className="text-xs text-muted-foreground">
+                  {t('multipleStaffHint', { count: staffIds.length })}
+                </p>
               )}
             </div>
 
@@ -229,8 +268,16 @@ export default function AddAbsencePage() {
           </CardContent>
         </Card>
 
-        {/* Cancelled Classes (only shown if staff member has course periods) */}
-        {form.staff_id && (
+        {/* Cancelled Classes — only shown for a single selected staff member,
+            since which classes get cancelled is specific to their own
+            schedule and wouldn't mean the same thing across several teachers
+            selected at once. */}
+        {staffIds.length > 1 && (
+          <p className="text-xs text-muted-foreground">
+            {t('cancelledClasses.hiddenForMultiple')}
+          </p>
+        )}
+        {singleStaffId && (
           <Card>
             <CardHeader>
               <CardTitle className="text-base">{t('cancelledClasses.title')}</CardTitle>

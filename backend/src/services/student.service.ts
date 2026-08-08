@@ -115,6 +115,8 @@ export class StudentService {
             id: student.student_id,
             student_number: student.student_number,
             grade_level: student.grade_level,
+            grade_level_id: student.grade_level_id,
+            grade_levels: student.grade_level_id ? { name: student.grade_level } : undefined,
             profile_id: student.profile_id,
             school_id: schoolId,
             profile: {
@@ -180,9 +182,14 @@ export class StudentService {
           relationship,
           relation_type
         )
-      `, { count: 'exact' })
+      `)
       .eq('school_id', schoolId)
-      .order('created_at', { ascending: false })
+      // No .order() here — PostgREST on this instance silently ignores
+      // ordering by a column on an embedded relation (profile.first_name),
+      // regardless of !inner or referencedTable syntax (verified directly
+      // against PostgREST, not just via supabase-js). Sorted in application
+      // code below instead, which also sorts correctly for Arabic and mixed
+      // Arabic/English rosters via Intl-aware localeCompare.
 
     // Apply grade filter
     if (gradeLevel) {
@@ -203,22 +210,34 @@ export class StudentService {
       query = query.eq('profile.is_active', isActive)
     }
 
-    // Apply pagination
-    query = query.range(offset, offset + limit - 1)
-
-    const { data, error, count } = await query
+    // Fetch all matching rows (no server-side pagination/count) so sorting
+    // can happen correctly in application code, then paginate in memory —
+    // school rosters are small enough (dozens to low hundreds) for this to
+    // be cheap, and it avoids depending on a PostgREST ordering feature that
+    // doesn't work on this instance for embedded-relation columns.
+    const { data, error } = await query
 
     if (error) {
       throw new Error(`Failed to fetch students: ${error.message}`)
     }
 
+    const collator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true })
+    const sorted = (data || []).slice().sort((a: any, b: any) => {
+      const nameA = `${a.profile?.first_name || ''} ${a.profile?.last_name || ''}`.trim()
+      const nameB = `${b.profile?.first_name || ''} ${b.profile?.last_name || ''}`.trim()
+      return collator.compare(nameA, nameB)
+    })
+
+    const total = sorted.length
+    const paginated = sorted.slice(offset, offset + limit)
+
     return {
-      students: (data || []).map((student: any) => redactProfileEmail(student)),
+      students: paginated.map((student: any) => redactProfileEmail(student)),
       pagination: {
-        total: count || 0,
+        total,
         page,
         limit,
-        totalPages: Math.ceil((count || 0) / limit)
+        totalPages: Math.ceil(total / limit)
       }
     }
   }
@@ -635,7 +654,7 @@ export class StudentService {
       .from('students')
       .select(`
         *,
-        profile:profiles(
+        profile:profiles!inner(
           first_name,
           last_name,
           email
@@ -643,13 +662,23 @@ export class StudentService {
       `)
       .eq('school_id', schoolId)
       .eq('grade_level', gradeLevel)
-      .order('profile.last_name', { ascending: true })
+      // No .order() — PostgREST on this instance silently ignores ordering
+      // by a column on an embedded relation regardless of !inner or
+      // referencedTable syntax (verified directly against PostgREST).
+      // Sorted in application code below instead.
 
     if (error) {
       throw new Error(`Failed to fetch students by grade: ${error.message}`)
     }
 
-    return (data || []).map((student: any) => redactProfileEmail(student))
+    const collator = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true })
+    const sorted = (data || []).slice().sort((a: any, b: any) => {
+      const nameA = `${a.profile?.first_name || ''} ${a.profile?.last_name || ''}`.trim()
+      const nameB = `${b.profile?.first_name || ''} ${b.profile?.last_name || ''}`.trim()
+      return collator.compare(nameA, nameB)
+    })
+
+    return sorted.map((student: any) => redactProfileEmail(student))
   }
 
   /**

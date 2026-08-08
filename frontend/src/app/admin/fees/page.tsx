@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
+import { useCampus } from '@/context/CampusContext'
 import { useFeeDashboardStats } from '@/hooks/useFees'
 import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 import { getBalanceDisplay, StudentFee, getFeesByGrade } from '@/lib/api/fees'
@@ -9,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { MultiSelectPopover } from '@/components/shared/MultiSelectPopover'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
 import { IconCash, IconReceipt, IconAlertCircle, IconCheck, IconSettings, IconAdjustments, IconFileText, IconRefresh, IconChevronLeft, IconChevronRight, IconEdit, IconLoader } from '@tabler/icons-react'
@@ -38,15 +40,22 @@ export default function FeesPage() {
     const t = useTranslations('admin.fees.page')
     const tCommon = useTranslations('common')
     const { profile } = useAuth()
+    const { selectedCampus } = useCampus()
     const { formatCurrency, isLoading: settingsLoading } = useSchoolSettings()
-    // Fees are scoped to the school, not the campus — the backend validates
-    // school_id against the caller's own profile.school_id.
-    const schoolId = profile?.school_id || null
+    // The backend now allows fee records/stats to target a campus other than
+    // the admin's own home school (validateCampusAccess), so this uses the
+    // same campus-aware id the grade filter below already needed — otherwise
+    // switching campus would show zero fees, or worse, silently show the
+    // wrong campus's fees.
+    const schoolId = selectedCampus?.id || profile?.school_id || null
+    const gradeScopeId = schoolId
 
     // Filter states
     const [statusFilter, setStatusFilter] = useState<string>('all')
-    const [gradeLevelId, setGradeLevelId] = useState<string>('all')
-    const [sectionId, setSectionId] = useState<string>('all')
+    const [gradeLevelIds, setGradeLevelIds] = useState<string[]>([])
+    const [sectionIds, setSectionIds] = useState<string[]>([])
+    const [gradePopoverOpen, setGradePopoverOpen] = useState(false)
+    const [sectionPopoverOpen, setSectionPopoverOpen] = useState(false)
     const [feeMonth, setFeeMonth] = useState<string>('all')
 
     // Pagination states
@@ -74,11 +83,11 @@ export default function FeesPage() {
 
     // Fetch grade levels
     const { data: gradeLevels } = useSWR<GradeLevel[]>(
-        schoolId ? `grade-levels-${schoolId}` : null,
+        gradeScopeId ? `grade-levels-${gradeScopeId}` : null,
         async () => {
             const { createClient } = await import('@/lib/supabase/client')
             const token = (await createClient().auth.getSession()).data.session?.access_token
-            const res = await fetch(`${API_BASE}/academics/grades?school_id=${schoolId}`, {
+            const res = await fetch(`${API_BASE}/academics/grades?school_id=${gradeScopeId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const json = await res.json()
@@ -86,34 +95,40 @@ export default function FeesPage() {
         }
     )
 
-    // Fetch sections for selected grade
-    const { data: sections } = useSWR<Section[]>(
-        gradeLevelId && gradeLevelId !== 'all' ? `sections-${gradeLevelId}` : null,
+    // Fetch all sections for the campus/school (no grade filter) — the
+    // grade↔section cascade is applied client-side below since the grade
+    // filter can now span multiple selected grades at once.
+    const { data: allSections } = useSWR<Section[]>(
+        gradeScopeId ? `all-sections-${gradeScopeId}` : null,
         async () => {
             const { createClient } = await import('@/lib/supabase/client')
             const token = (await createClient().auth.getSession()).data.session?.access_token
-            const res = await fetch(`${API_BASE}/academics/sections?grade_level_id=${gradeLevelId}`, {
+            const res = await fetch(`${API_BASE}/academics/sections?school_id=${gradeScopeId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
             const json = await res.json()
             return json.success ? json.data : []
         }
     )
+    const sections = gradeLevelIds.length > 0
+        ? (allSections || []).filter((s) => gradeLevelIds.includes(s.grade_level_id))
+        : allSections
 
     // Load fees when filters change
     useEffect(() => {
         if (schoolId) {
             loadFees()
         }
-    }, [schoolId, gradeLevelId, sectionId, feeMonth, statusFilter, page, pageSize])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [schoolId, gradeLevelIds, sectionIds, feeMonth, statusFilter, page, pageSize])
 
     const loadFees = async () => {
         setFeesLoading(true)
         try {
             const data = await getFeesByGrade({
                 schoolId: schoolId || undefined,
-                gradeLevelId: gradeLevelId === 'all' ? undefined : gradeLevelId,
-                sectionId: sectionId === 'all' ? undefined : sectionId,
+                gradeLevelIds: gradeLevelIds.length > 0 ? gradeLevelIds : undefined,
+                sectionIds: sectionIds.length > 0 ? sectionIds : undefined,
                 feeMonth: feeMonth === 'all' ? undefined : feeMonth,
                 status: statusFilter === 'all' ? undefined : statusFilter,
                 page,
@@ -131,15 +146,16 @@ export default function FeesPage() {
         await loadFees()
     }
 
-    // Reset section when grade changes
+    // Reset section selection when the grade selection changes — a
+    // previously-selected section may no longer belong to any selected grade.
     useEffect(() => {
-        setSectionId('all')
-    }, [gradeLevelId])
+        setSectionIds([])
+    }, [gradeLevelIds])
 
     // Reset page when filters change
     useEffect(() => {
         setPage(1)
-    }, [gradeLevelId, sectionId, feeMonth, statusFilter, pageSize])
+    }, [gradeLevelIds, sectionIds, feeMonth, statusFilter, pageSize])
 
     // Local formatCurrency is removed in favor of the one from useSchoolSettings
 
@@ -276,39 +292,35 @@ export default function FeesPage() {
                 <CardContent className="space-y-4">
                     <div className="flex flex-wrap gap-3 items-end">
                         {/* Grade Level Filter */}
-                        <div className="min-w-[150px]">
+                        <div className="min-w-50">
                             <label className="text-xs text-muted-foreground mb-1 block">{tCommon('grade_level')}</label>
-                            <Select value={gradeLevelId} onValueChange={setGradeLevelId}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder={tCommon('all_grades')} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">{tCommon('all_grades')}</SelectItem>
-                                    {gradeLevels?.sort((a, b) => a.order_index - b.order_index).map((grade) => (
-                                        <SelectItem key={grade.id} value={grade.id}>{grade.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <MultiSelectPopover
+                                options={(gradeLevels || [])
+                                    .slice()
+                                    .sort((a, b) => a.order_index - b.order_index)
+                                    .map((grade) => ({ id: grade.id, label: grade.name }))}
+                                selectedIds={gradeLevelIds}
+                                onChange={setGradeLevelIds}
+                                placeholder={tCommon('all_grades')}
+                                emptyMessage={tCommon('all_grades')}
+                                open={gradePopoverOpen}
+                                onOpenChange={setGradePopoverOpen}
+                            />
                         </div>
 
                         {/* Section Filter */}
-                        <div className="min-w-[150px]">
+                        <div className="min-w-50">
                             <label className="text-xs text-muted-foreground mb-1 block">{tCommon('section')}</label>
-                            <Select
-                                value={sectionId}
-                                onValueChange={setSectionId}
-                                disabled={gradeLevelId === 'all'}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder={tCommon('all_sections')} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">{tCommon('all_sections')}</SelectItem>
-                                    {sections?.map((section) => (
-                                        <SelectItem key={section.id} value={section.id}>{section.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <MultiSelectPopover
+                                options={(sections || []).map((section) => ({ id: section.id, label: section.name }))}
+                                selectedIds={sectionIds}
+                                onChange={setSectionIds}
+                                placeholder={tCommon('all_sections')}
+                                emptyMessage={tCommon('all_sections')}
+                                disabled={gradeLevelIds.length === 0}
+                                open={sectionPopoverOpen}
+                                onOpenChange={setSectionPopoverOpen}
+                            />
                         </div>
 
                         {/* Fee Month Filter */}

@@ -100,7 +100,9 @@ CREATE TABLE IF NOT EXISTS payee_payments (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_payee_payments_school ON payee_payments(school_id);
-CREATE INDEX IF NOT EXISTS idx_payee_payments_payee ON payee_payments(payee_id);
+-- idx_payee_payments_payee is created later, after the ADD COLUMN IF NOT EXISTS
+-- safety net below — payee_id only exists here for real if this CREATE TABLE
+-- actually ran (i.e. the table didn't already exist live without the column).
 
 -- ==========================================
 -- accounting_payments (general expenses when staff_id IS NULL, staff payments otherwise)
@@ -130,7 +132,8 @@ CREATE TABLE IF NOT EXISTS accounting_payments (
 CREATE INDEX IF NOT EXISTS idx_accounting_payments_campus_year ON accounting_payments(campus_id, academic_year);
 CREATE INDEX IF NOT EXISTS idx_accounting_payments_category ON accounting_payments(category_id);
 CREATE INDEX IF NOT EXISTS idx_accounting_payments_staff ON accounting_payments(staff_id);
-CREATE INDEX IF NOT EXISTS idx_accounting_payments_payee ON accounting_payments(payee_id);
+-- idx_accounting_payments_payee is created later, after the ADD COLUMN IF NOT
+-- EXISTS safety net below — same reasoning as payee_payments above.
 
 -- ==========================================
 -- accounting_salaries (manual/ad-hoc salary line items distinct from salary_records)
@@ -191,7 +194,14 @@ ALTER TABLE accounting_payments ADD COLUMN IF NOT EXISTS payee_id UUID REFERENCE
 ALTER TABLE accounting_payments ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'cash';
 ALTER TABLE accounting_payments ADD COLUMN IF NOT EXISTS receipt_number TEXT;
 ALTER TABLE payee_payments ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'cash';
+-- Nullable here even though the fresh-create path above makes it NOT NULL —
+-- a pre-existing live table may already have rows, and ADD COLUMN NOT NULL
+-- with no default would fail against those.
+ALTER TABLE payee_payments ADD COLUMN IF NOT EXISTS payee_id UUID REFERENCES payees(id) ON DELETE CASCADE;
+-- Both payee_id columns are now guaranteed to exist (either from the CREATE
+-- TABLE above or the ALTER TABLE just above), so it's safe to index them.
 CREATE INDEX IF NOT EXISTS idx_accounting_payments_payee ON accounting_payments(payee_id);
+CREATE INDEX IF NOT EXISTS idx_payee_payments_payee ON payee_payments(payee_id);
 
 -- ==========================================
 -- get_accounting_totals_with_fees RPC

@@ -1,7 +1,7 @@
 import { Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
 import { schoolServicesService } from '../services/school-services.service'
-import { getEffectiveSchoolId } from '../utils/campus-validation'
+import { resolveSchoolId } from '../utils/campus-validation'
 
 export class SchoolServicesController {
     /**
@@ -10,17 +10,17 @@ export class SchoolServicesController {
      */
     async getServices(req: AuthRequest, res: Response): Promise<void> {
         try {
-            const adminSchoolId = req.profile?.school_id
-            const campusId = req.query.campus_id as string
             const activeOnly = req.query.active !== 'false'
+            // Previously trusted campus_id from the query string outright with
+            // no ownership check — any admin could read another school's
+            // services by passing an arbitrary campus_id. Now validated the
+            // same way as the rest of the fees module.
+            const { schoolId: effectiveSchoolId, error, status } = await resolveSchoolId(req, req.query.campus_id as string)
 
-            if (!adminSchoolId) {
-                res.status(403).json({ success: false, error: 'No school associated' })
+            if (!effectiveSchoolId) {
+                res.status(status || 403).json({ success: false, error: error || 'No school associated' })
                 return
             }
-
-            // Use campus ID if provided, otherwise use admin's school
-            const effectiveSchoolId = (campusId && campusId.trim() !== '') ? campusId : adminSchoolId
 
             const services = await schoolServicesService.getServices(effectiveSchoolId, activeOnly)
 
@@ -37,11 +37,11 @@ export class SchoolServicesController {
      */
     async getServiceById(req: AuthRequest, res: Response): Promise<void> {
         try {
-            const schoolId = req.profile?.school_id
             const serviceId = req.params.id
+            const { schoolId, error, status } = await resolveSchoolId(req, req.query.school_id as string)
 
             if (!schoolId) {
-                res.status(403).json({ success: false, error: 'No school associated' })
+                res.status(status || 403).json({ success: false, error: error || 'No school associated' })
                 return
             }
 
@@ -65,18 +65,12 @@ export class SchoolServicesController {
      */
     async createService(req: AuthRequest, res: Response): Promise<void> {
         try {
-            const adminSchoolId = req.profile?.school_id
+            const { schoolId: effectiveSchoolId, error, status } = await resolveSchoolId(req, req.body.campus_id || req.body.school_id)
 
-            if (!adminSchoolId) {
-                res.status(403).json({ success: false, error: 'No school associated' })
+            if (!effectiveSchoolId) {
+                res.status(status || 403).json({ success: false, error: error || 'No school associated' })
                 return
             }
-
-            // Get effective school ID (campus if provided, otherwise admin's school)
-            const effectiveSchoolId = await getEffectiveSchoolId(
-                adminSchoolId,
-                req.body.campus_id || req.body.school_id
-            )
 
             const service = await schoolServicesService.createService({
                 ...req.body,
@@ -96,11 +90,11 @@ export class SchoolServicesController {
      */
     async updateService(req: AuthRequest, res: Response): Promise<void> {
         try {
-            const schoolId = req.profile?.school_id
             const serviceId = req.params.id
+            const { schoolId, error, status } = await resolveSchoolId(req, req.body.school_id)
 
             if (!schoolId) {
-                res.status(403).json({ success: false, error: 'No school associated' })
+                res.status(status || 403).json({ success: false, error: error || 'No school associated' })
                 return
             }
 
@@ -119,11 +113,11 @@ export class SchoolServicesController {
      */
     async deleteService(req: AuthRequest, res: Response): Promise<void> {
         try {
-            const schoolId = req.profile?.school_id
             const serviceId = req.params.id
+            const { schoolId, error, status } = await resolveSchoolId(req, req.query.school_id as string)
 
             if (!schoolId) {
-                res.status(403).json({ success: false, error: 'No school associated' })
+                res.status(status || 403).json({ success: false, error: error || 'No school associated' })
                 return
             }
 
@@ -142,12 +136,12 @@ export class SchoolServicesController {
      */
     async setGradeCharges(req: AuthRequest, res: Response): Promise<void> {
         try {
-            const schoolId = req.profile?.school_id
             const serviceId = req.params.id
             const { charges } = req.body
+            const { schoolId, error, status } = await resolveSchoolId(req, req.body.school_id)
 
             if (!schoolId) {
-                res.status(403).json({ success: false, error: 'No school associated' })
+                res.status(status || 403).json({ success: false, error: error || 'No school associated' })
                 return
             }
 
@@ -166,11 +160,11 @@ export class SchoolServicesController {
      */
     async getStudentServices(req: AuthRequest, res: Response): Promise<void> {
         try {
-            const schoolId = req.profile?.school_id
             const studentId = req.params.studentId
+            const { schoolId, error, status } = await resolveSchoolId(req, req.query.school_id as string)
 
             if (!schoolId) {
-                res.status(403).json({ success: false, error: 'No school associated' })
+                res.status(status || 403).json({ success: false, error: error || 'No school associated' })
                 return
             }
 
@@ -189,12 +183,12 @@ export class SchoolServicesController {
      */
     async subscribeStudent(req: AuthRequest, res: Response): Promise<void> {
         try {
-            const schoolId = req.profile?.school_id
             const studentId = req.params.studentId
             const { serviceIds } = req.body
+            const { schoolId, error, status } = await resolveSchoolId(req, req.body.school_id)
 
             if (!schoolId) {
-                res.status(403).json({ success: false, error: 'No school associated' })
+                res.status(status || 403).json({ success: false, error: error || 'No school associated' })
                 return
             }
 
@@ -217,11 +211,11 @@ export class SchoolServicesController {
      */
     async unsubscribeStudent(req: AuthRequest, res: Response): Promise<void> {
         try {
-            const schoolId = req.profile?.school_id
             const { studentId, serviceId } = req.params
+            const { schoolId, error, status } = await resolveSchoolId(req, req.query.school_id as string)
 
             if (!schoolId) {
-                res.status(403).json({ success: false, error: 'No school associated' })
+                res.status(status || 403).json({ success: false, error: error || 'No school associated' })
                 return
             }
 

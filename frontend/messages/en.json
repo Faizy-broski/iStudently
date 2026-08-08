@@ -2708,7 +2708,7 @@
       "name_placeholder": "e.g., Grade 10, Matric, O-Levels",
       "order_label": "Order Index *",
       "order_placeholder": "1, 2, 3...",
-      "order_desc": "Used for sorting: Grade 1=1, Grade 2=2, etc.",
+      "order_desc": "Used for sorting: Grade 1=1, Grade 2=2, etc. Decimals are allowed, so to insert a new grade between two existing ones (e.g. before Grade 1), just use a value like 0.5 — no need to renumber the other grades.",
       "status_label": "Active Status",
       "status_desc": "Inactive grades won't appear in dropdowns",
       "cancel": "Cancel",
@@ -6249,6 +6249,8 @@
       "selectMonth": "Month *",
       "month": "Month",
       "yearRequired": "Year *",
+      "academicYear": "Academic Year",
+      "academicYearHint": "The year your fee structures were created under (see Manage Fee Structures) — not necessarily the year the selected month falls in.",
       "allGrades": "All Grades",
       "generated": "Fee generated! Opening print dialog...",
       "generateFailed": "Failed to generate fee",
@@ -8475,8 +8477,12 @@
       "title": "Delete Absence",
       "description": "Are you sure you want to delete this absence? This action cannot be undone."
     },
+    "selectAll": "Select All",
+    "deselectAll": "Deselect All",
+    "multipleStaffHint": "{count} staff members selected — this absence will be recorded for each of them.",
     "toasts": {
       "absenceAdded": "Absence added successfully",
+      "absencesAdded": "{count} absences added successfully",
       "absenceUpdated": "Absence updated",
       "absenceDeleted": "Absence deleted",
       "absenceNotFound": "Absence not found",
@@ -8497,6 +8503,7 @@
     },
     "cancelledClasses": {
       "title": "Cancelled Classes",
+      "hiddenForMultiple": "Cancelled classes can only be selected when a single staff member is chosen.",
       "noCoursePeriods": "No course periods found for this staff member.",
       "selectCoursePeriods": "Select the course periods that will be cancelled during this absence:",
       "resultsCount": "{count} cancelled classes found",

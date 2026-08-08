@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase'
+import { AuthRequest } from '../middlewares/auth.middleware'
 
 /**
  * Validates that an admin has access to a specific campus
@@ -68,4 +69,48 @@ export async function getEffectiveSchoolId(
   }
 
   return requestedCampusId
+}
+
+/**
+ * Resolves the school_id to use for a request: trusts req.profile.school_id
+ * by default, but lets a non-super-admin target a different campus/school
+ * as long as validateCampusAccess() confirms it's a child of their own
+ * school (or is their own school). super_admin may target any explicit
+ * school_id (falls back to their own profile if omitted).
+ *
+ * Shared across controllers — was previously duplicated per-controller as a
+ * strict equality check that rejected ANY school_id other than the caller's
+ * own profile.school_id. That meant an admin who could freely switch campus
+ * for students/grades/generation would still have every fee-categories,
+ * fee-structures, payments, school-services (etc.) endpoint silently keep
+ * operating on their home campus only — making a campus they'd switched to
+ * look like it had no data, when the real data was simply unreachable
+ * through the guard. Use this (not a local copy) for any new endpoint that
+ * needs campus-aware school scoping.
+ */
+export async function resolveSchoolId(
+  req: AuthRequest,
+  requestedSchoolId?: string | null
+): Promise<{ schoolId: string | null; error?: string; status?: number }> {
+  const profileSchoolId = req.profile?.school_id ?? null
+  const role = req.profile?.role
+
+  if (role === 'super_admin') {
+    return { schoolId: requestedSchoolId || profileSchoolId }
+  }
+
+  if (!profileSchoolId) {
+    return { schoolId: null, error: 'Not authenticated', status: 403 }
+  }
+
+  if (!requestedSchoolId || requestedSchoolId === profileSchoolId) {
+    return { schoolId: profileSchoolId }
+  }
+
+  const hasAccess = await validateCampusAccess(profileSchoolId, requestedSchoolId)
+  if (!hasAccess) {
+    return { schoolId: null, error: 'Forbidden: school_id does not match your account', status: 403 }
+  }
+
+  return { schoolId: requestedSchoolId }
 }

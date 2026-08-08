@@ -47,11 +47,15 @@ export default function FeeStructuresPage() {
     const t = useTranslations('fees.structures')
     const { profile } = useAuth()
     const { selectedCampus } = useCampus()
-    // Fee categories/structures are scoped to the school only — the backend
-    // rejects anything but the caller's own profile.school_id (no campus support).
-    const schoolId = profile?.school_id || ''
-    // Grade levels, however, are looked up per-campus when one is selected.
-    const gradeScopeId = selectedCampus?.id || schoolId
+    // The backend now allows fee categories/structures to target a campus
+    // other than the admin's own home school (as long as it's a real child
+    // campus) — it used to hard-reject anything but an exact match to
+    // profile.school_id, so a campus switched to via the sidebar could never
+    // actually have its own fee structures managed here.
+    const schoolId = selectedCampus?.id || profile?.school_id || ''
+    // Grade levels are also looked up per-campus; kept as a separate alias
+    // since it's semantically about grades, even though it's the same value now.
+    const gradeScopeId = schoolId
 
     const [academicYear, setAcademicYear] = useState('2025-2026')
     const [editingStructure, setEditingStructure] = useState<FeeStructure | null>(null)

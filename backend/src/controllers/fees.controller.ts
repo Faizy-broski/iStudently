@@ -1,34 +1,7 @@
 import { Request, Response } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
 import { feesService } from '../services/fees.service'
-import { validateCampusAccess } from '../utils/campus-validation'
-
-/**
- * Resolves the school_id to use for a request: always trusts req.profile.school_id
- * for non-super-admins, ignoring any client-supplied school_id. super_admin may
- * target an explicit school_id (falls back to their own profile if omitted).
- */
-function resolveSchoolId(
-    req: AuthRequest,
-    requestedSchoolId?: string | null
-): { schoolId: string | null; error?: string; status?: number } {
-    const profileSchoolId = req.profile?.school_id ?? null
-    const role = req.profile?.role
-
-    if (role === 'super_admin') {
-        return { schoolId: requestedSchoolId || profileSchoolId }
-    }
-
-    if (!profileSchoolId) {
-        return { schoolId: null, error: 'Not authenticated', status: 403 }
-    }
-
-    if (requestedSchoolId && requestedSchoolId !== profileSchoolId) {
-        return { schoolId: null, error: 'Forbidden: school_id does not match your account', status: 403 }
-    }
-
-    return { schoolId: profileSchoolId }
-}
+import { validateCampusAccess, resolveSchoolId } from '../utils/campus-validation'
 
 export class FeesController {
     // ==========================================
@@ -37,7 +10,7 @@ export class FeesController {
 
     async getFeeSettings(req: AuthRequest, res: Response) {
         try {
-            const { schoolId, error, status } = resolveSchoolId(req, req.query.school_id as string)
+            const { schoolId, error, status } = await resolveSchoolId(req, req.query.school_id as string)
             if (!schoolId) {
                 return res.status(status || 400).json({ success: false, error: error || 'school_id is required' })
             }
@@ -52,7 +25,7 @@ export class FeesController {
 
     async updateFeeSettings(req: AuthRequest, res: Response) {
         try {
-            const { schoolId, error, status } = resolveSchoolId(req, req.body.school_id as string)
+            const { schoolId, error, status } = await resolveSchoolId(req, req.body.school_id as string)
             if (!schoolId) {
                 return res.status(status || 400).json({ success: false, error: error || 'school_id is required' })
             }
@@ -72,7 +45,7 @@ export class FeesController {
     async getFeeCategories(req: AuthRequest, res: Response) {
         try {
             const activeOnly = req.query.active !== 'false'
-            const { schoolId, error, status } = resolveSchoolId(req, req.query.school_id as string)
+            const { schoolId, error, status } = await resolveSchoolId(req, req.query.school_id as string)
 
             if (!schoolId) {
                 return res.status(status || 400).json({ success: false, error: error || 'school_id is required' })
@@ -89,7 +62,7 @@ export class FeesController {
     async createFeeCategory(req: AuthRequest, res: Response) {
         try {
             const { name, code, description, is_mandatory, is_discountable, display_order } = req.body
-            const { schoolId: school_id, error, status } = resolveSchoolId(req, req.body.school_id as string)
+            const { schoolId: school_id, error, status } = await resolveSchoolId(req, req.body.school_id as string)
 
             if (!school_id || !name || !code) {
                 return res.status(status || 400).json({ success: false, error: error || 'school_id, name, and code are required' })
@@ -115,7 +88,7 @@ export class FeesController {
     async updateFeeCategory(req: AuthRequest, res: Response) {
         try {
             const { id } = req.params
-            const { schoolId, error, status } = resolveSchoolId(req, req.body.school_id as string)
+            const { schoolId, error, status } = await resolveSchoolId(req, req.body.school_id as string)
 
             if (!schoolId) {
                 return res.status(status || 400).json({ success: false, error: error || 'school_id is required' })
@@ -132,7 +105,7 @@ export class FeesController {
     async deleteFeeCategory(req: AuthRequest, res: Response) {
         try {
             const { id } = req.params
-            const { schoolId, error, status } = resolveSchoolId(req, req.query.school_id as string)
+            const { schoolId, error, status } = await resolveSchoolId(req, req.query.school_id as string)
 
             if (!schoolId) {
                 return res.status(status || 400).json({ success: false, error: error || 'school_id is required' })
@@ -153,7 +126,7 @@ export class FeesController {
     async getFeeStructures(req: AuthRequest, res: Response) {
         try {
             const academicYear = req.query.academic_year as string
-            const { schoolId, error, status } = resolveSchoolId(req, req.query.school_id as string)
+            const { schoolId, error, status } = await resolveSchoolId(req, req.query.school_id as string)
 
             if (!schoolId) {
                 return res.status(status || 400).json({ success: false, error: error || 'school_id is required' })
@@ -170,7 +143,7 @@ export class FeesController {
     async createFeeStructure(req: AuthRequest, res: Response) {
         try {
             const { academic_year, grade_level_id, fee_category_id, period_type, amount, due_date } = req.body
-            const { schoolId: school_id, error, status } = resolveSchoolId(req, req.body.school_id as string)
+            const { schoolId: school_id, error, status } = await resolveSchoolId(req, req.body.school_id as string)
 
             if (!school_id || !academic_year || !grade_level_id || !fee_category_id || !amount || !due_date) {
                 return res.status(status || 400).json({
@@ -190,7 +163,7 @@ export class FeesController {
     async updateFeeStructure(req: AuthRequest, res: Response) {
         try {
             const { id } = req.params
-            const { schoolId, error, status } = resolveSchoolId(req, req.body.school_id as string)
+            const { schoolId, error, status } = await resolveSchoolId(req, req.body.school_id as string)
 
             if (!schoolId) {
                 return res.status(status || 400).json({ success: false, error: error || 'school_id is required' })
@@ -207,7 +180,7 @@ export class FeesController {
     async deleteFeeStructure(req: AuthRequest, res: Response) {
         try {
             const { id } = req.params
-            const { schoolId, error, status } = resolveSchoolId(req, req.query.school_id as string)
+            const { schoolId, error, status } = await resolveSchoolId(req, req.query.school_id as string)
 
             if (!schoolId) {
                 return res.status(status || 400).json({ success: false, error: error || 'school_id is required' })
@@ -227,7 +200,7 @@ export class FeesController {
 
     async getSiblingDiscountTiers(req: AuthRequest, res: Response) {
         try {
-            const { schoolId, error, status } = resolveSchoolId(req, req.query.school_id as string)
+            const { schoolId, error, status } = await resolveSchoolId(req, req.query.school_id as string)
             if (!schoolId) {
                 return res.status(status || 400).json({ success: false, error: error || 'school_id is required' })
             }
@@ -243,7 +216,7 @@ export class FeesController {
     async updateSiblingDiscountTiers(req: AuthRequest, res: Response) {
         try {
             const { tiers } = req.body
-            const { schoolId: school_id, error, status } = resolveSchoolId(req, req.body.school_id as string)
+            const { schoolId: school_id, error, status } = await resolveSchoolId(req, req.body.school_id as string)
 
             if (!school_id || !Array.isArray(tiers)) {
                 return res.status(status || 400).json({ success: false, error: error || 'school_id and tiers array are required' })
@@ -268,7 +241,7 @@ export class FeesController {
             const status = req.query.status as string
             const page = parseInt(req.query.page as string) || 1
             const limit = parseInt(req.query.limit as string) || 20
-            const { schoolId, error, status: httpStatus } = resolveSchoolId(req, req.query.school_id as string)
+            const { schoolId, error, status: httpStatus } = await resolveSchoolId(req, req.query.school_id as string)
 
             if (!schoolId) {
                 return res.status(httpStatus || 400).json({ success: false, error: error || 'school_id is required' })
@@ -301,7 +274,7 @@ export class FeesController {
     async getStudentFeeById(req: AuthRequest, res: Response) {
         try {
             const { id } = req.params
-            const { schoolId, error, status } = resolveSchoolId(req, req.query.school_id as string)
+            const { schoolId, error, status } = await resolveSchoolId(req, req.query.school_id as string)
 
             if (!schoolId) {
                 return res.status(status || 400).json({ success: false, error: error || 'school_id is required' })
@@ -328,7 +301,7 @@ export class FeesController {
     async recordPayment(req: AuthRequest, res: Response) {
         try {
             const { student_fee_id, amount, payment_method, payment_reference, received_by, notes } = req.body
-            const { schoolId: school_id, error, status } = resolveSchoolId(req, req.body.school_id as string)
+            const { schoolId: school_id, error, status } = await resolveSchoolId(req, req.body.school_id as string)
 
             if (!school_id || !student_fee_id || !amount) {
                 return res.status(status || 400).json({ success: false, error: error || 'school_id, student_fee_id, and amount are required' })
@@ -357,7 +330,7 @@ export class FeesController {
     async generateFee(req: AuthRequest, res: Response) {
         try {
             const { student_id, academic_year, fee_structure_id } = req.body
-            const { schoolId: school_id, error, status } = resolveSchoolId(req, req.body.school_id as string)
+            const { schoolId: school_id, error, status } = await resolveSchoolId(req, req.body.school_id as string)
 
             if (!school_id || !student_id || !academic_year || !fee_structure_id) {
                 return res.status(status || 400).json({
@@ -382,7 +355,7 @@ export class FeesController {
         try {
             const { id } = req.params
             const { admin_id } = req.body
-            const { schoolId: school_id, error, status } = resolveSchoolId(req, req.body.school_id as string)
+            const { schoolId: school_id, error, status } = await resolveSchoolId(req, req.body.school_id as string)
 
             if (!school_id || !admin_id) {
                 return res.status(status || 400).json({ success: false, error: error || 'school_id and admin_id are required' })
@@ -400,7 +373,7 @@ export class FeesController {
         try {
             const { id } = req.params
             const { notes } = req.body
-            const { schoolId: school_id, error, status } = resolveSchoolId(req, req.body.school_id as string)
+            const { schoolId: school_id, error, status } = await resolveSchoolId(req, req.body.school_id as string)
 
             if (!school_id) {
                 return res.status(status || 400).json({ success: false, error: error || 'school_id is required' })
@@ -421,7 +394,7 @@ export class FeesController {
     async getDashboardStats(req: AuthRequest, res: Response) {
         try {
             const academicYear = req.query.academic_year as string
-            const { schoolId, error, status } = resolveSchoolId(req, req.query.school_id as string)
+            const { schoolId, error, status } = await resolveSchoolId(req, req.query.school_id as string)
 
             if (!schoolId) {
                 return res.status(status || 400).json({ success: false, error: error || 'school_id is required' })
@@ -446,7 +419,7 @@ export class FeesController {
      */
     async applyLateFees(req: AuthRequest, res: Response) {
         try {
-            const { schoolId: school_id, error, status } = resolveSchoolId(req, req.body.school_id as string)
+            const { schoolId: school_id, error, status } = await resolveSchoolId(req, req.body.school_id as string)
 
             if (!school_id) {
                 return res.status(status || 400).json({ success: false, error: error || 'school_id is required' })
@@ -543,9 +516,57 @@ export class FeesController {
                 effectiveSchoolId // Campus-specific school ID
             )
 
+            // Data problems (missing grade, no matching structure, zero amount,
+            // or an outright error) are worth flagging; already having a fee for
+            // this month is not a problem — it's the expected steady state once
+            // a school has generated fees before. Keep those two apart so the
+            // message (and the toast style the frontend picks based on
+            // `severity`) doesn't read as a failure when nothing was actually
+            // wrong — the run just had nothing new left to do.
+            const issueCount = result.skippedNoGrade + result.skippedNoFeeStructures + result.skippedZeroAmount + result.skippedError
+            let severity: 'success' | 'info' | 'warning' = 'success'
+            let message = `Generated ${result.feesCreated} fees for ${result.studentsProcessed} students`
+
+            if (result.feesCreated > 0 && issueCount > 0) {
+                // Partial success — created what it could, skipped the rest for real reasons.
+                severity = 'warning'
+                message += ` (${issueCount} student(s) skipped — see details)`
+            } else if (result.feesCreated === 0 && result.studentsFound > 0) {
+                const reasons: string[] = []
+                if (result.skippedNoGrade > 0) {
+                    reasons.push(`${result.skippedNoGrade} have no grade level assigned`)
+                }
+                if (result.skippedNoFeeStructures > 0) {
+                    reasons.push(`${result.skippedNoFeeStructures} had no matching fee structure for this grade/academic year`)
+                }
+                if (result.skippedZeroAmount > 0) {
+                    reasons.push(`${result.skippedZeroAmount} computed to a zero amount`)
+                }
+                if (result.skippedError > 0) {
+                    reasons.push(`${result.skippedError} hit an error (see server logs)`)
+                }
+                if (result.skippedAlreadyExists > 0) {
+                    reasons.push(`${result.skippedAlreadyExists} already had a fee for this month`)
+                }
+
+                if (issueCount === 0) {
+                    // Everyone accounted for is "already has a fee" — nothing
+                    // wrong, just nothing left to generate.
+                    severity = 'info'
+                    message = result.skippedAlreadyExists === result.studentsFound
+                        ? `All ${result.studentsFound} student(s) already have a fee for this month — nothing new to generate`
+                        : `No new fees needed for the ${result.studentsFound} student(s) found`
+                } else {
+                    severity = 'warning'
+                    message = `Found ${result.studentsFound} student(s) but generated 0 fees` +
+                        (reasons.length > 0 ? `: ${reasons.join('; ')}` : '')
+                }
+            }
+
             return res.json({
                 success: true,
-                message: `Generated ${result.feesCreated} fees for ${result.studentsProcessed} students`,
+                severity,
+                message,
                 data: result
             })
         } catch (error: any) {
@@ -643,7 +664,7 @@ export class FeesController {
     async adjustFee(req: AuthRequest, res: Response) {
         try {
             const { id } = req.params
-            const { schoolId, error, status } = resolveSchoolId(req, req.query.school_id as string)
+            const { schoolId, error, status } = await resolveSchoolId(req, req.query.school_id as string)
             const adminId = req.user?.id
 
             if (!schoolId || !adminId) {
@@ -677,7 +698,7 @@ export class FeesController {
     async getFeeAdjustments(req: AuthRequest, res: Response) {
         try {
             const { id } = req.params
-            const { schoolId, error, status } = resolveSchoolId(req, req.query.school_id as string)
+            const { schoolId, error, status } = await resolveSchoolId(req, req.query.school_id as string)
 
             if (!schoolId) {
                 return res.status(status || 403).json({ success: false, error: error || 'Not authenticated' })
@@ -702,10 +723,14 @@ export class FeesController {
     async getStudentFeeHistory(req: AuthRequest, res: Response) {
         try {
             const { studentId } = req.params
-            const schoolId = req.profile?.school_id
+            // Same bug class as generateFeeForNewStudent: this always used the
+            // admin's own home school, so viewing fee history for a student in
+            // a different campus the admin had switched to silently queried the
+            // wrong school and returned nothing.
+            const { schoolId, error, status: httpStatus } = await resolveSchoolId(req, req.query.school_id as string)
 
             if (!schoolId) {
-                return res.status(403).json({ success: false, error: 'Not authenticated' })
+                return res.status(httpStatus || 403).json({ success: false, error: error || 'Not authenticated' })
             }
 
             const academicYear = req.query.academic_year as string
@@ -747,19 +772,37 @@ export class FeesController {
      */
     async generateFeeForNewStudent(req: AuthRequest, res: Response) {
         try {
-            const schoolId = req.profile?.school_id
+            const adminSchoolId = req.profile?.school_id
 
-            if (!schoolId) {
+            if (!adminSchoolId) {
                 return res.status(403).json({ success: false, error: 'Not authenticated' })
             }
 
-            const { student_id, grade_id, service_ids, category_ids, academic_year, fee_month, due_date } = req.body
+            const { student_id, grade_id, service_ids, category_ids, academic_year, fee_month, due_date, campus_id, school_id } = req.body
 
             if (!student_id || !grade_id || !academic_year || !fee_month || !due_date) {
                 return res.status(400).json({
                     success: false,
                     error: 'student_id, grade_id, academic_year, fee_month, and due_date are required'
                 })
+            }
+
+            // This used to always use the admin's own home school_id, even when
+            // generating for a student who belongs to a different campus the
+            // admin has switched to — silently looking up fee structures under
+            // the wrong campus and failing with a misleading "no active fee
+            // structure" error. Now accepts the same campus/school override
+            // pattern as bulk generation, validated the same way.
+            let schoolId = adminSchoolId
+            const requestedTarget = campus_id || school_id
+            if (requestedTarget && requestedTarget !== adminSchoolId) {
+                if (req.profile?.role !== 'super_admin') {
+                    const hasAccess = await validateCampusAccess(adminSchoolId, requestedTarget)
+                    if (!hasAccess) {
+                        return res.status(403).json({ success: false, error: 'Forbidden: campus does not belong to your school' })
+                    }
+                }
+                schoolId = requestedTarget
             }
 
             const fee = await feesService.generateFeeForNewStudent(
@@ -787,7 +830,7 @@ export class FeesController {
      */
     async getFeesByGrade(req: AuthRequest, res: Response) {
         try {
-            const { schoolId, error, status: httpStatus } = resolveSchoolId(req, req.query.school_id as string)
+            const { schoolId, error, status: httpStatus } = await resolveSchoolId(req, req.query.school_id as string)
 
             if (!schoolId) {
                 return res.status(httpStatus || 403).json({ success: false, error: error || 'Not authenticated' })
@@ -840,7 +883,7 @@ export class FeesController {
      */
     async getStudentsForPayments(req: AuthRequest, res: Response) {
         try {
-            const { schoolId, error, status } = resolveSchoolId(req, req.query.school_id as string)
+            const { schoolId, error, status } = await resolveSchoolId(req, req.query.school_id as string)
 
             if (!schoolId) {
                 return res.status(status || 403).json({ success: false, error: error || 'Not authenticated' })
@@ -880,7 +923,7 @@ export class FeesController {
      */
     async getAllPaymentsWithStudents(req: AuthRequest, res: Response) {
         try {
-            const { schoolId, error, status } = resolveSchoolId(req, req.query.school_id as string)
+            const { schoolId, error, status } = await resolveSchoolId(req, req.query.school_id as string)
             // Accepts either a single id or a comma-separated list (multi-grade/section filter)
             const gradeIds = req.query.grade_id
                 ? String(req.query.grade_id).split(',').map(v => v.trim()).filter(Boolean)
@@ -907,7 +950,7 @@ export class FeesController {
      */
     async getStudentPayments(req: AuthRequest, res: Response) {
         try {
-            const { schoolId, error, status } = resolveSchoolId(req, req.query.school_id as string)
+            const { schoolId, error, status } = await resolveSchoolId(req, req.query.school_id as string)
             const { studentId } = req.params
 
             if (!schoolId) {
@@ -944,7 +987,7 @@ export class FeesController {
      */
     async recordDirectPayment(req: AuthRequest, res: Response) {
         try {
-            const { schoolId, error, status } = resolveSchoolId(req, req.body.school_id as string)
+            const { schoolId, error, status } = await resolveSchoolId(req, req.body.school_id as string)
             const userId = req.profile?.id
 
             if (!schoolId) {
@@ -982,7 +1025,7 @@ export class FeesController {
      */
     async deletePayment(req: AuthRequest, res: Response) {
         try {
-            const { schoolId, error, status } = resolveSchoolId(req, req.query.school_id as string)
+            const { schoolId, error, status } = await resolveSchoolId(req, req.query.school_id as string)
             const { paymentId } = req.params
 
             if (!schoolId) {
@@ -1008,7 +1051,7 @@ export class FeesController {
      */
     async updatePayment(req: AuthRequest, res: Response) {
         try {
-            const { schoolId, error, status } = resolveSchoolId(req, req.body.school_id as string)
+            const { schoolId, error, status } = await resolveSchoolId(req, req.body.school_id as string)
             const { paymentId } = req.params
 
             if (!schoolId) {
@@ -1048,7 +1091,7 @@ export class FeesController {
      */
     async createStudentFeeOverride(req: AuthRequest, res: Response) {
         try {
-            const { schoolId, error, status } = resolveSchoolId(req, req.body.school_id as string)
+            const { schoolId, error, status } = await resolveSchoolId(req, req.body.school_id as string)
 
             if (!schoolId) {
                 return res.status(status || 403).json({ success: false, error: error || 'Not authenticated' })
@@ -1091,7 +1134,7 @@ export class FeesController {
      */
     async getStudentFeeOverrides(req: AuthRequest, res: Response) {
         try {
-            const { schoolId, error, status } = resolveSchoolId(req, req.query.school_id as string)
+            const { schoolId, error, status } = await resolveSchoolId(req, req.query.school_id as string)
             const { studentId } = req.params
             const academicYear = req.query.academic_year as string | undefined
 
@@ -1123,7 +1166,7 @@ export class FeesController {
             const isActive = req.query.is_active !== 'false'
             const page = parseInt(req.query.page as string) || 1
             const limit = parseInt(req.query.limit as string) || 50
-            const { schoolId, error, status } = resolveSchoolId(req, req.query.school_id as string)
+            const { schoolId, error, status } = await resolveSchoolId(req, req.query.school_id as string)
 
             if (!schoolId) {
                 return res.status(status || 403).json({ success: false, error: error || 'Not authenticated' })
@@ -1150,7 +1193,7 @@ export class FeesController {
      */
     async updateStudentFeeOverride(req: AuthRequest, res: Response) {
         try {
-            const { schoolId, error, status } = resolveSchoolId(req, req.body.school_id as string)
+            const { schoolId, error, status } = await resolveSchoolId(req, req.body.school_id as string)
             const { id } = req.params
 
             if (!schoolId) {
@@ -1190,7 +1233,7 @@ export class FeesController {
      */
     async deleteStudentFeeOverride(req: AuthRequest, res: Response) {
         try {
-            const { schoolId, error, status } = resolveSchoolId(req, req.query.school_id as string)
+            const { schoolId, error, status } = await resolveSchoolId(req, req.query.school_id as string)
             const { id } = req.params
 
             if (!schoolId) {
