@@ -947,6 +947,36 @@ export class StudentService {
     }
   }
 
+  /**
+   * Look for a student already in this school with the same name (and DOB,
+   * when given). Bulk import has no idempotency key, and a client that
+   * retries after a timeout/network error can resubmit the same rows, so
+   * this is the only thing standing between a retry and duplicate students.
+   */
+  private async findDuplicateStudent(
+    student: any,
+    schoolId: string
+  ): Promise<boolean> {
+    if (!student.first_name || !student.last_name) return false
+
+    let query = supabase
+      .from('students')
+      .select('id, profile:profiles!inner(first_name, last_name, father_name, date_of_birth)', { count: 'exact', head: false })
+      .eq('school_id', schoolId)
+      .ilike('profile.first_name', student.first_name.trim())
+      .ilike('profile.last_name', student.last_name.trim())
+
+    if (student.father_name) {
+      query = query.ilike('profile.father_name', student.father_name.trim())
+    }
+    if (student.date_of_birth) {
+      query = query.eq('profile.date_of_birth', student.date_of_birth)
+    }
+
+    const { data, error } = await query.limit(1)
+    return !error && !!data && data.length > 0
+  }
+
   async bulkImportStudents(
     students: any[],
     schoolId: string,
@@ -959,6 +989,12 @@ export class StudentService {
 
     for (const student of students) {
       try {
+        if (await this.findDuplicateStudent(student, schoolId)) {
+          error_count++
+          errors.push({ row: student._row, error: 'Skipped: a student with this name already exists in this school (likely a repeat import)' })
+          continue
+        }
+
         const result = await this.createStudent({
           ...student,
           school_id: schoolId,

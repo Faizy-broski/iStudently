@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { ListPlus, Loader2, Plus, Trash2, Pencil } from 'lucide-react'
+import { ListPlus, Loader2, Plus, Trash2, Pencil, GripVertical, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,17 +30,34 @@ import {
   type BranchSchool,
 } from '@/lib/api/custom-fields'
 import { getAllSchoolsData } from '@/lib/api/schools'
+import {
+  DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent,
+} from '@dnd-kit/core'
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 interface SchoolCustomFieldsButtonProps {
   schoolId: string
   schoolName: string
-  // Called after a field is created, edited, or deleted so a parent page
-  // that also renders these fields (e.g. Campus Details) can refresh.
+  // Whether the caller is a platform super admin. Non-super-admins (a
+  // school's own admin, managing their own campus's tabs/fields) only get
+  // "this campus" / "all campuses" scoping — cross-school scoping stays
+  // super-admin-only, enforced again server-side.
+  isSuperAdmin?: boolean
+  // Called after a field is created, edited, reordered, or deleted so a
+  // parent page that also renders these fields (e.g. Campus Details) can refresh.
   onFieldsChanged?: () => void
 }
 
 const FIELD_TYPES: CustomFieldType[] = ['text', 'long-text', 'number', 'date', 'checkbox', 'select', 'multi-select', 'file']
 const OPTIONS_TYPES: CustomFieldType[] = ['select', 'multi-select']
+const DEFAULT_TAB_ID = 'school_details'
+const DEFAULT_TAB_NAME = 'School Details'
+const NEW_TAB_VALUE = '__new_tab__'
+
+function slugifyTabName(name: string): string {
+  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || `tab_${Date.now()}`
+}
 
 interface FieldFormState {
   label: string
@@ -49,27 +66,34 @@ interface FieldFormState {
   required: boolean
   campus_scope: CampusScope
   applicable_school_ids: string[]
+  category_id: string
+  category_name: string
 }
 
-const emptyForm = (): FieldFormState => ({
+const emptyForm = (categoryId: string, categoryName: string): FieldFormState => ({
   label: '',
   type: 'text',
   options_text: '',
   required: false,
   campus_scope: 'all_campuses',
   applicable_school_ids: [],
+  category_id: categoryId,
+  category_name: categoryName,
 })
 
-export function SchoolCustomFieldsButton({ schoolId, schoolName, onFieldsChanged }: SchoolCustomFieldsButtonProps) {
+export function SchoolCustomFieldsButton({ schoolId, schoolName, isSuperAdmin, onFieldsChanged }: SchoolCustomFieldsButtonProps) {
   const [open, setOpen] = React.useState(false)
   const [loading, setLoading] = React.useState(false)
   const [saving, setSaving] = React.useState(false)
+  const [savingOrder, setSavingOrder] = React.useState(false)
   const [fields, setFields] = React.useState<CustomFieldDefinition[]>([])
   const [allSchools, setAllSchools] = React.useState<BranchSchool[]>([])
+  const [activeTab, setActiveTab] = React.useState<string>(DEFAULT_TAB_ID)
 
   const [showForm, setShowForm] = React.useState(false)
   const [editingField, setEditingField] = React.useState<CustomFieldDefinition | null>(null)
-  const [form, setForm] = React.useState<FieldFormState>(emptyForm())
+  const [form, setForm] = React.useState<FieldFormState>(emptyForm(DEFAULT_TAB_ID, DEFAULT_TAB_NAME))
+  const [newTabName, setNewTabName] = React.useState('')
 
   const loadFields = React.useCallback(async () => {
     setLoading(true)
@@ -90,9 +114,29 @@ export function SchoolCustomFieldsButton({ schoolId, schoolName, onFieldsChanged
     loadFields()
   }
 
+  // Every distinct category among this school's fields is a "tab". Always
+  // include the default tab so there's somewhere to add the very first field.
+  const tabs = React.useMemo(() => {
+    const map = new Map<string, string>([[DEFAULT_TAB_ID, DEFAULT_TAB_NAME]])
+    fields.forEach((f) => map.set(f.category_id, f.category_name))
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }))
+  }, [fields])
+
+  React.useEffect(() => {
+    if (!tabs.find((t) => t.id === activeTab)) setActiveTab(tabs[0]?.id ?? DEFAULT_TAB_ID)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabs])
+
+  const [tabOrder, setTabOrder] = React.useState<CustomFieldDefinition[]>([])
+  React.useEffect(() => {
+    setTabOrder(fields.filter((f) => f.category_id === activeTab).sort((a, b) => a.sort_order - b.sort_order))
+  }, [fields, activeTab])
+
   function openAdd() {
     setEditingField(null)
-    setForm(emptyForm())
+    const tab = tabs.find((t) => t.id === activeTab)
+    setForm(emptyForm(tab?.id ?? DEFAULT_TAB_ID, tab?.name ?? DEFAULT_TAB_NAME))
+    setNewTabName('')
     setShowForm(true)
   }
 
@@ -105,7 +149,10 @@ export function SchoolCustomFieldsButton({ schoolId, schoolName, onFieldsChanged
       required: field.required,
       campus_scope: field.campus_scope,
       applicable_school_ids: field.applicable_school_ids ?? [],
+      category_id: field.category_id,
+      category_name: field.category_name,
     })
+    setNewTabName('')
     setShowForm(true)
   }
 
@@ -114,9 +161,29 @@ export function SchoolCustomFieldsButton({ schoolId, schoolName, onFieldsChanged
     return form.options_text.split('\n').map((l) => l.trim()).filter(Boolean)
   }
 
+  function handleTabSelect(value: string) {
+    if (value === NEW_TAB_VALUE) {
+      setForm((f) => ({ ...f, category_id: '', category_name: '' }))
+      return
+    }
+    const tab = tabs.find((t) => t.id === value)
+    if (tab) setForm((f) => ({ ...f, category_id: tab.id, category_name: tab.name }))
+  }
+
+  function handleNewTabNameChange(name: string) {
+    setNewTabName(name)
+    setForm((f) => ({ ...f, category_id: slugifyTabName(name), category_name: name.trim() }))
+  }
+
+  const isCreatingNewTab = !tabs.find((t) => t.id === form.category_id)
+
   async function handleSaveField() {
     if (!form.label.trim()) {
       toast.error('Field label is required')
+      return
+    }
+    if (!form.category_name.trim()) {
+      toast.error('Tab name is required')
       return
     }
     setSaving(true)
@@ -129,6 +196,8 @@ export function SchoolCustomFieldsButton({ schoolId, schoolName, onFieldsChanged
           required: form.required,
           campus_scope: form.campus_scope,
           applicable_school_ids: form.campus_scope === 'selected_campuses' ? form.applicable_school_ids : undefined,
+          category_id: form.category_id,
+          category_name: form.category_name.trim(),
         }, schoolId)
         if (!res.success) { toast.error(res.error ?? 'Failed to update field'); return }
         toast.success('Field updated')
@@ -136,8 +205,8 @@ export function SchoolCustomFieldsButton({ schoolId, schoolName, onFieldsChanged
       } else {
         const res = await customFieldsApi.createFieldDefinition({
           entity_type: 'school',
-          category_id: 'school_details',
-          category_name: 'School Details',
+          category_id: form.category_id,
+          category_name: form.category_name.trim(),
           label: form.label.trim(),
           type: form.type,
           options: buildOptions(),
@@ -149,6 +218,7 @@ export function SchoolCustomFieldsButton({ schoolId, schoolName, onFieldsChanged
         toast.success('Field added')
         onFieldsChanged?.()
       }
+      setActiveTab(form.category_id)
       setShowForm(false)
       loadFields()
     } finally {
@@ -173,6 +243,52 @@ export function SchoolCustomFieldsButton({ schoolId, schoolName, onFieldsChanged
     }))
   }
 
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    setTabOrder((items) => {
+      const oldIndex = items.findIndex((i) => i.id === active.id)
+      const newIndex = items.findIndex((i) => i.id === over.id)
+      return arrayMove(items, oldIndex, newIndex)
+    })
+  }
+
+  async function handleSaveOrder() {
+    setSavingOrder(true)
+    try {
+      const res = await customFieldsApi.reorderFields(
+        activeTab,
+        tabOrder.map((f, idx) => ({ id: f.id, sort_order: idx + 1 })),
+        schoolId
+      )
+      if (!res.success) { toast.error(res.error ?? 'Failed to save order'); return }
+      toast.success('Field order saved')
+      onFieldsChanged?.()
+      loadFields()
+    } finally {
+      setSavingOrder(false)
+    }
+  }
+
+  // Cross-school scoping is super-admin-only (enforced again server-side) —
+  // a school's own admin only manages fields within their own campus family.
+  const scopeOptions: { value: CampusScope; label: string }[] = isSuperAdmin
+    ? [
+        { value: 'this_campus', label: 'Only this exact row (not its branch campuses)' },
+        { value: 'all_campuses', label: 'All campuses (branches) — recommended' },
+        { value: 'selected_campuses', label: 'Selected schools' },
+        { value: 'all_schools', label: 'All schools (every school in the system)' },
+      ]
+    : [
+        { value: 'this_campus', label: 'Only this campus' },
+        { value: 'all_campuses', label: 'This campus and its branches' },
+      ]
+
   return (
     <>
       <Button
@@ -189,7 +305,7 @@ export function SchoolCustomFieldsButton({ schoolId, schoolName, onFieldsChanged
           <DialogHeader>
             <DialogTitle>School Custom Fields — {schoolName}</DialogTitle>
             <DialogDescription>
-              Define custom fields that will show up on this school's "School Details" page for the campus admin to fill in.
+              Define custom fields, grouped into tabs, that will show up on this school's "Campus Details" page.
             </DialogDescription>
           </DialogHeader>
 
@@ -199,6 +315,30 @@ export function SchoolCustomFieldsButton({ schoolId, schoolName, onFieldsChanged
             </div>
           ) : showForm ? (
             <div className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label>Tab</Label>
+                <Select
+                  value={isCreatingNewTab ? NEW_TAB_VALUE : form.category_id}
+                  onValueChange={handleTabSelect}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {tabs.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                    <SelectItem value={NEW_TAB_VALUE}>+ Add new tab…</SelectItem>
+                  </SelectContent>
+                </Select>
+                {isCreatingNewTab && (
+                  <Input
+                    value={newTabName}
+                    onChange={(e) => handleNewTabNameChange(e.target.value)}
+                    placeholder="e.g. Facilities"
+                    className="mt-1.5"
+                  />
+                )}
+              </div>
+
               <div className="space-y-1.5">
                 <Label>Field Label</Label>
                 <Input
@@ -242,10 +382,9 @@ export function SchoolCustomFieldsButton({ schoolId, schoolName, onFieldsChanged
                 <Select value={form.campus_scope} onValueChange={(v) => setForm({ ...form, campus_scope: v as CampusScope })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="this_campus">Only this exact row (not its branch campuses)</SelectItem>
-                    <SelectItem value="all_campuses">All campuses (branches) — recommended</SelectItem>
-                    <SelectItem value="selected_campuses">Selected schools</SelectItem>
-                    <SelectItem value="all_schools">All schools (every school in the system)</SelectItem>
+                    {scopeOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -282,43 +421,97 @@ export function SchoolCustomFieldsButton({ schoolId, schoolName, onFieldsChanged
             </div>
           ) : (
             <div className="space-y-3 py-2">
-              <div className="flex justify-end">
+              {tabs.length > 1 && (
+                <div className="flex flex-wrap gap-1.5 border-b pb-2">
+                  {tabs.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setActiveTab(t.id)}
+                      className={`px-3 py-1 text-xs rounded-full transition-colors ${
+                        activeTab === t.id
+                          ? 'bg-gray-900 text-white'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/70'
+                      }`}
+                    >
+                      {t.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex justify-between items-center gap-2">
+                {tabOrder.length > 1 ? (
+                  <Button size="sm" variant="outline" onClick={handleSaveOrder} disabled={savingOrder}>
+                    {savingOrder ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+                    Save Order
+                  </Button>
+                ) : <span />}
                 <Button size="sm" onClick={openAdd}>
                   <Plus className="h-4 w-4 mr-1.5" />
                   Add Field
                 </Button>
               </div>
 
-              {fields.length === 0 ? (
+              {tabOrder.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">
-                  No custom fields defined for this school yet.
+                  No custom fields defined in this tab yet.
                 </p>
               ) : (
-                <div className="space-y-2">
-                  {fields.map((field) => (
-                    <div key={field.id} className="flex items-center gap-3 p-3 border rounded-md">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium text-sm">{field.label}</span>
-                          <Badge variant="outline" className="text-xs">{field.type}</Badge>
-                          {field.required && <Badge variant="outline" className="text-xs">Required</Badge>}
-                          <Badge variant="outline" className="text-xs">{field.campus_scope.replace('_', ' ')}</Badge>
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(field)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(field)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <SortableContext items={tabOrder.map((f) => f.id)} strategy={verticalListSortingStrategy}>
+                    <div className="space-y-2">
+                      {tabOrder.map((field) => (
+                        <SortableFieldRow
+                          key={field.id}
+                          field={field}
+                          onEdit={() => openEdit(field)}
+                          onDelete={() => handleDelete(field)}
+                        />
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </SortableContext>
+                </DndContext>
               )}
             </div>
           )}
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+function SortableFieldRow({
+  field,
+  onEdit,
+  onDelete,
+}: {
+  field: CustomFieldDefinition
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: field.id })
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 }
+
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center gap-3 p-3 border rounded-md bg-background">
+      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing shrink-0">
+        <GripVertical className="h-4 w-4 text-gray-400" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-medium text-sm">{field.label}</span>
+          <Badge variant="outline" className="text-xs">{field.type}</Badge>
+          {field.required && <Badge variant="outline" className="text-xs">Required</Badge>}
+          <Badge variant="outline" className="text-xs">{field.campus_scope.replace('_', ' ')}</Badge>
+        </div>
+      </div>
+      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}>
+        <Pencil className="h-4 w-4" />
+      </Button>
+      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={onDelete}>
+        <Trash2 className="h-4 w-4" />
+      </Button>
+    </div>
   )
 }

@@ -38,11 +38,14 @@ export class SchoolDashboardService {
     const effectiveId = campusId || schoolId
 
     try {
-      // Get student count
+      // Get student count — active only, so this matches the roster shown on
+      // the student list page (which defaults to active students) instead of
+      // also counting withdrawn/inactive students.
       const { count: totalStudents, error: studentsError } = await supabase
         .from('students')
-        .select('*', { count: 'exact', head: true })
+        .select('*, profile:profiles!inner(is_active)', { count: 'exact', head: true })
         .eq('school_id', effectiveId)
+        .eq('profile.is_active', true)
 
       if (studentsError) {
         console.error('Students query error:', studentsError)
@@ -139,11 +142,12 @@ export class SchoolDashboardService {
         r => r.status === 'present' && r.attendance_date === todayStr
       ).length || 0
 
-      // Get student gender breakdown
+      // Get student gender breakdown — active only, to match totalStudents above
       const { data: studentCustomFields, error: studentGenderError } = await supabase
         .from('students')
-        .select('custom_fields')
+        .select('custom_fields, profile:profiles!inner(is_active)')
         .eq('school_id', effectiveId)
+        .eq('profile.is_active', true)
 
       if (studentGenderError) {
         console.error('Student gender query error:', studentGenderError)
@@ -306,14 +310,22 @@ export class SchoolDashboardService {
    * Get grade-wise student distribution
    */
   async getGradeDistribution(schoolId: string) {
+    // Bucket by the live grade_levels name (via grade_level_id), not the
+    // legacy grade_level text snapshot — that field is written once at
+    // student creation/import and never updated, so renaming a grade level
+    // later left old and new names showing as separate buckets here, and
+    // "Unassigned" was inflated by every student whose snapshot was blank
+    // despite having a real grade_level_id. Active students only, to match
+    // the school-wide totalStudents count above.
     const { data: students } = await supabase
       .from('students')
-      .select('grade_level')
+      .select('grade_level, grade:grade_levels(name), profile:profiles!inner(is_active)')
       .eq('school_id', schoolId)
+      .eq('profile.is_active', true)
 
     const distribution: Record<string, number> = {}
-    students?.forEach(student => {
-      const grade = student.grade_level || 'Unassigned'
+    students?.forEach((student: any) => {
+      const grade = student.grade?.name || student.grade_level || 'Unassigned'
       distribution[grade] = (distribution[grade] || 0) + 1
     })
 

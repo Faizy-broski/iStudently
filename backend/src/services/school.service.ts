@@ -23,6 +23,7 @@ export class SchoolService {
       billing_plan_id: string
       billing_cycle: string
       amount: number
+      currency?: string
       start_date: string
       due_date: string
       payment_status: string
@@ -247,7 +248,7 @@ export class SchoolService {
             payment_status: billingData.payment_status || 'unpaid',
             invoice_number: invoiceNumber,
             payment_date: null,
-            currency: 'USD',
+            currency: billingData.currency || 'USD',
             payment_method: null,
             transaction_id: null,
             notes: `Automatically created during school onboarding on ${new Date().toISOString().split('T')[0]}`

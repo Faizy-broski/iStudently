@@ -496,7 +496,7 @@ export default function LoginPageAppearanceSettingsPage() {
                     )}
                     <input
                       type="file"
-                      accept="image/jpeg,image/png,image/svg+xml,image/webp"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
                       className="hidden"
                       disabled={uploadingLogo}
                       onChange={(e) => {

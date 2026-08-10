@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -15,6 +15,7 @@ import { SchoolLogo } from "@/components/shared/SchoolLogo";
 import { handleApiError } from "@/lib/utils/error-handler";
 import { createClient } from "@/lib/supabase/client";
 import { billingPlansApi, BillingPlan, calculateBillingAmount, calculateDueDate } from "@/lib/api/billing";
+import { CURRENCY_OPTIONS } from "@/lib/api/school-settings";
 import { Loader2, Building2, User, Mail, Lock, Globe, MapPin, Check, Upload, X, DollarSign, Calendar, FileText, Eye, EyeOff, Clock } from "lucide-react";
 
 // Mirrors backend/src/services/username.service.ts so the preview shown here
@@ -69,6 +70,8 @@ const onboardSchoolSchema = z.object({
   // Billing & Subscription
   billingPlanId: z.string().min(1, "Please select a billing plan"),
   billingCycle: z.enum(["Monthly", "Quarterly", "Yearly"]),
+  billingAmount: z.coerce.number().positive("Amount must be greater than 0"),
+  billingCurrency: z.string().min(1, "Please select a currency"),
   startDate: z.string().min(1, "Start date is required"),
 
   // Trial / Test Access
@@ -99,7 +102,6 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
   const [logoBorderColor, setLogoBorderColor] = useState("#000000");
   const [billingPlans, setBillingPlans] = useState<BillingPlan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
-  const submitButtonRef = useRef<HTMLButtonElement>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
 
@@ -116,6 +118,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
     mode: "onSubmit",
     defaultValues: {
       billingCycle: "Monthly",
+      billingCurrency: "USD",
       startDate: new Date().toISOString().split('T')[0],
       isTrial: false,
       trialDuration: "2weeks",
@@ -142,6 +145,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
         // Set default plan if available
         if (plans.length > 0) {
           setValue("billingPlanId", plans[0].id);
+          setValue("billingAmount", calculateBillingAmount(plans[0], watch("billingCycle") || "Monthly"));
         }
       } catch (error: any) {
         console.error("Failed to load billing plans:", error);
@@ -155,6 +159,19 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
 
     fetchPlans();
   }, [setValue]);
+
+  const selectedBillingPlanId = watch("billingPlanId");
+  const selectedBillingCycle = watch("billingCycle");
+
+  // Suggest an amount from the selected plan/cycle. The amount field stays
+  // fully editable — this just keeps the suggestion in sync as the super
+  // admin changes plan or cycle, same as the standalone billing form.
+  useEffect(() => {
+    const plan = billingPlans.find((p) => p.id === selectedBillingPlanId);
+    if (plan) {
+      setValue("billingAmount", calculateBillingAmount(plan, selectedBillingCycle));
+    }
+  }, [selectedBillingPlanId, selectedBillingCycle, billingPlans, setValue]);
 
   const schoolName = watch("schoolName");
 
@@ -252,7 +269,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
       ? ['schoolName', 'schoolSlug', 'contactEmail', 'address'] as const
       : currentStep === 2
       ? ['adminFirstName', 'adminLastName', 'adminEmail', 'adminUsername', 'adminPassword', 'adminPasswordConfirm'] as const
-      : ['billingPlanId', 'billingCycle', 'startDate'] as const;
+      : ['billingPlanId', 'billingCycle', 'billingAmount', 'billingCurrency', 'startDate'] as const;
     
     const isValid = await trigger(fieldsToValidate);
     
@@ -274,6 +291,8 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
             adminPasswordConfirm: 'Confirm Password',
             billingPlanId: 'Billing Plan',
             billingCycle: 'Billing Cycle',
+            billingAmount: 'Amount',
+            billingCurrency: 'Currency',
             startDate: 'Start Date',
           };
           
@@ -316,9 +335,6 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
         throw new Error("Selected billing plan not found");
       }
       
-      // Calculate billing amount based on plan and cycle
-      const amount = calculateBillingAmount(selectedPlan, data.billingCycle);
-      
       // Calculate due date based on start date and billing cycle
       const dueDate = calculateDueDate(data.startDate, data.billingCycle);
 
@@ -356,7 +372,8 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
         billing: {
           billing_plan_id: data.billingPlanId,
           billing_cycle: data.billingCycle,
-          amount: amount,
+          amount: data.billingAmount,
+          currency: data.billingCurrency,
           start_date: data.startDate,
           due_date: dueDate,
           payment_status: "unpaid",
@@ -404,20 +421,8 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
   };
 
   return (
-    <form 
-      onSubmit={(e) => {
-        if (e.nativeEvent?.submitter !== submitButtonRef.current) {
-          e.preventDefault();
-          return;
-        }
-        
-        if (currentStep !== totalSteps) {
-          e.preventDefault();
-          return;
-        }
-        
-        handleSubmit(onSubmit)(e);
-      }}
+    <form
+      onSubmit={handleSubmit(onSubmit)}
       className="space-y-8"
       onKeyDown={(e) => {
         if (e.key === 'Enter') {
@@ -1002,6 +1007,53 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
             )}
           </div>
 
+          {/* Amount & Currency */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="billingAmount" className="text-gray-700 dark:text-gray-300">
+                Amount <span className="text-red-500">*</span>{" "}
+                <span className="text-gray-400 dark:text-gray-500 text-xs font-normal">(suggested from plan — editable)</span>
+              </Label>
+              <Input
+                id="billingAmount"
+                type="number"
+                step="0.01"
+                min="0"
+                {...register("billingAmount")}
+                disabled={isSubmitting}
+                className="border-gray-300 dark:border-gray-700 focus:border-[#57A3CC] focus:ring-[#57A3CC] dark:bg-gray-800 dark:text-white"
+              />
+              {errors.billingAmount && (
+                <p className="text-sm text-red-500">{errors.billingAmount.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="billingCurrency" className="text-gray-700 dark:text-gray-300">
+                Currency <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={watch("billingCurrency")}
+                onValueChange={(value) => setValue("billingCurrency", value)}
+                disabled={isSubmitting}
+              >
+                <SelectTrigger className="border-gray-300 dark:border-gray-700 focus:border-[#57A3CC] focus:ring-[#57A3CC] dark:bg-gray-800 dark:text-white">
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent className="max-h-64">
+                  {CURRENCY_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.value} - {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.billingCurrency && (
+                <p className="text-sm text-red-500">{errors.billingCurrency.message}</p>
+              )}
+            </div>
+          </div>
+
           {/* Start Date */}
           <div className="space-y-2">
             <Label htmlFor="startDate" className="text-gray-700 dark:text-gray-300">
@@ -1054,11 +1106,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
                 <div className="flex justify-between items-center">
                   <span className="text-gray-700 dark:text-gray-300 font-medium">First Payment:</span>
                   <span className="text-2xl font-bold text-[#57A3CC] dark:text-[#57A3CC]">
-                    ${(() => {
-                      const selectedPlan = billingPlans.find(p => p.id === watch("billingPlanId"));
-                      if (!selectedPlan) return 0;
-                      return calculateBillingAmount(selectedPlan, watch("billingCycle"));
-                    })()}
+                    {watch("billingCurrency") || "USD"} {watch("billingAmount") || 0}
                   </span>
                 </div>
               </div>
@@ -1097,7 +1145,6 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
         ) : (
           <Button
             type="submit"
-            ref={submitButtonRef}
             disabled={isSubmitting}
             className="gradient-blue text-white hover:opacity-90"
           >

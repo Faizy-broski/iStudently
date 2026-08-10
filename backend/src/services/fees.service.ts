@@ -84,6 +84,7 @@ export interface RecordPaymentDTO {
     is_lunch_payment?: boolean
     file_url?: string
     created_by?: string
+    manual_receipt_number?: string
 }
 
 export interface DirectPaymentDTO {
@@ -96,6 +97,7 @@ export interface DirectPaymentDTO {
     receipt_number?: string
     created_by?: string
     payment_method?: string
+    manual_receipt_number?: string
 }
 
 export interface StudentFeeOverride {
@@ -552,7 +554,8 @@ class FeesService {
                 comment: payment.comment,
                 is_lunch_payment: payment.is_lunch_payment || false,
                 file_url: payment.file_url,
-                created_by: payment.created_by
+                created_by: payment.created_by,
+                manual_receipt_number: payment.manual_receipt_number || null
             })
             .select()
             .single()
@@ -589,11 +592,13 @@ class FeesService {
         options: {
             search?: string
             gradeLevelId?: string
+            gradeLevelIds?: string[]
+            sectionIds?: string[]
             page?: number
             limit?: number
         } = {}
     ): Promise<{ data: any[]; total: number }> {
-        const { search, gradeLevelId, page = 1, limit = 50 } = options
+        const { search, gradeLevelId, gradeLevelIds, sectionIds, page = 1, limit = 50 } = options
         const offset = (page - 1) * limit
 
         // Build the query for students with expanded data + parent links
@@ -606,6 +611,7 @@ class FeesService {
                 custom_fields,
                 profiles!inner(first_name, last_name, email, phone),
                 grade_levels(id, name),
+                sections(id, name),
                 parent_student_links(
                     parent_id,
                     relationship,
@@ -622,8 +628,14 @@ class FeesService {
             .eq('school_id', schoolId)
             .order('student_number', { ascending: true })
 
-        if (gradeLevelId && gradeLevelId !== 'all') {
+        if (gradeLevelIds && gradeLevelIds.length > 0) {
+            query = query.in('grade_level_id', gradeLevelIds)
+        } else if (gradeLevelId && gradeLevelId !== 'all') {
             query = query.eq('grade_level_id', gradeLevelId)
+        }
+
+        if (sectionIds && sectionIds.length > 0) {
+            query = query.in('section_id', sectionIds)
         }
 
         if (search) {
@@ -900,7 +912,8 @@ class FeesService {
                 is_lunch_payment: payment.is_lunch_payment || false,
                 file_url: payment.file_url,
                 receipt_number: receipt,
-                created_by: payment.created_by
+                created_by: payment.created_by,
+                manual_receipt_number: payment.manual_receipt_number || null
             })
             .select(`
                 *,
@@ -984,6 +997,7 @@ class FeesService {
             file_url?: string
             receipt_number?: string
             payment_method?: string
+            manual_receipt_number?: string
         }
     ): Promise<any> {
         const { data, error } = await supabase

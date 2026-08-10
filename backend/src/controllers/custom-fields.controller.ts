@@ -2,6 +2,14 @@ import { Response, NextFunction } from 'express'
 import { AuthRequest } from '../middlewares/auth.middleware'
 import { customFieldsService, EntityType } from '../services/custom-fields.service'
 
+// "School" custom fields (shown on the Campus Details page) are managed by
+// super_admin for any school, or by a school's own admin — but only for
+// their own school, never via a spoofed campus_id belonging to someone else.
+function canManageSchoolFields(req: AuthRequest, effectiveSchoolId: string): boolean {
+    if (req.profile?.role === 'super_admin') return true
+    return req.profile?.role === 'admin' && req.profile.school_id === effectiveSchoolId
+}
+
 export class CustomFieldsController {
     /**
      * GET /custom-fields/:entityType
@@ -103,10 +111,10 @@ export class CustomFieldsController {
                 return
             }
 
-            if (entity_type === 'school' && req.profile?.role !== 'super_admin') {
+            if (entity_type === 'school' && !canManageSchoolFields(req, effectiveSchoolId)) {
                 res.status(403).json({
                     success: false,
-                    error: 'Only Super Admin can manage school custom fields'
+                    error: 'Only Super Admin or this school\'s own admin can manage school custom fields'
                 })
                 return
             }
@@ -173,10 +181,10 @@ export class CustomFieldsController {
             const updates = req.body
 
             const existingEntityType = await customFieldsService.getEntityType(fieldId)
-            if (existingEntityType === 'school' && req.profile?.role !== 'super_admin') {
+            if (existingEntityType === 'school' && !canManageSchoolFields(req, effectiveSchoolId)) {
                 res.status(403).json({
                     success: false,
-                    error: 'Only Super Admin can manage school custom fields'
+                    error: 'Only Super Admin or this school\'s own admin can manage school custom fields'
                 })
                 return
             }
@@ -235,10 +243,10 @@ export class CustomFieldsController {
             }
 
             const existingEntityType = await customFieldsService.getEntityType(fieldId)
-            if (existingEntityType === 'school' && req.profile?.role !== 'super_admin') {
+            if (existingEntityType === 'school' && !canManageSchoolFields(req, effectiveSchoolId)) {
                 res.status(403).json({
                     success: false,
-                    error: 'Only Super Admin can manage school custom fields'
+                    error: 'Only Super Admin or this school\'s own admin can manage school custom fields'
                 })
                 return
             }

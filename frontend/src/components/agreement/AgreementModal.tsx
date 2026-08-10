@@ -59,7 +59,7 @@ export function AgreementModal({
   return (
     <>
       {/* Full-screen overlay — intentionally not dismissible */}
-      <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh]">
 
           {/* Header */}
@@ -179,7 +179,7 @@ export function AgreementModal({
 
       {/* Reject confirmation dialog */}
       <AlertDialog open={showRejectConfirm} onOpenChange={setShowRejectConfirm}>
-        <AlertDialogContent className="z-10000">
+        <AlertDialogContent className="z-[10000]">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <X className="h-5 w-5 text-red-500" />

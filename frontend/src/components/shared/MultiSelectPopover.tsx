@@ -1,6 +1,7 @@
 'use client'
 
 import { ChevronsUpDown, X } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -35,8 +36,13 @@ export function MultiSelectPopover({
   onOpenChange,
   className,
 }: MultiSelectPopoverProps) {
+  const tCommon = useTranslations('common')
   const toggle = (id: string) => {
     onChange(selectedIds.includes(id) ? selectedIds.filter(i => i !== id) : [...selectedIds, id])
+  }
+  const allSelected = options.length > 0 && selectedIds.length === options.length
+  const toggleAll = () => {
+    onChange(allSelected ? [] : options.map(o => o.id))
   }
 
   return (
@@ -80,19 +86,28 @@ export function MultiSelectPopover({
           {options.length === 0 ? (
             <p className="text-xs text-muted-foreground italic p-2">{emptyMessage}</p>
           ) : (
-            options.map(o => {
-              const checked = selectedIds.includes(o.id)
-              return (
-                <div
-                  key={o.id}
-                  className="flex items-center gap-2 p-2 hover:bg-accent rounded cursor-pointer"
-                  onClick={() => toggle(o.id)}
-                >
-                  <Checkbox checked={checked} onCheckedChange={() => {}} />
-                  <label className="flex-1 cursor-pointer text-sm">{o.label}</label>
-                </div>
-              )
-            })
+            <>
+              <div
+                className="flex items-center gap-2 p-2 hover:bg-accent rounded cursor-pointer border-b mb-1"
+                onClick={toggleAll}
+              >
+                <Checkbox checked={allSelected} onCheckedChange={() => {}} />
+                <label className="flex-1 cursor-pointer text-sm font-medium">{tCommon('selectAll')}</label>
+              </div>
+              {options.map(o => {
+                const checked = selectedIds.includes(o.id)
+                return (
+                  <div
+                    key={o.id}
+                    className="flex items-center gap-2 p-2 hover:bg-accent rounded cursor-pointer"
+                    onClick={() => toggle(o.id)}
+                  >
+                    <Checkbox checked={checked} onCheckedChange={() => {}} />
+                    <label className="flex-1 cursor-pointer text-sm">{o.label}</label>
+                  </div>
+                )
+              })}
+            </>
           )}
         </div>
       </PopoverContent>

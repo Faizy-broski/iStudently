@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCampus } from "@/context/CampusContext"
 import { useAuth } from "@/context/AuthContext"
 import { getAuthToken } from "@/lib/api/schools"
@@ -90,6 +91,31 @@ export default function SchoolDetailsPage() {
   })
   const [customFields, setCustomFields] = useState<CustomFieldDefinition[]>([])
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({})
+  const [activeFieldTab, setActiveFieldTab] = useState<string>("")
+
+  // Group custom fields into tabs by category — each distinct category_id
+  // among this campus's custom fields becomes its own tab on this page,
+  // ordered by (min) sort_order within the group so it matches the order
+  // fields were arranged in via "Manage Custom Fields".
+  const customFieldTabs = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; fields: CustomFieldDefinition[] }>()
+    customFields.forEach((f) => {
+      if (!map.has(f.category_id)) map.set(f.category_id, { id: f.category_id, name: f.category_name, fields: [] })
+      map.get(f.category_id)!.fields.push(f)
+    })
+    return Array.from(map.values()).sort((a, b) => {
+      const aOrder = Math.min(...a.fields.map((f) => f.sort_order ?? 0))
+      const bOrder = Math.min(...b.fields.map((f) => f.sort_order ?? 0))
+      return aOrder - bOrder
+    })
+  }, [customFields])
+
+  useEffect(() => {
+    if (customFieldTabs.length > 0 && !customFieldTabs.find((t) => t.id === activeFieldTab)) {
+      setActiveFieldTab(customFieldTabs[0].id)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customFieldTabs])
 
   // Get selected campus directly from context
   const selectedCampus = campusContext?.selectedCampus
@@ -316,15 +342,14 @@ export default function SchoolDetailsPage() {
         </div>
         {selectedCampus && !isEditing && (
           <div className="flex gap-2">
-            {isSuperAdmin && (
-              <div className="shrink-0 [&>button]:w-auto">
-                <SchoolCustomFieldsButton
-                  schoolId={selectedCampus.id}
-                  schoolName={selectedCampus.name}
-                  onFieldsChanged={refreshCustomFieldDefinitions}
-                />
-              </div>
-            )}
+            <div className="shrink-0 [&>button]:w-auto">
+              <SchoolCustomFieldsButton
+                schoolId={selectedCampus.id}
+                schoolName={selectedCampus.name}
+                isSuperAdmin={isSuperAdmin}
+                onFieldsChanged={refreshCustomFieldDefinitions}
+              />
+            </div>
             <Button
               type="button"
               onClick={() => setIsEditing(true)}
@@ -483,16 +508,35 @@ export default function SchoolDetailsPage() {
                       placeholder={t("principal")}
                     />
                   </div>
-                  {customFields.map((field) => (
-                    <div key={field.id} className="space-y-2">
-                      <Label>
-                        {field.label} {field.required && <span className="text-destructive">*</span>}
-                      </Label>
-                      {renderCustomFieldInput(field)}
-                    </div>
-                  ))}
                 </div>
-              ) : (
+              ) : null}
+
+              {isEditing && customFieldTabs.length > 0 && (
+                <div className="pt-2">
+                  <Separator className="mb-4" />
+                  <Tabs value={activeFieldTab} onValueChange={setActiveFieldTab}>
+                    <TabsList className="flex-wrap h-auto">
+                      {customFieldTabs.map((tab) => (
+                        <TabsTrigger key={tab.id} value={tab.id}>{tab.name}</TabsTrigger>
+                      ))}
+                    </TabsList>
+                    {customFieldTabs.map((tab) => (
+                      <TabsContent key={tab.id} value={tab.id} className="grid gap-4 md:grid-cols-2 pt-4">
+                        {tab.fields.map((field) => (
+                          <div key={field.id} className="space-y-2">
+                            <Label>
+                              {field.label} {field.required && <span className="text-destructive">*</span>}
+                            </Label>
+                            {renderCustomFieldInput(field)}
+                          </div>
+                        ))}
+                      </TabsContent>
+                    ))}
+                  </Tabs>
+                </div>
+              )}
+
+              {!isEditing && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -576,26 +620,43 @@ export default function SchoolDetailsPage() {
                       </div>
                     </div>
 
-                    {customFields.map((field) => {
-                      const v = customFieldValues[field.id]
-                      const display = (() => {
-                        if (v === undefined || v === null || v === '') return t("not_provided")
-                        if (Array.isArray(v)) return v.join(', ')
-                        if (v === true) return 'Yes'
-                        if (v === false) return 'No'
-                        return String(v)
-                      })()
-                      return (
-                        <div key={field.id} className="flex items-center gap-3">
-                          <Building2 className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <p className="text-sm font-medium">{field.label}</p>
-                            <p className="text-sm text-muted-foreground">{display}</p>
-                          </div>
-                        </div>
-                      )
-                    })}
                   </div>
+
+                  {customFieldTabs.length > 0 && (
+                    <div className="pt-2">
+                      <Separator className="mb-4" />
+                      <Tabs value={activeFieldTab} onValueChange={setActiveFieldTab}>
+                        <TabsList className="flex-wrap h-auto">
+                          {customFieldTabs.map((tab) => (
+                            <TabsTrigger key={tab.id} value={tab.id}>{tab.name}</TabsTrigger>
+                          ))}
+                        </TabsList>
+                        {customFieldTabs.map((tab) => (
+                          <TabsContent key={tab.id} value={tab.id} className="grid gap-4 md:grid-cols-2 pt-4">
+                            {tab.fields.map((field) => {
+                              const v = customFieldValues[field.id]
+                              const display = (() => {
+                                if (v === undefined || v === null || v === '') return t("not_provided")
+                                if (Array.isArray(v)) return v.join(', ')
+                                if (v === true) return 'Yes'
+                                if (v === false) return 'No'
+                                return String(v)
+                              })()
+                              return (
+                                <div key={field.id} className="flex items-center gap-3">
+                                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                                  <div>
+                                    <p className="text-sm font-medium">{field.label}</p>
+                                    <p className="text-sm text-muted-foreground">{display}</p>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </TabsContent>
+                        ))}
+                      </Tabs>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>

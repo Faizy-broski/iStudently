@@ -890,13 +890,22 @@ export class FeesController {
             }
 
             const search = req.query.search as string
+            // Accepts either a single id or a comma-separated list (multi-grade/section filter)
             const gradeLevelId = req.query.grade_level_id as string
+            const gradeLevelIds = req.query.grade_level_id
+                ? String(req.query.grade_level_id).split(',').map(v => v.trim()).filter(Boolean)
+                : undefined
+            const sectionIds = req.query.section_id
+                ? String(req.query.section_id).split(',').map(v => v.trim()).filter(Boolean)
+                : undefined
             const page = parseInt(req.query.page as string) || 1
             const limit = parseInt(req.query.limit as string) || 50
 
             const result = await feesService.getStudentsWithPaymentSummary(schoolId, {
                 search,
                 gradeLevelId,
+                gradeLevelIds,
+                sectionIds,
                 page,
                 limit
             })
@@ -994,7 +1003,7 @@ export class FeesController {
                 return res.status(status || 403).json({ success: false, error: error || 'Not authenticated' })
             }
 
-            const { student_id, amount, payment_date, comment, is_lunch_payment, file_url, receipt_number, payment_method } = req.body
+            const { student_id, amount, payment_date, comment, is_lunch_payment, file_url, receipt_number, payment_method, manual_receipt_number } = req.body
 
             if (!student_id || amount === undefined) {
                 return res.status(400).json({ success: false, error: 'student_id and amount are required' })
@@ -1009,7 +1018,8 @@ export class FeesController {
                 file_url,
                 receipt_number,
                 payment_method: payment_method || 'cash',
-                created_by: userId
+                created_by: userId,
+                manual_receipt_number
             })
 
             return res.status(201).json({ success: true, data: payment })
@@ -1062,7 +1072,7 @@ export class FeesController {
                 return res.status(400).json({ success: false, error: 'paymentId is required' })
             }
 
-            const { amount, payment_date, comment, is_lunch_payment, file_url, receipt_number, payment_method } = req.body
+            const { amount, payment_date, comment, is_lunch_payment, file_url, receipt_number, payment_method, manual_receipt_number } = req.body
 
             const payment = await feesService.updatePayment(paymentId, schoolId, {
                 amount: amount !== undefined ? parseFloat(amount) : undefined,
@@ -1072,6 +1082,7 @@ export class FeesController {
                 file_url,
                 receipt_number,
                 payment_method,
+                manual_receipt_number,
             })
 
             return res.json({ success: true, data: payment })

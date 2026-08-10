@@ -24,6 +24,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 interface Payment {
     id: string
     receipt_number?: string
+    manual_receipt_number?: string
     amount: number
     payment_date: string
     comment?: string
@@ -56,6 +57,7 @@ interface PaymentResponse {
 
 interface NewPayment {
     receipt_number?: string
+    manual_receipt_number: string
     amount: string
     month: string
     day: string
@@ -183,7 +185,8 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
         comment: string
         payment_method: string
         is_lunch_payment: boolean
-    }>({ amount: '', payment_date: '', comment: '', payment_method: 'cash', is_lunch_payment: false })
+        manual_receipt_number: string
+    }>({ amount: '', payment_date: '', comment: '', payment_method: 'cash', is_lunch_payment: false, manual_receipt_number: '' })
     const [openCalendarIndex, setOpenCalendarIndex] = useState<number | null>(null)
     const [uploadingFileForId, setUploadingFileForId] = useState<string | null>(null)
     const fileUploadRef = useRef<HTMLInputElement>(null)
@@ -203,6 +206,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
     }
     const [newPayments, setNewPayments] = useState<NewPayment[]>([{
         receipt_number: '',
+        manual_receipt_number: '',
         amount: '',
         month: MONTH_KEYS[new Date().getMonth()],
         day: new Date().getDate().toString(),
@@ -260,6 +264,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
     const addPaymentRow = () => {
         setNewPayments([...newPayments, {
             receipt_number: '',
+            manual_receipt_number: '',
             amount: '',
             month: MONTH_KEYS[new Date().getMonth()],
             day: new Date().getDate().toString(),
@@ -307,6 +312,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
             comment: payment.comment || '',
             payment_method: payment.payment_method || 'cash',
             is_lunch_payment: payment.is_lunch_payment,
+            manual_receipt_number: payment.manual_receipt_number || '',
         })
     }
 
@@ -333,6 +339,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                     comment: editingValues.comment || null,
                     is_lunch_payment: editingValues.is_lunch_payment,
                     payment_method: editingValues.payment_method,
+                    manual_receipt_number: editingValues.manual_receipt_number || null,
                 })
             })
             const json = await res.json()
@@ -399,7 +406,8 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                         is_lunch_payment: payment.is_lunch_payment,
                         payment_method: payment.payment_method || defaultPaymentMethod,
                         file_url: fileUrl,
-                        receipt_number: payment.receipt_number || undefined
+                        receipt_number: payment.receipt_number || undefined,
+                        manual_receipt_number: payment.manual_receipt_number || undefined
                     })
                 })
 
@@ -411,6 +419,8 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
             
             // Reset form and refresh data
             setNewPayments([{
+                receipt_number: '',
+                manual_receipt_number: '',
                 amount: '',
                 month: MONTH_KEYS[new Date().getMonth()],
                 day: new Date().getDate().toString(),
@@ -617,6 +627,7 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                 <TableRow className="bg-gray-100 dark:bg-gray-800">
                                     <TableHead className="w-10"></TableHead>
                                     <TableHead className="text-[#3d8fb5] font-semibold text-center">{t('th_receipt')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] font-semibold text-center">{t('th_mrn')}</TableHead>
                                     <TableHead className="text-[#3d8fb5] font-semibold text-center">{t('th_amount')}</TableHead>
                                     <TableHead className="text-[#3d8fb5] font-semibold text-center">{t('paymentDate')}</TableHead>
                                     <TableHead className="text-[#3d8fb5] font-semibold text-center">{t('th_comment')}</TableHead>
@@ -643,6 +654,17 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                     >
                                         <TableCell></TableCell>
                                         <TableCell className="text-center">{payment.receipt_number || '-'}</TableCell>
+
+                                        {/* MRN (manual/paper receipt number) */}
+                                        <TableCell className="text-center">
+                                            {isEditing ? (
+                                                <Input
+                                                    value={editingValues.manual_receipt_number}
+                                                    onChange={e => setEditingValues(v => ({ ...v, manual_receipt_number: e.target.value }))}
+                                                    className="w-24 h-8"
+                                                />
+                                            ) : (payment.manual_receipt_number || '-')}
+                                        </TableCell>
 
                                         {/* Amount */}
                                         <TableCell className="text-center">
@@ -821,6 +843,14 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                                                 placeholder={t('auto')}
                                                 className="w-24 h-8 bg-muted cursor-not-allowed select-none"
                                                 title={t('receiptAutoGenerated')}
+                                            />
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <Input
+                                                value={payment.manual_receipt_number}
+                                                onChange={(e) => updatePaymentRow(index, 'manual_receipt_number', e.target.value)}
+                                                placeholder={t('th_mrn')}
+                                                className="w-24 h-8"
                                             />
                                         </TableCell>
                                         <TableCell className="text-center">

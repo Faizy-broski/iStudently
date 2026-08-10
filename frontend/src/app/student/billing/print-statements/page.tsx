@@ -59,6 +59,7 @@ export default function PrintStatementsPage() {
         </Button>
       </div>
 
+      <div className="print-area">
       <div className="hidden print:block mb-6">
         <h1 className="text-2xl font-bold">{t('billing_statement')}</h1>
         <p className="text-sm text-gray-500">{format(new Date(), 'MMMM d, yyyy')}</p>
@@ -177,6 +178,7 @@ export default function PrintStatementsPage() {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import { apiRequest } from './index'
-import { createClient } from '@/lib/supabase/client'
 import { API_URL } from '@/config/api'
+import { uploadImage } from './media-upload'
 
 export interface LoginPageConfig {
   background_type: 'gradient' | 'color' | 'image'
@@ -73,37 +73,19 @@ export async function resetLoginPageConfig() {
   })
 }
 
-// Upload a login page background/logo image directly to Supabase Storage.
-// Uses the existing 'school-logos' bucket under a 'login-page/' prefix.
+// Upload a login page background/logo image via the backend's media-upload
+// endpoint (service-role Supabase client). Super admins have no school_id,
+// so a direct browser-side upload to Storage was rejected by the
+// per-school RLS policy on the 'school-logos' bucket — the backend upload
+// endpoint already special-cases super_admin (uploads under a 'system'
+// folder), so it works regardless of the caller's role.
 export async function uploadLoginPageImage(
   file: File,
-  kind: 'background' | 'logo'
+  _kind: 'background' | 'logo'
 ): Promise<{ success: boolean; url?: string; error?: string }> {
-  try {
-    const supabase = createClient()
-    const fileExt = file.name.split('.').pop() ?? 'jpg'
-    const safeName = file.name
-      .replace(/\.[^/.]+$/, '')
-      .replace(/[^a-zA-Z0-9_-]/g, '_')
-      .substring(0, 40)
-    const fileName = `${Date.now()}-${safeName}.${fileExt}`
-    const filePath = `login-page/${kind}/${fileName}`
-
-    const { data, error } = await supabase.storage
-      .from('school-logos')
-      .upload(filePath, file, { cacheControl: '3600', upsert: false })
-
-    if (error) return { success: false, error: error.message }
-
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from('school-logos').getPublicUrl(data.path)
-
-    return { success: true, url: publicUrl }
-  } catch (err: unknown) {
-    return {
-      success: false,
-      error: err instanceof Error ? err.message : 'Failed to upload image',
-    }
+  const result = await uploadImage(file)
+  if (!result.success || !result.data) {
+    return { success: false, error: result.error || 'Failed to upload image' }
   }
+  return { success: true, url: result.data.url }
 }

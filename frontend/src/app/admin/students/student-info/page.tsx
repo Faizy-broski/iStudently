@@ -433,7 +433,7 @@ export default function StudentInfoPage() {
                                 </div>
                               </div>
                             </TableCell>
-                            <TableCell className="max-w-xs">{buildGradeDisplay(student, student.grade_level || tCommon("noData"), appendConfig)}</TableCell>
+                            <TableCell className="max-w-xs">{buildGradeDisplay(student, student.grade?.name || student.grade_level || tCommon("noData"), appendConfig)}</TableCell>
                             <TableCell>{getStatusBadge(student.profile?.is_active ? 'active' : 'inactive')}</TableCell>
                             <TableCell className="max-w-xs">
                               <div className="text-sm truncate">

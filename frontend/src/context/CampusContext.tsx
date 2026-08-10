@@ -142,7 +142,11 @@ export function CampusProvider({ children }: { children: ReactNode }) {
             now - cached.timestamp < CACHE_DURATION &&
             cached.campuses.length > 0
         ) {
-            // Use cached data
+            // Paint instantly from cache — but do NOT return here. Falling
+            // through to the fetch below (as a silent background refresh,
+            // since campuses is now non-empty) keeps this from serving
+            // stale data for up to CACHE_DURATION after another session
+            // (e.g. a super admin editing this campus) has changed it.
             if (campuses.length === 0) {
                 setCampuses(cached.campuses)
             }
@@ -161,7 +165,6 @@ export function CampusProvider({ children }: { children: ReactNode }) {
             }
 
             setLoading(false)
-            return
         }
 
         // CRITICAL: Only show loading state if we have NO data yet

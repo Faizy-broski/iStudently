@@ -87,12 +87,21 @@ const HIJRI_MONTHS_AR = [
   'رمضان','شوال','ذو القعدة','ذو الحجة',
 ]
 
-function getISOWeek(date: Date) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
-  const day = d.getUTCDay() || 7
-  d.setUTCDate(d.getUTCDate() + 4 - day)
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
-  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
+// Week number relative to the school's current academic year start date (not
+// the calendar/ISO week of the year) — a school created mid-year should show
+// as its own "Week 1", not whatever ISO week the calendar happens to be on.
+function getAcademicWeek(date: Date, academicYearStartDate: string | null | undefined) {
+  if (!academicYearStartDate) return 1
+  const start = new Date(academicYearStartDate)
+  if (isNaN(start.getTime())) return 1
+  const startOfWeek = (d: Date) => {
+    const s = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+    const day = s.getDay() || 7
+    s.setDate(s.getDate() - day + 1) // Monday of that week
+    return s
+  }
+  const diffDays = Math.round((startOfWeek(date).getTime() - startOfWeek(start).getTime()) / 86400000)
+  return Math.max(1, Math.floor(diffDays / 7) + 1)
 }
 
 const HIJRI_OFFSET_KEY = 'studently_global_hijri_offset'
@@ -102,6 +111,7 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
   const { profile } = useAuth()
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
+  const { currentAcademicYear } = useAcademic()
   const locale = useLocale()
   const isAr = locale === 'ar'
 
@@ -193,7 +203,7 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
   const monthShort = now.toLocaleDateString(bcp, { month: 'short' })
   const year = now.getFullYear()
   const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
-  const weekNum = getISOWeek(now)
+  const weekNum = getAcademicWeek(now, currentAcademicYear?.start_date)
 
   // Hijri — month name in Arabic, digits stay Western Arabic
   const hijriBase = hijriOffset !== 0

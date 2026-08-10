@@ -174,6 +174,7 @@ export interface OnboardSchoolData {
     billing_plan_id: string
     billing_cycle: string
     amount: number
+    currency: string
     start_date: string
     due_date: string
     payment_status: string

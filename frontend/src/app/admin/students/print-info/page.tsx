@@ -542,7 +542,7 @@ export default function PrintStudentInfoPage() {
                         <div>
                           <p className="font-medium">{getStudentName(student)}</p>
                           <p className="text-sm text-muted-foreground">
-                            {student.student_number} • {student.grade_level || tCommon("no_grade")}
+                            {student.student_number} • {student.grade?.name || student.grade_level || tCommon("no_grade")}
                           </p>
                         </div>
                       </div>

@@ -41,6 +41,7 @@ interface Payment {
     is_lunch_payment: boolean
     created_at: string
     receipt_number?: string
+    manual_receipt_number?: string
     created_by_profile?: {
         first_name: string
         last_name: string
@@ -449,6 +450,7 @@ export default function PrintReceiptsPage() {
                 <tr>
                     <th>{t('th_paymentDate')}</th>
                     <th>{t('th_receipt')}</th>
+                    <th>{t('th_mrn')}</th>
                     <th>{t('th_method')}</th>
                     <th>{t('th_comment')}</th>
                     <th className="amount-col">{t('amountPaid')}</th>
@@ -459,6 +461,7 @@ export default function PrintReceiptsPage() {
                     <tr key={p.id}>
                         <td>{formatDate(p.payment_date)}</td>
                         <td>{p.receipt_number || `RCP-${p.id.substring(0, 8).toUpperCase()}`}</td>
+                        <td>{p.manual_receipt_number || '-'}</td>
                         <td>{p.payment_method || t('cash')}</td>
                         <td>{p.comment || '-'}</td>
                         <td className="amount-col">{formatCurrency(p.amount)}</td>
@@ -467,7 +470,7 @@ export default function PrintReceiptsPage() {
             </tbody>
             <tfoot>
                 <tr>
-                    <td colSpan={4}>{t('totalPaid')}</td>
+                    <td colSpan={5}>{t('totalPaid')}</td>
                     <td className="amount-col">{formatCurrency(payments.reduce((sum, p) => sum + p.amount, 0))}</td>
                 </tr>
             </tfoot>
@@ -667,6 +670,7 @@ export default function PrintReceiptsPage() {
                                     <TableHead className="text-[#3d8fb5] dark:text-[#93c5fd]">{t('th_gradeLevel') || 'GRADE'}</TableHead>
                                     <TableHead className="text-[#3d8fb5] dark:text-[#93c5fd]">{t('th_paymentDate')}</TableHead>
                                     <TableHead className="text-[#3d8fb5] dark:text-[#93c5fd]">{t('th_receipt')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] dark:text-[#93c5fd]">{t('th_mrn')}</TableHead>
                                     <TableHead className="text-[#3d8fb5] dark:text-[#93c5fd] text-right">{t('amountPaid')}</TableHead>
                                     <TableHead className="text-[#3d8fb5] dark:text-[#93c5fd]">{t('th_method')}</TableHead>
                                     <TableHead className="text-[#3d8fb5] dark:text-[#93c5fd]">{t('th_comment')}</TableHead>
@@ -691,6 +695,7 @@ export default function PrintReceiptsPage() {
                                         <TableCell>{payment.student.grade_levels?.name || '-'}</TableCell>
                                         <TableCell>{formatDate(payment.payment_date)}</TableCell>
                                         <TableCell>{payment.receipt_number || '-'}</TableCell>
+                                        <TableCell>{payment.manual_receipt_number || '-'}</TableCell>
                                         <TableCell className="text-end font-medium text-green-600">
                                             {formatCurrency(payment.amount)}
                                         </TableCell>

@@ -19,7 +19,7 @@ interface ApiResponse<T = unknown> {
 
 async function apiRequest<T = unknown>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit & { timeout?: number } = {}
 ): Promise<ApiResponse<T>> {
   const token = await getAuthToken()
 
@@ -40,14 +40,16 @@ async function apiRequest<T = unknown>(
     headers['X-School-Id'] = impersonatedSchoolId;
   }
 
+  const { timeout = 30000, ...fetchOptions } = options
+
   try {
     const response = await simpleFetch(`${API_URL}${endpoint}`, {
-      ...options,
+      ...fetchOptions,
       headers: {
         ...headers,
-        ...options.headers,
+        ...fetchOptions.headers,
       },
-      timeout: 30000
+      timeout
     })
 
     const data = await response.json()
@@ -352,6 +354,11 @@ export async function bulkImportStudents(
   target: { gradeLevelId: string; sectionId?: string },
   campusId?: string
 ) {
+  // Each row does a sequential auth-user + profile + student insert on the
+  // server, so the default 30s timeout is easily exceeded on larger batches.
+  // Scale it with row count instead of guessing a single fixed value.
+  const timeout = Math.max(30000, students.length * 2000)
+
   return apiRequest<BulkImportResult>('/students/bulk-import', {
     method: 'POST',
     body: JSON.stringify({
@@ -359,7 +366,8 @@ export async function bulkImportStudents(
       grade_level_id: target.gradeLevelId,
       section_id: target.sectionId,
       campus_id: campusId
-    })
+    }),
+    timeout
   })
 }
 

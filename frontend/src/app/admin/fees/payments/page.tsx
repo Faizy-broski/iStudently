@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useCampus } from '@/context/CampusContext'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
+import { MultiSelectPopover } from '@/components/shared/MultiSelectPopover'
 import { IconLoader, IconSearch, IconDownload, IconUsers, IconBell } from '@tabler/icons-react'
 import useSWR from 'swr'
 import Link from 'next/link'
@@ -13,6 +15,18 @@ import { createClient } from '@/lib/supabase/client'
 import { useTranslations } from 'next-intl'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+
+interface GradeLevel {
+    id: string
+    name: string
+    order_index: number
+}
+
+interface SectionOption {
+    id: string
+    name: string
+    grade_level_id: string
+}
 
 interface ParentLink {
     parent_id: string
@@ -52,6 +66,10 @@ interface Student {
         id: string
         name: string
     }
+    sections?: {
+        id: string
+        name: string
+    }
     parent_student_links?: ParentLink[]
 }
 
@@ -61,12 +79,39 @@ interface FamilyGroup {
     students: Student[]
 }
 
-async function fetchStudentsForPayments(schoolId: string) {
+async function fetchGrades(schoolId: string): Promise<GradeLevel[]> {
     const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
-    
+
+    const res = await fetch(`${API_BASE}/academics/grades?school_id=${schoolId}`, {
+        headers: { 'Authorization': `Bearer ${session?.access_token}` }
+    })
+    const json = await res.json()
+    return json.success ? json.data : []
+}
+
+// Fetches all sections for the campus (no grade filter) — the grade↔section
+// cascade is applied client-side since a payments filter may span multiple
+// selected grades at once.
+async function fetchSections(schoolId: string): Promise<SectionOption[]> {
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+
+    const res = await fetch(`${API_BASE}/academics/sections?school_id=${schoolId}`, {
+        headers: { 'Authorization': `Bearer ${session?.access_token}` }
+    })
+    const json = await res.json()
+    return json.success ? json.data : []
+}
+
+async function fetchStudentsForPayments(schoolId: string, gradeIds?: string[], sectionIds?: string[]) {
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+
     const params = new URLSearchParams({ school_id: schoolId, limit: '500' })
-    
+    if (gradeIds && gradeIds.length > 0) params.set('grade_level_id', gradeIds.join(','))
+    if (sectionIds && sectionIds.length > 0) params.set('section_id', sectionIds.join(','))
+
     const res = await fetch(`${API_BASE}/fees/payments/students?${params}`, {
         headers: { 'Authorization': `Bearer ${session?.access_token}` }
     })
@@ -79,16 +124,46 @@ type ViewMode = 'original' | 'expanded' | 'family'
 
 export default function PaymentsPage() {
     const t = useTranslations('fees.payments')
+    const tCommon = useTranslations('common')
     const { selectedCampus, loading: campusLoading } = useCampus() || {}
     const schoolId = selectedCampus?.id
 
     const [searchQuery, setSearchQuery] = useState('')
     const [viewMode, setViewMode] = useState<ViewMode>('original')
+    const [gradeIds, setGradeIds] = useState<string[]>([])
+    const [sectionIds, setSectionIds] = useState<string[]>([])
+    const [gradePopoverOpen, setGradePopoverOpen] = useState(false)
+    const [sectionPopoverOpen, setSectionPopoverOpen] = useState(false)
+
+    // Fetch grades
+    const { data: grades } = useSWR<GradeLevel[]>(
+        schoolId ? ['grades-payments', schoolId] : null,
+        () => fetchGrades(schoolId!)
+    )
+
+    // Fetch all sections for the campus
+    const { data: allSections } = useSWR<SectionOption[]>(
+        schoolId ? ['sections-payments', schoolId] : null,
+        () => fetchSections(schoolId!)
+    )
+
+    // Sections available for the currently-selected grades (cascading filter)
+    const sections = gradeIds.length > 0
+        ? allSections?.filter(s => gradeIds.includes(s.grade_level_id))
+        : allSections
+
+    // Drop any selected section that's no longer visible once the grade selection narrows
+    useEffect(() => {
+        if (gradeIds.length === 0 || !sections) return
+        const visibleIds = new Set(sections.map(s => s.id))
+        setSectionIds(prev => prev.filter(id => visibleIds.has(id)))
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [gradeIds.join(',')])
 
     // Fetch students (no server-side search, handled client-side)
     const { data: students, isLoading } = useSWR<Student[]>(
-        schoolId ? ['payment-students', schoolId] : null,
-        () => fetchStudentsForPayments(schoolId!),
+        schoolId ? ['payment-students', schoolId, gradeIds.join(','), sectionIds.join(',')] : null,
+        () => fetchStudentsForPayments(schoolId!, gradeIds, sectionIds),
         { revalidateOnFocus: false }
     )
 
@@ -275,20 +350,48 @@ export default function PaymentsPage() {
             {/* Divider */}
             <hr className="border-gray-300 dark:border-gray-700" />
 
+            {/* Grade / Section Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label>{t('gradeLevel')}</Label>
+                    <MultiSelectPopover
+                        options={(grades || []).map(g => ({ id: g.id, label: g.name }))}
+                        selectedIds={gradeIds}
+                        onChange={setGradeIds}
+                        placeholder={t('allGrades')}
+                        emptyMessage={t('allGrades')}
+                        open={gradePopoverOpen}
+                        onOpenChange={setGradePopoverOpen}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label>{tCommon('section')}</Label>
+                    <MultiSelectPopover
+                        options={(sections || []).map(s => ({ id: s.id, label: s.name }))}
+                        selectedIds={sectionIds}
+                        onChange={setSectionIds}
+                        placeholder={t('allSections')}
+                        emptyMessage={gradeIds.length === 0 ? t('selectGradeFirst') : t('allSections')}
+                        open={sectionPopoverOpen}
+                        onOpenChange={setSectionPopoverOpen}
+                    />
+                </div>
+            </div>
+
             {/* Student Count and Search */}
             <div className="flex items-center justify-between py-2">
                 <div className="flex items-center gap-2">
                     <p className="text-sm text-gray-700 dark:text-gray-300">
-                        {viewMode === 'family' 
+                        {viewMode === 'family'
                             ? t('foundFamilies', { count: familyGroups.length, studentCount: filteredStudents.length })
-                            : viewMode === 'expanded' 
+                            : viewMode === 'expanded'
                                 ? t('foundStudentAddresses', { count: filteredStudents.length })
                                 : t('foundStudents', { count: filteredStudents.length })
                         }
                     </p>
-                    <Button 
-                        variant="ghost" 
-                        size="sm" 
+                    <Button
+                        variant="ghost"
+                        size="sm"
                         className="p-1 h-auto"
                         onClick={handleExport}
                         title={t('exportCSV')}
@@ -332,17 +435,18 @@ export default function PaymentsPage() {
                                                 <TableHead className="text-[#3d8fb5] font-semibold">{t('student')}</TableHead>
                                                 <TableHead className="text-[#3d8fb5] font-semibold">{t('istudentlyId')}</TableHead>
                                                 <TableHead className="text-[#3d8fb5] font-semibold">{t('gradeLevel')}</TableHead>
+                                                <TableHead className="text-[#3d8fb5] font-semibold">{tCommon('section')}</TableHead>
                                                 <TableHead className="text-[#3d8fb5] font-semibold">{t('relationship')}</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {family.students.map((student, index) => (
-                                                <TableRow 
+                                                <TableRow
                                                     key={student.id}
                                                     className={index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800'}
                                                 >
                                                     <TableCell>
-                                                        <Link 
+                                                        <Link
                                                             href={`/admin/fees/payments/${student.id}`}
                                                             className="text-[#3d8fb5] hover:underline"
                                                         >
@@ -351,6 +455,7 @@ export default function PaymentsPage() {
                                                     </TableCell>
                                                     <TableCell>{student.student_number || '-'}</TableCell>
                                                     <TableCell>{student.grade_levels?.name || '-'}</TableCell>
+                                                    <TableCell>{student.sections?.name || '-'}</TableCell>
                                                     <TableCell className="capitalize">
                                                         {student.parent_student_links?.[0]?.relationship || '-'}
                                                     </TableCell>
@@ -369,6 +474,7 @@ export default function PaymentsPage() {
                                     <TableHead className="text-[#3d8fb5] font-semibold">{t('student')}</TableHead>
                                     <TableHead className="text-[#3d8fb5] font-semibold">{t('istudentlyId')}</TableHead>
                                     <TableHead className="text-[#3d8fb5] font-semibold">{t('gradeLevel')}</TableHead>
+                                    <TableHead className="text-[#3d8fb5] font-semibold">{tCommon('section')}</TableHead>
                                     {viewMode === 'expanded' && (
                                         <>
                                             <TableHead className="text-[#3d8fb5] font-semibold">{t('ethnicity')}</TableHead>
@@ -399,6 +505,7 @@ export default function PaymentsPage() {
                                             </TableCell>
                                             <TableCell>{student.student_number || '-'}</TableCell>
                                             <TableCell>{student.grade_levels?.name || '-'}</TableCell>
+                                            <TableCell>{student.sections?.name || '-'}</TableCell>
                                             {viewMode === 'expanded' && (
                                                 <>
                                                     <TableCell>{student.custom_fields?.ethnicity || '-'}</TableCell>
