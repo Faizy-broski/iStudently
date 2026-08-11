@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { format, parseISO } from 'date-fns'
+import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 
 function statusBadge(status: string) {
   switch (status) {
@@ -20,6 +21,7 @@ function statusBadge(status: string) {
 export default function ParentPrintStatementsPage() {
   const { selectedStudent } = useParentDashboard()
   const { fees, isLoading, error } = usePaymentHistory()
+  const { currencySymbol } = useSchoolSettings()
 
   if (!selectedStudent) {
     return (
@@ -80,20 +82,20 @@ export default function ParentPrintStatementsPage() {
         <Card>
           <CardContent className="p-6">
             <p className="text-sm text-muted-foreground mb-1">Total Charged</p>
-            <p className="text-3xl font-bold">${totalCharged.toFixed(2)}</p>
+            <p className="text-3xl font-bold">{currencySymbol}{totalCharged.toFixed(2)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-6">
             <p className="text-sm text-muted-foreground mb-1">Total Paid</p>
-            <p className="text-3xl font-bold text-green-600">${totalPaid.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-green-600">{currencySymbol}{totalPaid.toFixed(2)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-6">
             <p className="text-sm text-muted-foreground mb-1">Outstanding Balance</p>
             <p className={`text-3xl font-bold ${totalBalance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-              ${totalBalance.toFixed(2)}
+              {currencySymbol}{totalBalance.toFixed(2)}
             </p>
           </CardContent>
         </Card>
@@ -134,9 +136,9 @@ export default function ParentPrintStatementsPage() {
                       <td className="py-3 pr-4 text-center text-muted-foreground">
                         {f.due_date ? format(parseISO(f.due_date), 'MMM d, yyyy') : '—'}
                       </td>
-                      <td className="py-3 pr-4 text-right font-medium">${f.final_amount.toFixed(2)}</td>
-                      <td className="py-3 pr-4 text-right text-green-600">${f.amount_paid.toFixed(2)}</td>
-                      <td className="py-3 pr-4 text-right font-semibold text-red-600">${f.balance.toFixed(2)}</td>
+                      <td className="py-3 pr-4 text-right font-medium">{currencySymbol}{f.final_amount.toFixed(2)}</td>
+                      <td className="py-3 pr-4 text-right text-green-600">{currencySymbol}{f.amount_paid.toFixed(2)}</td>
+                      <td className="py-3 pr-4 text-right font-semibold text-red-600">{currencySymbol}{f.balance.toFixed(2)}</td>
                       <td className="py-3 text-center">{statusBadge(f.status)}</td>
                     </tr>
                   ))}
@@ -182,7 +184,7 @@ export default function ParentPrintStatementsPage() {
                         <Badge variant="outline">{p.payment_method || '—'}</Badge>
                       </td>
                       <td className="py-3 pr-4 text-muted-foreground">{p.payment_reference || '—'}</td>
-                      <td className="py-3 text-right font-semibold text-green-600">${p.amount.toFixed(2)}</td>
+                      <td className="py-3 text-right font-semibold text-green-600">{currencySymbol}{p.amount.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>

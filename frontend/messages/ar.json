@@ -27,10 +27,16 @@
     "contact_admin": "تواصل مع مسؤول النظام للحصول على صلاحية الدخول",
     "err_inactive": "حسابك غير نشط. يرجى التواصل مع المسؤول.",
     "err_unauthorized": "ليس لديك صلاحية الوصول إلى هذه المنطقة.",
-    "err_role": "دورك غير مدعوم في النظام حتى الآن. يرجى التواصل مع الدعم الفني."
+    "err_role": "دورك غير مدعوم في النظام حتى الآن. يرجى التواصل مع الدعم الفني.",
+    "err_agreement_rejected": "تم تعطيل حسابك لأنك رفضت اتفاقية المدرسة.",
+    "err_agreement_reactivate_link": "انقر هنا لاستعادة صلاحية الوصول ومراجعة الاتفاقية مرة أخرى."
   },
   "login_quote_widget": {
     "quote_label": "اقتباس الأسبوع"
+  },
+  "agreement": {
+    "user_agreements": "اتفاقيات المستخدم",
+    "sidebar_label": "اتفاقيات المستخدم"
   },
   "grievances": {
     "bell_title": "الشكاوى والتظلمات",
@@ -393,10 +399,14 @@
     "all_grades": "جميع المراحل",
     "all_sections": "جميع الفصول",
     "deselect_all": "إلغاء تحديد الكل",
+    "select_all": "تحديد الكل",
     "select_all_with_count": "تحديد الكل ({count})",
     "no_grade": "بدون صف",
+    "no_students_found": "لم يتم العثور على طلاب",
     "try_adjusting_filters": "حاول تعديل الفلاتر",
     "showing_range": "عرض {start} إلى {end} من {total} طالب",
+    "top_bottom_px": "أعلى/أسفل (بكسل)",
+    "left_right_px": "يسار/يمين (بكسل)",
     "categories": {
       "personal": "شخصي",
       "contact": "التواصل",
@@ -414,6 +424,7 @@
       "family": "تفاصيل ولي الأمر وجهات اتصال الطوارئ",
       "system": "اسم المستخدم وحالة الحساب"
     },
+    "background_image": "صورة الخلفية",
     "male": "ذكر",
     "female": "أنثى",
     "contact_name": "اسم جهة الاتصال",
@@ -512,6 +523,7 @@
     "custom_fields": "حقول مخصصة",
     "student_id_card": "بطاقة هوية الطالب",
     "certificate": "الشهادة",
+    "certificate_templates": "قوالب الشهادات",
     "print_student_info": "طباعة معلومات الطالب",
     "print_letters": "طباعة الرسائل",
     "student_breakdown": "تحليل الطلاب",
@@ -4344,6 +4356,8 @@
         "loading_students": "جاري تحميل الطلاب...",
         "no_students_found": "لم يتم العثور على طلاب",
         "selected_count": "تم اختيار {count} طالب",
+        "students_reference_count": "{count} من {total} طالب",
+        "students_count": "{count} طالب",
         "pos_left": "يسار",
         "pos_right": "يمين",
         "pos_center": "وسط",
@@ -6149,6 +6163,8 @@
       "selectCategory": "اختر الفئة",
       "periodType": "نوع الفترة",
       "monthly": "شهري",
+      "termly": "ثلاث مرات سنويًا",
+      "quarterly": "ربع سنوي (4 مرات سنويًا)",
       "semester": "فصلي",
       "annual": "سنوي",
       "oneTime": "مرة واحدة",
@@ -9064,6 +9080,24 @@
     },
     "supportEmail": "البريد الإلكتروني للدعم",
     "studently": "iStudently",
+    "discipline": {
+      "title": "إحالات السلوك",
+      "subtitle": "حوادث السلوك",
+      "add": "إضافة إحالة",
+      "search_student": "بحث عن طالب",
+      "from_date": "من تاريخ",
+      "to_date": "إلى تاريخ",
+      "reset": "إعادة تعيين",
+      "loading": "جارٍ التحميل…",
+      "no_referrals": "لم يتم العثور على إحالات",
+      "student": "الطالب",
+      "incident_date": "تاريخ الحادثة",
+      "reporter": "المُبلِّغ",
+      "actions": "الإجراءات",
+      "page_info": "صفحة {page} من {totalPages} · {total} إحالة",
+      "detail_title": "تفاصيل الإحالة",
+      "delete": "حذف الإحالة"
+    },
     "feedback": {
       "title": "الملاحظات وتقارير الأعطال",
       "subtitle": "تقارير الأعطال ومقترحات الميزات المُقدَّمة من المستخدمين في جميع المدارس.",

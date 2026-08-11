@@ -158,6 +158,7 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "custom_fields", href: "/admin/students/custom-fields", icon: Settings },
       { title: "student_id_card", href: "/admin/students/id-card", icon: CreditCard },
       { title: "certificate", href: "/admin/students/certificate-enrollment", icon: Award },
+      { title: "certificate_templates", href: "/admin/certificate-templates", icon: Award },
       { title: "reports", href: "#", icon: BarChart3, isLabel: true },
       { title: "print_student_info", href: "/admin/students/print-info", icon: FileText },
       { title: "print_letters", href: "/admin/students/print-letters", icon: FileText },

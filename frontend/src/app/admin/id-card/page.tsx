@@ -899,6 +899,11 @@ export default function IdCardDesignerPage() {
   const handleUserTypeChange = (type: UserType) => {
     setUserType(type)
     setSelectedId(null)
+    // selectedUsers stores raw record ids with no user-type tag, so a student and a
+    // teacher can share the same id — without clearing this, switching tabs can leave
+    // a record from the previous type "selected" and it silently rides along into the
+    // next print/export (showing up as an extra, unrelated card).
+    setSelectedUsers(new Set())
     // Keep existing layout, just clear fields that don't make sense
     setFields(defaultFields())
   }
@@ -1243,7 +1248,20 @@ export default function IdCardDesignerPage() {
         if (clonedDoc.body) clonedDoc.body.removeAttribute('style');
 
         const style = clonedDoc.createElement('style')
-        style.textContent = fontFaces + `\n* { font-family: ${computedFont} !important; }\nbody { color: #000 !important; background: #fff !important; }`
+        // box-sizing: border-box is restored explicitly because stripping every stylesheet
+        // above (including Tailwind's global preflight reset) silently reverts every element
+        // to the browser default content-box. The card container (data-print-card) sets an
+        // inline `border` but relies on the page's border-box reset to keep its rendered box
+        // equal to the declared width/height — without it, the border adds on top, so the
+        // clone renders a box larger than the width/height passed into html2canvas() (which
+        // are measured from the live, border-box-sized DOM). That size mismatch is what
+        // produced the duplicated/shifted repaint and stray edge line in the exported PDF.
+        // box-shadow is also stripped here since it paints outside the border box (unaffected
+        // by overflow:hidden) and was never meant to be part of the exported card artwork.
+        style.textContent = fontFaces +
+          `\n* { font-family: ${computedFont} !important; box-sizing: border-box !important; }` +
+          `\nbody { color: #000 !important; background: #fff !important; }` +
+          `\n[data-print-card] { box-shadow: none !important; }`
         clonedDoc.head.appendChild(style)
       }
 

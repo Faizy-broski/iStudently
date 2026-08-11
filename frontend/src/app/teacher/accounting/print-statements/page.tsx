@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation'
 import { openPdfDownload } from '@/lib/utils/printLayout'
 import { type PdfHeaderFooterSettings, getPdfHeaderFooter } from '@/lib/api/school-settings'
 import { useSchoolSettings } from '@/context/SchoolSettingsContext'
+import { useSchoolSettings as useSchoolSettingsHook } from '@/hooks/useSchoolSettings'
 import { toast } from 'sonner'
 
 export default function TeacherPrintStatementsAutoPage() {
@@ -18,6 +19,7 @@ export default function TeacherPrintStatementsAutoPage() {
   const router = useRouter()
   const campusContext = useCampus()
   const { isPluginActive } = useSchoolSettings()
+  const { currencySymbol } = useSchoolSettingsHook()
   
   const campusId = campusContext?.selectedCampus?.id
   const campus = campusContext?.selectedCampus
@@ -129,9 +131,9 @@ export default function TeacherPrintStatementsAutoPage() {
               <td style="padding: 12px;">${format(parseISO(t.displayDate), 'MMM d, yyyy')}</td>
               <td dir="auto" style="padding: 12px; font-weight: 500;">${t.type === 'salary' ? 'Salary Generated' : 'Payment Issued'}: ${t.title || 'Adjustment'}</td>
               <td dir="auto" style="padding: 12px; color: #64748b; font-size: 12px;">${t.comments || '-'}</td>
-              <td style="padding: 12px; text-align: right;">${t.debit > 0 ? '$' + t.debit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
-              <td style="padding: 12px; text-align: right; color: #16a34a;">${t.credit > 0 ? '$' + t.credit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
-              <td style="padding: 12px; text-align: right; font-weight: 700; color: #1e3a5f;">$${runningBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+              <td style="padding: 12px; text-align: right;">${t.debit > 0 ? currencySymbol + t.debit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
+              <td style="padding: 12px; text-align: right; color: #16a34a;">${t.credit > 0 ? currencySymbol + t.credit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
+              <td style="padding: 12px; text-align: right; font-weight: 700; color: #1e3a5f;">${currencySymbol}${runningBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
             </tr>
           `
         })
@@ -145,16 +147,16 @@ export default function TeacherPrintStatementsAutoPage() {
           <div style="width: 320px; border: 2px solid rgba(30, 58, 95, 0.15); background: rgba(30, 58, 95, 0.03); padding: 20px; border-radius: 4px;">
             <div style="display: flex; justify-content: space-between; color: #475569; margin-bottom: 10px; font-weight: 500;">
               <span>Total Salaries (Debit):</span>
-              <span>$${totalSalaries.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+              <span>${currencySymbol}${totalSalaries.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
             </div>
             <div style="display: flex; justify-content: space-between; color: #475569; margin-bottom: 12px; font-weight: 500;">
               <span>Total Payments (Credit):</span>
-              <span>$${totalPayments.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+              <span>${currencySymbol}${totalPayments.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
             </div>
             <div style="height: 1px; background: rgba(30, 58, 95, 0.2); margin-bottom: 12px;"></div>
             <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: 700; color: ${finalBalance >= 0 ? '#1e3a5f' : '#ef4444'};">
               <span>Total Due Balance:</span>
-              <span>$${finalBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+              <span>${currencySymbol}${finalBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
             </div>
           </div>
         </div>

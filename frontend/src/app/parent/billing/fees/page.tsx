@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { format, parseISO } from 'date-fns'
+import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 
 function statusBadge(status: string) {
   switch (status) {
@@ -20,6 +21,7 @@ function statusBadge(status: string) {
 
 function AllChildrenFeesTab() {
   const { childrenFees, isLoading, error } = useAllChildrenFees()
+  const { currencySymbol } = useSchoolSettings()
 
   if (isLoading) return <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
 
@@ -54,13 +56,13 @@ function AllChildrenFeesTab() {
         <Card>
           <CardContent className="p-6">
             <p className="text-sm text-muted-foreground mb-1">Total Due (All Children)</p>
-            <p className="text-3xl font-bold text-red-600">${childrenFees.totalDue.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-red-600">{currencySymbol}{childrenFees.totalDue.toFixed(2)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-6">
             <p className="text-sm text-muted-foreground mb-1">Total Overdue (All Children)</p>
-            <p className="text-3xl font-bold text-orange-600">${childrenFees.totalOverdue.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-orange-600">{currencySymbol}{childrenFees.totalOverdue.toFixed(2)}</p>
           </CardContent>
         </Card>
       </div>
@@ -72,7 +74,7 @@ function AllChildrenFeesTab() {
             <CardHeader>
               <CardTitle className="flex items-center justify-between gap-2">
                 <span>{child.name || 'Student'}{child.grade_level ? ` — ${child.grade_level}` : ''}</span>
-                <span className="text-base font-semibold text-red-600">${childDue.toFixed(2)} due</span>
+                <span className="text-base font-semibold text-red-600">{currencySymbol}{childDue.toFixed(2)} due</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -96,9 +98,9 @@ function AllChildrenFeesTab() {
                           <td className="py-3 pr-4 text-muted-foreground">
                             {f.due_date ? format(parseISO(f.due_date), 'MMM d, yyyy') : '—'}
                           </td>
-                          <td className="py-3 pr-4 text-right font-medium">${(f.final_amount || 0).toFixed(2)}</td>
-                          <td className="py-3 pr-4 text-right text-green-600">${(f.amount_paid || 0).toFixed(2)}</td>
-                          <td className="py-3 pr-4 text-right font-semibold text-red-600">${(f.balance || 0).toFixed(2)}</td>
+                          <td className="py-3 pr-4 text-right font-medium">{currencySymbol}{(f.final_amount || 0).toFixed(2)}</td>
+                          <td className="py-3 pr-4 text-right text-green-600">{currencySymbol}{(f.amount_paid || 0).toFixed(2)}</td>
+                          <td className="py-3 pr-4 text-right font-semibold text-red-600">{currencySymbol}{(f.balance || 0).toFixed(2)}</td>
                           <td className="py-3 text-center">{statusBadge(f.status)}</td>
                         </tr>
                       ))}
@@ -119,6 +121,7 @@ function SelectedChildFeesTab() {
   const { fees, isLoading, error } = usePaymentHistory()
   const { billingElements } = useChildBillingElements()
   const { feeStatus } = useFeeStatus()
+  const { currencySymbol } = useSchoolSettings()
 
   if (!selectedStudent) {
     return (
@@ -166,11 +169,11 @@ function SelectedChildFeesTab() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Total Due</p>
-                <p className="text-2xl font-bold text-red-600">${feeStatus.total_due.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-red-600">{currencySymbol}{feeStatus.total_due.toFixed(2)}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Overdue Amount</p>
-                <p className="text-2xl font-bold text-orange-600">${feeStatus.overdue_amount.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-orange-600">{currencySymbol}{feeStatus.overdue_amount.toFixed(2)}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Next Due Date</p>
@@ -181,7 +184,7 @@ function SelectedChildFeesTab() {
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Next Due Amount</p>
                 <p className="text-2xl font-bold">
-                  {feeStatus.next_due_amount !== undefined ? `$${feeStatus.next_due_amount.toFixed(2)}` : '—'}
+                  {feeStatus.next_due_amount !== undefined ? `${currencySymbol}${feeStatus.next_due_amount.toFixed(2)}` : '—'}
                 </p>
               </div>
             </div>
@@ -193,14 +196,14 @@ function SelectedChildFeesTab() {
         <Card>
           <CardContent className="p-6">
             <p className="text-sm text-muted-foreground mb-1">Outstanding Balance</p>
-            <p className="text-3xl font-bold text-red-600">${totalDue.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-red-600">{currencySymbol}{totalDue.toFixed(2)}</p>
             {overdue.length > 0 && <p className="text-xs text-red-500 mt-1">{overdue.length} overdue</p>}
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-6">
             <p className="text-sm text-muted-foreground mb-1">Total Paid</p>
-            <p className="text-3xl font-bold text-green-600">${totalPaid.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-green-600">{currencySymbol}{totalPaid.toFixed(2)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -246,9 +249,9 @@ function SelectedChildFeesTab() {
                       <td className="py-3 pr-4 text-center text-muted-foreground">
                         {f.due_date ? format(parseISO(f.due_date), 'MMM d, yyyy') : '—'}
                       </td>
-                      <td className="py-3 pr-4 text-right font-medium">${f.final_amount.toFixed(2)}</td>
-                      <td className="py-3 pr-4 text-right text-green-600">${f.amount_paid.toFixed(2)}</td>
-                      <td className="py-3 pr-4 text-right font-semibold text-red-600">${f.balance.toFixed(2)}</td>
+                      <td className="py-3 pr-4 text-right font-medium">{currencySymbol}{f.final_amount.toFixed(2)}</td>
+                      <td className="py-3 pr-4 text-right text-green-600">{currencySymbol}{f.amount_paid.toFixed(2)}</td>
+                      <td className="py-3 pr-4 text-right font-semibold text-red-600">{currencySymbol}{f.balance.toFixed(2)}</td>
                       <td className="py-3 text-center">{statusBadge(f.status)}</td>
                     </tr>
                   ))}
@@ -284,8 +287,8 @@ function SelectedChildFeesTab() {
                         <p className="font-medium">{el.element_title}</p>
                         {el.category_title && <p className="text-xs text-muted-foreground">{el.category_title}</p>}
                       </td>
-                      <td className="py-3 pr-4 text-right font-medium">${el.amount.toFixed(2)}</td>
-                      <td className="py-3 pr-4 text-right text-green-600">${el.amount_paid.toFixed(2)}</td>
+                      <td className="py-3 pr-4 text-right font-medium">{currencySymbol}{el.amount.toFixed(2)}</td>
+                      <td className="py-3 pr-4 text-right text-green-600">{currencySymbol}{el.amount_paid.toFixed(2)}</td>
                       <td className="py-3 text-center">{statusBadge(el.status)}</td>
                     </tr>
                   ))}

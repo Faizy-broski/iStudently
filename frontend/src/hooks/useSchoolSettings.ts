@@ -1,7 +1,7 @@
 'use client';
 
 import useSWR from 'swr';
-import { getSchoolSettings, type SchoolSettings } from '@/lib/api/school-settings';
+import { getSchoolSettings, CURRENCY_OPTIONS, type SchoolSettings } from '@/lib/api/school-settings';
 import { useCampus } from '@/context/CampusContext';
 import { useAuth } from '@/context/AuthContext';
 import { useMemo } from 'react';
@@ -23,7 +23,10 @@ export function useSchoolSettings() {
   const settings = data?.success ? data.data : null;
 
   const currencySymbol = useMemo(() => {
-    return settings?.default_currency?.split(' ')[0] || '$';
+    const code = settings?.default_currency?.split(' ')[0];
+    if (!code) return '$';
+    const match = CURRENCY_OPTIONS.find(opt => opt.value === code.toUpperCase());
+    return match?.symbol || code;
   }, [settings?.default_currency]);
 
   /**

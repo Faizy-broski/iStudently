@@ -7,10 +7,12 @@ import { Badge } from '@/components/ui/badge'
 import { format, parseISO } from 'date-fns'
 import { FeeDueDateBadge } from '@/components/shared/FeeDueDateBadge'
 import { useTranslations } from 'next-intl'
+import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 
 export default function StudentFeesPage() {
   const { fees, isLoading, error } = useStudentFees()
   const { billingElements } = useStudentBillingElements()
+  const { currencySymbol } = useSchoolSettings()
   const t = useTranslations('student_billing.fees')
 
   function statusBadge(status: string) {
@@ -58,14 +60,14 @@ export default function StudentFeesPage() {
         <Card>
           <CardContent className="p-6">
             <p className="text-sm text-muted-foreground mb-1">{t('total_outstanding')}</p>
-            <p className="text-3xl font-bold text-red-600">${totalDue.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-red-600">{currencySymbol}{totalDue.toFixed(2)}</p>
             {overdue.length > 0 && <p className="text-xs text-red-500 mt-1">{t('overdue_count', { count: overdue.length })}</p>}
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-6">
             <p className="text-sm text-muted-foreground mb-1">{t('total_paid')}</p>
-            <p className="text-3xl font-bold text-green-600">${totalPaid.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-green-600">{currencySymbol}{totalPaid.toFixed(2)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -116,9 +118,9 @@ export default function StudentFeesPage() {
                           <FeeDueDateBadge dueDate={f.due_date} status={f.status} />
                         </div>
                       </td>
-                      <td className="py-3 pe-4 text-end font-medium">${f.final_amount.toFixed(2)}</td>
-                      <td className="py-3 pe-4 text-end text-green-600">${f.amount_paid.toFixed(2)}</td>
-                      <td className="py-3 pe-4 text-end font-semibold text-red-600">${f.balance.toFixed(2)}</td>
+                      <td className="py-3 pe-4 text-end font-medium">{currencySymbol}{f.final_amount.toFixed(2)}</td>
+                      <td className="py-3 pe-4 text-end text-green-600">{currencySymbol}{f.amount_paid.toFixed(2)}</td>
+                      <td className="py-3 pe-4 text-end font-semibold text-red-600">{currencySymbol}{f.balance.toFixed(2)}</td>
                       <td className="py-3 text-center">{statusBadge(f.status)}</td>
                     </tr>
                   ))}
@@ -154,8 +156,8 @@ export default function StudentFeesPage() {
                         <p className="font-medium">{el.element_title}</p>
                         {el.category_title && <p className="text-xs text-muted-foreground">{el.category_title}</p>}
                       </td>
-                      <td className="py-3 pe-4 text-end font-medium">${el.amount.toFixed(2)}</td>
-                      <td className="py-3 pe-4 text-end text-green-600">${el.amount_paid.toFixed(2)}</td>
+                      <td className="py-3 pe-4 text-end font-medium">{currencySymbol}{el.amount.toFixed(2)}</td>
+                      <td className="py-3 pe-4 text-end text-green-600">{currencySymbol}{el.amount_paid.toFixed(2)}</td>
                       <td className="py-3 text-center">{statusBadge(el.status)}</td>
                     </tr>
                   ))}

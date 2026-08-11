@@ -15,6 +15,7 @@ import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslations } from 'next-intl'
 import { sortItems, useTableSort } from '@/hooks/useTableSort'
+import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 
 type StudentBalanceSortKey = 'student_name' | 'student_number' | 'grade_level' | 'ethnicity' | 'gender' | 'address' | 'city' | 'state' | 'zip_code' | 'balance'
 
@@ -82,6 +83,7 @@ export default function StudentBalancesPage() {
     const tp = useTranslations('fees.payments') // for view modes and common terms
     const { selectedCampus, loading: campusLoading } = useCampus() || {}
     const { currentAcademicYear } = useAcademic()
+    const { currencySymbol } = useSchoolSettings()
     const schoolId = selectedCampus?.id
 
     const [searchQuery, setSearchQuery] = useState('')
@@ -249,10 +251,10 @@ export default function StudentBalancesPage() {
     )
 
     const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD'
-        }).format(amount)
+        return `${currencySymbol}${new Intl.NumberFormat('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(amount)}`
     }
 
     // Get balance color based on payment status

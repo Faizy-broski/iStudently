@@ -121,6 +121,39 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
     return () => clearInterval(timer)
   }, [])
 
+  // "Week N" is anchored to the first day of actual instruction, not the
+  // academic_years row's start_date (often an administrative/enrollment date
+  // set well before the first marking period actually begins). Prefer the
+  // current academic year's Full-Year marking period start_date; fall back to
+  // the earliest Semester/Quarter start_date within the year, then finally to
+  // the academic year's own start_date if no marking periods are configured.
+  const [schoolYearStartDate, setSchoolYearStartDate] = React.useState<string | null | undefined>(undefined)
+  React.useEffect(() => {
+    let active = true
+    async function loadSchoolYearStart() {
+      if (!selectedCampus?.id || !currentAcademicYear) {
+        setSchoolYearStartDate(currentAcademicYear?.start_date ?? null)
+        return
+      }
+      try {
+        const all = await getMarkingPeriods(selectedCampus.id)
+        if (!active) return
+        const inYear = (all || []).filter(
+          mp => mp.start_date && mp.start_date >= currentAcademicYear.start_date && mp.start_date <= currentAcademicYear.end_date
+        )
+        const fullYear = inYear.find(mp => mp.mp_type === 'FY')
+        const earliest = inYear
+          .filter(mp => mp.mp_type === 'SEM' || mp.mp_type === 'QTR')
+          .sort((a, b) => (a.start_date! < b.start_date! ? -1 : 1))[0]
+        setSchoolYearStartDate(fullYear?.start_date ?? earliest?.start_date ?? currentAcademicYear.start_date)
+      } catch {
+        if (active) setSchoolYearStartDate(currentAcademicYear.start_date)
+      }
+    }
+    loadSchoolYearStart()
+    return () => { active = false }
+  }, [selectedCampus?.id, currentAcademicYear])
+
   const [hijriOffset, setHijriOffset] = React.useState<number>(() => {
     if (typeof window === 'undefined') return 0
     return parseInt(localStorage.getItem(HIJRI_OFFSET_KEY) || '0', 10) || 0
@@ -203,7 +236,7 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
   const monthShort = now.toLocaleDateString(bcp, { month: 'short' })
   const year = now.getFullYear()
   const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
-  const weekNum = getAcademicWeek(now, currentAcademicYear?.start_date)
+  const weekNum = getAcademicWeek(now, schoolYearStartDate ?? currentAcademicYear?.start_date)
 
   // Hijri — month name in Arabic, digits stay Western Arabic
   const hijriBase = hijriOffset !== 0
@@ -428,14 +461,17 @@ function AcademicSelectors() {
         if (cps.length === 0) { setSelectedCoursePeriod(null); return }
         const current = selectedCoursePeriodRef.current
         if (current && cps.some(cp => cp.id === current.id)) return
-        const active = cps.find(cp => cp.is_active) ?? cps[0]
+        // Named distinctly from the outer `active` (mount-guard) flag — reusing that
+        // name here shadowed it within this block, putting the earlier `if (!active)
+        // return` in its temporal dead zone and throwing a ReferenceError on every call.
+        const activeCp = cps.find(cp => cp.is_active) ?? cps[0]
         setSelectedCoursePeriod({
-          id: active.id,
-          title: active.title ?? null,
-          short_name: active.short_name ?? null,
-          section_name: active.section?.name ?? null,
-          grade_name: active.section?.grade_level?.name ?? null,
-          course_title: active.course?.title ?? null,
+          id: activeCp.id,
+          title: activeCp.title ?? null,
+          short_name: activeCp.short_name ?? null,
+          section_name: activeCp.section?.name ?? null,
+          grade_name: activeCp.section?.grade_level?.name ?? null,
+          course_title: activeCp.course?.title ?? null,
         })
       } catch {
         if (active) setCoursePeriods([])

@@ -37,16 +37,18 @@ import {
 import { format } from 'date-fns'
 import jsPDF from 'jspdf'
 import { FeePayment, FeeWithPayments } from '@/lib/api/parent-dashboard'
+import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 
 export function PaymentHistory() {
   const { fees, isLoading, error, refresh } = usePaymentHistory()
   const [downloadingReceipt, setDownloadingReceipt] = useState<string | null>(null)
+  const { currencySymbol } = useSchoolSettings()
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount)
+    return `${currencySymbol}${new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount)}`
   }
 
   const getStatusBadge = (status: string, balance: number, dueDate: string) => {

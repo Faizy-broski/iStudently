@@ -6,6 +6,7 @@ import { differenceInCalendarDays, parseISO, format } from 'date-fns'
 import { CreditCard, ChevronRight, AlertTriangle, Clock, CheckCircle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { FeeDueDateBadge } from './FeeDueDateBadge'
+import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 
 interface Fee {
   id: string
@@ -43,7 +44,8 @@ export function FinancialWidget({ fees, isLoading, feesPageHref }: FinancialWidg
   const overdueCount = unpaid.filter(f => f.due_date && differenceInCalendarDays(parseISO(f.due_date), new Date()) < 0).length
   const dueTodayCount = unpaid.filter(f => f.due_date && differenceInCalendarDays(parseISO(f.due_date), new Date()) === 0).length
 
-  const formatCurrency = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+  const { currencySymbol } = useSchoolSettings()
+  const formatCurrency = (n: number) => `${currencySymbol}${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
 
   if (isLoading) {
     return (

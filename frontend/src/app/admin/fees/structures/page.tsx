@@ -373,6 +373,8 @@ export default function FeeStructuresPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="monthly">{t('monthly')}</SelectItem>
+                                        <SelectItem value="termly">{t('termly')}</SelectItem>
+                                        <SelectItem value="quarterly">{t('quarterly')}</SelectItem>
                                         <SelectItem value="semester">{t('semester')}</SelectItem>
                                         <SelectItem value="annual">{t('annual')}</SelectItem>
                                         <SelectItem value="one_time">{t('oneTime')}</SelectItem>

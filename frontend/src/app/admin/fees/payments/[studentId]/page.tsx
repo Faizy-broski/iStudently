@@ -148,12 +148,13 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                     .header p { color: #666; }
                     .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
                     .info-grid .right { text-align: right; }
-                    .amount-box { background: #f0f0f0; border: 1px solid #ddd; padding: 24px; text-align: center; margin-bottom: 24px; }
+                    .amount-box { display: flex; justify-content: space-around; background: #f0f0f0; border: 1px solid #ddd; padding: 24px; text-align: center; margin-bottom: 24px; }
                     .amount-box .label { color: #666; font-size: 14px; margin-bottom: 8px; }
-                    .amount-box .amount { font-size: 32px; font-weight: bold; color: #16a34a; }
+                    .amount-box .amount { font-size: 28px; font-weight: bold; color: #16a34a; }
                     table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
                     th, td { border: 1px solid #333; padding: 8px; text-align: left; }
-                    th { background: #f0f0f0; width: 40%; }
+                    th { background: #f0f0f0; }
+                    .payments-table th, .payments-table td { font-size: 13px; }
                     .footer { display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid #333; padding-top: 16px; }
                     .footer .date { font-size: 12px; color: #666; }
                     .footer .signature { text-align: center; }
@@ -1042,49 +1043,77 @@ export default function StudentPaymentsPage({ params }: { params: Promise<{ stud
                 </Link>
             </div>
 
-            {/* Hidden print template */}
+            {/* Hidden print template — all of this student's payments on a single page/receipt */}
             <div className="hidden">
                 <div ref={printRef}>
-                    {payments.map(payment => (
-                        <div key={payment.id} className="receipt">
-                            <div className="header">
-                                <h1>{selectedCampus?.name || 'School Name'}</h1>
-                                                        <p>{t('feeChallan')}</p>
+                    <div className="receipt">
+                        <div className="header">
+                            <h1>{selectedCampus?.name || 'School Name'}</h1>
+                            <p>{t('feeChallan')}</p>
+                        </div>
+                        <div className="info-grid">
+                            <div>
+                                <p><strong>{t('student')}:</strong> {student ? `${student.first_name} ${student.last_name}` : '-'}</p>
+                                <p><strong>{t('istudentlyId')}:</strong> {student?.student_number || '-'}</p>
                             </div>
-                            <div className="info-grid">
-                                <div>
-                                    <p><strong>{t('student')}:</strong> {student ? `${student.first_name} ${student.last_name}` : '-'}</p>
-                                    <p><strong>{t('istudentlyId')}:</strong> {student?.student_number || '-'}</p>
-                                </div>
-                                <div className="right">
-                                    <p><strong>{t('th_receipt')}:</strong> {payment.receipt_number || `RCP-${payment.id.substring(0,8).toUpperCase()}`}</p>
-                                    <p><strong>{t('paymentDate')}:</strong> {formatDate(payment.payment_date)}</p>
-                                </div>
+                            <div className="right">
+                                <p><strong>{t('th_createdAt')}:</strong> {new Date().toLocaleDateString()}</p>
                             </div>
-                            <div className="amount-box">
-                                <p className="label">{t('amountPaid')}</p>
-                                <p className="amount">{formatCurrency(payment.amount)}</p>
+                        </div>
+                        <table className="payments-table">
+                            <thead>
+                                <tr>
+                                    <th>{t('th_paymentDate')}</th>
+                                    <th>{t('th_receipt')}</th>
+                                    <th>{t('th_method')}</th>
+                                    <th>{t('th_amount')}</th>
+                                    <th>{t('th_balance')}</th>
+                                    <th>{t('th_comment')}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {(() => {
+                                    let runningPaid = 0
+                                    return [...payments]
+                                        .sort((a, b) => new Date(a.payment_date).getTime() - new Date(b.payment_date).getTime())
+                                        .map(payment => {
+                                            runningPaid += payment.amount
+                                            const runningBalance = summary.totalFees - runningPaid
+                                            return (
+                                                <tr key={payment.id}>
+                                                    <td>{formatDate(payment.payment_date)}</td>
+                                                    <td>{payment.receipt_number || `RCP-${payment.id.substring(0, 8).toUpperCase()}`}</td>
+                                                    <td>{payment.payment_method || '-'}</td>
+                                                    <td>{formatCurrency(payment.amount)}</td>
+                                                    <td>{formatCurrency(runningBalance)}</td>
+                                                    <td>{payment.comment || '-'}</td>
+                                                </tr>
+                                            )
+                                        })
+                                })()}
+                            </tbody>
+                        </table>
+                        <div className="amount-box">
+                            <div>
+                                <p className="label">{t('th_amount')}</p>
+                                <p className="amount">{formatCurrency(summary.totalPayments)}</p>
                             </div>
-                            <table>
-                                <tbody>
-                                    <tr>
-                                        <th>{t('th_comment')}</th>
-                                        <td>{payment.comment || '-'}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                            <div className="footer">
-                                <div className="date">
-                                    <p>{t('th_createdAt')}: {new Date().toLocaleDateString()}</p>
-                                </div>
-                                <div className="signature">
-                                    <div className="signature-line">
-                                        <p>{t('authorizedSignature')}</p>
-                                    </div>
+                            <div>
+                                <p className="label">{t('th_balance')}</p>
+                                <p className="amount">{formatCurrency(summary.balance)}</p>
+                            </div>
+                        </div>
+                        <div className="footer">
+                            <div className="date">
+                                <p>{t('computerGenerated')}</p>
+                            </div>
+                            <div className="signature">
+                                <div className="signature-line">
+                                    <p>{t('authorizedSignature')}</p>
                                 </div>
                             </div>
                         </div>
-                    ))}
+                    </div>
                 </div>
             </div>
 

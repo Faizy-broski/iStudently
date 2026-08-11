@@ -23,6 +23,7 @@ import {
 
 import { format, parseISO } from 'date-fns'
 import { FeeDueDateBadge } from '@/components/shared/FeeDueDateBadge'
+import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 
 const MONTHS = [
   { value: 0, label: 'All Months' },
@@ -51,8 +52,9 @@ export default function ParentFeesPage() {
   const student = students.find(s => s.id === selectedStudent)
   const isLoading = studentsLoading || feesLoading
 
+  const { currencySymbol } = useSchoolSettings()
   const formatCurrency = (amount: number) => {
-    return amount.toLocaleString()
+    return `${currencySymbol}${amount.toLocaleString()}`
   }
 
   // Categorize fees

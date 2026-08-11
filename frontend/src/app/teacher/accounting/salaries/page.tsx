@@ -23,11 +23,13 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 
 export default function TeacherSalariesPage() {
   const t = useTranslations('teacherPortal.accounting.salaries')
   const tTotals = useTranslations('teacherPortal.accounting.totals')
   const tCommon = useTranslations('common')
+  const { currencySymbol } = useSchoolSettings()
   const [searchQuery, setSearchQuery] = useState('')
   const { profile } = useAuth()
   const [previewPayslip, setPreviewPayslip] = useState<PayslipByPeriod | null>(null)
@@ -163,7 +165,7 @@ export default function TeacherSalariesPage() {
               filteredSalaries.map((salary) => (
                 <TableRow key={salary.id}>
                   <TableCell>{salary.title}</TableCell>
-                  <TableCell>${Number(salary.amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
+                  <TableCell>{currencySymbol}{Number(salary.amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
                   <TableCell>{format(parseISO(salary.assigned_date), 'MMMM d, yyyy')}</TableCell>
                   <TableCell>{salary.due_date ? format(parseISO(salary.due_date), 'MMMM d, yyyy') : '-'}</TableCell>
                   <TableCell>{salary.comments || '-'}</TableCell>
@@ -190,15 +192,15 @@ export default function TeacherSalariesPage() {
         <CardContent className="p-4 space-y-1 text-sm font-medium">
           <div className="flex justify-between">
             <span className="text-right flex-1 pr-6">{tTotals('total_salaries')}</span>
-            <span className="w-24 text-right">${totalSalaries.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+            <span className="w-24 text-right">{currencySymbol}{totalSalaries.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-right flex-1 pr-6">{tTotals('less_total_payments')}</span>
-            <span className="w-24 text-right">${totalPayments.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+            <span className="w-24 text-right">{currencySymbol}{totalPayments.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
           </div>
           <div className="flex justify-between font-bold pt-2">
             <span className="text-right flex-1 pr-6">{tTotals('balance')}</span>
-            <span className="w-24 text-right">${balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+            <span className="w-24 text-right">{currencySymbol}{balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
           </div>
         </CardContent>
       </Card>

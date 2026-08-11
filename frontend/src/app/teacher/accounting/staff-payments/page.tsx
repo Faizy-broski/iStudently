@@ -10,11 +10,13 @@ import { Button } from '@/components/ui/button'
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table'
 import { DownloadCloud, Loader2, Search, CreditCard } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
+import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 
 export default function TeacherStaffPaymentsPage() {
   const t = useTranslations('teacherPortal.accounting.staff_payments')
   const tTotals = useTranslations('teacherPortal.accounting.totals')
   const tCommon = useTranslations('common')
+  const { currencySymbol } = useSchoolSettings()
   const [searchQuery, setSearchQuery] = useState('')
 
   const { data: salariesRes } = useSWR(
@@ -99,7 +101,7 @@ export default function TeacherStaffPaymentsPage() {
                   filteredPayments.map((payment) => (
                     <TableRow key={payment.id}>
                       <TableCell>{payment.title}</TableCell>
-                      <TableCell>${Number(payment.amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
+                      <TableCell>{currencySymbol}{Number(payment.amount).toLocaleString(undefined, {minimumFractionDigits: 2})}</TableCell>
                       <TableCell>{format(parseISO(payment.payment_date), 'MMMM d, yyyy')}</TableCell>
                       <TableCell>{payment.comments || '-'}</TableCell>
                       <TableCell>{payment.file_attached ? tCommon('yes') : ''}</TableCell>
@@ -115,15 +117,15 @@ export default function TeacherStaffPaymentsPage() {
         <CardContent className="p-4 space-y-1 text-sm font-medium">
           <div className="flex justify-between">
             <span className="text-right flex-1 pr-6">{tTotals('total_salaries')}</span>
-            <span className="w-24 text-right">${totalSalaries.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+            <span className="w-24 text-right">{currencySymbol}{totalSalaries.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-right flex-1 pr-6">{tTotals('less_total_payments')}</span>
-            <span className="w-24 text-right">${totalPayments.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+            <span className="w-24 text-right">{currencySymbol}{totalPayments.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
           </div>
           <div className="flex justify-between font-bold pt-2">
             <span className="text-right flex-1 pr-6">{tTotals('balance')}</span>
-            <span className="w-24 text-right">${balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+            <span className="w-24 text-right">{currencySymbol}{balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
           </div>
         </CardContent>
       </Card>

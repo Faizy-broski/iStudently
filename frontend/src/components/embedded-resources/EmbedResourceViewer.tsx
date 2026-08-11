@@ -55,15 +55,6 @@ export default function EmbedResourceViewer({ id }: Props) {
       {/* Thin header bar */}
       <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b shrink-0">
         <h2 className="font-semibold text-gray-800 text-sm">{resource.title}</h2>
-        <a
-          href={resource.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 transition-colors"
-        >
-          <ExternalLink className="h-3.5 w-3.5" />
-          Open in new tab
-        </a>
       </div>
 
       {iframeError ? (
