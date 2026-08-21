@@ -37,6 +37,8 @@ export class MessagingController {
       const message = await messagingService.sendMessage({
         schoolId,
         senderProfileId: req.profile.id,
+        senderRole: req.profile.role,
+        senderStaffId: req.profile.staff_id,
         subject: subject.trim(),
         body,
         recipientProfileIds: recipient_ids,
@@ -170,13 +172,51 @@ export class MessagingController {
         type as any,
         search,
         gradeLevelId,
-        sectionId
+        sectionId,
+        req.profile.staff_id
       )
 
       res.json({ success: true, data: recipients })
     } catch (error: any) {
       console.error('listRecipients error:', error)
       res.status(500).json({ success: false, error: error.message || 'Failed to list recipients' })
+    }
+  }
+
+  /**
+   * GET /api/messaging/teacher-allowed-staff
+   * Admin-only. Lists non-admin, non-teacher staff with a flag for whether
+   * they're currently approved for teachers to message.
+   */
+  async getTeacherAllowedStaff(req: AuthRequest, res: Response) {
+    try {
+      const campusId = req.query.campus_id as string | undefined
+      const schoolId = await getEffectiveSchoolId(req.profile.school_id, campusId)
+      const options = await messagingService.getTeacherMessagingStaffOptions(schoolId)
+      res.json({ success: true, data: options })
+    } catch (error: any) {
+      console.error('getTeacherAllowedStaff error:', error)
+      res.status(500).json({ success: false, error: error.message || 'Failed to load staff list' })
+    }
+  }
+
+  /**
+   * PUT /api/messaging/teacher-allowed-staff
+   * Admin-only. Replaces the whole whitelist with the given staff profile ids.
+   */
+  async setTeacherAllowedStaff(req: AuthRequest, res: Response) {
+    try {
+      const { staff_profile_ids, campus_id } = req.body
+      if (!Array.isArray(staff_profile_ids)) {
+        res.status(400).json({ success: false, error: 'staff_profile_ids must be an array' })
+        return
+      }
+      const schoolId = await getEffectiveSchoolId(req.profile.school_id, campus_id)
+      await messagingService.setTeacherMessagingStaff(schoolId, staff_profile_ids, req.profile.id)
+      res.json({ success: true })
+    } catch (error: any) {
+      console.error('setTeacherAllowedStaff error:', error)
+      res.status(500).json({ success: false, error: error.message || 'Failed to save staff list' })
     }
   }
 

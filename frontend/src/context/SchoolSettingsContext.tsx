@@ -15,6 +15,8 @@ interface SchoolSettingsContextType {
   loading: boolean
   /** Returns true when the given plugin id is activated for this school/campus */
   isPluginActive: (pluginId: string) => boolean
+  /** Returns true when the given module_key (sidebar href) is allowed by the super admin for this school. Unrestricted (no allow-list set) always returns true. */
+  isModuleAllowed: (moduleKey: string) => boolean
   /** Re-fetch settings (call after toggling a plugin) */
   refreshSettings: () => Promise<void>
 }
@@ -126,8 +128,17 @@ export function SchoolSettingsProvider({ children }: { children: React.ReactNode
     [settings]
   )
 
+  const isModuleAllowed = useCallback(
+    (moduleKey: string): boolean => {
+      const allowedModules = settings?.allowed_modules
+      if (!allowedModules) return true // unrestricted
+      return allowedModules.includes(moduleKey)
+    },
+    [settings]
+  )
+
   return (
-    <SchoolSettingsContext.Provider value={{ settings, loading, isPluginActive, refreshSettings }}>
+    <SchoolSettingsContext.Provider value={{ settings, loading, isPluginActive, isModuleAllowed, refreshSettings }}>
       {children}
     </SchoolSettingsContext.Provider>
   )

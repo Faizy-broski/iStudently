@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react'
+import { useTranslations } from 'next-intl'
 import { getSchoolReadingLogs, type ReadingLog } from '@/lib/api/reading-logs'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -17,6 +18,7 @@ function initials(first: string, last: string) {
 }
 
 function AudioSection({ log }: { log: ReadingLog }) {
+  const t = useTranslations('teacherPages.readingLogs')
   const ageInDays = differenceInDays(new Date(), parseISO(log.created_at))
   const expired = ageInDays > 14
 
@@ -26,17 +28,18 @@ function AudioSection({ log }: { log: ReadingLog }) {
     return (
       <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
         <MicOff className="h-3.5 w-3.5" />
-        <span>Audio Expired (14-day limit reached)</span>
+        <span>{t('audioExpiredLimit')}</span>
       </div>
     )
   }
 
   if (log.audio_url) {
+    const daysRemaining = 14 - ageInDays
     return (
       <div className="mt-2 space-y-1">
         <p className="text-xs text-muted-foreground flex items-center gap-1">
           <Clock className="h-3 w-3" />
-          Audio ({14 - ageInDays} day{14 - ageInDays !== 1 ? 's' : ''} remaining)
+          {t('audioDaysRemaining', { count: daysRemaining })}
         </p>
         <audio controls src={log.audio_url} className="w-full h-9" />
       </div>
@@ -47,6 +50,7 @@ function AudioSection({ log }: { log: ReadingLog }) {
 }
 
 function LogRow({ log }: { log: ReadingLog }) {
+  const t = useTranslations('teacherPages.readingLogs')
   const [expanded, setExpanded] = useState(false)
   const student = log.student
   const ageInDays = differenceInDays(new Date(), parseISO(log.created_at))
@@ -69,17 +73,17 @@ function LogRow({ log }: { log: ReadingLog }) {
             {/* Header */}
             <div className="flex flex-wrap items-center gap-2 justify-between">
               <p className="font-semibold text-sm">
-                {student ? `${student.first_name} ${student.last_name}` : 'Unknown'}
+                {student ? `${student.first_name} ${student.last_name}` : t('unknown')}
               </p>
               <div className="flex gap-1.5">
                 {hasAudio && (
                   <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-green-500 text-green-600">
-                    🎙 Audio
+                    🎙 {t('audio')}
                   </Badge>
                 )}
                 {log.audio_file_path && ageInDays > 14 && (
                   <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground">
-                    Audio Expired
+                    {t('audioExpired')}
                   </Badge>
                 )}
               </div>
@@ -103,7 +107,7 @@ function LogRow({ log }: { log: ReadingLog }) {
               {log.pages_read != null && (
                 <span className="flex items-center gap-1">
                   <FileText className="h-3 w-3" />
-                  {log.pages_read} pages
+                  {t('pagesCount', { count: log.pages_read })}
                 </span>
               )}
             </div>
@@ -116,7 +120,7 @@ function LogRow({ log }: { log: ReadingLog }) {
                   className="mt-1.5 flex items-center gap-1 text-xs text-primary hover:underline"
                 >
                   {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                  {expanded ? 'Hide notes' : 'View notes'}
+                  {expanded ? t('hideNotes') : t('viewNotes')}
                 </button>
                 {expanded && (
                   <p className="mt-1 text-xs text-muted-foreground whitespace-pre-wrap">{log.notes}</p>
@@ -133,6 +137,7 @@ function LogRow({ log }: { log: ReadingLog }) {
 }
 
 export default function TeacherReadingLogsPage() {
+  const t = useTranslations('teacherPages.readingLogs')
   const [logs, setLogs] = useState<ReadingLog[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -165,10 +170,10 @@ export default function TeacherReadingLogsPage() {
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <BookOpen className="h-6 w-6 text-primary" />
-          Student Reading Logs
+          {t('pageTitle')}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Review reading sessions submitted by students. Audio recordings expire after 14 days.
+          {t('pageDescription')}
         </p>
       </div>
 
@@ -177,7 +182,7 @@ export default function TeacherReadingLogsPage() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           className="pl-9"
-          placeholder="Search by student name, book title or author…"
+          placeholder={t('searchPlaceholder')}
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
@@ -186,8 +191,8 @@ export default function TeacherReadingLogsPage() {
       {/* Stats row */}
       {!loading && (
         <div className="flex gap-4 text-sm text-muted-foreground">
-          <span>{filtered.length} session{filtered.length !== 1 ? 's' : ''}</span>
-          {search && <span>filtered from {logs.length} total</span>}
+          <span>{t('sessionsCount', { count: filtered.length })}</span>
+          {search && <span>{t('filteredFromTotal', { total: logs.length })}</span>}
         </div>
       )}
 
@@ -198,7 +203,7 @@ export default function TeacherReadingLogsPage() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
-          {search ? 'No sessions match your search.' : 'No reading sessions logged yet.'}
+          {search ? t('noSessionsMatch') : t('noSessionsYet')}
         </div>
       ) : (
         <div className="space-y-3">

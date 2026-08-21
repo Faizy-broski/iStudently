@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +41,7 @@ function ScaleSection({
   onEditCode: (code: TeacherCommentCode) => void;
   onDeleteCode: (id: string) => void;
 }) {
+  const t = useTranslations("teacherPages.commentCodes");
   const [open, setOpen] = useState(true);
   const isOwned = scale.staff_id === staffId;
   const codes = (scale.codes ?? []).filter((c) => c.is_active !== false);
@@ -55,16 +57,16 @@ function ScaleSection({
           <span className="font-medium text-gray-800">{scale.title}</span>
           {!isOwned && (
             <Badge className="bg-gray-100 text-gray-500 text-xs gap-1">
-              <Lock className="h-3 w-3" /> School-wide
+              <Lock className="h-3 w-3" /> {t("schoolWide")}
             </Badge>
           )}
-          <span className="text-xs text-muted-foreground ml-1">{codes.length} code{codes.length !== 1 ? "s" : ""}</span>
+          <span className="text-xs text-muted-foreground ml-1">{t("codeCount", { count: codes.length })}</span>
         </button>
 
         {isOwned && (
           <div className="flex items-center gap-1">
             <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => onAddCode(scale.id)}>
-              <Plus className="h-3.5 w-3.5" /> Add Code
+              <Plus className="h-3.5 w-3.5" /> {t("addCode")}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -74,11 +76,11 @@ function ScaleSection({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => onEditScale(scale)}>
-                  <Pencil className="h-4 w-4 mr-2" /> Edit Scale
+                  <Pencil className="h-4 w-4 mr-2" /> {t("editScale")}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-red-600" onClick={() => onDeleteScale(scale.id)}>
-                  <Trash2 className="h-4 w-4 mr-2" /> Delete Scale
+                  <Trash2 className="h-4 w-4 mr-2" /> {t("deleteScale")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -91,9 +93,9 @@ function ScaleSection({
           <table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-muted-foreground uppercase tracking-wide border-b border-gray-200 bg-gray-100">
-                <th className="text-left px-4 py-2">Code</th>
-                <th className="text-left px-4 py-2">Title</th>
-                <th className="text-left px-4 py-2">Description</th>
+                <th className="text-left px-4 py-2">{t("code")}</th>
+                <th className="text-left px-4 py-2">{t("title")}</th>
+                <th className="text-left px-4 py-2">{t("description")}</th>
                 {isOwned && <th className="w-12 py-2" />}
               </tr>
             </thead>
@@ -113,11 +115,11 @@ function ScaleSection({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => onEditCode(code)}>
-                            <Pencil className="h-4 w-4 mr-2" /> Edit
+                            <Pencil className="h-4 w-4 mr-2" /> {t("edit")}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem className="text-red-600" onClick={() => onDeleteCode(code.id)}>
-                            <Trash2 className="h-4 w-4 mr-2" /> Delete
+                            <Trash2 className="h-4 w-4 mr-2" /> {t("delete")}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -132,9 +134,9 @@ function ScaleSection({
 
       {open && codes.length === 0 && isOwned && (
         <div className="border-t border-gray-100 bg-gray-50 px-4 py-4 text-center">
-          <p className="text-sm text-muted-foreground mb-2">No codes yet.</p>
+          <p className="text-sm text-muted-foreground mb-2">{t("noCodesYet")}</p>
           <Button size="sm" variant="outline" onClick={() => onAddCode(scale.id)}>
-            <Plus className="h-3.5 w-3.5 mr-1" /> Add First Code
+            <Plus className="h-3.5 w-3.5 mr-1" /> {t("addFirstCode")}
           </Button>
         </div>
       )}
@@ -145,6 +147,7 @@ function ScaleSection({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function TeacherCommentCodesPage() {
+  const t = useTranslations("teacherPages.commentCodes");
   const { profile } = useAuth();
   const staffId = profile?.staff_id ?? "";
 
@@ -181,14 +184,14 @@ export default function TeacherCommentCodesPage() {
     try {
       if (scaleDialog.editing) {
         await editScale(scaleDialog.editing.id, { title: scaleTitle, comment: scaleComment || null });
-        toast.success("Scale updated");
+        toast.success(t("scaleUpdated"));
       } else {
         await addScale(scaleTitle, scaleComment || undefined);
-        toast.success("Scale created");
+        toast.success(t("scaleCreated"));
       }
       setScaleDialog({ open: false });
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Failed to save scale");
+      toast.error(e instanceof Error ? e.message : t("saveScaleFailed"));
     } finally {
       setSaving(false);
     }
@@ -197,9 +200,9 @@ export default function TeacherCommentCodesPage() {
   async function handleDeleteScale(id: string) {
     try {
       await removeScale(id);
-      toast.success("Scale deleted");
+      toast.success(t("scaleDeleted"));
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Failed to delete scale");
+      toast.error(e instanceof Error ? e.message : t("deleteScaleFailed"));
     }
   }
 
@@ -227,18 +230,18 @@ export default function TeacherCommentCodesPage() {
           short_name: codeShortName || null,
           comment: codeComment || null,
         });
-        toast.success("Code updated");
+        toast.success(t("codeUpdated"));
       } else if (codeDialog.scaleId) {
         await addCode(codeDialog.scaleId, {
           title: codeTitle,
           short_name: codeShortName || undefined,
           comment: codeComment || undefined,
         });
-        toast.success("Code added");
+        toast.success(t("codeAdded"));
       }
       setCodeDialog({ open: false });
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Failed to save code");
+      toast.error(e instanceof Error ? e.message : t("saveCodeFailed"));
     } finally {
       setSaving(false);
     }
@@ -247,9 +250,9 @@ export default function TeacherCommentCodesPage() {
   async function handleDeleteCode(id: string) {
     try {
       await removeCode(id);
-      toast.success("Code deleted");
+      toast.success(t("codeDeleted"));
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Failed to delete code");
+      toast.error(e instanceof Error ? e.message : t("deleteCodeFailed"));
     }
   }
 
@@ -259,20 +262,20 @@ export default function TeacherCommentCodesPage() {
         <div className="flex items-center gap-3">
           <Tag className="h-6 w-6 text-blue-600" />
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Comment Codes</h1>
+            <h1 className="text-2xl font-bold text-gray-800">{t("pageTitle")}</h1>
             <p className="text-sm text-muted-foreground">
-              School-wide codes are read-only. You can create and manage your own personal codes.
+              {t("pageSubtitle")}
             </p>
           </div>
         </div>
         <Button onClick={openAddScale} className="gap-1.5">
-          <Plus className="h-4 w-4" /> New Scale
+          <Plus className="h-4 w-4" /> {t("newScale")}
         </Button>
       </div>
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Comment Code Scales</CardTitle>
+          <CardTitle className="text-base">{t("commentCodeScales")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {loading ? (
@@ -284,9 +287,9 @@ export default function TeacherCommentCodesPage() {
           ) : scales.length === 0 ? (
             <div className="text-center py-8">
               <Tag className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-              <p className="text-sm text-muted-foreground mb-3">No comment code scales yet.</p>
+              <p className="text-sm text-muted-foreground mb-3">{t("noScalesYet")}</p>
               <Button variant="outline" onClick={openAddScale}>
-                <Plus className="h-4 w-4 mr-1" /> Create First Scale
+                <Plus className="h-4 w-4 mr-1" /> {t("createFirstScale")}
               </Button>
             </div>
           ) : (
@@ -310,32 +313,32 @@ export default function TeacherCommentCodesPage() {
       <Dialog open={scaleDialog.open} onOpenChange={(v) => setScaleDialog({ open: v })}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{scaleDialog.editing ? "Edit Scale" : "New Comment Code Scale"}</DialogTitle>
+            <DialogTitle>{scaleDialog.editing ? t("editScale") : t("newCommentCodeScale")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1">
-              <Label>Title</Label>
+              <Label>{t("title")}</Label>
               <Input
                 value={scaleTitle}
                 onChange={(e) => setScaleTitle(e.target.value)}
-                placeholder="e.g. Behavior"
+                placeholder={t("scaleTitlePlaceholder")}
                 autoFocus
               />
             </div>
             <div className="space-y-1">
-              <Label>Description (optional)</Label>
+              <Label>{t("descriptionOptional")}</Label>
               <Input
                 value={scaleComment}
                 onChange={(e) => setScaleComment(e.target.value)}
-                placeholder="Short description"
+                placeholder={t("shortDescription")}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setScaleDialog({ open: false })}>Cancel</Button>
+            <Button variant="outline" onClick={() => setScaleDialog({ open: false })}>{t("cancel")}</Button>
             <Button onClick={handleSaveScale} disabled={saving || !scaleTitle.trim()}>
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {scaleDialog.editing ? "Save Changes" : "Create Scale"}
+              {scaleDialog.editing ? t("saveChanges") : t("createScale")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -345,43 +348,43 @@ export default function TeacherCommentCodesPage() {
       <Dialog open={codeDialog.open} onOpenChange={(v) => setCodeDialog({ open: v })}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{codeDialog.editing ? "Edit Code" : "Add Comment Code"}</DialogTitle>
+            <DialogTitle>{codeDialog.editing ? t("editCode") : t("addCommentCode")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1">
-                <Label>Short Code</Label>
+                <Label>{t("shortCode")}</Label>
                 <Input
                   value={codeShortName}
                   onChange={(e) => setCodeShortName(e.target.value.toUpperCase())}
-                  placeholder="E"
+                  placeholder={t("shortCodePlaceholder")}
                   maxLength={10}
                 />
               </div>
               <div className="col-span-2 space-y-1">
-                <Label>Title</Label>
+                <Label>{t("title")}</Label>
                 <Input
                   value={codeTitle}
                   onChange={(e) => setCodeTitle(e.target.value)}
-                  placeholder="Excellent"
+                  placeholder={t("codeTitlePlaceholder")}
                   autoFocus
                 />
               </div>
             </div>
             <div className="space-y-1">
-              <Label>Description (optional)</Label>
+              <Label>{t("descriptionOptional")}</Label>
               <Input
                 value={codeComment}
                 onChange={(e) => setCodeComment(e.target.value)}
-                placeholder="Expanded description"
+                placeholder={t("expandedDescription")}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCodeDialog({ open: false })}>Cancel</Button>
+            <Button variant="outline" onClick={() => setCodeDialog({ open: false })}>{t("cancel")}</Button>
             <Button onClick={handleSaveCode} disabled={saving || !codeTitle.trim()}>
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {codeDialog.editing ? "Save Changes" : "Add Code"}
+              {codeDialog.editing ? t("saveChanges") : t("addCode")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -14,24 +14,25 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { IconLoader, IconDownload } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import useSWR from 'swr'
+import { useTranslations } from 'next-intl'
 
 // ── Attendance code badge (P=green, A=red, H=yellow) — mirrors RosarioSIS MakeAttendanceCode
-function AttendanceCodeBadge({ value }: { value: number | null }) {
+function AttendanceCodeBadge({ value, t }: { value: number | null; t: ReturnType<typeof useTranslations> }) {
   if (value === null || value === undefined) return null
   if (value >= 1.0)
     return (
-      <div className="inline-flex items-center justify-center w-7 h-7 rounded text-xs font-bold bg-green-100 text-green-800 border border-green-300" title="Present">
+      <div className="inline-flex items-center justify-center w-7 h-7 rounded text-xs font-bold bg-green-100 text-green-800 border border-green-300" title={t('present')}>
         P
       </div>
     )
   if (value === 0)
     return (
-      <div className="inline-flex items-center justify-center w-7 h-7 rounded text-xs font-bold bg-red-100 text-red-800 border border-red-300" title="Absent">
+      <div className="inline-flex items-center justify-center w-7 h-7 rounded text-xs font-bold bg-red-100 text-red-800 border border-red-300" title={t('absent')}>
         A
       </div>
     )
   return (
-    <div className="inline-flex items-center justify-center w-7 h-7 rounded text-xs font-bold bg-yellow-100 text-yellow-800 border border-yellow-300" title="Half Day">
+    <div className="inline-flex items-center justify-center w-7 h-7 rounded text-xs font-bold bg-yellow-100 text-yellow-800 border border-yellow-300" title={t('halfDay')}>
       H
     </div>
   )
@@ -50,6 +51,7 @@ const MONTHS = [
 type ReportMode = 'chart' | 'absence'
 
 export default function TeacherAttendanceDailySummaryPage() {
+  const t = useTranslations('teacherPages.attendanceDailySummary')
   const { profile } = useAuth()
   const schoolId = profile?.school_id || ''
 
@@ -92,7 +94,7 @@ export default function TeacherAttendanceDailySummaryPage() {
 
   const handleGo = useCallback(async () => {
     if (!schoolId) return
-    if (startDateStr > endDateStr) { toast.error('Start date must be before end date'); return }
+    if (startDateStr > endDateStr) { toast.error(t('dateOrderError')); return }
     setLoading(true)
     setGridData(null)
     setSummaryData(null)
@@ -100,16 +102,16 @@ export default function TeacherAttendanceDailySummaryPage() {
       if (report === 'absence') {
         const res = await attendanceApi.getAttendanceSummary(schoolId, startDateStr, endDateStr)
         if (res.success && res.data) setSummaryData(res.data)
-        else toast.error(res.error || 'Failed to load absence summary')
+        else toast.error(res.error || t('loadAbsenceError'))
       } else {
         const res = await attendanceApi.getDailySummaryGrid(
           schoolId, startDateStr, endDateStr, undefined, periodId
         )
         if (res.success && res.data) setGridData(res.data)
-        else toast.error(res.error || 'Failed to load attendance chart')
+        else toast.error(res.error || t('loadChartError'))
       }
     } catch (e: any) {
-      toast.error(e.message || 'Error loading data')
+      toast.error(e.message || t('loadDataError'))
     } finally {
       setLoading(false)
     }
@@ -139,7 +141,7 @@ export default function TeacherAttendanceDailySummaryPage() {
     <div className="space-y-4">
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle>Attendance Chart</CardTitle>
+          <CardTitle>{t('attendanceChart')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
 
@@ -155,15 +157,15 @@ export default function TeacherAttendanceDailySummaryPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="chart">Attendance Chart</SelectItem>
-                <SelectItem value="absence">Absence Summary</SelectItem>
+                <SelectItem value="chart">{t('attendanceChart')}</SelectItem>
+                <SelectItem value="absence">{t('absenceSummary')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* ── Timeframe + Period filter */}
           <div className="flex flex-wrap items-end gap-2">
-            <span className="text-sm font-medium self-center">Timeframe:</span>
+            <span className="text-sm font-medium self-center">{t('timeframe')}</span>
 
             <div className="flex items-center gap-1">
               <Select value={String(startMonth)} onValueChange={v => {
@@ -171,7 +173,7 @@ export default function TeacherAttendanceDailySummaryPage() {
                 if (startDay > new Date(startYear, m + 1, 0).getDate()) setStartDay(1)
               }}>
                 <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-                <SelectContent>{MONTHS.map((n, i) => <SelectItem key={i} value={String(i)}>{n}</SelectItem>)}</SelectContent>
+                <SelectContent>{MONTHS.map((_, i) => <SelectItem key={i} value={String(i)}>{t(`month${i}` as any)}</SelectItem>)}</SelectContent>
               </Select>
               <Select value={String(startDay)} onValueChange={v => setStartDay(parseInt(v))}>
                 <SelectTrigger className="w-15"><SelectValue /></SelectTrigger>
@@ -183,7 +185,7 @@ export default function TeacherAttendanceDailySummaryPage() {
               </Select>
             </div>
 
-            <span className="text-sm self-center">to</span>
+            <span className="text-sm self-center">{t('to')}</span>
 
             <div className="flex items-center gap-1">
               <Select value={String(endMonth)} onValueChange={v => {
@@ -191,7 +193,7 @@ export default function TeacherAttendanceDailySummaryPage() {
                 if (endDay > new Date(endYear, m + 1, 0).getDate()) setEndDay(1)
               }}>
                 <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-                <SelectContent>{MONTHS.map((n, i) => <SelectItem key={i} value={String(i)}>{n}</SelectItem>)}</SelectContent>
+                <SelectContent>{MONTHS.map((_, i) => <SelectItem key={i} value={String(i)}>{t(`month${i}` as any)}</SelectItem>)}</SelectContent>
               </Select>
               <Select value={String(endDay)} onValueChange={v => setEndDay(parseInt(v))}>
                 <SelectTrigger className="w-15"><SelectValue /></SelectTrigger>
@@ -204,17 +206,17 @@ export default function TeacherAttendanceDailySummaryPage() {
             </div>
 
             <Button onClick={handleGo} disabled={loading || !schoolId} className="min-w-[60px]">
-              {loading ? <IconLoader className="h-4 w-4 animate-spin" /> : 'GO'}
+              {loading ? <IconLoader className="h-4 w-4 animate-spin" /> : t('go')}
             </Button>
 
             {report === 'chart' && (
               <div className="ml-auto">
                 <Select value={periodId} onValueChange={setPeriodId}>
                   <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Daily" />
+                    <SelectValue placeholder={t('daily')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="daily">{t('daily')}</SelectItem>
                     {activePeriods.map(p => (
                       <SelectItem key={p.id} value={p.id}>{p.period_name}</SelectItem>
                     ))}
@@ -228,7 +230,7 @@ export default function TeacherAttendanceDailySummaryPage() {
           {report === 'chart' && codes.length > 0 && (
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 py-2 border-b">
               <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Attendance Codes
+                {t('attendanceCodes')}
               </span>
               {codes.map(c => (
                 <span key={c.id} className="flex items-center gap-1.5 text-sm">
@@ -247,11 +249,11 @@ export default function TeacherAttendanceDailySummaryPage() {
           {studentCount !== null && (
             <div className="flex items-center justify-between gap-3">
               <span className="text-sm text-muted-foreground flex items-center gap-2">
-                {studentCount} student{studentCount !== 1 ? 's' : ''} found.
+                {t('studentsFound', { count: studentCount ?? 0 })}
                 <IconDownload className="h-4 w-4 opacity-50" />
               </span>
               <Input
-                placeholder="Search"
+                placeholder={t('search')}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 className="h-8 w-45"
@@ -272,9 +274,9 @@ export default function TeacherAttendanceDailySummaryPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/40">
-                    <TableHead className="font-bold text-primary min-w-45">STUDENT</TableHead>
-                    <TableHead className="font-bold text-primary min-w-27">STUDENT ID</TableHead>
-                    <TableHead className="font-bold text-primary min-w-27">GRADE LEVEL</TableHead>
+                    <TableHead className="font-bold text-primary min-w-45">{t('columnStudent')}</TableHead>
+                    <TableHead className="font-bold text-primary min-w-27">{t('columnStudentId')}</TableHead>
+                    <TableHead className="font-bold text-primary min-w-27">{t('columnGradeLevel')}</TableHead>
                     {gridData.school_dates.map(d => (
                       <TableHead key={d} className="text-center font-bold text-[11px] min-w-13 px-1 whitespace-nowrap">
                         {formatDateCol(d)}
@@ -286,7 +288,7 @@ export default function TeacherAttendanceDailySummaryPage() {
                   {filtered.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={3 + gridData.school_dates.length} className="text-center py-10 text-muted-foreground">
-                        No students found.
+                        {t('noStudentsFound')}
                       </TableCell>
                     </TableRow>
                   ) : (filtered as DailySummaryGridStudent[]).map(s => (
@@ -296,7 +298,7 @@ export default function TeacherAttendanceDailySummaryPage() {
                       <TableCell>{s.grade_name || '—'}</TableCell>
                       {gridData.school_dates.map(d => (
                         <TableCell key={d} className="text-center p-1">
-                          <AttendanceCodeBadge value={s.dates[d] ?? null} />
+                          <AttendanceCodeBadge value={s.dates[d] ?? null} t={t} />
                         </TableCell>
                       ))}
                     </TableRow>
@@ -312,13 +314,13 @@ export default function TeacherAttendanceDailySummaryPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/40">
-                    <TableHead className="font-bold text-primary min-w-45">STUDENT</TableHead>
-                    <TableHead className="font-bold text-primary min-w-27">STUDENT ID</TableHead>
-                    <TableHead className="font-bold text-primary min-w-27">GRADE LEVEL</TableHead>
-                    <TableHead className="font-bold text-right">STATE ABS</TableHead>
-                    <TableHead className="font-bold text-right">ABSENT</TableHead>
-                    <TableHead className="font-bold text-right">TARDY</TableHead>
-                    <TableHead className="font-bold text-right">EXCUSED ABSENCE</TableHead>
+                    <TableHead className="font-bold text-primary min-w-45">{t('columnStudent')}</TableHead>
+                    <TableHead className="font-bold text-primary min-w-27">{t('columnStudentId')}</TableHead>
+                    <TableHead className="font-bold text-primary min-w-27">{t('columnGradeLevel')}</TableHead>
+                    <TableHead className="font-bold text-right">{t('columnStateAbs')}</TableHead>
+                    <TableHead className="font-bold text-right">{t('columnAbsent')}</TableHead>
+                    <TableHead className="font-bold text-right">{t('columnTardy')}</TableHead>
+                    <TableHead className="font-bold text-right">{t('columnExcusedAbsence')}</TableHead>
                     {extraCols.map(k => (
                       <TableHead key={k} className="font-bold text-right uppercase text-[11px]">{k}</TableHead>
                     ))}
@@ -328,7 +330,7 @@ export default function TeacherAttendanceDailySummaryPage() {
                   {filtered.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7 + extraCols.length} className="text-center py-10 text-muted-foreground">
-                        No students found.
+                        {t('noStudentsFound')}
                       </TableCell>
                     </TableRow>
                   ) : (filtered as AttendanceSummaryRow[]).map(s => {
@@ -356,7 +358,7 @@ export default function TeacherAttendanceDailySummaryPage() {
           {/* ── Empty state */}
           {!loading && !gridData && !summaryData && (
             <p className="text-sm text-muted-foreground py-10 text-center">
-              Select a timeframe and click GO to view attendance data.
+              {t('selectTimeframePrompt')}
             </p>
           )}
 

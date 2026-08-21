@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select'
 import { Loader2, Calendar, Clock, ChevronRight } from 'lucide-react'
 import { format, parseISO, isToday, isPast } from 'date-fns'
+import { useTranslations } from 'next-intl'
 
 const CATEGORY_COLORS: Record<string, string> = {
   academic: 'bg-purple-100 text-purple-700',
@@ -24,6 +25,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 }
 
 export default function TeacherEventsPage() {
+  const t = useTranslations('teacherPages.events')
   const { user } = useAuth()
   const campusContext = useCampus()
   const campusId = campusContext?.selectedCampus?.id
@@ -55,21 +57,21 @@ export default function TeacherEventsPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-3xl font-bold">School Calendar</h1>
-          <p className="text-muted-foreground mt-1">View upcoming school events and activities</p>
+          <h1 className="text-3xl font-bold">{t('pageTitle')}</h1>
+          <p className="text-muted-foreground mt-1">{t('pageSubtitle')}</p>
         </div>
         <Select value={filterCategory || 'all'} onValueChange={v => setFilterCategory(v === 'all' ? '' : v)}>
           <SelectTrigger className="w-40">
-            <SelectValue placeholder="All categories" />
+            <SelectValue placeholder={t('allCategories')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
-            <SelectItem value="academic">Academic</SelectItem>
-            <SelectItem value="holiday">Holiday</SelectItem>
-            <SelectItem value="exam">Exam</SelectItem>
-            <SelectItem value="meeting">Meeting</SelectItem>
-            <SelectItem value="activity">Activity</SelectItem>
-            <SelectItem value="reminder">Reminder</SelectItem>
+            <SelectItem value="all">{t('allCategories')}</SelectItem>
+            <SelectItem value="academic">{t('categoryAcademic')}</SelectItem>
+            <SelectItem value="holiday">{t('categoryHoliday')}</SelectItem>
+            <SelectItem value="exam">{t('categoryExam')}</SelectItem>
+            <SelectItem value="meeting">{t('categoryMeeting')}</SelectItem>
+            <SelectItem value="activity">{t('categoryActivity')}</SelectItem>
+            <SelectItem value="reminder">{t('categoryReminder')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -82,33 +84,33 @@ export default function TeacherEventsPage() {
         <Card>
           <CardContent className="py-12 text-center">
             <Calendar className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
-            <p className="text-muted-foreground">No upcoming events</p>
+            <p className="text-muted-foreground">{t('noUpcomingEvents')}</p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold">Upcoming Events ({upcoming.length})</h2>
+          <h2 className="text-lg font-semibold">{t('upcomingEventsCount', { count: upcoming.length })}</h2>
           <div className="grid gap-3">
-            {upcoming.map(event => <EventCard key={event.id} event={event} />)}
+            {upcoming.map(event => <EventCard key={event.id} event={event} t={t} />)}
           </div>
         </div>
       )}
 
       <Button variant="outline" size="sm" onClick={() => setShowPast(v => !v)}>
-        {showPast ? 'Hide' : 'Show'} Past Events
+        {showPast ? t('hidePastEvents') : t('showPastEvents')}
         <ChevronRight className={`ml-1 h-4 w-4 transition-transform ${showPast ? 'rotate-90' : ''}`} />
       </Button>
 
       {showPast && (
         <div className="space-y-3 opacity-70">
-          <h2 className="text-lg font-semibold">Past Events</h2>
+          <h2 className="text-lg font-semibold">{t('pastEvents')}</h2>
           {loadingAll ? (
             <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
           ) : past.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No past events.</p>
+            <p className="text-muted-foreground text-sm">{t('noPastEvents')}</p>
           ) : (
             <div className="grid gap-3">
-              {past.map(event => <EventCard key={event.id} event={event} isPast />)}
+              {past.map(event => <EventCard key={event.id} event={event} isPast t={t} />)}
             </div>
           )}
         </div>
@@ -117,7 +119,7 @@ export default function TeacherEventsPage() {
   )
 }
 
-function EventCard({ event, isPast = false }: { event: SchoolEvent; isPast?: boolean }) {
+function EventCard({ event, isPast = false, t }: { event: SchoolEvent; isPast?: boolean; t: ReturnType<typeof useTranslations> }) {
   const start = parseISO(event.start_at)
   const today = isToday(start)
   const colorClass = CATEGORY_COLORS[event.category] || 'bg-gray-100 text-gray-700'
@@ -134,7 +136,7 @@ function EventCard({ event, isPast = false }: { event: SchoolEvent; isPast?: boo
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <h3 className="font-semibold">{event.title}</h3>
               <Badge className={`text-xs ${colorClass}`}>{event.category}</Badge>
-              {today && !isPast && <Badge>Today</Badge>}
+              {today && !isPast && <Badge>{t('today')}</Badge>}
             </div>
             {event.description && (
               <p className="text-sm text-muted-foreground line-clamp-2">{event.description}</p>
@@ -142,7 +144,7 @@ function EventCard({ event, isPast = false }: { event: SchoolEvent; isPast?: boo
             <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
               <Clock className="h-3 w-3" />
               {event.is_all_day
-                ? 'All day'
+                ? t('allDay')
                 : `${format(start, 'h:mm a')} – ${format(parseISO(event.end_at), 'h:mm a')}`}
             </div>
           </div>

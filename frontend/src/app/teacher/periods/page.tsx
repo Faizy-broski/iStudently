@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import { getAuthToken } from '@/lib/api/schools'
@@ -27,6 +28,7 @@ function formatTime12h(time: string): string {
 }
 
 export default function TeacherPeriodsPage() {
+  const t = useTranslations('teacherPages.periods')
   const { profile } = useAuth()
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
@@ -86,11 +88,10 @@ export default function TeacherPeriodsPage() {
       {/* Header */}
       <div className="space-y-1">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#022172] dark:text-white">
-          Periods
+          {t('pageTitle')}
         </h1>
         <p className="text-muted-foreground">
-          School periods for the current academic year
-          {selectedCampus ? ` — ${selectedCampus.name}` : ''}
+          {selectedCampus ? t('schoolPeriodsWithCampus', { campus: selectedCampus.name }) : t('schoolPeriods')}
         </p>
       </div>
 
@@ -99,32 +100,32 @@ export default function TeacherPeriodsPage() {
         {periods.length === 0 ? (
           <div className="py-16 text-center">
             <Clock className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-            <p className="text-muted-foreground text-sm">No periods defined for this school yet.</p>
+            <p className="text-muted-foreground text-sm">{t('noPeriodsDefined')}</p>
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10">
                 <th className="px-4 py-3 text-left text-xs font-semibold text-[#022172] uppercase tracking-wider">
-                  Title
+                  {t('title')}
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
-                  Short Name
+                  {t('shortName')}
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
-                  Order
+                  {t('order')}
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
-                  Start Time
+                  {t('startTime')}
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
-                  End Time
+                  {t('endTime')}
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
-                  Length (min)
+                  {t('lengthMin')}
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-[#022172] uppercase tracking-wider">
-                  Block
+                  {t('block')}
                 </th>
               </tr>
             </thead>

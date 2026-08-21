@@ -28,6 +28,7 @@ import {
   type UserProfile, type ProfilePermission,
 } from '@/lib/api/user-profiles'
 import { getSidebarConfig, type SidebarMenuItem } from '@/config/sidebar'
+import { useSchoolSettings } from '@/context/SchoolSettingsContext'
 import { UserRole } from '@/types'
 
 type PermMap = Record<string, { can_use: boolean; can_edit: boolean }>
@@ -47,8 +48,9 @@ interface ModuleGroup {
   items: SidebarMenuItem[]
 }
 
-function getModuleGroups(role: UserRole): ModuleGroup[] {
+function getModuleGroups(role: UserRole, allowedModules?: string[] | null): ModuleGroup[] {
   const config = getSidebarConfig(role)
+  const allowedSet = allowedModules ? new Set(allowedModules) : null
   const groups: ModuleGroup[] = []
 
   for (const item of config) {
@@ -56,13 +58,14 @@ function getModuleGroups(role: UserRole): ModuleGroup[] {
 
     if (item.subItems && item.subItems.length > 0) {
       const leafItems = item.subItems.filter(
-        (s) => !s.isLabel && s.href !== '#'
+        (s) => !s.isLabel && s.href !== '#' && (!allowedSet || allowedSet.has(s.href))
       )
       if (leafItems.length > 0) {
         groups.push({ title: item.title, href: item.href, items: leafItems })
       }
     } else {
       // Top-level leaf item — put it in a virtual group
+      if (allowedSet && !allowedSet.has(item.href)) continue
       const existing = groups.find((g) => g.title === '__root__')
       if (existing) {
         existing.items.push(item)
@@ -149,6 +152,8 @@ function ListItem({
 
 export default function UserProfilesPage() {
   const t = useTranslations('school.user_profiles')
+  const { settings } = useSchoolSettings()
+  const allowedModules = settings?.allowed_modules ?? null
 
   // Role templates (profile_type='role')
   const [roles, setRoles] = useState<UserProfile[]>([])
@@ -186,7 +191,7 @@ export default function UserProfilesPage() {
   const profiles = roles
   const selectedProfile = selectedItem
 
-  const moduleGroups = useMemo(() => getModuleGroups(panelRole), [panelRole])
+  const moduleGroups = useMemo(() => getModuleGroups(panelRole, allowedModules), [panelRole, allowedModules])
 
   // Group roles by base_role for display
   const rolesBySystem = useMemo(() => {
@@ -235,7 +240,7 @@ export default function UserProfilesPage() {
       if (data.length === 0) {
         // No permissions yet — start fully checked so admin only unchecks what to restrict
         if (item) {
-          const allModuleItems = getModuleGroups(roleForPanel).flatMap((g) => g.items)
+          const allModuleItems = getModuleGroups(roleForPanel, allowedModules).flatMap((g) => g.items)
           const fullMap: PermMap = {}
           for (const mi of allModuleItems) {
             fullMap[mi.href] = { can_use: true, can_edit: true }
@@ -250,7 +255,7 @@ export default function UserProfilesPage() {
     } finally {
       setLoadingPerms(false)
     }
-  }, [roles, standaloneProfiles])
+  }, [roles, standaloneProfiles, allowedModules])
 
   const togglePerm = useCallback((href: string, field: 'can_use' | 'can_edit') => {
     const key = permKey(href)

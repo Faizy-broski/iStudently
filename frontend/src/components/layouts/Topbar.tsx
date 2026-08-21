@@ -146,6 +146,9 @@ export function Topbar({ className }: TopbarProps) {
     return 'U'
   }
 
+  // Pink accent for female students' own avatar, in place of the default navy
+  const isFemaleStudent = profile?.role === 'student' && profile?.gender === 'female'
+
   // When super_admin is impersonating a school, show as "School Admin" instead of their
   // real name/role — matches the same handling already in AppSidebar.tsx, so the topbar
   // doesn't contradict the sidebar/impersonation banner about who's "logged in" right now.
@@ -340,12 +343,12 @@ export function Topbar({ className }: TopbarProps) {
                 variant="ghost"
                 className="flex items-center gap-3 px-2 py-1.5 h-auto hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
               >
-                <Avatar className="h-9 w-9">
+                <Avatar className={cn("h-9 w-9", isFemaleStudent && "ring-2 ring-pink-400 ring-offset-2 ring-offset-background")}>
                   <AvatarImage
                     src={profile?.profile_photo_url || profile?.avatar_url || ''}
                     alt={profile?.first_name || 'User'}
                   />
-                  <AvatarFallback className="bg-[#022172] text-white text-sm">
+                  <AvatarFallback className={cn("text-white text-sm", isFemaleStudent ? "bg-pink-500" : "bg-[#022172]")}>
                     {getInitials()}
                   </AvatarFallback>
                 </Avatar>

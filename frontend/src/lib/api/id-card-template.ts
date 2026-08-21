@@ -35,6 +35,7 @@ export interface TemplateField {
   style?: {
     fontSize?: number;
     fontWeight?: string;
+    fontFamily?: string;
     color?: string;
     align?: string;
   };

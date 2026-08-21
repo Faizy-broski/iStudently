@@ -18,10 +18,12 @@ import * as teachersApi from "@/lib/api/teachers"
 import * as academicsApi from "@/lib/api/academics"
 import { createClient } from "@/lib/supabase/client"
 import { PaginationWrapper } from "@/components/ui/pagination"
+import { useTranslations } from "next-intl"
 
 const ITEMS_PER_PAGE = 10
 
 export default function TeacherAssignmentsPage() {
+  const t = useTranslations('teacherPages.assignments')
   const router = useRouter()
   const { profile } = useAuth()
   const [assignments, setAssignments] = useState<assignmentsApi.Assignment[]>([])
@@ -106,17 +108,17 @@ export default function TeacherAssignmentsPage() {
       if (sectionsRes.success && sectionsRes.data) {
         setSections(sectionsRes.data)
       } else {
-        throw new Error(sectionsRes.error || 'Failed to fetch sections')
+        throw new Error(sectionsRes.error || t('fetchSectionsFailed'))
       }
-      
+
       if (subjectsRes.success && subjectsRes.data) {
         setSubjects(subjectsRes.data)
       } else {
-        throw new Error(subjectsRes.error || 'Failed to fetch subjects')
+        throw new Error(subjectsRes.error || t('fetchSubjectsFailed'))
       }
     } catch (error: any) {
       console.error('Error loading data:', error)
-      toast.error(error.message || 'Failed to load data')
+      toast.error(error.message || t('loadDataFailed'))
     } finally {
       setLoading(false)
     }
@@ -138,7 +140,7 @@ export default function TeacherAssignmentsPage() {
       setTotalAssignments(result.total)
     } catch (error: any) {
       console.error('Error fetching assignments:', error)
-      toast.error(error.message || 'Failed to load assignments')
+      toast.error(error.message || t('loadAssignmentsFailed'))
     }
   }
 
@@ -187,12 +189,12 @@ export default function TeacherAssignmentsPage() {
       setSubmitting(true)
 
       if (!formData.section_id || !formData.subject_id || !formData.title || !formData.due_date) {
-        toast.error('Please fill in all required fields')
+        toast.error(t('fillRequiredFields'))
         return
       }
 
       if (!currentAcademicYear) {
-        toast.error('No current academic year found. Please contact administrator.')
+        toast.error(t('noAcademicYear'))
         return
       }
 
@@ -202,9 +204,9 @@ export default function TeacherAssignmentsPage() {
         setUploadingFiles(true)
         try {
           attachmentUrls = await uploadFilesToStorage(uploadedFiles)
-          toast.success(`${uploadedFiles.length} file(s) uploaded successfully!`)
+          toast.success(t('filesUploaded', { count: uploadedFiles.length }))
         } catch (uploadError: any) {
-          toast.error(uploadError.message || 'Failed to upload files')
+          toast.error(uploadError.message || t('uploadFilesFailed'))
           return
         } finally {
           setUploadingFiles(false)
@@ -233,13 +235,13 @@ export default function TeacherAssignmentsPage() {
       }
 
       await assignmentsApi.createAssignment(dto)
-      toast.success('Assignment created successfully!')
+      toast.success(t('assignmentCreated'))
       setIsDialogOpen(false)
       resetForm()
       loadData()
     } catch (error: any) {
       console.error('Error creating assignment:', error)
-      toast.error(error.message || 'Failed to create assignment')
+      toast.error(error.message || t('createAssignmentFailed'))
     } finally {
       setSubmitting(false)
       setUploadingFiles(false)
@@ -251,7 +253,7 @@ export default function TeacherAssignmentsPage() {
     const validFiles = files.filter(file => {
       const maxSize = 10 * 1024 * 1024 // 10MB
       if (file.size > maxSize) {
-        toast.error(`${file.name} is too large. Max size is 10MB`)
+        toast.error(t('fileTooLarge', { name: file.name }))
         return false
       }
       return true
@@ -359,7 +361,7 @@ export default function TeacherAssignmentsPage() {
         const subject = ta.subject as any
         return {
           id: ta.subject_id,
-          name: subject?.name || 'Unknown'
+          name: subject?.name || t('unknown')
         }
       })
   }
@@ -377,32 +379,32 @@ export default function TeacherAssignmentsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">My Assignments</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">{t('pageTitle')}</h1>
           <p className="text-sm text-muted-foreground">
-            Create and manage assignments for your classes
+            {t('pageSubtitle')}
           </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button style={{ background: 'var(--gradient-blue)' }} className="text-white">
               <Plus className="h-4 w-4 mr-2" />
-              Create Assignment
+              {t('createAssignment')}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Create New Assignment</DialogTitle>
+              <DialogTitle>{t('createNewAssignment')}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="grade">Grade Level *</Label>
+                  <Label htmlFor="grade">{t('gradeLevel')} *</Label>
                   <Select
                     value={formData.grade_level_id}
                     onValueChange={(value) => setFormData({ ...formData, grade_level_id: value, section_id: '', subject_id: '' })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select grade" />
+                      <SelectValue placeholder={t('selectGrade')} />
                     </SelectTrigger>
                     <SelectContent>
                       {getTeacherGradeLevels().map((grade) => (
@@ -415,14 +417,14 @@ export default function TeacherAssignmentsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="section">Section *</Label>
+                  <Label htmlFor="section">{t('section')} *</Label>
                   <Select
                     value={formData.section_id}
                     onValueChange={(value) => setFormData({ ...formData, section_id: value, subject_id: '' })}
                     disabled={!formData.grade_level_id}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select section" />
+                      <SelectValue placeholder={t('selectSection')} />
                     </SelectTrigger>
                     <SelectContent>
                       {getSectionsForGrade().map((section) => (
@@ -435,14 +437,14 @@ export default function TeacherAssignmentsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="subject">Subject *</Label>
+                  <Label htmlFor="subject">{t('subject')} *</Label>
                   <Select
                     value={formData.subject_id}
                     onValueChange={(value) => setFormData({ ...formData, subject_id: value })}
                     disabled={!formData.section_id}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select subject" />
+                      <SelectValue placeholder={t('selectSubject')} />
                     </SelectTrigger>
                     <SelectContent>
                       {getAvailableSubjects().map((subject) => (
@@ -456,28 +458,28 @@ export default function TeacherAssignmentsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="title">Assignment Title *</Label>
+                <Label htmlFor="title">{t('assignmentTitle')} *</Label>
                 <Input
                   id="title"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="e.g., Chapter 5 Exercises"
+                  placeholder={t('titlePlaceholder')}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">{t('description')}</Label>
                 <Textarea
                   id="description"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Brief description of the assignment"
+                  placeholder={t('descriptionPlaceholder')}
                   rows={3}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="instructions">Instructions (Rich Text)</Label>
+                <Label htmlFor="instructions">{t('instructionsRichText')}</Label>
                 <div className="border rounded-md">
                   {/* Rich text toolbar */}
                   <div className="flex items-center gap-1 p-2 border-b bg-muted/30">
@@ -487,7 +489,7 @@ export default function TeacherAssignmentsPage() {
                       size="sm"
                       className="h-8 w-8 p-0"
                       onClick={() => document.execCommand('bold')}
-                      title="Bold"
+                      title={t('bold')}
                     >
                       <span className="font-bold">B</span>
                     </Button>
@@ -497,7 +499,7 @@ export default function TeacherAssignmentsPage() {
                       size="sm"
                       className="h-8 w-8 p-0"
                       onClick={() => document.execCommand('italic')}
-                      title="Italic"
+                      title={t('italic')}
                     >
                       <span className="italic">I</span>
                     </Button>
@@ -507,7 +509,7 @@ export default function TeacherAssignmentsPage() {
                       size="sm"
                       className="h-8 w-8 p-0"
                       onClick={() => document.execCommand('underline')}
-                      title="Underline"
+                      title={t('underline')}
                     >
                       <span className="underline">U</span>
                     </Button>
@@ -518,9 +520,9 @@ export default function TeacherAssignmentsPage() {
                       size="sm"
                       className="h-8 px-2"
                       onClick={() => document.execCommand('insertUnorderedList')}
-                      title="Bullet List"
+                      title={t('bulletList')}
                     >
-                      • List
+                      • {t('list')}
                     </Button>
                     <Button
                       type="button"
@@ -528,9 +530,9 @@ export default function TeacherAssignmentsPage() {
                       size="sm"
                       className="h-8 px-2"
                       onClick={() => document.execCommand('insertOrderedList')}
-                      title="Numbered List"
+                      title={t('numberedList')}
                     >
-                      1. List
+                      1. {t('list')}
                     </Button>
                     <div className="w-px h-6 bg-border mx-1" />
                     <Button
@@ -544,7 +546,7 @@ export default function TeacherAssignmentsPage() {
                           instructionsRef.current.style.textAlign = 'left'
                         }
                       }}
-                      title="Left to Right (English)"
+                      title={t('leftToRight')}
                     >
                       LTR
                     </Button>
@@ -559,7 +561,7 @@ export default function TeacherAssignmentsPage() {
                           instructionsRef.current.style.textAlign = 'right'
                         }
                       }}
-                      title="Right to Left (Arabic)"
+                      title={t('rightToLeft')}
                     >
                       RTL
                     </Button>
@@ -585,19 +587,19 @@ export default function TeacherAssignmentsPage() {
                     dir="auto"
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">Use the toolbar to format your instructions. Click LTR for English or RTL for Arabic.</p>
+                <p className="text-xs text-muted-foreground">{t('richTextHint')}</p>
               </div>
 
               {/* File Upload Section */}
               <div className="space-y-2">
-                <Label>Attachments</Label>
+                <Label>{t('attachments')}</Label>
                 <div className="border-2 border-dashed rounded-lg p-4 hover:border-brand-blue transition-colors">
                   <div className="flex flex-col items-center justify-center gap-2">
                     <Upload className="h-8 w-8 text-muted-foreground" />
                     <div className="text-center">
                       <label htmlFor="file-upload" className="cursor-pointer">
                         <span className="text-sm font-medium text-brand-blue hover:underline">
-                          Click to upload files
+                          {t('clickToUpload')}
                         </span>
                         <input
                           id="file-upload"
@@ -609,7 +611,7 @@ export default function TeacherAssignmentsPage() {
                         />
                       </label>
                       <p className="text-xs text-muted-foreground mt-1">
-                        PDF, Word Documents, Images (Max 10MB each)
+                        {t('fileTypesHint')}
                       </p>
                     </div>
                   </div>
@@ -643,7 +645,7 @@ export default function TeacherAssignmentsPage() {
 
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="due_date">Due Date *</Label>
+                  <Label htmlFor="due_date">{t('dueDate')} *</Label>
                   <Input
                     id="due_date"
                     type="date"
@@ -654,7 +656,7 @@ export default function TeacherAssignmentsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="due_time">Due Time</Label>
+                  <Label htmlFor="due_time">{t('dueTime')}</Label>
                   <Input
                     id="due_time"
                     type="time"
@@ -664,7 +666,7 @@ export default function TeacherAssignmentsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="max_score">Max Score</Label>
+                  <Label htmlFor="max_score">{t('maxScore')}</Label>
                   <Input
                     id="max_score"
                     type="number"
@@ -683,7 +685,7 @@ export default function TeacherAssignmentsPage() {
                     onChange={(e) => setFormData({ ...formData, is_graded: e.target.checked })}
                     className="rounded"
                   />
-                  <span className="text-sm">Graded assignment</span>
+                  <span className="text-sm">{t('gradedAssignment')}</span>
                 </label>
 
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -693,7 +695,7 @@ export default function TeacherAssignmentsPage() {
                     onChange={(e) => setFormData({ ...formData, allow_late_submission: e.target.checked })}
                     className="rounded"
                   />
-                  <span className="text-sm">Allow late submissions</span>
+                  <span className="text-sm">{t('allowLateSubmissions')}</span>
                 </label>
               </div>
 
@@ -707,10 +709,10 @@ export default function TeacherAssignmentsPage() {
                   {submitting || uploadingFiles ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      {uploadingFiles ? 'Uploading Files...' : 'Creating...'}
+                      {uploadingFiles ? t('uploadingFiles') : t('creating')}
                     </>
                   ) : (
-                    'Create Assignment'
+                    t('createAssignment')
                   )}
                 </Button>
                 <Button
@@ -722,7 +724,7 @@ export default function TeacherAssignmentsPage() {
                   className="flex-1"
                   disabled={submitting || uploadingFiles}
                 >
-                  Cancel
+                  {t('cancel')}
                 </Button>
               </div>
             </div>
@@ -736,20 +738,20 @@ export default function TeacherAssignmentsPage() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search assignments..."
+            placeholder={t('searchAssignmentsPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
           />
         </div>
-        
+
         {/* Filter Tabs */}
         <div className="flex gap-2">
           {[
-            { key: 'active', label: 'Active' },
-            { key: 'upcoming', label: 'Upcoming' },
-            { key: 'past', label: 'Past' },
-            { key: 'all', label: 'All' }
+            { key: 'active', label: t('active') },
+            { key: 'upcoming', label: t('upcoming') },
+            { key: 'past', label: t('past') },
+            { key: 'all', label: t('all') }
           ].map((tab) => (
             <Button
               key={tab.key}
@@ -767,7 +769,7 @@ export default function TeacherAssignmentsPage() {
       {/* Showing X of Y entries */}
       {totalAssignments > 0 && (
         <p className="text-sm text-muted-foreground">
-          Showing {assignments.length} of {totalAssignments} assignments
+          {t('showingCount', { count: assignments.length, total: totalAssignments })}
         </p>
       )}
 
@@ -790,7 +792,7 @@ export default function TeacherAssignmentsPage() {
                     </div>
                     {assignment.is_graded && (
                       <Badge variant="outline" className="ml-2">
-                        {assignment.max_score} pts
+                        {t('ptsSuffix', { points: assignment.max_score })}
                       </Badge>
                     )}
                   </div>
@@ -804,8 +806,8 @@ export default function TeacherAssignmentsPage() {
                   <div className={`flex items-center gap-2 text-sm font-medium ${getDueDateColor(assignment.due_date)}`}>
                     <Calendar className="h-4 w-4" />
                     <span>
-                      Due: {new Date(assignment.due_date).toLocaleDateString()}
-                      {isOverdue ? ' (Overdue)' : ` (${daysUntil} days)`}
+                      {t('due')}: {new Date(assignment.due_date).toLocaleDateString()}
+                      {isOverdue ? ` (${t('overdue')})` : ` (${t('daysCount', { count: daysUntil })})`}
                     </span>
                   </div>
 
@@ -823,7 +825,7 @@ export default function TeacherAssignmentsPage() {
                       onClick={() => router.push(`/teacher/assignments/detail?id=${assignment.id}`)}
                     >
                       <Eye className="h-4 w-4 mr-1" />
-                      View
+                      {t('view')}
                     </Button>
                     <Button
                       size="sm"
@@ -831,7 +833,7 @@ export default function TeacherAssignmentsPage() {
                       onClick={() => router.push(`/teacher/assignments/submissions?id=${assignment.id}`)}
                     >
                       <CheckCircle className="h-4 w-4 mr-1" />
-                      Submissions
+                      {t('submissions')}
                     </Button>
                   </div>
                 </CardContent>
@@ -843,9 +845,9 @@ export default function TeacherAssignmentsPage() {
         <Card>
           <CardContent className="py-12 text-center">
             <BookOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-lg font-medium text-muted-foreground">No assignments found</p>
+            <p className="text-lg font-medium text-muted-foreground">{t('noAssignmentsFound')}</p>
             <p className="text-sm text-muted-foreground mt-2">
-              {searchQuery ? 'Try a different search term' : 'Create your first assignment to get started'}
+              {searchQuery ? t('tryDifferentSearch') : t('createFirstAssignmentHint')}
             </p>
             {!searchQuery && (
               <Button
@@ -854,7 +856,7 @@ export default function TeacherAssignmentsPage() {
                 style={{ background: 'var(--gradient-blue)' }}
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Create Assignment
+                {t('createAssignment')}
               </Button>
             )}
           </CardContent>

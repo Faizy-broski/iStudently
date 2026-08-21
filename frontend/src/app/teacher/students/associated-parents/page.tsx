@@ -16,10 +16,12 @@ import { Search, Link2, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useDebounce } from "@/hooks/useDebounce";
+import { useTranslations } from "next-intl";
 import { searchParents, linkParentToStudent, type Parent } from "@/lib/api/parents";
 import { getStudents, type Student } from "@/lib/api/students";
 
 export default function TeacherAssociatedParentsPage() {
+  const t = useTranslations('teacherPages.studentsAssociatedParents');
   const [selectedParent, setSelectedParent] = useState<string>("");
   const [parentSearchQuery, setParentSearchQuery] = useState("");
   const [searchStudent, setSearchStudent] = useState("");
@@ -51,7 +53,7 @@ export default function TeacherAssociatedParentsPage() {
           });
           setParentOptions(options);
         } else { setParentOptions([]); }
-      } catch { toast.error("Failed to fetch parents"); setParentOptions([]); }
+      } catch { toast.error(t('failedToFetchParents')); setParentOptions([]); }
       finally { setIsLoadingParents(false); }
     };
     fetchParents();
@@ -64,7 +66,7 @@ export default function TeacherAssociatedParentsPage() {
         const response = await getStudents({ search: debouncedStudentSearch || undefined, grade_level: gradeFilter !== "all" ? gradeFilter : undefined, limit: 100 });
         if (response.success && response.data) setStudents(response.data);
         else setStudents([]);
-      } catch { toast.error("Failed to fetch students"); setStudents([]); }
+      } catch { toast.error(t('failedToFetchStudents')); setStudents([]); }
       finally { setIsLoadingStudents(false); }
     };
     fetchStudents();
@@ -76,8 +78,8 @@ export default function TeacherAssociatedParentsPage() {
   const handleRemoveStudent = (studentId: string) => { setSelectedStudents(selectedStudents.filter((id) => id !== studentId)); };
 
   const handleAssociate = async () => {
-    if (!selectedParent) { toast.error("Please select a parent/guardian"); return; }
-    if (selectedStudents.length === 0) { toast.error("Please select at least one student"); return; }
+    if (!selectedParent) { toast.error(t('selectParentGuardian')); return; }
+    if (selectedStudents.length === 0) { toast.error(t('selectAtLeastOneStudent')); return; }
     setIsSubmitting(true);
     let successCount = 0;
     try {
@@ -86,10 +88,10 @@ export default function TeacherAssociatedParentsPage() {
         if (response.success) successCount++;
       }
       if (successCount === selectedStudents.length) {
-        toast.success(`Successfully associated ${successCount} student(s) with parent`);
+        toast.success(t('associatedSuccessfully', { count: successCount }));
         setSelectedParent(""); setSelectedStudents([]); setSearchStudent(""); setGradeFilter("all");
-      } else { toast.warning(`Associated ${successCount} of ${selectedStudents.length} students`); }
-    } catch { toast.error("Failed to associate students"); }
+      } else { toast.warning(t('associatedPartial', { success: successCount, total: selectedStudents.length })); }
+    } catch { toast.error(t('failedToAssociate')); }
     finally { setIsSubmitting(false); }
   };
 
@@ -99,37 +101,37 @@ export default function TeacherAssociatedParentsPage() {
     <div className="p-4 md:p-6 space-y-6">
       <div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-          <Link href="/teacher/students" className="hover:text-foreground">Students</Link>
+          <Link href="/teacher/students" className="hover:text-foreground">{t('breadcrumbStudents')}</Link>
           <span>/</span>
-          <span>Associated Parents</span>
+          <span>{t('breadcrumbAssociatedParents')}</span>
         </div>
         <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent">
-          Associated Parents
+          {t('pageTitle')}
         </h1>
-        <p className="text-sm md:text-base text-muted-foreground mt-2">Link existing parents/guardians with their children</p>
+        <p className="text-sm md:text-base text-muted-foreground mt-2">{t('pageSubtitle')}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardContent className="pt-6 space-y-4">
             <div>
-              <h2 className="text-lg font-semibold mb-4">Select Parent/Guardian</h2>
+              <h2 className="text-lg font-semibold mb-4">{t('selectParentGuardianHeading')}</h2>
               <div className="space-y-4">
                 <div>
-                  <Label>Search Parent/Guardian by Name or ID</Label>
-                  <Combobox options={parentOptions} value={selectedParent} onValueChange={setSelectedParent} onSearchChange={setParentSearchQuery} placeholder={isLoadingParents ? "Loading..." : "Search parent by name, email..."} emptyMessage="No parents found. Try a different search." searchPlaceholder="Type to search parents..." disabled={isLoadingParents} />
+                  <Label>{t('searchParentLabel')}</Label>
+                  <Combobox options={parentOptions} value={selectedParent} onValueChange={setSelectedParent} onSearchChange={setParentSearchQuery} placeholder={isLoadingParents ? t('loading') : t('searchParentPlaceholder')} emptyMessage={t('noParentsFound')} searchPlaceholder={t('typeToSearchParents')} disabled={isLoadingParents} />
                   <p className="text-xs text-muted-foreground mt-2">
-                    {isLoadingParents && (<span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" />Searching parents...</span>)}
-                    {!isLoadingParents && parentOptions.length > 0 && (<span>Found {parentOptions.length} parent(s)</span>)}
+                    {isLoadingParents && (<span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" />{t('searchingParents')}</span>)}
+                    {!isLoadingParents && parentOptions.length > 0 && (<span>{t('foundParents', { count: parentOptions.length })}</span>)}
                   </p>
                 </div>
                 {selectedParentDetails && (
                   <div className="p-4 bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10 rounded-lg">
-                    <p className="text-sm font-medium">Selected Parent</p>
+                    <p className="text-sm font-medium">{t('selectedParent')}</p>
                     <p className="text-lg font-semibold">{`${selectedParentDetails.profile?.first_name || ''} ${selectedParentDetails.profile?.last_name || ''}`.trim() || 'N/A'}</p>
-                    <p className="text-sm text-muted-foreground">{selectedParentDetails.profile?.email || 'No email'}</p>
-                    <p className="text-sm text-muted-foreground">{selectedParentDetails.profile?.phone || 'No phone'}</p>
-                    <Badge className="mt-2 bg-blue-100 text-blue-800">{selectedParentDetails.children?.length || 0} Existing Children</Badge>
+                    <p className="text-sm text-muted-foreground">{selectedParentDetails.profile?.email || t('noEmail')}</p>
+                    <p className="text-sm text-muted-foreground">{selectedParentDetails.profile?.phone || t('noPhone')}</p>
+                    <Badge className="mt-2 bg-blue-100 text-blue-800">{t('existingChildren', { count: selectedParentDetails.children?.length || 0 })}</Badge>
                   </div>
                 )}
               </div>
@@ -140,30 +142,30 @@ export default function TeacherAssociatedParentsPage() {
         <Card>
           <CardContent className="pt-6 space-y-4">
             <div>
-              <h2 className="text-lg font-semibold mb-4">Select Students</h2>
+              <h2 className="text-lg font-semibold mb-4">{t('selectStudentsHeading')}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Search by name or ID..." value={searchStudent} onChange={(e) => setSearchStudent(e.target.value)} className="pl-10" />
+                  <Input placeholder={t('searchByNameOrId')} value={searchStudent} onChange={(e) => setSearchStudent(e.target.value)} className="pl-10" />
                 </div>
                 <Select value={gradeFilter} onValueChange={setGradeFilter}>
-                  <SelectTrigger><SelectValue placeholder="Filter by Grade" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t('filterByGrade')} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Grades</SelectItem>
-                    <SelectItem value="Grade 9">Grade 9</SelectItem>
-                    <SelectItem value="Grade 10">Grade 10</SelectItem>
-                    <SelectItem value="Grade 11">Grade 11</SelectItem>
-                    <SelectItem value="Grade 12">Grade 12</SelectItem>
+                    <SelectItem value="all">{t('allGrades')}</SelectItem>
+                    <SelectItem value="Grade 9">{t('grade9')}</SelectItem>
+                    <SelectItem value="Grade 10">{t('grade10')}</SelectItem>
+                    <SelectItem value="Grade 11">{t('grade11')}</SelectItem>
+                    <SelectItem value="Grade 12">{t('grade12')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              {(debouncedStudentSearch || gradeFilter !== "all") && (<p className="text-xs text-muted-foreground mb-2">Found {students.length} student(s)</p>)}
+              {(debouncedStudentSearch || gradeFilter !== "all") && (<p className="text-xs text-muted-foreground mb-2">{t('foundStudents', { count: students.length })}</p>)}
               {isLoadingStudents ? (
                 <div className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
               ) : (
                 <div className="border rounded-lg max-h-[300px] overflow-y-auto">
                   {students.length === 0 ? (
-                    <div className="p-4 text-center text-muted-foreground">No students found</div>
+                    <div className="p-4 text-center text-muted-foreground">{t('noStudentsFound')}</div>
                   ) : (
                     students.map((student: Student) => {
                       const fullName = `${student.profile?.first_name || ''} ${student.profile?.last_name || ''}`.trim();
@@ -174,7 +176,7 @@ export default function TeacherAssociatedParentsPage() {
                             <p className="text-xs text-muted-foreground">{student.student_number} • {student.grade_level || 'N/A'}</p>
                           </div>
                           <Button size="sm" variant={selectedStudents.includes(student.id) ? "secondary" : "outline"} onClick={() => handleAddStudent(student.id)} disabled={selectedStudents.includes(student.id)}>
-                            {selectedStudents.includes(student.id) ? "Added" : "Add"}
+                            {selectedStudents.includes(student.id) ? t('added') : t('add')}
                           </Button>
                         </div>
                       );
@@ -190,15 +192,15 @@ export default function TeacherAssociatedParentsPage() {
       {selectedStudents.length > 0 && (
         <Card>
           <CardContent className="pt-6">
-            <h2 className="text-lg font-semibold mb-4">Selected Students ({selectedStudents.length})</h2>
+            <h2 className="text-lg font-semibold mb-4">{t('selectedStudentsHeading', { count: selectedStudents.length })}</h2>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10">
-                    <TableHead>Student ID</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Grade</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
+                    <TableHead>{t('studentId')}</TableHead>
+                    <TableHead>{t('name')}</TableHead>
+                    <TableHead>{t('grade')}</TableHead>
+                    <TableHead className="text-right">{t('action')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -219,24 +221,24 @@ export default function TeacherAssociatedParentsPage() {
               </Table>
             </div>
             <div className="mt-6 pt-6 border-t">
-              <h3 className="text-md font-semibold mb-4">Relationship Settings</h3>
-              <p className="text-sm text-muted-foreground mb-4">These settings will apply to all selected students</p>
+              <h3 className="text-md font-semibold mb-4">{t('relationshipSettings')}</h3>
+              <p className="text-sm text-muted-foreground mb-4">{t('relationshipSettingsHint')}</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label>Relationship</Label>
+                  <Label>{t('relationship')}</Label>
                   <Select value={relationship} onValueChange={(value: "mother" | "father" | "guardian") => setRelationship(value)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="mother">Mother</SelectItem>
-                      <SelectItem value="father">Father</SelectItem>
-                      <SelectItem value="guardian">Guardian</SelectItem>
+                      <SelectItem value="mother">{t('mother')}</SelectItem>
+                      <SelectItem value="father">{t('father')}</SelectItem>
+                      <SelectItem value="guardian">{t('guardian')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="flex items-end">
                   <div className="flex items-center space-x-2">
                     <input type="checkbox" id="emergencyContact" checked={isEmergencyContact} onChange={(e) => setIsEmergencyContact(e.target.checked)} className="rounded border-gray-300" />
-                    <Label htmlFor="emergencyContact" className="cursor-pointer text-sm">Mark as Emergency Contact</Label>
+                    <Label htmlFor="emergencyContact" className="cursor-pointer text-sm">{t('markAsEmergencyContact')}</Label>
                   </div>
                 </div>
               </div>
@@ -246,9 +248,9 @@ export default function TeacherAssociatedParentsPage() {
       )}
 
       <div className="flex flex-col sm:flex-row gap-4 justify-end">
-        <Button variant="outline" onClick={() => { setSelectedParent(""); setSelectedStudents([]); setSearchStudent(""); }} className="w-full sm:w-auto">Clear All</Button>
+        <Button variant="outline" onClick={() => { setSelectedParent(""); setSelectedStudents([]); setSearchStudent(""); }} className="w-full sm:w-auto">{t('clearAll')}</Button>
         <Button onClick={handleAssociate} disabled={!selectedParent || selectedStudents.length === 0 || isSubmitting} className="w-full sm:w-auto bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white hover:opacity-90">
-          {isSubmitting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Associating...</>) : (<><Link2 className="mr-2 h-4 w-4" />Associate Parent with {selectedStudents.length} Student(s)</>)}
+          {isSubmitting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t('associating')}</>) : (<><Link2 className="mr-2 h-4 w-4" />{t('associateParentWithStudents', { count: selectedStudents.length })}</>)}
         </Button>
       </div>
     </div>

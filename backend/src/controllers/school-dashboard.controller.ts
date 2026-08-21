@@ -134,4 +134,35 @@ export class SchoolDashboardController {
       })
     }
   }
+
+  /**
+   * Get student counts per class (grade + section)
+   * GET /api/school-dashboard/class-breakdown
+   */
+  async getClassBreakdown(req: AuthRequest, res: Response): Promise<Response> {
+    try {
+      const schoolId = req.profile?.school_id
+      const campus_id = req.query.campus_id as string
+
+      if (!schoolId) {
+        return res.status(400).json({
+          success: false,
+          error: 'School ID not found'
+        })
+      }
+
+      const data = await schoolDashboardService.getClassBreakdown(schoolId, campus_id || undefined)
+
+      return res.json({
+        success: true,
+        data
+      })
+    } catch (error: any) {
+      console.error('Get class breakdown error:', error)
+      return res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to fetch class breakdown'
+      })
+    }
+  }
 }

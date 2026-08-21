@@ -16,19 +16,27 @@ import {
 } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "sonner"
-import { 
-  Bell, 
-  FileText, 
-  BarChart3, 
+import {
+  Bell,
+  FileText,
+  BarChart3,
   Check,
   ExternalLink,
   Pin,
-  Loader2
+  Loader2,
+  ShieldAlert
 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { useCampus } from "@/context/CampusContext"
 import { useParentDashboardSafe } from "@/context/ParentDashboardContext"
 import * as portalApi from "@/lib/api/portal"
+import {
+  getStaffDisciplineReferrals,
+  getStudentDisciplineReferrals,
+  getSuperAdminDisciplineReferrals,
+  getAdminDisciplineReferrals,
+  type DisciplineReferral,
+} from "@/lib/api/discipline"
 import { formatDistanceToNow } from "date-fns"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
@@ -59,13 +67,29 @@ export function NotificationBell({ className }: NotificationBellProps) {
   
   const userId = profile?.id
 
+  // Referral notifications are relevant for:
+  //  - admin/counselor: every referral filed for the school, by anyone
+  //    (a teacher filing a referral must notify the admin, live)
+  //  - teacher: referrals they personally filed (status/follow-up awareness)
+  //  - student: referrals about them
+  //  - super_admin: every referral, across every school
+  // Not parents, who have their own dedicated discipline page already.
+  const referralRole = profile?.role === 'super_admin' ? 'super_admin'
+    : profile?.role === 'admin' || profile?.role === 'counselor' ? 'admin'
+    : profile?.role === 'teacher' ? 'staff'
+    : profile?.role === 'student' ? 'student'
+    : null
+
   const [open, setOpen] = useState(false)
   const [notes, setNotes] = useState<portalApi.PortalNote[]>([])
   const [polls, setPolls] = useState<portalApi.PortalPoll[]>([])
+  const [referrals, setReferrals] = useState<DisciplineReferral[]>([])
   const [loading, setLoading] = useState(false)
+  const [referralsLoading, setReferralsLoading] = useState(false)
   const [hasNewContent, setHasNewContent] = useState(false)
   const [viewedNotes, setViewedNotes] = useState<string[]>([])
   const [viewedPolls, setViewedPolls] = useState<string[]>([])
+  const [viewedReferrals, setViewedReferrals] = useState<string[]>([])
 
   // Track open state in a ref so fetchContent can read it without being recreated
   const openRef = useRef(open)
@@ -76,7 +100,78 @@ export function NotificationBell({ className }: NotificationBellProps) {
     if (!userId) return
     setViewedNotes(getViewedPortalItems('note', userId))
     setViewedPolls(getViewedPortalItems('poll', userId))
+    setViewedReferrals(getViewedPortalItems('referral', userId))
   }, [userId])
+
+  // Referrals don't depend on campus selection — fetched independently so
+  // super_admin (who has no campus context) still gets them.
+  const fetchReferrals = useCallback(async () => {
+    if (!referralRole) return
+    setReferralsLoading(true)
+    try {
+      const result = referralRole === 'super_admin' ? await getSuperAdminDisciplineReferrals(20)
+        : referralRole === 'admin' ? await getAdminDisciplineReferrals(20)
+        : referralRole === 'staff' ? await getStaffDisciplineReferrals()
+        : await getStudentDisciplineReferrals()
+
+      const list = result.data || []
+      setReferrals(list)
+
+      if (openRef.current && userId) {
+        markMultiplePortalItemsViewed('referral', list.map(r => r.id), userId)
+        setViewedReferrals(getViewedPortalItems('referral', userId))
+      }
+    } catch (error) {
+      console.error('Error fetching referral notifications:', error)
+    } finally {
+      setReferralsLoading(false)
+    }
+  }, [referralRole, userId])
+
+  useEffect(() => {
+    fetchReferrals()
+  }, [fetchReferrals])
+
+  useEffect(() => {
+    if (open) fetchReferrals()
+  }, [open, fetchReferrals])
+
+  // Live notification: a new discipline_referrals row (e.g. a teacher filing
+  // a referral) pops the bell badge for admin/counselor immediately, without
+  // waiting for the next open/mount fetch. Also covers student (referral
+  // filed about them) and super_admin (every school).
+  useEffect(() => {
+    if (!referralRole) return
+
+    const filter = referralRole === 'admin' && profile?.school_id ? `school_id=eq.${profile.school_id}`
+      : referralRole === 'staff' && profile?.id ? `reporter_id=eq.${profile.id}`
+      : referralRole === 'student' && profile?.student_id ? `student_id=eq.${profile.student_id}`
+      : null
+
+    // super_admin gets an unfiltered channel (every school); everyone else
+    // needs a resolved filter or we'd otherwise notify on unrelated referrals.
+    if (referralRole !== 'super_admin' && !filter) return
+
+    const channelConfig: any = {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'discipline_referrals',
+    }
+    if (filter) channelConfig.filter = filter
+
+    const referralsChannel = supabase
+      .channel(`referral-notifications-${referralRole}-${userId ?? 'anon'}`)
+      .on('postgres_changes', channelConfig, (payload) => {
+        console.log('New discipline referral:', payload)
+        setHasNewContent(true)
+        if (openRef.current) fetchReferrals()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(referralsChannel)
+    }
+  }, [referralRole, profile?.school_id, profile?.id, profile?.student_id, userId, supabase, fetchReferrals])
 
   const fetchContent = useCallback(async () => {
     if (!profile?.school_id || !effectiveCampusId) {
@@ -187,7 +282,11 @@ export function NotificationBell({ className }: NotificationBellProps) {
     return polls.filter(p => !p.has_voted && !viewedPolls.includes(p.id)).length
   }, [polls, viewedPolls])
 
-  const totalUnread = unreadNotesCount + unreadPollsCount
+  const unreadReferralsCount = useMemo(() => {
+    return referrals.filter(r => !viewedReferrals.includes(r.id)).length
+  }, [referrals, viewedReferrals])
+
+  const totalUnread = unreadNotesCount + unreadPollsCount + unreadReferralsCount
   const showBadge = hasNewContent || totalUnread > 0
 
   // Get the portal base path based on role
@@ -198,6 +297,14 @@ export function NotificationBell({ className }: NotificationBellProps) {
     if (role === 'parent') return `/parent/portal/${type}`
     return `/student/portal/${type}`
   }
+
+  // Full referrals page per role — super_admin and counselor have no
+  // dedicated discipline page yet, so their "View All" link is omitted
+  // (the list itself is still visible in the popover either way).
+  const referralsPath = referralRole === 'admin' && profile?.role === 'admin' ? '/admin/discipline'
+    : referralRole === 'staff' ? '/teacher/discipline/referrals'
+    : referralRole === 'student' ? '/student/discipline'
+    : null
 
   // Mark items as viewed when navigating to full page
   const handleViewAll = (type: 'notes' | 'polls') => {
@@ -210,6 +317,13 @@ export function NotificationBell({ className }: NotificationBellProps) {
     }
     setOpen(false)
     router.push(getPortalPath(type))
+  }
+
+  const handleViewAllReferrals = () => {
+    markMultiplePortalItemsViewed('referral', referrals.map(r => r.id), userId)
+    setViewedReferrals(prev => [...new Set([...prev, ...referrals.map(r => r.id)])])
+    setOpen(false)
+    if (referralsPath) router.push(referralsPath)
   }
 
   return (
@@ -240,18 +354,18 @@ export function NotificationBell({ className }: NotificationBellProps) {
             <p className="text-sm text-muted-foreground">
               {profile?.role === 'parent' && parentDashboard?.selectedStudentData
                 ? `Notifications for ${parentDashboard.selectedStudentData.first_name} ${parentDashboard.selectedStudentData.last_name} (${parentDashboard.selectedStudentData.campus_name})`
-                : 'Announcements and polls'
+                : referralRole ? 'Announcements, polls, and referrals' : 'Announcements and polls'
               }
             </p>
           </div>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={fetchContent}
-            disabled={loading}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => { fetchContent(); fetchReferrals(); }}
+            disabled={loading || referralsLoading}
             className="h-8 w-8"
           >
-            {loading ? (
+            {loading || referralsLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -281,6 +395,17 @@ export function NotificationBell({ className }: NotificationBellProps) {
                 </Badge>
               )}
             </TabsTrigger>
+            {referralRole && (
+              <TabsTrigger value="referrals" className="flex-1 gap-2">
+                <ShieldAlert className="h-4 w-4" />
+                Referrals
+                {unreadReferralsCount > 0 && (
+                  <Badge className="h-5 bg-red-500">
+                    {unreadReferralsCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="notes" className="m-0">
@@ -357,6 +482,45 @@ export function NotificationBell({ className }: NotificationBellProps) {
               </div>
             )}
           </TabsContent>
+
+          {referralRole && (
+            <TabsContent value="referrals" className="m-0">
+              <ScrollArea className="h-72">
+                {referralsLoading ? (
+                  <div className="py-8 flex items-center justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : referrals.length === 0 ? (
+                  <div className="py-8 text-center text-muted-foreground">
+                    No discipline referrals
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {referrals.slice(0, 5).map((referral) => (
+                      <ReferralItem
+                        key={referral.id}
+                        referral={referral}
+                        isNew={!viewedReferrals.includes(referral.id)}
+                        showSchool={referralRole === 'super_admin'}
+                      />
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+              {referrals.length > 0 && (
+                <div className="p-2 border-t">
+                  <Button
+                    variant="ghost"
+                    className="w-full text-[#022172]"
+                    onClick={handleViewAllReferrals}
+                    disabled={!referralsPath}
+                  >
+                    {referralsPath ? `View All Referrals (${referrals.length})` : `${referrals.length} referral${referrals.length !== 1 ? 's' : ''}`}
+                  </Button>
+                </div>
+              )}
+            </TabsContent>
+          )}
         </Tabs>
       </PopoverContent>
     </Popover>
@@ -594,6 +758,46 @@ function PollItem({
               Thank you for your response!
             </div>
           )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ReferralItem({
+  referral,
+  isNew,
+  showSchool,
+}: {
+  referral: DisciplineReferral
+  isNew?: boolean
+  showSchool?: boolean
+}) {
+  const studentProfile = (referral.students as any)?.profile
+  const studentName = studentProfile
+    ? `${studentProfile.first_name || ''} ${studentProfile.last_name || ''}`.trim()
+    : null
+  const reporterName = referral.reporter?.full_name
+
+  return (
+    <div
+      className={cn(
+        "p-3",
+        isNew && "bg-blue-50 border-l-2 border-[#022172]"
+      )}
+    >
+      <div className="flex items-start gap-2">
+        <ShieldAlert className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-sm truncate">
+            {studentName || 'Discipline Referral'}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {reporterName ? `Filed by ${reporterName}` : 'Filed'}
+            {showSchool && referral.school?.name ? ` • ${referral.school.name}` : ''}
+            {' • '}
+            {formatDistanceToNow(new Date(referral.incident_date || referral.created_at), { addSuffix: true })}
+          </p>
         </div>
       </div>
     </div>

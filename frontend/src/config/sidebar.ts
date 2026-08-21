@@ -531,6 +531,7 @@ const adminMenuItems: SidebarMenuItem[] = [
     subItems: [
       { title: "inbox", href: "/admin/messaging", icon: Send },
       { title: "write", href: "/admin/messaging/write", icon: Mail },
+      { title: "teacher_messaging_permissions", href: "/admin/settings/teacher-messaging", icon: Settings },
     ],
   },
   {
@@ -824,6 +825,7 @@ const studentMenuItems: SidebarMenuItem[] = [
     icon: Receipt,
     subItems: [
       { title: "fees", href: "/student/billing/fees", icon: Receipt },
+      { title: "payment_timeline", href: "/student/billing/timeline", icon: Calendar },
       { title: "payments", href: "/student/billing/payments", icon: CreditCard },
       { title: "reports", href: "#", icon: BarChart3, isLabel: true },
       { title: "daily_transactions", href: "/student/billing/daily-transactions", icon: DollarSign },
@@ -972,6 +974,7 @@ const parentMenuItems: SidebarMenuItem[] = [
     icon: Receipt,
     subItems: [
       { title: "fees", href: "/parent/billing/fees", icon: Receipt },
+      { title: "payment_timeline", href: "/parent/billing/timeline", icon: Calendar },
       { title: "payments", href: "/parent/billing/payments", icon: CreditCard },
       { title: "reports", href: "#", icon: BarChart3, isLabel: true },
       { title: "daily_transactions", href: "/parent/billing/daily-transactions", icon: DollarSign },

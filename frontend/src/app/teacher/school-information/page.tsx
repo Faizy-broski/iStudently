@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useCampus } from '@/context/CampusContext'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -10,6 +11,7 @@ import {
 import { SchoolLogo } from '@/components/shared/SchoolLogo'
 
 export default function TeacherSchoolInformationPage() {
+  const t = useTranslations('teacherPages.schoolInformation')
   const campusContext = useCampus()
   const campus = campusContext?.selectedCampus
 
@@ -20,9 +22,9 @@ export default function TeacherSchoolInformationPage() {
           <CardContent className="py-12">
             <div className="text-center">
               <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Campus Data</h3>
+              <h3 className="text-lg font-semibold mb-2">{t('noCampusData')}</h3>
               <p className="text-muted-foreground text-sm">
-                School information could not be loaded. Please try again later.
+                {t('couldNotLoad')}
               </p>
             </div>
           </CardContent>
@@ -32,11 +34,11 @@ export default function TeacherSchoolInformationPage() {
   }
 
   const infoRows = [
-    { icon: Hash, label: 'Campus Number / Code', value: campus.school_number },
-    { icon: Users, label: 'Principal', value: campus.principal_name },
-    { icon: Phone, label: 'Phone', value: campus.phone },
-    { icon: Mail, label: 'Email', value: campus.contact_email },
-    { icon: Globe, label: 'Short Name', value: campus.short_name },
+    { icon: Hash, label: t('campusNumberCode'), value: campus.school_number },
+    { icon: Users, label: t('principal'), value: campus.principal_name },
+    { icon: Phone, label: t('phone'), value: campus.phone },
+    { icon: Mail, label: t('email'), value: campus.contact_email },
+    { icon: Globe, label: t('shortName'), value: campus.short_name },
   ]
 
   return (
@@ -44,10 +46,10 @@ export default function TeacherSchoolInformationPage() {
       {/* Page header */}
       <div className="space-y-1">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#022172] dark:text-white">
-          School Information
+          {t('title')}
         </h1>
         <p className="text-muted-foreground">
-          Details for {campus.name}
+          {t('detailsFor', { name: campus.name })}
         </p>
       </div>
 
@@ -71,12 +73,12 @@ export default function TeacherSchoolInformationPage() {
                   {campus.name}
                 </CardTitle>
                 {campus.short_name && (
-                  <CardDescription>Short Name: {campus.short_name}</CardDescription>
+                  <CardDescription>{t('shortNameValue', { value: campus.short_name })}</CardDescription>
                 )}
               </div>
             </div>
             <Badge variant={campus.status === 'active' ? 'default' : 'secondary'}>
-              {campus.status === 'active' ? 'Active' : 'Inactive'}
+              {campus.status === 'active' ? t('active') : t('inactive')}
             </Badge>
           </div>
         </CardHeader>
@@ -88,7 +90,7 @@ export default function TeacherSchoolInformationPage() {
           <div className="flex items-start gap-3">
             <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
             <div>
-              <p className="text-sm font-medium">Address</p>
+              <p className="text-sm font-medium">{t('address')}</p>
               {campus.address ? (
                 <>
                   <p className="text-sm text-muted-foreground">{campus.address}</p>
@@ -99,7 +101,7 @@ export default function TeacherSchoolInformationPage() {
                   )}
                 </>
               ) : (
-                <p className="text-sm text-muted-foreground">Not provided</p>
+                <p className="text-sm text-muted-foreground">{t('notProvided')}</p>
               )}
             </div>
           </div>
@@ -110,7 +112,7 @@ export default function TeacherSchoolInformationPage() {
                 <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
                 <div>
                   <p className="text-sm font-medium">{label}</p>
-                  <p className="text-sm text-muted-foreground">{value || 'Not provided'}</p>
+                  <p className="text-sm text-muted-foreground">{value || t('notProvided')}</p>
                 </div>
               </div>
             ))}
@@ -120,7 +122,7 @@ export default function TeacherSchoolInformationPage() {
               <div className="flex items-center gap-3">
                 <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
                 <div>
-                  <p className="text-sm font-medium">Website</p>
+                  <p className="text-sm font-medium">{t('website')}</p>
                   <a
                     href={campus.website.startsWith('http') ? campus.website : `https://${campus.website}`}
                     target="_blank"

@@ -29,8 +29,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { useTranslations } from 'next-intl'
 
 export default function AssignmentDetailClient() {
+  const t = useTranslations('teacherPages.assignmentDetail')
   const router = useRouter()
   const searchParams = useSearchParams()
   const assignmentId = searchParams.get('id')
@@ -86,7 +88,7 @@ export default function AssignmentDetailClient() {
       })
     } catch (error: any) {
       console.error('Error loading assignment:', error)
-      toast.error('Failed to load assignment')
+      toast.error(t('failedToLoad'))
       router.push('/teacher/assignments')
     } finally {
       setLoading(false)
@@ -137,7 +139,7 @@ export default function AssignmentDetailClient() {
         try {
           newAttachmentUrls = await uploadFilesToStorage(uploadedFiles)
         } catch (uploadError: any) {
-          toast.error(uploadError.message || 'Failed to upload files')
+          toast.error(uploadError.message || t('uploadFailed'))
           return
         } finally {
           setUploadingFiles(false)
@@ -164,13 +166,13 @@ export default function AssignmentDetailClient() {
       }
 
       await assignmentsApi.updateAssignment(assignmentId, dto)
-      toast.success('Assignment updated successfully! Changes will reflect for all students.')
+      toast.success(t('updateSuccess'))
       setIsEditing(false)
       setUploadedFiles([])
       loadAssignment()
     } catch (error: any) {
       console.error('Error updating assignment:', error)
-      toast.error(error.message || 'Failed to update assignment')
+      toast.error(error.message || t('updateFailed'))
     } finally {
       setSaving(false)
       setUploadingFiles(false)
@@ -182,11 +184,11 @@ export default function AssignmentDetailClient() {
     
     try {
       await assignmentsApi.deleteAssignment(assignmentId)
-      toast.success('Assignment deleted successfully')
+      toast.success(t('deleteSuccess'))
       router.push('/teacher/assignments')
     } catch (error: any) {
       console.error('Error deleting assignment:', error)
-      toast.error(error.message || 'Failed to delete assignment')
+      toast.error(error.message || t('deleteFailed'))
     }
   }
 
@@ -195,7 +197,7 @@ export default function AssignmentDetailClient() {
     const validFiles = files.filter(file => {
       const maxSize = 10 * 1024 * 1024 // 10MB
       if (file.size > maxSize) {
-        toast.error(`${file.name} is too large. Max size is 10MB`)
+        toast.error(t('fileTooLarge', { name: file.name }))
         return false
       }
       return true
@@ -238,9 +240,9 @@ export default function AssignmentDetailClient() {
   if (!assignmentId || !assignment) {
     return (
       <div className="p-6 text-center">
-        <p className="text-muted-foreground">Assignment not found</p>
+        <p className="text-muted-foreground">{t('assignmentNotFound')}</p>
         <Button onClick={() => router.push('/teacher/assignments')} className="mt-4">
-          Go Back
+          {t('goBack')}
         </Button>
       </div>
     )
@@ -262,7 +264,7 @@ export default function AssignmentDetailClient() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-brand-blue dark:text-white">
-              {isEditing ? 'Edit Assignment' : 'Assignment Details'}
+              {isEditing ? t('editAssignmentTitle') : t('assignmentDetailsTitle')}
             </h1>
             <p className="text-sm text-muted-foreground">
               {assignment.section?.grade_level?.name} - {assignment.section?.name} | {assignment.subject?.name}
@@ -275,33 +277,33 @@ export default function AssignmentDetailClient() {
             <>
               <Button variant="outline" onClick={() => setIsEditing(true)}>
                 <Edit className="h-4 w-4 mr-2" />
-                Edit
+                {t('edit')}
               </Button>
               <Button
                 variant="outline"
                 onClick={() => router.push(`/teacher/assignments/submissions?id=${assignmentId}`)}
               >
                 <Users className="h-4 w-4 mr-2" />
-                Submissions
+                {t('submissions')}
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive">
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
+                    {t('delete')}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Assignment?</AlertDialogTitle>
+                    <AlertDialogTitle>{t('deleteAssignmentTitle')}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will permanently delete this assignment and all student submissions. This action cannot be undone.
+                      {t('deleteAssignmentDescription')}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
                     <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
-                      Delete
+                      {t('delete')}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -313,10 +315,10 @@ export default function AssignmentDetailClient() {
                 setIsEditing(false)
                 loadAssignment() // Reset form data
               }}>
-                Cancel
+                {t('cancel')}
               </Button>
-              <Button 
-                onClick={handleSave} 
+              <Button
+                onClick={handleSave}
                 disabled={saving || uploadingFiles}
                 style={{ background: 'var(--gradient-blue)' }}
                 className="text-white"
@@ -324,12 +326,12 @@ export default function AssignmentDetailClient() {
                 {saving || uploadingFiles ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {uploadingFiles ? 'Uploading...' : 'Saving...'}
+                    {uploadingFiles ? t('uploading') : t('saving')}
                   </>
                 ) : (
                   <>
                     <Save className="h-4 w-4 mr-2" />
-                    Save Changes
+                    {t('saveChanges')}
                   </>
                 )}
               </Button>
@@ -341,16 +343,16 @@ export default function AssignmentDetailClient() {
       {/* Status Badges */}
       <div className="flex gap-2 flex-wrap">
         <Badge variant={assignment.is_published ? 'default' : 'secondary'}>
-          {assignment.is_published ? 'Published' : 'Draft'}
+          {assignment.is_published ? t('published') : t('draft')}
         </Badge>
         {assignment.is_graded && (
-          <Badge variant="outline">Graded</Badge>
+          <Badge variant="outline">{t('graded')}</Badge>
         )}
         {assignment.allow_late_submission && (
-          <Badge variant="outline">Late Submissions Allowed</Badge>
+          <Badge variant="outline">{t('lateSubmissionsAllowed')}</Badge>
         )}
         {isOverdue && (
-          <Badge variant="destructive">Overdue</Badge>
+          <Badge variant="destructive">{t('overdue')}</Badge>
         )}
       </div>
 
@@ -359,13 +361,13 @@ export default function AssignmentDetailClient() {
         <CardContent className="pt-6 space-y-6">
           {/* Title */}
           <div className="space-y-2">
-            <Label htmlFor="title" className="font-medium">Title</Label>
+            <Label htmlFor="title" className="font-medium">{t('title')}</Label>
             {isEditing ? (
               <Input
                 id="title"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="Assignment title"
+                placeholder={t('titlePlaceholder')}
               />
             ) : (
               <p className="text-lg font-semibold">{assignment.title}</p>
@@ -374,25 +376,25 @@ export default function AssignmentDetailClient() {
 
           {/* Description */}
           <div className="space-y-2">
-            <Label className="font-medium">Description</Label>
+            <Label className="font-medium">{t('description')}</Label>
             {isEditing ? (
               <textarea
                 className="w-full min-h-[100px] p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-blue"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Brief description of the assignment..."
+                placeholder={t('descriptionPlaceholder')}
                 dir="auto"
               />
             ) : (
               <p className="text-muted-foreground" dir="auto">
-                {assignment.description || 'No description provided'}
+                {assignment.description || t('noDescriptionProvided')}
               </p>
             )}
           </div>
 
           {/* Instructions */}
           <div className="space-y-2">
-            <Label className="font-medium">Instructions</Label>
+            <Label className="font-medium">{t('instructions')}</Label>
             {isEditing ? (
               <div className="border rounded-lg overflow-hidden">
                 <div className="flex items-center gap-1 p-2 border-b bg-muted/50">
@@ -402,7 +404,7 @@ export default function AssignmentDetailClient() {
                     size="sm"
                     className="h-8 w-8 p-0 font-bold"
                     onClick={() => document.execCommand('bold')}
-                    title="Bold"
+                    title={t('bold')}
                   >
                     B
                   </Button>
@@ -412,7 +414,7 @@ export default function AssignmentDetailClient() {
                     size="sm"
                     className="h-8 w-8 p-0 italic"
                     onClick={() => document.execCommand('italic')}
-                    title="Italic"
+                    title={t('italic')}
                   >
                     I
                   </Button>
@@ -422,7 +424,7 @@ export default function AssignmentDetailClient() {
                     size="sm"
                     className="h-8 w-8 p-0"
                     onClick={() => document.execCommand('underline')}
-                    title="Underline"
+                    title={t('underline')}
                   >
                     <span className="underline">U</span>
                   </Button>
@@ -438,7 +440,7 @@ export default function AssignmentDetailClient() {
                         instructionsRef.current.style.textAlign = 'left'
                       }
                     }}
-                    title="Left to Right (English)"
+                    title={t('ltrTooltip')}
                   >
                     LTR
                   </Button>
@@ -453,7 +455,7 @@ export default function AssignmentDetailClient() {
                         instructionsRef.current.style.textAlign = 'right'
                       }
                     }}
-                    title="Right to Left (Arabic)"
+                    title={t('rtlTooltip')}
                   >
                     RTL
                   </Button>
@@ -478,9 +480,9 @@ export default function AssignmentDetailClient() {
                 />
               </div>
             ) : (
-              <div 
+              <div
                 className="prose prose-sm max-w-none"
-                dangerouslySetInnerHTML={{ __html: assignment.instructions || 'No instructions provided' }}
+                dangerouslySetInnerHTML={{ __html: assignment.instructions || t('noInstructionsProvided') }}
                 dir="auto"
               />
             )}
@@ -489,7 +491,7 @@ export default function AssignmentDetailClient() {
           {/* Due Date & Settings */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label className="font-medium">Due Date</Label>
+              <Label className="font-medium">{t('dueDate')}</Label>
               {isEditing ? (
                 <Input
                   type="date"
@@ -505,7 +507,7 @@ export default function AssignmentDetailClient() {
             </div>
 
             <div className="space-y-2">
-              <Label className="font-medium">Due Time</Label>
+              <Label className="font-medium">{t('dueTime')}</Label>
               {isEditing ? (
                 <Input
                   type="time"
@@ -515,13 +517,13 @@ export default function AssignmentDetailClient() {
               ) : (
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span>{assignment.due_time || 'No specific time'}</span>
+                  <span>{assignment.due_time || t('noSpecificTime')}</span>
                 </div>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label className="font-medium">Max Score</Label>
+              <Label className="font-medium">{t('maxScore')}</Label>
               {isEditing ? (
                 <Input
                   type="number"
@@ -530,7 +532,7 @@ export default function AssignmentDetailClient() {
                   min={1}
                 />
               ) : (
-                <span className="font-medium">{assignment.max_score} points</span>
+                <span className="font-medium">{t('points', { score: assignment.max_score })}</span>
               )}
             </div>
           </div>
@@ -543,28 +545,28 @@ export default function AssignmentDetailClient() {
                   checked={formData.is_graded}
                   onCheckedChange={(checked) => setFormData({ ...formData, is_graded: checked })}
                 />
-                <Label>Graded Assignment</Label>
+                <Label>{t('gradedAssignment')}</Label>
               </div>
               <div className="flex items-center gap-2">
                 <Switch
                   checked={formData.allow_late_submission}
                   onCheckedChange={(checked) => setFormData({ ...formData, allow_late_submission: checked })}
                 />
-                <Label>Allow Late Submissions</Label>
+                <Label>{t('allowLateSubmissions')}</Label>
               </div>
               <div className="flex items-center gap-2">
                 <Switch
                   checked={formData.is_published}
                   onCheckedChange={(checked) => setFormData({ ...formData, is_published: checked })}
                 />
-                <Label>Published</Label>
+                <Label>{t('published')}</Label>
               </div>
             </div>
           )}
 
           {/* Attachments */}
           <div className="space-y-4">
-            <Label className="font-medium">Attachments</Label>
+            <Label className="font-medium">{t('attachments')}</Label>
             
             {/* Existing attachments */}
             {assignment.attachments && assignment.attachments.length > 0 && (
@@ -617,7 +619,7 @@ export default function AssignmentDetailClient() {
                   <div className="text-center">
                     <label htmlFor="file-upload" className="cursor-pointer">
                       <span className="text-sm font-medium text-brand-blue hover:underline">
-                        Click to upload more files
+                        {t('clickToUploadMore')}
                       </span>
                       <input
                         id="file-upload"
@@ -629,7 +631,7 @@ export default function AssignmentDetailClient() {
                       />
                     </label>
                     <p className="text-xs text-muted-foreground mt-1">
-                      PDF, Word, Images (Max 10MB each)
+                      {t('uploadHint')}
                     </p>
                   </div>
                 </div>
@@ -661,7 +663,7 @@ export default function AssignmentDetailClient() {
             )}
 
             {!isEditing && (!assignment.attachments || assignment.attachments.length === 0) && (
-              <p className="text-sm text-muted-foreground">No attachments</p>
+              <p className="text-sm text-muted-foreground">{t('noAttachments')}</p>
             )}
           </div>
         </CardContent>

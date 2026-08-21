@@ -23,6 +23,7 @@ import * as activitiesApi from "@/lib/api/activities"
 import { TeacherSchedule } from "@/lib/api/teachers"
 import { useSearchParams, useRouter } from "next/navigation"
 import useSWR from "swr"
+import { useTranslations } from "next-intl"
 
 type EligibilityStatus = "PASSING" | "BORDERLINE" | "FAILING" | "INCOMPLETE"
 
@@ -46,6 +47,7 @@ interface ClassInfo {
 }
 
 export default function EligibilityPage() {
+  const t = useTranslations('teacherPages.activitiesEligibility')
   const router = useRouter()
   const searchParams = useSearchParams()
   const { profile } = useAuth()
@@ -94,9 +96,9 @@ export default function EligibilityPage() {
         const found = existingElig.find((e: any) => e.student_id === r.student_id)
         return {
           student_id: r.student_id,
-          student_name: r.student_name || "Unknown Student",
+          student_name: r.student_name || t('unknownStudent'),
           student_number: r.student_number || "",
-          grade_level: "Section", // Assuming default as we don't have direct grade_level per student here easily, although UI shows "Moyenne Section"
+          grade_level: t('section'), // Assuming default as we don't have direct grade_level per student here easily, although UI shows "Moyenne Section"
           eligibility_code: (found?.eligibility_code as EligibilityStatus) || "PASSING"
         }
       })
@@ -108,9 +110,9 @@ export default function EligibilityPage() {
       if (selectedClass) {
         setClassInfo({
           id: selectedClass.id,
-          subject_name: selectedClass.subject_name || "Unknown Subject",
-          section_name: selectedClass.section_name || "Unknown Section",
-          grade_name: selectedClass.grade_name || "Unknown Grade",
+          subject_name: selectedClass.subject_name || t('unknownSubject'),
+          section_name: selectedClass.section_name || t('unknownSection'),
+          grade_name: selectedClass.grade_name || t('unknownGrade'),
           period_number: selectedClass.period_number,
           start_time: selectedClass.start_time,
           end_time: selectedClass.end_time,
@@ -121,7 +123,7 @@ export default function EligibilityPage() {
       setHasChanges(false)
       
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to load eligibility data"
+      const errorMessage = error instanceof Error ? error.message : t('failedToLoadEligibility')
       toast.error(errorMessage)
     } finally {
       setLoadingData(false)
@@ -151,7 +153,7 @@ export default function EligibilityPage() {
       setSaving(true)
       
       if (!classId || !profile?.school_id) {
-        toast.error("Error: No class selected")
+        toast.error(t('errorNoClassSelected'))
         return
       }
       
@@ -168,10 +170,10 @@ export default function EligibilityPage() {
       })
       
       setHasChanges(false)
-      toast.success("Eligibility saved successfully!")
-      
+      toast.success(t('eligibilitySavedSuccessfully'))
+
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to save eligibility"
+      const errorMessage = error instanceof Error ? error.message : t('failedToSaveEligibility')
       toast.error(errorMessage)
     } finally {
       setSaving(false)
@@ -202,8 +204,8 @@ export default function EligibilityPage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">
-            <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">Enter Eligibility</h1>
-            <p className="text-muted-foreground mt-1">Select a class to manage student activity eligibilities</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">{t('enterEligibility')}</h1>
+            <p className="text-muted-foreground mt-1">{t('selectClassHint')}</p>
           </div>
         </div>
 
@@ -217,7 +219,7 @@ export default function EligibilityPage() {
                   {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
                 </p>
                 <p className="text-sm text-blue-700">
-                  {todayClasses.length} {todayClasses.length === 1 ? 'class' : 'classes'} scheduled
+                  {t('classesScheduled', { count: todayClasses.length })}
                 </p>
               </div>
             </div>
@@ -228,8 +230,8 @@ export default function EligibilityPage() {
         {todayClasses.length === 0 ? (
           <Card className="p-12 text-center">
             <Calendar className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No Classes Today</h3>
-            <p className="text-muted-foreground">You don&apos;t have any classes scheduled for today.</p>
+            <h3 className="text-xl font-semibold mb-2">{t('noClassesToday')}</h3>
+            <p className="text-muted-foreground">{t('noClassesTodayHint')}</p>
           </Card>
         ) : (
           <div className="space-y-3">
@@ -249,7 +251,7 @@ export default function EligibilityPage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4 flex-1">
                         <div className={`h-14 w-14 rounded-lg flex flex-col items-center justify-center bg-blue-600 text-white`}>
-                          <span className="text-xs">Period</span>
+                          <span className="text-xs">{t('period')}</span>
                           <span className="text-xl font-bold">{cls.period_number}</span>
                         </div>
                         <div className="flex-1">
@@ -270,7 +272,7 @@ export default function EligibilityPage() {
                           {cls.start_time?.substring(0, 5)} - {cls.end_time?.substring(0, 5)}
                         </p>
                         {cls.room_number && (
-                          <p className="text-xs text-muted-foreground">Room {cls.room_number}</p>
+                          <p className="text-xs text-muted-foreground">{t('room', { room: cls.room_number })}</p>
                         )}
                       </div>
                     </div>
@@ -290,7 +292,7 @@ export default function EligibilityPage() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-2" />
-          <p className="text-muted-foreground">Loading roster...</p>
+          <p className="text-muted-foreground">{t('loadingRoster')}</p>
         </div>
       </div>
     )
@@ -307,34 +309,34 @@ export default function EligibilityPage() {
         <div className="h-8 w-8 rounded bg-teal-100 flex items-center justify-center flex-shrink-0">
           <span className="text-xl">🏀</span>
         </div>
-        <h1 className="text-3xl font-light">Enter Eligibility</h1>
+        <h1 className="text-3xl font-light">{t('enterEligibility')}</h1>
       </div>
 
       <div className="flex items-center justify-between bg-gray-50 border p-3 rounded-sm">
         <span className="text-sm font-medium">
-          Half Day AM - {classInfo?.subject_name} ({classInfo?.section_name}) - {profile?.first_name} {profile?.last_name}
+          {t('halfDayAmHeader', { subject: classInfo?.subject_name || '', section: classInfo?.section_name || '', firstName: profile?.first_name || '', lastName: profile?.last_name || '' })}
         </span>
-        <Button 
+        <Button
           onClick={handleSave}
           disabled={saving || !hasChanges}
           size="sm"
           className="bg-brand-blue hover:bg-blue-700 font-semibold uppercase px-6 tracking-wide"
         >
-          {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : "Save"}
+          {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : t('save')}
         </Button>
       </div>
 
       <div className="text-blue-600 text-sm font-medium cursor-pointer hover:underline pl-1 inline-block">
-        Use Gradebook Grades
+        {t('useGradebookGrades')}
       </div>
 
       <div className="flex justify-between items-center bg-gray-50 border-y py-2 px-1 mt-4">
-        <p className="text-sm font-semibold">{filteredStudents.length} students were found.</p>
+        <p className="text-sm font-semibold">{t('studentsWereFound', { count: filteredStudents.length })}</p>
         <div className="flex gap-4 items-center">
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Search..." 
+            <Input
+              placeholder={t('searchEllipsis')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-64 bg-white"
@@ -349,13 +351,13 @@ export default function EligibilityPage() {
           <table className="w-full text-sm text-left">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="px-4 py-3 text-brand-blue font-bold uppercase tracking-wider">STUDENT</th>
-                <th className="px-4 py-3 text-brand-blue font-bold uppercase tracking-wider"> ID</th>
-                <th className="px-4 py-3 text-brand-blue font-bold uppercase tracking-wider">GRADE LEVEL</th>
-                <th className="px-4 py-3 text-brand-blue font-bold uppercase tracking-wider text-center">PASSING</th>
-                <th className="px-4 py-3 text-brand-blue font-bold uppercase tracking-wider text-center">BORDERLINE</th>
-                <th className="px-4 py-3 text-brand-blue font-bold uppercase tracking-wider text-center">FAILING</th>
-                <th className="px-4 py-3 text-brand-blue font-bold uppercase tracking-wider text-center">INCOMPLETE</th>
+                <th className="px-4 py-3 text-brand-blue font-bold uppercase tracking-wider">{t('columnStudent')}</th>
+                <th className="px-4 py-3 text-brand-blue font-bold uppercase tracking-wider"> {t('columnId')}</th>
+                <th className="px-4 py-3 text-brand-blue font-bold uppercase tracking-wider">{t('columnGradeLevel')}</th>
+                <th className="px-4 py-3 text-brand-blue font-bold uppercase tracking-wider text-center">{t('columnPassing')}</th>
+                <th className="px-4 py-3 text-brand-blue font-bold uppercase tracking-wider text-center">{t('columnBorderline')}</th>
+                <th className="px-4 py-3 text-brand-blue font-bold uppercase tracking-wider text-center">{t('columnFailing')}</th>
+                <th className="px-4 py-3 text-brand-blue font-bold uppercase tracking-wider text-center">{t('columnIncomplete')}</th>
               </tr>
             </thead>
             <tbody>
@@ -363,7 +365,7 @@ export default function EligibilityPage() {
                 <tr>
                   <td colSpan={7} className="text-center py-12 text-muted-foreground">
                     <AlertCircle className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
-                    No students found.
+                    {t('noStudentsFound')}
                   </td>
                 </tr>
               ) : (
@@ -371,7 +373,7 @@ export default function EligibilityPage() {
                   <tr key={student.student_id} className="border-b last:border-0 hover:bg-gray-50">
                     <td className="px-4 py-3 font-medium">{student.student_name}</td>
                     <td className="px-4 py-3">{student.student_number}</td>
-                    <td className="px-4 py-3">{classInfo?.grade_name || "Section"}</td>
+                    <td className="px-4 py-3">{classInfo?.grade_name || t('section')}</td>
                     <td className="px-4 py-3 text-center">
                       <input 
                         type="radio" 
@@ -422,7 +424,7 @@ export default function EligibilityPage() {
           disabled={saving || !hasChanges}
           className="bg-brand-blue hover:bg-blue-700 font-semibold uppercase px-8"
         >
-          {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : "Save"}
+          {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : t('save')}
         </Button>
       </div>
 

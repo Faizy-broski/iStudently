@@ -22,6 +22,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Loader2, BookOpen, Plus, Save, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 
 function getPointColor(points: number | null, max: number) {
   if (points === null) return 'text-gray-400'
@@ -33,6 +34,7 @@ function getPointColor(points: number | null, max: number) {
 }
 
 export default function TeacherGradebookPage() {
+  const t = useTranslations('teacherPages.gradebook')
   const { user } = useAuth()
   const { selectedAcademicYear, selectedQuarter } = useAcademic()
 
@@ -109,9 +111,9 @@ export default function TeacherGradebookPage() {
 
       setPendingGrades({})
       await refreshMatrix()
-      toast.success('Grades saved successfully')
+      toast.success(t('gradesSaved'))
     } catch {
-      toast.error('Failed to save grades')
+      toast.error(t('gradesSaveFailed'))
     } finally {
       setSaving(false)
     }
@@ -131,9 +133,9 @@ export default function TeacherGradebookPage() {
       setShowAddAssignment(false)
       setNewAssignment({ title: '', points: '100', due_date: '', assignment_type_id: '' })
       await refreshMatrix()
-      toast.success('Assignment added')
+      toast.success(t('assignmentAdded'))
     } catch {
-      toast.error('Failed to add assignment')
+      toast.error(t('assignmentAddFailed'))
     } finally {
       setAddingAssignment(false)
     }
@@ -146,17 +148,17 @@ export default function TeacherGradebookPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Gradebook</h1>
-          <p className="text-muted-foreground mt-1">Enter and manage student grades</p>
+          <h1 className="text-3xl font-bold">{t('pageTitle')}</h1>
+          <p className="text-muted-foreground mt-1">{t('pageSubtitle')}</p>
         </div>
         {selectedCPId && matrix && (
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setShowAddAssignment(true)}>
-              <Plus className="h-4 w-4 mr-2" /> Add Assignment
+              <Plus className="h-4 w-4 mr-2" /> {t('addAssignment')}
             </Button>
             <Button onClick={handleSave} disabled={!hasPending || saving}>
               {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-              Save {hasPending ? `(${Object.keys(pendingGrades).length})` : ''}
+              {hasPending ? t('saveWithCount', { count: Object.keys(pendingGrades).length }) : t('save')}
             </Button>
           </div>
         )}
@@ -169,15 +171,15 @@ export default function TeacherGradebookPage() {
             <BookOpen className="h-5 w-5 text-muted-foreground shrink-0" />
             <Select value={selectedCPId} onValueChange={handleCPSelect}>
               <SelectTrigger className="w-full max-w-sm">
-                <SelectValue placeholder="Select a class / course period" />
+                <SelectValue placeholder={t('selectClassPlaceholder')} />
               </SelectTrigger>
               <SelectContent>
                 {teacherCPs.length === 0 ? (
-                  <div className="p-3 text-sm text-muted-foreground">No course periods found</div>
+                  <div className="p-3 text-sm text-muted-foreground">{t('noCoursePeriodsFound')}</div>
                 ) : (
                   teacherCPs.map(cp => (
                     <SelectItem key={cp.id} value={cp.id}>
-                      {cp.course?.title || 'Unnamed Course'}
+                      {cp.course?.title || t('unnamedCourse')}
                       {cp.marking_period?.short_name && ` — ${cp.marking_period.short_name}`}
                     </SelectItem>
                   ))
@@ -196,7 +198,7 @@ export default function TeacherGradebookPage() {
         <Card>
           <CardContent className="p-12 text-center">
             <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-            <p className="text-muted-foreground">Select a class to view its gradebook</p>
+            <p className="text-muted-foreground">{t('selectClassHint')}</p>
           </CardContent>
         </Card>
       ) : matrixLoading ? (
@@ -207,7 +209,7 @@ export default function TeacherGradebookPage() {
         <Card>
           <CardContent className="p-12 text-center">
             <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-            <p className="text-muted-foreground">No students found for this course period</p>
+            <p className="text-muted-foreground">{t('noStudentsFound')}</p>
           </CardContent>
         </Card>
       ) : (
@@ -215,11 +217,11 @@ export default function TeacherGradebookPage() {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">
-                {matrix.students.length} students · {matrix.assignments.length} assignments
+                {t('studentsAndAssignmentsCount', { students: matrix.students.length, assignments: matrix.assignments.length })}
               </CardTitle>
               {hasPending && (
                 <Badge className="bg-amber-100 text-amber-800">
-                  {Object.keys(pendingGrades).length} unsaved changes
+                  {t('unsavedChanges', { count: Object.keys(pendingGrades).length })}
                 </Badge>
               )}
             </div>
@@ -230,12 +232,12 @@ export default function TeacherGradebookPage() {
                 <thead className="bg-muted/60 sticky top-0 z-10">
                   <tr>
                     <th className="text-left px-4 py-3 font-semibold whitespace-nowrap sticky left-0 bg-muted/60 min-w-[180px]">
-                      Student
+                      {t('student')}
                     </th>
                     {matrix.assignments.map(a => (
                       <th key={a.id} className="px-2 py-3 text-center min-w-[90px]">
                         <div className="font-medium text-xs leading-tight">{a.title}</div>
-                        <div className="text-[10px] text-muted-foreground">/{a.points} pts</div>
+                        <div className="text-[10px] text-muted-foreground">{t('ptsOutOf', { points: a.points })}</div>
                       </th>
                     ))}
                   </tr>
@@ -284,20 +286,20 @@ export default function TeacherGradebookPage() {
       <Dialog open={showAddAssignment} onOpenChange={setShowAddAssignment}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Add Assignment</DialogTitle>
+            <DialogTitle>{t('addAssignment')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1">
-              <Label>Title</Label>
+              <Label>{t('title')}</Label>
               <Input
                 value={newAssignment.title}
                 onChange={e => setNewAssignment(p => ({ ...p, title: e.target.value }))}
-                placeholder="Assignment name"
+                placeholder={t('assignmentNamePlaceholder')}
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label>Points</Label>
+                <Label>{t('points')}</Label>
                 <Input
                   type="number"
                   value={newAssignment.points}
@@ -305,7 +307,7 @@ export default function TeacherGradebookPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label>Due Date</Label>
+                <Label>{t('dueDate')}</Label>
                 <Input
                   type="date"
                   value={newAssignment.due_date}
@@ -314,30 +316,30 @@ export default function TeacherGradebookPage() {
               </div>
             </div>
             <div className="space-y-1">
-              <Label>Type</Label>
+              <Label>{t('type')}</Label>
               <Select
                 value={newAssignment.assignment_type_id}
                 onValueChange={v => setNewAssignment(p => ({ ...p, assignment_type_id: v }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
+                  <SelectValue placeholder={t('selectTypePlaceholder')} />
                 </SelectTrigger>
                 <SelectContent>
-                  {(matrix?.assignment_types || []).map(t => (
-                    <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+                  {(matrix?.assignment_types || []).map(at => (
+                    <SelectItem key={at.id} value={at.id}>{at.title}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddAssignment(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setShowAddAssignment(false)}>{t('cancel')}</Button>
             <Button
               onClick={handleAddAssignment}
               disabled={addingAssignment || !newAssignment.title || !newAssignment.assignment_type_id}
             >
               {addingAssignment && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Add Assignment
+              {t('addAssignment')}
             </Button>
           </DialogFooter>
         </DialogContent>

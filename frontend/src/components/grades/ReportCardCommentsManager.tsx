@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +54,7 @@ export function ReportCardCommentsManager({
   getCategories = defaultGetCategories,
   getComments = defaultGetComments,
 }: ReportCardCommentsManagerProps) {
+  const t = useTranslations("teacherPages.reportCardComments");
   const { user } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
@@ -81,7 +83,7 @@ export function ReportCardCommentsManager({
       const loaded = await getCategories(selectedCampusId ?? selectedCampus?.id ?? undefined);
       setCategories(loaded);
     } catch {
-      toast.error("Failed to load categories");
+      toast.error(t("loadCategoriesFailed"));
     } finally {
       setLoadingCats(false);
     }
@@ -99,7 +101,7 @@ export function ReportCardCommentsManager({
       const loaded = await getComments(catId, selectedCampusId ?? selectedCampus?.id ?? undefined);
       setRows(loaded.map((c) => ({ ...c })));
     } catch {
-      toast.error("Failed to load comments");
+      toast.error(t("loadCommentsFailed"));
     } finally {
       setLoadingRows(false);
     }
@@ -138,7 +140,7 @@ export function ReportCardCommentsManager({
 
   const addRow = () => {
     if (!newTitle.trim()) {
-      toast.error("Title is required");
+      toast.error(t("titleRequired"));
       return;
     }
     setRows((prev) => [
@@ -180,11 +182,11 @@ export function ReportCardCommentsManager({
         });
         if (!res.success) errors++;
       }
-      if (errors === 0) toast.success("Comments saved");
-      else toast.error(`${errors} operation(s) failed`);
+      if (errors === 0) toast.success(t("commentsSaved"));
+      else toast.error(t("operationsFailed", { count: errors }));
       await loadComments();
     } catch {
-      toast.error("Save failed");
+      toast.error(t("saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -213,7 +215,7 @@ export function ReportCardCommentsManager({
 
   const addCatRow = () => {
     if (!newCatTitle.trim()) {
-      toast.error("Title is required");
+      toast.error(t("titleRequired"));
       return;
     }
     setCatRows((prev) => [
@@ -258,11 +260,11 @@ export function ReportCardCommentsManager({
         });
         if (!res.success) errors++;
       }
-      if (errors === 0) toast.success("Categories saved");
-      else toast.error(`${errors} operation(s) failed`);
+      if (errors === 0) toast.success(t("categoriesSaved"));
+      else toast.error(t("operationsFailed", { count: errors }));
       await loadCategories();
     } catch {
-      toast.error("Save failed");
+      toast.error(t("saveFailed"));
     } finally {
       setSavingCats(false);
     }
@@ -273,17 +275,17 @@ export function ReportCardCommentsManager({
   const visibleRows = rows.filter((r) => !r._deleted);
   const visibleCatRows = catRows.filter((r) => !r._deleted);
 
-  const effectiveCampusName = selectedCampus?.name || (selectedCampusId ? "Selected campus" : undefined);
+  const effectiveCampusName = selectedCampus?.name || (selectedCampusId ? t("selectedCampus") : undefined);
 
   return (
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent flex items-center gap-2">
           <MessageSquare className="h-8 w-8 text-[#57A3CC]" />
-          Report Card Comments
+          {t("pageTitle")}
         </h1>
         <p className="text-muted-foreground mt-2">
-          {readOnly ? "View comment categories and comments in read-only mode." : "Manage comment categories and comments for report cards."}
+          {readOnly ? t("readOnlySubtitle") : t("editableSubtitle")}
           {effectiveCampusName && (
             <span className="ml-1 font-medium">— {effectiveCampusName}</span>
           )}
@@ -292,10 +294,10 @@ export function ReportCardCommentsManager({
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
-          <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="general">{t("general")}</TabsTrigger>
           {loadingCats ? (
             <TabsTrigger value="_loading" disabled>
-              Loading…
+              {t("loadingEllipsis")}
             </TabsTrigger>
           ) : (
             categories.map((cat) => (
@@ -313,7 +315,7 @@ export function ReportCardCommentsManager({
           )}
           <TabsTrigger value="categories">
             <Palette className="h-3.5 w-3.5 mr-1" />
-            Categories
+            {t("categories")}
           </TabsTrigger>
         </TabsList>
 
@@ -323,7 +325,7 @@ export function ReportCardCommentsManager({
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-4">
                   <p className="text-sm text-[#0369a1] font-medium">
-                    {visibleRows.length} comment{visibleRows.length !== 1 ? 's' : ''}
+                    {t("commentCount", { count: visibleRows.length })}
                   </p>
                   {!readOnly && (
                     <Button
@@ -337,7 +339,7 @@ export function ReportCardCommentsManager({
                       ) : (
                         <Save className="h-4 w-4" />
                       )}
-                      Save
+                      {t("save")}
                     </Button>
                   )}
                 </div>
@@ -354,8 +356,8 @@ export function ReportCardCommentsManager({
                       <thead>
                         <tr className="border-b">
                           <th className="w-8" />
-                          <th className="text-left text-xs font-semibold uppercase tracking-wider text-[#0369a1] py-3 px-2">Title</th>
-                          <th className="text-left text-xs font-semibold uppercase tracking-wider text-[#0369a1] py-3 px-2 w-28">Sort Order</th>
+                          <th className="text-left text-xs font-semibold uppercase tracking-wider text-[#0369a1] py-3 px-2">{t("title")}</th>
+                          <th className="text-left text-xs font-semibold uppercase tracking-wider text-[#0369a1] py-3 px-2 w-28">{t("sortOrder")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -368,7 +370,7 @@ export function ReportCardCommentsManager({
                                   <button
                                     onClick={() => markDeleteRow(actualIdx)}
                                     className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                                    title="Delete"
+                                    title={t("delete")}
                                   >
                                     <Minus className="h-4 w-4" />
                                   </button>
@@ -400,7 +402,7 @@ export function ReportCardCommentsManager({
                               <button
                                 onClick={addRow}
                                 className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
-                                title="Add"
+                                title={t("add")}
                               >
                                 <Plus className="h-4 w-4" />
                               </button>
@@ -409,7 +411,7 @@ export function ReportCardCommentsManager({
                               <Input
                                 value={newTitle}
                                 onChange={(e) => setNewTitle(e.target.value)}
-                                placeholder="Comment title"
+                                placeholder={t("commentTitlePlaceholder")}
                                 className="h-8 text-sm"
                                 onKeyDown={(e) => e.key === "Enter" && addRow()}
                               />
@@ -442,7 +444,7 @@ export function ReportCardCommentsManager({
                       ) : (
                         <Save className="h-4 w-4" />
                       )}
-                      Save
+                      {t("save")}
                     </Button>
                   </div>
                 )}
@@ -455,7 +457,7 @@ export function ReportCardCommentsManager({
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between mb-4">
-                <p className="text-sm font-semibold">Comment Categories</p>
+                <p className="text-sm font-semibold">{t("commentCategories")}</p>
                 {!readOnly && (
                   <Button
                     onClick={handleSaveCategories}
@@ -468,7 +470,7 @@ export function ReportCardCommentsManager({
                     ) : (
                       <Save className="h-4 w-4" />
                     )}
-                    Save
+                    {t("save")}
                   </Button>
                 )}
               </div>
@@ -478,9 +480,9 @@ export function ReportCardCommentsManager({
                   <thead>
                     <tr className="border-b">
                       <th className="w-8" />
-                      <th className="text-left text-xs font-semibold uppercase tracking-wider text-[#0369a1] py-3 px-2">Title</th>
-                      <th className="text-left text-xs font-semibold uppercase tracking-wider text-[#0369a1] py-3 px-2 w-28">Color</th>
-                      <th className="text-left text-xs font-semibold uppercase tracking-wider text-[#0369a1] py-3 px-2 w-28">Sort Order</th>
+                      <th className="text-left text-xs font-semibold uppercase tracking-wider text-[#0369a1] py-3 px-2">{t("title")}</th>
+                      <th className="text-left text-xs font-semibold uppercase tracking-wider text-[#0369a1] py-3 px-2 w-28">{t("color")}</th>
+                      <th className="text-left text-xs font-semibold uppercase tracking-wider text-[#0369a1] py-3 px-2 w-28">{t("sortOrder")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -533,7 +535,7 @@ export function ReportCardCommentsManager({
                           <button
                             onClick={addCatRow}
                             className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
-                            title="Add"
+                            title={t("add")}
                           >
                             <Plus className="h-4 w-4" />
                           </button>
@@ -542,7 +544,7 @@ export function ReportCardCommentsManager({
                           <Input
                             value={newCatTitle}
                             onChange={(e) => setNewCatTitle(e.target.value)}
-                            placeholder="Category title"
+                            placeholder={t("categoryTitlePlaceholder")}
                             className="h-8 text-sm"
                             onKeyDown={(e) => e.key === "Enter" && addCatRow()}
                           />
@@ -582,7 +584,7 @@ export function ReportCardCommentsManager({
                     ) : (
                       <Save className="h-4 w-4" />
                     )}
-                    Save
+                    {t("save")}
                   </Button>
                 </div>
               )}

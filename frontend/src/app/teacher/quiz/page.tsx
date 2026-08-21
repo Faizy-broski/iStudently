@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import useSWR from 'swr'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
@@ -27,6 +28,7 @@ import { toast } from 'sonner'
 import { format, parseISO } from 'date-fns'
 
 export default function TeacherQuizPage() {
+  const t = useTranslations('teacherPages.quiz')
   const { profile } = useAuth()
   const campusContext = useCampus()
   const schoolId = profile?.school_id
@@ -62,7 +64,7 @@ export default function TeacherQuizPage() {
   const coursePeriods: any[] = coursePeriodsRes?.data || []
 
   const handleCreate = async () => {
-    if (!form.title.trim()) { toast.warning('Quiz title is required'); return }
+    if (!form.title.trim()) { toast.warning(t('quizTitleRequired')); return }
     if (!schoolId || !staffId) return
     setCreating(true)
     const res = await createQuiz({
@@ -79,19 +81,19 @@ export default function TeacherQuizPage() {
     })
     setCreating(false)
     if (res.error) { toast.error(res.error); return }
-    toast.success('Quiz created')
+    toast.success(t('quizCreated'))
     setShowCreate(false)
     setForm({ title: '', description: '', course_period_id: '', show_correct_answers: false, shuffle: false })
     mutate()
   }
 
   const handleDelete = async (quiz: Quiz) => {
-    if (!confirm(`Delete quiz "${quiz.title}"?`)) return
+    if (!confirm(t('deleteQuizConfirm', { title: quiz.title }))) return
     setDeletingId(quiz.id)
     const res = await deleteQuiz(quiz.id)
     setDeletingId(null)
     if (res.error) { toast.error(res.error); return }
-    toast.success('Quiz deleted')
+    toast.success(t('quizDeleted'))
     mutate()
   }
 
@@ -99,11 +101,11 @@ export default function TeacherQuizPage() {
     <div className="p-6 space-y-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Quizzes</h1>
-          <p className="text-muted-foreground mt-1">Create and manage quizzes for your classes</p>
+          <h1 className="text-3xl font-bold">{t('pageTitle')}</h1>
+          <p className="text-muted-foreground mt-1">{t('pageSubtitle')}</p>
         </div>
         <Button onClick={() => setShowCreate(true)}>
-          <Plus className="h-4 w-4 mr-2" /> New Quiz
+          <Plus className="h-4 w-4 mr-2" /> {t('newQuiz')}
         </Button>
       </div>
 
@@ -115,8 +117,8 @@ export default function TeacherQuizPage() {
         <Card>
           <CardContent className="py-16 text-center">
             <HelpCircle className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
-            <p className="font-medium text-muted-foreground">No quizzes created yet</p>
-            <p className="text-sm text-muted-foreground mt-1">Create your first quiz to get started</p>
+            <p className="font-medium text-muted-foreground">{t('noQuizzesCreatedYet')}</p>
+            <p className="text-sm text-muted-foreground mt-1">{t('createFirstQuiz')}</p>
           </CardContent>
         </Card>
       ) : (
@@ -141,32 +143,32 @@ export default function TeacherQuizPage() {
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Create Quiz</DialogTitle>
+            <DialogTitle>{t('createQuiz')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1">
-              <Label>Title <span className="text-red-500">*</span></Label>
+              <Label>{t('title')} <span className="text-red-500">*</span></Label>
               <Input
                 value={form.title}
                 onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                placeholder="Quiz title..."
+                placeholder={t('quizTitlePlaceholder')}
               />
             </div>
             <div className="space-y-1">
-              <Label>Description</Label>
+              <Label>{t('description')}</Label>
               <textarea
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px] resize-none"
                 value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                placeholder="Optional description..."
+                placeholder={t('optionalDescriptionPlaceholder')}
               />
             </div>
             <div className="space-y-1">
-              <Label>Class (optional)</Label>
+              <Label>{t('classOptional')}</Label>
               <Select value={form.course_period_id} onValueChange={v => setForm(f => ({ ...f, course_period_id: v === 'none' ? '' : v }))}>
-                <SelectTrigger><SelectValue placeholder="Select class..." /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t('selectClassPlaceholder')} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="none">{t('none')}</SelectItem>
                   {coursePeriods.map((cp: any) => (
                     <SelectItem key={cp.id} value={cp.id}>
                       {cp.courses?.title || cp.id}
@@ -182,7 +184,7 @@ export default function TeacherQuizPage() {
                   checked={form.show_correct_answers}
                   onChange={e => setForm(f => ({ ...f, show_correct_answers: e.target.checked }))}
                 />
-                Show correct answers
+                {t('showCorrectAnswers')}
               </label>
               <label className="flex items-center gap-2 text-sm cursor-pointer">
                 <input
@@ -190,14 +192,14 @@ export default function TeacherQuizPage() {
                   checked={form.shuffle}
                   onChange={e => setForm(f => ({ ...f, shuffle: e.target.checked }))}
                 />
-                Shuffle questions
+                {t('shuffleQuestions')}
               </label>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setShowCreate(false)}>{t('cancel')}</Button>
             <Button onClick={handleCreate} disabled={creating}>
-              {creating ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Creating...</> : 'Create Quiz'}
+              {creating ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t('creating')}</> : t('createQuiz')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -230,6 +232,7 @@ function QuizRow({
   deleting: boolean
   onAddQuestion: () => void
 }) {
+  const t = useTranslations('teacherPages.quiz')
   const { data: qRes, isLoading: loadingQ, mutate: mutateQ } = useSWR(
     expanded ? ['quiz-questions', quiz.id] : null,
     () => getQuizQuestions(quiz.id),
@@ -242,7 +245,7 @@ function QuizRow({
   const handleRemoveQuestion = async (mapId: string) => {
     const res = await removeQuestionFromQuiz(quiz.id, mapId)
     if (res.error) { toast.error(res.error); return }
-    toast.success('Question removed')
+    toast.success(t('questionRemoved'))
     mutateQ()
   }
 
@@ -258,13 +261,13 @@ function QuizRow({
             <p className="font-semibold">{quiz.title}</p>
             <div className="flex items-center gap-2 mt-0.5">
               {quiz.question_count !== undefined && (
-                <span className="text-xs text-muted-foreground">{quiz.question_count} questions</span>
+                <span className="text-xs text-muted-foreground">{t('questionCountBadge', { count: quiz.question_count })}</span>
               )}
               {quiz.show_correct_answers && (
-                <Badge variant="secondary" className="text-xs">Answers shown</Badge>
+                <Badge variant="secondary" className="text-xs">{t('answersShown')}</Badge>
               )}
               {quiz.shuffle && (
-                <Badge variant="secondary" className="text-xs">Shuffled</Badge>
+                <Badge variant="secondary" className="text-xs">{t('shuffled')}</Badge>
               )}
               <span className="text-xs text-muted-foreground">
                 {format(parseISO(quiz.created_at), 'MMM d, yyyy')}
@@ -289,11 +292,11 @@ function QuizRow({
           <div className="border-t px-4 pb-4 pt-3 space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-sm font-medium">
-                Questions ({questions.length})
-                {totalPoints > 0 && <span className="text-muted-foreground ml-2">· {totalPoints} pts total</span>}
+                {t('questionsCount', { count: questions.length })}
+                {totalPoints > 0 && <span className="text-muted-foreground ml-2">· {t('ptsTotal', { points: totalPoints })}</span>}
               </p>
               <Button size="sm" variant="outline" onClick={onAddQuestion} className="gap-1">
-                <Plus className="h-3 w-3" /> Add Question
+                <Plus className="h-3 w-3" /> {t('addQuestion')}
               </Button>
             </div>
 
@@ -303,7 +306,7 @@ function QuizRow({
               </div>
             ) : questions.length === 0 ? (
               <p className="text-sm text-muted-foreground py-4 text-center">
-                No questions yet. Add questions from your question bank.
+                {t('noQuestionsYet')}
               </p>
             ) : (
               <div className="space-y-2">
@@ -311,14 +314,14 @@ function QuizRow({
                   <div key={qm.id} className="flex items-start gap-2 p-3 rounded-lg border bg-muted/30">
                     <span className="text-xs text-muted-foreground w-5 shrink-0 mt-0.5">{i + 1}.</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm">{qm.question?.title || 'Unknown question'}</p>
+                      <p className="text-sm">{qm.question?.title || t('unknownQuestion')}</p>
                       <div className="flex items-center gap-2 mt-1">
                         {qm.question?.type && (
                           <Badge variant="outline" className="text-xs">
                             {QUESTION_TYPE_LABELS[qm.question.type]}
                           </Badge>
                         )}
-                        <span className="text-xs text-muted-foreground">{qm.points} pt{qm.points !== 1 ? 's' : ''}</span>
+                        <span className="text-xs text-muted-foreground">{t('ptsAbbrev', { count: qm.points })}</span>
                       </div>
                     </div>
                     <Button
@@ -350,6 +353,7 @@ function AddQuestionDialog({
   onClose: () => void
   onAdded: () => void
 }) {
+  const t = useTranslations('teacherPages.quiz')
   const [selectedId, setSelectedId] = useState('')
   const [points, setPoints] = useState('1')
   const [adding, setAdding] = useState(false)
@@ -363,14 +367,14 @@ function AddQuestionDialog({
   const questions: QuizQuestion[] = qRes?.data || []
 
   const handleAdd = async () => {
-    if (!selectedId) { toast.warning('Select a question'); return }
+    if (!selectedId) { toast.warning(t('selectAQuestion')); return }
     setAdding(true)
     const { data: existingQ } = await getQuizQuestions(quizId)
     const sortOrder = (existingQ?.length || 0) + 1
     const res = await addQuestionToQuiz(quizId, selectedId, Number(points) || 1, sortOrder)
     setAdding(false)
     if (res.error) { toast.error(res.error); return }
-    toast.success('Question added')
+    toast.success(t('questionAdded'))
     onAdded()
   }
 
@@ -378,7 +382,7 @@ function AddQuestionDialog({
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add Question from Bank</DialogTitle>
+          <DialogTitle>{t('addQuestionFromBank')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           {isLoading ? (
@@ -388,14 +392,14 @@ function AddQuestionDialog({
           ) : questions.length === 0 ? (
             <div className="text-center py-6">
               <AlertCircle className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">No questions in your question bank yet.</p>
-              <p className="text-xs text-muted-foreground mt-1">Create questions in the admin quiz section first.</p>
+              <p className="text-sm text-muted-foreground">{t('noQuestionsInBank')}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t('createQuestionsInAdminFirst')}</p>
             </div>
           ) : (
             <div className="space-y-1">
-              <Label>Select Question</Label>
+              <Label>{t('selectQuestion')}</Label>
               <Select value={selectedId} onValueChange={setSelectedId}>
-                <SelectTrigger><SelectValue placeholder="Choose a question..." /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t('chooseAQuestionPlaceholder')} /></SelectTrigger>
                 <SelectContent>
                   {questions.map(q => (
                     <SelectItem key={q.id} value={q.id}>
@@ -408,7 +412,7 @@ function AddQuestionDialog({
             </div>
           )}
           <div className="space-y-1">
-            <Label>Points</Label>
+            <Label>{t('points')}</Label>
             <Input
               type="number"
               min="0"
@@ -419,9 +423,9 @@ function AddQuestionDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>{t('cancel')}</Button>
           <Button onClick={handleAdd} disabled={adding || questions.length === 0}>
-            {adding ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Adding...</> : 'Add Question'}
+            {adding ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t('adding')}</> : t('addQuestion')}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { createStaffDisciplineReferral, getDisciplineFields, type DisciplineField } from '@/lib/api/discipline'
 import { useTeacherStudents } from '@/hooks/useTeacherStudents'
@@ -34,6 +35,7 @@ function DynamicFieldInput({
   value: any
   onChange: (val: any) => void
 }) {
+  const t = useTranslations('teacherPages.disciplineAddReferral')
   const { field_type, options, name } = field
   const visibleOptions = (options ?? []).filter((opt, idx) => !(idx === 0 && isPenaltyMarker(opt)))
 
@@ -88,7 +90,7 @@ function DynamicFieldInput({
           checked={value === true || value === 'Y'}
           onCheckedChange={(checked) => onChange(checked ? 'Y' : 'N')}
         />
-        <label htmlFor={`chk-${field.id}`} className="text-sm cursor-pointer">Yes</label>
+        <label htmlFor={`chk-${field.id}`} className="text-sm cursor-pointer">{t('yes')}</label>
       </div>
     )
   }
@@ -97,10 +99,10 @@ function DynamicFieldInput({
     return (
       <Select value={value || '__na__'} onValueChange={(v) => onChange(v === '__na__' ? '' : v)}>
         <SelectTrigger>
-          <SelectValue placeholder="Select…" />
+          <SelectValue placeholder={t('selectPlaceholder')} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="__na__">N/A</SelectItem>
+          <SelectItem value="__na__">{t('notApplicable')}</SelectItem>
           {visibleOptions.map((opt) => (
             <SelectItem key={opt} value={opt}>{opt}</SelectItem>
           ))}
@@ -160,6 +162,7 @@ function DynamicFieldInput({
 // ---------------------------------------------------------------------------
 
 export default function AddTeacherReferralPage() {
+  const t = useTranslations('teacherPages.disciplineAddReferral')
   const router = useRouter()
   const { user } = useAuth()
   const schoolId = user?.school_id || ''
@@ -180,7 +183,7 @@ export default function AddTeacherReferralPage() {
     }
     getDisciplineFields(schoolId, 'student')
       .then((res) => setFields(res.data ?? []))
-      .catch(() => toast.error('Failed to load referral fields'))
+      .catch(() => toast.error(t('failedToLoadFields')))
       .finally(() => setLoadingFields(false))
   }, [schoolId])
 
@@ -190,7 +193,7 @@ export default function AddTeacherReferralPage() {
 
   const handleSubmit = async () => {
     if (!studentId) {
-      toast.warning('Please select a student')
+      toast.warning(t('pleaseSelectStudent'))
       return
     }
     setSubmitting(true)
@@ -201,13 +204,13 @@ export default function AddTeacherReferralPage() {
         field_values: fieldValues,
       })
       if (res.success) {
-        toast.success('Referral submitted successfully')
+        toast.success(t('referralSubmitted'))
         router.push('/teacher/discipline/referrals')
       } else {
-        toast.error(res.error || 'Failed to submit referral')
+        toast.error(res.error || t('failedToSubmit'))
       }
     } catch {
-      toast.error('Failed to submit referral')
+      toast.error(t('failedToSubmit'))
     } finally {
       setSubmitting(false)
     }
@@ -216,8 +219,8 @@ export default function AddTeacherReferralPage() {
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Add Discipline Referral</h1>
-        <p className="text-muted-foreground mt-1">Submit a behavioral referral for a student in your classes.</p>
+        <h1 className="text-3xl font-bold">{t('pageTitle')}</h1>
+        <p className="text-muted-foreground mt-1">{t('pageDescription')}</p>
       </div>
 
       <Card>
@@ -225,31 +228,31 @@ export default function AddTeacherReferralPage() {
 
           {/* Student selector */}
           <div className="space-y-1">
-            <Label>Select Student <span className="text-red-500">*</span></Label>
+            <Label>{t('selectStudent')} <span className="text-red-500">*</span></Label>
             {loadingStudents ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-                <Loader2 className="h-4 w-4 animate-spin" /> Fetching your enrolled students…
+                <Loader2 className="h-4 w-4 animate-spin" /> {t('fetchingStudents')}
               </div>
             ) : students.length === 0 ? (
-              <div className="text-sm text-muted-foreground py-2">You currently have no enrolled students.</div>
+              <div className="text-sm text-muted-foreground py-2">{t('noEnrolledStudents')}</div>
             ) : (
               <Select value={studentId} onValueChange={setStudentId}>
-                <SelectTrigger><SelectValue placeholder="Select one of your students" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t('selectStudentPlaceholder')} /></SelectTrigger>
                 <SelectContent>
                   {students.map((s: any) => (
                     <SelectItem key={s.id} value={s.id}>
-                      {s.profile?.last_name || 'Unknown'}, {s.profile?.first_name || 'Name'} ({s.student_number})
+                      {s.profile?.last_name || t('unknown')}, {s.profile?.first_name || t('nameFallback')} ({s.student_number})
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             )}
-            <p className="text-xs text-muted-foreground">List restricted to students under your supervision.</p>
+            <p className="text-xs text-muted-foreground">{t('listRestrictedNote')}</p>
           </div>
 
           {/* Incident Date */}
           <div className="space-y-1">
-            <Label>Incident Date</Label>
+            <Label>{t('incidentDate')}</Label>
             <Input
               type="date"
               value={incidentDate}
@@ -261,12 +264,12 @@ export default function AddTeacherReferralPage() {
           {/* Dynamic discipline fields */}
           {loadingFields ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading referral fields…
+              <Loader2 className="h-4 w-4 animate-spin" /> {t('loadingFields')}
             </div>
           ) : fields.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No referral fields configured.{' '}
-              <span className="text-xs">(Contact your administrator to set up discipline fields.)</span>
+              {t('noFieldsConfigured')}{' '}
+              <span className="text-xs">{t('contactAdminHint')}</span>
             </p>
           ) : (
             fields.map((field, idx) => (
@@ -285,9 +288,9 @@ export default function AddTeacherReferralPage() {
           )}
 
           <div className="pt-4 flex justify-end gap-3">
-            <Button variant="outline" onClick={() => router.back()}>Cancel</Button>
+            <Button variant="outline" onClick={() => router.back()}>{t('cancel')}</Button>
             <Button onClick={handleSubmit} disabled={submitting || !studentId}>
-              {submitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Submitting…</> : 'Submit Referral'}
+              {submitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t('submitting')}</> : t('submitReferral')}
             </Button>
           </div>
 

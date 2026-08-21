@@ -52,6 +52,8 @@ import {
 } from '@/lib/api/certificate-template';
 import { CertificateCanvasRenderer } from '@/components/shared/CertificateCanvasRenderer';
 import { ImageDropzone } from '@/components/shared/ImageDropzone';
+import { FontFamilySelect } from '@/components/shared/FontFamilySelect';
+import { useLoadDesignFonts } from '@/config/design-fonts';
 import { toast } from 'sonner';
 
 interface AvailableToken {
@@ -74,6 +76,7 @@ const OCCASION_OPTIONS = [
 const A4 = { portrait: { width: 794, height: 1123 }, landscape: { width: 1123, height: 794 } };
 
 export default function CertificateTemplateBuilderPage() {
+  useLoadDesignFonts();
   const router = useRouter();
   const searchParams = useSearchParams();
   const recipientType = (searchParams?.get('type') || 'student') as CertificateRecipientType;
@@ -580,6 +583,21 @@ export default function CertificateTemplateBuilderPage() {
                                   </SelectContent>
                                 </Select>
                               </div>
+                            </div>
+
+                            <div>
+                              <Label>Font Family</Label>
+                              <FontFamilySelect
+                                value={selectedFieldData.style?.fontFamily}
+                                onValueChange={(v) =>
+                                  updateField(selectedField!, {
+                                    style: {
+                                      ...selectedFieldData.style,
+                                      fontFamily: v === 'default' ? undefined : v,
+                                    },
+                                  })
+                                }
+                              />
                             </div>
 
                             <div>

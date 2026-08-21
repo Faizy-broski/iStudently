@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { ArrowLeft, FlaskConical, Loader2, AlertCircle, Maximize2, Minimize2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -19,6 +20,7 @@ export default function VLabyExperimentViewer({
   experimentId,
   backPath,
 }: VLabyExperimentViewerProps) {
+  const t = useTranslations('teacherPages.virtualLabsDetail')
   const router = useRouter()
   const [experiment, setExperiment] = useState<VLabyExperimentDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -38,7 +40,7 @@ export default function VLabyExperimentViewer({
         const code = (res as any).code
         if (code === 'VLABY_TOKEN_REQUIRED') setNoAccount(true)
         else if (code === 'VLABY_TOKEN_EXPIRED') setTokenExpired(true)
-        else setError(res.error || 'Failed to load experiment')
+        else setError(res.error || t('failedToLoadExperiment'))
         return
       }
       setExperiment(res.data?.experiment ?? null)
@@ -67,7 +69,7 @@ export default function VLabyExperimentViewer({
     return (
       <div className="flex items-center justify-center min-h-[30vh] gap-2 text-gray-500">
         <Loader2 size={20} className="animate-spin" />
-        Loading experiment…
+        {t('loadingExperiment')}
       </div>
     )
   }
@@ -77,13 +79,13 @@ export default function VLabyExperimentViewer({
       <div className="flex flex-col items-center justify-center min-h-[30vh] gap-4 text-center px-4">
         <AlertCircle size={40} className="text-amber-400" />
         <div>
-          <p className="font-semibold text-gray-800 dark:text-gray-100 mb-1">No Virtual Labs account connected</p>
+          <p className="font-semibold text-gray-800 dark:text-gray-100 mb-1">{t('noAccountConnected')}</p>
           <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm">
-            Ask your school administrator to connect the school's Virtual Labs account so experiments can be opened.
+            {t('askAdminToConnect')}
           </p>
         </div>
         <Button variant="outline" onClick={() => router.push(backPath)}>
-          <ArrowLeft size={14} className="mr-1 rtl:rotate-180 rtl:ml-1 rtl:mr-0" /> Back to experiments
+          <ArrowLeft size={14} className="mr-1 rtl:rotate-180 rtl:ml-1 rtl:mr-0" /> {t('backToExperiments')}
         </Button>
       </div>
     )
@@ -94,13 +96,13 @@ export default function VLabyExperimentViewer({
       <div className="flex flex-col items-center justify-center min-h-[30vh] gap-4 text-center px-4">
         <AlertCircle size={40} className="text-orange-400" />
         <div>
-          <p className="font-semibold text-gray-800 dark:text-gray-100 mb-1">Virtual Labs session expired</p>
+          <p className="font-semibold text-gray-800 dark:text-gray-100 mb-1">{t('sessionExpired')}</p>
           <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm">
-            The school's Virtual Labs session has expired. Ask your administrator to reconnect the account in Settings.
+            {t('askAdminToReconnect')}
           </p>
         </div>
         <Button variant="outline" onClick={() => router.push(backPath)}>
-          <ArrowLeft size={14} className="mr-1 rtl:rotate-180 rtl:ml-1 rtl:mr-0" /> Back to experiments
+          <ArrowLeft size={14} className="mr-1 rtl:rotate-180 rtl:ml-1 rtl:mr-0" /> {t('backToExperiments')}
         </Button>
       </div>
     )
@@ -109,9 +111,9 @@ export default function VLabyExperimentViewer({
   if (error || !experiment) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[30vh] gap-4">
-        <p className="text-red-500">{error || 'Experiment not found'}</p>
+        <p className="text-red-500">{error || t('experimentNotFound')}</p>
         <Button variant="outline" onClick={() => router.push(backPath)}>
-          <ArrowLeft size={14} className="mr-1 rtl:rotate-180 rtl:ml-1 rtl:mr-0" /> Back to experiments
+          <ArrowLeft size={14} className="mr-1 rtl:rotate-180 rtl:ml-1 rtl:mr-0" /> {t('backToExperiments')}
         </Button>
       </div>
     )
@@ -124,7 +126,7 @@ export default function VLabyExperimentViewer({
       {/* Top bar */}
       <div className="flex items-center gap-3 flex-wrap">
         <Button variant="ghost" size="sm" onClick={() => router.push(backPath)} className="gap-1 text-gray-500 dark:text-gray-400">
-          <ArrowLeft size={14} className="rtl:rotate-180" /> Back
+          <ArrowLeft size={14} className="rtl:rotate-180" /> {t('back')}
         </Button>
         <div className="flex items-center gap-2 font-semibold text-gray-800 dark:text-gray-100 text-base">
           <FlaskConical size={18} className="text-indigo-600 dark:text-indigo-400" />
@@ -135,7 +137,7 @@ export default function VLabyExperimentViewer({
       {/* Meta row */}
       <div className="flex items-center gap-2 flex-wrap text-sm text-gray-500 dark:text-gray-400">
         <Badge variant="secondary">{experiment.subject_name}</Badge>
-        {experiment.points > 0 && <Badge variant="outline">{experiment.points} pts</Badge>}
+        {experiment.points > 0 && <Badge variant="outline">{t('pointsAbbrev', { points: experiment.points })}</Badge>}
         <span>·</span>
         <span>{experiment.country_name}</span>
         <span>·</span>
@@ -144,10 +146,10 @@ export default function VLabyExperimentViewer({
           <button
             onClick={toggleFullscreen}
             className="ml-auto flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:underline text-xs"
-            title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            title={isFullscreen ? t('exitFullscreen') : t('fullscreen')}
           >
             {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
-            {isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            {isFullscreen ? t('exitFullscreen') : t('fullscreen')}
           </button>
         )}
       </div>
@@ -169,7 +171,7 @@ export default function VLabyExperimentViewer({
         </div>
       ) : (
         <div className="flex items-center justify-center h-64 border dark:border-gray-800 rounded-xl bg-gray-50 dark:bg-gray-900 text-gray-400">
-          No interactive file available for this experiment.
+          {t('noInteractiveFile')}
         </div>
       )}
 

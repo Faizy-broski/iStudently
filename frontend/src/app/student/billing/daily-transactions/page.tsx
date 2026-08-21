@@ -8,10 +8,12 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { format, parseISO } from 'date-fns'
 import { useTranslations } from 'next-intl'
+import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 
 export default function DailyTransactionsPage() {
   const { payments, isLoading, error } = useStudentPaymentHistory()
   const t = useTranslations('student_billing.daily_transactions')
+  const { currencySymbol } = useSchoolSettings()
   const now = new Date()
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth())
   const [selectedYear, setSelectedYear] = useState(now.getFullYear())
@@ -88,7 +90,7 @@ export default function DailyTransactionsPage() {
           <DollarSign className="h-10 w-10 text-green-500 shrink-0" />
           <div>
             <p className="text-sm text-muted-foreground">{t('monthly_total', { month: MONTHS[selectedMonth], year: selectedYear })}</p>
-            <p className="text-3xl font-bold text-green-600">${monthTotal.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-green-600">{currencySymbol}{monthTotal.toFixed(2)}</p>
             <p className="text-xs text-muted-foreground">{t('transactions_count', { count: filtered.length })}</p>
           </div>
         </CardContent>
@@ -120,7 +122,7 @@ export default function DailyTransactionsPage() {
                           <Badge variant="outline">{p.payment_method || 'â€”'}</Badge>
                           <span className="text-muted-foreground">{p.payment_reference || t('no_reference')}</span>
                         </div>
-                        <span className="font-semibold text-green-600">${p.amount.toFixed(2)}</span>
+                        <span className="font-semibold text-green-600">{currencySymbol}{p.amount.toFixed(2)}</span>
                       </div>
                     ))}
                   </div>

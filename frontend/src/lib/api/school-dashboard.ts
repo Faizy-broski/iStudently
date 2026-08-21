@@ -91,6 +91,17 @@ export interface GradeDistribution {
   count: number
 }
 
+export interface ClassBreakdownSection {
+  section: string
+  count: number
+}
+
+export interface ClassBreakdown {
+  grade: string
+  total: number
+  sections: ClassBreakdownSection[]
+}
+
 export const schoolDashboardApi = {
   /**
    * Get school dashboard statistics
@@ -125,5 +136,13 @@ export const schoolDashboardApi = {
   getGradeDistribution: async (campus_id?: string) => {
     const params = campus_id ? `?campus_id=${campus_id}` : ''
     return apiRequest<GradeDistribution[]>(`/school-dashboard/grade-distribution${params}`)
+  },
+
+  /**
+   * Get student counts per class (grade + section)
+   */
+  getClassBreakdown: async (campus_id?: string) => {
+    const params = campus_id ? `?campus_id=${campus_id}` : ''
+    return apiRequest<ClassBreakdown[]>(`/school-dashboard/class-breakdown${params}`)
   }
 }

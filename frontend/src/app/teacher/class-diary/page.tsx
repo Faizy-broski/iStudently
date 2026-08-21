@@ -17,8 +17,10 @@ import {
 import { Loader2, BookOpen, Plus, AlertCircle } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 
 export default function TeacherClassDiaryPage() {
+  const t = useTranslations('teacherPages.classDiary')
   const { profile } = useAuth()
   const campusContext = useCampus()
   const campusId = campusContext?.selectedCampus?.id
@@ -55,11 +57,11 @@ export default function TeacherClassDiaryPage() {
 
   const handleSubmit = async () => {
     if (!form.content.trim()) {
-      toast.warning('Please enter diary content')
+      toast.warning(t('enterContentWarning'))
       return
     }
     if (!selectedCP?.section_id || !profile?.staff_id) {
-      toast.warning('Missing class or teacher info')
+      toast.warning(t('missingClassOrTeacher'))
       return
     }
     setSubmitting(true)
@@ -73,15 +75,15 @@ export default function TeacherClassDiaryPage() {
         campus_id: campusId,
       })
       if (res.success) {
-        toast.success('Diary entry created')
+        toast.success(t('entryCreated'))
         setForm({ content: '', diary_date: new Date().toISOString().split('T')[0], enable_comments: false })
         setShowForm(false)
         mutate()
       } else {
-        toast.error(res.error || 'Failed to create entry')
+        toast.error(res.error || t('createEntryFailed'))
       }
     } catch {
-      toast.error('Failed to create entry')
+      toast.error(t('createEntryFailed'))
     } finally {
       setSubmitting(false)
     }
@@ -91,24 +93,24 @@ export default function TeacherClassDiaryPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Class Diary</h1>
-          <p className="text-muted-foreground mt-1">Record daily class activities and notes</p>
+          <h1 className="text-3xl font-bold">{t('pageTitle')}</h1>
+          <p className="text-muted-foreground mt-1">{t('pageSubtitle')}</p>
         </div>
         <Button onClick={() => setShowForm(v => !v)} variant={showForm ? 'outline' : 'default'}>
-          <Plus className="h-4 w-4 mr-2" /> {showForm ? 'Cancel' : 'New Entry'}
+          <Plus className="h-4 w-4 mr-2" /> {showForm ? t('cancel') : t('newEntry')}
         </Button>
       </div>
 
       <div className="space-y-1">
-        <Label>Select Class</Label>
+        <Label>{t('selectClass')}</Label>
         <Select value={selectedCPId} onValueChange={setSelectedCPId}>
           <SelectTrigger className="max-w-xs">
-            <SelectValue placeholder="Choose a class..." />
+            <SelectValue placeholder={t('chooseClassPlaceholder')} />
           </SelectTrigger>
           <SelectContent>
             {coursePeriods.map((cp: any) => (
               <SelectItem key={cp.id} value={cp.id}>
-                {cp.course?.title || cp.subject?.name || 'Unnamed'}
+                {cp.course?.title || cp.subject?.name || t('unnamed')}
               </SelectItem>
             ))}
           </SelectContent>
@@ -118,11 +120,11 @@ export default function TeacherClassDiaryPage() {
       {showForm && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">New Diary Entry</CardTitle>
+            <CardTitle className="text-base">{t('newDiaryEntry')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1">
-              <Label>Date</Label>
+              <Label>{t('date')}</Label>
               <Input
                 type="date"
                 value={form.diary_date}
@@ -131,12 +133,12 @@ export default function TeacherClassDiaryPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label>Content <span className="text-red-500">*</span></Label>
+              <Label>{t('content')} <span className="text-red-500">*</span></Label>
               <textarea
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[120px] resize-none"
                 value={form.content}
                 onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
-                placeholder="What happened in class today..."
+                placeholder={t('contentPlaceholder')}
               />
             </div>
             <div className="flex items-center gap-2">
@@ -146,12 +148,12 @@ export default function TeacherClassDiaryPage() {
                 checked={form.enable_comments}
                 onChange={e => setForm(f => ({ ...f, enable_comments: e.target.checked }))}
               />
-              <label htmlFor="enable-comments" className="text-sm cursor-pointer">Allow student comments</label>
+              <label htmlFor="enable-comments" className="text-sm cursor-pointer">{t('allowStudentComments')}</label>
             </div>
             <Button onClick={handleSubmit} disabled={submitting || !selectedCPId}>
               {submitting
-                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
-                : 'Save Entry'}
+                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t('saving')}</>
+                : t('saveEntry')}
             </Button>
           </CardContent>
         </Card>
@@ -162,7 +164,7 @@ export default function TeacherClassDiaryPage() {
           <Card>
             <CardContent className="py-12 text-center">
               <BookOpen className="h-10 w-10 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-muted-foreground">Select a class to view diary entries</p>
+              <p className="text-muted-foreground">{t('selectClassHint')}</p>
             </CardContent>
           </Card>
         ) : isLoading ? (
@@ -173,7 +175,7 @@ export default function TeacherClassDiaryPage() {
           <Card>
             <CardContent className="py-12 text-center">
               <AlertCircle className="h-10 w-10 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-muted-foreground">No diary entries for this class</p>
+              <p className="text-muted-foreground">{t('noDiaryEntries')}</p>
             </CardContent>
           </Card>
         ) : (
@@ -186,8 +188,8 @@ export default function TeacherClassDiaryPage() {
                     <p className="font-medium">{format(parseISO(entry.diary_date), 'EEEE, MMMM d, yyyy')}</p>
                   </div>
                   <div className="flex gap-2">
-                    {entry.is_published && <Badge variant="outline" className="text-xs">Published</Badge>}
-                    {entry.enable_comments && <Badge variant="outline" className="text-xs">Comments on</Badge>}
+                    {entry.is_published && <Badge variant="outline" className="text-xs">{t('published')}</Badge>}
+                    {entry.enable_comments && <Badge variant="outline" className="text-xs">{t('commentsOn')}</Badge>}
                   </div>
                 </div>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">{entry.content}</p>

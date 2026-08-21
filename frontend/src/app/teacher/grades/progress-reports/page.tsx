@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import useSWR from 'swr'
 import { useCampus } from '@/context/CampusContext'
 import { getCoursePeriods, getStudentsForGrades, generateProgressReports } from '@/lib/api/grades'
@@ -16,6 +17,7 @@ import { Loader2, ClipboardList, FileText, Users, AlertCircle } from 'lucide-rea
 import { toast } from 'sonner'
 
 export default function TeacherProgressReportsPage() {
+  const t = useTranslations('teacherPages.progressReports')
   const campusContext = useCampus()
   const campusId = campusContext?.selectedCampus?.id
 
@@ -68,12 +70,12 @@ export default function TeacherProgressReportsPage() {
         student_ids: selectedStudents
       })
       if (res.success) {
-        toast.success(`Progress reports generated for ${selectedStudents.length} student(s)`)
+        toast.success(t('reportsGenerated', { count: selectedStudents.length }))
       } else {
-        toast.error(res.error || 'Failed to generate reports')
+        toast.error(res.error || t('generateReportsFailed'))
       }
     } catch {
-      toast.error('Failed to generate progress reports')
+      toast.error(t('generateProgressReportsFailed'))
     } finally {
       setGenerating(false)
     }
@@ -82,8 +84,8 @@ export default function TeacherProgressReportsPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Progress Reports</h1>
-        <p className="text-muted-foreground mt-1">Generate progress reports for your students</p>
+        <h1 className="text-3xl font-bold">{t('pageTitle')}</h1>
+        <p className="text-muted-foreground mt-1">{t('pageSubtitle')}</p>
       </div>
 
       {/* Selectors */}
@@ -91,28 +93,28 @@ export default function TeacherProgressReportsPage() {
         <Card>
           <CardContent className="p-4 space-y-3">
             <div className="space-y-1">
-              <label className="text-sm font-medium">Class / Course Period</label>
+              <label className="text-sm font-medium">{t('classCoursePeriod')}</label>
               <Select value={selectedCPId} onValueChange={v => { setSelectedCPId(v); setSelectedStudents([]) }}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select class" />
+                  <SelectValue placeholder={t('selectClass')} />
                 </SelectTrigger>
                 <SelectContent>
                   {coursePeriods.map((cp: any) => (
                     <SelectItem key={cp.id} value={cp.id}>
-                      {cp.course?.title || 'Unnamed Course'}
+                      {cp.course?.title || t('unnamedCourse')}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-medium">Marking Period (optional)</label>
+              <label className="text-sm font-medium">{t('markingPeriodOptional')}</label>
               <Select value={selectedMPId || 'all'} onValueChange={v => setSelectedMPId(v === 'all' ? '' : v)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="All periods" />
+                  <SelectValue placeholder={t('allPeriods')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All periods</SelectItem>
+                  <SelectItem value="all">{t('allPeriods')}</SelectItem>
                   {markingPeriods.map((mp: any) => (
                     <SelectItem key={mp.id} value={mp.id}>{mp.title}</SelectItem>
                   ))}
@@ -125,10 +127,10 @@ export default function TeacherProgressReportsPage() {
         <Card className="flex flex-col justify-between">
           <CardContent className="p-4">
             <h3 className="font-semibold flex items-center gap-2 mb-3">
-              <FileText className="h-4 w-4" /> Generate Reports
+              <FileText className="h-4 w-4" /> {t('generateReports')}
             </h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Select a class and students below, then generate their progress reports.
+              {t('generateReportsHint')}
             </p>
             <Button
               className="w-full"
@@ -136,8 +138,8 @@ export default function TeacherProgressReportsPage() {
               disabled={!selectedCPId || selectedStudents.length === 0 || generating}
             >
               {generating
-                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating...</>
-                : <><ClipboardList className="h-4 w-4 mr-2" /> Generate for {selectedStudents.length} student(s)</>
+                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t('generatingEllipsis')}</>
+                : <><ClipboardList className="h-4 w-4 mr-2" /> {t('generateForStudents', { count: selectedStudents.length })}</>
               }
             </Button>
           </CardContent>
@@ -149,13 +151,13 @@ export default function TeacherProgressReportsPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" /> Students
+              <Users className="h-5 w-5" /> {t('students')}
             </CardTitle>
             {students.length > 0 && (
               <div className="flex items-center gap-2">
-                <Badge variant="outline">{selectedStudents.length} selected</Badge>
+                <Badge variant="outline">{t('selectedCount', { count: selectedStudents.length })}</Badge>
                 <Button variant="outline" size="sm" onClick={toggleAll}>
-                  {selectedStudents.length === students.length ? 'Deselect All' : 'Select All'}
+                  {selectedStudents.length === students.length ? t('deselectAll') : t('selectAll')}
                 </Button>
               </div>
             )}
@@ -165,7 +167,7 @@ export default function TeacherProgressReportsPage() {
           {!selectedCPId ? (
             <div className="text-center py-8 text-muted-foreground">
               <ClipboardList className="h-10 w-10 mx-auto mb-2" />
-              <p>Select a class to see students</p>
+              <p>{t('selectClassToSeeStudents')}</p>
             </div>
           ) : studentsLoading ? (
             <div className="flex justify-center py-8">
@@ -174,7 +176,7 @@ export default function TeacherProgressReportsPage() {
           ) : students.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <AlertCircle className="h-10 w-10 mx-auto mb-2" />
-              <p>No students found for this class</p>
+              <p>{t('noStudentsForClass')}</p>
             </div>
           ) : (
             <div className="divide-y">

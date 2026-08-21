@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, BookOpen, AlertCircle, Clock, CheckCircle, Library } from 'lucide-react'
 import { format, parseISO, differenceInDays } from 'date-fns'
+import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 
 type Tab = 'active' | 'overdue' | 'history' | 'fines'
 
@@ -77,6 +78,7 @@ export default function StudentLibraryPage() {
   // library_loans.student_id stores profiles.id (not students.id) — must use profile.id
   const studentId = profile?.id
   const [tab, setTab] = useState<Tab>('active')
+  const { currencySymbol } = useSchoolSettings()
 
   const fetchWithToken = async (fn: (id: string, tok: string) => Promise<any>) => {
     const token = await getAuthToken()
@@ -210,7 +212,7 @@ export default function StudentLibraryPage() {
                       </p>
                     </div>
                     <Badge variant="outline" className="text-orange-600 border-orange-400 text-sm font-bold">
-                      ${(fine.amount || 0).toFixed(2)}
+                      {currencySymbol}{(fine.amount || 0).toFixed(2)}
                     </Badge>
                   </div>
                 </CardContent>

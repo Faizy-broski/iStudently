@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -80,6 +81,7 @@ interface ClassItem {
 // ─── component ───────────────────────────────────────────────────────────────
 
 export default function TeacherDashboard() {
+  const t = useTranslations('teacherPages.dashboard')
   const router = useRouter()
   const { profile, loading: authLoading, profileFetchPending } = useAuth()
   const { selectedCoursePeriod } = useAcademic()
@@ -144,9 +146,9 @@ export default function TeacherDashboard() {
         )
         return {
           id: cls.id,
-          subject_name: cls.subject_name || "Unknown Subject",
-          section_name: cls.section_name || "Unknown Section",
-          grade_name: cls.grade_name || "Unknown Grade",
+          subject_name: cls.subject_name || t('unknownSubject'),
+          section_name: cls.section_name || t('unknownSection'),
+          grade_name: cls.grade_name || t('unknownGrade'),
           period_number: cls.period_number,
           start_time: cls.start_time,
           end_time: cls.end_time,
@@ -220,9 +222,9 @@ export default function TeacherDashboard() {
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
-            <p className="text-center text-lg font-medium">Not authorized as teacher</p>
+            <p className="text-center text-lg font-medium">{t('notAuthorized')}</p>
             <p className="text-center text-sm text-muted-foreground mt-2">
-              Please ensure your account has teacher privileges
+              {t('notAuthorizedDesc')}
             </p>
           </CardContent>
         </Card>
@@ -243,10 +245,10 @@ export default function TeacherDashboard() {
           />
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">
-              Teacher Dashboard
+              {t('pageTitle')}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Welcome back, {profile?.first_name} {profile?.last_name}
+              {t('welcomeBack', { name: `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() })}
             </p>
           </div>
         </div>
@@ -274,7 +276,7 @@ export default function TeacherDashboard() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-blue-700">{stats.todayClasses}</p>
-                <p className="text-xs text-blue-600">Today&apos;s Classes</p>
+                <p className="text-xs text-blue-600">{t('todaysClasses')}</p>
               </div>
             </div>
           </CardContent>
@@ -287,7 +289,7 @@ export default function TeacherDashboard() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-green-700">{stats.attendancePercentage}%</p>
-                <p className="text-xs text-green-600">Attendance Rate</p>
+                <p className="text-xs text-green-600">{t('attendanceRate')}</p>
               </div>
             </div>
           </CardContent>
@@ -300,7 +302,7 @@ export default function TeacherDashboard() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-orange-700">{stats.pendingAttendance}</p>
-                <p className="text-xs text-orange-600">Pending</p>
+                <p className="text-xs text-orange-600">{t('pending')}</p>
               </div>
             </div>
           </CardContent>
@@ -313,7 +315,7 @@ export default function TeacherDashboard() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-purple-700">{stats.remainingClasses}</p>
-                <p className="text-xs text-purple-600">Remaining</p>
+                <p className="text-xs text-purple-600">{t('remaining')}</p>
               </div>
             </div>
           </CardContent>
@@ -345,29 +347,29 @@ export default function TeacherDashboard() {
                 <div>
                   <div className="flex items-center gap-2">
                     <BarChart3 className="h-4 w-4 text-[#022172]" />
-                    <p className="font-semibold text-[#022172]">My Performance</p>
+                    <p className="font-semibold text-[#022172]">{t('myPerformance')}</p>
                   </div>
                   <p className={`text-sm font-medium ${perfScore.score >= 80 ? "text-green-600" : perfScore.score >= 60 ? "text-amber-600" : "text-red-600"}`}>
-                    {perfScore.score >= 80 ? "Excellent" : perfScore.score >= 60 ? "Good" : "Needs Improvement"}
+                    {perfScore.score >= 80 ? t('excellent') : perfScore.score >= 60 ? t('good') : t('needsImprovement')}
                   </p>
                   <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
                     {perfScore.total_demerit > 0 && (
                       <span className="flex items-center gap-1 text-red-500">
                         <TrendingDown className="h-3 w-3" />
-                        -{perfScore.total_demerit} pts
+                        {t('ptsNegative', { points: perfScore.total_demerit })}
                       </span>
                     )}
                     {perfScore.total_redemption > 0 && (
                       <span className="flex items-center gap-1 text-green-500">
                         <TrendingUp className="h-3 w-3" />
-                        +{perfScore.total_redemption} pts
+                        {t('ptsPositive', { points: perfScore.total_redemption })}
                       </span>
                     )}
                   </div>
                 </div>
               </div>
               <Button variant="outline" size="sm" onClick={() => router.push("/teacher/performance")}>
-                View Details
+                {t('viewDetails')}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
@@ -382,8 +384,8 @@ export default function TeacherDashboard() {
             <CardTitle className="text-lg flex items-center gap-2 text-[#022172]">
               <BookOpen className="h-5 w-5" />
               {selectedCoursePeriod
-                ? (selectedCoursePeriod.short_name || selectedCoursePeriod.title || "Course Period")
-                : "Course Period"}
+                ? (selectedCoursePeriod.short_name || selectedCoursePeriod.title || t('coursePeriod'))
+                : t('coursePeriod')}
               {selectedCoursePeriod?.course_title &&
                 selectedCoursePeriod.course_title !== (selectedCoursePeriod.short_name || selectedCoursePeriod.title) && (
                   <span className="text-sm font-normal text-muted-foreground ml-1">
@@ -392,7 +394,7 @@ export default function TeacherDashboard() {
                 )}
               {students && selectedCoursePeriod && (
                 <Badge variant="secondary" className="ml-1">
-                  {students.length} students
+                  {t('studentsCount', { count: students.length })}
                 </Badge>
               )}
             </CardTitle>
@@ -407,7 +409,7 @@ export default function TeacherDashboard() {
                 }
               >
                 <CheckCircle className="h-4 w-4 mr-1" />
-                Take Attendance
+                {t('takeAttendance')}
               </Button>
             )}
           </div>
@@ -422,9 +424,9 @@ export default function TeacherDashboard() {
           {!selectedCoursePeriod ? (
             <div className="text-center py-10 text-muted-foreground">
               <Users className="h-12 w-12 mx-auto mb-3 opacity-25" />
-              <p className="font-medium">No course period selected</p>
+              <p className="font-medium">{t('noCoursePeriodSelected')}</p>
               <p className="text-sm mt-1">
-                Use the sidebar to select an Academic Year, Quarter, and Course Period
+                {t('noCoursePeriodSelectedHint')}
               </p>
             </div>
           ) : studentsLoading ? (
@@ -434,7 +436,7 @@ export default function TeacherDashboard() {
           ) : !students?.length ? (
             <div className="text-center py-10 text-muted-foreground">
               <Users className="h-10 w-10 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">No students enrolled in this course period</p>
+              <p className="text-sm">{t('noStudentsEnrolled')}</p>
             </div>
           ) : (
             <div className="rounded-lg border divide-y max-h-80 overflow-y-auto">
@@ -472,9 +474,9 @@ export default function TeacherDashboard() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Play className="h-5 w-5 text-green-600" />
-                Current Class
+                {t('currentClass')}
               </CardTitle>
-              <Badge className="bg-green-600 text-white animate-pulse">● In Progress</Badge>
+              <Badge className="bg-green-600 text-white animate-pulse">● {t('inProgress')}</Badge>
             </div>
           </CardHeader>
           <CardContent className="pt-4">
@@ -497,11 +499,11 @@ export default function TeacherDashboard() {
                       {formatTime(currentClass.start_time)} – {formatTime(currentClass.end_time)}
                     </span>
                   </div>
-                  <Badge variant="outline">Period {currentClass.period_number}</Badge>
+                  <Badge variant="outline">{t('periodLabel', { number: currentClass.period_number })}</Badge>
                   {currentClass.room_number && (
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <span>Room {currentClass.room_number}</span>
+                      <span>{t('roomLabel', { room: currentClass.room_number })}</span>
                     </div>
                   )}
                 </div>
@@ -512,7 +514,7 @@ export default function TeacherDashboard() {
                 className="bg-green-600 hover:bg-green-700 text-white h-16 px-8 text-lg"
               >
                 <CheckCircle className="h-6 w-6 mr-2" />
-                Mark Attendance
+                {t('markAttendance')}
               </Button>
             </div>
           </CardContent>
@@ -521,11 +523,11 @@ export default function TeacherDashboard() {
         <Card>
           <CardContent className="py-12 text-center">
             <Clock className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-lg font-medium text-muted-foreground">No class in progress right now</p>
+            <p className="text-lg font-medium text-muted-foreground">{t('noClassInProgress')}</p>
             <p className="text-sm text-muted-foreground mt-2">
               {nextClass
-                ? `Next class: ${nextClass.subject_name} at ${formatTime(nextClass.start_time)}`
-                : "No more classes today"}
+                ? t('nextClassAt', { subject: nextClass.subject_name, time: formatTime(nextClass.start_time) })
+                : t('noMoreClassesToday')}
             </p>
           </CardContent>
         </Card>
@@ -541,15 +543,15 @@ export default function TeacherDashboard() {
                   <SkipForward className="h-6 w-6" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Next Class</p>
+                  <p className="text-sm text-muted-foreground">{t('nextClass')}</p>
                   <h3 className="text-xl font-bold">{nextClass.subject_name}</h3>
                   <p className="text-sm text-muted-foreground">
-                    {nextClass.section_name} • Starts at {formatTime(nextClass.start_time)}
+                    {t('sectionStartsAt', { section: nextClass.section_name, time: formatTime(nextClass.start_time) })}
                   </p>
                 </div>
               </div>
               <Badge variant="outline" className="text-lg px-4 py-2">
-                Period {nextClass.period_number}
+                {t('periodLabel', { number: nextClass.period_number })}
               </Badge>
             </div>
           </CardContent>
@@ -562,11 +564,11 @@ export default function TeacherDashboard() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
               <Calendar className="h-5 w-5" />
-              Today&apos;s Schedule
+              {t('todaysSchedule')}
             </CardTitle>
             <Button variant="outline" size="sm" onClick={() => router.push("/teacher/timetable")}>
               <LayoutGrid className="h-4 w-4 mr-2" />
-              Full Timetable
+              {t('fullTimetable')}
             </Button>
           </div>
         </CardHeader>
@@ -574,7 +576,7 @@ export default function TeacherDashboard() {
           {processedClasses.length === 0 ? (
             <div className="text-center py-8">
               <BookOpen className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
-              <p className="text-muted-foreground">No classes scheduled for today</p>
+              <p className="text-muted-foreground">{t('noClassesScheduled')}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -610,18 +612,18 @@ export default function TeacherDashboard() {
                         <h3 className="font-semibold">{cls.subject_name}</h3>
                         {cls.status === "in-progress" && (
                           <Badge className="bg-green-600 text-white text-xs">
-                            <span className="animate-pulse mr-1">●</span> Now
+                            <span className="animate-pulse mr-1">●</span> {t('now')}
                           </Badge>
                         )}
                         {cls.status === "completed" && !cls.attendanceMarked && (
                           <Badge variant="outline" className="border-orange-500 text-orange-600 text-xs">
-                            Attendance Pending
+                            {t('attendancePending')}
                           </Badge>
                         )}
                         {cls.attendanceMarked && (
                           <Badge variant="outline" className="border-green-500 text-green-600 text-xs">
                             <CheckCircle className="h-3 w-3 mr-1" />
-                            Marked
+                            {t('marked')}
                           </Badge>
                         )}
                       </div>
@@ -630,8 +632,11 @@ export default function TeacherDashboard() {
                       </p>
                       {cls.attendanceStats && (
                         <p className="text-xs text-green-600 mt-1">
-                          {cls.attendanceStats.present + cls.attendanceStats.late}/
-                          {cls.attendanceStats.total} Present ({cls.attendanceStats.percentage}%)
+                          {t('presentCount', {
+                            present: cls.attendanceStats.present + cls.attendanceStats.late,
+                            total: cls.attendanceStats.total,
+                            percentage: cls.attendanceStats.percentage,
+                          })}
                         </p>
                       )}
                     </div>
@@ -642,7 +647,7 @@ export default function TeacherDashboard() {
                         {formatTime(cls.start_time)} – {formatTime(cls.end_time)}
                       </p>
                       {cls.room_number && (
-                        <p className="text-xs text-muted-foreground">Room {cls.room_number}</p>
+                        <p className="text-xs text-muted-foreground">{t('roomLabel', { room: cls.room_number })}</p>
                       )}
                     </div>
                     <ArrowRight className="h-5 w-5 text-muted-foreground" />
@@ -657,7 +662,7 @@ export default function TeacherDashboard() {
       {/* ── Quick Actions ── */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Quick Actions</CardTitle>
+          <CardTitle className="text-lg">{t('quickActions')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -667,7 +672,7 @@ export default function TeacherDashboard() {
               onClick={() => navigateToAttendance(currentClass?.id || nextClass?.id)}
             >
               <CheckCircle className="h-6 w-6 text-green-600" />
-              <span className="text-sm">Mark Attendance</span>
+              <span className="text-sm">{t('markAttendance')}</span>
             </Button>
             <Button
               variant="outline"
@@ -675,7 +680,7 @@ export default function TeacherDashboard() {
               onClick={() => router.push("/teacher/timetable")}
             >
               <Calendar className="h-6 w-6 text-blue-600" />
-              <span className="text-sm">Timetable</span>
+              <span className="text-sm">{t('timetable')}</span>
             </Button>
             <Button
               variant="outline"
@@ -683,7 +688,7 @@ export default function TeacherDashboard() {
               onClick={() => router.push("/teacher/subjects")}
             >
               <BookOpen className="h-6 w-6 text-purple-600" />
-              <span className="text-sm">My Subjects</span>
+              <span className="text-sm">{t('mySubjects')}</span>
             </Button>
             <Button
               variant="outline"
@@ -691,7 +696,7 @@ export default function TeacherDashboard() {
               onClick={() => router.push("/teacher/assignments")}
             >
               <ClipboardList className="h-6 w-6 text-orange-600" />
-              <span className="text-sm">Assignments</span>
+              <span className="text-sm">{t('assignments')}</span>
             </Button>
           </div>
         </CardContent>

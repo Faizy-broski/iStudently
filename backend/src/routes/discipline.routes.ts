@@ -106,4 +106,16 @@ router.get('/discipline/student/referrals', requireRole('student'), disciplineCo
  */
 router.get('/discipline/parent/referrals', requireRole('parent'), disciplineController.getParentReferrals);
 
+/**
+ * SUPER ADMIN SCOPE — most recent referrals across every school, for the
+ * notification bell (super_admin has no staff_id/school_id of its own).
+ */
+router.get('/discipline/superadmin/referrals', requireRole('super_admin'), disciplineController.getSuperAdminReferrals);
+
+/**
+ * ADMIN/COUNSELOR SCOPE — most recent referrals for the whole school,
+ * regardless of who filed them (a teacher's referral must notify admin).
+ */
+router.get('/discipline/admin/referrals', requireRole('admin', 'counselor'), disciplineController.getAdminReferrals);
+
 export default router;

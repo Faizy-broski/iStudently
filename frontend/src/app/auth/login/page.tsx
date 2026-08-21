@@ -19,6 +19,33 @@ import { getLoginLinks, type CustomLink } from '@/lib/api/public-pages'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { getLoginPageConfig, DEFAULT_LOGIN_PAGE_CONFIG, type LoginPageConfig } from '@/lib/api/login-page-config'
 
+// ── Error message helper ──────────────────────────────────────────────────────
+
+// Supabase's signInWithPassword() throws an AuthError whose .message is
+// normally a clean string (e.g. "Invalid login credentials"). But some
+// failure paths (a raw fetch/network error, an unexpected GoTrue response
+// shape, etc.) can leave .message holding the literal JSON error body
+// instead — surfacing something like {"code":"invalid_credentials",...} to
+// the user. Always unwrap down to a clean, human string before displaying it.
+function getFriendlyAuthErrorMessage(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err ?? '')
+  const trimmed = raw.trim()
+
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed)
+      const nested = parsed?.message || parsed?.msg || parsed?.error_description || parsed?.error
+      if (typeof nested === 'string' && nested.trim()) return nested
+    } catch {
+      // Not valid JSON after all — fall through to the raw/default text below
+    }
+    // Looked like JSON but had nothing usable inside it — never show the blob itself
+    return 'Invalid email or password'
+  }
+
+  return trimmed || 'Invalid email or password'
+}
+
 // ── Custom page viewer modal ──────────────────────────────────────────────────
 
 function CustomPageModal({ link, onClose }: { link: CustomLink | null; onClose: () => void }) {
@@ -327,8 +354,7 @@ function LoginForm() {
 
       setJustLoggedIn(true)
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Invalid email or password'
-      toast.error(errorMessage)
+      toast.error(getFriendlyAuthErrorMessage(err))
       setLoading(false)
       setJustLoggedIn(false)
     }

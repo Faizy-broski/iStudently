@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +30,7 @@ interface EditState {
 }
 
 export function TeacherAssignments() {
+  const t = useTranslations("teacherPages.gradesAssignments");
   const { user, profile } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
@@ -153,7 +155,7 @@ export function TeacherAssignments() {
 
   const handleAddAssignment = () => {
     if (!activeType) {
-      toast.error("Please select an Assignment Type first.");
+      toast.error(t("selectTypeFirst"));
       return;
     }
     setSelectedFile(null);
@@ -177,7 +179,7 @@ export function TeacherAssignments() {
   // ── Save Handlers ────────────────────────────────────────────────────────
   const handleSaveType = async () => {
     if (!editState.typeData.title) {
-      toast.error("Title is required");
+      toast.error(t("titleRequired"));
       return;
     }
     setSaving(true);
@@ -189,16 +191,16 @@ export function TeacherAssignments() {
           course_id: coursePeriods.find(c => c.id === selectedCp)?.course_id || "",
         };
         await gradesApi.createAssignmentType(payload);
-        toast.success("Assignment Type created");
+        toast.success(t("typeCreated"));
       } else {
         await gradesApi.updateAssignmentType(activeType!, editState.typeData);
-        toast.success("Assignment Type updated");
+        toast.success(t("typeUpdated"));
       }
       await loadTypesAndAssignments();
       setEditState(prev => ({ ...prev, mode: "view" }));
       setActiveType(null);
     } catch (err) {
-      toast.error("Failed to save assignment type");
+      toast.error(t("saveTypeFailed"));
     } finally {
       setSaving(false);
     }
@@ -206,7 +208,7 @@ export function TeacherAssignments() {
 
   const handleSaveAssignment = async () => {
     if (!editState.assignmentData.title || editState.assignmentData.points === undefined) {
-      toast.error("Title and Points are required");
+      toast.error(t("titleAndPointsRequired"));
       return;
     }
     setSaving(true);
@@ -217,19 +219,19 @@ export function TeacherAssignments() {
         const campusId = selectedCampus?.id;
         const schoolId = selectedCampus?.school_id || selectedCampus?.id;
         if (!campusId || !schoolId) {
-          toast.error("Campus context required for file upload");
+          toast.error(t("campusRequiredForUpload"));
           setSaving(false);
           return;
         }
-        toast.info("Uploading file...");
+        toast.info(t("uploadingFile"));
         const uploadResult = await uploadTeacherAssignmentFile(selectedFile, schoolId, campusId);
         if (!uploadResult.success || !uploadResult.url) {
-          toast.error(uploadResult.error || "File upload failed");
+          toast.error(uploadResult.error || t("fileUploadFailed"));
           setSaving(false);
           return;
         }
         fileUrl = uploadResult.url;
-        toast.success("File uploaded!");
+        toast.success(t("fileUploaded"));
       }
 
       const payload = { ...editState.assignmentData, ...(fileUrl !== undefined ? { file_url: fileUrl } : {}) };
@@ -252,14 +254,14 @@ export function TeacherAssignments() {
             enable_submission: payload.enable_submission,
             course_period_ids: siblingIds.length > 0 ? siblingIds : [selectedCp],
           })
-          toast.success(`Assignment created for ${siblingIds.length || 1} period(s)`)
+          toast.success(t("assignmentCreatedForPeriods", { count: siblingIds.length || 1 }))
         } else {
           await gradesApi.createAssignment(payload);
-          toast.success("Assignment created");
+          toast.success(t("assignmentCreated"));
         }
       } else {
         await gradesApi.updateAssignment(activeAssignment!, payload);
-        toast.success("Assignment updated");
+        toast.success(t("assignmentUpdated"));
       }
       setSelectedFile(null);
       setApplyToAllPeriods(false);
@@ -267,7 +269,7 @@ export function TeacherAssignments() {
       setEditState(prev => ({ ...prev, mode: "edit-type", typeData: assignmentTypes.find(t => t.id === activeType) || {} }));
       setActiveAssignment(null);
     } catch (err) {
-      toast.error("Failed to save assignment");
+      toast.error(t("saveAssignmentFailed"));
     } finally {
       setSaving(false);
     }
@@ -278,12 +280,12 @@ export function TeacherAssignments() {
     setSaving(true);
     try {
       await gradesApi.deleteAssignment(activeAssignment);
-      toast.success("Assignment deleted");
+      toast.success(t("assignmentDeleted"));
       await loadTypesAndAssignments();
       setEditState(prev => ({ ...prev, mode: "edit-type", typeData: assignmentTypes.find(t => t.id === activeType) || {} }));
       setActiveAssignment(null);
     } catch (err) {
-      toast.error("Failed to delete assignment");
+      toast.error(t("deleteAssignmentFailed"));
     } finally {
       setSaving(false);
     }
@@ -292,32 +294,32 @@ export function TeacherAssignments() {
   // ── Renders ──────────────────────────────────────────────────────────────
   const renderTopForm = () => {
     if (loading) return null;
-    if (editState.mode === "view") return <div className="h-10 text-sm text-slate-500 py-2">Select an assignment type below.</div>;
+    if (editState.mode === "view") return <div className="h-10 text-sm text-slate-500 py-2">{t("selectAssignmentTypeBelow")}</div>;
 
     if (editState.mode === "add-type" || editState.mode === "edit-type") {
       return (
         <div className="border border-slate-200 bg-slate-50 shadow-sm p-4 w-full">
           <div className="flex justify-between items-center mb-4 border-b pb-2 border-slate-200">
             <h2 className="font-medium text-lg text-slate-700">
-              {editState.typeData.title || "New Assignment Type"}
+              {editState.typeData.title || t("newAssignmentType")}
             </h2>
             <Button size="sm" onClick={handleSaveType} disabled={saving} className="bg-[#4A90E2] text-white">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "SAVE"}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : t("save")}
             </Button>
           </div>
           <div className="grid grid-cols-3 gap-6">
             <div>
-              <Label className="text-xs text-slate-500 mb-1 block">{editState.typeData.title || "Title"}</Label>
-              <Input 
-                value={editState.typeData.title || ""} 
+              <Label className="text-xs text-slate-500 mb-1 block">{editState.typeData.title || t("title")}</Label>
+              <Input
+                value={editState.typeData.title || ""}
                 onChange={e => setEditState(prev => ({ ...prev, typeData: { ...prev.typeData, title: e.target.value } }))}
-                placeholder="Title"
+                placeholder={t("title")}
                 className="bg-white"
               />
             </div>
             <div>
-              <Label className="text-xs text-slate-500 mb-1 block">Sort Order</Label>
-              <Input 
+              <Label className="text-xs text-slate-500 mb-1 block">{t("sortOrder")}</Label>
+              <Input
                 type="number"
                 value={editState.typeData.sort_order || ""}
                 onChange={e => setEditState(prev => ({ ...prev, typeData: { ...prev.typeData, sort_order: parseInt(e.target.value) || 0 } }))}
@@ -325,7 +327,7 @@ export function TeacherAssignments() {
               />
             </div>
             <div>
-              <Label className="text-xs text-slate-500 mb-1 block">Color</Label>
+              <Label className="text-xs text-slate-500 mb-1 block">{t("color")}</Label>
               <div className="flex items-center gap-2">
                 <input 
                   type="color" 
@@ -345,34 +347,34 @@ export function TeacherAssignments() {
         <div className="border border-slate-200 bg-slate-50 shadow-sm p-4 w-full space-y-4">
           <div className="flex justify-between items-center border-b pb-2 border-slate-200">
             <h2 className="font-medium text-lg text-slate-700">
-              {editState.assignmentData.title || "New Assignment"}
+              {editState.assignmentData.title || t("newAssignment")}
             </h2>
             <div className="flex gap-2">
               {editState.mode === "edit-assignment" && (
-                <Button size="sm" variant="outline" onClick={handleDeleteAssignment} disabled={saving}>DELETE</Button>
+                <Button size="sm" variant="outline" onClick={handleDeleteAssignment} disabled={saving}>{t("delete")}</Button>
               )}
               <Button size="sm" onClick={handleSaveAssignment} disabled={saving} className="bg-[#4A90E2] text-white">
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "SAVE"}
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : t("save")}
               </Button>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-x-12 gap-y-4">
             <div>
-              <Label className="text-xs text-slate-500 mb-1 block">{editState.assignmentData.title || "Title"}</Label>
-              <Input 
+              <Label className="text-xs text-slate-500 mb-1 block">{editState.assignmentData.title || t("title")}</Label>
+              <Input
                 value={editState.assignmentData.title || ""}
                 onChange={e => setEditState(prev => ({ ...prev, assignmentData: { ...prev.assignmentData, title: e.target.value } }))}
                 className="bg-white"
               />
             </div>
             <div>
-              <Label className="text-xs text-slate-500 mb-1 block">Assignment Type</Label>
-              <Select 
+              <Label className="text-xs text-slate-500 mb-1 block">{t("assignmentType")}</Label>
+              <Select
                 value={editState.assignmentData.assignment_type_id}
                 onValueChange={v => setEditState(prev => ({ ...prev, assignmentData: { ...prev.assignmentData, assignment_type_id: v } }))}
               >
-                <SelectTrigger className="bg-white"><SelectValue placeholder="Type..." /></SelectTrigger>
+                <SelectTrigger className="bg-white"><SelectValue placeholder={t("typeEllipsis")} /></SelectTrigger>
                 <SelectContent>
                   {assignmentTypes.map(t => (
                     <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
@@ -383,8 +385,8 @@ export function TeacherAssignments() {
 
             <div className="flex items-center gap-4">
               <div className="w-24">
-                <Label className="text-xs text-slate-500 mb-1 block">Points</Label>
-                <Input 
+                <Label className="text-xs text-slate-500 mb-1 block">{t("points")}</Label>
+                <Input
                   type="number"
                   value={editState.assignmentData.points ?? ""}
                   onChange={e => setEditState(prev => ({ ...prev, assignmentData: { ...prev.assignmentData, points: parseInt(e.target.value) || 0 } }))}
@@ -392,8 +394,8 @@ export function TeacherAssignments() {
                 />
               </div>
               <div className="w-24">
-                <Label className="text-xs text-slate-500 mb-1 block">Weight</Label>
-                <Input 
+                <Label className="text-xs text-slate-500 mb-1 block">{t("weight")}</Label>
+                <Input
                   type="number"
                   min={0.01}
                   step={0.01}
@@ -404,19 +406,19 @@ export function TeacherAssignments() {
               </div>
               <div className="flex items-center space-x-2 mt-5">
                 <Checkbox id="def-points" />
-                <Label htmlFor="def-points" className="text-slate-500 text-xs">Default Points</Label>
+                <Label htmlFor="def-points" className="text-slate-500 text-xs">{t("defaultPoints")}</Label>
               </div>
             </div>
             <div></div>
 
             <div className="col-span-2">
-              <Label className="mb-2 block text-xs text-slate-500">Description</Label>
+              <Label className="mb-2 block text-xs text-slate-500">{t("description")}</Label>
               <RichTextEditor
                 value={editState.assignmentData.description || ""}
                 onChange={(html) =>
                   setEditState(prev => ({ ...prev, assignmentData: { ...prev.assignmentData, description: html } }))
                 }
-                placeholder="Describe the assignment..."
+                placeholder={t("describeAssignment")}
                 campusId={selectedCampus?.id}
                 showEditorPlugins
                 showMediaRecorder
@@ -424,11 +426,11 @@ export function TeacherAssignments() {
             </div>
 
             <div className="col-span-2">
-              <Label className="text-xs text-slate-500 mb-1 block">File Attachment</Label>
+              <Label className="text-xs text-slate-500 mb-1 block">{t("fileAttachment")}</Label>
               <div className="flex items-center gap-2 flex-wrap">
                 <label className="flex items-center gap-2 cursor-pointer px-3 py-1.5 border border-slate-300 rounded bg-white hover:bg-slate-50 text-sm text-slate-600">
                   <Paperclip className="h-4 w-4" />
-                  <span>{selectedFile ? selectedFile.name : "Choose file..."}</span>
+                  <span>{selectedFile ? selectedFile.name : t("chooseFileEllipsis")}</span>
                   <input
                     type="file"
                     className="hidden"
@@ -451,15 +453,15 @@ export function TeacherAssignments() {
                     rel="noopener noreferrer"
                     className="text-xs text-blue-600 underline"
                   >
-                    View current file
+                    {t("viewCurrentFile")}
                   </a>
                 )}
               </div>
             </div>
 
             <div>
-              <Label className="text-xs text-slate-500 mb-1 block">Assigned</Label>
-              <Input 
+              <Label className="text-xs text-slate-500 mb-1 block">{t("assigned")}</Label>
+              <Input
                 type="date"
                 value={editState.assignmentData.assigned_date?.substring(0, 10) || ""}
                 onChange={e => setEditState(prev => ({ ...prev, assignmentData: { ...prev.assignmentData, assigned_date: e.target.value } }))}
@@ -474,18 +476,18 @@ export function TeacherAssignments() {
                 onCheckedChange={c => setApplyToAllPeriods(!!c)}
               />
               <Label htmlFor="apply-all" className="ml-2 text-sm">
-                Apply to all Periods for this Course
+                {t("applyToAllPeriods")}
                 {applyToAllPeriods && editState.mode === "add-assignment" && (() => {
                   const selectedCpData = coursePeriods.find(cp => cp.id === selectedCp)
                   const count = coursePeriods.filter(cp => cp.course_id === selectedCpData?.course_id).length
-                  return count > 1 ? <span className="ml-1 text-xs text-blue-600">({count} periods)</span> : null
+                  return count > 1 ? <span className="ml-1 text-xs text-blue-600">{t("periodsCount", { count })}</span> : null
                 })()}
               </Label>
             </div>
 
             <div>
-              <Label className="text-xs text-slate-500 mb-1 block">Due</Label>
-              <Input 
+              <Label className="text-xs text-slate-500 mb-1 block">{t("due")}</Label>
+              <Input
                 type="date"
                 value={editState.assignmentData.due_date?.substring(0, 10) || ""}
                 onChange={e => setEditState(prev => ({ ...prev, assignmentData: { ...prev.assignmentData, due_date: e.target.value } }))}
@@ -493,17 +495,17 @@ export function TeacherAssignments() {
               />
             </div>
             <div className="flex items-center mt-5">
-              <Checkbox 
-                id="enable-sub" 
+              <Checkbox
+                id="enable-sub"
                 checked={editState.assignmentData.enable_submission}
-                onCheckedChange={c => setEditState(prev => ({ ...prev, assignmentData: { ...prev.assignmentData, enable_submission: !!c } }))}  
+                onCheckedChange={c => setEditState(prev => ({ ...prev, assignmentData: { ...prev.assignmentData, enable_submission: !!c } }))}
               />
-              <Label htmlFor="enable-sub" className="ml-2 text-sm">Enable Assignment Submission</Label>
+              <Label htmlFor="enable-sub" className="ml-2 text-sm">{t("enableAssignmentSubmission")}</Label>
             </div>
           </div>
 
           <div className="mt-4 border-t pt-4">
-             <h3 className="text-[#4A90E2] font-semibold text-sm">Grades</h3>
+             <h3 className="text-[#4A90E2] font-semibold text-sm">{t("grades")}</h3>
           </div>
         </div>
       );
@@ -518,13 +520,13 @@ export function TeacherAssignments() {
         <div className="flex items-center gap-2">
           <Award className="h-8 w-8 text-[#51B4C9]" />
           <h1 className="text-3xl font-bold bg-linear-to-r from-teal-500 to-emerald-600 bg-clip-text text-transparent">
-            Assignments - {mpName}
+            {t("pageTitleWithPeriod", { mpName })}
           </h1>
         </div>
 
         <div className="flex items-center gap-4 bg-muted/30 p-2 rounded-md border text-sm max-w-[500px]">
           <Select value={selectedCp} onValueChange={setSelectedCp}>
-            <SelectTrigger className="w-full bg-white h-8"><SelectValue placeholder="Course Period" /></SelectTrigger>
+            <SelectTrigger className="w-full bg-white h-8"><SelectValue placeholder={t("coursePeriod")} /></SelectTrigger>
             <SelectContent>
               {coursePeriods.map(cp => (
                 <SelectItem key={cp.id} value={cp.id}>{cp.title || cp.course?.title || cp.first_name}</SelectItem>
@@ -532,7 +534,7 @@ export function TeacherAssignments() {
             </SelectContent>
           </Select>
           <Select value={selectedMp} onValueChange={setSelectedMp}>
-            <SelectTrigger className="w-full bg-white h-8"><SelectValue placeholder="Marking Period" /></SelectTrigger>
+            <SelectTrigger className="w-full bg-white h-8"><SelectValue placeholder={t("markingPeriod")} /></SelectTrigger>
             <SelectContent>
               {markingPeriods.map(mp => (
                 <SelectItem key={mp.id} value={mp.id}>{mp.title}</SelectItem>
@@ -551,13 +553,13 @@ export function TeacherAssignments() {
           
           {/* List 1: Assignment Types */}
           <div className="w-[300px]">
-            <div className="text-xs text-slate-500 mb-1">{assignmentTypes.length} assignment type{assignmentTypes.length !== 1 ? 's' : ''} was found.</div>
+            <div className="text-xs text-slate-500 mb-1">{t("assignmentTypesFound", { count: assignmentTypes.length })}</div>
             <div className="border rounded bg-white shadow-sm overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-slate-50 border-b">
-                    <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs">Assignment Type</td>
-                    <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs text-right">Order</td>
+                    <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs">{t("assignmentType")}</td>
+                    <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs text-right">{t("order")}</td>
                   </tr>
                 </thead>
                 <tbody>
@@ -584,13 +586,13 @@ export function TeacherAssignments() {
           {/* List 2: Assignments (only visible if a type is selected, per RosarioSIS logic) */}
           {activeType && (
             <div className="w-[350px]">
-              <div className="text-xs text-slate-500 mb-1">{filteredAssignments.length} assignment{filteredAssignments.length !== 1 ? 's' : ''} was found.</div>
+              <div className="text-xs text-slate-500 mb-1">{t("assignmentsFound", { count: filteredAssignments.length })}</div>
               <div className="border rounded bg-white shadow-sm overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-slate-50 border-b">
-                      <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs">Assignment</td>
-                      <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs text-right">Points</td>
+                      <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs">{t("assignment")}</td>
+                      <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs text-right">{t("points")}</td>
                     </tr>
                   </thead>
                   <tbody>

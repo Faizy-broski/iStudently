@@ -1,5 +1,6 @@
 "use client"
 
+import { useTranslations } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -16,6 +17,7 @@ const fetcher = async (url: string) => {
 
 export default function SubjectsPage() {
   const { profile } = useAuth()
+  const t = useTranslations('teacherPages.subjects')
   
   const { data: assignments, isLoading, error } = useSWR<TeacherSubjectAssignment[]>(
     profile?.staff_id ? `teacher-assignments|${profile.staff_id}` : null,
@@ -24,7 +26,7 @@ export default function SubjectsPage() {
   )
 
   if (error) {
-    toast.error(error.message || 'Failed to load subjects')
+    toast.error(error.message || t('loadError'))
   }
 
   // Group assignments by subject
@@ -52,9 +54,9 @@ export default function SubjectsPage() {
     <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">My Subjects</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">{t('pageTitle')}</h1>
         <p className="text-muted-foreground mt-1">
-          Subjects you teach across different sections
+          {t('pageSubtitle')}
         </p>
       </div>
 
@@ -66,7 +68,7 @@ export default function SubjectsPage() {
               <BookOpen className="h-6 w-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Total Subjects</p>
+              <p className="text-sm text-muted-foreground">{t('totalSubjects')}</p>
               <p className="text-2xl font-bold">{Object.keys(groupedBySubject).length}</p>
             </div>
           </div>
@@ -78,7 +80,7 @@ export default function SubjectsPage() {
               <Users className="h-6 w-6 text-green-600" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Total Sections</p>
+              <p className="text-sm text-muted-foreground">{t('totalSections')}</p>
               <p className="text-2xl font-bold">{(assignments || []).length}</p>
             </div>
           </div>
@@ -90,7 +92,7 @@ export default function SubjectsPage() {
               <Clock className="h-6 w-6 text-purple-600" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Active Assignments</p>
+              <p className="text-sm text-muted-foreground">{t('activeAssignments')}</p>
               <p className="text-2xl font-bold">{(assignments || []).filter(a => a.is_primary).length}</p>
             </div>
           </div>
@@ -101,9 +103,9 @@ export default function SubjectsPage() {
       {Object.keys(groupedBySubject).length === 0 ? (
         <Card className="p-12 text-center">
           <BookOpen className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-xl font-semibold mb-2">No Subjects Assigned</h3>
+          <h3 className="text-xl font-semibold mb-2">{t('noSubjectsTitle')}</h3>
           <p className="text-muted-foreground">
-            You haven't been assigned to teach any subjects yet.
+            {t('noSubjectsDescription')}
           </p>
         </Card>
       ) : (
@@ -116,22 +118,22 @@ export default function SubjectsPage() {
                   <div>
                     <h2 className="text-xl font-bold text-brand-blue flex items-center gap-2">
                       <BookOpen className="h-5 w-5" />
-                      {subject?.name || 'Unknown Subject'}
+                      {subject?.name || t('unknownSubject')}
                     </h2>
                     {subject?.code && (
                       <p className="text-sm text-muted-foreground mt-1">
-                        Code: {subject.code}
+                        {t('codeLabel', { code: subject.code })}
                       </p>
                     )}
                   </div>
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm">
                       <FileText className="h-4 w-4 mr-2" />
-                      Syllabus
+                      {t('syllabus')}
                     </Button>
                     <Button variant="outline" size="sm">
                       <LinkIcon className="h-4 w-4 mr-2" />
-                      Resources
+                      {t('resources')}
                     </Button>
                   </div>
                 </div>
@@ -141,7 +143,7 @@ export default function SubjectsPage() {
               <div className="p-6">
                 <h3 className="font-semibold mb-4 flex items-center gap-2">
                   <Users className="h-4 w-4" />
-                  Teaching Sections ({sections.length})
+                  {t('teachingSections', { count: sections.length })}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {sections.map((assignment) => (
@@ -155,35 +157,35 @@ export default function SubjectsPage() {
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <h4 className="font-semibold">
-                            {assignment.section?.name || 'Unknown Section'}
+                            {assignment.section?.name || t('unknownSection')}
                           </h4>
                           {assignment.is_primary && (
                             <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
-                              Primary
+                              {t('primary')}
                             </span>
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          {assignment.section?.grade_level?.name || 'Unknown Grade'}
+                          {assignment.section?.grade_level?.name || t('unknownGrade')}
                         </p>
                         <div className="pt-2 flex gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
+                          <Button
+                            variant="outline"
+                            size="sm"
                             className="flex-1"
-                            onClick={() => toast.info('Feature coming soon')}
+                            onClick={() => toast.info(t('featureComingSoon'))}
                           >
                             <FileText className="h-3 w-3 mr-1" />
-                            Lesson Plan
+                            {t('lessonPlan')}
                           </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
+                          <Button
+                            variant="outline"
+                            size="sm"
                             className="flex-1"
-                            onClick={() => toast.info('Feature coming soon')}
+                            onClick={() => toast.info(t('featureComingSoon'))}
                           >
                             <Users className="h-3 w-3 mr-1" />
-                            Students
+                            {t('students')}
                           </Button>
                         </div>
                       </div>

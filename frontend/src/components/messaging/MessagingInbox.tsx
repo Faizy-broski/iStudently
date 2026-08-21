@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { messagingApi, type MessageListItem, type ThreadMessage, type MessageView } from "@/lib/api/messaging"
 import { useMessagingNotifications } from "@/context/MessagingNotificationContext"
@@ -33,11 +34,11 @@ interface MessagingInboxProps {
   writeHref: string
 }
 
-const VIEWS: { key: MessageView; label: string; icon: typeof Inbox }[] = [
-  { key: "inbox", label: "Unread", icon: Inbox },
-  { key: "read", label: "Read", icon: MailOpen },
-  { key: "archived", label: "Archived", icon: Archive },
-  { key: "sent", label: "Sent", icon: SendIcon },
+const VIEW_KEYS: { key: MessageView; labelKey: "unread" | "read" | "archived" | "sent"; icon: typeof Inbox }[] = [
+  { key: "inbox", labelKey: "unread", icon: Inbox },
+  { key: "read", labelKey: "read", icon: MailOpen },
+  { key: "archived", labelKey: "archived", icon: Archive },
+  { key: "sent", labelKey: "sent", icon: SendIcon },
 ]
 
 function getInitials(name?: string | null): string {
@@ -59,6 +60,7 @@ function Avatar({ name }: { name?: string | null }) {
 }
 
 export function MessagingInbox({ writeHref }: MessagingInboxProps) {
+  const t = useTranslations("teacherPages.messaging")
   const router = useRouter()
   const searchParams = useSearchParams()
   const [view, setView] = useState<MessageView>("inbox")
@@ -109,7 +111,7 @@ export function MessagingInbox({ writeHref }: MessagingInboxProps) {
     if (res.success && res.data) {
       setThread(res.data.messages)
     } else {
-      toast.error(res.error || "Failed to load message")
+      toast.error(res.error || t('failedToLoadMessage'))
       setOpenMessageId(null)
     }
     fetchMessages()
@@ -131,11 +133,11 @@ export function MessagingInbox({ writeHref }: MessagingInboxProps) {
   const handleArchive = async (id: string) => {
     const res = await messagingApi.archiveMessage(id)
     if (res.success) {
-      toast.success("Message archived")
+      toast.success(t('messageArchived'))
       closeThread()
       fetchMessages()
     } else {
-      toast.error(res.error || "Failed to archive message")
+      toast.error(res.error || t('failedToArchiveMessage'))
     }
   }
 
@@ -143,7 +145,7 @@ export function MessagingInbox({ writeHref }: MessagingInboxProps) {
     if (!deleteTarget) return
     const res = await messagingApi.deleteMessage(deleteTarget)
     if (res.success) {
-      toast.success("Message deleted")
+      toast.success(t('messageDeleted'))
       const remaining = thread?.filter((m) => m.id !== deleteTarget) || []
       setDeleteTarget(null)
       if (remaining.length === 0) {
@@ -155,7 +157,7 @@ export function MessagingInbox({ writeHref }: MessagingInboxProps) {
         openThread(remaining[0].id)
       }
     } else {
-      toast.error(res.error || "You are not allowed to delete this message")
+      toast.error(res.error || t('notAllowedToDelete'))
       setDeleteTarget(null)
     }
   }
@@ -184,7 +186,7 @@ export function MessagingInbox({ writeHref }: MessagingInboxProps) {
         <CardContent className="p-0">
           <div className="flex items-center justify-between px-6 py-3 border-b bg-muted/30">
             <Button variant="ghost" size="sm" onClick={closeThread}>
-              <ArrowLeft className="h-4 w-4 mr-1.5" /> Back
+              <ArrowLeft className="h-4 w-4 mr-1.5" /> {t('back')}
             </Button>
             <div className="flex items-center gap-2">
               {canReply && (
@@ -196,12 +198,12 @@ export function MessagingInbox({ writeHref }: MessagingInboxProps) {
                     goToReply(last.id, other.sender_profile_id, other.sender_name, last.subject)
                   }}
                 >
-                  <Reply className="h-3.5 w-3.5 mr-1.5" /> Reply
+                  <Reply className="h-3.5 w-3.5 mr-1.5" /> {t('reply')}
                 </Button>
               )}
               {last.status !== "sent" && last.status !== "archived" && (
                 <Button variant="outline" size="sm" onClick={() => handleArchive(last.id)}>
-                  <Archive className="h-3.5 w-3.5 mr-1.5" /> Archive
+                  <Archive className="h-3.5 w-3.5 mr-1.5" /> {t('archive')}
                 </Button>
               )}
             </div>
@@ -216,13 +218,13 @@ export function MessagingInbox({ writeHref }: MessagingInboxProps) {
                     <div className="min-w-0">
                       <p className="text-sm">
                         <span className="font-semibold">{m.sender_name}</span>
-                        {m.is_own && <span className="text-muted-foreground"> (you)</span>}
+                        {m.is_own && <span className="text-muted-foreground"> {t('you')}</span>}
                       </p>
                       <p className="text-xs text-muted-foreground">{new Date(m.created_at).toLocaleString()}</p>
                     </div>
                   </div>
                   {m.can_delete && (
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0" onClick={() => setDeleteTarget(m.id)} title="Delete message">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0" onClick={() => setDeleteTarget(m.id)} title={t('deleteMessage')}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   )}
@@ -257,14 +259,14 @@ export function MessagingInbox({ writeHref }: MessagingInboxProps) {
         <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete this message?</AlertDialogTitle>
+              <AlertDialogTitle>{t('deleteThisMessage')}</AlertDialogTitle>
               <AlertDialogDescription>
-                This permanently deletes the message for all recipients. This cannot be undone.
+                {t('deleteMessageWarning')}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+              <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete}>{t('delete')}</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
@@ -277,9 +279,9 @@ export function MessagingInbox({ writeHref }: MessagingInboxProps) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <Tabs value={view} onValueChange={(v) => setView(v as MessageView)}>
           <TabsList>
-            {VIEWS.map(({ key, label, icon: Icon }) => (
+            {VIEW_KEYS.map(({ key, labelKey, icon: Icon }) => (
               <TabsTrigger key={key} value={key} className="relative">
-                <Icon className="h-3.5 w-3.5 mr-1.5" /> {label}
+                <Icon className="h-3.5 w-3.5 mr-1.5" /> {t(labelKey)}
                 {key === "inbox" && unreadCount > 0 && (
                   <Badge className="ml-1.5 h-5 min-w-5 px-1.5 justify-center">
                     {unreadCount > 99 ? "99+" : unreadCount}
@@ -291,7 +293,7 @@ export function MessagingInbox({ writeHref }: MessagingInboxProps) {
         </Tabs>
         <Button asChild size="sm">
           <Link href={writeHref}>
-            <PenSquare className="h-3.5 w-3.5 mr-1.5" /> Write
+            <PenSquare className="h-3.5 w-3.5 mr-1.5" /> {t('write')}
           </Link>
         </Button>
       </div>
@@ -302,7 +304,7 @@ export function MessagingInbox({ writeHref }: MessagingInboxProps) {
           <Input
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search messages..."
+            placeholder={t('searchMessagesPlaceholder')}
             className="pl-8 h-9"
           />
         </div>
@@ -311,25 +313,25 @@ export function MessagingInbox({ writeHref }: MessagingInboxProps) {
           size="sm"
           className="h-9"
           onClick={() => setSortOrder((o) => (o === "desc" ? "asc" : "desc"))}
-          title={sortOrder === "desc" ? "Newest first" : "Oldest first"}
+          title={sortOrder === "desc" ? t('newestFirst') : t('oldestFirst')}
         >
           {sortOrder === "desc" ? (
             <ArrowDownWideNarrow className="h-3.5 w-3.5 mr-1.5" />
           ) : (
             <ArrowUpNarrowWide className="h-3.5 w-3.5 mr-1.5" />
           )}
-          {sortOrder === "desc" ? "Newest first" : "Oldest first"}
+          {sortOrder === "desc" ? t('newestFirst') : t('oldestFirst')}
         </Button>
       </div>
 
       <Card className="overflow-hidden">
         <CardContent className="p-0">
           {loading ? (
-            <div className="text-center py-14 text-muted-foreground text-sm">Loading...</div>
+            <div className="text-center py-14 text-muted-foreground text-sm">{t('loading')}</div>
           ) : items.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-14 text-muted-foreground">
               <Mail className="h-8 w-8 opacity-40" />
-              <span className="text-sm">{search ? "No messages match your search" : "No messages"}</span>
+              <span className="text-sm">{search ? t('noMessagesMatchSearch') : t('noMessages')}</span>
             </div>
           ) : (
             <div className="divide-y">
@@ -366,7 +368,7 @@ export function MessagingInbox({ writeHref }: MessagingInboxProps) {
                         size="icon"
                         className="h-8 w-8 opacity-0 group-hover:opacity-100 shrink-0"
                         onClick={(e) => handleQuickReply(e, item)}
-                        title="Reply"
+                        title={t('reply')}
                       >
                         <Reply className="h-4 w-4" />
                       </Button>

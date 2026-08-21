@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import useSWR from 'swr'
 import { useCampus } from '@/context/CampusContext'
 import { getCoursePeriods, getStudentsForGrades, generateReportCards } from '@/lib/api/grades'
@@ -16,6 +17,7 @@ import { Loader2, FileText, Users, Award, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function TeacherReportCardsPage() {
+  const t = useTranslations('teacherPages.reportCards')
   const campusContext = useCampus()
   const campusId = campusContext?.selectedCampus?.id
 
@@ -61,7 +63,7 @@ export default function TeacherReportCardsPage() {
 
   const handleGenerate = async () => {
     if (!selectedMPId || selectedStudents.length === 0) {
-      toast.warning('Please select a marking period and at least one student')
+      toast.warning(t('selectMpAndStudent'))
       return
     }
     setGenerating(true)
@@ -72,12 +74,12 @@ export default function TeacherReportCardsPage() {
         include_student_photo: includePhoto
       })
       if (res.success) {
-        toast.success(`Report cards generated for ${selectedStudents.length} student(s)`)
+        toast.success(t('reportCardsGenerated', { count: selectedStudents.length }))
       } else {
-        toast.error(res.error || 'Failed to generate report cards')
+        toast.error(res.error || t('generateReportCardsFailed'))
       }
     } catch {
-      toast.error('Failed to generate report cards')
+      toast.error(t('generateReportCardsFailed'))
     } finally {
       setGenerating(false)
     }
@@ -86,34 +88,34 @@ export default function TeacherReportCardsPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Report Cards</h1>
-        <p className="text-muted-foreground mt-1">Generate and review student report cards</p>
+        <h1 className="text-3xl font-bold">{t('pageTitle')}</h1>
+        <p className="text-muted-foreground mt-1">{t('pageSubtitle')}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardContent className="p-4 space-y-3">
             <div className="space-y-1">
-              <label className="text-sm font-medium">Course Period (optional filter)</label>
+              <label className="text-sm font-medium">{t('coursePeriodOptionalFilter')}</label>
               <Select value={selectedCPId || 'all'} onValueChange={v => { setSelectedCPId(v === 'all' ? '' : v); setSelectedStudents([]) }}>
                 <SelectTrigger>
-                  <SelectValue placeholder="All my classes" />
+                  <SelectValue placeholder={t('allMyClasses')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All my classes</SelectItem>
+                  <SelectItem value="all">{t('allMyClasses')}</SelectItem>
                   {coursePeriods.map((cp: any) => (
                     <SelectItem key={cp.id} value={cp.id}>
-                      {cp.course?.title || 'Unnamed Course'}
+                      {cp.course?.title || t('unnamedCourse')}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-medium">Marking Period <span className="text-red-500">*</span></label>
+              <label className="text-sm font-medium">{t('markingPeriod')} <span className="text-red-500">*</span></label>
               <Select value={selectedMPId} onValueChange={setSelectedMPId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select marking period" />
+                  <SelectValue placeholder={t('selectMarkingPeriod')} />
                 </SelectTrigger>
                 <SelectContent>
                   {markingPeriods.map((mp: any) => (
@@ -128,7 +130,7 @@ export default function TeacherReportCardsPage() {
                 checked={includePhoto}
                 onCheckedChange={v => setIncludePhoto(Boolean(v))}
               />
-              <label htmlFor="include-photo" className="text-sm cursor-pointer">Include student photo</label>
+              <label htmlFor="include-photo" className="text-sm cursor-pointer">{t('includeStudentPhoto')}</label>
             </div>
           </CardContent>
         </Card>
@@ -136,10 +138,10 @@ export default function TeacherReportCardsPage() {
         <Card className="flex flex-col justify-between">
           <CardContent className="p-4">
             <h3 className="font-semibold flex items-center gap-2 mb-3">
-              <Award className="h-4 w-4" /> Generate Report Cards
+              <Award className="h-4 w-4" /> {t('generateReportCards')}
             </h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Select a marking period and students, then generate their report cards.
+              {t('generateReportCardsHint')}
             </p>
             <Button
               className="w-full"
@@ -147,8 +149,8 @@ export default function TeacherReportCardsPage() {
               disabled={!selectedMPId || selectedStudents.length === 0 || generating}
             >
               {generating
-                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating...</>
-                : <><FileText className="h-4 w-4 mr-2" /> Generate for {selectedStudents.length} student(s)</>
+                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {t('generatingEllipsis')}</>
+                : <><FileText className="h-4 w-4 mr-2" /> {t('generateForStudents', { count: selectedStudents.length })}</>
               }
             </Button>
           </CardContent>
@@ -160,13 +162,13 @@ export default function TeacherReportCardsPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" /> Students
+              <Users className="h-5 w-5" /> {t('students')}
             </CardTitle>
             {students.length > 0 && (
               <div className="flex items-center gap-2">
-                <Badge variant="outline">{selectedStudents.length} selected</Badge>
+                <Badge variant="outline">{t('selectedCount', { count: selectedStudents.length })}</Badge>
                 <Button variant="outline" size="sm" onClick={toggleAll}>
-                  {selectedStudents.length === students.length ? 'Deselect All' : 'Select All'}
+                  {selectedStudents.length === students.length ? t('deselectAll') : t('selectAll')}
                 </Button>
               </div>
             )}
@@ -176,8 +178,8 @@ export default function TeacherReportCardsPage() {
           {!selectedCPId ? (
             <div className="text-center py-8 text-muted-foreground">
               <FileText className="h-10 w-10 mx-auto mb-2" />
-              <p>Select a course period to filter students, or select all below</p>
-              <p className="text-xs mt-1">A marking period is required to generate report cards</p>
+              <p>{t('selectCoursePeriodHint')}</p>
+              <p className="text-xs mt-1">{t('markingPeriodRequiredHint')}</p>
             </div>
           ) : studentsLoading ? (
             <div className="flex justify-center py-8">
@@ -186,7 +188,7 @@ export default function TeacherReportCardsPage() {
           ) : students.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <AlertCircle className="h-10 w-10 mx-auto mb-2" />
-              <p>No students found for this class</p>
+              <p>{t('noStudentsForClass')}</p>
             </div>
           ) : (
             <div className="divide-y">

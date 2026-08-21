@@ -16,6 +16,7 @@ import * as examsApi from '@/lib/api/exams'
 import * as teachersApi from '@/lib/api/teachers'
 import * as academicsApi from '@/lib/api/academics'
 import { Exam, ExamResult, TeacherSubjectAssignment, Section, Subject } from '@/types'
+import { useTranslations } from 'next-intl'
 
 // SWR fetchers
 const examsFetcher = async (url: string) => {
@@ -43,6 +44,7 @@ const subjectsFetcher = async () => {
 }
 
 export default function ExamsPage() {
+  const t = useTranslations('teacherPages.exams')
   const { profile } = useAuth()
   
   // Use SWR for data fetching
@@ -109,7 +111,7 @@ export default function ExamsPage() {
   const handleCreateExam = async () => {
     if (!profile?.staff_id || !profile?.school_id) return
     if (!createForm.exam_type_id || !createForm.section_id || !createForm.subject_id || !createForm.exam_name) {
-      toast.error('Please fill all required fields')
+      toast.error(t('fillRequiredFields'))
       return
     }
 
@@ -131,7 +133,7 @@ export default function ExamsPage() {
         is_published: true
       })
       
-      toast.success('Exam created successfully')
+      toast.success(t('examCreated'))
       setIsCreateOpen(false)
       setCreateForm({
         exam_type_id: '',
@@ -146,7 +148,7 @@ export default function ExamsPage() {
       mutateExams()
     } catch (error: any) {
       console.error('Error creating exam:', error)
-      toast.error(error.message || 'Failed to create exam')
+      toast.error(error.message || t('createExamFailed'))
     }
   }
 
@@ -158,7 +160,7 @@ export default function ExamsPage() {
       setIsGradingOpen(true)
     } catch (error: any) {
       console.error('Error loading exam results:', error)
-      toast.error(error.message || 'Failed to load exam results')
+      toast.error(error.message || t('loadResultsFailed'))
     }
   }
 
@@ -174,7 +176,7 @@ export default function ExamsPage() {
   const handleSaveMarks = async () => {
     if (!markingStudent || !profile?.id) return
     if (!marksForm.is_absent && !marksForm.marks) {
-      toast.error('Please enter marks or mark as absent')
+      toast.error(t('enterMarksOrAbsent'))
       return
     }
 
@@ -188,12 +190,12 @@ export default function ExamsPage() {
         marked_by: profile.id
       })
       
-      toast.success('Marks recorded successfully')
+      toast.success(t('marksRecorded'))
       setMarkingStudent(null)
       handleOpenGrading(selectedExam!) // Reload results
     } catch (error: any) {
       console.error('Error recording marks:', error)
-      toast.error(error.message || 'Failed to record marks')
+      toast.error(error.message || t('recordMarksFailed'))
     }
   }
 
@@ -204,7 +206,7 @@ export default function ExamsPage() {
     // Get unique grade levels
     const uniqueGrades = Array.from(
       new Map(teacherSections.map(s => [s.grade_level_id, s.grade_level])).entries()
-    ).map(([id, grade]) => ({ id, name: grade?.name || 'Unknown' }))
+    ).map(([id, grade]) => ({ id, name: grade?.name || t('unknown') }))
     
     return uniqueGrades
   }
@@ -244,8 +246,8 @@ export default function ExamsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">Exams & Grading</h1>
-          <p className="text-muted-foreground mt-1">Manage exams and record student marks</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">{t('pageTitle')}</h1>
+          <p className="text-muted-foreground mt-1">{t('pageSubtitle')}</p>
         </div>
         <Button
           onClick={() => setIsCreateOpen(true)}
@@ -253,7 +255,7 @@ export default function ExamsPage() {
           className="text-white"
         >
           <Plus className="h-4 w-4 mr-2" />
-          Create Exam
+          {t('createExam')}
         </Button>
       </div>
 
@@ -265,7 +267,7 @@ export default function ExamsPage() {
               <FileText className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Total Exams</p>
+              <p className="text-sm text-muted-foreground">{t('totalExams')}</p>
               <p className="text-xl font-bold">{stats.total}</p>
             </div>
           </div>
@@ -276,7 +278,7 @@ export default function ExamsPage() {
               <Clock className="h-5 w-5 text-orange-600" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Upcoming</p>
+              <p className="text-sm text-muted-foreground">{t('upcoming')}</p>
               <p className="text-xl font-bold">{stats.upcoming}</p>
             </div>
           </div>
@@ -287,7 +289,7 @@ export default function ExamsPage() {
               <CheckCircle className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Completed</p>
+              <p className="text-sm text-muted-foreground">{t('completed')}</p>
               <p className="text-xl font-bold">{stats.completed}</p>
             </div>
           </div>
@@ -298,7 +300,7 @@ export default function ExamsPage() {
               <Award className="h-5 w-5 text-purple-600" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Pending</p>
+              <p className="text-sm text-muted-foreground">{t('pending')}</p>
               <p className="text-xl font-bold">{stats.pending}</p>
             </div>
           </div>
@@ -308,20 +310,20 @@ export default function ExamsPage() {
       {/* Exams Tabs */}
       <Tabs defaultValue="all" className="w-full">
         <TabsList>
-          <TabsTrigger value="all">All Exams</TabsTrigger>
-          <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
+          <TabsTrigger value="all">{t('allExams')}</TabsTrigger>
+          <TabsTrigger value="upcoming">{t('upcoming')}</TabsTrigger>
+          <TabsTrigger value="completed">{t('completed')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="all" className="space-y-3 mt-4">
           {(exams || []).length === 0 ? (
             <Card className="p-12 text-center">
               <Award className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No Exams Yet</h3>
-              <p className="text-muted-foreground mb-4">Create your first exam to get started</p>
+              <h3 className="text-xl font-semibold mb-2">{t('noExamsYet')}</h3>
+              <p className="text-muted-foreground mb-4">{t('createFirstExamHint')}</p>
               <Button onClick={() => setIsCreateOpen(true)} style={{ background: 'var(--gradient-blue)' }} className="text-white">
                 <Plus className="h-4 w-4 mr-2" />
-                Create Exam
+                {t('createExam')}
               </Button>
             </Card>
           ) : (
@@ -333,7 +335,7 @@ export default function ExamsPage() {
                       <h3 className="font-semibold">{exam.exam_name}</h3>
                       {exam.is_completed && (
                         <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">
-                          Completed
+                          {t('completed')}
                         </span>
                       )}
                     </div>
@@ -341,12 +343,12 @@ export default function ExamsPage() {
                       <span>{exam.section?.name} - {exam.subject?.name}</span>
                       <span>{exam.exam_type?.name}</span>
                       {exam.exam_date && <span>{new Date(exam.exam_date).toLocaleDateString()}</span>}
-                      <span>Max: {exam.max_marks} | Pass: {exam.passing_marks}</span>
+                      <span>{t('maxPassLabel', { max: exam.max_marks, pass: exam.passing_marks })}</span>
                     </div>
                   </div>
                   <Button onClick={() => handleOpenGrading(exam)}>
                     <Award className="h-4 w-4 mr-2" />
-                    Grade
+                    {t('grade')}
                   </Button>
                 </div>
               </Card>
@@ -364,7 +366,7 @@ export default function ExamsPage() {
                     {exam.section?.name} - {exam.subject?.name} | {exam.exam_date && new Date(exam.exam_date).toLocaleDateString()}
                   </p>
                 </div>
-                <Button onClick={() => handleOpenGrading(exam)}>Grade</Button>
+                <Button onClick={() => handleOpenGrading(exam)}>{t('grade')}</Button>
               </div>
             </Card>
           ))}
@@ -380,7 +382,7 @@ export default function ExamsPage() {
                     {exam.section?.name} - {exam.subject?.name}
                   </p>
                 </div>
-                <Button variant="outline" onClick={() => handleOpenGrading(exam)}>View Results</Button>
+                <Button variant="outline" onClick={() => handleOpenGrading(exam)}>{t('viewResults')}</Button>
               </div>
             </Card>
           ))}
@@ -391,14 +393,14 @@ export default function ExamsPage() {
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Create New Exam</DialogTitle>
+            <DialogTitle>{t('createNewExam')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium mb-2 block">Exam Type *</label>
+                <label className="text-sm font-medium mb-2 block">{t('examType')} *</label>
                 <Select value={createForm.exam_type_id} onValueChange={(v) => setCreateForm({...createForm, exam_type_id: v})}>
-                  <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t('selectType')} /></SelectTrigger>
                   <SelectContent>
                     {(examTypes || []).map(type => (
                       <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
@@ -407,9 +409,9 @@ export default function ExamsPage() {
                 </Select>
               </div>
               <div>
-                <label className="text-sm font-medium mb-2 block">Grade Level *</label>
+                <label className="text-sm font-medium mb-2 block">{t('gradeLevel')} *</label>
                 <Select value={createForm.grade_level_id} onValueChange={(v) => setCreateForm({...createForm, grade_level_id: v, section_id: '', subject_id: ''})}>
-                  <SelectTrigger><SelectValue placeholder="Select grade" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t('selectGrade')} /></SelectTrigger>
                   <SelectContent>
                     {getTeacherGradeLevels().map(grade => (
                       <SelectItem key={grade.id} value={grade.id}>{grade.name}</SelectItem>
@@ -420,9 +422,9 @@ export default function ExamsPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium mb-2 block">Section *</label>
+                <label className="text-sm font-medium mb-2 block">{t('section')} *</label>
                 <Select value={createForm.section_id} onValueChange={(v) => setCreateForm({...createForm, section_id: v, subject_id: ''})} disabled={!createForm.grade_level_id}>
-                  <SelectTrigger><SelectValue placeholder="Select section" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t('selectSection')} /></SelectTrigger>
                   <SelectContent>
                     {getSectionsForGrade().map(section => (
                       <SelectItem key={section.id} value={section.id}>{section.name}</SelectItem>
@@ -431,9 +433,9 @@ export default function ExamsPage() {
                 </Select>
               </div>
               <div>
-                <label className="text-sm font-medium mb-2 block">Subject *</label>
+                <label className="text-sm font-medium mb-2 block">{t('subject')} *</label>
                 <Select value={createForm.subject_id} onValueChange={(v) => setCreateForm({...createForm, subject_id: v})} disabled={!createForm.section_id}>
-                  <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t('selectSubject')} /></SelectTrigger>
                   <SelectContent>
                     {getAvailableSubjects().map(subject => (
                       <SelectItem key={subject.id} value={subject.id}>{subject.name}</SelectItem>
@@ -443,27 +445,27 @@ export default function ExamsPage() {
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium mb-2 block">Exam Name *</label>
-              <Input value={createForm.exam_name} onChange={(e) => setCreateForm({...createForm, exam_name: e.target.value})} placeholder="e.g., Midterm Exam 2026" />
+              <label className="text-sm font-medium mb-2 block">{t('examName')} *</label>
+              <Input value={createForm.exam_name} onChange={(e) => setCreateForm({...createForm, exam_name: e.target.value})} placeholder={t('examNamePlaceholder')} />
             </div>
             <div>
-              <label className="text-sm font-medium mb-2 block">Exam Date</label>
+              <label className="text-sm font-medium mb-2 block">{t('examDate')}</label>
               <Input type="date" value={createForm.exam_date} onChange={(e) => setCreateForm({...createForm, exam_date: e.target.value})} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium mb-2 block">Max Marks *</label>
+                <label className="text-sm font-medium mb-2 block">{t('maxMarks')} *</label>
                 <Input type="number" value={createForm.max_marks} onChange={(e) => setCreateForm({...createForm, max_marks: e.target.value})} />
               </div>
               <div>
-                <label className="text-sm font-medium mb-2 block">Passing Marks *</label>
+                <label className="text-sm font-medium mb-2 block">{t('passingMarks')} *</label>
                 <Input type="number" value={createForm.passing_marks} onChange={(e) => setCreateForm({...createForm, passing_marks: e.target.value})} />
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreateExam} style={{ background: 'var(--gradient-blue)' }} className="text-white">Create Exam</Button>
+            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>{t('cancel')}</Button>
+            <Button onClick={handleCreateExam} style={{ background: 'var(--gradient-blue)' }} className="text-white">{t('createExam')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -472,7 +474,7 @@ export default function ExamsPage() {
       <Dialog open={isGradingOpen} onOpenChange={setIsGradingOpen}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{selectedExam?.exam_name} - Grade Students</DialogTitle>
+            <DialogTitle>{t('gradeStudentsTitle', { examName: selectedExam?.exam_name || '' })}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             {examResults.map(result => (
@@ -484,20 +486,20 @@ export default function ExamsPage() {
                     </h4>
                     <div className="flex items-center gap-4 mt-1 text-sm">
                       {result.is_absent ? (
-                        <span className="text-red-600 font-medium">Absent</span>
+                        <span className="text-red-600 font-medium">{t('absent')}</span>
                       ) : result.marks_obtained !== null ? (
                         <>
-                          <span>Marks: {result.marks_obtained}/{selectedExam?.max_marks}</span>
-                          <span>Grade: {result.grade}</span>
-                          <span>Percentage: {result.percentage?.toFixed(2)}%</span>
+                          <span>{t('marksLabel', { marks: result.marks_obtained, max: selectedExam?.max_marks })}</span>
+                          <span>{t('gradeLabel', { grade: result.grade })}</span>
+                          <span>{t('percentageLabel', { percentage: result.percentage?.toFixed(2) })}</span>
                         </>
                       ) : (
-                        <span className="text-muted-foreground">Not graded yet</span>
+                        <span className="text-muted-foreground">{t('notGradedYet')}</span>
                       )}
                     </div>
                   </div>
                   <Button size="sm" onClick={() => handleMarkStudent(result)}>
-                    {result.marks_obtained !== null || result.is_absent ? 'Edit' : 'Mark'}
+                    {result.marks_obtained !== null || result.is_absent ? t('edit') : t('mark')}
                   </Button>
                 </div>
               </Card>
@@ -510,7 +512,7 @@ export default function ExamsPage() {
       <Dialog open={!!markingStudent} onOpenChange={() => setMarkingStudent(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Record Marks - {markingStudent?.student?.profile?.first_name} {markingStudent?.student?.profile?.last_name}</DialogTitle>
+            <DialogTitle>{t('recordMarksTitle', { name: `${markingStudent?.student?.profile?.first_name || ''} ${markingStudent?.student?.profile?.last_name || ''}`.trim() })}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="flex items-center gap-2">
@@ -521,33 +523,33 @@ export default function ExamsPage() {
                 onChange={(e) => setMarksForm({...marksForm, is_absent: e.target.checked, marks: ''})}
                 className="h-4 w-4"
               />
-              <label htmlFor="absent" className="text-sm font-medium">Mark as Absent</label>
+              <label htmlFor="absent" className="text-sm font-medium">{t('markAsAbsent')}</label>
             </div>
             {!marksForm.is_absent && (
               <div>
-                <label className="text-sm font-medium mb-2 block">Marks Obtained *</label>
+                <label className="text-sm font-medium mb-2 block">{t('marksObtained')} *</label>
                 <Input
                   type="number"
                   step="0.01"
                   value={marksForm.marks}
                   onChange={(e) => setMarksForm({...marksForm, marks: e.target.value})}
-                  placeholder={`Out of ${selectedExam?.max_marks}`}
+                  placeholder={t('outOf', { max: selectedExam?.max_marks })}
                 />
               </div>
             )}
             <div>
-              <label className="text-sm font-medium mb-2 block">Remarks</label>
+              <label className="text-sm font-medium mb-2 block">{t('remarks')}</label>
               <Textarea
                 value={marksForm.remarks}
                 onChange={(e) => setMarksForm({...marksForm, remarks: e.target.value})}
-                placeholder="Optional feedback"
+                placeholder={t('optionalFeedback')}
                 rows={3}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setMarkingStudent(null)}>Cancel</Button>
-            <Button onClick={handleSaveMarks} style={{ background: 'var(--gradient-blue)' }} className="text-white">Save Marks</Button>
+            <Button variant="outline" onClick={() => setMarkingStudent(null)}>{t('cancel')}</Button>
+            <Button onClick={handleSaveMarks} style={{ background: 'var(--gradient-blue)' }} className="text-white">{t('saveMarks')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

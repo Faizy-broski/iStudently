@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { SchoolSettingsController } from '../controllers/school-settings.controller'
 import { authenticate } from '../middlewares/auth.middleware'
-import { requireRole } from '../middlewares/role.middleware'
+import { requireRole, requireSuperAdmin } from '../middlewares/role.middleware'
 
 const router = Router()
 const controller = new SchoolSettingsController()
@@ -141,6 +141,23 @@ router.get('/custom-menu-order', requireRole('admin', 'super_admin'), (req, res)
  */
 router.put('/custom-menu-order', requireRole('admin', 'super_admin'), (req, res) =>
   controller.updateCustomMenuOrder(req, res)
+)
+
+/**
+ * GET /api/school-settings/allowed-modules?school_id=xxx
+ * Super-admin only: read the module allow-list for any school
+ */
+router.get('/allowed-modules', requireSuperAdmin, (req, res) =>
+  controller.getAllowedModules(req, res)
+)
+
+/**
+ * PUT /api/school-settings/allowed-modules
+ * Super-admin only: set the module allow-list for any school.
+ * Body: { school_id, allowed_modules: string[] | null }
+ */
+router.put('/allowed-modules', requireSuperAdmin, (req, res) =>
+  controller.updateAllowedModules(req, res)
 )
 
 export default router

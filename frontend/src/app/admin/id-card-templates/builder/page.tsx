@@ -53,6 +53,8 @@ import {
 import { toast } from 'sonner';
 import Image from 'next/image';
 import QRCode from 'react-qr-code';
+import { FontFamilySelect } from '@/components/shared/FontFamilySelect';
+import { useLoadDesignFonts } from '@/config/design-fonts';
 
 interface AvailableToken {
   token: string;
@@ -71,12 +73,14 @@ interface DraggableField {
   style?: {
     fontSize?: number;
     fontWeight?: string;
+    fontFamily?: string;
     color?: string;
     align?: string;
   };
 }
 
 export default function TemplateBuilderPage() {
+  useLoadDesignFonts();
   const router = useRouter();
   const searchParams = useSearchParams();
   const userType = (searchParams?.get('type') || 'student') as 'student' | 'teacher' | 'staff';
@@ -601,6 +605,21 @@ export default function TemplateBuilderPage() {
                             </div>
 
                             <div>
+                              <Label>Font Family</Label>
+                              <FontFamilySelect
+                                value={selectedFieldData.style?.fontFamily}
+                                onValueChange={(v) =>
+                                  updateField(selectedField!, {
+                                    style: {
+                                      ...selectedFieldData.style,
+                                      fontFamily: v === 'default' ? undefined : v,
+                                    },
+                                  })
+                                }
+                              />
+                            </div>
+
+                            <div>
                               <Label>Text Color</Label>
                               <div className="flex gap-2">
                                 <Input
@@ -950,6 +969,7 @@ export default function TemplateBuilderPage() {
                         height: `${field.size.height}px`,
                         fontSize: field.style?.fontSize ? `${field.style.fontSize}px` : '14px',
                         fontWeight: field.style?.fontWeight || 'normal',
+                        fontFamily: field.style?.fontFamily || undefined,
                         color: field.style?.color || '#000000',
                         textAlign: (field.style?.align as any) || 'left',
                         display: 'flex',

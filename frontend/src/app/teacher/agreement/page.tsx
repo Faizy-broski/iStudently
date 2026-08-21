@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react'
 import { getMyAgreement, type AgreementItem } from '@/lib/api/user-agreement'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { FileText, Loader2 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 export default function TeacherAgreementPage() {
+  const t = useTranslations('teacherPages.agreement')
   const [agreements, setAgreements] = useState<AgreementItem[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -24,8 +26,8 @@ export default function TeacherAgreementPage() {
       <div className="flex items-center gap-3">
         <FileText className="h-6 w-6 text-[#022172]" />
         <div>
-          <h1 className="text-2xl font-bold text-[#022172] dark:text-white">Agreement</h1>
-          <p className="text-muted-foreground text-sm">School agreement and terms</p>
+          <h1 className="text-2xl font-bold text-[#022172] dark:text-white">{t('pageTitle')}</h1>
+          <p className="text-muted-foreground text-sm">{t('pageSubtitle')}</p>
         </div>
       </div>
 
@@ -36,14 +38,14 @@ export default function TeacherAgreementPage() {
       ) : agreements.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">No agreement has been configured by the administrator.</p>
+            <p className="text-muted-foreground">{t('noAgreementConfigured')}</p>
           </CardContent>
         </Card>
       ) : (
         agreements.map((item) => (
           <Card key={item.id}>
             <CardHeader>
-              <CardTitle>{item.title || 'School Agreement'}</CardTitle>
+              <CardTitle>{item.title || t('schoolAgreement')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div

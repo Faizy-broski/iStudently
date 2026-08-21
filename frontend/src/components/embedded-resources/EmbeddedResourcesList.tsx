@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { Globe, ExternalLink, Loader2, AlertTriangle, Search, X, ChevronDown } from 'lucide-react'
 import { Input } from '@/components/ui/input'
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function EmbeddedResourcesList({ role, gradeId }: Props) {
+  const t = useTranslations('teacherPages.resourcesEmbedded')
   const [resources, setResources] = useState<embeddedApi.EmbeddedResource[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -29,7 +31,7 @@ export default function EmbeddedResourcesList({ role, gradeId }: Props) {
       if (res.success && res.data) {
         setResources(res.data)
       } else {
-        setError(res.error || 'Failed to load resources')
+        setError(res.error || t('failedToLoadResources'))
       }
       setLoading(false)
     }
@@ -129,8 +131,8 @@ export default function EmbeddedResourcesList({ role, gradeId }: Props) {
           <Globe className="h-6 w-6 text-blue-600" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Embedded Resources</h1>
-          <p className="text-sm text-gray-500">External websites and tools from your school</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('pageTitle')}</h1>
+          <p className="text-sm text-gray-500">{t('pageSubtitle')}</p>
         </div>
       </div>
 
@@ -143,7 +145,7 @@ export default function EmbeddedResourcesList({ role, gradeId }: Props) {
             <Input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search resources by title..."
+              placeholder={t('searchByTitle')}
               className="pl-9 h-9"
             />
             {search && (
@@ -164,7 +166,7 @@ export default function EmbeddedResourcesList({ role, gradeId }: Props) {
                 onChange={e => setSelectedGrade(e.target.value)}
                 className="w-full h-9 appearance-none rounded-md border border-input bg-background px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                <option value="all">All Grades</option>
+                <option value="all">{t('allGrades')}</option>
                 {gradeOptions.map(g => (
                   <option key={g.id} value={g.id}>{g.name}</option>
                 ))}
@@ -181,7 +183,7 @@ export default function EmbeddedResourcesList({ role, gradeId }: Props) {
                 onChange={e => setSelectedTeacher(e.target.value)}
                 className="w-full h-9 appearance-none rounded-md border border-input bg-background px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                <option value="all">All Teachers</option>
+                <option value="all">{t('allTeachers')}</option>
                 {teacherOptions.map(name => (
                   <option key={name} value={name}>{name}</option>
                 ))}
@@ -197,10 +199,10 @@ export default function EmbeddedResourcesList({ role, gradeId }: Props) {
               onChange={e => setSortBy(e.target.value as any)}
               className="w-full h-9 appearance-none rounded-md border border-input bg-background px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              <option value="title_asc">Title (A-Z)</option>
-              <option value="title_desc">Title (Z-A)</option>
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
+              <option value="title_asc">{t('titleAZ')}</option>
+              <option value="title_desc">{t('titleZA')}</option>
+              <option value="newest">{t('newestFirst')}</option>
+              <option value="oldest">{t('oldestFirst')}</option>
             </select>
             <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
           </div>
@@ -212,7 +214,7 @@ export default function EmbeddedResourcesList({ role, gradeId }: Props) {
               className="flex items-center gap-1.5 px-3 h-9 text-sm font-medium text-red-600 hover:text-red-700 border border-red-200 rounded-md hover:bg-red-50 transition-colors shrink-0"
             >
               <X className="h-3.5 w-3.5" />
-              Clear
+              {t('clear')}
             </button>
           )}
         </div>
@@ -220,12 +222,12 @@ export default function EmbeddedResourcesList({ role, gradeId }: Props) {
         {/* Active filter summary */}
         {hasActiveFilters && (
           <p className="text-xs text-muted-foreground">
-            Showing {filtered.length} of {resources.length} resource{resources.length !== 1 ? 's' : ''}
+            {t('showingXOfYResources', { filtered: filtered.length, total: resources.length })}
             {selectedGrade !== 'all' && (
-              <> · Grade: <span className="font-medium">{gradeOptions.find(g => g.id === selectedGrade)?.name}</span></>
+              <> · {t('gradeLabel')}: <span className="font-medium">{gradeOptions.find(g => g.id === selectedGrade)?.name}</span></>
             )}
             {selectedTeacher !== 'all' && (
-              <> · Teacher: <span className="font-medium">{selectedTeacher}</span></>
+              <> · {t('teacherLabel')}: <span className="font-medium">{selectedTeacher}</span></>
             )}
           </p>
         )}
@@ -236,14 +238,14 @@ export default function EmbeddedResourcesList({ role, gradeId }: Props) {
         <div className="text-center py-16 text-gray-400">
           <Globe className="h-12 w-12 mx-auto mb-3 opacity-30" />
           <p className="font-medium">
-            {hasActiveFilters ? 'No resources match your filters' : 'No embedded resources available'}
+            {hasActiveFilters ? t('noResourcesMatchFilters') : t('noEmbeddedResourcesAvailable')}
           </p>
           {hasActiveFilters && (
             <button
               onClick={clearFilters}
               className="mt-3 text-sm text-blue-600 hover:underline"
             >
-              Clear filters
+              {t('clearFilters')}
             </button>
           )}
         </div>
@@ -283,7 +285,7 @@ export default function EmbeddedResourcesList({ role, gradeId }: Props) {
                 )}
                 {/* Creator */}
                 {r.creator_name && (
-                  <p className="text-[10px] text-gray-400 mt-1.5">By {r.creator_name}</p>
+                  <p className="text-[10px] text-gray-400 mt-1.5">{t('byCreator', { name: r.creator_name })}</p>
                 )}
               </div>
               <ExternalLink className="h-4 w-4 text-gray-300 group-hover:text-blue-500 shrink-0 transition-colors mt-1" />

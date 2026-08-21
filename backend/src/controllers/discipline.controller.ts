@@ -811,3 +811,95 @@ export async function getParentReferrals(req: AuthRequest, res: Response): Promi
   }
 }
 
+/**
+ * GET /api/discipline/superadmin/referrals
+ * Most recent discipline referrals across every school, for the platform
+ * super_admin's notification bell. super_admin has no staff_id/school_id
+ * of its own, so this can't reuse the staff-scoped endpoint above.
+ */
+export async function getSuperAdminReferrals(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 20, 100);
+
+    const { data: rawData, error } = await supabase
+      .from('discipline_referrals')
+      .select(`
+        *,
+        students ( id, student_number, profile:profiles(first_name, last_name) ),
+        reporter:profiles!discipline_referrals_reporter_id_fkey ( id, first_name, last_name ),
+        school:schools ( id, name )
+      `)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    let data = rawData;
+    if (data && Array.isArray(data)) {
+      data = data.map((r: any) => {
+        if (r.reporter && r.reporter.first_name !== undefined) {
+          r.reporter.full_name = `${r.reporter.first_name || ''} ${r.reporter.last_name || ''}`.trim();
+        }
+        return r;
+      });
+    }
+
+    res.json({ data });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+/**
+ * GET /api/discipline/admin/referrals
+ * Most recent discipline referrals for the whole school (any reporter —
+ * admin, teacher, counselor, etc.), for the admin/counselor notification
+ * bell. Unlike getStaffReferrals above, this is NOT limited to referrals
+ * the current user personally filed — a teacher filing a referral must
+ * notify the admin, not just show up in the teacher's own list.
+ */
+export async function getAdminReferrals(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const schoolId = resolveQuerySchoolId(req as Request);
+    if (!schoolId) {
+      res.status(400).json({ error: 'school_id is required' });
+      return;
+    }
+
+    const limit = Math.min(Number(req.query.limit) || 20, 100);
+
+    const { data: rawData, error } = await supabase
+      .from('discipline_referrals')
+      .select(`
+        *,
+        students ( id, student_number, profile:profiles(first_name, last_name) ),
+        reporter:profiles!discipline_referrals_reporter_id_fkey ( id, first_name, last_name )
+      `)
+      .eq('school_id', schoolId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      res.status(500).json({ error: error.message });
+      return;
+    }
+
+    let data = rawData;
+    if (data && Array.isArray(data)) {
+      data = data.map((r: any) => {
+        if (r.reporter && r.reporter.first_name !== undefined) {
+          r.reporter.full_name = `${r.reporter.first_name || ''} ${r.reporter.last_name || ''}`.trim();
+        }
+        return r;
+      });
+    }
+
+    res.json({ data });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+}
+

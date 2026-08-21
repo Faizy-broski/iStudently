@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { schoolApi } from "@/lib/api/schools";
-import { createClient } from "@/lib/supabase/client";
+import { uploadImage } from "@/lib/api/media-upload";
 import {
   Loader2,
   Upload,
@@ -209,24 +209,17 @@ export default function EditSchoolModal({
   const uploadLogoToSupabase = async (file: File): Promise<string | null> => {
     try {
       setUploadingLogo(true);
-      const supabase = createClient();
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${school.slug}-${Date.now()}.${fileExt}`;
-
-      const { error } = await supabase.storage
-        .from("school-logos")
-        .upload(fileName, file, { cacheControl: "3600", upsert: false });
-
-      if (error) {
-        toast.error("Logo upload failed", { description: error.message });
+      // Routed through the backend (same path the Login Page logo upload
+      // uses) instead of uploading straight from the browser to the
+      // "school-logos" bucket — that bucket has no storage policies in this
+      // repo, so a direct client upload as super_admin was failing silently
+      // against Supabase Storage RLS.
+      const result = await uploadImage(file);
+      if (!result.success || !result.data) {
+        toast.error("Logo upload failed", { description: result.error || "Unknown error" });
         return null;
       }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("school-logos")
-        .getPublicUrl(fileName);
-
-      return publicUrl;
+      return result.data.url;
     } catch (error: any) {
       toast.error("Error uploading logo", { description: error.message });
       return null;

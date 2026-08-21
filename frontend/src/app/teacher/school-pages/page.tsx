@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { getMyPages, type CustomLink } from '@/lib/api/public-pages'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -80,6 +81,7 @@ function PageCard({ page }: { page: CustomLink }) {
 }
 
 export default function SchoolPagesPage() {
+  const t = useTranslations('teacherPages.schoolPages')
   const [pages, setPages] = useState<CustomLink[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -92,8 +94,8 @@ export default function SchoolPagesPage() {
   return (
     <div className="container max-w-3xl mx-auto px-4 py-6 space-y-4">
       <div>
-        <h1 className="text-2xl font-bold">School Pages</h1>
-        <p className="text-sm text-muted-foreground mt-1">Resources and information shared by your school.</p>
+        <h1 className="text-2xl font-bold">{t('pageTitle')}</h1>
+        <p className="text-sm text-muted-foreground mt-1">{t('pageDescription')}</p>
       </div>
 
       {loading ? (
@@ -102,7 +104,7 @@ export default function SchoolPagesPage() {
         </div>
       ) : pages.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground text-sm">
-          No pages published yet.
+          {t('noPagesYet')}
         </div>
       ) : (
         <div className="space-y-4">

@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { onboardSchool, schoolApi } from "@/lib/api/schools";
 import { SchoolLogo } from "@/components/shared/SchoolLogo";
 import { handleApiError } from "@/lib/utils/error-handler";
-import { createClient } from "@/lib/supabase/client";
+import { uploadImage } from "@/lib/api/media-upload";
 import { billingPlansApi, BillingPlan, calculateBillingAmount, calculateDueDate } from "@/lib/api/billing";
 import { CURRENCY_OPTIONS } from "@/lib/api/school-settings";
 import { Loader2, Building2, User, Mail, Lock, Globe, MapPin, Check, Upload, X, DollarSign, Calendar, FileText, Eye, EyeOff, Clock } from "lucide-react";
@@ -223,36 +223,20 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
     setLogoPreview(null);
   };
 
-  const uploadLogoToSupabase = async (file: File, schoolSlug: string): Promise<string | null> => {
+  const uploadLogoToSupabase = async (file: File): Promise<string | null> => {
     try {
       setUploadingLogo(true);
-      const supabase = createClient();
-      
-      // Create unique filename
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${schoolSlug}-${Date.now()}.${fileExt}`;
-      
-      // Upload to Supabase Storage
-      const { data, error } = await supabase.storage
-        .from('school-logos')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-      
-      if (error) {
-        toast.error("Failed to upload logo", {
-          description: error.message
-        });
+      // Routed through the backend (same path the Login Page logo upload
+      // uses) instead of uploading straight from the browser to the
+      // "school-logos" bucket — that bucket has no storage policies in this
+      // repo, so a direct client upload as super_admin was failing silently
+      // against Supabase Storage RLS.
+      const result = await uploadImage(file);
+      if (!result.success || !result.data) {
+        toast.error("Failed to upload logo", { description: result.error || "Unknown error" });
         return null;
       }
-      
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('school-logos')
-        .getPublicUrl(fileName);
-      
-      return publicUrl;
+      return result.data.url;
     } catch (error: any) {
       toast.error("Upload error", {
         description: error.message || "Unknown error occurred"
@@ -321,7 +305,7 @@ export default function OnboardSchoolForm({ onSuccess, isSubmitting, setIsSubmit
       // Upload logo if provided
       let logoUrl: string | null = null;
       if (logoFile) {
-        logoUrl = await uploadLogoToSupabase(logoFile, data.schoolSlug);
+        logoUrl = await uploadLogoToSupabase(logoFile);
         if (!logoUrl) {
           toast.error("Logo upload failed", {
             description: "Proceeding without logo. You can add it later."

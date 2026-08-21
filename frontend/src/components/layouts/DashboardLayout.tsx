@@ -265,6 +265,28 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
       }
     }
 
+    // 4.5. Filter out modules the super admin has not allowed for this school
+    // (allow-list of module_keys/hrefs; null/unset = unrestricted)
+    const allowedModules = settings?.allowed_modules
+    if (allowedModules) {
+      const allowedSet = new Set(allowedModules)
+      items = items
+        .map((item) => {
+          if (!item.subItems || item.subItems.length === 0) return item
+          const filteredSubs = item.subItems.filter(
+            (sub) => sub.isLabel || sub.href === '#' || allowedSet.has(sub.href)
+          )
+          return { ...item, subItems: filteredSubs }
+        })
+        .filter((item) => {
+          if (item.subItems) {
+            const nonLabels = item.subItems.filter((s) => !s.isLabel && s.href !== '#')
+            return nonLabels.length > 0
+          }
+          return allowedSet.has(item.href)
+        })
+    }
+
     // 5. Filter items by user profile permissions (only when a profile is assigned)
     if (permissions !== null) {
       items = items

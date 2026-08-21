@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 import { ExternalLink, AlertTriangle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import * as embeddedApi from '@/lib/api/embedded-resources'
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function EmbedResourceViewer({ id }: Props) {
+  const t = useTranslations('teacherPages.resourcesEmbeddedDetail')
   const campusCtx = useCampus()
   const campusId = campusCtx?.selectedCampus?.id
 
@@ -26,7 +28,7 @@ export default function EmbedResourceViewer({ id }: Props) {
       if (res.success && res.data) {
         setResource(res.data)
       } else {
-        setError(res.error || 'Resource not found')
+        setError(res.error || t('resourceNotFound'))
       }
       setLoading(false)
     }
@@ -45,7 +47,7 @@ export default function EmbedResourceViewer({ id }: Props) {
     return (
       <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-4 text-gray-500">
         <AlertTriangle className="h-10 w-10 text-yellow-500" />
-        <p className="text-lg font-medium">{error || 'Resource not found'}</p>
+        <p className="text-lg font-medium">{error || t('resourceNotFound')}</p>
       </div>
     )
   }
@@ -62,15 +64,17 @@ export default function EmbedResourceViewer({ id }: Props) {
         <div className="flex flex-col items-center justify-center flex-1 gap-4 p-8 text-center">
           <AlertTriangle className="h-10 w-10 text-yellow-500" />
           <div>
-            <p className="font-semibold text-gray-700 mb-1">This website cannot be embedded</p>
+            <p className="font-semibold text-gray-700 mb-1">{t('cannotBeEmbedded')}</p>
             <p className="text-sm text-gray-500 mb-4">
-              The website at <span className="font-mono text-xs">{resource.url}</span> has blocked
-              embedding for security reasons.
+              {t.rich('blockedForSecurity', {
+                url: (chunks) => <span className="font-mono text-xs">{chunks}</span>,
+                siteUrl: resource.url,
+              })}
             </p>
             <Button asChild variant="outline" size="sm">
               <a href={resource.url} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="h-4 w-4 mr-1.5" />
-                Open in new tab instead
+                {t('openInNewTabInstead')}
               </a>
             </Button>
           </div>

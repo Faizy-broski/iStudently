@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import { useTranslations } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,6 +17,7 @@ import { type TeacherSubjectAssignment } from '@/lib/api/teachers'
 const fetcher = async () => teachersApi.getTeacherAssignments()
 
 export default function ReportsPage() {
+  const t = useTranslations('teacherPages.reports')
   const { profile } = useAuth()
   const campusContext = useCampus()
   const campusId = campusContext?.selectedCampus?.id
@@ -75,21 +77,21 @@ export default function ReportsPage() {
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold">Class Reports</h1>
+        <h1 className="text-2xl md:text-3xl font-bold">{t('pageTitle')}</h1>
         <p className="text-muted-foreground mt-1">
-          View attendance and performance reports for your classes
+          {t('pageSubtitle')}
         </p>
       </div>
 
       {/* Filters */}
       <Card className="p-6 space-y-4">
-        <h2 className="text-lg font-semibold">Report Filters</h2>
+        <h2 className="text-lg font-semibold">{t('reportFilters')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="text-sm font-medium mb-2 block">Select Section</label>
+            <label className="text-sm font-medium mb-2 block">{t('selectSection')}</label>
             <Select value={selectedSection} onValueChange={setSelectedSection}>
               <SelectTrigger>
-                <SelectValue placeholder="Choose a section" />
+                <SelectValue placeholder={t('chooseASection')} />
               </SelectTrigger>
               <SelectContent>
                 {uniqueSections.map(assignment => (
@@ -101,7 +103,7 @@ export default function ReportsPage() {
             </Select>
           </div>
           <div>
-            <label className="text-sm font-medium mb-2 block">From Date</label>
+            <label className="text-sm font-medium mb-2 block">{t('fromDate')}</label>
             <input
               type="date"
               value={dateRange.from}
@@ -110,7 +112,7 @@ export default function ReportsPage() {
             />
           </div>
           <div>
-            <label className="text-sm font-medium mb-2 block">To Date</label>
+            <label className="text-sm font-medium mb-2 block">{t('toDate')}</label>
             <input
               type="date"
               value={dateRange.to}
@@ -126,7 +128,7 @@ export default function ReportsPage() {
             className="gap-2"
           >
             <BarChart3 className="h-4 w-4" />
-            Generate Attendance Report
+            {t('generateAttendanceReport')}
           </Button>
         </div>
       </Card>
@@ -146,21 +148,21 @@ export default function ReportsPage() {
                   <CardContent className="p-4 text-center">
                     <Users className="h-5 w-5 mx-auto text-primary mb-1" />
                     <p className="text-2xl font-bold">{rows.length}</p>
-                    <p className="text-xs text-muted-foreground">Students</p>
+                    <p className="text-xs text-muted-foreground">{t('students')}</p>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="p-4 text-center">
                     <Calendar className="h-5 w-5 mx-auto text-blue-500 mb-1" />
                     <p className="text-2xl font-bold">{rows[0]?.total_days || 0}</p>
-                    <p className="text-xs text-muted-foreground">School Days</p>
+                    <p className="text-xs text-muted-foreground">{t('schoolDays')}</p>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="p-4 text-center">
                     <CheckCircle className="h-5 w-5 mx-auto text-green-500 mb-1" />
                     <p className="text-2xl font-bold">{avgAttendance !== null ? `${avgAttendance}%` : '—'}</p>
-                    <p className="text-xs text-muted-foreground">Avg Attendance</p>
+                    <p className="text-xs text-muted-foreground">{t('avgAttendance')}</p>
                   </CardContent>
                 </Card>
                 <Card>
@@ -169,7 +171,7 @@ export default function ReportsPage() {
                     <p className="text-2xl font-bold">
                       {rows.filter(r => r.attendance_percentage < 75).length}
                     </p>
-                    <p className="text-xs text-muted-foreground">Below 75%</p>
+                    <p className="text-xs text-muted-foreground">{t('below75Percent')}</p>
                   </CardContent>
                 </Card>
               </div>
@@ -180,7 +182,7 @@ export default function ReportsPage() {
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
-                  Attendance Report
+                  {t('attendanceReport')}
                   {selectedAssignment && (
                     <span className="text-muted-foreground font-normal text-sm ml-1">
                       — {selectedAssignment.section?.name}
@@ -192,19 +194,19 @@ export default function ReportsPage() {
                 {rows.length === 0 ? (
                   <div className="text-center py-12">
                     <AlertCircle className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-muted-foreground">No attendance data for the selected period</p>
+                    <p className="text-muted-foreground">{t('noAttendanceDataForPeriod')}</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b">
-                          <th className="text-left py-2 pr-4 font-medium">Student</th>
-                          <th className="text-center py-2 px-3 font-medium">Present</th>
-                          <th className="text-center py-2 px-3 font-medium">Absent</th>
-                          <th className="text-center py-2 px-3 font-medium">Total Days</th>
-                          <th className="text-center py-2 px-3 font-medium">Attendance %</th>
-                          <th className="text-center py-2 px-3 font-medium">Status</th>
+                          <th className="text-left py-2 pr-4 font-medium">{t('student')}</th>
+                          <th className="text-center py-2 px-3 font-medium">{t('present')}</th>
+                          <th className="text-center py-2 px-3 font-medium">{t('absent')}</th>
+                          <th className="text-center py-2 px-3 font-medium">{t('totalDays')}</th>
+                          <th className="text-center py-2 px-3 font-medium">{t('attendancePercent')}</th>
+                          <th className="text-center py-2 px-3 font-medium">{t('status')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -247,9 +249,9 @@ export default function ReportsPage() {
                                       : 'border-red-400 text-red-600'
                                   }`}
                                 >
-                                  {row.attendance_percentage >= 90 ? 'Good'
-                                    : row.attendance_percentage >= 75 ? 'At Risk'
-                                    : 'Critical'}
+                                  {row.attendance_percentage >= 90 ? t('good')
+                                    : row.attendance_percentage >= 75 ? t('atRisk')
+                                    : t('critical')}
                                 </Badge>
                               </td>
                             </tr>
@@ -269,9 +271,9 @@ export default function ReportsPage() {
                     <TrendingUp className="h-5 w-5 text-green-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold mb-1">Performance Report</h3>
+                    <h3 className="font-semibold mb-1">{t('performanceReport')}</h3>
                     <p className="text-sm text-muted-foreground">
-                      Academic grades and exam results report coming soon.
+                      {t('performanceReportComingSoon')}
                     </p>
                   </div>
                 </div>
@@ -282,9 +284,9 @@ export default function ReportsPage() {
                     <BarChart3 className="h-5 w-5 text-purple-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold mb-1">Assignment Report</h3>
+                    <h3 className="font-semibold mb-1">{t('assignmentReport')}</h3>
                     <p className="text-sm text-muted-foreground">
-                      Assignment submission and completion report coming soon.
+                      {t('assignmentReportComingSoon')}
                     </p>
                   </div>
                 </div>

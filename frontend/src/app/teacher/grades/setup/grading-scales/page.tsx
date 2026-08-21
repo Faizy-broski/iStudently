@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Scale, ChevronDown, ChevronRight } from "lucide-react";
@@ -8,6 +9,7 @@ import { useGradingScales, useGradingScaleGrades } from "@/hooks/useGradingScale
 import type { GradingScale } from "@/lib/api/teacher-setup";
 
 function ScaleRow({ scale }: { scale: GradingScale }) {
+  const t = useTranslations("teacherPages.gradingScales");
   const [open, setOpen] = useState(false);
   const { grades, loading } = useGradingScaleGrades(open ? scale.id : null);
 
@@ -21,10 +23,10 @@ function ScaleRow({ scale }: { scale: GradingScale }) {
           {open ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
           <span className="font-medium text-gray-800">{scale.title}</span>
           {scale.is_default && (
-            <Badge className="bg-blue-100 text-blue-700 text-xs">Default</Badge>
+            <Badge className="bg-blue-100 text-blue-700 text-xs">{t("default")}</Badge>
           )}
         </div>
-        <span className="text-xs text-muted-foreground">View grades</span>
+        <span className="text-xs text-muted-foreground">{t("viewGrades")}</span>
       </button>
 
       {open && (
@@ -34,17 +36,17 @@ function ScaleRow({ scale }: { scale: GradingScale }) {
               <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
             </div>
           ) : grades.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-2">No grade entries defined.</p>
+            <p className="text-sm text-muted-foreground text-center py-2">{t("noGradeEntriesDefined")}</p>
           ) : (
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-xs text-muted-foreground uppercase tracking-wide border-b border-gray-200">
-                  <th className="text-left py-1 pr-4">Letter</th>
-                  <th className="text-left py-1 pr-4">Title</th>
-                  <th className="text-right py-1 pr-4">Min %</th>
-                  <th className="text-right py-1 pr-4">Max %</th>
-                  <th className="text-right py-1 pr-4">GPA</th>
-                  <th className="text-center py-1">Passing</th>
+                  <th className="text-left py-1 pr-4">{t("letter")}</th>
+                  <th className="text-left py-1 pr-4">{t("title")}</th>
+                  <th className="text-right py-1 pr-4">{t("minPercent")}</th>
+                  <th className="text-right py-1 pr-4">{t("maxPercent")}</th>
+                  <th className="text-right py-1 pr-4">{t("gpa")}</th>
+                  <th className="text-center py-1">{t("passing")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -57,9 +59,9 @@ function ScaleRow({ scale }: { scale: GradingScale }) {
                     <td className="py-1.5 pr-4 text-right text-gray-600">{g.gpa_value?.toFixed(2)}</td>
                     <td className="py-1.5 text-center">
                       {g.is_passing ? (
-                        <Badge className="bg-green-100 text-green-700 text-xs">Yes</Badge>
+                        <Badge className="bg-green-100 text-green-700 text-xs">{t("yes")}</Badge>
                       ) : (
-                        <Badge className="bg-red-100 text-red-700 text-xs">No</Badge>
+                        <Badge className="bg-red-100 text-red-700 text-xs">{t("no")}</Badge>
                       )}
                     </td>
                   </tr>
@@ -74,6 +76,7 @@ function ScaleRow({ scale }: { scale: GradingScale }) {
 }
 
 export default function TeacherGradingScalesPage() {
+  const t = useTranslations("teacherPages.gradingScales");
   const { scales, loading, error } = useGradingScales();
 
   return (
@@ -81,16 +84,16 @@ export default function TeacherGradingScalesPage() {
       <div className="flex items-center gap-3">
         <Scale className="h-6 w-6 text-blue-600" />
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Grading Scales</h1>
+          <h1 className="text-2xl font-bold text-gray-800">{t("pageTitle")}</h1>
           <p className="text-sm text-muted-foreground">
-            School-wide scales configured by your administrator — read only.
+            {t("pageSubtitle")}
           </p>
         </div>
       </div>
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Active Scales</CardTitle>
+          <CardTitle className="text-base">{t("activeScales")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {loading ? (
@@ -101,7 +104,7 @@ export default function TeacherGradingScalesPage() {
             <p className="text-sm text-red-500 text-center py-4">{error}</p>
           ) : scales.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">
-              No grading scales have been configured yet.
+              {t("noScalesConfigured")}
             </p>
           ) : (
             scales.map((scale) => <ScaleRow key={scale.id} scale={scale} />)

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -39,6 +40,7 @@ interface StudentFinalGradeRow {
 }
 
 export function InputFinalGrades() {
+  const t = useTranslations("teacherPages.inputFinalGrades");
   const { user, profile } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
@@ -133,7 +135,7 @@ export function InputFinalGrades() {
           student_number: student.student_number,
           student_name: student.profile
             ? `${student.profile.first_name} ${student.profile.last_name}`
-            : "Unknown Student",
+            : t("unknownStudent"),
           letter_grade: existing?.letter_grade ?? "N/A",
           percent: existing?.percent_grade != null ? String(existing.percent_grade) : "",
           comment: existing?.comment ?? "",
@@ -189,11 +191,11 @@ export function InputFinalGrades() {
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
-      
-      toast.success("Successfully imported from Gradebook");
+
+      toast.success(t("importedFromGradebook"));
       // refresh grades (would refetch the endpoint here)
     } catch (err: any) {
-      toast.error(err.message || "Failed to import grades");
+      toast.error(err.message || t("importGradesFailed"));
     }
   };
 
@@ -222,12 +224,12 @@ export function InputFinalGrades() {
       );
       const failed = results.filter((r) => !r.success);
       if (failed.length > 0) {
-        toast.error(`Failed to save ${failed.length} of ${students.length} grades`);
+        toast.error(t("saveFailedCount", { failed: failed.length, total: students.length }));
       } else {
-        toast.success("Final grades saved successfully!");
+        toast.success(t("saveSuccess"));
       }
     } catch (err: any) {
-      toast.error("Failed to save final grades");
+      toast.error(t("saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -248,7 +250,7 @@ export function InputFinalGrades() {
         <div className="flex items-center gap-2">
           <Award className="h-8 w-8 text-amber-500" />
           <h1 className="text-3xl font-bold bg-linear-to-r from-amber-500 to-amber-700 bg-clip-text text-transparent">
-            Input Final Grades
+            {t("pageTitle")}
           </h1>
         </div>
 
@@ -256,7 +258,7 @@ export function InputFinalGrades() {
           <div className="flex items-center gap-4">
             <Select value={selectedCp} onValueChange={setSelectedCp}>
               <SelectTrigger className="w-[200px] h-8 bg-white">
-                <SelectValue placeholder="Course Period" />
+                <SelectValue placeholder={t("coursePeriod")} />
               </SelectTrigger>
               <SelectContent>
                 {coursePeriods.map((cp) => (
@@ -269,7 +271,7 @@ export function InputFinalGrades() {
 
             <Select value={selectedMp} onValueChange={setSelectedMp}>
               <SelectTrigger className="w-[180px] h-8 bg-white">
-                <SelectValue placeholder="Marking Period" />
+                <SelectValue placeholder={t("markingPeriod")} />
               </SelectTrigger>
               <SelectContent>
                 {markingPeriods.map((mp) => (
@@ -288,24 +290,24 @@ export function InputFinalGrades() {
                 onCheckedChange={(c) => setIncludeInactive(!!c)}
               />
               <label htmlFor="inactive" className="text-sm font-medium">
-                Include Inactive Students
+                {t("includeInactiveStudents")}
               </label>
             </div>
             <Button size="sm" onClick={handleSave} disabled={saving}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "SAVE"}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : t("save")}
             </Button>
           </div>
         </div>
       </div>
 
       <div className="border border-red-200 bg-red-50 p-2 text-sm text-red-600 rounded">
-        <strong>These grades are NOT complete.</strong> | <span className="text-green-700">You can edit these grades.</span> Grade Posting dates: April 15 2026 - November 30 2029
+        <strong>{t("gradesNotComplete")}</strong> | <span className="text-green-700">{t("canEditGrades")}</span> {t("gradePostingDates", { start: "April 15 2026", end: "November 30 2029" })}
       </div>
 
       <div className="text-sm">
-        <button className="text-blue-600 hover:underline" onClick={handleGetGradebookGrades}>Get Gradebook Grades</button>
+        <button className="text-blue-600 hover:underline" onClick={handleGetGradebookGrades}>{t("getGradebookGrades")}</button>
         <span className="mx-2 text-gray-400">|</span>
-        <button className="text-blue-600 hover:underline" onClick={handleClearAll}>Clear All</button>
+        <button className="text-blue-600 hover:underline" onClick={handleClearAll}>{t("clearAll")}</button>
       </div>
 
       <div className="flex items-center space-x-2 text-sm">
@@ -315,27 +317,27 @@ export function InputFinalGrades() {
           onCheckedChange={(c) => setUseMainComments(!!c)}
         />
         <label htmlFor="main-comments" className="font-medium">
-          Use the "Main" Grade Scale Comments
+          {t("useMainGradeScaleComments")}
         </label>
       </div>
 
-      <div className="text-sm text-muted-foreground">{students.length} students were found.</div>
+      <div className="text-sm text-muted-foreground">{t("studentsWereFound", { count: students.length })}</div>
 
       {/* ── Table ── */}
       <div className="border rounded-md bg-white">
         <Table>
           <TableHeader className="bg-slate-50">
             <TableRow>
-              <TableHead className="w-1/3 text-[#4A90E2] font-semibold">STUDENT</TableHead>
-              <TableHead className="w-1/4 text-[#4A90E2] font-semibold">Studently ID</TableHead>
-              <TableHead className="text-[#4A90E2] font-semibold">LETTER PERCENT</TableHead>
+              <TableHead className="w-1/3 text-[#4A90E2] font-semibold">{t("student")}</TableHead>
+              <TableHead className="w-1/4 text-[#4A90E2] font-semibold">{t("studentlyId")}</TableHead>
+              <TableHead className="text-[#4A90E2] font-semibold">{t("letterPercent")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {students.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
-                  No students found in this course period.
+                  {t("noStudentsInCoursePeriod")}
                 </TableCell>
               </TableRow>
             ) : (
@@ -354,10 +356,10 @@ export function InputFinalGrades() {
                         onValueChange={(val) => handleGradeChange(student.student_id, "letter_grade", val)}
                       >
                         <SelectTrigger className="flex-1 bg-white focus:ring-[#4A90E2] border-slate-300">
-                          <SelectValue placeholder="N/A" />
+                          <SelectValue placeholder={t("notApplicable")} />
                         </SelectTrigger>
                         <SelectContent className="max-h-[300px]">
-                          <SelectItem value="N/A">N/A</SelectItem>
+                          <SelectItem value="N/A">{t("notApplicable")}</SelectItem>
                           {gradeScale.map((g) => (
                             <SelectItem key={g.id} value={g.title}>
                               {g.title}
@@ -372,7 +374,7 @@ export function InputFinalGrades() {
                         onChange={(e) => handleGradeChange(student.student_id, "percent", e.target.value)}
                         min="0"
                         max="100"
-                        placeholder="%"
+                        placeholder={t("percentSign")}
                       />
                     </div>
                   </TableCell>
@@ -385,7 +387,7 @@ export function InputFinalGrades() {
 
       <div className="flex justify-center mt-6">
         <Button size="lg" onClick={handleSave} disabled={saving || students.length === 0}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "SAVE"}
+          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : t("save")}
         </Button>
       </div>
     </div>

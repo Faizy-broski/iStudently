@@ -2,6 +2,7 @@
 
 import useSWR from 'swr'
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { getStaffDisciplineReferrals, getDisciplineFieldNameMap, type DisciplineReferral } from '@/lib/api/discipline'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -9,6 +10,7 @@ import { Loader2, ShieldAlert, AlertCircle } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 
 export default function TeacherDisciplineReferralsPage() {
+  const t = useTranslations('teacherPages.disciplineReferrals')
   const { data: referralsRes, isLoading } = useSWR(
     'teacher-referrals-logs',
     () => getStaffDisciplineReferrals(),
@@ -30,8 +32,8 @@ export default function TeacherDisciplineReferralsPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Discipline Referrals</h1>
-        <p className="text-muted-foreground mt-1">View the discipline referrals you have submitted.</p>
+        <h1 className="text-3xl font-bold">{t('pageTitle')}</h1>
+        <p className="text-muted-foreground mt-1">{t('pageDescription')}</p>
       </div>
 
       {isLoading ? (
@@ -42,7 +44,7 @@ export default function TeacherDisciplineReferralsPage() {
         <Card>
           <CardContent className="py-12 text-center">
             <AlertCircle className="h-10 w-10 mx-auto mb-2 text-muted-foreground" />
-            <p className="text-muted-foreground">You have not submitted any discipline referrals.</p>
+            <p className="text-muted-foreground">{t('noReferralsSubmitted')}</p>
           </CardContent>
         </Card>
       ) : (
@@ -55,10 +57,11 @@ export default function TeacherDisciplineReferralsPage() {
 }
 
 function ReferralCard({ referral, fieldNameMap }: { referral: DisciplineReferral; fieldNameMap: Record<string, string> }) {
+  const t = useTranslations('teacherPages.disciplineReferrals')
   const student = (referral as any).students
   const studentName = student
     ? `${student.last_name || ''}, ${student.first_name || ''}`.trim()
-    : 'Unknown Student'
+    : t('unknownStudent')
 
   return (
     <Card>
@@ -69,11 +72,11 @@ function ReferralCard({ referral, fieldNameMap }: { referral: DisciplineReferral
             <div>
               <p className="font-medium">{studentName}</p>
               <p className="text-sm text-muted-foreground">
-                Incident Date: {format(parseISO(referral.incident_date), 'MMMM d, yyyy')}
+                {t('incidentDateLabel', { date: format(parseISO(referral.incident_date), 'MMMM d, yyyy') })}
               </p>
             </div>
           </div>
-          <Badge variant="outline" className="text-xs">Reported by You</Badge>
+          <Badge variant="outline" className="text-xs">{t('reportedByYou')}</Badge>
         </div>
         {referral.field_values && Object.keys(referral.field_values).length > 0 && (
           <div className="mt-3 text-sm text-muted-foreground border-t pt-2 space-y-1">

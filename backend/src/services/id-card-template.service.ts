@@ -188,6 +188,7 @@ interface TemplateConfig {
     style?: {
       fontSize?: number;
       fontWeight?: string;
+      fontFamily?: string;
       color?: string;
       align?: string;
     };

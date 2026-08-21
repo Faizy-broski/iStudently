@@ -49,6 +49,41 @@ function passwordStrength(password: string): { score: number; label: string; col
 
 type PageState = 'loading' | 'invalid' | 'form' | 'success'
 
+// Language toggle — writes the locale cookie directly then hard-reloads.
+// Signup links are shared via copy/paste and are commonly opened in fresh/incognito
+// sessions with no `studently_language` cookie set yet, so the page always falls back
+// to English regardless of what language the admin who generated the link was using.
+// This lets the visitor switch without needing to log in first.
+function LanguageToggle() {
+  const locale = useLocale()
+  const [switching, setSwitching] = React.useState(false)
+
+  function toggle() {
+    const next = locale === 'en' ? 'ar' : 'en'
+    setSwitching(true)
+    const maxAge = 60 * 60 * 24 * 365
+    document.cookie = `studently_language=${next}; path=/; max-age=${maxAge}; samesite=lax`
+    window.location.reload()
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      disabled={switching}
+      className="fixed top-4 end-4 z-50 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white shadow-md border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-50 transition-all disabled:opacity-60 select-none"
+      title={locale === 'en' ? 'Switch to Arabic' : 'التبديل إلى الإنجليزية'}
+    >
+      {switching ? (
+        <Loader2 className="h-3 w-3 animate-spin" />
+      ) : (
+        <span className="text-base leading-none">{locale === 'en' ? '🇸🇦' : '🇬🇧'}</span>
+      )}
+      <span>{locale === 'en' ? 'العربية' : 'English'}</span>
+    </button>
+  )
+}
+
 export default function SignupPage() {
   const params = useParams()
   const router = useRouter()
@@ -200,7 +235,8 @@ export default function SignupPage() {
   // ── INVALID ──────────────────────────────────────────────────────────────────
   if (pageState === 'invalid') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4" dir={isAr ? 'rtl' : 'ltr'}>
+        <LanguageToggle />
         <div className="w-full max-w-sm text-center space-y-4">
           <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto">
             <AlertTriangle className="h-8 w-8 text-red-500" />
@@ -218,7 +254,8 @@ export default function SignupPage() {
   // ── SUCCESS ──────────────────────────────────────────────────────────────────
   if (pageState === 'success') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4" dir={isAr ? 'rtl' : 'ltr'}>
+        <LanguageToggle />
         <div className="w-full max-w-sm text-center space-y-4">
           <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto">
             <CheckCircle2 className="h-10 w-10 text-green-600" />
@@ -247,6 +284,7 @@ export default function SignupPage() {
       )}
       dir={isAr ? 'rtl' : 'ltr'}
     >
+      <LanguageToggle />
       {/* Poster Side */}
       {hasPoster && (
         <div className="hidden lg:flex lg:w-1/2 relative bg-gray-900 border-e border-gray-200">

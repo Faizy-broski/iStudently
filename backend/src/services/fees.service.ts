@@ -429,6 +429,7 @@ class FeesService {
           id,
           student_number,
           grade_level,
+          grade_levels(name),
           profiles!inner(first_name, last_name)
         ),
         fee_structures(

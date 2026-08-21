@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { MessagingController } from '../controllers/messaging.controller'
 import { authenticate } from '../middlewares/auth.middleware'
-import { requireSuperAdmin } from '../middlewares/role.middleware'
+import { requireSuperAdmin, requireAdmin } from '../middlewares/role.middleware'
 
 const router = Router()
 const messagingController = new MessagingController()
@@ -20,6 +20,10 @@ router.delete('/templates/:id', (req, res) => messagingController.deleteTemplate
 // Global delete-window setting — super admin only.
 router.get('/settings', requireSuperAdmin, (req, res) => messagingController.getSettings(req, res))
 router.put('/settings', requireSuperAdmin, (req, res) => messagingController.updateSettings(req, res))
+
+// Teacher messaging whitelist — which staff (besides admins) teachers may message. Admin-only.
+router.get('/teacher-allowed-staff', requireAdmin, (req, res) => messagingController.getTeacherAllowedStaff(req, res))
+router.put('/teacher-allowed-staff', requireAdmin, (req, res) => messagingController.setTeacherAllowedStaff(req, res))
 
 router.get('/:id', (req, res) => messagingController.getThread(req, res))
 router.put('/:id/archive', (req, res) => messagingController.archiveMessage(req, res))

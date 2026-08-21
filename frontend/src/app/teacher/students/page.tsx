@@ -31,8 +31,10 @@ import {
   PaginationNext,
 } from "@/components/ui/pagination";
 import { MoreHorizontal } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export default function TeacherStudentInfoPage() {
+  const t = useTranslations('teacherPages.students');
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [gradeFilter, setGradeFilter] = useState("all");
@@ -59,9 +61,9 @@ export default function TeacherStudentInfoPage() {
   useEffect(() => {
     if (error && hasInitialized) {
       if (error === 'Network error' || error === 'Request cancelled' || error === 'Failed to fetch') return;
-      toast.error(error || 'An error occurred');
+      toast.error(error || t('errorOccurred'));
     }
-  }, [error, hasInitialized]);
+  }, [error, hasInitialized, t]);
 
   const handleViewDetails = (student: Student) => {
     router.push(`/teacher/students/${student.id}`);
@@ -74,9 +76,9 @@ export default function TeacherStudentInfoPage() {
         <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
           <BookOpen className="h-8 w-8 text-muted-foreground" />
         </div>
-        <h2 className="text-xl font-semibold">No Course Periods Assigned</h2>
+        <h2 className="text-xl font-semibold">{t('noCoursePeriodsAssigned')}</h2>
         <p className="text-muted-foreground max-w-sm">
-          You have not been assigned to any course periods yet. Contact your administrator to get course periods assigned to you.
+          {t('noCoursePeriodsAssignedHint')}
         </p>
       </div>
     );
@@ -89,9 +91,9 @@ export default function TeacherStudentInfoPage() {
 
   const getStatusBadge = (status: string) => {
     return status === "active" ? (
-      <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Active</Badge>
+      <Badge className="bg-green-100 text-green-800 hover:bg-green-100">{t('active')}</Badge>
     ) : (
-      <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">Inactive</Badge>
+      <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">{t('inactive')}</Badge>
     );
   };
 
@@ -99,13 +101,13 @@ export default function TeacherStudentInfoPage() {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold bg-linear-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent dark:text-white dark:bg-linear-to-r dark:from-[#57A3CC] dark:to-white">
-          My Students
+          {t('pageTitle')}
         </h1>
         <p className="text-muted-foreground mt-2">
-          Students from your assigned sections
+          {t('pageSubtitle')}
           {sectionCount > 0 && (
             <span className="ml-2 inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-              {sectionCount} section{sectionCount !== 1 ? "s" : ""}
+              {t('sectionsCount', { count: sectionCount })}
             </span>
           )}
         </p>
@@ -119,7 +121,7 @@ export default function TeacherStudentInfoPage() {
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by name, student ID, or email..."
+                placeholder={t('searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                 className="pl-10"
@@ -128,19 +130,19 @@ export default function TeacherStudentInfoPage() {
 
             <Select value={gradeFilter} onValueChange={handleFilterChange(setGradeFilter)}>
               <SelectTrigger className="w-full md:w-45">
-                <SelectValue placeholder="Filter by Grade" />
+                <SelectValue placeholder={t('filterByGrade')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Grades</SelectItem>
-                <SelectItem value="Grade 9">Grade 9</SelectItem>
-                <SelectItem value="Grade 10">Grade 10</SelectItem>
-                <SelectItem value="Grade 11">Grade 11</SelectItem>
-                <SelectItem value="Grade 12">Grade 12</SelectItem>
+                <SelectItem value="all">{t('allGrades')}</SelectItem>
+                <SelectItem value="Grade 9">{t('grade9')}</SelectItem>
+                <SelectItem value="Grade 10">{t('grade10')}</SelectItem>
+                <SelectItem value="Grade 11">{t('grade11')}</SelectItem>
+                <SelectItem value="Grade 12">{t('grade12')}</SelectItem>
               </SelectContent>
             </Select>
 
             <Button variant="outline" onClick={() => { setSearchQuery(""); setGradeFilter("all"); setCurrentPage(1); }}>
-              Clear Filters
+              {t('clearFilters')}
             </Button>
           </div>
         </CardContent>
@@ -149,9 +151,9 @@ export default function TeacherStudentInfoPage() {
       {/* Results Summary */}
       <div className="text-sm text-muted-foreground">
         {loading ? (
-          <span>Loading...</span>
+          <span>{t('loading')}</span>
         ) : (
-          <span>Showing {students.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, total)} of {total} students</span>
+          <span>{t('showingRange', { from: students.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0, to: Math.min(currentPage * itemsPerPage, total), total })}</span>
         )}
       </div>
 
@@ -166,19 +168,19 @@ export default function TeacherStudentInfoPage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10">
-                  <TableHead>Student ID</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Grade</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t('studentId')}</TableHead>
+                  <TableHead>{t('name')}</TableHead>
+                  <TableHead>{t('grade')}</TableHead>
+                  <TableHead>{t('status')}</TableHead>
+                  <TableHead>{t('contact')}</TableHead>
+                  <TableHead className="text-right">{t('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {students.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      No students found matching your criteria
+                      {t('noStudentsFound')}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -202,20 +204,20 @@ export default function TeacherStudentInfoPage() {
                               />
                             ) : (
                               <div className="h-8 w-8 rounded-full bg-linear-to-r from-[#57A3CC] to-[#022172] flex items-center justify-center text-white font-semibold text-sm">
-                                {initials || 'N/A'}
+                                {initials || t('na')}
                               </div>
                             )}
                             <div>
-                              <div className="font-medium">{fullName || 'N/A'}</div>
-                              <div className="text-sm text-muted-foreground">{student.profile?.email || 'No email'}</div>
+                              <div className="font-medium">{fullName || t('na')}</div>
+                              <div className="text-sm text-muted-foreground">{student.profile?.email || t('noEmail')}</div>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>{student.grade_level || 'N/A'}</TableCell>
+                        <TableCell>{student.grade_level || t('na')}</TableCell>
                         <TableCell>{getStatusBadge(student.profile?.is_active ? 'active' : 'inactive')}</TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            <div>{student.profile?.phone || 'No phone'}</div>
+                            <div>{student.profile?.phone || t('noPhone')}</div>
                           </div>
                         </TableCell>
                         <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
@@ -226,11 +228,11 @@ export default function TeacherStudentInfoPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuLabel>{t('actions')}</DropdownMenuLabel>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleViewDetails(student)}>
                                 <Eye className="mr-2 h-4 w-4" />
-                                View Details
+                                {t('viewDetails')}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -248,7 +250,7 @@ export default function TeacherStudentInfoPage() {
       {/* Pagination */}
       <div className="mt-6 flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Showing {students.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, total)} of {total} students
+          {t('showingRange', { from: students.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0, to: Math.min(currentPage * itemsPerPage, total), total })}
         </p>
         {totalPages > 0 && (
           <Pagination>
@@ -256,7 +258,7 @@ export default function TeacherStudentInfoPage() {
               <PaginationItem>
                 <Button variant="outline" size="sm" onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))} disabled={currentPage === 1} className="gap-1">
                   <ChevronLeft className="h-4 w-4" />
-                  Previous
+                  {t('previous')}
                 </Button>
               </PaginationItem>
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
@@ -275,7 +277,7 @@ export default function TeacherStudentInfoPage() {
               })}
               <PaginationItem>
                 <Button variant="outline" size="sm" onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages || totalPages === 0} className="gap-1">
-                  Next
+                  {t('next')}
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </PaginationItem>

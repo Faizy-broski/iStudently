@@ -3,12 +3,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Link2, ExternalLink } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import useSWR from 'swr'
 import { getResourceLinks, type ResourceLink } from '@/lib/api/resource-links'
 
 export default function TeacherResourceLinksPage() {
   useAuth()
+  const t = useTranslations('teacherPages.resources')
 
   const { data: links, isLoading } = useSWR(
     'teacher-resource-links',
@@ -21,10 +23,10 @@ export default function TeacherResourceLinksPage() {
       <div>
         <h1 className="text-2xl md:text-3xl font-bold text-[#022172] dark:text-white flex items-center gap-2">
           <Link2 className="h-7 w-7" />
-          Resources
+          {t('pageTitle')}
         </h1>
         <p className="text-muted-foreground mt-1">
-          Useful links and resources provided by your school.
+          {t('pageSubtitle')}
         </p>
       </div>
 
@@ -32,8 +34,8 @@ export default function TeacherResourceLinksPage() {
         <CardHeader>
           <CardTitle className="text-sm text-muted-foreground">
             {isLoading
-              ? 'Loading...'
-              : `${(links || []).length} resource${(links || []).length !== 1 ? 's' : ''} available.`}
+              ? t('loading')
+              : t('resourcesAvailable', { count: (links || []).length })}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -45,7 +47,7 @@ export default function TeacherResourceLinksPage() {
             </div>
           ) : (links || []).length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
-              No resources available at this time.
+              {t('noResources')}
             </p>
           ) : (
             <div className="space-y-2">

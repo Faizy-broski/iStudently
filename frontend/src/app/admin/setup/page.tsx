@@ -276,8 +276,8 @@ export default function SetupPage() {
             </div>
             <CardTitle className="text-2xl">Welcome to iStudent.ly!</CardTitle>
             <CardDescription className="text-base mt-2">
-              Let&apos;s set up your school in just a few steps. You&apos;ll create a campus,
-              academic year, and grading quarters to get started.
+              Let&apos;s set up your school in just a few steps: campuses (if you have branches),
+              an academic year, and grading quarters to get started.
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
@@ -313,7 +313,8 @@ export default function SetupPage() {
               Create Your First Campus
             </CardTitle>
             <CardDescription>
-              Enter the details for your school&apos;s main campus. You can add more campuses later.
+              If your school has branch locations, create a campus for each one here. If your school
+              has no branches, your school is its own campus — just skip this step.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -337,6 +338,16 @@ export default function SetupPage() {
             </div>
             <div className="flex gap-3 pt-4">
               <Button variant="outline" onClick={() => setCurrentStep("welcome")} disabled={isSubmitting}>Back</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCurrentStep("academic-year")}
+                disabled={isSubmitting}
+                className="gap-2 text-gray-600 dark:text-gray-300"
+              >
+                <SkipForward className="h-4 w-4" />
+                My School Has No Branches
+              </Button>
               <Button onClick={handleCreateCampus} disabled={isSubmitting || !campusName.trim()} className="flex-1 bg-[#022172] hover:bg-[#022172]/90">
                 {isSubmitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</> : <>Create Campus<ChevronRight className="h-4 w-4 ml-2" /></>}
               </Button>

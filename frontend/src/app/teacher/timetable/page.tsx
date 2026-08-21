@@ -22,6 +22,7 @@ import useSWR from 'swr'
 import * as timetableApi from '@/lib/api/timetable'
 import * as teachersApi from '@/lib/api/teachers'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const WEEK_DAYS = DAYS.slice(0, 6) // Mon-Sat for most schools
@@ -73,8 +74,12 @@ const SUBJECT_COLORS = [
 ]
 
 export default function TeacherTimetablePage() {
+  const t = useTranslations('teacherPages.timetable')
   const { profile } = useAuth()
   const router = useRouter()
+
+  const dayLabel = (day: string) => t(`day_${day.toLowerCase()}`)
+  const dayShortLabel = (day: string) => t(`dayShort_${day.toLowerCase()}`)
 
   // Fetch academic years
   const { data: academicYears } = useSWR(
@@ -237,9 +242,9 @@ export default function TeacherTimetablePage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">My Timetable</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">{t('pageTitle')}</h1>
           <p className="text-muted-foreground mt-1">
-            {currentAcademicYear ? `${currentAcademicYear.name} - Your weekly class schedule` : 'Your weekly class schedule'}
+            {currentAcademicYear ? t('subtitleWithYear', { year: currentAcademicYear.name }) : t('subtitle')}
           </p>
         </div>
         <Badge variant="outline" className="text-lg px-4 py-2">
@@ -255,28 +260,28 @@ export default function TeacherTimetablePage() {
             <CardContent className="py-4 text-center">
               <Calendar className="h-6 w-6 mx-auto text-blue-600 mb-1" />
               <p className="text-2xl font-bold text-blue-700">{stats.totalClasses}</p>
-              <p className="text-xs text-blue-600">Classes/Week</p>
+              <p className="text-xs text-blue-600">{t('classesPerWeek')}</p>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
             <CardContent className="py-4 text-center">
               <Clock className="h-6 w-6 mx-auto text-green-600 mb-1" />
               <p className="text-2xl font-bold text-green-700">{stats.todayClasses}</p>
-              <p className="text-xs text-green-600">Today&apos;s Classes</p>
+              <p className="text-xs text-green-600">{t('todaysClasses')}</p>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
             <CardContent className="py-4 text-center">
               <Users className="h-6 w-6 mx-auto text-purple-600 mb-1" />
               <p className="text-2xl font-bold text-purple-700">{stats.uniqueSections}</p>
-              <p className="text-xs text-purple-600">Sections</p>
+              <p className="text-xs text-purple-600">{t('sections')}</p>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
             <CardContent className="py-4 text-center">
               <BookOpen className="h-6 w-6 mx-auto text-orange-600 mb-1" />
               <p className="text-2xl font-bold text-orange-700">{stats.uniqueSubjects}</p>
-              <p className="text-xs text-orange-600">Subjects</p>
+              <p className="text-xs text-orange-600">{t('subjects')}</p>
             </CardContent>
           </Card>
         </div>
@@ -287,15 +292,15 @@ export default function TeacherTimetablePage() {
         <TabsList className="mb-4">
           <TabsTrigger value="week">
             <Calendar className="h-4 w-4 mr-2" />
-            Week View
+            {t('weekView')}
           </TabsTrigger>
           <TabsTrigger value="day">
             <Clock className="h-4 w-4 mr-2" />
-            Day View
+            {t('dayView')}
           </TabsTrigger>
           <TabsTrigger value="list">
             <BookOpen className="h-4 w-4 mr-2" />
-            Subject List
+            {t('subjectList')}
           </TabsTrigger>
         </TabsList>
 
@@ -304,9 +309,9 @@ export default function TeacherTimetablePage() {
           {!entries || entries.length === 0 ? (
             <Card className="p-12 text-center">
               <Calendar className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No Classes Scheduled</h3>
+              <h3 className="text-xl font-semibold mb-2">{t('noClassesScheduled')}</h3>
               <p className="text-muted-foreground">
-                Your timetable is empty. Contact admin if this seems incorrect.
+                {t('emptyTimetableHint')}
               </p>
             </Card>
           ) : (
@@ -314,7 +319,7 @@ export default function TeacherTimetablePage() {
               <div className="min-w-[900px] border rounded-lg overflow-hidden shadow-sm">
                 {/* Header Row */}
                 <div className="grid grid-cols-7 bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
-                  <div className="p-3 font-semibold border-r border-blue-500">Time</div>
+                  <div className="p-3 font-semibold border-r border-blue-500">{t('time')}</div>
                   {WEEK_DAYS.map(day => (
                     <div
                       key={day}
@@ -322,9 +327,9 @@ export default function TeacherTimetablePage() {
                         day === todayDay ? 'bg-white/20' : ''
                       }`}
                     >
-                      {day}
+                      {dayLabel(day)}
                       {day === todayDay && (
-                        <Badge className="ml-2 bg-white text-blue-600 text-xs">Today</Badge>
+                        <Badge className="ml-2 bg-white text-blue-600 text-xs">{t('today')}</Badge>
                       )}
                     </div>
                   ))}
@@ -336,7 +341,7 @@ export default function TeacherTimetablePage() {
                     {/* Time Column */}
                     <div className={`p-3 border-r text-sm ${slot.is_break ? 'bg-amber-50' : 'bg-gray-50'}`}>
                       <div className="font-medium">
-                        {slot.is_break ? 'Break' : slot.period_name || `Period ${slot.period_number}`}
+                        {slot.is_break ? t('break') : slot.period_name || t('periodLabel', { number: slot.period_number })}
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
                         {slot.start_time?.substring(0, 5)} - {slot.end_time?.substring(0, 5)}
@@ -350,7 +355,7 @@ export default function TeacherTimetablePage() {
                       if (slot.is_break) {
                         return (
                           <div key={day} className="p-3 border-r last:border-r-0 bg-amber-50 text-center">
-                            <span className="text-xs text-amber-600">☕ Break</span>
+                            <span className="text-xs text-amber-600">☕ {t('break')}</span>
                           </div>
                         )
                       }
@@ -433,7 +438,7 @@ export default function TeacherTimetablePage() {
                     onClick={() => setSelectedDay(day)}
                     className={`min-w-[80px] ${day === todayDay ? 'ring-2 ring-green-500' : ''}`}
                   >
-                    {day.substring(0, 3)}
+                    {dayShortLabel(day)}
                     {day === todayDay && <span className="ml-1 text-xs">●</span>}
                   </Button>
                 ))}
@@ -456,14 +461,14 @@ export default function TeacherTimetablePage() {
                   <div className="flex items-center gap-3">
                     <Calendar className="h-6 w-6 text-blue-600" />
                     <div>
-                      <h2 className="text-xl font-bold text-blue-900">{selectedDay}&apos;s Schedule</h2>
+                      <h2 className="text-xl font-bold text-blue-900">{t('daySchedule', { day: dayLabel(selectedDay) })}</h2>
                       <p className="text-sm text-blue-700">
-                        {selectedDaySchedule.filter(e => !e.period?.is_break).length} classes scheduled
+                        {t('classesScheduledCount', { count: selectedDaySchedule.filter(e => !e.period?.is_break).length })}
                       </p>
                     </div>
                   </div>
                   {selectedDay === todayDay && (
-                    <Badge className="bg-green-600 text-white">Today</Badge>
+                    <Badge className="bg-green-600 text-white">{t('today')}</Badge>
                   )}
                 </div>
               </CardContent>
@@ -473,8 +478,8 @@ export default function TeacherTimetablePage() {
             {selectedDaySchedule.length === 0 ? (
               <Card className="p-12 text-center">
                 <Clock className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No Classes on {selectedDay}</h3>
-                <p className="text-muted-foreground">Enjoy your free day!</p>
+                <h3 className="text-xl font-semibold mb-2">{t('noClassesOnDay', { day: dayLabel(selectedDay) })}</h3>
+                <p className="text-muted-foreground">{t('enjoyFreeDay')}</p>
               </Card>
             ) : (
               <div className="space-y-3">
@@ -500,7 +505,7 @@ export default function TeacherTimetablePage() {
                             </div>
                           </div>
                           <div className="flex-1 text-center text-amber-700 font-medium">
-                            ☕ Break Time
+                            ☕ {t('breakTime')}
                           </div>
                         </div>
                       </Card>
@@ -539,7 +544,7 @@ export default function TeacherTimetablePage() {
                               </h3>
                               {isCurrent && (
                                 <Badge className="bg-green-600 text-white">
-                                  <span className="animate-pulse mr-1">●</span> Now
+                                  <span className="animate-pulse mr-1">●</span> {t('now')}
                                 </Badge>
                               )}
                             </div>
@@ -556,7 +561,7 @@ export default function TeacherTimetablePage() {
                               {entry.room_number && (
                                 <span className="flex items-center gap-1">
                                   <MapPin className="h-4 w-4" />
-                                  Room {entry.room_number}
+                                  {t('roomLabel', { room: entry.room_number })}
                                 </span>
                               )}
                             </div>
@@ -572,7 +577,7 @@ export default function TeacherTimetablePage() {
                             }}
                           >
                             <CheckCircle className="h-4 w-4 mr-1" />
-                            Attendance
+                            {t('attendance')}
                           </Button>
                         </div>
                       </CardContent>
@@ -594,14 +599,14 @@ export default function TeacherTimetablePage() {
                   const key = entry.subject_id
                   if (!acc[key]) {
                     acc[key] = {
-                      subject_name: entry.subject?.name || entry.subject_name || 'Unknown',
+                      subject_name: entry.subject?.name || entry.subject_name || t('unknown'),
                       subject_code: entry.subject?.code,
                       sections: new Set<string>(),
                       total_periods: 0,
                       entries: []
                     }
                   }
-                  const sectionName = entry.section?.name || entry.section_name || 'Unknown Section'
+                  const sectionName = entry.section?.name || entry.section_name || t('unknownSection')
                   acc[key].sections.add(sectionName)
                   acc[key].total_periods++
                   acc[key].entries.push(entry)
@@ -622,27 +627,27 @@ export default function TeacherTimetablePage() {
                           )}
                         </div>
                         <Badge className={`bg-gradient-to-r ${colorClass} text-white`}>
-                          {data.total_periods} periods/week
+                          {t('periodsPerWeek', { count: data.total_periods })}
                         </Badge>
                       </div>
-                      
+
                       <div className="space-y-2 text-sm">
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <Users className="h-4 w-4" />
-                          <span>Sections: {Array.from(data.sections).join(', ')}</span>
+                          <span>{t('sectionsLabel', { sections: Array.from(data.sections).join(', ') })}</span>
                         </div>
-                        
+
                         <div className="pt-2 border-t">
-                          <p className="text-xs text-muted-foreground mb-2">Schedule:</p>
+                          <p className="text-xs text-muted-foreground mb-2">{t('scheduleLabel')}</p>
                           <div className="flex flex-wrap gap-1">
                             {data.entries.slice(0, 5).map((entry, idx) => (
                               <Badge key={idx} variant="outline" className="text-xs">
-                                {DAYS[entry.day_of_week]?.substring(0, 3)} P{entry.period?.period_number}
+                                {dayShortLabel(DAYS[entry.day_of_week])} P{entry.period?.period_number}
                               </Badge>
                             ))}
                             {data.entries.length > 5 && (
                               <Badge variant="outline" className="text-xs">
-                                +{data.entries.length - 5} more
+                                {t('moreCount', { count: data.entries.length - 5 })}
                               </Badge>
                             )}
                           </div>
@@ -656,9 +661,9 @@ export default function TeacherTimetablePage() {
           ) : (
             <Card className="p-12 text-center">
               <BookOpen className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No Subjects Assigned</h3>
+              <h3 className="text-xl font-semibold mb-2">{t('noSubjectsAssigned')}</h3>
               <p className="text-muted-foreground">
-                You haven&apos;t been assigned any subjects yet.
+                {t('noSubjectsAssignedHint')}
               </p>
             </Card>
           )}

@@ -131,7 +131,7 @@ export default function StudentBalancesPage() {
                 existing.balance = existing.total_fees - existing.amount_paid
             } else {
                 // Get student info from the fee record
-                const studentInfo = fee.students as { student_number: string; grade_level?: string; profiles: { first_name: string; last_name: string } } | undefined
+                const studentInfo = fee.students as { student_number: string; grade_level?: string; grade_levels?: { name?: string }; profiles: { first_name: string; last_name: string } } | undefined
                 const firstName = studentInfo?.profiles?.first_name || ''
                 const lastName = studentInfo?.profiles?.last_name || ''
                 
@@ -158,7 +158,7 @@ export default function StudentBalancesPage() {
                     student_id: fee.student_id,
                     student_name: `${firstName} ${lastName}`.trim() || t('familyUnknown'),
                     student_number: studentInfo?.student_number || '-',
-                    grade_level: studentInfo?.grade_level || '-',
+                    grade_level: studentInfo?.grade_levels?.name || studentInfo?.grade_level || '-',
                     total_fees: Number(fee.final_amount || 0),
                     amount_paid: Number(fee.amount_paid || 0),
                     balance: Number(fee.final_amount || 0) - Number(fee.amount_paid || 0),

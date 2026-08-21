@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useTranslations } from "next-intl"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -18,6 +19,7 @@ import Link from "next/link"
 import { markPortalItemViewed } from "@/lib/utils/portal-storage"
 
 export default function TeacherPortalPollsPage() {
+  const t = useTranslations("teacherPages.portalPolls")
   const { profile } = useAuth()
   const [polls, setPolls] = useState<portalApi.PortalPoll[]>([])
   const [loading, setLoading] = useState(true)
@@ -48,7 +50,7 @@ export default function TeacherPortalPollsPage() {
     if (!poll.questions?.length) return
     const pollResponses = responses[poll.id] || {}
     const missingRequired = poll.questions.filter(q => q.is_required && !pollResponses[q.id])
-    if (missingRequired.length > 0) { toast.error('Please answer all required questions'); return }
+    if (missingRequired.length > 0) { toast.error(t('answerAllRequiredQuestions')); return }
 
     setSubmitting(poll.id)
     try {
@@ -64,10 +66,10 @@ export default function TeacherPortalPollsPage() {
           }
         })
       await portalApi.submitPollResponses(poll.id, formattedResponses)
-      toast.success('Response submitted successfully!')
+      toast.success(t('responseSubmittedSuccessfully'))
       setPolls(polls.map(p => p.id === poll.id ? { ...p, has_voted: true } : p))
     } catch (error: any) {
-      toast.error(error.message || 'Failed to submit response')
+      toast.error(error.message || t('failedToSubmitResponse'))
     } finally {
       setSubmitting(null)
     }
@@ -87,16 +89,16 @@ export default function TeacherPortalPollsPage() {
       <div className="flex items-center gap-4 mb-6">
         <Link href="/teacher/dashboard"><Button variant="ghost" size="icon"><ArrowLeft className="h-5 w-5" /></Button></Link>
         <div>
-          <h1 className="text-2xl font-bold text-[#022172]">Polls & Surveys</h1>
-          <p className="text-muted-foreground">Participate in school polls and surveys</p>
+          <h1 className="text-2xl font-bold text-[#022172]">{t('pageTitle')}</h1>
+          <p className="text-muted-foreground">{t('pageSubtitle')}</p>
         </div>
       </div>
 
       {polls.length === 0 ? (
         <Card><CardContent className="py-16 text-center">
           <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No Active Polls</h3>
-          <p className="text-muted-foreground">There are no polls available at this time.</p>
+          <h3 className="text-lg font-semibold mb-2">{t('noActivePolls')}</h3>
+          <p className="text-muted-foreground">{t('noActivePollsDescription')}</p>
         </CardContent></Card>
       ) : (
         <div className="space-y-6">
@@ -111,14 +113,14 @@ export default function TeacherPortalPollsPage() {
                       <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{format(new Date(poll.created_at), 'MMM d, yyyy')}</span>
                     </div>
                   </div>
-                  {poll.has_voted && <Badge className="bg-green-500"><CheckCircle2 className="h-3 w-3 mr-1" />Voted</Badge>}
+                  {poll.has_voted && <Badge className="bg-green-500"><CheckCircle2 className="h-3 w-3 mr-1" />{t('voted')}</Badge>}
                 </div>
               </CardHeader>
               <CardContent>
                 {poll.has_voted ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <CheckCircle2 className="h-12 w-12 mx-auto text-green-500 mb-4" />
-                    <p>Thank you for your response!</p>
+                    <p>{t('thankYouForResponse')}</p>
                   </div>
                 ) : (
                   <div className="space-y-6">
@@ -144,7 +146,7 @@ export default function TeacherPortalPollsPage() {
                             })}
                           </div>
                         )}
-                        {question.question_type === 'text' && <Textarea placeholder="Enter your response..." value={responses[poll.id]?.[question.id] || ''} onChange={(e) => handleResponseChange(poll.id, question.id, e.target.value)} />}
+                        {question.question_type === 'text' && <Textarea placeholder={t('enterYourResponse')} value={responses[poll.id]?.[question.id] || ''} onChange={(e) => handleResponseChange(poll.id, question.id, e.target.value)} />}
                         {question.question_type === 'rating' && (
                           <div className="flex gap-2">
                             {[1, 2, 3, 4, 5].map((rating) => (<Button key={rating} type="button" variant={responses[poll.id]?.[question.id] === rating ? "default" : "outline"} className="w-10 h-10" onClick={() => handleResponseChange(poll.id, question.id, rating)}>{rating}</Button>))}
@@ -153,7 +155,7 @@ export default function TeacherPortalPollsPage() {
                       </div>
                     ))}
                     <Button className="w-full bg-[#022172] hover:bg-[#022172]/90" onClick={() => handleSubmitPoll(poll)} disabled={submitting === poll.id}>
-                      {submitting === poll.id ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Submitting...</> : 'Submit Response'}
+                      {submitting === poll.id ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t('submitting')}</> : t('submitResponse')}
                     </Button>
                   </div>
                 )}

@@ -33,6 +33,8 @@ import {
   deleteTemplate as deleteIdCardTemplate,
   type DesignerTemplateConfig,
 } from '@/lib/api/id-card-template'
+import { FontFamilySelect } from '@/components/shared/FontFamilySelect'
+import { useLoadDesignFonts } from '@/config/design-fonts'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -401,6 +403,7 @@ interface DesignField {
   fontSize: number
   fontWeight: 'normal' | 'bold'
   fontStyle: 'normal' | 'italic'
+  fontFamily?: string
   color: string
   align: 'left' | 'center' | 'right'
   borderRadius: number
@@ -642,7 +645,7 @@ function CanvasField({
           <div style={{ fontSize: field.fontSize * scale * 0.62, color: '#6b7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1, whiteSpace: 'nowrap' }}>
             {field.label}
           </div>
-          <div style={{ fontSize: field.fontSize * scale * 0.85, fontWeight: field.fontWeight, color: field.color, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+          <div style={{ fontSize: field.fontSize * scale * 0.85, fontWeight: field.fontWeight, fontFamily: field.fontFamily || undefined, color: field.color, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
             {field.token.replace(/[{}]/g, '')}
           </div>
         </div>
@@ -652,6 +655,7 @@ function CanvasField({
             fontSize: field.fontSize * scale,
             fontWeight: field.fontWeight,
             fontStyle: field.fontStyle,
+            fontFamily: field.fontFamily || undefined,
             color: field.color,
             textAlign: field.align,
             width: '100%',
@@ -671,6 +675,7 @@ function CanvasField({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function IdCardDesignerPage() {
+  useLoadDesignFonts()
   const t = useTranslations('idCard')
   // ── Designer state ──
   const [userType, setUserType] = useState<UserType>('student')
@@ -1881,6 +1886,15 @@ export default function IdCardDesignerPage() {
                               className={`p-1.5 rounded border text-xs ${selectedField.fontStyle === 'italic' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
                             ><Italic className="h-3 w-3" /></button>
                           </div>
+                          <div className="flex items-center gap-2">
+                            <Label className="text-[10px] w-16 shrink-0">{t('label_font_family')}</Label>
+                            <div className="flex-1">
+                              <FontFamilySelect
+                                value={selectedField.fontFamily}
+                                onValueChange={(v) => updateField('fontFamily', v === 'default' ? undefined : v)}
+                              />
+                            </div>
+                          </div>
                           {selectedField.type === 'text' && (
                             <div className="flex items-center gap-1">
                               <Label className="text-[10px] w-16 shrink-0">{t('label_align')}</Label>
@@ -2141,7 +2155,7 @@ export default function IdCardDesignerPage() {
                               <div style={{ fontSize: field.fontSize * printScale * 0.62, color: '#6b7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', lineHeight: 1, whiteSpace: 'nowrap' }}>
                                 {field.label}
                               </div>
-                              <div style={{ fontSize: field.fontSize * printScale * 0.85, fontWeight: field.fontWeight, color: field.color, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'visible', maxWidth: '100%' }}>
+                              <div style={{ fontSize: field.fontSize * printScale * 0.85, fontWeight: field.fontWeight, fontFamily: field.fontFamily || undefined, color: field.color, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'visible', maxWidth: '100%' }}>
                                 {resolveToken(field.token, u)}
                               </div>
                             </div>
@@ -2154,6 +2168,7 @@ export default function IdCardDesignerPage() {
                             fontSize: field.fontSize * printScale,
                             fontWeight: field.fontWeight,
                             fontStyle: field.fontStyle,
+                            fontFamily: field.fontFamily || undefined,
                             color: field.color,
                             textAlign: field.align,
                             display: 'flex',

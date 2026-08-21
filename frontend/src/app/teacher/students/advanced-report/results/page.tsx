@@ -13,25 +13,27 @@ import { getAuthToken } from '@/lib/api/schools'
 import { API_URL } from '@/config/api'
 import { useAuth } from '@/context/AuthContext'
 import Link from 'next/link'
-
-const STANDARD_FIELDS_LABELS: Record<string, string> = {
-  student_number: 'Student Number',
-  first_name: 'First Name',
-  last_name: 'Last Name',
-  father_name: 'Father Name',
-  grandfather_name: 'Grandfather Name',
-  email: 'Email',
-  phone: 'Phone',
-  grade_level_name: 'Grade Level',
-  section_name: 'Section',
-  created_at: 'Enrollment Date',
-  is_active: 'Status',
-}
+import { useTranslations } from 'next-intl'
 
 export default function TeacherReportResultsPage() {
+  const t = useTranslations('teacherPages.studentsAdvancedReportResults')
   const router = useRouter()
   const searchParams = useSearchParams()
   const { profile } = useAuth()
+
+  const STANDARD_FIELDS_LABELS: Record<string, string> = {
+    student_number: t('studentNumber'),
+    first_name: t('firstName'),
+    last_name: t('lastName'),
+    father_name: t('fatherName'),
+    grandfather_name: t('grandfatherName'),
+    email: t('email'),
+    phone: t('phone'),
+    grade_level_name: t('gradeLevel'),
+    section_name: t('section'),
+    created_at: t('enrollmentDate'),
+    is_active: t('status'),
+  }
 
   const [selectedFields, setSelectedFields] = useState<string[]>([])
   const [customFields, setCustomFields] = useState<CustomFieldDefinition[]>([])
@@ -48,7 +50,7 @@ export default function TeacherReportResultsPage() {
       try {
         setSelectedFields(JSON.parse(decodeURIComponent(fieldsParam)))
       } catch {
-        toast.error('Invalid fields parameter')
+        toast.error(t('invalidFieldsParameter'))
         router.push('/teacher/students/advanced-report')
       }
     } else {
@@ -76,10 +78,10 @@ export default function TeacherReportResultsPage() {
           setStudents(data.data || [])
           setFilteredStudents(data.data || [])
         } else {
-          toast.error(data.error || 'Failed to load report')
+          toast.error(data.error || t('failedToLoadReport'))
         }
       } catch {
-        toast.error('Failed to load report')
+        toast.error(t('failedToLoadReport'))
       } finally {
         setLoading(false)
       }
@@ -116,7 +118,7 @@ export default function TeacherReportResultsPage() {
       const v = student.custom_fields?.[fieldId.replace('custom_', '')]
       return v != null ? String(v) : '-'
     }
-    if (fieldId === 'is_active') return student[fieldId] ? 'Active' : 'Inactive'
+    if (fieldId === 'is_active') return student[fieldId] ? t('active') : t('inactive')
     if (fieldId === 'created_at') return student[fieldId] ? new Date(student[fieldId]).toLocaleDateString() : '-'
     return student[fieldId] != null ? String(student[fieldId]) : '-'
   }
@@ -129,7 +131,7 @@ export default function TeacherReportResultsPage() {
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
     a.download = `students_report_${new Date().toISOString().split('T')[0]}.csv`
     a.click()
-    toast.success('Exported')
+    toast.success(t('exported'))
   }
 
   const toggleSort = (fieldId: string) => {
@@ -142,7 +144,7 @@ export default function TeacherReportResultsPage() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-[#022172] mx-auto" />
-          <p className="mt-4 text-muted-foreground">Loading report...</p>
+          <p className="mt-4 text-muted-foreground">{t('loadingReport')}</p>
         </div>
       </div>
     )
@@ -156,24 +158,24 @@ export default function TeacherReportResultsPage() {
             <Link href="/teacher/students/advanced-report">
               <Button variant="ghost" size="icon"><ArrowLeft className="h-5 w-5" /></Button>
             </Link>
-            <h1 className="text-3xl font-bold tracking-tight text-[#022172] dark:text-white">Report Results</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-[#022172] dark:text-white">{t('reportResults')}</h1>
           </div>
-          <p className="text-muted-foreground mt-1">{filteredStudents.length} student{filteredStudents.length !== 1 ? 's' : ''} found</p>
+          <p className="text-muted-foreground mt-1">{t('studentsFound', { count: filteredStudents.length })}</p>
         </div>
         <Button variant="outline" onClick={exportToCSV} disabled={filteredStudents.length === 0}>
-          <FileDown className="h-4 w-4 mr-2" />Export CSV
+          <FileDown className="h-4 w-4 mr-2" />{t('exportCsv')}
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Student Data</CardTitle>
-          <CardDescription>{selectedFields.length} field{selectedFields.length !== 1 ? 's' : ''} selected</CardDescription>
+          <CardTitle>{t('studentData')}</CardTitle>
+          <CardDescription>{t('fieldsSelected', { count: selectedFields.length })}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="mb-4 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search students..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
+            <Input placeholder={t('searchStudents')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
           </div>
           <div className="border rounded-lg overflow-x-auto">
             <Table>
@@ -194,7 +196,7 @@ export default function TeacherReportResultsPage() {
               <TableBody>
                 {filteredStudents.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={selectedFields.length} className="text-center py-8 text-muted-foreground">No data found</TableCell>
+                    <TableCell colSpan={selectedFields.length} className="text-center py-8 text-muted-foreground">{t('noDataFound')}</TableCell>
                   </TableRow>
                 ) : (
                   filteredStudents.map((student, idx) => (

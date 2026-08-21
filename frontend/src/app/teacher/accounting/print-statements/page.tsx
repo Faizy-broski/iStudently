@@ -13,17 +13,19 @@ import { type PdfHeaderFooterSettings, getPdfHeaderFooter } from '@/lib/api/scho
 import { useSchoolSettings } from '@/context/SchoolSettingsContext'
 import { useSchoolSettings as useSchoolSettingsHook } from '@/hooks/useSchoolSettings'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 
 export default function TeacherPrintStatementsAutoPage() {
+  const t = useTranslations('teacherPages.accountingPrintStatements')
   const { profile } = useAuth()
   const router = useRouter()
   const campusContext = useCampus()
   const { isPluginActive } = useSchoolSettings()
   const { currencySymbol } = useSchoolSettingsHook()
-  
+
   const campusId = campusContext?.selectedCampus?.id
   const campus = campusContext?.selectedCampus
-  const campusName = campus?.name || "School"
+  const campusName = campus?.name || t('school')
 
   const [pdfSettings, setPdfSettings] = useState<PdfHeaderFooterSettings | null>(null)
   
@@ -86,18 +88,18 @@ export default function TeacherPrintStatementsAutoPage() {
       let bodyHtml = `
       <div style="font-family: 'Segoe UI', Tahoma, Arial, sans-serif; max-width: 900px; margin: 0 auto; color: #1a1a1a;">
         <div style="text-align: center; margin-bottom: 30px;">
-          <h1 style="font-size: 28px; font-weight: 300; margin: 0; color: #1a1a1a;">Staff Statement</h1>
-          <p style="color: #64748b; margin-top: 5px; font-size: 15px;">Historical Ledger of Salaries & Payments</p>
+          <h1 style="font-size: 28px; font-weight: 300; margin: 0; color: #1a1a1a;">${t('staffStatement')}</h1>
+          <p style="color: #64748b; margin-top: 5px; font-size: 15px;">${t('historicalLedger')}</p>
         </div>
 
         <div style="display: flex; justify-content: space-between; background: #f8fafc; padding: 20px; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 25px;">
           <div>
-            <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #64748b; letter-spacing: 1px; margin-bottom: 4px;">Staff Member</div>
+            <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #64748b; letter-spacing: 1px; margin-bottom: 4px;">${t('staffMember')}</div>
             <div dir="auto" style="font-size: 20px; font-weight: 500; color: #1e3a5f;">${profile?.first_name || ''} ${profile?.last_name || ''}</div>
             <div style="font-size: 13px; color: #64748b; margin-top: 4px;">${profile?.email || ''}</div>
           </div>
           <div style="text-align: right;">
-            <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #64748b; letter-spacing: 1px; margin-bottom: 4px;">Statement Date</div>
+            <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #64748b; letter-spacing: 1px; margin-bottom: 4px;">${t('statementDate')}</div>
             <div style="font-size: 16px; font-weight: 500;">${format(new Date(), 'MMMM d, yyyy')}</div>
           </div>
         </div>
@@ -105,12 +107,12 @@ export default function TeacherPrintStatementsAutoPage() {
         <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 25px;">
           <thead>
             <tr style="background: #f1f5f9; border-bottom: 1px solid #cbd5e1;">
-              <th style="padding: 12px; text-align: left; font-weight: 700; color: #334155;">DATE</th>
-              <th style="padding: 12px; text-align: left; font-weight: 700; color: #334155;">DESCRIPTION</th>
-              <th style="padding: 12px; text-align: left; font-weight: 700; color: #334155;">COMMENTS</th>
-              <th style="padding: 12px; text-align: right; font-weight: 700; color: #334155;">SALARY (DEBIT)</th>
-              <th style="padding: 12px; text-align: right; font-weight: 700; color: #334155;">PAID (CREDIT)</th>
-              <th style="padding: 12px; text-align: right; font-weight: 800; color: #1e3a5f;">BALANCE</th>
+              <th style="padding: 12px; text-align: left; font-weight: 700; color: #334155;">${t('colDate')}</th>
+              <th style="padding: 12px; text-align: left; font-weight: 700; color: #334155;">${t('colDescription')}</th>
+              <th style="padding: 12px; text-align: left; font-weight: 700; color: #334155;">${t('colComments')}</th>
+              <th style="padding: 12px; text-align: right; font-weight: 700; color: #334155;">${t('colSalaryDebit')}</th>
+              <th style="padding: 12px; text-align: right; font-weight: 700; color: #334155;">${t('colPaidCredit')}</th>
+              <th style="padding: 12px; text-align: right; font-weight: 800; color: #1e3a5f;">${t('colBalance')}</th>
             </tr>
           </thead>
           <tbody>
@@ -119,20 +121,20 @@ export default function TeacherPrintStatementsAutoPage() {
       if (transactions.length === 0) {
         bodyHtml += `
           <tr>
-            <td colspan="6" style="padding: 40px; text-align: center; color: #64748b; border-bottom: 1px solid #e2e8f0; font-size: 15px;">No historical transactions found.</td>
+            <td colspan="6" style="padding: 40px; text-align: center; color: #64748b; border-bottom: 1px solid #e2e8f0; font-size: 15px;">${t('noTransactions')}</td>
           </tr>
         `
       } else {
         let runningBalance = 0;
-        transactions.forEach((t) => {
-          runningBalance += t.debit - t.credit;
+        transactions.forEach((txn) => {
+          runningBalance += txn.debit - txn.credit;
           bodyHtml += `
             <tr style="border-bottom: 1px solid #f1f5f9;">
-              <td style="padding: 12px;">${format(parseISO(t.displayDate), 'MMM d, yyyy')}</td>
-              <td dir="auto" style="padding: 12px; font-weight: 500;">${t.type === 'salary' ? 'Salary Generated' : 'Payment Issued'}: ${t.title || 'Adjustment'}</td>
-              <td dir="auto" style="padding: 12px; color: #64748b; font-size: 12px;">${t.comments || '-'}</td>
-              <td style="padding: 12px; text-align: right;">${t.debit > 0 ? currencySymbol + t.debit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
-              <td style="padding: 12px; text-align: right; color: #16a34a;">${t.credit > 0 ? currencySymbol + t.credit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
+              <td style="padding: 12px;">${format(parseISO(txn.displayDate), 'MMM d, yyyy')}</td>
+              <td dir="auto" style="padding: 12px; font-weight: 500;">${txn.type === 'salary' ? t('salaryGenerated') : t('paymentIssued')}: ${txn.title || t('adjustment')}</td>
+              <td dir="auto" style="padding: 12px; color: #64748b; font-size: 12px;">${txn.comments || '-'}</td>
+              <td style="padding: 12px; text-align: right;">${txn.debit > 0 ? currencySymbol + txn.debit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
+              <td style="padding: 12px; text-align: right; color: #16a34a;">${txn.credit > 0 ? currencySymbol + txn.credit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
               <td style="padding: 12px; text-align: right; font-weight: 700; color: #1e3a5f;">${currencySymbol}${runningBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
             </tr>
           `
@@ -146,16 +148,16 @@ export default function TeacherPrintStatementsAutoPage() {
         <div style="display: flex; justify-content: flex-end;">
           <div style="width: 320px; border: 2px solid rgba(30, 58, 95, 0.15); background: rgba(30, 58, 95, 0.03); padding: 20px; border-radius: 4px;">
             <div style="display: flex; justify-content: space-between; color: #475569; margin-bottom: 10px; font-weight: 500;">
-              <span>Total Salaries (Debit):</span>
+              <span>${t('totalSalariesDebit')}</span>
               <span>${currencySymbol}${totalSalaries.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
             </div>
             <div style="display: flex; justify-content: space-between; color: #475569; margin-bottom: 12px; font-weight: 500;">
-              <span>Total Payments (Credit):</span>
+              <span>${t('totalPaymentsCredit')}</span>
               <span>${currencySymbol}${totalPayments.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
             </div>
             <div style="height: 1px; background: rgba(30, 58, 95, 0.2); margin-bottom: 12px;"></div>
             <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: 700; color: ${finalBalance >= 0 ? '#1e3a5f' : '#ef4444'};">
-              <span>Total Due Balance:</span>
+              <span>${t('totalDueBalance')}</span>
               <span>${currencySymbol}${finalBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
             </div>
           </div>
@@ -165,17 +167,17 @@ export default function TeacherPrintStatementsAutoPage() {
 
       try {
         await openPdfDownload({
-          title: "Staff Statement",
+          title: t('staffStatement'),
           bodyHtml,
           bodyStyles: "",
           school: campus ?? { name: campusName },
           pdfSettings,
           pluginActive: isPluginActive('pdf_header_footer'),
-          reportLabel: "Staff Report",
+          reportLabel: t('staffReport'),
         })
-        toast.success("Statement generated directly to PDF!")
+        toast.success(t('generatedSuccess'))
       } catch (err) {
-        toast.error("Failed to generate PDF")
+        toast.error(t('generateFailed'))
       }
 
       // Natively redirect user immediately backward to remove the interface phantom
@@ -188,8 +190,8 @@ export default function TeacherPrintStatementsAutoPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] text-center px-4">
       <Loader2 className="h-10 w-10 animate-spin text-brand-blue mx-auto mb-6 opacity-70" />
-      <h2 className="text-2xl font-bold text-gray-900 mb-2">Generating PDF Statement...</h2>
-      <p className="text-muted-foreground">Silently constructing your secure accounting ledger. Please wait.</p>
+      <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('generatingTitle')}</h2>
+      <p className="text-muted-foreground">{t('generatingDescription')}</p>
     </div>
   )
 }

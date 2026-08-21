@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslations } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import { Loader2 } from 'lucide-react'
@@ -29,6 +30,7 @@ function isCurrentByDate(mp: MarkingPeriod): boolean {
 }
 
 export default function TeacherMarkingPeriodsPage() {
+  const t = useTranslations('teacherPages.markingPeriods')
   const { profile } = useAuth()
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
@@ -102,10 +104,10 @@ export default function TeacherMarkingPeriodsPage() {
       {/* Header */}
       <div className="space-y-1">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#022172] dark:text-white">
-          Marking Periods
+          {t('pageTitle')}
         </h1>
         <p className="text-muted-foreground">
-          Academic calendar hierarchy{selectedCampus ? ` — ${selectedCampus.name}` : ''}
+          {selectedCampus ? t('academicCalendarHierarchyWithCampus', { campus: selectedCampus.name }) : t('academicCalendarHierarchy')}
         </p>
       </div>
 
@@ -121,37 +123,37 @@ export default function TeacherMarkingPeriodsPage() {
             {isCurrentByDate(selectedMP) && (
               <span className="inline-flex items-center gap-1 text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
-                Current
+                {t('current')}
               </span>
             )}
             {selectedMP.does_grades && (
               <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-                Graded
+                {t('graded')}
               </span>
             )}
             {selectedMP.does_comments && (
               <span className="text-xs font-medium text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">
-                Comments
+                {t('comments')}
               </span>
             )}
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">Starts</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">{t('starts')}</p>
               <p className="font-medium">{formatDate(selectedMP.start_date)}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">Ends</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">{t('ends')}</p>
               <p className="font-medium">{formatDate(selectedMP.end_date)}</p>
             </div>
             {selectedMP.does_grades && (
               <>
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">Grade Posting Opens</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">{t('gradePostingOpens')}</p>
                   <p className="font-medium">{formatDate(selectedMP.post_start_date)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">Grade Posting Closes</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-0.5">{t('gradePostingCloses')}</p>
                   <p className="font-medium">{formatDate(selectedMP.post_end_date)}</p>
                 </div>
               </>
@@ -177,7 +179,7 @@ export default function TeacherMarkingPeriodsPage() {
               <div className="flex-1 divide-y max-h-72 overflow-y-auto">
                 {items.length === 0 ? (
                   <div className="px-3 py-6 text-center text-xs text-gray-400">
-                    No {MP_TYPE_SHORT[mpType].toLowerCase()} defined
+                    {t('noneDefined', { type: MP_TYPE_SHORT[mpType].toLowerCase() })}
                   </div>
                 ) : (
                   items.map(mp => {
@@ -199,10 +201,10 @@ export default function TeacherMarkingPeriodsPage() {
                           </span>
                           <div className="flex items-center gap-1 shrink-0">
                             {isCurrent && (
-                              <span className="w-2 h-2 rounded-full bg-green-500" title="Currently active" />
+                              <span className="w-2 h-2 rounded-full bg-green-500" title={t('currentlyActive')} />
                             )}
                             {mp.does_grades && (
-                              <span className="text-[10px] text-blue-500 font-medium" title="Graded">G</span>
+                              <span className="text-[10px] text-blue-500 font-medium" title={t('graded')}>G</span>
                             )}
                           </div>
                         </div>

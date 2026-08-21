@@ -232,9 +232,9 @@ export default function SignupLinksPage() {
                 status === 'active' ? 'border-gray-200' : 'border-gray-100 opacity-70'
               )}>
                 <CardContent className="p-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                    {/* Info */}
-                    <div className="flex-1 min-w-0 space-y-1">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 lg:items-center gap-3">
+                    {/* Label + badges */}
+                    <div className="lg:col-span-4 min-w-0 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-sm truncate">
                           {link.label || `${link.role} link`}
@@ -254,7 +254,8 @@ export default function SignupLinksPage() {
                           {t(`status${status.charAt(0).toUpperCase() + status.slice(1)}` as any)}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+                      {/* Mobile-only condensed meta row */}
+                      <div className="flex lg:hidden items-center gap-4 text-xs text-muted-foreground flex-wrap">
                         <span>
                           {t('tableUses')}: {link.use_count}{link.max_uses ? ` / ${link.max_uses}` : ` / ${t('unlimited')}`}
                         </span>
@@ -265,8 +266,22 @@ export default function SignupLinksPage() {
                       </div>
                     </div>
 
+                    {/* Desktop-only field columns */}
+                    <div className="hidden lg:block lg:col-span-2 text-xs text-muted-foreground">
+                      <div className="text-[10px] uppercase tracking-wide text-gray-400">{t('tableUses')}</div>
+                      <div>{link.use_count}{link.max_uses ? ` / ${link.max_uses}` : ` / ${t('unlimited')}`}</div>
+                    </div>
+                    <div className="hidden lg:block lg:col-span-2 text-xs text-muted-foreground">
+                      <div className="text-[10px] uppercase tracking-wide text-gray-400">{t('tableExpires')}</div>
+                      <div>{link.expires_at ? new Date(link.expires_at).toLocaleDateString() : t('never')}</div>
+                    </div>
+                    <div className="hidden lg:block lg:col-span-2 min-w-0 text-xs text-muted-foreground">
+                      <div className="text-[10px] uppercase tracking-wide text-gray-400">URL</div>
+                      <div className="font-mono text-[10px] truncate" title={url}>{url}</div>
+                    </div>
+
                     {/* Actions */}
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <div className="flex items-center gap-1.5 flex-shrink-0 lg:col-span-2 lg:justify-end">
                       {/* Copy */}
                       <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => handleCopy(link)}>
                         {copiedId === link.id ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}

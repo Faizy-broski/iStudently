@@ -31,7 +31,7 @@ if (typeof PhusionPassenger !== 'undefined') {
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {
     console.log('=================================');
-    console.log('🚀 Studently Backend API');
+    console.log('🚀 iStudent.ly Backend API');
     console.log('=================================');
     console.log(`📡 Server: http://localhost:${PORT}`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);

@@ -28,6 +28,7 @@ import * as timetableApi from "@/lib/api/timetable"
 import { TeacherSchedule } from "@/lib/api/teachers"
 import { useSearchParams, useRouter } from "next/navigation"
 import useSWR from "swr"
+import { useTranslations } from "next-intl"
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused"
 
@@ -53,6 +54,7 @@ interface ClassInfo {
 }
 
 export default function AttendancePage() {
+  const t = useTranslations('teacherPages.attendance')
   const router = useRouter()
   const searchParams = useSearchParams()
   const { profile } = useAuth()
@@ -92,7 +94,7 @@ export default function AttendancePage() {
       const studentData: StudentWithAttendance[] = records.map((r) => ({
         id: r.id,
         student_id: r.student_id,
-        student_name: r.student_name || "Unknown Student",
+        student_name: r.student_name || t('unknownStudent'),
         student_number: r.student_number || "",
         status: r.status as AttendanceStatus,
         remarks: r.remarks ?? undefined,
@@ -106,9 +108,9 @@ export default function AttendancePage() {
       if (selectedClass) {
         setClassInfo({
           id: selectedClass.id,
-          subject_name: selectedClass.subject_name || "Unknown Subject",
-          section_name: selectedClass.section_name || "Unknown Section",
-          grade_name: selectedClass.grade_name || "Unknown Grade",
+          subject_name: selectedClass.subject_name || t('unknownSubject'),
+          section_name: selectedClass.section_name || t('unknownSection'),
+          grade_name: selectedClass.grade_name || t('unknownGrade'),
           period_number: selectedClass.period_number,
           start_time: selectedClass.start_time,
           end_time: selectedClass.end_time,
@@ -119,12 +121,12 @@ export default function AttendancePage() {
       setHasChanges(false)
       
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to load attendance"
+      const errorMessage = error instanceof Error ? error.message : t('loadAttendanceFailed')
       toast.error(errorMessage)
     } finally {
       setLoadingAttendance(false)
     }
-  }, [classId, schedule, todayDate])
+  }, [classId, schedule, todayDate, t])
 
   // Fetch attendance data when class is selected
   useEffect(() => {
@@ -170,40 +172,40 @@ export default function AttendancePage() {
   const markAllPresent = useCallback(() => {
     setAttendanceData(prev => prev.map(s => ({ ...s, status: "present" as AttendanceStatus })))
     setHasChanges(true)
-    toast.success("Marked all students as present")
-  }, [])
+    toast.success(t('markedAllPresent'))
+  }, [t])
 
   // Mark all as absent
   const markAllAbsent = useCallback(() => {
     setAttendanceData(prev => prev.map(s => ({ ...s, status: "absent" as AttendanceStatus })))
     setHasChanges(true)
-    toast.info("Marked all students as absent")
-  }, [])
+    toast.info(t('markedAllAbsent'))
+  }, [t])
 
   // Save attendance
   const handleSave = async () => {
     try {
       setSaving(true)
-      
+
       if (!classId) {
-        toast.error("No class selected")
+        toast.error(t('noClassSelected'))
         return
       }
-      
+
       // Prepare bulk update data
       const updates = attendanceData.map(record => ({
         student_id: record.student_id,
         status: record.status,
         remarks: record.remarks
       }))
-      
+
       await timetableApi.bulkUpdateAttendance(classId, todayDate, updates)
-      
+
       setHasChanges(false)
-      toast.success("Attendance saved successfully!")
-      
+      toast.success(t('attendanceSaved'))
+
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to save attendance"
+      const errorMessage = error instanceof Error ? error.message : t('saveAttendanceFailed')
       toast.error(errorMessage)
     } finally {
       setSaving(false)
@@ -264,8 +266,8 @@ export default function AttendancePage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">
-            <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">Mark Attendance</h1>
-            <p className="text-muted-foreground mt-1">Select a class from today&apos;s schedule</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">{t('pageTitle')}</h1>
+            <p className="text-muted-foreground mt-1">{t('selectClassHint')}</p>
           </div>
         </div>
 
@@ -279,7 +281,7 @@ export default function AttendancePage() {
                   {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
                 </p>
                 <p className="text-sm text-blue-700">
-                  {todayClasses.length} {todayClasses.length === 1 ? 'class' : 'classes'} scheduled
+                  {t('classesScheduledCount', { count: todayClasses.length })}
                 </p>
               </div>
             </div>
@@ -290,8 +292,8 @@ export default function AttendancePage() {
         {todayClasses.length === 0 ? (
           <Card className="p-12 text-center">
             <Calendar className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No Classes Today</h3>
-            <p className="text-muted-foreground">You don&apos;t have any classes scheduled for today.</p>
+            <h3 className="text-xl font-semibold mb-2">{t('noClassesToday')}</h3>
+            <p className="text-muted-foreground">{t('noClassesTodayHint')}</p>
           </Card>
         ) : (
           <div className="space-y-3">
@@ -316,7 +318,7 @@ export default function AttendancePage() {
                         <div className={`h-14 w-14 rounded-lg flex flex-col items-center justify-center ${
                           isInProgress ? 'bg-green-600' : 'bg-blue-600'
                         } text-white`}>
-                          <span className="text-xs">Period</span>
+                          <span className="text-xs">{t('period')}</span>
                           <span className="text-xl font-bold">{cls.period_number}</span>
                         </div>
                         <div className="flex-1">
@@ -324,11 +326,11 @@ export default function AttendancePage() {
                             <h3 className="font-bold text-lg">{cls.subject_name}</h3>
                             {isInProgress && (
                               <Badge className="bg-green-600 text-white">
-                                <span className="animate-pulse mr-1">●</span> Now
+                                <span className="animate-pulse mr-1">●</span> {t('now')}
                               </Badge>
                             )}
                             {isCompleted && (
-                              <Badge variant="outline" className="text-gray-500">Completed</Badge>
+                              <Badge variant="outline" className="text-gray-500">{t('completed')}</Badge>
                             )}
                           </div>
                           <p className="text-sm text-muted-foreground">
@@ -345,7 +347,7 @@ export default function AttendancePage() {
                           {cls.start_time?.substring(0, 5)} - {cls.end_time?.substring(0, 5)}
                         </p>
                         {cls.room_number && (
-                          <p className="text-xs text-muted-foreground">Room {cls.room_number}</p>
+                          <p className="text-xs text-muted-foreground">{t('roomLabel', { room: cls.room_number })}</p>
                         )}
                       </div>
                     </div>
@@ -365,7 +367,7 @@ export default function AttendancePage() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-2" />
-          <p className="text-muted-foreground">Loading attendance...</p>
+          <p className="text-muted-foreground">{t('loadingAttendance')}</p>
         </div>
       </div>
     )
@@ -380,18 +382,18 @@ export default function AttendancePage() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">Mark Attendance</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">{t('pageTitle')}</h1>
           {classInfo && (
             <p className="text-sm text-muted-foreground">
-              {classInfo.subject_name} • {classInfo.section_name} • Period {classInfo.period_number}
+              {classInfo.subject_name} • {classInfo.section_name} • {t('periodLabel', { number: classInfo.period_number })}
             </p>
           )}
         </div>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           size="icon"
           onClick={loadAttendanceData}
-          title="Refresh"
+          title={t('refresh')}
         >
           <RefreshCw className="h-4 w-4" />
         </Button>
@@ -411,7 +413,7 @@ export default function AttendancePage() {
               </div>
               <div className="text-right">
                 <p className="text-sm font-medium">{classInfo.start_time?.substring(0,5)} - {classInfo.end_time?.substring(0,5)}</p>
-                {classInfo.room_number && <p className="text-xs text-muted-foreground">Room {classInfo.room_number}</p>}
+                {classInfo.room_number && <p className="text-xs text-muted-foreground">{t('roomLabel', { room: classInfo.room_number })}</p>}
               </div>
             </div>
           </CardContent>
@@ -423,31 +425,31 @@ export default function AttendancePage() {
         <Card className="border-gray-200">
           <CardContent className="py-3 px-2 text-center">
             <p className="text-2xl font-bold">{stats.total}</p>
-            <p className="text-xs text-muted-foreground">Total</p>
+            <p className="text-xs text-muted-foreground">{t('total')}</p>
           </CardContent>
         </Card>
         <Card className="border-green-200 bg-green-50">
           <CardContent className="py-3 px-2 text-center">
             <p className="text-2xl font-bold text-green-600">{stats.present}</p>
-            <p className="text-xs text-green-700">Present</p>
+            <p className="text-xs text-green-700">{t('present')}</p>
           </CardContent>
         </Card>
         <Card className="border-red-200 bg-red-50">
           <CardContent className="py-3 px-2 text-center">
             <p className="text-2xl font-bold text-red-600">{stats.absent}</p>
-            <p className="text-xs text-red-700">Absent</p>
+            <p className="text-xs text-red-700">{t('absent')}</p>
           </CardContent>
         </Card>
         <Card className="border-yellow-200 bg-yellow-50">
           <CardContent className="py-3 px-2 text-center">
             <p className="text-2xl font-bold text-yellow-600">{stats.late}</p>
-            <p className="text-xs text-yellow-700">Late</p>
+            <p className="text-xs text-yellow-700">{t('late')}</p>
           </CardContent>
         </Card>
         <Card className="border-blue-200 bg-blue-50">
           <CardContent className="py-3 px-2 text-center">
             <p className="text-2xl font-bold text-blue-600">{stats.percentage}%</p>
-            <p className="text-xs text-blue-700">Rate</p>
+            <p className="text-xs text-blue-700">{t('rate')}</p>
           </CardContent>
         </Card>
       </div>
@@ -456,11 +458,11 @@ export default function AttendancePage() {
       <div className="flex gap-2 flex-wrap">
         <Button variant="outline" size="sm" onClick={markAllPresent} className="flex-1 sm:flex-none">
           <UserCheck className="h-4 w-4 mr-1" />
-          All Present
+          {t('allPresent')}
         </Button>
         <Button variant="outline" size="sm" onClick={markAllAbsent} className="flex-1 sm:flex-none">
           <UserX className="h-4 w-4 mr-1" />
-          All Absent
+          {t('allAbsent')}
         </Button>
       </div>
 
@@ -469,7 +471,7 @@ export default function AttendancePage() {
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by name or roll number..."
+            placeholder={t('searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -477,7 +479,7 @@ export default function AttendancePage() {
         </div>
         <Tabs value={filterStatus} onValueChange={(v) => setFilterStatus(v as AttendanceStatus | "all")} className="w-auto">
           <TabsList className="h-10">
-            <TabsTrigger value="all" className="px-3">All</TabsTrigger>
+            <TabsTrigger value="all" className="px-3">{t('all')}</TabsTrigger>
             <TabsTrigger value="present" className="px-2">
               <CheckCircle className="h-4 w-4 text-green-600" />
             </TabsTrigger>
@@ -493,16 +495,16 @@ export default function AttendancePage() {
 
       {/* Instruction */}
       <p className="text-xs text-center text-muted-foreground">
-        Tap on a student to cycle status: Present → Absent → Late → Present | Or use the quick buttons
+        {t('cycleInstruction')}
       </p>
 
       {/* Student List */}
       {attendanceData.length === 0 ? (
         <Card className="p-8 text-center">
           <AlertCircle className="h-12 w-12 mx-auto text-yellow-500 mb-3" />
-          <h3 className="font-semibold mb-1">No Students Found</h3>
+          <h3 className="font-semibold mb-1">{t('noStudentsFound')}</h3>
           <p className="text-sm text-muted-foreground">
-            Attendance records may not be generated yet. Please contact admin.
+            {t('noStudentsFoundHint')}
           </p>
         </Card>
       ) : (
@@ -536,7 +538,7 @@ export default function AttendancePage() {
                         className={`p-2 rounded-lg transition-colors ${
                           student.status === "present" ? "bg-green-200" : "hover:bg-green-100"
                         }`}
-                        title="Mark Present"
+                        title={t('markPresent')}
                       >
                         <CheckCircle className={`h-5 w-5 ${student.status === "present" ? "text-green-600" : "text-gray-400"}`} />
                       </button>
@@ -545,7 +547,7 @@ export default function AttendancePage() {
                         className={`p-2 rounded-lg transition-colors ${
                           student.status === "absent" ? "bg-red-200" : "hover:bg-red-100"
                         }`}
-                        title="Mark Absent"
+                        title={t('markAbsent')}
                       >
                         <XCircle className={`h-5 w-5 ${student.status === "absent" ? "text-red-600" : "text-gray-400"}`} />
                       </button>
@@ -554,7 +556,7 @@ export default function AttendancePage() {
                         className={`p-2 rounded-lg transition-colors ${
                           student.status === "late" ? "bg-yellow-200" : "hover:bg-yellow-100"
                         }`}
-                        title="Mark Late"
+                        title={t('markLate')}
                       >
                         <Clock className={`h-5 w-5 ${student.status === "late" ? "text-yellow-600" : "text-gray-400"}`} />
                       </button>
@@ -581,17 +583,17 @@ export default function AttendancePage() {
           {saving ? (
             <>
               <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-              Saving Attendance...
+              {t('savingAttendance')}
             </>
           ) : hasChanges ? (
             <>
               <Save className="h-5 w-5 mr-2" />
-              Save Attendance ({stats.present} Present, {stats.absent} Absent)
+              {t('saveAttendanceWithCounts', { present: stats.present, absent: stats.absent })}
             </>
           ) : (
             <>
               <CheckCircle className="h-5 w-5 mr-2" />
-              All Changes Saved
+              {t('allChangesSaved')}
             </>
           )}
         </Button>

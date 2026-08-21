@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import useSWR, { mutate } from 'swr'
 import * as assignmentsApi from '@/lib/api/assignments'
 import { Assignment, AssignmentSubmission } from '@/types'
+import { useTranslations } from 'next-intl'
 
 const assignmentsFetcher = async (url: string) => {
   const [, staffId] = url.split('|')
@@ -26,6 +27,7 @@ const submissionsFetcher = async (url: string) => {
 }
 
 export default function SubmissionsPage() {
+  const t = useTranslations('teacherPages.submissions')
   const { profile } = useAuth()
   const [selectedAssignment, setSelectedAssignment] = useState<string>('')
   const [filteredSubmissions, setFilteredSubmissions] = useState<AssignmentSubmission[]>([])
@@ -86,7 +88,7 @@ export default function SubmissionsPage() {
       setAssignments(data)
     } catch (error: any) {
       console.error('Error loading assignments:', error)
-      toast.error(error.message || 'Failed to load assignments')
+      toast.error(error.message || t('loadAssignmentsFailed'))
     } finally {
       setLoading(false)
     }
@@ -94,14 +96,14 @@ export default function SubmissionsPage() {
 
   const loadSubmissions = async () => {
     if (!selectedAssignment) return
-    
+
     try {
       setLoading(true)
       const data = await assignmentsApi.getAssignmentSubmissions(selectedAssignment)
       setSubmissions(data)
     } catch (error: any) {
       console.error('Error loading submissions:', error)
-      toast.error(error.message || 'Failed to load submissions')
+      toast.error(error.message || t('loadSubmissionsFailed'))
     } finally {
       setLoading(false)
     }
@@ -121,7 +123,7 @@ export default function SubmissionsPage() {
 
     const score = parseFloat(gradeForm.score)
     if (isNaN(score) || score < 0) {
-      toast.error('Please enter a valid score')
+      toast.error(t('enterValidScore'))
       return
     }
 
@@ -131,13 +133,13 @@ export default function SubmissionsPage() {
         feedback: gradeForm.feedback.trim(),
         graded_by: profile.id
       })
-      toast.success('Submission graded successfully')
+      toast.success(t('submissionGraded'))
       setIsGradingOpen(false)
       // Revalidate submissions data
       mutateSubmissions()
     } catch (error: any) {
       console.error('Error grading submission:', error)
-      toast.error(error.message || 'Failed to grade submission')
+      toast.error(error.message || t('gradeSubmissionFailed'))
     }
   }
 
@@ -148,6 +150,16 @@ export default function SubmissionsPage() {
       case 'late': return 'bg-orange-100 text-orange-700'
       case 'graded': return 'bg-green-100 text-green-700'
       default: return 'bg-gray-100 text-gray-700'
+    }
+  }
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'pending': return t('statusPending')
+      case 'submitted': return t('statusSubmitted')
+      case 'late': return t('statusLate')
+      case 'graded': return t('statusGraded')
+      default: return status
     }
   }
 
@@ -172,18 +184,18 @@ export default function SubmissionsPage() {
     <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">Submissions</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">{t('pageTitle')}</h1>
         <p className="text-muted-foreground mt-1">
-          Review and grade student assignment submissions
+          {t('pageSubtitle')}
         </p>
       </div>
 
       {/* Assignment Selector */}
       <Card className="p-6">
-        <label className="text-sm font-medium mb-2 block">Select Assignment</label>
+        <label className="text-sm font-medium mb-2 block">{t('selectAssignment')}</label>
         <Select value={selectedAssignment} onValueChange={setSelectedAssignment}>
           <SelectTrigger>
-            <SelectValue placeholder="Choose an assignment to view submissions" />
+            <SelectValue placeholder={t('chooseAssignmentPlaceholder')} />
           </SelectTrigger>
           <SelectContent>
             {(assignments || []).map(assignment => (
@@ -205,7 +217,7 @@ export default function SubmissionsPage() {
                   <FileText className="h-5 w-5 text-gray-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Total</p>
+                  <p className="text-sm text-muted-foreground">{t('total')}</p>
                   <p className="text-xl font-bold">{stats.total}</p>
                 </div>
               </div>
@@ -217,7 +229,7 @@ export default function SubmissionsPage() {
                   <Clock className="h-5 w-5 text-orange-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Pending</p>
+                  <p className="text-sm text-muted-foreground">{t('statusPending')}</p>
                   <p className="text-xl font-bold">{stats.pending}</p>
                 </div>
               </div>
@@ -229,7 +241,7 @@ export default function SubmissionsPage() {
                   <CheckSquare className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Submitted</p>
+                  <p className="text-sm text-muted-foreground">{t('statusSubmitted')}</p>
                   <p className="text-xl font-bold">{stats.submitted}</p>
                 </div>
               </div>
@@ -241,7 +253,7 @@ export default function SubmissionsPage() {
                   <Award className="h-5 w-5 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Graded</p>
+                  <p className="text-sm text-muted-foreground">{t('statusGraded')}</p>
                   <p className="text-xl font-bold">{stats.graded}</p>
                 </div>
               </div>
@@ -254,7 +266,7 @@ export default function SubmissionsPage() {
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by student name..."
+                  placeholder={t('searchByStudentPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9"
@@ -266,11 +278,11 @@ export default function SubmissionsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="submitted">Submitted</SelectItem>
-                  <SelectItem value="late">Late</SelectItem>
-                  <SelectItem value="graded">Graded</SelectItem>
+                  <SelectItem value="all">{t('allStatus')}</SelectItem>
+                  <SelectItem value="pending">{t('statusPending')}</SelectItem>
+                  <SelectItem value="submitted">{t('statusSubmitted')}</SelectItem>
+                  <SelectItem value="late">{t('statusLate')}</SelectItem>
+                  <SelectItem value="graded">{t('statusGraded')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -284,9 +296,9 @@ export default function SubmissionsPage() {
           ) : filteredSubmissions.length === 0 ? (
             <Card className="p-12 text-center">
               <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No Submissions Found</h3>
+              <h3 className="text-xl font-semibold mb-2">{t('noSubmissionsFound')}</h3>
               <p className="text-muted-foreground">
-                {statusFilter !== 'all' ? 'Try changing the filter.' : 'No submissions yet for this assignment.'}
+                {statusFilter !== 'all' ? t('tryChangingFilter') : t('noSubmissionsYet')}
               </p>
             </Card>
           ) : (
@@ -300,20 +312,20 @@ export default function SubmissionsPage() {
                           {submission.student?.profile?.first_name} {submission.student?.profile?.last_name}
                         </h3>
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(submission.status)}`}>
-                          {submission.status.charAt(0).toUpperCase() + submission.status.slice(1)}
+                          {getStatusLabel(submission.status)}
                         </span>
                       </div>
                       <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                         {submission.submitted_at && (
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            Submitted: {new Date(submission.submitted_at).toLocaleDateString()}
+                            {t('submittedOn', { date: new Date(submission.submitted_at).toLocaleDateString() })}
                           </span>
                         )}
                         {submission.score !== null && (
                           <span className="flex items-center gap-1">
                             <Award className="h-3 w-3" />
-                            Score: {submission.score}
+                            {t('scoreLabel', { score: submission.score })}
                           </span>
                         )}
                       </div>
@@ -324,7 +336,7 @@ export default function SubmissionsPage() {
                       style={submission.status !== 'graded' ? { background: 'var(--gradient-blue)' } : undefined}
                       className={submission.status !== 'graded' ? 'text-white' : ''}
                     >
-                      {submission.status === 'graded' ? 'View Grade' : 'Grade'}
+                      {submission.status === 'graded' ? t('viewGrade') : t('grade')}
                     </Button>
                   </div>
                 </Card>
@@ -339,19 +351,19 @@ export default function SubmissionsPage() {
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Grade Submission - {selectedSubmission?.student?.profile?.first_name} {selectedSubmission?.student?.profile?.last_name}
+              {t('gradeSubmissionTitle', { name: `${selectedSubmission?.student?.profile?.first_name || ''} ${selectedSubmission?.student?.profile?.last_name || ''}`.trim() })}
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-6">
             {/* Submission Content */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Student Submission</h3>
-              
+              <h3 className="text-lg font-semibold">{t('studentSubmission')}</h3>
+
               {/* Submission Text */}
               {selectedSubmission?.submission_text && (
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Submission Text:</label>
+                  <label className="text-sm font-medium mb-2 block">{t('submissionText')}</label>
                   <div className="bg-gray-50 p-4 rounded-lg border">
                     <p className="whitespace-pre-wrap">{selectedSubmission.submission_text}</p>
                   </div>
@@ -361,18 +373,18 @@ export default function SubmissionsPage() {
               {/* Attachments */}
               {selectedSubmission?.attachments && selectedSubmission.attachments.length > 0 && (
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Attachments ({selectedSubmission.attachments.length}):</label>
+                  <label className="text-sm font-medium mb-2 block">{t('attachmentsCount', { count: selectedSubmission.attachments.length })}</label>
                   <div className="space-y-2">
                     {selectedSubmission.attachments.map((attachment: any, index: number) => (
                       <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
                         <div className="flex items-center gap-3">
                           <FileText className="h-5 w-5 text-blue-600" />
                           <span className="text-sm font-medium">
-                            {attachment.url ? `File ${index + 1}` : attachment.name || `Attachment ${index + 1}`}
+                            {attachment.url ? t('fileNumber', { number: index + 1 }) : attachment.name || t('attachmentNumber', { number: index + 1 })}
                           </span>
                           {attachment.uploaded_at && (
                             <span className="text-xs text-gray-500">
-                              Uploaded: {new Date(attachment.uploaded_at).toLocaleDateString()}
+                              {t('uploadedOn', { date: new Date(attachment.uploaded_at).toLocaleDateString() })}
                             </span>
                           )}
                         </div>
@@ -383,7 +395,7 @@ export default function SubmissionsPage() {
                             onClick={() => window.open(attachment.url, '_blank')}
                             className="ml-3"
                           >
-                            Download
+                            {t('download')}
                           </Button>
                         )}
                       </div>
@@ -394,34 +406,34 @@ export default function SubmissionsPage() {
 
               {!selectedSubmission?.submission_text && (!selectedSubmission?.attachments || selectedSubmission.attachments.length === 0) && (
                 <div className="bg-gray-50 p-4 rounded-lg border text-center text-gray-500">
-                  No submission content available
+                  {t('noSubmissionContent')}
                 </div>
               )}
             </div>
 
             {/* Grading Section */}
             <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold mb-4">Grade This Submission</h3>
-              
+              <h3 className="text-lg font-semibold mb-4">{t('gradeThisSubmission')}</h3>
+
               <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium mb-2 block">
-                    Score <span className="text-red-500">*</span>
+                    {t('score')} <span className="text-red-500">*</span>
                   </label>
                   <Input
                     type="number"
                     step="0.01"
                     min="0"
-                    placeholder="Enter score"
+                    placeholder={t('enterScorePlaceholder')}
                     value={gradeForm.score}
                     onChange={(e) => setGradeForm({ ...gradeForm, score: e.target.value })}
                   />
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Feedback</label>
+                  <label className="text-sm font-medium mb-2 block">{t('feedback')}</label>
                   <Textarea
-                    placeholder="Enter feedback for the student..."
+                    placeholder={t('enterFeedbackPlaceholder')}
                     value={gradeForm.feedback}
                     onChange={(e) => setGradeForm({ ...gradeForm, feedback: e.target.value })}
                     rows={6}
@@ -430,7 +442,7 @@ export default function SubmissionsPage() {
 
                 {selectedSubmission?.submitted_at && (
                   <div className="text-sm text-muted-foreground">
-                    <p><strong>Submitted At:</strong> {new Date(selectedSubmission.submitted_at).toLocaleString()}</p>
+                    <p><strong>{t('submittedAt')}</strong> {new Date(selectedSubmission.submitted_at).toLocaleString()}</p>
                   </div>
                 )}
               </div>
@@ -439,14 +451,14 @@ export default function SubmissionsPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsGradingOpen(false)}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button
               onClick={handleGradeSubmit}
               style={{ background: 'var(--gradient-blue)' }}
               className="text-white"
             >
-              Submit Grade
+              {t('submitGrade')}
             </Button>
           </DialogFooter>
         </DialogContent>

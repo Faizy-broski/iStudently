@@ -23,6 +23,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
 import Papa from "papaparse";
@@ -51,6 +52,7 @@ function colLetter(idx: number): string {
 }
 
 export default function TeacherImportGradesPage() {
+  const t = useTranslations("teacherPages.importGrades");
   const { user, profile } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
@@ -98,7 +100,7 @@ export default function TeacherImportGradesPage() {
         }
         if (mpRes.success && mpRes.data) setMarkingPeriods(mpRes.data as MarkingPeriodOption[]);
       })
-      .catch(() => toast.error("Failed to load data"))
+      .catch(() => toast.error(t("loadDataError")))
       .finally(() => setLoadingCPs(false));
   }, [user, profile?.staff_id, selectedCampus?.id]);
 
@@ -120,7 +122,7 @@ export default function TeacherImportGradesPage() {
           setAssignmentMappings(new Map(assgns.map((a) => [a.id, undefined])));
         }
       })
-      .catch(() => toast.error("Failed to load assignments"))
+      .catch(() => toast.error(t("loadAssignmentsError")))
       .finally(() => setLoadingAssignments(false));
   }, [selectedCoursePeriod, selectedMarkingPeriod]);
 
@@ -141,21 +143,21 @@ export default function TeacherImportGradesPage() {
             defval: "",
             raw: false,
           });
-          if (jsonData.length === 0) { toast.error("The file appears to be empty"); return; }
+          if (jsonData.length === 0) { toast.error(t("fileEmptyError")); return; }
           setParsedRows(jsonData);
           setHeaderRow(jsonData[0] || []);
-        } catch { toast.error("Failed to parse Excel file"); }
+        } catch { toast.error(t("parseExcelError")); }
       };
       reader.readAsArrayBuffer(file);
     } else {
       Papa.parse(file, {
         complete: (result) => {
           const rows = result.data as string[][];
-          if (rows.length === 0) { toast.error("The file appears to be empty"); return; }
+          if (rows.length === 0) { toast.error(t("fileEmptyError")); return; }
           setParsedRows(rows);
           setHeaderRow(rows[0] || []);
         },
-        error: () => toast.error("Failed to parse CSV file"),
+        error: () => toast.error(t("parseCsvError")),
         skipEmptyLines: true,
       });
     }
@@ -164,7 +166,7 @@ export default function TeacherImportGradesPage() {
 
   const columnOptions = headerRow.map((header, idx) => ({
     value: idx,
-    label: `${colLetter(idx)}: ${header || `Column ${idx + 1}`}`,
+    label: `${colLetter(idx)}: ${header || t("columnFallback", { index: idx + 1 })}`,
   }));
 
   const resetForm = () => {
@@ -182,19 +184,19 @@ export default function TeacherImportGradesPage() {
   };
 
   const handleImport = async () => {
-    if (!selectedCoursePeriod) { toast.error("Please select a course period"); return; }
-    if (parsedRows.length === 0) { toast.error("Please upload a file first"); return; }
+    if (!selectedCoursePeriod) { toast.error(t("selectCoursePeriodError")); return; }
+    if (parsedRows.length === 0) { toast.error(t("uploadFileFirstError")); return; }
     const mappings: { assignment_id: string; column_index: number }[] = [];
     for (const [assignmentId, colIdx] of assignmentMappings.entries()) {
       if (colIdx !== undefined) mappings.push({ assignment_id: assignmentId, column_index: colIdx });
     }
-    if (mappings.length === 0) { toast.error("Please map at least one assignment column"); return; }
+    if (mappings.length === 0) { toast.error(t("mapAssignmentColumnError")); return; }
     if (studentIdentifier === "name") {
       if (firstNameCol === undefined && lastNameCol === undefined) {
-        toast.error("Please select at least one name column"); return;
+        toast.error(t("selectNameColumnError")); return;
       }
     } else if (studentNumberCol === undefined) {
-      toast.error("Please select the Student Number column"); return;
+      toast.error(t("selectStudentNumberColumnError")); return;
     }
 
     setImporting(true);
@@ -212,12 +214,12 @@ export default function TeacherImportGradesPage() {
       if (res.success && res.data) {
         setImportResult(res.data);
         if (res.data.imported > 0 && res.data.errors.length === 0)
-          toast.success(`Successfully imported grades for ${res.data.imported} students`);
+          toast.success(t("importSuccessAll", { count: res.data.imported }));
         else if (res.data.imported > 0)
-          toast.success(`Imported ${res.data.imported} students with ${res.data.errors.length} issue(s)`);
-        else toast.error("No grades were imported");
-      } else { toast.error("Import failed"); }
-    } catch { toast.error("Import failed"); } finally { setImporting(false); }
+          toast.success(t("importSuccessPartial", { count: res.data.imported, issues: res.data.errors.length }));
+        else toast.error(t("importNoneImported"));
+      } else { toast.error(t("importFailed")); }
+    } catch { toast.error(t("importFailed")); } finally { setImporting(false); }
   };
 
   return (
@@ -229,13 +231,13 @@ export default function TeacherImportGradesPage() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-[#022172]">
-            Import Grades
+            {t("pageTitle")}
             {selectedMarkingPeriod &&
               markingPeriods.find((mp) => mp.id === selectedMarkingPeriod) &&
               ` - ${markingPeriods.find((mp) => mp.id === selectedMarkingPeriod)!.title}`}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Import gradebook grades from CSV or Excel file
+            {t("pageSubtitle")}
           </p>
         </div>
       </div>
@@ -245,16 +247,16 @@ export default function TeacherImportGradesPage() {
         <CardContent className="p-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="text-sm font-medium text-muted-foreground mb-1 block">Course Period</label>
+              <label className="text-sm font-medium text-muted-foreground mb-1 block">{t("coursePeriod")}</label>
               {loadingCPs ? (
                 <Skeleton className="h-10 w-full" />
               ) : (
                 <Select value={selectedCoursePeriod} onValueChange={setSelectedCoursePeriod}>
-                  <SelectTrigger><SelectValue placeholder="Select course period..." /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t("selectCoursePeriodPlaceholder")} /></SelectTrigger>
                   <SelectContent>
                     {coursePeriods.map((cp) => (
                       <SelectItem key={cp.id} value={cp.id}>
-                        {cp.course?.title || "Course"}
+                        {cp.course?.title || t("course")}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -262,11 +264,11 @@ export default function TeacherImportGradesPage() {
               )}
             </div>
             <div>
-              <label className="text-sm font-medium text-muted-foreground mb-1 block">Quarter / Marking Period</label>
+              <label className="text-sm font-medium text-muted-foreground mb-1 block">{t("markingPeriod")}</label>
               <Select value={selectedMarkingPeriod} onValueChange={setSelectedMarkingPeriod}>
-                <SelectTrigger><SelectValue placeholder="All marking periods" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t("allMarkingPeriods")} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Marking Periods</SelectItem>
+                  <SelectItem value="all">{t("allMarkingPeriods")}</SelectItem>
                   {markingPeriods.map((mp) => (
                     <SelectItem key={mp.id} value={mp.id}>{mp.title}</SelectItem>
                   ))}
@@ -274,9 +276,9 @@ export default function TeacherImportGradesPage() {
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium text-muted-foreground mb-1 block">Upload File</label>
+              <label className="text-sm font-medium text-muted-foreground mb-1 block">{t("uploadFile")}</label>
               <Button variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
-                <FileSpreadsheet className="h-4 w-4 mr-2" />{fileName || "Choose CSV / Excel..."}
+                <FileSpreadsheet className="h-4 w-4 mr-2" />{fileName || t("chooseFilePlaceholder")}
               </Button>
               <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileSelect} />
             </div>
@@ -289,20 +291,20 @@ export default function TeacherImportGradesPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Badge variant="secondary" className="text-xs">
-              <FileSpreadsheet className="h-3 w-3 mr-1" />{fileName}: {parsedRows.length} rows
+              <FileSpreadsheet className="h-3 w-3 mr-1" />{t("fileRowsCount", { fileName, count: parsedRows.length })}
             </Badge>
             <label className="flex items-center gap-2 text-sm">
               <Checkbox checked={importFirstRow} onCheckedChange={(v) => setImportFirstRow(!!v)} />
-              Import first row
+              {t("importFirstRow")}
             </label>
           </div>
           <div className="flex items-center gap-2">
             <Button className="bg-[#0369a1] hover:bg-[#0369a1]/90" onClick={handleImport} disabled={importing || !selectedCoursePeriod}>
               {importing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
-              IMPORT GRADEBOOK GRADES
+              {t("importButton")}
             </Button>
             <Button variant="link" className="text-[#0369a1]" onClick={resetForm}>
-              <RotateCcw className="h-3 w-3 mr-1" />Reset form
+              <RotateCcw className="h-3 w-3 mr-1" />{t("resetForm")}
             </Button>
           </div>
         </div>
@@ -313,39 +315,39 @@ export default function TeacherImportGradesPage() {
         <Card>
           <CardContent className="p-6">
             <div className="max-w-lg mx-auto space-y-6">
-              <h2 className="text-lg font-semibold">Gradebook Grades Fields</h2>
+              <h2 className="text-lg font-semibold">{t("gradebookGradesFields")}</h2>
 
               <div className="space-y-3">
                 <div>
                   <Select value={studentIdentifier} onValueChange={(v) => setStudentIdentifier(v as "name" | "student_number")}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="name">Name</SelectItem>
-                      <SelectItem value="student_number">Student Number</SelectItem>
+                      <SelectItem value="name">{t("name")}</SelectItem>
+                      <SelectItem value="student_number">{t("studentNumber")}</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground mt-1">Identify Student</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t("identifyStudent")}</p>
                 </div>
 
                 {studentIdentifier === "name" && (
                   <>
                     <div>
                       <Select value={firstNameCol !== undefined ? String(firstNameCol) : ""} onValueChange={(v) => setFirstNameCol(v ? Number(v) : undefined)}>
-                        <SelectTrigger><SelectValue placeholder="Select column..." /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder={t("selectColumnPlaceholder")} /></SelectTrigger>
                         <SelectContent>
                           {columnOptions.map((opt) => (<SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>))}
                         </SelectContent>
                       </Select>
-                      <p className="text-xs text-red-500 mt-1">First Name</p>
+                      <p className="text-xs text-red-500 mt-1">{t("firstName")}</p>
                     </div>
                     <div>
                       <Select value={lastNameCol !== undefined ? String(lastNameCol) : ""} onValueChange={(v) => setLastNameCol(v ? Number(v) : undefined)}>
-                        <SelectTrigger><SelectValue placeholder="Select column..." /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder={t("selectColumnPlaceholder")} /></SelectTrigger>
                         <SelectContent>
                           {columnOptions.map((opt) => (<SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>))}
                         </SelectContent>
                       </Select>
-                      <p className="text-xs text-red-500 mt-1">Last Name</p>
+                      <p className="text-xs text-red-500 mt-1">{t("lastName")}</p>
                     </div>
                   </>
                 )}
@@ -353,22 +355,22 @@ export default function TeacherImportGradesPage() {
                 {studentIdentifier === "student_number" && (
                   <div>
                     <Select value={studentNumberCol !== undefined ? String(studentNumberCol) : ""} onValueChange={(v) => setStudentNumberCol(v ? Number(v) : undefined)}>
-                      <SelectTrigger><SelectValue placeholder="Select column..." /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={t("selectColumnPlaceholder")} /></SelectTrigger>
                       <SelectContent>
                         {columnOptions.map((opt) => (<SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>))}
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-red-500 mt-1">Student Number</p>
+                    <p className="text-xs text-red-500 mt-1">{t("studentNumber")}</p>
                   </div>
                 )}
               </div>
 
               <div className="border-t pt-4">
-                <h3 className="text-base font-semibold mb-3">Assignments</h3>
+                <h3 className="text-base font-semibold mb-3">{t("assignments")}</h3>
                 {loadingAssignments ? (
                   <div className="space-y-3">{[1, 2, 3].map((i) => (<Skeleton key={i} className="h-10 w-full" />))}</div>
                 ) : assignments.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">No assignments found for this course period.</p>
+                  <p className="text-sm text-muted-foreground text-center py-4">{t("noAssignmentsFound")}</p>
                 ) : (
                   <div className="space-y-4">
                     {assignments.map((a) => (
@@ -381,13 +383,13 @@ export default function TeacherImportGradesPage() {
                             setAssignmentMappings(next);
                           }}
                         >
-                          <SelectTrigger><SelectValue placeholder="Select column..." /></SelectTrigger>
+                          <SelectTrigger><SelectValue placeholder={t("selectColumnPlaceholder")} /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">— Skip —</SelectItem>
+                            <SelectItem value="none">{t("skipOption")}</SelectItem>
                             {columnOptions.map((opt) => (<SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>))}
                           </SelectContent>
                         </Select>
-                        <p className="text-xs text-muted-foreground mt-1">{a.title}{a.points ? ` (${a.points} pts)` : ""}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{a.title}{a.points ? t("pointsSuffix", { points: a.points }) : ""}</p>
                       </div>
                     ))}
                   </div>
@@ -403,7 +405,7 @@ export default function TeacherImportGradesPage() {
         <div className="flex justify-center">
           <Button className="bg-[#0369a1] hover:bg-[#0369a1]/90 px-8" onClick={handleImport} disabled={importing || !selectedCoursePeriod}>
             {importing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
-            IMPORT GRADEBOOK GRADES
+            {t("importButton")}
           </Button>
         </div>
       )}
@@ -419,29 +421,29 @@ export default function TeacherImportGradesPage() {
                 ) : (
                   <AlertCircle className="h-5 w-5 text-amber-500" />
                 )}
-                Import Results
+                {t("importResults")}
               </h3>
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div className="bg-green-50 rounded-lg p-3">
                   <div className="text-2xl font-bold text-green-700">{importResult.imported}</div>
-                  <div className="text-xs text-green-600">Students Imported</div>
+                  <div className="text-xs text-green-600">{t("studentsImported")}</div>
                 </div>
                 <div className="bg-yellow-50 rounded-lg p-3">
                   <div className="text-2xl font-bold text-yellow-700">{importResult.skipped}</div>
-                  <div className="text-xs text-yellow-600">Skipped</div>
+                  <div className="text-xs text-yellow-600">{t("skipped")}</div>
                 </div>
                 <div className="bg-red-50 rounded-lg p-3">
                   <div className="text-2xl font-bold text-red-700">{importResult.errors.length}</div>
-                  <div className="text-xs text-red-600">Errors</div>
+                  <div className="text-xs text-red-600">{t("errors")}</div>
                 </div>
               </div>
               {importResult.errors.length > 0 && (
                 <div className="mt-4">
-                  <h4 className="text-sm font-medium mb-2">Error Details:</h4>
+                  <h4 className="text-sm font-medium mb-2">{t("errorDetails")}</h4>
                   <div className="max-h-48 overflow-y-auto bg-muted/50 rounded-lg p-3 space-y-1">
                     {importResult.errors.map((err, i) => (
                       <div key={i} className="text-xs text-red-600 flex gap-2">
-                        <span className="font-medium whitespace-nowrap">Row {err.row}:</span>
+                        <span className="font-medium whitespace-nowrap">{t("rowLabel", { row: err.row })}</span>
                         <span>{err.reason}</span>
                       </div>
                     ))}
@@ -457,10 +459,9 @@ export default function TeacherImportGradesPage() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <FileSpreadsheet className="h-16 w-16 text-muted-foreground/40 mb-4" />
-            <h3 className="text-lg font-semibold text-muted-foreground mb-2">Upload a Grades File</h3>
+            <h3 className="text-lg font-semibold text-muted-foreground mb-2">{t("uploadGradesFileTitle")}</h3>
             <p className="text-sm text-muted-foreground max-w-md">
-              Select a course period above, then upload a CSV or Excel file containing
-              student grades. You&apos;ll map the file columns to assignments before importing.
+              {t("uploadGradesFileDescription")}
             </p>
           </CardContent>
         </Card>

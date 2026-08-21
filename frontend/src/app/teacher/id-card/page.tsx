@@ -5,11 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CreditCard, Printer } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { UserQRCode } from '@/components/shared/UserQRCode'
+import { useTranslations } from 'next-intl'
 
 export default function TeacherIdCardPage() {
+  const t = useTranslations('teacherPages.idCard')
   const { profile } = useAuth()
 
-  const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Teacher'
+  const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || t('teacherFallback')
   const initials = [profile?.first_name?.[0], profile?.last_name?.[0]].filter(Boolean).join('').toUpperCase() || 'T'
 
   return (
@@ -17,15 +19,15 @@ export default function TeacherIdCardPage() {
       <div className="flex items-center gap-3">
         <CreditCard className="h-6 w-6 text-[#022172]" />
         <div>
-          <h1 className="text-2xl font-bold text-[#022172] dark:text-white">My ID Card</h1>
-          <p className="text-muted-foreground text-sm">Your digital identification card</p>
+          <h1 className="text-2xl font-bold text-[#022172] dark:text-white">{t('pageTitle')}</h1>
+          <p className="text-muted-foreground text-sm">{t('pageSubtitle')}</p>
         </div>
       </div>
 
       <Card className="overflow-hidden shadow-xl">
         <div className="bg-gradient-to-br from-[#022172] to-[#57A3CC] p-6 text-white">
           <div className="flex items-center justify-between mb-4">
-            <div className="text-xs font-semibold opacity-80 uppercase tracking-widest">Staff Identity Card</div>
+            <div className="text-xs font-semibold opacity-80 uppercase tracking-widest">{t('staffIdentityCard')}</div>
           </div>
           <div className="flex items-center gap-4">
             <div className="h-16 w-16 rounded-full bg-white/20 flex items-center justify-center text-white text-2xl font-bold shrink-0">
@@ -43,7 +45,7 @@ export default function TeacherIdCardPage() {
             <UserQRCode value={profile.id} label={`${fullName} · ${profile?.role}`} size={120} />
           )}
           <p className="text-xs text-muted-foreground text-center">
-            Scan QR to verify identity
+            {t('scanQrToVerify')}
           </p>
         </CardContent>
       </Card>
@@ -51,7 +53,7 @@ export default function TeacherIdCardPage() {
       <div className="flex justify-center">
         <Button variant="outline" onClick={() => window.print()} className="gap-2">
           <Printer className="h-4 w-4" />
-          Print ID Card
+          {t('printIdCard')}
         </Button>
       </div>
     </div>

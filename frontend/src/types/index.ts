@@ -134,6 +134,8 @@ export interface Profile {
   email: string | null
   username: string | null
   avatar_url?: string | null
+  profile_photo_url?: string | null
+  gender?: 'male' | 'female' | string | null
   is_active: boolean
   force_password_change: boolean
   created_at: string

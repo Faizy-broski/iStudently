@@ -4,18 +4,19 @@
 
 const VIEWED_NOTES_KEY = 'portal_viewed_notes'
 const VIEWED_POLLS_KEY = 'portal_viewed_polls'
+const VIEWED_REFERRALS_KEY = 'portal_viewed_referrals'
 
 interface ViewedItems {
   ids: string[]
   lastUpdated: string
 }
 
-function getStorageKey(type: 'note' | 'poll', userId?: string): string {
-  const base = type === 'note' ? VIEWED_NOTES_KEY : VIEWED_POLLS_KEY
+function getStorageKey(type: 'note' | 'poll' | 'referral', userId?: string): string {
+  const base = type === 'note' ? VIEWED_NOTES_KEY : type === 'poll' ? VIEWED_POLLS_KEY : VIEWED_REFERRALS_KEY
   return userId ? `${base}_${userId}` : base
 }
 
-export function getViewedPortalItems(type: 'note' | 'poll', userId?: string): string[] {
+export function getViewedPortalItems(type: 'note' | 'poll' | 'referral', userId?: string): string[] {
   if (typeof window === 'undefined') return []
 
   try {
@@ -30,7 +31,7 @@ export function getViewedPortalItems(type: 'note' | 'poll', userId?: string): st
   return []
 }
 
-export function markPortalItemViewed(type: 'note' | 'poll', id: string, userId?: string): void {
+export function markPortalItemViewed(type: 'note' | 'poll' | 'referral', id: string, userId?: string): void {
   if (typeof window === 'undefined') return
 
   try {
@@ -47,7 +48,7 @@ export function markPortalItemViewed(type: 'note' | 'poll', id: string, userId?:
   }
 }
 
-export function markMultiplePortalItemsViewed(type: 'note' | 'poll', ids: string[], userId?: string): void {
+export function markMultiplePortalItemsViewed(type: 'note' | 'poll' | 'referral', ids: string[], userId?: string): void {
   if (typeof window === 'undefined') return
 
   try {
@@ -66,17 +67,17 @@ export function markMultiplePortalItemsViewed(type: 'note' | 'poll', ids: string
   }
 }
 
-export function getUnviewedCount(type: 'note' | 'poll', allIds: string[], userId?: string): number {
+export function getUnviewedCount(type: 'note' | 'poll' | 'referral', allIds: string[], userId?: string): number {
   const viewedIds = getViewedPortalItems(type, userId)
   return allIds.filter(id => !viewedIds.includes(id)).length
 }
 
-export function isPortalItemViewed(type: 'note' | 'poll', id: string, userId?: string): boolean {
+export function isPortalItemViewed(type: 'note' | 'poll' | 'referral', id: string, userId?: string): boolean {
   const viewedIds = getViewedPortalItems(type, userId)
   return viewedIds.includes(id)
 }
 
-export function clearViewedPortalItems(type?: 'note' | 'poll', userId?: string): void {
+export function clearViewedPortalItems(type?: 'note' | 'poll' | 'referral', userId?: string): void {
   if (typeof window === 'undefined') return
 
   if (type) {
@@ -84,6 +85,7 @@ export function clearViewedPortalItems(type?: 'note' | 'poll', userId?: string):
   } else {
     localStorage.removeItem(getStorageKey('note', userId))
     localStorage.removeItem(getStorageKey('poll', userId))
+    localStorage.removeItem(getStorageKey('referral', userId))
   }
 }
 
@@ -93,7 +95,7 @@ export function cleanupViewedItems(userId?: string): void {
 
   const MAX_ITEMS = 500
 
-  ;(['note', 'poll'] as const).forEach(type => {
+  ;(['note', 'poll', 'referral'] as const).forEach(type => {
     try {
       const key = getStorageKey(type, userId)
       const stored = localStorage.getItem(key)

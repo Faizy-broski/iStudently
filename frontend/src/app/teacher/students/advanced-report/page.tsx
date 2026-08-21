@@ -12,24 +12,26 @@ import { Label } from "@/components/ui/label"
 import { Filter } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
+import { useTranslations } from "next-intl"
 import { getFieldDefinitions, CustomFieldDefinition } from "@/lib/api/custom-fields"
 
-const STANDARD_FIELDS = [
-  { id: 'student_number', label: 'Student Number', category: 'general' },
-  { id: 'first_name', label: 'First Name', category: 'general' },
-  { id: 'last_name', label: 'Last Name', category: 'general' },
-  { id: 'father_name', label: 'Father Name', category: 'general' },
-  { id: 'grandfather_name', label: 'Grandfather Name', category: 'general' },
-  { id: 'email', label: 'Email', category: 'general' },
-  { id: 'phone', label: 'Phone', category: 'general' },
-  { id: 'grade_level_name', label: 'Grade Level', category: 'general' },
-  { id: 'section_name', label: 'Section', category: 'general' },
-  { id: 'created_at', label: 'Enrollment Date', category: 'general' },
-  { id: 'is_active', label: 'Status', category: 'general' },
-]
-
 export default function TeacherAdvancedReportPage() {
+  const t = useTranslations('teacherPages.studentsAdvancedReport')
   const router = useRouter()
+
+  const STANDARD_FIELDS = [
+    { id: 'student_number', label: t('studentNumber'), category: 'general' },
+    { id: 'first_name', label: t('firstName'), category: 'general' },
+    { id: 'last_name', label: t('lastName'), category: 'general' },
+    { id: 'father_name', label: t('fatherName'), category: 'general' },
+    { id: 'grandfather_name', label: t('grandfatherName'), category: 'general' },
+    { id: 'email', label: t('email'), category: 'general' },
+    { id: 'phone', label: t('phone'), category: 'general' },
+    { id: 'grade_level_name', label: t('gradeLevel'), category: 'general' },
+    { id: 'section_name', label: t('section'), category: 'general' },
+    { id: 'created_at', label: t('enrollmentDate'), category: 'general' },
+    { id: 'is_active', label: t('status'), category: 'general' },
+  ]
   const [customFields, setCustomFields] = useState<CustomFieldDefinition[]>([])
   const [selectedFields, setSelectedFields] = useState<string[]>(['first_name', 'last_name', 'student_number'])
 
@@ -63,7 +65,7 @@ export default function TeacherAdvancedReportPage() {
   }
 
   const generateReport = () => {
-    if (selectedFields.length === 0) { toast.error("Please select at least one field"); return; }
+    if (selectedFields.length === 0) { toast.error(t('selectAtLeastOneField')); return; }
     const fieldsParam = encodeURIComponent(JSON.stringify(selectedFields))
     router.push(`/teacher/students/advanced-report/results?fields=${fieldsParam}`)
   }
@@ -72,28 +74,28 @@ export default function TeacherAdvancedReportPage() {
     <div className="space-y-6">
       <div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-          <Link href="/teacher/students" className="hover:text-foreground">Students</Link>
+          <Link href="/teacher/students" className="hover:text-foreground">{t('breadcrumbStudents')}</Link>
           <span>/</span>
-          <span>Advanced Report</span>
+          <span>{t('breadcrumbAdvancedReport')}</span>
         </div>
-        <h1 className="text-3xl font-bold tracking-tight text-[#022172] dark:text-white">Advanced Report</h1>
-        <p className="text-muted-foreground">Select fields to include in your custom report</p>
+        <h1 className="text-3xl font-bold tracking-tight text-[#022172] dark:text-white">{t('pageTitle')}</h1>
+        <p className="text-muted-foreground">{t('pageSubtitle')}</p>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Filter className="h-5 w-5" />
-            Select Fields
+            {t('selectFields')}
           </CardTitle>
-          <CardDescription>Choose which fields to include in the report</CardDescription>
+          <CardDescription>{t('selectFieldsDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-[#022172]">GENERAL</h3>
+              <h3 className="text-sm font-semibold text-[#022172]">{t('general')}</h3>
               <Button variant="ghost" size="sm" onClick={() => toggleCategory('general')}>
-                {STANDARD_FIELDS.filter(f => f.category === 'general').every(f => selectedFields.includes(f.id)) ? 'Deselect All' : 'Select All'}
+                {STANDARD_FIELDS.filter(f => f.category === 'general').every(f => selectedFields.includes(f.id)) ? t('deselectAll') : t('selectAll')}
               </Button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -109,9 +111,9 @@ export default function TeacherAdvancedReportPage() {
           {Object.entries(customFieldsByCategory).map(([category, fields]) => (
             <div key={category}>
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-[#022172]">{category.toUpperCase()} (CUSTOM)</h3>
+                <h3 className="text-sm font-semibold text-[#022172]">{t('customCategory', { category: category.toUpperCase() })}</h3>
                 <Button variant="ghost" size="sm" onClick={() => toggleCategory(category, true)}>
-                  {fields.every(f => selectedFields.includes(`custom_${f.field_key}`)) ? 'Deselect All' : 'Select All'}
+                  {fields.every(f => selectedFields.includes(`custom_${f.field_key}`)) ? t('deselectAll') : t('selectAll')}
                 </Button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -130,7 +132,7 @@ export default function TeacherAdvancedReportPage() {
 
           <div className="flex justify-end pt-4">
             <Button onClick={generateReport} disabled={selectedFields.length === 0} className="bg-gradient-to-r from-[#57A3CC] to-[#022172]">
-              Generate Report
+              {t('generateReport')}
             </Button>
           </div>
         </CardContent>

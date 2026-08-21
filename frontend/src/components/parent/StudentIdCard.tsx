@@ -9,8 +9,10 @@ import { CreditCard, Download, Printer, RefreshCw, AlertCircle } from 'lucide-re
 import Image from 'next/image'
 import QRCode from 'react-qr-code'
 import html2canvas from 'html2canvas'
+import { useLoadDesignFonts } from '@/config/design-fonts'
 
 export function StudentIdCard() {
+  useLoadDesignFonts()
   const { idCard, isLoading, error, refresh } = useStudentIdCard()
   const [isDownloading, setIsDownloading] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -194,6 +196,7 @@ export function StudentIdCard() {
                   height: `${field.size.height}px`,
                   fontSize: style.fontSize ? `${style.fontSize}px` : '14px',
                   fontWeight: style.fontWeight || 'normal',
+                  fontFamily: style.fontFamily || undefined,
                   color: style.color || '#000000',
                   textAlign: (style.align as 'left' | 'center' | 'right') || 'left',
                   display: 'flex',

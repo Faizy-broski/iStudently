@@ -296,6 +296,8 @@ export interface SchoolSettings {
   custom_menu_order?: Record<string, string[]> | null
   // Setup Assistant
   setup_assistant_config?: Record<string, boolean> | null
+  // Super-admin allow-list of module_keys (hrefs) this school may use. null = unrestricted.
+  allowed_modules?: string[] | null
   created_at: string
   updated_at: string
 }
@@ -477,5 +479,23 @@ export async function updatePdfHeaderFooter(settings: Partial<PdfHeaderFooterSet
   return apiRequest<{ message: string }>(`/school-settings/pdf-header-footer${qs}`, {
     method: 'PUT',
     body: JSON.stringify({ ...settings, campus_id: campusId || undefined }),
+  })
+}
+
+// ─── Allowed Modules (super-admin-only per-school allow-list) ────────────────
+
+export interface AllowedModulesResult {
+  school_id: string
+  allowed_modules: string[] | null
+}
+
+export async function getSchoolAllowedModules(schoolId: string) {
+  return apiRequest<AllowedModulesResult>(`/school-settings/allowed-modules?school_id=${encodeURIComponent(schoolId)}`)
+}
+
+export async function updateSchoolAllowedModules(schoolId: string, allowedModules: string[] | null) {
+  return apiRequest<AllowedModulesResult>('/school-settings/allowed-modules', {
+    method: 'PUT',
+    body: JSON.stringify({ school_id: schoolId, allowed_modules: allowedModules }),
   })
 }

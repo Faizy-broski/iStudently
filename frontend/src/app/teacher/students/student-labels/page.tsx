@@ -12,11 +12,13 @@ import { Separator } from "@/components/ui/separator";
 import { Tag, Users, Search, CheckSquare, Square, Loader2, Building2, Printer } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useCampus } from "@/context/CampusContext";
 import { useGradeLevels, useSections } from "@/hooks/useAcademics";
 import { getStudents, Student } from "@/lib/api/students";
 
 export default function TeacherStudentLabelsPage() {
+  const t = useTranslations('teacherPages.studentsLabels');
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
 
@@ -43,7 +45,7 @@ export default function TeacherStudentLabelsPage() {
       try {
         const response = await getStudents({ page: 1, limit: 500, search: searchQuery || undefined, grade_level: selectedGradeLevel || undefined, campus_id: selectedCampus?.id });
         if (response.success && response.data) setStudents(response.data);
-      } catch { toast.error('Failed to load students'); }
+      } catch { toast.error(t('failedToLoadStudents')); }
       finally { setLoadingStudents(false); }
     };
     const debounceTimer = setTimeout(loadStudents, 300);
@@ -73,7 +75,7 @@ export default function TeacherStudentLabelsPage() {
   const selectedStudents = useMemo(() => students.filter(s => selectedStudentIds.includes(s.id)), [students, selectedStudentIds]);
 
   const handlePrint = () => {
-    if (selectedStudentIds.length === 0) { toast.error('Please select at least one student'); return; }
+    if (selectedStudentIds.length === 0) { toast.error(t('selectAtLeastOneStudent')); return; }
     setIsPrinting(true);
 
     const cols = parseInt(columns);
@@ -94,14 +96,14 @@ export default function TeacherStudentLabelsPage() {
         </div>`;
     }).join('');
 
-    const html = `<!DOCTYPE html><html><head><title>Student Labels</title>
+    const html = `<!DOCTYPE html><html><head><title>${t('studentLabels')}</title>
       <style>body{font-family:'Segoe UI',Arial,sans-serif;margin:0;padding:20px;background:#fff;}
       @media print{body{margin:0;padding:10px;}.no-print{display:none!important;}}</style>
       </head><body>
       <div class="no-print" style="margin-bottom:16px;display:flex;gap:8px;align-items:center;">
-        <span style="font-size:14px;color:#6b7280;">${selectedStudents.length} labels</span>
-        <button onclick="window.print()" style="padding:8px 16px;background:#022172;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;">Print</button>
-        <button onclick="window.close()" style="padding:8px 16px;background:#f3f4f6;color:#374151;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;font-size:14px;">Close</button>
+        <span style="font-size:14px;color:#6b7280;">${t('labelsCount', { count: selectedStudents.length })}</span>
+        <button onclick="window.print()" style="padding:8px 16px;background:#022172;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;">${t('print')}</button>
+        <button onclick="window.close()" style="padding:8px 16px;background:#f3f4f6;color:#374151;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;font-size:14px;">${t('close')}</button>
       </div>
       <div style="font-size:0;">${labelsHtml}</div></body></html>`;
 
@@ -116,12 +118,12 @@ export default function TeacherStudentLabelsPage() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-            <Link href="/teacher/students" className="hover:text-foreground">Students</Link>
+            <Link href="/teacher/students" className="hover:text-foreground">{t('breadcrumbStudents')}</Link>
             <span>/</span>
-            <span>Print Student Labels</span>
+            <span>{t('breadcrumbPrintStudentLabels')}</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Print Student Labels</h1>
-          <p className="text-muted-foreground">Select students and generate printable name labels</p>
+          <h1 className="text-2xl font-bold tracking-tight">{t('pageTitle')}</h1>
+          <p className="text-muted-foreground">{t('pageSubtitle')}</p>
         </div>
         {selectedCampus && (
           <Badge variant="outline" className="flex items-center gap-2">
@@ -135,33 +137,33 @@ export default function TeacherStudentLabelsPage() {
         {/* Left Panel - Label Settings */}
         <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Tag className="h-5 w-5" />Label Settings</CardTitle>
-            <CardDescription>Configure how labels are laid out</CardDescription>
+            <CardTitle className="flex items-center gap-2"><Tag className="h-5 w-5" />{t('labelSettings')}</CardTitle>
+            <CardDescription>{t('labelSettingsDescription')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label className="text-sm font-medium mb-1.5 block">Columns per row</Label>
+              <Label className="text-sm font-medium mb-1.5 block">{t('columnsPerRow')}</Label>
               <Select value={columns} onValueChange={setColumns}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="2">2 columns</SelectItem>
-                  <SelectItem value="3">3 columns</SelectItem>
-                  <SelectItem value="4">4 columns</SelectItem>
+                  <SelectItem value="2">{t('columns', { count: 2 })}</SelectItem>
+                  <SelectItem value="3">{t('columns', { count: 3 })}</SelectItem>
+                  <SelectItem value="4">{t('columns', { count: 4 })}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <Separator />
             <div className="space-y-2 text-sm text-muted-foreground">
-              <p>Each label includes:</p>
+              <p>{t('eachLabelIncludes')}</p>
               <ul className="list-disc list-inside space-y-1 text-xs">
-                <li>Student full name</li>
-                <li>Student ID number</li>
-                <li>Grade level</li>
+                <li>{t('studentFullName')}</li>
+                <li>{t('studentIdNumber')}</li>
+                <li>{t('gradeLevel')}</li>
               </ul>
             </div>
             <div className="pt-4">
               <Badge variant="secondary" className="w-full justify-center py-2">
-                {selectedStudentIds.length} students selected
+                {t('studentsSelected', { count: selectedStudentIds.length })}
               </Badge>
             </div>
           </CardContent>
@@ -170,34 +172,34 @@ export default function TeacherStudentLabelsPage() {
         {/* Right Panel - Student Selection */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" />Select Students</CardTitle>
-            <CardDescription>Filter and select students to print labels for</CardDescription>
+            <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" />{t('selectStudents')}</CardTitle>
+            <CardDescription>{t('selectStudentsDescription')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
-                <Label className="text-xs text-muted-foreground mb-1.5 block">Search</Label>
+                <Label className="text-xs text-muted-foreground mb-1.5 block">{t('search')}</Label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Search by name or ID..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
+                  <Input placeholder={t('searchByNameOrId')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
                 </div>
               </div>
               <div className="w-full sm:w-48">
-                <Label className="text-xs text-muted-foreground mb-1.5 block">Grade Level</Label>
+                <Label className="text-xs text-muted-foreground mb-1.5 block">{t('gradeLevel')}</Label>
                 <Select value={selectedGradeLevel} onValueChange={(value) => { setSelectedGradeLevel(value === "all" ? "" : value); setSelectedSection(""); }}>
-                  <SelectTrigger><SelectValue placeholder="All Grades" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t('allGrades')} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Grades</SelectItem>
+                    <SelectItem value="all">{t('allGrades')}</SelectItem>
                     {gradeLevels.map((grade) => (<SelectItem key={grade.id} value={grade.id}>{grade.name}</SelectItem>))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="w-full sm:w-48">
-                <Label className="text-xs text-muted-foreground mb-1.5 block">Section</Label>
+                <Label className="text-xs text-muted-foreground mb-1.5 block">{t('section')}</Label>
                 <Select value={selectedSection} onValueChange={(value) => setSelectedSection(value === "all" ? "" : value)} disabled={!selectedGradeLevel}>
-                  <SelectTrigger><SelectValue placeholder="All Sections" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t('allSections')} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Sections</SelectItem>
+                    <SelectItem value="all">{t('allSections')}</SelectItem>
                     {filteredSections.map((section) => (<SelectItem key={section.id} value={section.id}>{section.name}</SelectItem>))}
                   </SelectContent>
                 </Select>
@@ -206,9 +208,9 @@ export default function TeacherStudentLabelsPage() {
 
             <div className="flex items-center justify-between py-2 border-b">
               <Button variant="ghost" size="sm" onClick={toggleAllStudents} className="text-sm">
-                {selectedStudentIds.length === filteredStudents.length && filteredStudents.length > 0 ? (<><CheckSquare className="mr-2 h-4 w-4" />Deselect All</>) : (<><Square className="mr-2 h-4 w-4" />Select All ({filteredStudents.length})</>)}
+                {selectedStudentIds.length === filteredStudents.length && filteredStudents.length > 0 ? (<><CheckSquare className="mr-2 h-4 w-4" />{t('deselectAll')}</>) : (<><Square className="mr-2 h-4 w-4" />{t('selectAllCount', { count: filteredStudents.length })}</>)}
               </Button>
-              <Badge variant="outline">{selectedStudentIds.length} of {filteredStudents.length} selected</Badge>
+              <Badge variant="outline">{t('ofSelected', { selected: selectedStudentIds.length, total: filteredStudents.length })}</Badge>
             </div>
 
             <div className="h-80 overflow-y-auto">
@@ -216,7 +218,7 @@ export default function TeacherStudentLabelsPage() {
                 <div className="flex items-center justify-center h-32"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
               ) : filteredStudents.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
-                  <Users className="h-8 w-8 mb-2" /><p>No students found</p><p className="text-xs">Try adjusting your filters</p>
+                  <Users className="h-8 w-8 mb-2" /><p>{t('noStudentsFound')}</p><p className="text-xs">{t('tryAdjustingFilters')}</p>
                 </div>
               ) : (
                 <div className="space-y-2 pr-4">
@@ -226,13 +228,13 @@ export default function TeacherStudentLabelsPage() {
                         <Checkbox checked={selectedStudentIds.includes(student.id)} onCheckedChange={() => toggleStudent(student.id)} />
                         <div>
                           <p className="font-medium">{getStudentName(student)}</p>
-                          <p className="text-sm text-muted-foreground">{student.student_number} • {student.grade_level || 'No Grade'}</p>
+                          <p className="text-sm text-muted-foreground">{student.student_number} • {student.grade_level || t('noGrade')}</p>
                         </div>
                       </div>
                       {student.profile?.is_active ? (
-                        <Badge variant="outline" className="text-green-600 border-green-200">Active</Badge>
+                        <Badge variant="outline" className="text-green-600 border-green-200">{t('active')}</Badge>
                       ) : (
-                        <Badge variant="outline" className="text-red-600 border-red-200">Inactive</Badge>
+                        <Badge variant="outline" className="text-red-600 border-red-200">{t('inactive')}</Badge>
                       )}
                     </div>
                   ))}
@@ -247,10 +249,10 @@ export default function TeacherStudentLabelsPage() {
       <Card className="bg-muted/30">
         <CardContent className="flex items-center justify-between py-4">
           <div className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{selectedStudentIds.length}</span> students selected
+            <span className="font-medium text-foreground">{selectedStudentIds.length}</span> {t('studentsSelectedPlain')}
           </div>
           <Button onClick={handlePrint} disabled={isPrinting || selectedStudentIds.length === 0} size="lg">
-            {isPrinting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating...</>) : (<><Printer className="mr-2 h-4 w-4" />Print Labels ({selectedStudentIds.length})</>)}
+            {isPrinting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t('generating')}</>) : (<><Printer className="mr-2 h-4 w-4" />{t('printLabelsCount', { count: selectedStudentIds.length })}</>)}
           </Button>
         </CardContent>
       </Card>

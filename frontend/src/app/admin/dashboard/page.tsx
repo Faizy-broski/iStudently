@@ -27,7 +27,7 @@ export default function AdminDashboard() {
     stats,
     studentGrowthData,
     attendanceData,
-    gradeDistribution,
+    classBreakdown,
     loading,
     error,
     refreshDashboard,
@@ -235,27 +235,37 @@ export default function AdminDashboard() {
 
       {/* Additional Insights */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Grade Distribution */}
+        {/* Grade & Class Distribution — grade totals with a per-section breakdown underneath each */}
         <Card>
           <CardHeader>
-            <CardTitle>{t('charts.grade_title')}</CardTitle>
-            <CardDescription>{t('charts.grade_desc')}</CardDescription>
+            <CardTitle>{t('charts.class_title')}</CardTitle>
+            <CardDescription>{t('charts.class_desc')}</CardDescription>
           </CardHeader>
           <CardContent>
-            {gradeDistribution.length > 0 ? (
-              <div className="space-y-4">
-                {gradeDistribution.map((item, index) => (
-                  <div key={item.grade} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                      ></div>
-                      <span className="text-sm font-medium">{t('charts.grade_label', { number: item.grade })}</span>
+            {classBreakdown.length > 0 ? (
+              <div className="space-y-4 max-h-[420px] overflow-y-auto pr-1">
+                {classBreakdown.map((grade, index) => (
+                  <div key={grade.grade} className="space-y-2 pb-3 border-b last:border-0 last:pb-0">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                        ></div>
+                        <span className="text-sm font-semibold">{grade.grade}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl font-bold">{grade.total}</span>
+                        <span className="text-sm text-gray-500">{t('charts.students_count')}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl font-bold">{item.count}</span>
-                      <span className="text-sm text-gray-500">{t('charts.students_count')}</span>
+                    <div className="ps-6 space-y-1">
+                      {grade.sections.map((s) => (
+                        <div key={s.section} className="flex items-center justify-between text-sm text-gray-600">
+                          <span>{s.section}</span>
+                          <span className="font-medium">{s.count}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ))}
@@ -263,7 +273,7 @@ export default function AdminDashboard() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold">{t('stats.total_students')}</span>
                     <span className="text-2xl font-bold text-brand-blue">
-                      {gradeDistribution.reduce((sum, item) => sum + item.count, 0)}
+                      {classBreakdown.reduce((sum, grade) => sum + grade.total, 0)}
                     </span>
                   </div>
                 </div>

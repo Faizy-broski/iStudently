@@ -64,6 +64,10 @@ export interface DisciplineReferral {
     id: string;
     full_name: string;
   } | null;
+  school?: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 interface ApiResponse<T = unknown> {
@@ -359,5 +363,13 @@ export async function getStudentDisciplineReferrals(): Promise<ApiResponse<Disci
 
 export async function getParentDisciplineReferrals(): Promise<ApiResponse<DisciplineReferral[]>> {
   return apiRequest<DisciplineReferral[]>('/discipline/parent/referrals');
+}
+
+export async function getSuperAdminDisciplineReferrals(limit = 20): Promise<ApiResponse<DisciplineReferral[]>> {
+  return apiRequest<DisciplineReferral[]>(`/discipline/superadmin/referrals?limit=${limit}`);
+}
+
+export async function getAdminDisciplineReferrals(limit = 20): Promise<ApiResponse<DisciplineReferral[]>> {
+  return apiRequest<DisciplineReferral[]>(`/discipline/admin/referrals?limit=${limit}`);
 }
 

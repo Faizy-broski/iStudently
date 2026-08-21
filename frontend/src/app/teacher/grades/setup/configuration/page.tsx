@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import useSWR from "swr";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +20,7 @@ import { useTeacherGradebookConfig, type TeacherCPConfig } from "@/hooks/useTeac
 const SORT_OPTIONS: TeacherCPConfig["assignment_sorting"][] = ["due_date", "assigned_date", "title", "points"];
 
 export default function TeacherGradebookConfigurationPage() {
+  const t = useTranslations("teacherPages.gradesConfiguration");
   const { user } = useAuth();
   const [selectedCPId, setSelectedCPId] = useState("");
   const [dirty, setDirty] = useState(false);
@@ -75,10 +77,10 @@ export default function TeacherGradebookConfigurationPage() {
         anomalous_max: parseInt(anomalousMax, 10) || 100,
         latency: latency ? parseInt(latency, 10) : null,
       });
-      toast.success("Course period override saved");
+      toast.success(t("saveSuccess"));
       setDirty(false);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to save configuration");
+      toast.error(error instanceof Error ? error.message : t("saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -92,36 +94,36 @@ export default function TeacherGradebookConfigurationPage() {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-3">
             <Settings className="h-8 w-8 text-blue-600" />
-            Gradebook Configuration
+            {t("pageTitle")}
           </h1>
           <p className="text-sm text-muted-foreground mt-2">
-            Override gradebook defaults for a specific course period.
+            {t("pageSubtitle")}
           </p>
         </div>
         <Button onClick={handleSave} disabled={saveDisabled} className="bg-[#0369a1] hover:bg-[#025d8c] text-white gap-2">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Save Override
+          {t("saveOverride")}
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Course Period Override</CardTitle>
+          <CardTitle>{t("coursePeriodOverride")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-[1fr_240px] items-end">
             <div>
               <Label htmlFor="course-period-select" className="text-sm font-medium">
-                Course Period
+                {t("coursePeriod")}
               </Label>
               <Select value={selectedCPId} onValueChange={(value) => setSelectedCPId(value)}>
                 <SelectTrigger id="course-period-select" className="w-full">
-                  <SelectValue placeholder="Select course period" />
+                  <SelectValue placeholder={t("selectCoursePeriod")} />
                 </SelectTrigger>
                 <SelectContent>
                   {coursePeriods.length === 0 ? (
                     <SelectItem value="no-course-periods" disabled>
-                      No course periods available
+                      {t("noCoursePeriodsAvailable")}
                     </SelectItem>
                   ) : (
                     coursePeriods.map((cp) => (
@@ -136,12 +138,12 @@ export default function TeacherGradebookConfigurationPage() {
             </div>
 
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-              <p className="text-sm font-medium">Selected:</p>
+              <p className="text-sm font-medium">{t("selected")}</p>
               <p className="mt-2 text-sm text-gray-700">
                 {selectedCoursePeriod ? (
                   <>{selectedCoursePeriod.short_name || selectedCoursePeriod.title}</>
                 ) : (
-                  "Choose a course period to save an override"
+                  t("chooseCoursePeriodHint")
                 )}
               </p>
             </div>
@@ -152,11 +154,11 @@ export default function TeacherGradebookConfigurationPage() {
           )}
 
           <fieldset className="rounded-lg border border-gray-200 p-4 space-y-6">
-            <legend className="text-sm font-semibold px-2">Gradebook Defaults</legend>
+            <legend className="text-sm font-semibold px-2">{t("gradebookDefaults")}</legend>
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Sort Assignments By</Label>
+                <Label className="text-sm font-medium">{t("sortAssignmentsBy")}</Label>
                 <RadioGroup
                   value={assignmentSorting}
                   onValueChange={(value) => {
@@ -168,7 +170,7 @@ export default function TeacherGradebookConfigurationPage() {
                   {SORT_OPTIONS.map((option) => (
                     <label key={option} className="inline-flex items-center gap-2 text-sm">
                       <RadioGroupItem value={option} id={`sort-${option}`} />
-                      {option.replace("_", " ")}
+                      {t(`sortOption_${option}` as any)}
                     </label>
                   ))}
                 </RadioGroup>
@@ -187,7 +189,7 @@ export default function TeacherGradebookConfigurationPage() {
                     }}
                   />
                   <Label htmlFor="weight-types" className="text-sm cursor-pointer">
-                    Weight assignment types
+                    {t("weightAssignmentTypes")}
                   </Label>
                 </div>
                 <div className="flex items-center gap-3">
@@ -200,7 +202,7 @@ export default function TeacherGradebookConfigurationPage() {
                     }}
                   />
                   <Label htmlFor="weight-assignments" className="text-sm cursor-pointer">
-                    Weight assignments
+                    {t("weightAssignments")}
                   </Label>
                 </div>
                 <div className="flex items-center gap-3">
@@ -213,7 +215,7 @@ export default function TeacherGradebookConfigurationPage() {
                     }}
                   />
                   <Label htmlFor="default-assigned-date" className="text-sm cursor-pointer">
-                    Default assigned date to today
+                    {t("defaultAssignedDate")}
                   </Label>
                 </div>
                 <div className="flex items-center gap-3">
@@ -226,7 +228,7 @@ export default function TeacherGradebookConfigurationPage() {
                     }}
                   />
                   <Label htmlFor="default-due-date" className="text-sm cursor-pointer">
-                    Default due date to today
+                    {t("defaultDueDate")}
                   </Label>
                 </div>
               </div>
@@ -236,7 +238,7 @@ export default function TeacherGradebookConfigurationPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="anomalous-max" className="text-sm font-medium">
-                    Anomalous max points
+                    {t("anomalousMaxPoints")}
                   </Label>
                   <Input
                     id="anomalous-max"
@@ -250,13 +252,13 @@ export default function TeacherGradebookConfigurationPage() {
                     }}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Warn when assignment points exceed this value.
+                    {t("anomalousMaxHint")}
                   </p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="latency" className="text-sm font-medium">
-                    Latency (minutes)
+                    {t("latencyMinutes")}
                   </Label>
                   <Input
                     id="latency"
@@ -268,10 +270,10 @@ export default function TeacherGradebookConfigurationPage() {
                       setLatency(event.target.value);
                       markDirty();
                     }}
-                    placeholder="None"
+                    placeholder={t("none")}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Delay before grade changes are visible to students.
+                    {t("latencyHint")}
                   </p>
                 </div>
               </div>

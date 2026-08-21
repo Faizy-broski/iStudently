@@ -20,6 +20,7 @@ import { PaginationWrapper } from "@/components/ui/pagination";
 import { useSchools, School } from "@/hooks/useSchools";
 import { SchoolSidebarConfigButton } from "@/components/superadmin/SchoolSidebarConfigButton";
 import { SchoolCustomFieldsButton } from "@/components/superadmin/SchoolCustomFieldsButton";
+import { SchoolModuleAccessButton } from "@/components/superadmin/SchoolModuleAccessButton";
 import { CopySchoolSettingsDialog } from "@/components/shared/CopySchoolSettingsDialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useSWRConfig } from "swr";
@@ -449,6 +450,9 @@ export default function SchoolDirectoryPage() {
                           </div>
                           <div className="w-full text-left [&>button]:justify-start [&>button]:h-9 [&>button]:font-medium [&>button]:w-full">
                             <SchoolCustomFieldsButton schoolId={root.id} schoolName={root.name} />
+                          </div>
+                          <div className="w-full text-left [&>button]:justify-start [&>button]:h-9 [&>button]:font-medium [&>button]:w-full">
+                            <SchoolModuleAccessButton schoolId={root.id} schoolName={root.name} />
                           </div>
                           <div className="w-full text-left [&>button]:justify-start [&>button]:h-9 [&>button]:font-medium [&>button]:w-full">
                             <CopySchoolSettingsDialog

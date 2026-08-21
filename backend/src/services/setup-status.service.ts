@@ -12,9 +12,9 @@ export interface SetupStatus {
 class SetupStatusService {
     /**
      * Check if a school has completed the required setup
-     * A school is considered "setup complete" when it has:
-     * - At least one campus (branch school)
-     * - At least one academic year
+     * A school is considered "setup complete" when it has an academic year.
+     * Campuses (branch schools) are optional - a school with no branches
+     * is its own campus and doesn't need a separate campus record.
      */
     async getSetupStatus(schoolId: string): Promise<SetupStatus> {
         // Check for campuses (branch schools with this school as parent)
@@ -47,7 +47,7 @@ class SetupStatusService {
         return {
             hasCampuses,
             hasAcademicYear,
-            isComplete: hasCampuses && hasAcademicYear,
+            isComplete: hasAcademicYear,
             campusCount,
             academicYearCount
         }

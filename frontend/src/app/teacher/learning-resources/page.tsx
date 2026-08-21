@@ -43,6 +43,7 @@ import {
   Eye, ExternalLink, Download, Search, Filter,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { useAuth } from "@/context/AuthContext"
 import * as learningResourcesApi from "@/lib/api/learning-resources"
 import * as teachersApi from "@/lib/api/teachers"
@@ -50,17 +51,33 @@ import { createClient } from "@/lib/supabase/client"
 
 type ResourceType = 'link' | 'book' | 'post' | 'file' | 'video'
 
-const resourceTypeConfig = {
-  link: { icon: Link2, label: 'Link', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
-  book: { icon: BookOpen, label: 'Book', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' },
-  post: { icon: FileText, label: 'Post', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
-  file: { icon: Paperclip, label: 'File', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' },
-  video: { icon: Video, label: 'Video', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
+const resourceTypeIcons: Record<ResourceType, typeof Link2> = {
+  link: Link2,
+  book: BookOpen,
+  post: FileText,
+  file: Paperclip,
+  video: Video,
+}
+
+const resourceTypeColors: Record<ResourceType, string> = {
+  link: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  book: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+  post: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  file: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+  video: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
 }
 
 export default function LearningResourcesPage() {
   const router = useRouter()
   const { profile } = useAuth()
+  const t = useTranslations('teacherPages.learningResources')
+  const resourceTypeLabels: Record<ResourceType, string> = {
+    link: t('typeLink'),
+    book: t('typeBook'),
+    post: t('typePost'),
+    file: t('typeFile'),
+    video: t('typeVideo'),
+  }
   
   const [resources, setResources] = useState<learningResourcesApi.LearningResource[]>([])
   const [loading, setLoading] = useState(true)
@@ -176,7 +193,7 @@ export default function LearningResourcesPage() {
       setTotalResources(result.total)
     } catch (error: any) {
       console.error('Error loading resources:', error)
-      toast.error('Failed to load resources')
+      toast.error(t('loadResourcesError'))
     } finally {
       setLoading(false)
     }
@@ -217,12 +234,12 @@ export default function LearningResourcesPage() {
     if (submitting) return
 
     if (!formData.title.trim()) {
-      toast.error('Please enter a title')
+      toast.error(t('enterTitleError'))
       return
     }
 
     if (!formData.section_id) {
-      toast.error('Please select a section')
+      toast.error(t('selectSectionError'))
       return
     }
 
@@ -235,7 +252,7 @@ export default function LearningResourcesPage() {
         try {
           fileUrls = await uploadFilesToStorage(uploadedFiles)
         } catch (uploadError: any) {
-          toast.error(uploadError.message || 'Failed to upload files')
+          toast.error(uploadError.message || t('uploadFilesError'))
           return
         } finally {
           setUploadingFiles(false)
@@ -272,18 +289,18 @@ export default function LearningResourcesPage() {
       if (editingResource) {
         // Update existing resource
         await learningResourcesApi.updateResource(editingResource.id, dto)
-        toast.success('Resource updated successfully!')
+        toast.success(t('resourceUpdatedSuccess'))
       } else {
         // Create new resource
         await learningResourcesApi.createResource(dto)
-        toast.success('Resource shared successfully!')
+        toast.success(t('resourceSharedSuccess'))
       }
       setIsDialogOpen(false)
       resetForm()
       loadResources()
     } catch (error: any) {
       console.error('Error saving resource:', error)
-      toast.error(error.message || 'Failed to save resource')
+      toast.error(error.message || t('saveResourceError'))
     } finally {
       setSubmitting(false)
       setUploadingFiles(false)
@@ -293,30 +310,30 @@ export default function LearningResourcesPage() {
   const handleDelete = async (resourceId: string) => {
     try {
       await learningResourcesApi.deleteResource(resourceId)
-      toast.success('Resource deleted')
+      toast.success(t('resourceDeleted'))
       loadResources()
     } catch (error: any) {
-      toast.error(error.message || 'Failed to delete resource')
+      toast.error(error.message || t('deleteResourceError'))
     }
   }
 
   const handleTogglePin = async (resource: learningResourcesApi.LearningResource) => {
     try {
       await learningResourcesApi.updateResource(resource.id, { is_pinned: !resource.is_pinned })
-      toast.success(resource.is_pinned ? 'Unpinned' : 'Pinned')
+      toast.success(resource.is_pinned ? t('unpinned') : t('pinned'))
       loadResources()
     } catch (error: any) {
-      toast.error(error.message || 'Failed to update resource')
+      toast.error(error.message || t('updateResourceError'))
     }
   }
 
   const handleTogglePublish = async (resource: learningResourcesApi.LearningResource) => {
     try {
       await learningResourcesApi.updateResource(resource.id, { is_published: !resource.is_published })
-      toast.success(resource.is_published ? 'Unpublished' : 'Published')
+      toast.success(resource.is_published ? t('unpublished') : t('published'))
       loadResources()
     } catch (error: any) {
-      toast.error(error.message || 'Failed to update resource')
+      toast.error(error.message || t('updateResourceError'))
     }
   }
 
@@ -379,7 +396,7 @@ export default function LearningResourcesPage() {
     const validFiles = files.filter(file => {
       const maxSize = 25 * 1024 * 1024 // 25MB
       if (file.size > maxSize) {
-        toast.error(`${file.name} is too large. Max size is 25MB`)
+        toast.error(t('fileTooLargeError', { fileName: file.name }))
         return false
       }
       return true
@@ -422,39 +439,38 @@ export default function LearningResourcesPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-brand-blue dark:text-white">
-            Learning Resources
+            {t('pageTitle')}
           </h1>
           <p className="text-muted-foreground">
-            Share links, books, posts, and files with your students
+            {t('pageSubtitle')}
           </p>
         </div>
-        
+
         <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
-            <Button 
+            <Button
               style={{ background: 'var(--gradient-blue)' }}
               className="text-white"
             >
               <Plus className="h-4 w-4 mr-2" />
-              Share Resource
+              {t('shareResource')}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingResource ? 'Edit Resource' : 'Share New Resource'}</DialogTitle>
+              <DialogTitle>{editingResource ? t('editResource') : t('shareNewResource')}</DialogTitle>
               <DialogDescription>
-                {editingResource ? 'Update your learning resource' : 'Share educational content with your students'}
+                {editingResource ? t('updateResourceDescription') : t('shareResourceDescription')}
               </DialogDescription>
             </DialogHeader>
             
             <div className="space-y-4 py-4">
               {/* Resource Type Tabs */}
               <div>
-                <Label>Resource Type</Label>
+                <Label>{t('resourceType')}</Label>
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {(Object.keys(resourceTypeConfig) as ResourceType[]).map(type => {
-                    const config = resourceTypeConfig[type]
-                    const Icon = config.icon
+                  {(Object.keys(resourceTypeIcons) as ResourceType[]).map(type => {
+                    const Icon = resourceTypeIcons[type]
                     return (
                       <Button
                         key={type}
@@ -465,7 +481,7 @@ export default function LearningResourcesPage() {
                         className={formData.resource_type === type ? '' : ''}
                       >
                         <Icon className="h-4 w-4 mr-1" />
-                        {config.label}
+                        {resourceTypeLabels[type]}
                       </Button>
                     )
                   })}
@@ -474,25 +490,25 @@ export default function LearningResourcesPage() {
 
               {/* Title */}
               <div>
-                <Label htmlFor="title">Title *</Label>
+                <Label htmlFor="title">{t('titleField')}</Label>
                 <Input
                   id="title"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="Resource title"
+                  placeholder={t('titlePlaceholder')}
                   dir="auto"
                 />
               </div>
 
               {/* Description */}
               <div>
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">{t('description')}</Label>
                 <textarea
                   id="description"
                   className="w-full min-h-[80px] p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-blue"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Brief description..."
+                  placeholder={t('descriptionPlaceholder')}
                   dir="auto"
                 />
               </div>
@@ -500,13 +516,13 @@ export default function LearningResourcesPage() {
               {/* Section & Subject */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Section *</Label>
+                  <Label>{t('sectionField')}</Label>
                   <Select
                     value={formData.section_id}
                     onValueChange={(val) => setFormData({ ...formData, section_id: val })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select section" />
+                      <SelectValue placeholder={t('selectSectionPlaceholder')} />
                     </SelectTrigger>
                     <SelectContent>
                       {sections.map(section => (
@@ -518,16 +534,16 @@ export default function LearningResourcesPage() {
                   </Select>
                 </div>
                 <div>
-                  <Label>Subject (Optional)</Label>
+                  <Label>{t('subjectFieldOptional')}</Label>
                   <Select
                     value={formData.subject_id || 'all'}
                     onValueChange={(val) => setFormData({ ...formData, subject_id: val === 'all' ? '' : val })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="All subjects" />
+                      <SelectValue placeholder={t('allSubjects')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Subjects</SelectItem>
+                      <SelectItem value="all">{t('allSubjects')}</SelectItem>
                       {subjects.map(subject => (
                         <SelectItem key={subject.id} value={subject.id}>
                           {subject.name}
@@ -541,7 +557,7 @@ export default function LearningResourcesPage() {
               {/* Type-specific fields */}
               {(formData.resource_type === 'link' || formData.resource_type === 'video') && (
                 <div>
-                  <Label htmlFor="url">URL *</Label>
+                  <Label htmlFor="url">{t('urlField')}</Label>
                   <Input
                     id="url"
                     type="url"
@@ -555,37 +571,37 @@ export default function LearningResourcesPage() {
               {formData.resource_type === 'book' && (
                 <div className="space-y-3">
                   <div>
-                    <Label htmlFor="book_title">Book Title</Label>
+                    <Label htmlFor="book_title">{t('bookTitle')}</Label>
                     <Input
                       id="book_title"
                       value={formData.book_title}
                       onChange={(e) => setFormData({ ...formData, book_title: e.target.value })}
-                      placeholder="Book title"
+                      placeholder={t('bookTitle')}
                       dir="auto"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label htmlFor="book_author">Author</Label>
+                      <Label htmlFor="book_author">{t('author')}</Label>
                       <Input
                         id="book_author"
                         value={formData.book_author}
                         onChange={(e) => setFormData({ ...formData, book_author: e.target.value })}
-                        placeholder="Author name"
+                        placeholder={t('authorNamePlaceholder')}
                       />
                     </div>
                     <div>
-                      <Label htmlFor="book_isbn">ISBN (Optional)</Label>
+                      <Label htmlFor="book_isbn">{t('isbnOptional')}</Label>
                       <Input
                         id="book_isbn"
                         value={formData.book_isbn}
                         onChange={(e) => setFormData({ ...formData, book_isbn: e.target.value })}
-                        placeholder="ISBN"
+                        placeholder={t('isbn')}
                       />
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="book_url">Purchase/Download Link (Optional)</Label>
+                    <Label htmlFor="book_url">{t('purchaseLinkOptional')}</Label>
                     <Input
                       id="book_url"
                       type="url"
@@ -599,7 +615,7 @@ export default function LearningResourcesPage() {
 
               {formData.resource_type === 'post' && (
                 <div>
-                  <Label>Content</Label>
+                  <Label>{t('content')}</Label>
                   <div className="border rounded-lg overflow-hidden mt-2">
                     <div className="flex items-center gap-1 p-2 border-b bg-muted/50">
                       <Button
@@ -642,7 +658,7 @@ export default function LearningResourcesPage() {
                           }
                         }}
                       >
-                        LTR
+                        {t('ltr')}
                       </Button>
                       <Button
                         type="button"
@@ -656,7 +672,7 @@ export default function LearningResourcesPage() {
                           }
                         }}
                       >
-                        RTL
+                        {t('rtl')}
                       </Button>
                     </div>
                     <div
@@ -681,14 +697,14 @@ export default function LearningResourcesPage() {
 
               {formData.resource_type === 'file' && (
                 <div>
-                  <Label>Files</Label>
+                  <Label>{t('files')}</Label>
                   <div className="border-2 border-dashed rounded-lg p-4 hover:border-brand-blue transition-colors mt-2">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Upload className="h-8 w-8 text-muted-foreground" />
                       <div className="text-center">
                         <label htmlFor="file-upload" className="cursor-pointer">
                           <span className="text-sm font-medium text-brand-blue hover:underline">
-                            Click to upload files
+                            {t('clickToUploadFiles')}
                           </span>
                           <input
                             id="file-upload"
@@ -700,17 +716,17 @@ export default function LearningResourcesPage() {
                           />
                         </label>
                         <p className="text-xs text-muted-foreground mt-1">
-                          PDF, Word, PowerPoint, Excel, Images, ZIP (Max 25MB each)
+                          {t('fileTypesHint')}
                         </p>
                       </div>
                     </div>
-                    
+
                     {/* Existing files from database */}
                     {existingFileUrls.length > 0 && (
                       <div className="mt-4 space-y-2">
-                        <p className="text-sm font-medium text-muted-foreground">Existing Files:</p>
+                        <p className="text-sm font-medium text-muted-foreground">{t('existingFiles')}</p>
                         {existingFileUrls.map((url, index) => {
-                          const fileName = decodeURIComponent(url.split('/').pop() || 'File')
+                          const fileName = decodeURIComponent(url.split('/').pop() || t('fileFallbackName'))
                           return (
                             <div key={`existing-${index}`} className="flex items-center justify-between p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800">
                               <div className="flex items-center gap-2">
@@ -742,7 +758,7 @@ export default function LearningResourcesPage() {
                     {/* New files to upload */}
                     {uploadedFiles.length > 0 && (
                       <div className="mt-4 space-y-2">
-                        <p className="text-sm font-medium text-muted-foreground">New Files to Upload:</p>
+                        <p className="text-sm font-medium text-muted-foreground">{t('newFilesToUpload')}</p>
                         {uploadedFiles.map((file, index) => (
                           <div key={index} className="flex items-center justify-between p-2 bg-muted rounded">
                             <div className="flex items-center gap-2">
@@ -770,12 +786,12 @@ export default function LearningResourcesPage() {
 
               {/* Tags */}
               <div>
-                <Label htmlFor="tags">Tags (comma separated)</Label>
+                <Label htmlFor="tags">{t('tagsField')}</Label>
                 <Input
                   id="tags"
                   value={formData.tags}
                   onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                  placeholder="math, algebra, chapter 1"
+                  placeholder={t('tagsPlaceholder')}
                 />
               </div>
 
@@ -786,21 +802,21 @@ export default function LearningResourcesPage() {
                     checked={formData.is_pinned}
                     onCheckedChange={(checked) => setFormData({ ...formData, is_pinned: checked })}
                   />
-                  <Label>Pin to top</Label>
+                  <Label>{t('pinToTop')}</Label>
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch
                     checked={formData.is_published}
                     onCheckedChange={(checked) => setFormData({ ...formData, is_published: checked })}
                   />
-                  <Label>Publish immediately</Label>
+                  <Label>{t('publishImmediately')}</Label>
                 </div>
               </div>
             </div>
 
             <DialogFooter>
               <Button variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }}>
-                Cancel
+                {t('cancel')}
               </Button>
               <Button
                 onClick={handleSubmit}
@@ -811,10 +827,10 @@ export default function LearningResourcesPage() {
                 {submitting || uploadingFiles ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {uploadingFiles ? 'Uploading...' : 'Saving...'}
+                    {uploadingFiles ? t('uploading') : t('saving')}
                   </>
                 ) : (
-                  editingResource ? 'Update Resource' : 'Share Resource'
+                  editingResource ? t('updateResource') : t('shareResource')
                 )}
               </Button>
             </DialogFooter>
@@ -830,7 +846,7 @@ export default function LearningResourcesPage() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search resources..."
+                  placeholder={t('searchResourcesPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -839,10 +855,10 @@ export default function LearningResourcesPage() {
             </div>
             <Select value={filterSection || 'all'} onValueChange={(val) => handleFilterChange('section', val)}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="All Sections" />
+                <SelectValue placeholder={t('allSections')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Sections</SelectItem>
+                <SelectItem value="all">{t('allSections')}</SelectItem>
                 {sections.map(section => (
                   <SelectItem key={section.id} value={section.id}>
                     {section.grade_level?.name} - {section.name}
@@ -852,13 +868,13 @@ export default function LearningResourcesPage() {
             </Select>
             <Select value={filterType || 'all'} onValueChange={(val) => handleFilterChange('type', val)}>
               <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="All Types" />
+                <SelectValue placeholder={t('allTypes')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                {(Object.keys(resourceTypeConfig) as ResourceType[]).map(type => (
+                <SelectItem value="all">{t('allTypes')}</SelectItem>
+                {(Object.keys(resourceTypeIcons) as ResourceType[]).map(type => (
                   <SelectItem key={type} value={type}>
-                    {resourceTypeConfig[type].label}
+                    {resourceTypeLabels[type]}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -871,7 +887,11 @@ export default function LearningResourcesPage() {
       {totalResources > 0 && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>
-            Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, totalResources)} of {totalResources} resources
+            {t('showingRange', {
+              from: ((currentPage - 1) * ITEMS_PER_PAGE) + 1,
+              to: Math.min(currentPage * ITEMS_PER_PAGE, totalResources),
+              total: totalResources,
+            })}
           </span>
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}
         </div>
@@ -881,9 +901,10 @@ export default function LearningResourcesPage() {
       {resources.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {resources.map((resource) => {
-            const config = resourceTypeConfig[resource.resource_type as ResourceType] || resourceTypeConfig.link
-            const Icon = config.icon
-            
+            const resourceType = (resource.resource_type as ResourceType) in resourceTypeIcons ? (resource.resource_type as ResourceType) : 'link'
+            const Icon = resourceTypeIcons[resourceType]
+            const colorClass = resourceTypeColors[resourceType]
+
             return (
               <Card key={resource.id} className={`relative ${resource.is_pinned ? 'ring-2 ring-brand-blue' : ''}`}>
                 {resource.is_pinned && (
@@ -893,7 +914,7 @@ export default function LearningResourcesPage() {
                 )}
                 <CardHeader className="pb-2">
                   <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg ${config.color}`}>
+                    <div className={`p-2 rounded-lg ${colorClass}`}>
                       <Icon className="h-5 w-5" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -905,7 +926,7 @@ export default function LearningResourcesPage() {
                           {resource.section?.grade_level?.name} - {resource.section?.name}
                         </Badge>
                         {!resource.is_published && (
-                          <Badge variant="outline" className="text-xs">Draft</Badge>
+                          <Badge variant="outline" className="text-xs">{t('draft')}</Badge>
                         )}
                       </div>
                     </div>
@@ -942,7 +963,7 @@ export default function LearningResourcesPage() {
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Eye className="h-3 w-3" />
-                      {resource.view_count} views
+                      {t('viewsCount', { count: resource.view_count })}
                     </span>
                     <span>
                       {new Date(resource.created_at).toLocaleDateString()}
@@ -959,7 +980,7 @@ export default function LearningResourcesPage() {
                       >
                         <a href={resource.url} target="_blank" rel="noopener noreferrer">
                           <ExternalLink className="h-4 w-4 mr-1" />
-                          Open
+                          {t('open')}
                         </a>
                       </Button>
                     )}
@@ -967,7 +988,7 @@ export default function LearningResourcesPage() {
                       size="sm"
                       variant="ghost"
                       onClick={() => handleEdit(resource)}
-                      title="Edit"
+                      title={t('edit')}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -975,7 +996,7 @@ export default function LearningResourcesPage() {
                       size="sm"
                       variant="ghost"
                       onClick={() => handleTogglePin(resource)}
-                      title={resource.is_pinned ? 'Unpin' : 'Pin'}
+                      title={resource.is_pinned ? t('unpin') : t('pin')}
                     >
                       {resource.is_pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
                     </Button>
@@ -983,7 +1004,7 @@ export default function LearningResourcesPage() {
                       size="sm"
                       variant="ghost"
                       onClick={() => handleTogglePublish(resource)}
-                      title={resource.is_published ? 'Unpublish' : 'Publish'}
+                      title={resource.is_published ? t('unpublish') : t('publish')}
                     >
                       <Eye className={`h-4 w-4 ${!resource.is_published ? 'text-muted-foreground' : ''}`} />
                     </Button>
@@ -995,18 +1016,18 @@ export default function LearningResourcesPage() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Resource?</AlertDialogTitle>
+                          <AlertDialogTitle>{t('deleteResourceTitle')}</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This will permanently delete this resource. Students will no longer be able to access it.
+                            {t('deleteResourceDescription')}
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
                           <AlertDialogAction
                             onClick={() => handleDelete(resource.id)}
                             className="bg-destructive text-destructive-foreground"
                           >
-                            Delete
+                            {t('delete')}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -1021,11 +1042,11 @@ export default function LearningResourcesPage() {
         <Card>
           <CardContent className="py-12 text-center">
             <BookOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-lg font-medium text-muted-foreground">No resources found</p>
+            <p className="text-lg font-medium text-muted-foreground">{t('noResourcesFound')}</p>
             <p className="text-sm text-muted-foreground mt-2">
               {totalResources === 0 && !debouncedSearch && !filterSection && !filterType
-                ? 'Share your first learning resource with students'
-                : 'Try adjusting your filters'}
+                ? t('shareFirstResourceHint')
+                : t('adjustFiltersHint')}
             </p>
             {totalResources === 0 && !debouncedSearch && !filterSection && !filterType && (
               <Button
@@ -1034,7 +1055,7 @@ export default function LearningResourcesPage() {
                 style={{ background: 'var(--gradient-blue)' }}
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Share Resource
+                {t('shareResource')}
               </Button>
             )}
           </CardContent>
@@ -1050,7 +1071,7 @@ export default function LearningResourcesPage() {
             className="h-8 w-8"
             onClick={() => setCurrentPage(1)}
             disabled={currentPage === 1 || loading}
-            title="First page"
+            title={t('firstPage')}
           >
             <ChevronsLeft className="h-4 w-4" />
           </Button>
@@ -1060,7 +1081,7 @@ export default function LearningResourcesPage() {
             className="h-8 w-8"
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage === 1 || loading}
-            title="Previous page"
+            title={t('previousPage')}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -1097,7 +1118,7 @@ export default function LearningResourcesPage() {
             className="h-8 w-8"
             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages || loading}
-            title="Next page"
+            title={t('nextPage')}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -1107,7 +1128,7 @@ export default function LearningResourcesPage() {
             className="h-8 w-8"
             onClick={() => setCurrentPage(totalPages)}
             disabled={currentPage === totalPages || loading}
-            title="Last page"
+            title={t('lastPage')}
           >
             <ChevronsRight className="h-4 w-4" />
           </Button>

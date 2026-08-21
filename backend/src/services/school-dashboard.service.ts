@@ -339,4 +339,54 @@ export class SchoolDashboardService {
         return a.grade.localeCompare(b.grade)
       })
   }
+
+  /**
+   * Get student counts per grade and per section within each grade, for the
+   * combined "grade distribution + students per class" dashboard widget.
+   * Counted directly from the students table (active profiles only) rather
+   * than trusting sections.current_strength, to stay consistent with the
+   * other dashboard counts above.
+   */
+  async getClassBreakdown(schoolId: string, campusId?: string) {
+    const effectiveId = campusId || schoolId
+
+    const { data: students, error } = await supabase
+      .from('students')
+      .select('grade:grade_levels(name, order_index), section:sections(name), profile:profiles!inner(is_active)')
+      .eq('school_id', effectiveId)
+      .eq('profile.is_active', true)
+
+    if (error) {
+      console.error('Class breakdown query error:', error)
+    }
+
+    const grades = new Map<
+      string,
+      { grade: string; gradeOrder: number; total: number; sections: Map<string, number> }
+    >()
+
+    students?.forEach((student: any) => {
+      const grade = student.grade?.name || 'Unassigned'
+      const gradeOrder = student.grade?.order_index ?? Number.MAX_SAFE_INTEGER
+      const section = student.section?.name || 'Unassigned'
+
+      let bucket = grades.get(grade)
+      if (!bucket) {
+        bucket = { grade, gradeOrder, total: 0, sections: new Map() }
+        grades.set(grade, bucket)
+      }
+      bucket.total++
+      bucket.sections.set(section, (bucket.sections.get(section) || 0) + 1)
+    })
+
+    return Array.from(grades.values())
+      .sort((a, b) => a.gradeOrder - b.gradeOrder)
+      .map(({ grade, total, sections }) => ({
+        grade,
+        total,
+        sections: Array.from(sections.entries())
+          .map(([section, count]) => ({ section, count }))
+          .sort((a, b) => a.section.localeCompare(b.section)),
+      }))
+  }
 }

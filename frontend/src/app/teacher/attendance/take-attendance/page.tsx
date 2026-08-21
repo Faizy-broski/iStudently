@@ -26,6 +26,7 @@ import { TeacherSchedule } from "@/lib/api/teachers"
 import { getMarkingPeriods, type MarkingPeriod } from "@/lib/api/marking-periods"
 import { useSearchParams, useRouter } from "next/navigation"
 import useSWR from "swr"
+import { useTranslations } from "next-intl"
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused"
 
@@ -51,6 +52,7 @@ interface ClassInfo {
 }
 
 export default function AttendancePage() {
+  const t = useTranslations('teacherPages.takeAttendance')
   const router = useRouter()
   const searchParams = useSearchParams()
   const { profile } = useAuth()
@@ -119,7 +121,7 @@ export default function AttendancePage() {
       const studentData: StudentWithAttendance[] = records.map((r) => ({
         id: r.id,
         student_id: r.student_id,
-        student_name: r.student_name || "Unknown Student",
+        student_name: r.student_name || t('unknownStudent'),
         student_number: r.student_number || "",
         status: r.status as AttendanceStatus,
         remarks: r.remarks ?? undefined,
@@ -131,9 +133,9 @@ export default function AttendancePage() {
       if (selectedClass) {
         setClassInfo({
           id: selectedClass.id,
-          subject_name: selectedClass.subject_name || "Unknown Subject",
-          section_name: selectedClass.section_name || "Unknown Section",
-          grade_name: selectedClass.grade_name || "Unknown Grade",
+          subject_name: selectedClass.subject_name || t('unknownSubject'),
+          section_name: selectedClass.section_name || t('unknownSection'),
+          grade_name: selectedClass.grade_name || t('unknownGrade'),
           period_number: selectedClass.period_number,
           start_time: selectedClass.start_time,
           end_time: selectedClass.end_time,
@@ -144,7 +146,7 @@ export default function AttendancePage() {
       setHasChanges(false)
       
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to load attendance"
+      const errorMessage = error instanceof Error ? error.message : t('loadAttendanceFailed')
       toast.error(errorMessage)
     } finally {
       setLoadingAttendance(false)
@@ -222,7 +224,7 @@ export default function AttendancePage() {
     if (!allowEdit) return
     setAttendanceData(prev => prev.map(s => ({ ...s, status: "present" as AttendanceStatus })))
     setHasChanges(true)
-    toast.success("Marked all students as present")
+    toast.success(t('markedAllPresent'))
   }, [allowEdit])
 
   // Mark all as absent
@@ -230,37 +232,37 @@ export default function AttendancePage() {
     if (!allowEdit) return
     setAttendanceData(prev => prev.map(s => ({ ...s, status: "absent" as AttendanceStatus })))
     setHasChanges(true)
-    toast.info("Marked all students as absent")
+    toast.info(t('markedAllAbsent'))
   }, [allowEdit])
 
   // Save attendance
   const handleSave = async () => {
     if (!allowEdit) {
-      toast.error("Attendance cannot be edited for this date.")
+      toast.error(t('cannotEditDate'))
       return
     }
 
     try {
       setSaving(true)
-      
+
       if (!classId) {
-        toast.error("No class selected")
+        toast.error(t('noClassSelected'))
         return
       }
-      
+
       const updates = attendanceData.map(record => ({
         student_id: record.student_id,
         status: record.status,
         remarks: record.remarks
       }))
-      
+
       await timetableApi.bulkUpdateAttendance(classId, selectedDate, updates)
-      
+
       setHasChanges(false)
-      toast.success("Attendance saved successfully!")
-      
+      toast.success(t('attendanceSaved'))
+
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to save attendance"
+      const errorMessage = error instanceof Error ? error.message : t('saveAttendanceFailed')
       toast.error(errorMessage)
     } finally {
       setSaving(false)
@@ -311,7 +313,7 @@ export default function AttendancePage() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-2" />
-          <p className="text-muted-foreground">Loading attendance...</p>
+          <p className="text-muted-foreground">{t('loadingAttendance')}</p>
         </div>
       </div>
     )
@@ -327,8 +329,8 @@ export default function AttendancePage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">Mark Attendance</h1>
-            <p className="text-sm text-muted-foreground mt-1">Choose a class and date to update attendance.</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">{t('pageTitle')}</h1>
+            <p className="text-sm text-muted-foreground mt-1">{t('pageSubtitle')}</p>
           </div>
         </div>
 
@@ -346,7 +348,7 @@ export default function AttendancePage() {
             variant="outline"
             size="icon"
             onClick={loadAttendanceData}
-            title="Refresh"
+            title={t('refresh')}
           >
             <RefreshCw className="h-4 w-4" />
           </Button>
@@ -356,16 +358,16 @@ export default function AttendancePage() {
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-slate-700">Select class</label>
+            <label className="text-sm font-medium text-slate-700">{t('selectClass')}</label>
             <select
               value={selectedClassId}
               onChange={(e) => setSelectedClassId(e.target.value)}
               className="w-full max-w-md rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="" disabled>Select a class for {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</option>
+              <option value="" disabled>{t('selectClassForDate', { date: new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) })}</option>
               {todayClasses.map((cls: TeacherSchedule) => (
                 <option key={cls.id} value={cls.id}>
-                  {`Period ${cls.period_number} — ${cls.subject_name} · ${cls.section_name}`}
+                  {t('periodOption', { period: cls.period_number, subject: cls.subject_name || '', section: cls.section_name || '' })}
                 </option>
               ))}
             </select>
@@ -373,10 +375,10 @@ export default function AttendancePage() {
 
           {selectedClass && (
             <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <p className="text-sm text-slate-500">Current class</p>
+              <p className="text-sm text-slate-500">{t('currentClass')}</p>
               <p className="text-lg font-semibold text-slate-900">{selectedClass.subject_name} • {selectedClass.section_name}</p>
-              <p className="text-sm text-slate-500">Period {selectedClass.period_number} · {selectedClass.grade_name}</p>
-              <p className="text-sm text-slate-500">{selectedClass.start_time?.substring(0, 5)} - {selectedClass.end_time?.substring(0, 5)}{selectedClass.room_number ? ` · Room ${selectedClass.room_number}` : ''}</p>
+              <p className="text-sm text-slate-500">{t('periodAndGrade', { period: selectedClass.period_number, grade: selectedClass.grade_name })}</p>
+              <p className="text-sm text-slate-500">{selectedClass.start_time?.substring(0, 5)} - {selectedClass.end_time?.substring(0, 5)}{selectedClass.room_number ? ` · ${t('roomLabel', { room: selectedClass.room_number || '' })}` : ''}</p>
             </div>
           )}
         </div>
@@ -384,21 +386,21 @@ export default function AttendancePage() {
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-1">
             <p className={`text-sm font-medium ${allowEdit ? 'text-green-700' : 'text-red-700'}`}>
-              {allowEdit ? 'Editable attendance' : 'Read-only attendance'}
+              {allowEdit ? t('editableAttendance') : t('readOnlyAttendance')}
             </p>
             <p className="text-xs text-slate-500">
               {selectedMarkingPeriod?.post_start_date && selectedMarkingPeriod?.post_end_date
-                ? `Posting window: ${selectedMarkingPeriod.post_start_date} to ${selectedMarkingPeriod.post_end_date}`
-                : 'Attendance is only editable within the current marking period posting window.'}
+                ? t('postingWindow', { start: selectedMarkingPeriod.post_start_date, end: selectedMarkingPeriod.post_end_date })
+                : t('postingWindowHint')}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <Badge className={allowEdit ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
-              {allowEdit ? 'Edit mode' : 'View only'}
+              {allowEdit ? t('editMode') : t('viewOnly')}
             </Badge>
             {selectedMarkingPeriod && (
               <Badge className="bg-blue-100 text-blue-700">
-                {selectedMarkingPeriod.mp_type} period
+                {t('markingPeriodLabel', { type: selectedMarkingPeriod.mp_type })}
               </Badge>
             )}
           </div>
@@ -410,31 +412,31 @@ export default function AttendancePage() {
         <Card className="border-gray-200">
           <CardContent className="py-3 px-2 text-center">
             <p className="text-2xl font-bold">{stats.total}</p>
-            <p className="text-xs text-muted-foreground">Total</p>
+            <p className="text-xs text-muted-foreground">{t('total')}</p>
           </CardContent>
         </Card>
         <Card className="border-green-200 bg-green-50">
           <CardContent className="py-3 px-2 text-center">
             <p className="text-2xl font-bold text-green-600">{stats.present}</p>
-            <p className="text-xs text-green-700">Present</p>
+            <p className="text-xs text-green-700">{t('present')}</p>
           </CardContent>
         </Card>
         <Card className="border-red-200 bg-red-50">
           <CardContent className="py-3 px-2 text-center">
             <p className="text-2xl font-bold text-red-600">{stats.absent}</p>
-            <p className="text-xs text-red-700">Absent</p>
+            <p className="text-xs text-red-700">{t('absent')}</p>
           </CardContent>
         </Card>
         <Card className="border-yellow-200 bg-yellow-50">
           <CardContent className="py-3 px-2 text-center">
             <p className="text-2xl font-bold text-yellow-600">{stats.late}</p>
-            <p className="text-xs text-yellow-700">Late</p>
+            <p className="text-xs text-yellow-700">{t('late')}</p>
           </CardContent>
         </Card>
         <Card className="border-blue-200 bg-blue-50">
           <CardContent className="py-3 px-2 text-center">
             <p className="text-2xl font-bold text-blue-600">{stats.percentage}%</p>
-            <p className="text-xs text-blue-700">Rate</p>
+            <p className="text-xs text-blue-700">{t('rate')}</p>
           </CardContent>
         </Card>
       </div>
@@ -443,20 +445,20 @@ export default function AttendancePage() {
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50 text-left text-slate-600">
             <tr>
-              <th className="px-4 py-3 font-semibold">Student</th>
-              <th className="px-4 py-3 font-semibold">Studently ID</th>
-              <th className="px-4 py-3 font-semibold">Grade Level</th>
-              <th className="px-4 py-3 font-semibold text-center">Absent</th>
-              <th className="px-4 py-3 font-semibold text-center">Present</th>
-              <th className="px-4 py-3 font-semibold text-center">Tardy</th>
-              <th className="px-4 py-3 font-semibold">Teacher Comment</th>
+              <th className="px-4 py-3 font-semibold">{t('student')}</th>
+              <th className="px-4 py-3 font-semibold">{t('studentlyId')}</th>
+              <th className="px-4 py-3 font-semibold">{t('gradeLevel')}</th>
+              <th className="px-4 py-3 font-semibold text-center">{t('absent')}</th>
+              <th className="px-4 py-3 font-semibold text-center">{t('present')}</th>
+              <th className="px-4 py-3 font-semibold text-center">{t('tardy')}</th>
+              <th className="px-4 py-3 font-semibold">{t('teacherComment')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
             {filteredStudents.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">
-                  No students found. Attendance records may not be generated yet.
+                  {t('noStudentsFound')}
                 </td>
               </tr>
             ) : (
@@ -503,7 +505,7 @@ export default function AttendancePage() {
                       value={student.remarks ?? ''}
                       onChange={(e) => updateRemarks(student.student_id, e.target.value)}
                       disabled={!allowEdit}
-                      placeholder="Enter comment"
+                      placeholder={t('enterCommentPlaceholder')}
                       className={`${!allowEdit ? 'opacity-70' : ''}`}
                     />
                   </td>
@@ -516,7 +518,7 @@ export default function AttendancePage() {
 
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <p className="text-sm text-slate-500">
-          {filteredStudents.length} student{filteredStudents.length === 1 ? '' : 's'} found.
+          {t('studentsFoundCount', { count: filteredStudents.length })}
         </p>
       </div>
 
@@ -534,17 +536,17 @@ export default function AttendancePage() {
           {saving ? (
             <>
               <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-              Saving Attendance...
+              {t('savingAttendance')}
             </>
           ) : hasChanges ? (
             <>
               <Save className="h-5 w-5 mr-2" />
-              Save Attendance ({stats.present} Present, {stats.absent} Absent)
+              {t('saveAttendanceWithCounts', { present: stats.present, absent: stats.absent })}
             </>
           ) : (
             <>
               <CheckCircle className="h-5 w-5 mr-2" />
-              All Changes Saved
+              {t('allChangesSaved')}
             </>
           )}
         </Button>

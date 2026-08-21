@@ -9,6 +9,7 @@ import { Loader2, ArrowLeft, TrendingDown, TrendingUp, BarChart3, FileText, Aler
 import { format } from "date-fns"
 import { getMyScore, getLogs, type PerformanceScore, type StaffPerformanceLog } from "@/lib/api/performance"
 import { useAuth } from "@/context/AuthContext"
+import { useTranslations } from "next-intl"
 
 const ESCALATION_COLORS: Record<string, string> = {
   none:            "bg-gray-100 text-gray-700",
@@ -16,14 +17,16 @@ const ESCALATION_COLORS: Record<string, string> = {
   written_warning: "bg-orange-100 text-orange-700",
   final_warning:   "bg-red-100 text-red-800",
 }
-const ESCALATION_LABELS: Record<string, string> = {
-  none: "None", verbal_alert: "Verbal Alert",
-  written_warning: "Written Warning", final_warning: "Final Warning",
-}
 
 export default function TeacherPerformancePage() {
+  const t = useTranslations('teacherPages.performance')
   const router = useRouter()
   const { profile } = useAuth()
+
+  const ESCALATION_LABELS: Record<string, string> = {
+    none: t('escalationNone'), verbal_alert: t('escalationVerbalAlert'),
+    written_warning: t('escalationWrittenWarning'), final_warning: t('escalationFinalWarning'),
+  }
 
   const [score,   setScore]   = useState<PerformanceScore | null>(null)
   const [logs,    setLogs]    = useState<StaffPerformanceLog[]>([])
@@ -40,7 +43,7 @@ export default function TeacherPerformancePage() {
       setScore(s)
       setLogs(lr.data)
     }).catch(err => {
-      setError(err.message || "Failed to load performance data")
+      setError(err.message || t('failedToLoadPerformanceData'))
     }).finally(() => setLoading(false))
   }, [profile?.staff_id])
 
@@ -59,7 +62,7 @@ export default function TeacherPerformancePage() {
           <CardContent className="py-12 text-center">
             <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
             <p className="text-lg font-medium">{error}</p>
-            <Button className="mt-4" onClick={() => router.back()}>Go Back</Button>
+            <Button className="mt-4" onClick={() => router.back()}>{t('goBack')}</Button>
           </CardContent>
         </Card>
       </div>
@@ -75,9 +78,9 @@ export default function TeacherPerformancePage() {
         </Button>
         <div>
           <h1 className="text-2xl font-bold text-[#022172] dark:text-white">
-            My Performance
+            {t('pageTitle')}
           </h1>
-          <p className="text-sm text-muted-foreground">معدلات الأداء والكفاءة</p>
+          <p className="text-sm text-muted-foreground">{t('pageSubtitleArabic')}</p>
         </div>
       </div>
 
@@ -105,7 +108,7 @@ export default function TeacherPerformancePage() {
                   </div>
                 </div>
                 <p className={`text-base font-semibold ${score.score >= 80 ? "text-green-600" : score.score >= 60 ? "text-amber-600" : "text-red-600"}`}>
-                  {score.score >= 80 ? "Excellent" : score.score >= 60 ? "Good" : "Needs Improvement"}
+                  {score.score >= 80 ? t('excellent') : score.score >= 60 ? t('good') : t('needsImprovement')}
                 </p>
               </CardContent>
             </Card>
@@ -116,7 +119,7 @@ export default function TeacherPerformancePage() {
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-2 mb-1">
                     <TrendingDown className="h-4 w-4 text-red-500" />
-                    <span className="text-sm text-muted-foreground">Demerit Points</span>
+                    <span className="text-sm text-muted-foreground">{t('demeritPoints')}</span>
                   </div>
                   <p className="text-3xl font-bold text-red-600">-{score.total_demerit}</p>
                 </CardContent>
@@ -125,7 +128,7 @@ export default function TeacherPerformancePage() {
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-2 mb-1">
                     <TrendingUp className="h-4 w-4 text-green-500" />
-                    <span className="text-sm text-muted-foreground">Redemption Points</span>
+                    <span className="text-sm text-muted-foreground">{t('redemptionPoints')}</span>
                   </div>
                   <p className="text-3xl font-bold text-green-600">+{score.total_redemption}</p>
                 </CardContent>
@@ -134,7 +137,7 @@ export default function TeacherPerformancePage() {
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-2 mb-1">
                     <BarChart3 className="h-4 w-4 text-blue-500" />
-                    <span className="text-sm text-muted-foreground">Total Incidents</span>
+                    <span className="text-sm text-muted-foreground">{t('totalIncidents')}</span>
                   </div>
                   <p className="text-3xl font-bold text-blue-600">{score.log_count}</p>
                 </CardContent>
@@ -144,9 +147,9 @@ export default function TeacherPerformancePage() {
               <Card className="sm:col-span-3">
                 <CardContent className="py-4">
                   <p className="text-sm text-muted-foreground">
-                    <strong className="text-foreground">Score formula:</strong>{" "}
-                    100 − (total demerit points) + (total redemption points), clamped between 0 and 100.
-                    Your current score: 100 − {score.total_demerit} + {score.total_redemption} = <strong>{score.score}</strong>
+                    <strong className="text-foreground">{t('scoreFormulaLabel')}</strong>{" "}
+                    {t('scoreFormulaExplanation')}{" "}
+                    {t('yourCurrentScore', { demerit: score.total_demerit, redemption: score.total_redemption })} <strong>{score.score}</strong>
                   </p>
                 </CardContent>
               </Card>
@@ -158,19 +161,19 @@ export default function TeacherPerformancePage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5" />
-                Incident History
+                {t('incidentHistory')}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left px-4 py-3 text-muted-foreground font-medium">Date</th>
-                    <th className="text-left px-4 py-3 text-muted-foreground font-medium">Action</th>
-                    <th className="text-center px-4 py-3 text-muted-foreground font-medium">Type</th>
-                    <th className="text-center px-4 py-3 text-muted-foreground font-medium">Escalation</th>
-                    <th className="text-center px-4 py-3 text-muted-foreground font-medium">Points</th>
-                    <th className="text-left px-4 py-3 text-muted-foreground font-medium">Notes</th>
+                    <th className="text-left px-4 py-3 text-muted-foreground font-medium">{t('columnDate')}</th>
+                    <th className="text-left px-4 py-3 text-muted-foreground font-medium">{t('columnAction')}</th>
+                    <th className="text-center px-4 py-3 text-muted-foreground font-medium">{t('columnType')}</th>
+                    <th className="text-center px-4 py-3 text-muted-foreground font-medium">{t('columnEscalation')}</th>
+                    <th className="text-center px-4 py-3 text-muted-foreground font-medium">{t('columnPoints')}</th>
+                    <th className="text-left px-4 py-3 text-muted-foreground font-medium">{t('columnNotes')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -189,9 +192,9 @@ export default function TeacherPerformancePage() {
                         <td className="px-4 py-3 text-center">
                           <Badge className={isDemerit ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}>
                             {isDemerit ? (
-                              <><TrendingDown className="mr-1 h-3 w-3 inline" />Violation</>
+                              <><TrendingDown className="mr-1 h-3 w-3 inline" />{t('violation')}</>
                             ) : (
-                              <><TrendingUp className="mr-1 h-3 w-3 inline" />Reward</>
+                              <><TrendingUp className="mr-1 h-3 w-3 inline" />{t('reward')}</>
                             )}
                           </Badge>
                         </td>
@@ -206,7 +209,7 @@ export default function TeacherPerformancePage() {
                         <td className="px-4 py-3 text-muted-foreground max-w-xs truncate">
                           {log.notes || "—"}
                           {log.letter_generated && (
-                            <FileText className="inline ml-2 h-3 w-3 text-orange-500" title="Disciplinary letter issued" />
+                            <FileText className="inline ml-2 h-3 w-3 text-orange-500" title={t('disciplinaryLetterIssued')} />
                           )}
                         </td>
                       </tr>
@@ -215,7 +218,7 @@ export default function TeacherPerformancePage() {
                   {logs.length === 0 && (
                     <tr>
                       <td colSpan={6} className="text-center py-12 text-muted-foreground">
-                        No incidents on record
+                        {t('noIncidentsOnRecord')}
                       </td>
                     </tr>
                   )}

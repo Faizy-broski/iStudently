@@ -11,6 +11,10 @@ export interface MessageAttachmentInput {
 export interface SendMessageInput {
   schoolId: string
   senderProfileId: string
+  /** Sender's role — used to enforce the teacher messaging restriction server-side. */
+  senderRole?: string
+  /** Sender's staff.id (present for teacher/staff roles) — used to resolve their own class sections. */
+  senderStaffId?: string
   subject: string
   body: string
   recipientProfileIds: string[]
@@ -50,7 +54,18 @@ const MESSAGING_MODULE_KEY = '/admin/messaging'
 
 export class MessagingService {
   async sendMessage(input: SendMessageInput) {
-    const { schoolId, senderProfileId, subject, body, recipientProfileIds, replyToMessageId, attachments } = input
+    const { schoolId, senderProfileId, senderRole, senderStaffId, subject, body, recipientProfileIds, replyToMessageId, attachments } = input
+
+    // Teachers may only message: students in their own classes, school admins,
+    // and staff the admin has explicitly approved. Enforced here (not just
+    // hidden in the UI) so a crafted API request can't bypass it.
+    if (senderRole === 'teacher') {
+      const allowedIds = await this.getTeacherAllowedRecipientProfileIds(schoolId, senderStaffId)
+      const invalidIds = recipientProfileIds.filter((id) => id !== senderProfileId && !allowedIds.has(id))
+      if (invalidIds.length > 0) {
+        throw new Error('You can only message students in your own classes, school admins, or staff approved by your admin.')
+      }
+    }
 
     let threadId: string | undefined
     if (replyToMessageId) {
@@ -404,9 +419,17 @@ export class MessagingService {
     type: 'students' | 'teachers' | 'staff' | 'parents',
     search?: string,
     gradeLevelId?: string,
-    sectionId?: string
+    sectionId?: string,
+    staffId?: string
   ) {
     const term = search?.trim().toLowerCase()
+    const isTeacher = role === 'teacher'
+
+    // A teacher may not message other teachers or parents at all — only
+    // their own students, school admins, and admin-approved staff.
+    if (isTeacher && (type === 'teachers' || type === 'parents')) {
+      return []
+    }
 
     if (type === 'students') {
       if (!['admin', 'teacher', 'super_admin'].includes(role)) {
@@ -419,6 +442,12 @@ export class MessagingService {
         .eq('school_id', schoolId)
         .not('profile_id', 'is', null)
         .limit(300)
+
+      if (isTeacher) {
+        const sectionIds = await this.getTeacherSectionIds(schoolId, staffId)
+        if (sectionIds.length === 0) return []
+        query = query.in('section_id', sectionIds)
+      }
 
       if (gradeLevelId) query = query.eq('grade_level_id', gradeLevelId)
       if (sectionId) query = query.eq('section_id', sectionId)
@@ -469,6 +498,26 @@ export class MessagingService {
         .filter((r) => !term || r.name.toLowerCase().includes(term))
     }
 
+    // 'staff' tab for a teacher: only admins + the admin-curated whitelist,
+    // not the full staff directory.
+    if (isTeacher) {
+      const allowedIds = await this.getTeacherAllowedStaffProfileIds(schoolId)
+      if (allowedIds.length === 0) return []
+
+      const profiles = await this.fetchProfilesByIds(allowedIds)
+
+      return allowedIds
+        .map((profileId) => {
+          const profile = profiles.get(profileId)
+          return {
+            profileId,
+            name: `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim(),
+            subtitle: profile?.role === 'admin' ? 'Admin' : (profile?.role as string) || 'Staff',
+          }
+        })
+        .filter((r) => !term || r.name.toLowerCase().includes(term))
+    }
+
     // 'teachers' -> role='teacher'; 'staff' -> everyone else in the staff table
     // (librarian/admin/counselor/generic staff), matching the same split already
     // used by staff.service.ts's role filter ('teacher' vs 'all').
@@ -497,6 +546,143 @@ export class MessagingService {
         }
       })
       .filter((r) => !term || r.name.toLowerCase().includes(term))
+  }
+
+  /**
+   * Section ids for the classes a teacher teaches (as primary or secondary
+   * teacher on a course period), used to scope the "students" recipient tab
+   * and to validate message recipients server-side.
+   */
+  private async getTeacherSectionIds(schoolId: string, staffId?: string): Promise<string[]> {
+    if (!staffId) return []
+
+    const { data, error } = await supabase
+      .from('course_periods')
+      .select('section_id')
+      .eq('school_id', schoolId)
+      .not('section_id', 'is', null)
+      .or(`teacher_id.eq.${staffId},secondary_teacher_id.eq.${staffId}`)
+
+    if (error) {
+      throw new Error(`Failed to resolve teacher's sections: ${error.message}`)
+    }
+
+    return Array.from(new Set((data || []).map((r) => r.section_id as string).filter(Boolean)))
+  }
+
+  /**
+   * Profile ids of every school admin plus the admin-curated staff whitelist —
+   * the full set of staff a teacher may message. Admins are sourced from
+   * `profiles` directly (not `staff`) because the school's primary admin,
+   * created during onboarding, has no `staff` table row.
+   */
+  private async getTeacherAllowedStaffProfileIds(schoolId: string): Promise<string[]> {
+    const [{ data: admins, error: adminsError }, { data: whitelisted, error: whitelistError }] = await Promise.all([
+      supabase.from('profiles').select('id').eq('school_id', schoolId).eq('role', 'admin'),
+      supabase.from('teacher_message_allowed_staff').select('staff_profile_id').eq('school_id', schoolId),
+    ])
+
+    if (adminsError) throw new Error(`Failed to list school admins: ${adminsError.message}`)
+    if (whitelistError) throw new Error(`Failed to list approved staff: ${whitelistError.message}`)
+
+    const ids = new Set<string>()
+    for (const a of admins || []) ids.add(a.id as string)
+    for (const w of whitelisted || []) ids.add(w.staff_profile_id as string)
+    return Array.from(ids)
+  }
+
+  /** Full set of profile ids a teacher is allowed to message: their students + allowed staff. */
+  private async getTeacherAllowedRecipientProfileIds(schoolId: string, staffId?: string): Promise<Set<string>> {
+    const allowed = new Set<string>(await this.getTeacherAllowedStaffProfileIds(schoolId))
+
+    const sectionIds = await this.getTeacherSectionIds(schoolId, staffId)
+    if (sectionIds.length > 0) {
+      const { data: students, error } = await supabase
+        .from('students')
+        .select('profile_id')
+        .eq('school_id', schoolId)
+        .in('section_id', sectionIds)
+        .not('profile_id', 'is', null)
+
+      if (error) throw new Error(`Failed to resolve teacher's students: ${error.message}`)
+      for (const s of students || []) allowed.add(s.profile_id as string)
+    }
+
+    return allowed
+  }
+
+  /**
+   * Admin settings: every non-admin, non-teacher staff member with a flag
+   * for whether they're currently on the teacher-messaging whitelist.
+   * Admins aren't listed — they're always messageable and not toggleable.
+   */
+  async getTeacherMessagingStaffOptions(schoolId: string) {
+    const { data: staffRows, error } = await supabase
+      .from('staff')
+      .select('profile_id, role, title')
+      .eq('school_id', schoolId)
+      .not('profile_id', 'is', null)
+      .not('role', 'in', '("teacher","admin")')
+
+    if (error) {
+      throw new Error(`Failed to list staff: ${error.message}`)
+    }
+
+    const { data: whitelisted, error: whitelistError } = await supabase
+      .from('teacher_message_allowed_staff')
+      .select('staff_profile_id')
+      .eq('school_id', schoolId)
+
+    if (whitelistError) {
+      throw new Error(`Failed to load current whitelist: ${whitelistError.message}`)
+    }
+
+    const allowedSet = new Set((whitelisted || []).map((w) => w.staff_profile_id as string))
+    const profiles = await this.fetchProfilesByIds((staffRows || []).map((s) => s.profile_id as string))
+
+    return (staffRows || []).map((s) => {
+      const profile = profiles.get(s.profile_id as string)
+      return {
+        profileId: s.profile_id as string,
+        name: `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim(),
+        role: (profile?.role as string) || s.role,
+        title: s.title as string | null,
+        isAllowed: allowedSet.has(s.profile_id as string),
+      }
+    })
+  }
+
+  /** Replaces the whole teacher-messaging staff whitelist for the school. */
+  async setTeacherMessagingStaff(schoolId: string, staffProfileIds: string[], createdBy: string) {
+    const { error: deleteError } = await supabase
+      .from('teacher_message_allowed_staff')
+      .delete()
+      .eq('school_id', schoolId)
+
+    if (deleteError) {
+      throw new Error(`Failed to update whitelist: ${deleteError.message}`)
+    }
+
+    if (staffProfileIds.length === 0) {
+      return []
+    }
+
+    const rows = Array.from(new Set(staffProfileIds)).map((staff_profile_id) => ({
+      school_id: schoolId,
+      staff_profile_id,
+      created_by: createdBy,
+    }))
+
+    const { data, error: insertError } = await supabase
+      .from('teacher_message_allowed_staff')
+      .insert(rows)
+      .select('staff_profile_id')
+
+    if (insertError) {
+      throw new Error(`Failed to update whitelist: ${insertError.message}`)
+    }
+
+    return data || []
   }
 
   private async fetchProfilesByIds(profileIds: string[]) {

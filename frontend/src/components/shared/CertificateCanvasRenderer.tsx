@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import { GripVertical, ImageIcon } from 'lucide-react'
 import type { CertificateTemplateConfig, CertificateTemplateField } from '@/lib/api/certificate-template'
+import { useLoadDesignFonts } from '@/config/design-fonts'
 
 /**
  * Replace every {{token}} occurrence in a string using the given data map.
@@ -50,6 +51,7 @@ export function CertificateCanvasRenderer({
   canvasRef,
   className,
 }: CertificateCanvasRendererProps) {
+  useLoadDesignFonts()
   return (
     <div
       style={{
@@ -128,6 +130,7 @@ export function CertificateCanvasRenderer({
                 height: `${field.size.height}px`,
                 fontSize: field.style?.fontSize ? `${field.style.fontSize}px` : '14px',
                 fontWeight: field.style?.fontWeight || 'normal',
+                fontFamily: field.style?.fontFamily || undefined,
                 color: field.style?.color || '#000000',
                 textAlign: (field.style?.align as any) || 'left',
                 display: 'flex',
@@ -139,7 +142,12 @@ export function CertificateCanvasRenderer({
               }}
               onMouseDown={interactive ? (e) => onFieldMouseDown?.(e, field.id) : undefined}
             >
-              <span style={{ whiteSpace: 'pre-wrap' }}>{displayValue}</span>
+              {/* fontFamily repeated here (not just on the parent div) because globals.css's
+                  `:lang(ar)` rule matches every element under <html lang="ar"> and would
+                  otherwise override the inherited font with Cairo whenever the site UI is
+                  set to Arabic — inline styles beat stylesheet rules, but only on the same
+                  element; inheritance doesn't carry that priority to children. */}
+              <span style={{ whiteSpace: 'pre-wrap', fontFamily: field.style?.fontFamily || undefined }}>{displayValue}</span>
               {isSelected && <GripVertical className="absolute -top-2 -right-2 h-4 w-4 text-blue-500" />}
             </div>
           )

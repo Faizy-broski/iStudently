@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useCampus } from "@/context/CampusContext";
 import { useSchoolSettings } from "@/context/SchoolSettingsContext";
 import { useGradeLevels, useSections } from "@/hooks/useAcademics";
@@ -42,32 +43,33 @@ import { getPdfHeaderFooter, PdfHeaderFooterSettings } from "@/lib/api/school-se
 import { buildAutoHeaderHtml, buildAutoFooterHtml, resolvePdfTokens as resolveLayoutTokens, applyHtml2CanvasColorFix } from "@/lib/utils/printLayout";
 import TemplateSelector from "@/components/templates/TemplateSelector";
 
-const PLACEHOLDER_FIELDS = [
-  { id: '__FIRST_NAME__', label: 'First Name', category: 'Personal' },
-  { id: '__FATHER_NAME__', label: "Father's Name", category: 'Personal' },
-  { id: '__GRANDFATHER_NAME__', label: "Grandfather's Name", category: 'Personal' },
-  { id: '__LAST_NAME__', label: 'Last Name / Surname', category: 'Personal' },
-  { id: '__FULL_NAME__', label: 'Full Name', category: 'Personal' },
-  { id: '__EMAIL__', label: 'Email', category: 'Personal' },
-  { id: '__PHONE__', label: 'Phone', category: 'Personal' },
-  { id: '__STUDENT_ID__', label: 'Student ID', category: 'Academic' },
-  { id: '__GRADE_LEVEL__', label: 'Grade Level', category: 'Academic' },
-  { id: '__SECTION__', label: 'Section', category: 'Academic' },
-  { id: '__CAMPUS__', label: 'Campus Name', category: 'School' },
-  { id: '__DATE__', label: 'Current Date', category: 'System' },
-];
-
-const GROUPED_FIELDS = PLACEHOLDER_FIELDS.reduce((acc, field) => {
-  if (!acc[field.category]) acc[field.category] = [];
-  acc[field.category].push(field);
-  return acc;
-}, {} as Record<string, typeof PLACEHOLDER_FIELDS>);
-
 export default function TeacherPrintLettersPage() {
+  const t = useTranslations('teacherPages.studentsPrintLetters');
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
   const { isPluginActive } = useSchoolSettings();
   const isPdfPluginActive = isPluginActive('pdf_header_footer');
+
+  const PLACEHOLDER_FIELDS = [
+    { id: '__FIRST_NAME__', label: t('firstName'), category: t('categoryPersonal') },
+    { id: '__FATHER_NAME__', label: t('fathersName'), category: t('categoryPersonal') },
+    { id: '__GRANDFATHER_NAME__', label: t('grandfathersName'), category: t('categoryPersonal') },
+    { id: '__LAST_NAME__', label: t('lastNameSurname'), category: t('categoryPersonal') },
+    { id: '__FULL_NAME__', label: t('fullName'), category: t('categoryPersonal') },
+    { id: '__EMAIL__', label: t('email'), category: t('categoryPersonal') },
+    { id: '__PHONE__', label: t('phone'), category: t('categoryPersonal') },
+    { id: '__STUDENT_ID__', label: t('studentId'), category: t('categoryAcademic') },
+    { id: '__GRADE_LEVEL__', label: t('gradeLevel'), category: t('categoryAcademic') },
+    { id: '__SECTION__', label: t('section'), category: t('categoryAcademic') },
+    { id: '__CAMPUS__', label: t('campusName'), category: t('categorySchool') },
+    { id: '__DATE__', label: t('currentDate'), category: t('categorySystem') },
+  ];
+
+  const GROUPED_FIELDS = PLACEHOLDER_FIELDS.reduce((acc, field) => {
+    if (!acc[field.category]) acc[field.category] = [];
+    acc[field.category].push(field);
+    return acc;
+  }, {} as Record<string, typeof PLACEHOLDER_FIELDS>);
 
   const [selectedGradeLevel, setSelectedGradeLevel] = useState<string>("");
   const [selectedSection, setSelectedSection] = useState<string>("");
@@ -113,7 +115,7 @@ export default function TeacherPrintLettersPage() {
           campus_id: selectedCampus?.id
         });
         if (response.success && response.data) setStudents(response.data);
-      } catch { toast.error('Failed to load students'); }
+      } catch { toast.error(t('failedToLoadStudents')); }
       finally { setLoadingStudents(false); }
     };
     const debounceTimer = setTimeout(loadStudents, 300);
@@ -152,7 +154,7 @@ export default function TeacherPrintLettersPage() {
 
   const copyPlaceholder = (placeholder: string) => {
     navigator.clipboard.writeText(placeholder);
-    toast.success(`Copied ${placeholder} to clipboard`);
+    toast.success(t('copiedToClipboard', { placeholder }));
   };
 
   const getStudentName = (student: Student) => {
@@ -208,15 +210,15 @@ export default function TeacherPrintLettersPage() {
       let remaining = imgH - PAGE_H, offset = -PAGE_H;
       while (remaining > 0) { pdf.addPage(); pdf.addImage(imgData, 'JPEG', 0, offset, imgW, imgH); offset -= PAGE_H; remaining -= PAGE_H; }
       pdf.save('letters.pdf');
-      toast.success('PDF downloaded');
-    } catch { toast.error('Failed to generate PDF'); }
+      toast.success(t('pdfDownloaded'));
+    } catch { toast.error(t('failedToGeneratePdf')); }
     finally { setIsPrinting(false); }
   };
 
   const handleDownloadPdf = () => {
-    if (selectedStudentIds.length === 0) { toast.error('Please select at least one student'); return; }
+    if (selectedStudentIds.length === 0) { toast.error(t('selectAtLeastOneStudent')); return; }
     const content = editorRef.current?.innerHTML || '';
-    if (!content.trim()) { toast.error('Please write a letter first'); return; }
+    if (!content.trim()) { toast.error(t('writeLetterFirst')); return; }
     setLetterContent(content);
     setTimeout(() => generateLettersPdf(), 100);
   };
@@ -239,12 +241,12 @@ export default function TeacherPrintLettersPage() {
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-              <Link href="/teacher/students" className="hover:text-foreground">Students</Link>
+              <Link href="/teacher/students" className="hover:text-foreground">{t('breadcrumbStudents')}</Link>
               <span>/</span>
-              <span>Print Letters</span>
+              <span>{t('breadcrumbPrintLetters')}</span>
             </div>
-            <h1 className="text-2xl font-bold tracking-tight">Print Letters</h1>
-            <p className="text-muted-foreground">Write a letter template and download personalized letters for selected students</p>
+            <h1 className="text-2xl font-bold tracking-tight">{t('pageTitle')}</h1>
+            <p className="text-muted-foreground">{t('pageSubtitle')}</p>
           </div>
           {selectedCampus && (
             <Badge variant="outline" className="flex items-center gap-2">
@@ -257,14 +259,14 @@ export default function TeacherPrintLettersPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Mail className="h-5 w-5" />Letter Editor</CardTitle>
-              <CardDescription>Write your letter and use placeholders for personalized content</CardDescription>
+              <CardTitle className="flex items-center gap-2"><Mail className="h-5 w-5" />{t('letterEditor')}</CardTitle>
+              <CardDescription>{t('letterEditorDescription')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
-                <Label className="text-sm font-medium whitespace-nowrap">Insert Field:</Label>
+                <Label className="text-sm font-medium whitespace-nowrap">{t('insertField')}</Label>
                 <Select value={selectedField} onValueChange={(value) => { if (value) insertPlaceholder(value); }}>
-                  <SelectTrigger className="w-64"><SelectValue placeholder="Select a field to insert" /></SelectTrigger>
+                  <SelectTrigger className="w-64"><SelectValue placeholder={t('selectFieldToInsert')} /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(GROUPED_FIELDS).map(([category, fields]) => (
                       <div key={category}>
@@ -280,36 +282,36 @@ export default function TeacherPrintLettersPage() {
               </div>
 
               <div className="flex items-center gap-1 p-2 border rounded-t-lg bg-muted/30">
-                <Button variant="ghost" size="sm" onClick={() => execCommand('bold')} title="Bold"><Bold className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="sm" onClick={() => execCommand('italic')} title="Italic"><Italic className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="sm" onClick={() => execCommand('underline')} title="Underline"><Underline className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => execCommand('bold')} title={t('bold')}><Bold className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => execCommand('italic')} title={t('italic')}><Italic className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => execCommand('underline')} title={t('underline')}><Underline className="h-4 w-4" /></Button>
                 <Separator orientation="vertical" className="h-6 mx-1" />
-                <Button variant="ghost" size="sm" onClick={() => execCommand('justifyLeft')} title="Align Left"><AlignLeft className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="sm" onClick={() => execCommand('justifyCenter')} title="Align Center"><AlignCenter className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="sm" onClick={() => execCommand('justifyRight')} title="Align Right"><AlignRight className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => execCommand('justifyLeft')} title={t('alignLeft')}><AlignLeft className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => execCommand('justifyCenter')} title={t('alignCenter')}><AlignCenter className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => execCommand('justifyRight')} title={t('alignRight')}><AlignRight className="h-4 w-4" /></Button>
                 <Separator orientation="vertical" className="h-6 mx-1" />
-                <Button variant="ghost" size="sm" onClick={() => execCommand('insertUnorderedList')} title="Bullet List"><List className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="sm" onClick={() => execCommand('insertOrderedList')} title="Numbered List"><ListOrdered className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => execCommand('insertUnorderedList')} title={t('bulletList')}><List className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => execCommand('insertOrderedList')} title={t('numberedList')}><ListOrdered className="h-4 w-4" /></Button>
                 <Separator orientation="vertical" className="h-6 mx-1" />
                 <Select onValueChange={(value) => execCommand('fontSize', value)}>
-                  <SelectTrigger className="w-24 h-8"><SelectValue placeholder="Size" /></SelectTrigger>
+                  <SelectTrigger className="w-24 h-8"><SelectValue placeholder={t('size')} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">Small</SelectItem>
-                    <SelectItem value="3">Normal</SelectItem>
-                    <SelectItem value="5">Large</SelectItem>
-                    <SelectItem value="7">Huge</SelectItem>
+                    <SelectItem value="1">{t('small')}</SelectItem>
+                    <SelectItem value="3">{t('normal')}</SelectItem>
+                    <SelectItem value="5">{t('large')}</SelectItem>
+                    <SelectItem value="7">{t('huge')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              <TemplateSelector context="print_letters" campusId={selectedCampus?.id} onLoad={loadTemplateContent} getCurrentContent={getCurrentContent} label="TEMPLATES - PRINT LETTERS" />
+              <TemplateSelector context="print_letters" campusId={selectedCampus?.id} onLoad={loadTemplateContent} getCurrentContent={getCurrentContent} label={t('templatesLabel')} />
 
               <div ref={editorRef} contentEditable className="min-h-[400px] p-4 border border-t-0 rounded-b-lg focus:outline-none focus:ring-2 focus:ring-primary/20 prose max-w-none" style={{ minHeight: '400px' }} suppressContentEditableWarning>
-                <p>Dear __FIRST_NAME__,</p><br /><p>Write your letter content here...</p><br /><p>Best regards,</p><p>__CAMPUS__</p>
+                <p>{t('dearPlaceholder')}</p><br /><p>{t('writeLetterContentHere')}</p><br /><p>{t('bestRegards')}</p><p>__CAMPUS__</p>
               </div>
 
               <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
-                <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">Available Placeholders (click to copy):</p>
+                <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">{t('availablePlaceholders')}</p>
                 <div className="flex flex-wrap gap-2">
                   {PLACEHOLDER_FIELDS.map((field) => (<Badge key={field.id} variant="secondary" className="cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900" onClick={() => copyPlaceholder(field.id)}>{field.id}</Badge>))}
                 </div>
@@ -319,34 +321,34 @@ export default function TeacherPrintLettersPage() {
 
           <Card className="lg:col-span-1">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" />Select Students</CardTitle>
-              <CardDescription>Choose students to receive the letter</CardDescription>
+              <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" />{t('selectStudents')}</CardTitle>
+              <CardDescription>{t('selectStudentsDescription')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3">
                 <div>
-                  <Label className="text-xs text-muted-foreground mb-1.5 block">Search</Label>
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">{t('search')}</Label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
+                    <Input placeholder={t('searchEllipsis')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
                   </div>
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground mb-1.5 block">Grade Level</Label>
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">{t('gradeLevel')}</Label>
                   <Select value={selectedGradeLevel} onValueChange={(value) => { setSelectedGradeLevel(value === "all" ? "" : value); setSelectedSection(""); }}>
-                    <SelectTrigger><SelectValue placeholder="All Grades" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder={t('allGrades')} /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Grades</SelectItem>
+                      <SelectItem value="all">{t('allGrades')}</SelectItem>
                       {gradeLevels.map((grade) => (<SelectItem key={grade.id} value={grade.id}>{grade.name}</SelectItem>))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground mb-1.5 block">Section</Label>
+                  <Label className="text-xs text-muted-foreground mb-1.5 block">{t('section')}</Label>
                   <Select value={selectedSection} onValueChange={(value) => setSelectedSection(value === "all" ? "" : value)} disabled={!selectedGradeLevel}>
-                    <SelectTrigger><SelectValue placeholder="All Sections" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder={t('allSections')} /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Sections</SelectItem>
+                      <SelectItem value="all">{t('allSections')}</SelectItem>
                       {filteredSections.map((section) => (<SelectItem key={section.id} value={section.id}>{section.name}</SelectItem>))}
                     </SelectContent>
                   </Select>
@@ -355,15 +357,15 @@ export default function TeacherPrintLettersPage() {
               <Separator />
               <div className="flex items-center justify-between">
                 <Button variant="ghost" size="sm" onClick={toggleAllStudents} className="text-sm">
-                  {selectedStudentIds.length === filteredStudents.length && filteredStudents.length > 0 ? (<><CheckSquare className="mr-2 h-4 w-4" />Deselect All</>) : (<><Square className="mr-2 h-4 w-4" />Select All</>)}
+                  {selectedStudentIds.length === filteredStudents.length && filteredStudents.length > 0 ? (<><CheckSquare className="mr-2 h-4 w-4" />{t('deselectAll')}</>) : (<><Square className="mr-2 h-4 w-4" />{t('selectAll')}</>)}
                 </Button>
-                <Badge variant="outline">{selectedStudentIds.length} selected</Badge>
+                <Badge variant="outline">{t('countSelected', { count: selectedStudentIds.length })}</Badge>
               </div>
               <div className="h-64 overflow-y-auto space-y-2">
                 {loadingStudents ? (
                   <div className="flex items-center justify-center h-32"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
                 ) : filteredStudents.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-32 text-muted-foreground"><Users className="h-8 w-8 mb-2" /><p className="text-sm">No students found</p></div>
+                  <div className="flex flex-col items-center justify-center h-32 text-muted-foreground"><Users className="h-8 w-8 mb-2" /><p className="text-sm">{t('noStudentsFound')}</p></div>
                 ) : (
                   filteredStudents.map((student) => (
                     <div key={student.id} className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${selectedStudentIds.includes(student.id) ? 'bg-primary/5 border-primary/20' : 'hover:bg-muted/50'}`} onClick={() => toggleStudent(student.id)}>
@@ -382,9 +384,9 @@ export default function TeacherPrintLettersPage() {
 
         <Card className="bg-muted/30">
           <CardContent className="flex items-center justify-between py-4">
-            <div className="text-sm text-muted-foreground"><span className="font-medium text-foreground">{selectedStudentIds.length}</span> students selected</div>
+            <div className="text-sm text-muted-foreground"><span className="font-medium text-foreground">{selectedStudentIds.length}</span> {t('studentsSelected')}</div>
             <Button onClick={handleDownloadPdf} disabled={isPrinting || selectedStudentIds.length === 0} size="lg">
-              {isPrinting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating PDF...</>) : (<><Download className="mr-2 h-4 w-4" />Download PDF ({selectedStudentIds.length})</>)}
+              {isPrinting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t('generatingPdf')}</>) : (<><Download className="mr-2 h-4 w-4" />{t('downloadPdfCount', { count: selectedStudentIds.length })}</>)}
             </Button>
           </CardContent>
         </Card>

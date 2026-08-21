@@ -6,12 +6,12 @@
 
 import { useCallback, useMemo } from 'react'
 import useSWR from 'swr'
-import { 
-  schoolDashboardApi, 
-  SchoolDashboardStats, 
-  StudentGrowth, 
+import {
+  schoolDashboardApi,
+  SchoolDashboardStats,
+  StudentGrowth,
   AttendanceData,
-  GradeDistribution 
+  ClassBreakdown
 } from '@/lib/api/school-dashboard'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
@@ -20,35 +20,35 @@ interface SchoolDashboardData {
   stats: SchoolDashboardStats | null
   studentGrowthData: StudentGrowth[]
   attendanceData: AttendanceData[]
-  gradeDistribution: GradeDistribution[]
+  classBreakdown: ClassBreakdown[]
 }
 
 // Combined fetcher for all school dashboard data
 const fetchSchoolDashboardData = async (campus_id?: string): Promise<SchoolDashboardData> => {
   console.log('📊 Fetching school dashboard data with SWR...', { campus_id })
-  
+
   const currentYear = new Date().getFullYear()
-  
+
   // Fetch all data in parallel with campus_id
-  const [statsRes, growthRes, attendanceRes, gradeRes] = await Promise.all([
+  const [statsRes, growthRes, attendanceRes, classRes] = await Promise.all([
     schoolDashboardApi.getStats(campus_id),
     schoolDashboardApi.getStudentGrowth(currentYear, campus_id),
     schoolDashboardApi.getAttendanceData(campus_id),
-    schoolDashboardApi.getGradeDistribution(campus_id)
+    schoolDashboardApi.getClassBreakdown(campus_id)
   ])
-  
+
   console.log('📊 School Dashboard API responses:', {
     stats: statsRes.success,
     growth: growthRes.success,
     attendance: attendanceRes.success,
-    grades: gradeRes.success
+    classes: classRes.success
   })
 
   return {
     stats: statsRes.success ? statsRes.data ?? null : null,
     studentGrowthData: growthRes.success ? growthRes.data ?? [] : [],
     attendanceData: attendanceRes.success ? attendanceRes.data ?? [] : [],
-    gradeDistribution: gradeRes.success ? gradeRes.data ?? [] : []
+    classBreakdown: classRes.success ? classRes.data ?? [] : []
   }
 }
 
@@ -110,7 +110,7 @@ export const useSchoolDashboard = () => {
       stats: data?.stats ?? null,
       studentGrowthData: data?.studentGrowthData ?? [],
       attendanceData: data?.attendanceData ?? [],
-      gradeDistribution: data?.gradeDistribution ?? []
+      classBreakdown: data?.classBreakdown ?? []
     }
   }, [data])
 

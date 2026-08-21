@@ -57,8 +57,58 @@ export class SchoolSettingsController {
           student_list_append_config: null,
           assignment_max_points: null,
           hijri_offset: 0,
+          allowed_modules: null,
         },
       })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  }
+
+  /**
+   * GET /api/school-settings/allowed-modules?school_id=xxx
+   * Super-admin-only: read the module allow-list for any school.
+   */
+  async getAllowedModules(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const schoolId = req.query.school_id as string | undefined
+      if (!schoolId) {
+        res.status(400).json({ success: false, error: 'school_id is required' })
+        return
+      }
+
+      const allowedModules = await this.reminderService.getAllowedModules(schoolId)
+      res.json({ success: true, data: { school_id: schoolId, allowed_modules: allowedModules } })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  }
+
+  /**
+   * PUT /api/school-settings/allowed-modules
+   * Super-admin-only: set the module allow-list for any school.
+   * Body: { school_id, allowed_modules: string[] | null }
+   */
+  async updateAllowedModules(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { school_id, allowed_modules } = req.body
+
+      if (!school_id) {
+        res.status(400).json({ success: false, error: 'school_id is required' })
+        return
+      }
+
+      if (allowed_modules !== null && !Array.isArray(allowed_modules)) {
+        res.status(400).json({ success: false, error: 'allowed_modules must be an array of strings or null' })
+        return
+      }
+      if (Array.isArray(allowed_modules) && allowed_modules.some((m: unknown) => typeof m !== 'string')) {
+        res.status(400).json({ success: false, error: 'allowed_modules must contain only strings' })
+        return
+      }
+
+      const result = await this.reminderService.setAllowedModules(school_id, allowed_modules)
+      res.json({ success: true, data: { school_id, allowed_modules: result } })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
     }

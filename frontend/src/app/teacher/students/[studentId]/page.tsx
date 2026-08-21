@@ -2,6 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation'
 import useSWR from 'swr'
+import { useTranslations } from 'next-intl'
 import { useAuth } from '@/context/AuthContext'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -13,6 +14,7 @@ import { getStudentById } from '@/lib/api/students'
 import { StudentCustomFields } from '@/components/shared/StudentCustomFields'
 
 export default function TeacherStudentDetailPage() {
+  const t = useTranslations('teacherPages.studentDetail')
   const params = useParams()
   const router = useRouter()
   const { profile } = useAuth()
@@ -52,18 +54,18 @@ export default function TeacherStudentDetailPage() {
       <div className="space-y-4">
         <Button variant="ghost" onClick={() => router.back()} className="gap-2">
           <ArrowLeft className="h-4 w-4" />
-          Back
+          {t('back')}
         </Button>
         <Card className="p-12 text-center">
           <GraduationCap className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-          <h3 className="font-semibold text-lg mb-1">Student not found</h3>
-          <p className="text-muted-foreground text-sm">This student may not be in your sections.</p>
+          <h3 className="font-semibold text-lg mb-1">{t('studentNotFound')}</h3>
+          <p className="text-muted-foreground text-sm">{t('studentNotInSections')}</p>
         </Card>
       </div>
     )
   }
 
-  const name = [student.profile?.first_name, student.profile?.last_name].filter(Boolean).join(' ') || 'Unknown'
+  const name = [student.profile?.first_name, student.profile?.last_name].filter(Boolean).join(' ') || t('unknown')
   const initials = [student.profile?.first_name?.[0], student.profile?.last_name?.[0]]
     .filter(Boolean).join('').toUpperCase() || '?'
 
@@ -71,7 +73,7 @@ export default function TeacherStudentDetailPage() {
     <div className="p-4 md:p-6 space-y-6">
       <Button variant="ghost" onClick={() => router.back()} className="gap-2 -ml-2">
         <ArrowLeft className="h-4 w-4" />
-        Back to Students
+        {t('backToStudents')}
       </Button>
 
       <Card>
@@ -92,10 +94,10 @@ export default function TeacherStudentDetailPage() {
                   </Badge>
                 )}
                 <Badge variant={student.is_active ? 'default' : 'destructive'}>
-                  {student.is_active ? 'Active' : 'Inactive'}
+                  {student.is_active ? t('active') : t('inactive')}
                 </Badge>
               </div>
-              <p className="text-sm text-muted-foreground mt-1">ID: {student.student_number}</p>
+              <p className="text-sm text-muted-foreground mt-1">{t('idLabel', { id: student.student_number })}</p>
             </div>
           </div>
         </CardHeader>
@@ -106,7 +108,7 @@ export default function TeacherStudentDetailPage() {
               <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/40">
                 <Mail className="h-4 w-4 text-blue-600 shrink-0" />
                 <div>
-                  <p className="text-xs text-muted-foreground mb-0.5">Email</p>
+                  <p className="text-xs text-muted-foreground mb-0.5">{t('email')}</p>
                   <a href={`mailto:${student.profile.email}`} className="text-sm font-medium hover:underline text-blue-600">
                     {student.profile.email}
                   </a>
@@ -117,7 +119,7 @@ export default function TeacherStudentDetailPage() {
               <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/40">
                 <Phone className="h-4 w-4 text-green-600 shrink-0" />
                 <div>
-                  <p className="text-xs text-muted-foreground mb-0.5">Phone</p>
+                  <p className="text-xs text-muted-foreground mb-0.5">{t('phone')}</p>
                   <a href={`tel:${student.profile.phone}`} className="text-sm font-medium hover:underline">
                     {student.profile.phone}
                   </a>
@@ -128,7 +130,7 @@ export default function TeacherStudentDetailPage() {
               <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/40">
                 <User className="h-4 w-4 text-purple-600 shrink-0" />
                 <div>
-                  <p className="text-xs text-muted-foreground mb-0.5">Father's Name</p>
+                  <p className="text-xs text-muted-foreground mb-0.5">{t('fathersName')}</p>
                   <p className="text-sm font-medium">{student.profile.father_name}</p>
                 </div>
               </div>

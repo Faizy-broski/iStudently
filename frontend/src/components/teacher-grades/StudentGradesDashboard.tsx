@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,7 @@ function SelectionPhase({
 }: {
   onGenerate: (studentIds: string[], mpIds: string[], options: IncludeOptions) => void;
 }) {
+  const t = useTranslations("teacherPages.finalGrades");
   const { selectedAcademicYear } = useAcademic();
   const campusCtx = useCampus();
   const campusId = campusCtx?.selectedCampus?.id;
@@ -113,7 +115,7 @@ function SelectionPhase({
       disabled={selectedStudents.size === 0 || selectedMps.size === 0}
       className="bg-[#5B8DB8] hover:bg-[#4a7aa6] text-white font-semibold uppercase text-xs tracking-wide px-4 py-2 rounded-sm"
     >
-      Create Grade Lists for Selected Students
+      {t("createGradeListsForSelected")}
     </Button>
   );
 
@@ -123,30 +125,30 @@ function SelectionPhase({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Award className="h-6 w-6 text-amber-500" />
-          <h1 className="text-2xl font-bold text-gray-800">Final Grades</h1>
+          <h1 className="text-2xl font-bold text-gray-800">{t("pageTitle")}</h1>
         </div>
         {CreateBtn}
       </div>
 
       {/* Expand / Group links */}
       <div className="text-[#4A90E2] text-sm mb-3">
-        <button className="hover:underline">Expanded View</button>
+        <button className="hover:underline">{t("expandedView")}</button>
         <span className="mx-2 text-gray-400">|</span>
-        <button className="hover:underline">Group by Family</button>
+        <button className="hover:underline">{t("groupByFamily")}</button>
       </div>
 
       {/* Include on Grade List */}
       <div className="border border-gray-300 bg-white p-4 mb-0">
-        <p className="font-semibold text-gray-700 mb-3">Include on Grade List</p>
+        <p className="font-semibold text-gray-700 mb-3">{t("includeOnGradeList")}</p>
         <div className="grid grid-cols-2 gap-x-8 gap-y-2">
           {/* Left col */}
           <div className="space-y-2">
             {[
-              { key: "teacher" as const, label: "Teacher" },
-              { key: "percents" as const, label: "Percents" },
-              { key: "ytd_absences" as const, label: "Year-to-date Daily Absences" },
-              { key: "mp_absences" as const, label: "Daily Absences this marking period" },
-              { key: "period_absences" as const, label: "Period-by-period absences" },
+              { key: "teacher" as const, label: t("teacher") },
+              { key: "percents" as const, label: t("percents") },
+              { key: "ytd_absences" as const, label: t("yearToDateDailyAbsences") },
+              { key: "mp_absences" as const, label: t("dailyAbsencesThisMp") },
+              { key: "period_absences" as const, label: t("periodByPeriodAbsences") },
             ].map(({ key, label }) => (
               <div key={key} className="flex items-center gap-2">
                 <Checkbox
@@ -162,8 +164,8 @@ function SelectionPhase({
           {/* Right col */}
           <div className="space-y-2">
             {[
-              { key: "comments" as const, label: "Comments" },
-              { key: "minmax" as const, label: "Min. and Max. Grades" },
+              { key: "comments" as const, label: t("comments") },
+              { key: "minmax" as const, label: t("minMaxGrades") },
             ].map(({ key, label }) => (
               <div key={key} className="flex items-center gap-2">
                 <Checkbox
@@ -194,21 +196,21 @@ function SelectionPhase({
             </div>
           ))}
         </div>
-        <p className="text-xs text-gray-500 mt-1">Marking Periods</p>
+        <p className="text-xs text-gray-500 mt-1">{t("markingPeriods")}</p>
       </div>
 
       {/* Student list */}
       <div className="border-t border-gray-300 bg-gray-100 px-4 py-2">
         <div className="flex items-center justify-between">
           <span className="text-gray-600">
-            {loadingStudents ? "Loading..." : `${students.length} student${students.length !== 1 ? "s" : ""} were found.`}
+            {loadingStudents ? t("loadingEllipsis") : t("studentsWereFound", { count: students.length })}
             <CloudDownload className="inline h-5 w-5 ml-2 text-black bg-white rounded cursor-pointer drop-shadow-sm" />
           </span>
           <div className="relative">
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search"
+              placeholder={t("search")}
               className="w-40 h-7 rounded-none border-gray-400 text-xs pr-7 bg-white"
             />
             <Search className="h-3.5 w-3.5 absolute right-2 top-1.5 text-gray-400" />
@@ -228,9 +230,9 @@ function SelectionPhase({
                 />
               </td>
               <td className="p-2 w-8" />
-              <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs tracking-wide">Student</td>
-              <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs tracking-wide">Studently ID</td>
-              <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs tracking-wide">Grade Level</td>
+              <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs tracking-wide">{t("student")}</td>
+              <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs tracking-wide">{t("studentlyId")}</td>
+              <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs tracking-wide">{t("gradeLevel")}</td>
             </tr>
           </thead>
           <tbody>
@@ -242,7 +244,7 @@ function SelectionPhase({
               </tr>
             ) : students.length === 0 ? (
               <tr>
-                <td colSpan={5} className="py-8 text-center text-gray-400">No students found.</td>
+                <td colSpan={5} className="py-8 text-center text-gray-400">{t("noStudentsFound")}</td>
               </tr>
             ) : (
               students.map((student: CoursePeriodStudent, i: number) => {
@@ -299,6 +301,7 @@ function GradeListPhase({
   options: IncludeOptions;
   onBack: () => void;
 }) {
+  const t = useTranslations("teacherPages.finalGrades");
   const campusCtx = useCampus();
   const campusId = campusCtx?.selectedCampus?.id;
 
@@ -376,11 +379,11 @@ function GradeListPhase({
       {/* Header */}
       <div className="flex items-center gap-3">
         <button onClick={onBack} className="flex items-center gap-1 text-[#4A90E2] hover:underline text-xs">
-          <ArrowLeft className="h-4 w-4" /> Back
+          <ArrowLeft className="h-4 w-4" /> {t("back")}
         </button>
         <div className="flex items-center gap-2">
           <Award className="h-6 w-6 text-amber-500" />
-          <h1 className="text-2xl font-bold text-gray-800">Final Grades</h1>
+          <h1 className="text-2xl font-bold text-gray-800">{t("pageTitle")}</h1>
         </div>
       </div>
 
@@ -390,17 +393,17 @@ function GradeListPhase({
         </div>
       ) : rows.length === 0 ? (
         <div className="text-center py-12 text-gray-400">
-          No grades were found for the selected students and marking periods.
+          {t("noGradesFound")}
         </div>
       ) : (
         <div className="bg-white border border-gray-300 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-100 border-b border-gray-300">
-                <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs">Student</td>
-                <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs">Course</td>
+                <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs">{t("student")}</td>
+                <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs">{t("course")}</td>
                 {options.teacher && (
-                  <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs">Teacher</td>
+                  <td className="p-2 text-[#4A90E2] font-semibold uppercase text-xs">{t("teacher")}</td>
                 )}
                 {mpList.map((mp) => (
                   <td key={mp.id} className="p-2 text-[#4A90E2] font-semibold uppercase text-xs text-center">
@@ -417,7 +420,7 @@ function GradeListPhase({
             <tbody>
               {rows.map((row, i) => (
                 <tr key={`${row.student_id}-${row.course_title}-${i}`} className={`border-b border-gray-200 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/40"}`}>
-                  <td className="p-2 text-[#4A90E2] font-medium">{row.student_name || `Student #${row.student_id.slice(-4)}`}</td>
+                  <td className="p-2 text-[#4A90E2] font-medium">{row.student_name || t("studentNumberFallback", { id: row.student_id.slice(-4) })}</td>
                   <td className="p-2 text-gray-700">{row.course_title}</td>
                   {options.teacher && <td className="p-2 text-gray-600">{row.teacher_name || "—"}</td>}
                   {mpList.map((mp) => (

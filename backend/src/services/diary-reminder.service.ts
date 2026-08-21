@@ -172,6 +172,60 @@ export class DiaryReminderService {
   }
 
   /**
+   * Get the super-admin-controlled module allow-list for a school.
+   * Returns null when unrestricted (no row, or column not set).
+   */
+  async getAllowedModules(schoolId: string): Promise<string[] | null> {
+    const { data, error } = await supabase
+      .from('school_settings')
+      .select('allowed_modules')
+      .eq('school_id', schoolId)
+      .is('campus_id', null)
+      .maybeSingle()
+
+    if (error && error.code !== 'PGRST116') {
+      throw new Error(`Failed to fetch allowed modules: ${error.message}`)
+    }
+
+    return data?.allowed_modules ?? null
+  }
+
+  /**
+   * Set the super-admin-controlled module allow-list for a school.
+   * Pass null to clear the restriction (unrestricted).
+   */
+  async setAllowedModules(schoolId: string, allowedModules: string[] | null): Promise<string[] | null> {
+    const now = new Date().toISOString()
+
+    const { data: existing } = await supabase
+      .from('school_settings')
+      .select('id')
+      .eq('school_id', schoolId)
+      .is('campus_id', null)
+      .maybeSingle()
+
+    let query
+    if (existing?.id) {
+      query = supabase
+        .from('school_settings')
+        .update({ allowed_modules: allowedModules, updated_at: now })
+        .eq('id', existing.id)
+    } else {
+      query = supabase
+        .from('school_settings')
+        .insert({ school_id: schoolId, campus_id: null, allowed_modules: allowedModules, created_at: now, updated_at: now })
+    }
+
+    const { data, error } = await query.select('allowed_modules').single()
+
+    if (error) {
+      throw new Error(`Failed to update allowed modules: ${error.message}`)
+    }
+
+    return data?.allowed_modules ?? null
+  }
+
+  /**
    * Find teachers who did not add diary entries for yesterday's classes
    * and send them email reminders
    */

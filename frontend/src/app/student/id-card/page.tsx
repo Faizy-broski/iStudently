@@ -6,8 +6,10 @@ import { useAuth } from '@/context/AuthContext'
 import { CreditCard, Download, Printer } from 'lucide-react'
 import Image from 'next/image'
 import QRCode from 'react-qr-code'
+import { useLoadDesignFonts } from '@/config/design-fonts'
 
 export default function IdCardPage() {
+  useLoadDesignFonts()
   const { profile } = useAuth()
   const [idCard, setIdCard] = useState<GeneratedIdCard | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -125,6 +127,7 @@ export default function IdCardPage() {
                     height: `${field.size.height}px`,
                     fontSize: style.fontSize ? `${style.fontSize}px` : '14px',
                     fontWeight: style.fontWeight || 'normal',
+                    fontFamily: style.fontFamily || undefined,
                     color: style.color || '#000000',
                     textAlign: (style.align as any) || 'left',
                     display: 'flex',

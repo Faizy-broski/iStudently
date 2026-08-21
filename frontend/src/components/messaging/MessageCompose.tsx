@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { messagingApi, type MessageTemplate, type MessageRecipientOption } from "@/lib/api/messaging"
 import { uploadMessageAttachment, type MessageAttachmentUploadResult } from "@/lib/api/media-upload"
@@ -34,12 +35,19 @@ interface MessageComposeProps {
 }
 
 export function MessageCompose({ inboxHref }: MessageComposeProps) {
+  const t = useTranslations("teacherPages.messagingWrite")
   const router = useRouter()
   const searchParams = useSearchParams()
   const campusContext = useCampus()
   const selectedCampusId = campusContext?.selectedCampus?.id
   const { profile } = useAuth()
   const canMessageStudents = profile?.role === "admin" || profile?.role === "teacher" || profile?.role === "super_admin"
+  // Teachers may only message students in their own classes, school admins,
+  // and staff their admin has approved — not other teachers or parents.
+  // The "staff" tab is server-scoped to admins + the approved whitelist for
+  // them; "teachers" and "parents" are hidden entirely. Enforced server-side
+  // too (messaging.service.ts), this is just keeping the UI in sync with it.
+  const isTeacher = profile?.role === "teacher"
   const { gradeLevels } = useGradeLevels()
 
   const [subject, setSubject] = useState("")
@@ -56,6 +64,14 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
   const [replyToMessageId, setReplyToMessageId] = useState<string | undefined>(undefined)
   const [attachments, setAttachments] = useState<MessageAttachmentUploadResult[]>([])
   const [uploadingCount, setUploadingCount] = useState(0)
+
+  // Correct the selected tab once we know the role, if it landed on a tab
+  // that's hidden for teachers.
+  useEffect(() => {
+    if (isTeacher && (recipientTab === "teachers" || recipientTab === "parents")) {
+      setRecipientTab("students")
+    }
+  }, [isTeacher, recipientTab])
 
   useEffect(() => {
     const replyTo = searchParams.get("reply_to")
@@ -156,11 +172,11 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
 
   const handleSaveTemplate = async () => {
     if (!templateTitle.trim()) {
-      toast.error("Enter a template title first")
+      toast.error(t('enterTemplateTitleFirst'))
       return
     }
     if (!subject.trim() && !body.trim()) {
-      toast.error("Write a subject or message before saving as a template")
+      toast.error(t('writeSubjectOrMessageBeforeSaving'))
       return
     }
     setSavingTemplate(true)
@@ -174,9 +190,9 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
       if (res.success && res.data) {
         setTemplates((prev) => [...prev, res.data as MessageTemplate].sort((a, b) => a.title.localeCompare(b.title)))
         setTemplateTitle("")
-        toast.success("Template saved")
+        toast.success(t('templateSaved'))
       } else {
-        toast.error(res.error || "Failed to save template")
+        toast.error(res.error || t('failedToSaveTemplate'))
       }
     } finally {
       setSavingTemplate(false)
@@ -189,7 +205,7 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
     if (files.length === 0) return
 
     if (attachments.length + files.length > MAX_ATTACHMENTS) {
-      toast.error(`You can attach up to ${MAX_ATTACHMENTS} files`)
+      toast.error(t('canAttachUpTo', { max: MAX_ATTACHMENTS }))
       return
     }
 
@@ -200,7 +216,7 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
         if (res.success && res.data) {
           setAttachments((prev) => [...prev, res.data as MessageAttachmentUploadResult])
         } else {
-          toast.error(res.error || `Failed to upload ${file.name}`)
+          toast.error(res.error || t('failedToUpload', { fileName: file.name }))
         }
       } finally {
         setUploadingCount((c) => c - 1)
@@ -213,10 +229,10 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
   }
 
   const handleSend = async () => {
-    if (!subject.trim()) { toast.error("Subject is required"); return }
-    if (!body.trim()) { toast.error("Message is required"); return }
-    if (selectedProfileIds.size === 0) { toast.error("Select at least one recipient"); return }
-    if (uploadingCount > 0) { toast.error("Please wait for attachments to finish uploading"); return }
+    if (!subject.trim()) { toast.error(t('subjectRequired')); return }
+    if (!body.trim()) { toast.error(t('messageRequired')); return }
+    if (selectedProfileIds.size === 0) { toast.error(t('selectAtLeastOneRecipient')); return }
+    if (uploadingCount > 0) { toast.error(t('waitForAttachmentsToFinish')); return }
 
     setSending(true)
     try {
@@ -230,11 +246,11 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
       })
       if (res.success) {
         playMessageSentSound()
-        toast.success("Message sent")
+        toast.success(t('messageSent'))
         setAttachments([])
         router.push(inboxHref)
       } else {
-        toast.error(res.error || "Failed to send message")
+        toast.error(res.error || t('failedToSendMessage'))
       }
     } finally {
       setSending(false)
@@ -246,16 +262,16 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Send className="h-5 w-5" /> New Message
+            <Send className="h-5 w-5" /> {t('newMessage')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
           {templates.length > 0 && (
             <div className="space-y-1.5 max-w-sm">
-              <Label>Use a template</Label>
+              <Label>{t('useATemplate')}</Label>
               <Select value={selectedTemplateId} onValueChange={applyTemplate}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Choose a saved template..." />
+                  <SelectValue placeholder={t('chooseASavedTemplate')} />
                 </SelectTrigger>
                 <SelectContent>
                   {templates.map((template) => (
@@ -268,20 +284,20 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
 
           <div className="space-y-1.5">
             <Label htmlFor="subject">
-              Subject <span className="text-destructive">*</span>
+              {t('subject')} <span className="text-destructive">*</span>
             </Label>
             <Input
               id="subject"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              placeholder="Message subject"
+              placeholder={t('messageSubject')}
               maxLength={200}
             />
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="body">
-              Message <span className="text-destructive">*</span>
+              {t('message')} <span className="text-destructive">*</span>
             </Label>
             <RichTextEditor
               value={body}
@@ -297,7 +313,7 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
                 <Button type="button" variant="outline" size="sm" asChild>
                   <span>
                     <Paperclip className="h-3.5 w-3.5 mr-1.5" />
-                    Attach files
+                    {t('attachFiles')}
                   </span>
                 </Button>
               </Label>
@@ -310,7 +326,7 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
                 disabled={uploadingCount > 0 || attachments.length >= MAX_ATTACHMENTS}
               />
               {uploadingCount > 0 && (
-                <span className="text-xs text-muted-foreground">Uploading {uploadingCount}...</span>
+                <span className="text-xs text-muted-foreground">{t('uploadingCount', { count: uploadingCount })}</span>
               )}
             </div>
             {attachments.length > 0 && (
@@ -324,7 +340,7 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
                       type="button"
                       onClick={() => removeAttachment(a.path)}
                       className="ml-0.5 hover:text-destructive"
-                      aria-label="Remove attachment"
+                      aria-label={t('removeAttachment')}
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -337,17 +353,17 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
           <div className="flex flex-wrap items-end gap-2 pt-2 border-t">
             <div className="space-y-1.5 flex-1 min-w-[200px]">
               <Label htmlFor="template_title" className="text-xs text-muted-foreground">
-                Save this as a template
+                {t('saveThisAsATemplate')}
               </Label>
               <Input
                 id="template_title"
                 value={templateTitle}
                 onChange={(e) => setTemplateTitle(e.target.value)}
-                placeholder="Template title"
+                placeholder={t('templateTitle')}
               />
             </div>
             <Button variant="outline" size="sm" onClick={handleSaveTemplate} disabled={savingTemplate}>
-              <Save className="h-3.5 w-3.5 mr-1.5" /> {savingTemplate ? "Saving..." : "Save Template"}
+              <Save className="h-3.5 w-3.5 mr-1.5" /> {savingTemplate ? t('saving') : t('saveTemplate')}
             </Button>
           </div>
         </CardContent>
@@ -357,17 +373,17 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" /> Recipients
-              {selectedProfileIds.size > 0 && <Badge>{selectedProfileIds.size} selected</Badge>}
+              <Users className="h-5 w-5" /> {t('recipients')}
+              {selectedProfileIds.size > 0 && <Badge>{t('selectedCount', { count: selectedProfileIds.size })}</Badge>}
             </CardTitle>
             <div className="flex items-center gap-2">
               {selectedProfileIds.size > 0 && (
                 <Button variant="outline" size="sm" onClick={() => setSelectedProfileIds(new Set())}>
-                  <X className="h-3.5 w-3.5 mr-1" /> Clear
+                  <X className="h-3.5 w-3.5 mr-1" /> {t('clear')}
                 </Button>
               )}
               <Button onClick={handleSend} disabled={sending || uploadingCount > 0 || selectedProfileIds.size === 0} size="sm">
-                <Send className="h-3.5 w-3.5 mr-1.5" /> {sending ? "Sending..." : "Send"}
+                <Send className="h-3.5 w-3.5 mr-1.5" /> {sending ? t('sending') : t('send')}
               </Button>
             </div>
           </div>
@@ -383,11 +399,15 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
             }}
           >
             <TabsList>
-              <TabsTrigger value="teachers"><Users className="h-3.5 w-3.5 mr-1.5" /> Teachers</TabsTrigger>
-              <TabsTrigger value="staff"><Users className="h-3.5 w-3.5 mr-1.5" /> Staff</TabsTrigger>
-              <TabsTrigger value="parents"><Users className="h-3.5 w-3.5 mr-1.5" /> Parents</TabsTrigger>
+              {!isTeacher && (
+                <TabsTrigger value="teachers"><Users className="h-3.5 w-3.5 mr-1.5" /> {t('teachers')}</TabsTrigger>
+              )}
+              <TabsTrigger value="staff"><Users className="h-3.5 w-3.5 mr-1.5" /> {isTeacher ? t('adminAndApprovedStaff') : t('staff')}</TabsTrigger>
+              {!isTeacher && (
+                <TabsTrigger value="parents"><Users className="h-3.5 w-3.5 mr-1.5" /> {t('parents')}</TabsTrigger>
+              )}
               {canMessageStudents && (
-                <TabsTrigger value="students"><GraduationCap className="h-3.5 w-3.5 mr-1.5" /> Students</TabsTrigger>
+                <TabsTrigger value="students"><GraduationCap className="h-3.5 w-3.5 mr-1.5" /> {isTeacher ? t('myStudents') : t('students')}</TabsTrigger>
               )}
             </TabsList>
 
@@ -396,7 +416,7 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder={`Search ${recipientTab}...`}
+                placeholder={t('searchRecipientTab', { tab: t(recipientTab) })}
                 className="pl-9"
               />
             </div>
@@ -405,10 +425,10 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
               <div className="flex flex-wrap gap-2 mt-3">
                 <Select value={gradeFilter} onValueChange={setGradeFilter}>
                   <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="All Grades" />
+                    <SelectValue placeholder={t('allGrades')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Grades</SelectItem>
+                    <SelectItem value="all">{t('allGrades')}</SelectItem>
                     {gradeLevels.map((g) => (
                       <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
                     ))}
@@ -416,10 +436,10 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
                 </Select>
                 <Select value={sectionFilter} onValueChange={setSectionFilter} disabled={gradeFilter === "all" || sectionsLoading}>
                   <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="All Sections" />
+                    <SelectValue placeholder={t('allSections')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Sections</SelectItem>
+                    <SelectItem value="all">{t('allSections')}</SelectItem>
                     {sections.map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}
@@ -428,16 +448,18 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
               </div>
             )}
 
-            <TabsContent value="teachers" className="mt-3">
-              <RecipientList
-                loading={loadingRecipients}
-                items={recipientOptions}
-                selected={selectedProfileIds}
-                onToggle={toggleRecipient}
-                allSelected={allVisibleSelected}
-                onToggleSelectAll={toggleSelectAllVisible}
-              />
-            </TabsContent>
+            {!isTeacher && (
+              <TabsContent value="teachers" className="mt-3">
+                <RecipientList
+                  loading={loadingRecipients}
+                  items={recipientOptions}
+                  selected={selectedProfileIds}
+                  onToggle={toggleRecipient}
+                  allSelected={allVisibleSelected}
+                  onToggleSelectAll={toggleSelectAllVisible}
+                />
+              </TabsContent>
+            )}
             <TabsContent value="staff" className="mt-3">
               <RecipientList
                 loading={loadingRecipients}
@@ -448,16 +470,18 @@ export function MessageCompose({ inboxHref }: MessageComposeProps) {
                 onToggleSelectAll={toggleSelectAllVisible}
               />
             </TabsContent>
-            <TabsContent value="parents" className="mt-3">
-              <RecipientList
-                loading={loadingRecipients}
-                items={recipientOptions}
-                selected={selectedProfileIds}
-                onToggle={toggleRecipient}
-                allSelected={allVisibleSelected}
-                onToggleSelectAll={toggleSelectAllVisible}
-              />
-            </TabsContent>
+            {!isTeacher && (
+              <TabsContent value="parents" className="mt-3">
+                <RecipientList
+                  loading={loadingRecipients}
+                  items={recipientOptions}
+                  selected={selectedProfileIds}
+                  onToggle={toggleRecipient}
+                  allSelected={allVisibleSelected}
+                  onToggleSelectAll={toggleSelectAllVisible}
+                />
+              </TabsContent>
+            )}
             {canMessageStudents && (
               <TabsContent value="students" className="mt-3">
                 <RecipientList
@@ -492,11 +516,12 @@ function RecipientList({
   allSelected: boolean
   onToggleSelectAll: () => void
 }) {
+  const t = useTranslations("teacherPages.messagingWrite")
   if (loading) {
-    return <div className="text-center py-8 text-muted-foreground text-sm">Loading...</div>
+    return <div className="text-center py-8 text-muted-foreground text-sm">{t('loading')}</div>
   }
   if (items.length === 0) {
-    return <div className="text-center py-8 text-muted-foreground text-sm">No results found</div>
+    return <div className="text-center py-8 text-muted-foreground text-sm">{t('noResultsFound')}</div>
   }
   return (
     <div className="rounded-md border divide-y max-h-80 overflow-auto">
@@ -506,7 +531,7 @@ function RecipientList({
       >
         <Checkbox checked={allSelected} onCheckedChange={onToggleSelectAll} onClick={(e) => e.stopPropagation()} />
         <div className="text-sm font-medium">
-          Select all {items.length} {items.length === 1 ? "result" : "results"}
+          {t('selectAllResults', { count: items.length })}
         </div>
       </div>
       {items.map((item) => {
@@ -519,7 +544,7 @@ function RecipientList({
           >
             <Checkbox checked={isSelected} onCheckedChange={() => onToggle(item.profileId)} onClick={(e) => e.stopPropagation()} />
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium truncate">{item.name || "Unnamed"}</div>
+              <div className="text-sm font-medium truncate">{item.name || t('unnamed')}</div>
               {item.subtitle && <div className="text-xs text-muted-foreground truncate">{item.subtitle}</div>}
             </div>
           </div>

@@ -113,6 +113,14 @@ export interface MessageRecipientOption {
   subtitle?: string
 }
 
+export interface TeacherAllowedStaffOption {
+  profileId: string
+  name: string
+  role: string
+  title: string | null
+  isAllowed: boolean
+}
+
 export const messagingApi = {
   listRecipients: async (
     type: 'students' | 'teachers' | 'staff' | 'parents',
@@ -184,6 +192,22 @@ export const messagingApi = {
 
   deleteTemplate: async (id: string) => {
     return apiRequest<void>(`/messaging/templates/${id}`, { method: 'DELETE' })
+  },
+
+  // Admin-only: which staff (besides admins, who are always allowed) a
+  // teacher may message, in addition to their own students.
+  getTeacherAllowedStaff: async (campusId?: string) => {
+    const params = new URLSearchParams()
+    if (campusId) params.append('campus_id', campusId)
+    const qs = params.toString()
+    return apiRequest<TeacherAllowedStaffOption[]>(`/messaging/teacher-allowed-staff${qs ? `?${qs}` : ''}`)
+  },
+
+  setTeacherAllowedStaff: async (staffProfileIds: string[], campusId?: string) => {
+    return apiRequest<void>('/messaging/teacher-allowed-staff', {
+      method: 'PUT',
+      body: JSON.stringify({ staff_profile_ids: staffProfileIds, campus_id: campusId }),
+    })
   },
 
   getMessagingSettings: async () => {

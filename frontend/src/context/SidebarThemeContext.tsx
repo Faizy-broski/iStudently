@@ -150,7 +150,12 @@ export function SidebarThemeProvider({
     if (!profile?.id) return
     const campusId = selectedCampus?.id ?? null
     const cached = readCache(configCacheKey(profile.id, campusId))
-    if (cached !== null) setConfigState(cached)
+    // Always overwrite, even with null — the initial synchronous state may hold
+    // a stale theme cached under a *different* account's LAST_USER/LAST_CAMPUS
+    // pointers (e.g. first time this account is opened on this browser), and
+    // leaving it in place would leak that other account's sidebar theme until
+    // the async fetchConfig() call resolves.
+    setConfigState(cached)
   }, [profile?.id, selectedCampus?.id])
 
   useEffect(() => {

@@ -6,10 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { format, parseISO } from 'date-fns'
 import { useTranslations } from 'next-intl'
+import { useSchoolSettings } from '@/hooks/useSchoolSettings'
 
 export default function StudentPaymentsPage() {
   const { payments, isLoading, error } = useStudentPaymentHistory()
   const t = useTranslations('student_billing.payments')
+  const { currencySymbol } = useSchoolSettings()
 
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-[50vh]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
@@ -45,7 +47,7 @@ export default function StudentPaymentsPage() {
           <CreditCard className="h-10 w-10 text-green-500 shrink-0" />
           <div>
             <p className="text-sm text-muted-foreground">{t('total_payments_made')}</p>
-            <p className="text-3xl font-bold text-green-600">${totalPaid.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-green-600">{currencySymbol}{totalPaid.toFixed(2)}</p>
             <p className="text-xs text-muted-foreground">{t('transactions_count', { count: payments.length })}</p>
           </div>
         </CardContent>
@@ -86,7 +88,7 @@ export default function StudentPaymentsPage() {
                       </td>
                       <td className="py-3 pe-4 text-muted-foreground">{p.payment_reference || '—'}</td>
                       <td className="py-3 pe-4 text-muted-foreground">{p.received_by || '—'}</td>
-                      <td className="py-3 text-end font-semibold text-green-600">${p.amount.toFixed(2)}</td>
+                      <td className="py-3 text-end font-semibold text-green-600">{currencySymbol}{p.amount.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>

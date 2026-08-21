@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useTranslations } from "next-intl"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -21,6 +22,7 @@ import Link from "next/link"
 import { markPortalItemViewed } from "@/lib/utils/portal-storage"
 
 export default function TeacherPortalNotesPage() {
+  const t = useTranslations("teacherPages.portalNotes")
   const { profile } = useAuth()
   const [notes, setNotes] = useState<portalApi.PortalNote[]>([])
   const [loading, setLoading] = useState(true)
@@ -67,8 +69,8 @@ export default function TeacherPortalNotesPage() {
           <Button variant="ghost" size="icon"><ArrowLeft className="h-5 w-5" /></Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-[#022172]">Announcements</h1>
-          <p className="text-muted-foreground">All school announcements and notices</p>
+          <h1 className="text-2xl font-bold text-[#022172]">{t('pageTitle')}</h1>
+          <p className="text-muted-foreground">{t('pageSubtitle')}</p>
         </div>
       </div>
 
@@ -76,8 +78,8 @@ export default function TeacherPortalNotesPage() {
         <Card>
           <CardContent className="py-16 text-center">
             <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Announcements</h3>
-            <p className="text-muted-foreground">There are no announcements at this time.</p>
+            <h3 className="text-lg font-semibold mb-2">{t('noAnnouncements')}</h3>
+            <p className="text-muted-foreground">{t('noAnnouncementsDescription')}</p>
           </CardContent>
         </Card>
       ) : (
@@ -103,7 +105,7 @@ export default function TeacherPortalNotesPage() {
                       </div>
                     </div>
                   </div>
-                  {note.is_pinned && <Badge className="bg-[#022172]">Pinned</Badge>}
+                  {note.is_pinned && <Badge className="bg-[#022172]">{t('pinned')}</Badge>}
                 </div>
               </CardHeader>
               <CardContent>
@@ -114,18 +116,18 @@ export default function TeacherPortalNotesPage() {
                   <div className="mt-4 pt-4 border-t space-y-3">
                     {note.file_url && (
                       <a href={note.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-[#022172] hover:underline" onClick={(e) => e.stopPropagation()}>
-                        <Download className="h-4 w-4" />{note.file_name || 'Download Attachment'}
+                        <Download className="h-4 w-4" />{note.file_name || t('downloadAttachment')}
                       </a>
                     )}
                     {note.embed_link && (
                       <a href={note.embed_link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-[#022172] hover:underline" onClick={(e) => e.stopPropagation()}>
-                        <ExternalLink className="h-4 w-4" />View Link
+                        <ExternalLink className="h-4 w-4" />{t('viewLink')}
                       </a>
                     )}
                   </div>
                 )}
                 {expandedNote !== note.id && note.content.length > 200 && (
-                  <Button variant="link" className="p-0 h-auto mt-2 text-[#022172]">Read more...</Button>
+                  <Button variant="link" className="p-0 h-auto mt-2 text-[#022172]">{t('readMore')}</Button>
                 )}
               </CardContent>
             </Card>
