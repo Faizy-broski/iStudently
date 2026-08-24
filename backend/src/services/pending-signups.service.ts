@@ -2,7 +2,7 @@ import { supabase } from '../config/supabase'
 import { decryptPassword } from './public-signup.service'
 import { sendEmail } from './mail'
 import { getSchoolMailer } from './email.service'
-import { generateCredentials, syncPasswordDisplayCache } from './username.service'
+import { generateCredentials, generateUniqueUsername, syncPasswordDisplayCache } from './username.service'
 import type { SignupLinkMeta } from './signup-links.service'
 import { generatePlaceholderEmail, redactPlaceholderEmail, hasRealEmail, withRedactedEmail } from '../utils/email.util'
 
