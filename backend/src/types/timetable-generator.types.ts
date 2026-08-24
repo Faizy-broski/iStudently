@@ -17,7 +17,11 @@ export interface TimetableRequirement {
   school_id: string;
   campus_id?: string | null;
   academic_year_id: string;
-  section_id: string;
+  /** NULL when the requirement is grade-level (grade has no sections) */
+  section_id: string | null;
+  /** Always present: populated from section.grade_level_id when section is set,
+   *  or set directly for grade-level requirements */
+  grade_level_id: string | null;
   subject_id: string;
   teacher_id: string | null;
   periods_per_week: number;
@@ -40,7 +44,10 @@ export interface CreateTimetableRequirementDTO {
   school_id: string;
   campus_id?: string;
   academic_year_id: string;
-  section_id: string;
+  /** For section-based grades: provide section_id (grade_level_id is auto-derived).
+   *  For section-less grades: omit section_id and provide grade_level_id instead. */
+  section_id?: string | null;
+  grade_level_id?: string | null;
   subject_id: string;
   teacher_id?: string | null;
   periods_per_week: number;
@@ -60,7 +67,9 @@ export interface UpdateTimetableRequirementDTO {
 }
 
 export interface RequirementCoverageSummary {
-  section_id: string;
+  /** section_id OR grade_level_id is set depending on the mode */
+  section_id?: string | null;
+  grade_level_id?: string | null;
   academic_year_id: string;
   required_periods_per_week: number;
   available_periods_per_week: number;

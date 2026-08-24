@@ -1373,15 +1373,18 @@ export class StudentDashboardService {
     try {
       // 1. Attendance (Total Present / Total School Days * 100)
       const attendanceSummary = await this.getAttendanceSummary(studentId)
-      const attendanceScore = attendanceSummary.percentage || 100
+      const hasAttendanceData = (attendanceSummary.totalDays || 0) > 0
+      const attendanceScore = hasAttendanceData
+        ? Math.min(100, Math.max(0, Math.round(attendanceSummary.percentage || 0)))
+        : 0
 
       // 2. Assignments (Submitted / Total Assigned * 100)
       const assignmentsData = await this.getStudentAssignments(studentId)
-      const totalAssignments = assignmentsData.todo.length + assignmentsData.submitted.length + assignmentsData.graded.length
-      const completedAssignments = assignmentsData.submitted.length + assignmentsData.graded.length
-      const assignmentsScore = totalAssignments > 0 ? Math.round((completedAssignments / totalAssignments) * 100) : 100
+      const totalAssignments = (assignmentsData.todo?.length || 0) + (assignmentsData.submitted?.length || 0) + (assignmentsData.graded?.length || 0)
+      const completedAssignments = (assignmentsData.submitted?.length || 0) + (assignmentsData.graded?.length || 0)
+      const assignmentsScore = totalAssignments > 0 ? Math.round((completedAssignments / totalAssignments) * 100) : 0
 
-      // 3. Behavior (Calculated using positive/negative reward points module - approximated by referrals)
+      // 3. Behavior (Calculated using discipline referrals - 100 minus 5 per referral)
       const discipline = await this.getStudentDisciplineReferrals(studentId)
       const referralsCount = discipline?.length || 0
       const behaviorScore = Math.max(0, 100 - (referralsCount * 5))
@@ -1399,10 +1402,38 @@ export class StudentDashboardService {
         earned += (g.points || 0)
         max += (g.assignment?.points || 0)
       })
-      const gradeAverageScore = max > 0 ? Math.round((earned / max) * 100) : 100
 
-      // Overall Average
-      const overallScore = Math.round((attendanceScore + assignmentsScore + behaviorScore + gradeAverageScore) / 4)
+      let gradeAverageScore = max > 0 ? Math.round((earned / max) * 100) : 0
+      let hasGradeData = max > 0
+
+      // If no gradebook grades, check exam_results
+      if (!hasGradeData) {
+        const { data: examResults } = await supabase
+          .from('exam_results')
+          .select('marks_obtained, exam:exams(max_marks)')
+          .eq('student_id', studentId)
+          .not('marks_obtained', 'is', null)
+
+        let examEarned = 0
+        let examMax = 0
+        examResults?.forEach((er: any) => {
+          examEarned += (er.marks_obtained || 0)
+          examMax += (er.exam?.max_marks || 0)
+        })
+        if (examMax > 0) {
+          gradeAverageScore = Math.round((examEarned / examMax) * 100)
+          hasGradeData = true
+        }
+      }
+
+      // Overall Score: Average of active categories that have data recorded (plus behavior)
+      const activeScores: number[] = []
+      if (hasAttendanceData) activeScores.push(attendanceScore)
+      if (totalAssignments > 0) activeScores.push(assignmentsScore)
+      if (hasGradeData) activeScores.push(gradeAverageScore)
+      activeScores.push(behaviorScore)
+
+      const overallScore = Math.round(activeScores.reduce((a, b) => a + b, 0) / activeScores.length)
 
       return {
         overall: overallScore,

@@ -66,7 +66,12 @@ export function FinancialCenter() {
             <p className={`text-3xl font-bold ${fee_status.total_due === 0 ? 'text-green-600' : 'text-red-600'}`}>
               ${fee_status.total_due.toFixed(2)}
             </p>
-            {fee_status.total_due === 0 ? (
+            {fee_status.total_invoices === 0 ? (
+              <div className="flex items-center gap-1 mt-2 text-slate-600">
+                <CheckCircle2 className="h-4 w-4 text-slate-400" />
+                <span className="text-sm">No fee invoices</span>
+              </div>
+            ) : fee_status.total_due === 0 ? (
               <div className="flex items-center gap-1 mt-2 text-green-600">
                 <CheckCircle2 className="h-4 w-4" />
                 <span className="text-sm">All fees paid</span>

@@ -16,13 +16,13 @@ import { usePlatformSettings } from "@/hooks/usePlatformSettings";
 import { CURRENCY_OPTIONS } from "@/lib/api/school-settings";
 import { messagingApi } from "@/lib/api/messaging";
 import { updateProfile as updateOwnProfile, changePassword as changeOwnPassword } from "@/lib/api/auth";
-import { createClient } from "@/lib/supabase/client";
+import { uploadImage } from "@/lib/api/media-upload";
 
-const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const MAX_AVATAR_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
+const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp", "image/svg+xml"];
+const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 
 export default function SuperAdminSettingsPage() {
-  const { profile, user } = useAuth();
+  const { profile, user, updateProfileState } = useAuth();
   const { settings, updateSettings, loading: settingsLoading } = usePlatformSettings();
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -33,7 +33,9 @@ export default function SuperAdminSettingsPage() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   useEffect(() => {
-    if (profile) setAvatarUrl((profile as { avatar_url?: string | null }).avatar_url ?? null);
+    if (profile) {
+      setAvatarUrl(profile.avatar_url || profile.profile_photo_url || null);
+    }
   }, [profile]);
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -41,42 +43,38 @@ export default function SuperAdminSettingsPage() {
     if (!file) return;
 
     if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
-      toast.error("Invalid file type. Allowed: JPG, PNG, WebP");
+      toast.error("Invalid file type. Allowed: JPG, PNG, WebP, SVG");
       return;
     }
     if (file.size > MAX_AVATAR_SIZE_BYTES) {
-      toast.error("File too large. Maximum size is 2MB");
+      toast.error("File too large. Maximum size is 5MB");
       return;
     }
 
     setIsUploadingAvatar(true);
     try {
-      const supabase = createClient();
-      const fileExt = file.name.split(".").pop();
-      const filePath = `superadmin/${profile?.id}-${Date.now()}.${fileExt}`;
-
-      const { data, error } = await supabase.storage
-        .from("staff_profile_photos")
-        .upload(filePath, file, { cacheControl: "3600", upsert: true });
-
-      if (error) {
-        toast.error(`Upload failed: ${error.message}`);
+      // Routed through backend upload endpoint to bypass client-side Supabase Storage RLS policies
+      const uploadRes = await uploadImage(file);
+      if (!uploadRes.success || !uploadRes.data?.url) {
+        toast.error(uploadRes.error || "Failed to upload logo / photo");
         return;
       }
 
-      const { data: urlData } = supabase.storage.from("staff_profile_photos").getPublicUrl(data.path);
-      const publicUrl = urlData.publicUrl;
+      const publicUrl = uploadRes.data.url;
 
-      const result = await updateOwnProfile({ avatar_url: publicUrl });
+      const result = await updateOwnProfile({ avatar_url: publicUrl, profile_photo_url: publicUrl });
       if (!result.success) {
-        toast.error(result.error || "Failed to save profile photo");
+        toast.error(result.error || "Failed to save logo / photo to profile");
         return;
       }
 
       setAvatarUrl(publicUrl);
-      toast.success("Profile photo updated");
-    } catch {
-      toast.error("Failed to upload photo");
+      if (updateProfileState) {
+        updateProfileState({ avatar_url: publicUrl, profile_photo_url: publicUrl });
+      }
+      toast.success("Super Admin logo & profile photo updated");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to upload photo");
     } finally {
       setIsUploadingAvatar(false);
       e.target.value = "";
@@ -353,13 +351,16 @@ export default function SuperAdminSettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Account Information */}
+      {/* Account & Logo Information */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-[#022172]" />
-            <CardTitle>Account Information</CardTitle>
+            <CardTitle>Account & Super Admin Logo</CardTitle>
           </div>
+          <CardDescription>
+            Upload your logo or profile photo to display across the Super Admin header and sidebar.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
           <div className="flex items-center gap-4">
@@ -371,7 +372,7 @@ export default function SuperAdminSettingsPage() {
                     {isUploadingAvatar ? (
                       <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Uploading...</>
                     ) : (
-                      <><Camera className="h-3.5 w-3.5 mr-1.5" />{avatarUrl ? "Change Photo" : "Upload Photo"}</>
+                      <><Camera className="h-3.5 w-3.5 mr-1.5" />{avatarUrl ? "Change Logo / Photo" : "Upload Logo / Photo"}</>
                     )}
                   </span>
                 </Button>
@@ -379,12 +380,12 @@ export default function SuperAdminSettingsPage() {
               <input
                 id="superadmin-avatar-upload"
                 type="file"
-                accept="image/jpeg,image/png,image/webp"
+                accept="image/jpeg,image/png,image/webp,image/svg+xml"
                 className="hidden"
                 disabled={isUploadingAvatar}
                 onChange={handleAvatarChange}
               />
-              <p className="text-xs text-muted-foreground mt-1">JPG, PNG or WebP. Max 2MB</p>
+              <p className="text-xs text-muted-foreground mt-1">JPG, PNG, WebP or SVG. Max 5MB</p>
             </div>
           </div>
 

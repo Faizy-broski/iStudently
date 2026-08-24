@@ -4,17 +4,21 @@ import React from 'react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Users, Star, Smile, FileText, Info } from 'lucide-react'
 import { usePerformanceMetrics } from '@/hooks/useStudentDashboard'
+import { useLocale, useTranslations } from 'next-intl'
 
-// Helper to determine color and text based on percentage
+// Helper to determine color, text key, and border color based on percentage
 const getPerformanceState = (percentage: number) => {
-  if (percentage >= 95) return { color: 'bg-blue-600', textColor: 'text-blue-600', text: 'متميز' } // Distinguished
-  if (percentage >= 85) return { color: 'bg-green-500', textColor: 'text-green-500', text: 'ممتاز' } // Excellent
-  if (percentage >= 75) return { color: 'bg-yellow-500', textColor: 'text-yellow-500', text: 'جيد' } // Good
-  if (percentage >= 60) return { color: 'bg-orange-500', textColor: 'text-orange-500', text: 'مقبول' } // Acceptable
-  return { color: 'bg-red-500', textColor: 'text-red-500', text: 'يحتاج متابعة' } // Requires Follow-up
+  if (percentage >= 95) return { color: 'bg-blue-600', textColor: 'text-blue-600', key: 'distinguished', borderColor: '#2563EB' }
+  if (percentage >= 85) return { color: 'bg-green-500', textColor: 'text-green-500', key: 'excellent', borderColor: '#22C55E' }
+  if (percentage >= 75) return { color: 'bg-yellow-500', textColor: 'text-yellow-500', key: 'good', borderColor: '#EAB308' }
+  if (percentage >= 60) return { color: 'bg-orange-500', textColor: 'text-orange-500', key: 'acceptable', borderColor: '#F97316' }
+  return { color: 'bg-red-500', textColor: 'text-red-500', key: 'needs_follow_up', borderColor: '#EF4444' }
 }
 
 export function PerformanceMeter() {
+  const locale = useLocale()
+  const isAr = locale === 'ar'
+  const t = useTranslations('dashboard.performance')
   const { metrics, isLoading } = usePerformanceMetrics()
 
   if (isLoading) {
@@ -31,7 +35,7 @@ export function PerformanceMeter() {
   const overallState = getPerformanceState(data.overall)
 
   return (
-    <Card className="rounded-2xl shadow-md border-none overflow-hidden bg-card" dir="rtl">
+    <Card className="rounded-2xl shadow-md border-none overflow-hidden bg-card" dir={isAr ? 'rtl' : 'ltr'}>
       <CardHeader className="border-b border-gray-100 dark:border-slate-800 flex flex-row items-center justify-between py-4 px-6 bg-gray-50/50 dark:bg-slate-800/50">
         <div className="flex items-center gap-2">
           <div className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg">
@@ -43,7 +47,7 @@ export function PerformanceMeter() {
             </svg>
           </div>
           <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100 tracking-wide font-arabic">
-            مؤشر الأداء | Performance Meter
+            {t('title')}
           </h2>
         </div>
         <Info className="w-5 h-5 text-gray-400 dark:text-slate-500" />
@@ -52,12 +56,14 @@ export function PerformanceMeter() {
       <CardContent className="p-6">
         {/* Hero Score Section */}
         <div className="flex flex-col items-center justify-center mb-8">
-          <span className="text-sm font-semibold text-gray-500 dark:text-slate-400 mb-2 uppercase tracking-widest">التقييم العام</span>
+          <span className="text-sm font-semibold text-gray-500 dark:text-slate-400 mb-2 uppercase tracking-widest">
+            {t('overall')}
+          </span>
           <div className="text-6xl font-extrabold text-[#022172] dark:text-white tracking-tighter mb-3">
             {data.overall}%
           </div>
           <span className={`px-4 py-1.5 rounded-full text-sm font-bold bg-opacity-10 ${overallState.textColor} bg-current`}>
-            {overallState.text}
+            {t(overallState.key as any)}
           </span>
         </div>
 
@@ -74,20 +80,19 @@ export function PerformanceMeter() {
           <div 
             className="absolute top-1/2 -translate-y-1/2 w-5 h-5 bg-white dark:bg-slate-900 border-2 rounded-full shadow-sm transition-all duration-1000 ease-out flex items-center justify-center z-10"
             style={{ 
-              right: `calc(${data.overall}% - 10px)`, 
-              borderColor: overallState.color === 'bg-blue-600' ? '#2563EB' : 
-                          overallState.color === 'bg-green-500' ? '#22C55E' : 
-                          overallState.color === 'bg-yellow-500' ? '#EAB308' : 
-                          overallState.color === 'bg-orange-500' ? '#F97316' : '#EF4444' 
+              ...(isAr 
+                ? { right: `calc(${data.overall}% - 10px)` } 
+                : { left: `calc(${data.overall}% - 10px)` }),
+              borderColor: overallState.borderColor
             }}
           />
           {/* Axis Labels */}
           <div className="flex justify-between items-center text-[10px] font-medium text-gray-400 dark:text-slate-500 mt-3 px-1">
-            <span>0%</span>
-            <span>25%</span>
+            <span>{isAr ? '100%' : '0%'}</span>
+            <span>{isAr ? '75%' : '25%'}</span>
             <span>50%</span>
-            <span>75%</span>
-            <span>100%</span>
+            <span>{isAr ? '25%' : '75%'}</span>
+            <span>{isAr ? '0%' : '100%'}</span>
           </div>
         </div>
 
@@ -98,11 +103,11 @@ export function PerformanceMeter() {
           <div className="flex flex-col items-center p-4 rounded-xl border border-gray-100 dark:border-slate-800 hover:shadow-md transition-shadow bg-white dark:bg-slate-900 relative overflow-hidden group">
             <div className="flex items-center gap-2 mb-2 w-full justify-center">
               <Users className="w-5 h-5 text-gray-400 dark:text-slate-500 group-hover:text-blue-500 transition-colors" />
-              <span className="text-sm font-bold text-gray-700 dark:text-slate-300">الحضور</span>
+              <span className="text-sm font-bold text-gray-700 dark:text-slate-300">{t('attendance')}</span>
             </div>
             <span className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{data.attendance}%</span>
             <span className={`text-xs font-semibold mb-3 ${getPerformanceState(data.attendance).textColor}`}>
-              {getPerformanceState(data.attendance).text}
+              {t(getPerformanceState(data.attendance).key as any)}
             </span>
             <div className="w-16 h-1.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
               <div 
@@ -116,11 +121,11 @@ export function PerformanceMeter() {
           <div className="flex flex-col items-center p-4 rounded-xl border border-gray-100 dark:border-slate-800 hover:shadow-md transition-shadow bg-white dark:bg-slate-900 relative overflow-hidden group">
             <div className="flex items-center gap-2 mb-2 w-full justify-center">
               <Star className="w-5 h-5 text-gray-400 dark:text-slate-500 group-hover:text-yellow-500 transition-colors" />
-              <span className="text-sm font-bold text-gray-700 dark:text-slate-300">المعدل</span>
+              <span className="text-sm font-bold text-gray-700 dark:text-slate-300">{t('grade_average')}</span>
             </div>
             <span className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{data.gradeAverage}%</span>
             <span className={`text-xs font-semibold mb-3 ${getPerformanceState(data.gradeAverage).textColor}`}>
-              {getPerformanceState(data.gradeAverage).text}
+              {t(getPerformanceState(data.gradeAverage).key as any)}
             </span>
             <div className="w-16 h-1.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
               <div 
@@ -134,11 +139,11 @@ export function PerformanceMeter() {
           <div className="flex flex-col items-center p-4 rounded-xl border border-gray-100 dark:border-slate-800 hover:shadow-md transition-shadow bg-white dark:bg-slate-900 relative overflow-hidden group">
             <div className="flex items-center gap-2 mb-2 w-full justify-center">
               <Smile className="w-5 h-5 text-gray-400 dark:text-slate-500 group-hover:text-green-500 transition-colors" />
-              <span className="text-sm font-bold text-gray-700 dark:text-slate-300">السلوك</span>
+              <span className="text-sm font-bold text-gray-700 dark:text-slate-300">{t('behavior')}</span>
             </div>
             <span className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{data.behavior}%</span>
             <span className={`text-xs font-semibold mb-3 ${getPerformanceState(data.behavior).textColor}`}>
-              {getPerformanceState(data.behavior).text}
+              {t(getPerformanceState(data.behavior).key as any)}
             </span>
             <div className="w-16 h-1.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
               <div 
@@ -152,11 +157,11 @@ export function PerformanceMeter() {
           <div className="flex flex-col items-center p-4 rounded-xl border border-gray-100 dark:border-slate-800 hover:shadow-md transition-shadow bg-white dark:bg-slate-900 relative overflow-hidden group">
             <div className="flex items-center gap-2 mb-2 w-full justify-center">
               <FileText className="w-5 h-5 text-gray-400 dark:text-slate-500 group-hover:text-orange-500 transition-colors" />
-              <span className="text-sm font-bold text-gray-700 dark:text-slate-300">الواجبات</span>
+              <span className="text-sm font-bold text-gray-700 dark:text-slate-300">{t('assignments')}</span>
             </div>
             <span className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{data.assignments}%</span>
             <span className={`text-xs font-semibold mb-3 ${getPerformanceState(data.assignments).textColor}`}>
-              {getPerformanceState(data.assignments).text}
+              {t(getPerformanceState(data.assignments).key as any)}
             </span>
             <div className="w-16 h-1.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
               <div 

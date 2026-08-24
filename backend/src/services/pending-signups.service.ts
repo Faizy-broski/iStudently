@@ -395,41 +395,35 @@ export async function approvePendingSignup(
 
   if (updateError) throw updateError
 
-  // 6. Generate login credentials and store them on the profile
+  // 6. Ensure username is set on profile and sync password display cache
   let plainPassword: string | undefined
   try {
-    const creds = await generateCredentials()
-    // Respect the username the applicant chose at signup time (already
-    // uniqueness-checked in submitSignup) instead of overwriting it with a
-    // fresh random one — only fall back to a generated username when they
-    // didn't set one.
-    const finalUsername = row.username || creds.username
+    // Determine username: applicant's chosen username -> existing username -> generated username
+    let finalUsername = row.username
+    if (!finalUsername) {
+      const { data: existingProf } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', profileId)
+        .maybeSingle()
+      finalUsername = existingProf?.username || (await generateUniqueUsername())
+    }
 
-    // Sync Supabase auth password FIRST — only persist/display the new username
-    // and password once the sync succeeds, so we never show credentials that
-    // don't actually match what Supabase Auth has on file.
-    const { error: authSyncError } = await supabase.auth.admin
-      .updateUserById(profileId, { password: creds.plainPassword })
-    if (authSyncError) throw authSyncError
-
-    plainPassword = creds.plainPassword
-
-    // Username/flags need no encryption — persist unconditionally now that
-    // auth is confirmed in sync.
+    // Save final username to profile
     await supabase
       .from('profiles')
       .update({
         username: finalUsername,
-        force_password_change: true,
         username_generated_at: new Date().toISOString(),
       })
       .eq('id', profileId)
 
-    // Best-effort only — must not undo the auth password change above if it fails.
-    await syncPasswordDisplayCache(profileId, creds.plainPassword)
+    // Sync password display cache with the applicant's ACTUAL chosen password
+    if (password) {
+      await syncPasswordDisplayCache(profileId, password)
+    }
   } catch (err: any) {
-    console.error(`⚠️ Failed to generate/sync login credentials for approved signup ${profileId}:`, err?.message ?? err)
-    // Non-fatal — user can still log in with their original signup email/password
+    console.error(`⚠️ Failed to sync login credentials for approved signup ${profileId}:`, err?.message ?? err)
   }
 
   // 7. Send approval email to user (non-blocking — never breaks the approval).

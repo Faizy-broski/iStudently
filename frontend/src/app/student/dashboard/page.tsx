@@ -57,6 +57,7 @@ export default function StudentDashboardPage() {
   const currentYear = academicYears.find(q => q.id === selectedAcademicYear)
 
   const isLoading = isDashboardLoading || isInfoLoading
+  const isFemale = (profile?.gender || studentInfo?.gender || '').toLowerCase() === 'female'
 
   if (isLoading) {
     return (
@@ -112,16 +113,25 @@ export default function StudentDashboardPage() {
   return (
     <div className="p-6 space-y-6 bg-[#F8FAFC] dark:bg-slate-950 min-h-screen">
       {/* Premium Profile Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#022172] to-[#0535B2] p-8 text-white shadow-lg">
-        <div className="absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
-        <div className="absolute bottom-0 left-0 -mb-10 -ml-10 h-64 w-64 rounded-full bg-blue-400/10 blur-3xl" />
+      <div className={`relative overflow-hidden rounded-2xl p-8 text-white shadow-lg transition-all duration-300 ${
+        isFemale 
+          ? 'bg-gradient-to-r from-[#D946EF] via-[#EC4899] to-[#F43F5E]' 
+          : 'bg-gradient-to-r from-[#022172] to-[#0535B2]'
+      }`}>
+        <div className={`absolute top-0 right-0 -mt-10 -mr-10 h-64 w-64 rounded-full blur-3xl ${
+          isFemale ? 'bg-white/20' : 'bg-white/10'
+        }`} />
+        <div className={`absolute bottom-0 left-0 -mb-10 -ml-10 h-64 w-64 rounded-full blur-3xl ${
+          isFemale ? 'bg-pink-300/30' : 'bg-blue-400/10'
+        }`} />
         
         <div className="relative flex flex-col md:flex-row items-center gap-6">
           <ProfilePhoto
             src={profile?.profile_photo_url || studentInfo?.profile_photo_url}
             name={`${studentInfo?.first_name || profile?.first_name || ''} ${studentInfo?.last_name || profile?.last_name || ''}`}
             size="xl"
-            className="border-4 border-white/20 shadow-xl"
+            isFemale={isFemale}
+            className={isFemale ? "border-4 border-white/40 shadow-xl shadow-pink-950/20" : "border-4 border-white/20 shadow-xl"}
           />
           
           <div className="flex-1 text-center md:text-left">
@@ -138,23 +148,27 @@ export default function StudentDashboardPage() {
                 {campus?.name || studentInfo?.school_name}
               </Badge>
               {currentQuarter && (
-                <Badge variant="secondary" className="bg-[#EEA831] text-[#022172] hover:bg-[#EEA831]/90 border-none px-3 py-1 font-bold">
+                <Badge variant="secondary" className={
+                  isFemale 
+                    ? "bg-amber-300 text-pink-950 hover:bg-amber-400 border-none px-3 py-1 font-bold shadow-sm" 
+                    : "bg-[#EEA831] text-[#022172] hover:bg-[#EEA831]/90 border-none px-3 py-1 font-bold"
+                }>
                   {currentQuarter.title}
                 </Badge>
               )}
             </div>
-            <p className="mt-4 text-blue-100/80 text-sm flex items-center justify-center md:justify-start gap-2">
+            <p className="mt-4 text-white/80 text-sm flex items-center justify-center md:justify-start gap-2">
               <Clock className="h-4 w-4" />
               {t('last_login', { date: format(new Date(), 'MMM d, yyyy h:mm a') })}
             </p>
           </div>
 
           <div className="hidden lg:block bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/10">
-            <div className="text-sm text-blue-100/70 mb-1">{t('academic_progress')}</div>
-            <div className="text-2xl font-bold text-white mb-2">{overview?.attendanceSummary.percentage}% <span className="text-xs font-normal text-blue-100/50">{t('attendance')}</span></div>
-            <div className="w-48 h-2 bg-white/10 rounded-full overflow-hidden">
+            <div className="text-sm text-white/80 mb-1">{t('academic_progress')}</div>
+            <div className="text-2xl font-bold text-white mb-2">{overview?.attendanceSummary.percentage}% <span className="text-xs font-normal text-white/60">{t('attendance')}</span></div>
+            <div className="w-48 h-2 bg-white/20 rounded-full overflow-hidden">
               <div 
-                className="h-full bg-[#EEA831] transition-all duration-1000" 
+                className={`h-full transition-all duration-1000 ${isFemale ? 'bg-amber-300' : 'bg-[#EEA831]'}`} 
                 style={{ width: `${overview?.attendanceSummary.percentage}%` }} 
               />
             </div>
@@ -171,15 +185,19 @@ export default function StudentDashboardPage() {
           <Card className="border-none shadow-sm overflow-hidden">
             <CardHeader className="bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 flex flex-row items-center justify-between py-4 px-6">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                  <CalendarIcon className="w-5 h-5 text-[#022172] dark:text-blue-400" />
+                <div className={`p-2 rounded-lg ${isFemale ? 'bg-pink-50 dark:bg-pink-950/30' : 'bg-blue-50 dark:bg-blue-900/20'}`}>
+                  <CalendarIcon className={`w-5 h-5 ${isFemale ? 'text-pink-600 dark:text-pink-400' : 'text-[#022172] dark:text-blue-400'}`} />
                 </div>
                 <div>
                   <CardTitle className="text-lg">{t('schedule.title')}</CardTitle>
                   <p className="text-xs text-gray-500 dark:text-slate-400 font-medium">{format(new Date(), 'EEEE, MMMM d')}</p>
                 </div>
               </div>
-              <Badge variant="outline" className="text-[#022172] dark:text-blue-400 border-blue-100 dark:border-blue-900/50">
+              <Badge variant="outline" className={
+                isFemale
+                  ? 'text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-900/50 bg-pink-50/50 dark:bg-pink-950/20'
+                  : 'text-[#022172] dark:text-blue-400 border-blue-100 dark:border-blue-900/50'
+              }>
                 {t('schedule.classes', { count: overview?.todayTimetable.length || 0 })}
               </Badge>
             </CardHeader>
@@ -193,17 +211,23 @@ export default function StudentDashboardPage() {
                         key={classItem.id}
                         className={`group relative p-4 rounded-xl border border-gray-100 dark:border-slate-800 transition-all hover:shadow-md ${
                           timeStatus.status === 'current' 
-                            ? 'bg-blue-50/50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 ring-1 ring-blue-100 dark:ring-blue-900' 
+                            ? (isFemale
+                                ? 'bg-pink-50/60 dark:bg-pink-950/30 border-pink-200 dark:border-pink-800 ring-1 ring-pink-200 dark:ring-pink-900'
+                                : 'bg-blue-50/50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 ring-1 ring-blue-100 dark:ring-blue-900') 
                             : 'bg-white dark:bg-slate-900'
                         }`}
                       >
                         {timeStatus.status === 'current' && (
-                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-12 bg-[#022172] dark:bg-blue-500 rounded-r-full" />
+                          <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-12 rounded-r-full ${
+                            isFemale ? 'bg-pink-500' : 'bg-[#022172] dark:bg-blue-500'
+                          }`} />
                         )}
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-4">
                             <div className={`p-3 rounded-xl ${
-                              timeStatus.status === 'current' ? 'bg-[#022172] text-white' : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400'
+                              timeStatus.status === 'current' 
+                                ? (isFemale ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white' : 'bg-[#022172] text-white')
+                                : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400'
                             }`}>
                               <BookOpen className="w-5 h-5" />
                             </div>
@@ -225,9 +249,9 @@ export default function StudentDashboardPage() {
                           <div className="text-right">
                             <Badge className={
                               timeStatus.status === 'current' ? 'bg-green-500 hover:bg-green-600 border-none' :
-                              timeStatus.status === 'soon' ? 'bg-[#EEA831] text-[#022172] hover:bg-[#EEA831]/90 border-none' :
+                              timeStatus.status === 'soon' ? (isFemale ? 'bg-pink-100 text-pink-800 hover:bg-pink-200 border-none' : 'bg-[#EEA831] text-[#022172] hover:bg-[#EEA831]/90 border-none') :
                               timeStatus.status === 'past' ? 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700 border-none' :
-                              'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 border-none'
+                              (isFemale ? 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-400 hover:bg-pink-200 border-none' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 border-none')
                             }>
                               {timeStatus.text}
                             </Badge>
@@ -242,8 +266,10 @@ export default function StudentDashboardPage() {
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-gray-50 dark:bg-slate-800/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <CalendarIcon className="w-8 h-8 text-gray-300 dark:text-slate-600" />
+                  <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                    isFemale ? 'bg-pink-50 dark:bg-pink-950/30' : 'bg-gray-50 dark:bg-slate-800/50'
+                  }`}>
+                    <CalendarIcon className={`w-8 h-8 ${isFemale ? 'text-pink-400 dark:text-pink-400' : 'text-gray-300 dark:text-slate-600'}`} />
                   </div>
                   <h3 className="font-semibold text-gray-900 dark:text-slate-100">{t('schedule.no_classes')}</h3>
                   <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{t('schedule.free_time')}</p>
@@ -258,7 +284,7 @@ export default function StudentDashboardPage() {
           {/* Academic Hierarchy (Marking Periods) */}
           <Card className="border-none shadow-sm overflow-hidden">
             <CardHeader className="bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 py-4 px-6">
-              <CardTitle className="text-lg flex items-center gap-2 text-[#022172] dark:text-blue-400">
+              <CardTitle className={`text-lg flex items-center gap-2 ${isFemale ? 'text-pink-600 dark:text-pink-400' : 'text-[#022172] dark:text-blue-400'}`}>
                 <GraduationCap className="w-5 h-5" />
                 {t('academic.hierarchy')}
               </CardTitle>
@@ -271,9 +297,13 @@ export default function StudentDashboardPage() {
                     <Building2 className="w-3.5 h-3.5" />
                     {t('academic.year')}
                   </div>
-                  <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/50">
-                    <h4 className="font-bold text-[#022172] dark:text-blue-400">{currentYear?.name || t('academic.session')}</h4>
-                    <p className="text-[10px] text-blue-600 dark:text-blue-500 mt-1 font-medium">
+                  <div className={`p-4 rounded-xl border ${
+                    isFemale 
+                      ? 'bg-pink-50/70 dark:bg-pink-950/20 border-pink-100 dark:border-pink-900/50' 
+                      : 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900/50'
+                  }`}>
+                    <h4 className={`font-bold ${isFemale ? 'text-pink-700 dark:text-pink-300' : 'text-[#022172] dark:text-blue-400'}`}>{currentYear?.name || t('academic.session')}</h4>
+                    <p className={`text-[10px] mt-1 font-medium ${isFemale ? 'text-pink-600 dark:text-pink-400' : 'text-blue-600 dark:text-blue-500'}`}>
                       {currentYear?.start_date && format(parseISO(currentYear.start_date), 'MMM yyyy')} - {currentYear?.end_date && format(parseISO(currentYear.end_date), 'MMM yyyy')}
                     </p>
                   </div>
@@ -285,9 +315,13 @@ export default function StudentDashboardPage() {
                     <TrendingUp className="w-3.5 h-3.5" />
                     {t('academic.quarter')}
                   </div>
-                  <div className="p-4 rounded-xl bg-[#EEA831]/10 border border-[#EEA831]/20">
-                    <h4 className="font-bold text-[#022172] dark:text-[#EEA831]">{currentQuarter?.title || t('academic.no_quarter')}</h4>
-                    <p className="text-[10px] text-[#022172]/60 dark:text-[#EEA831]/70 mt-1 font-medium">
+                  <div className={`p-4 rounded-xl border ${
+                    isFemale 
+                      ? 'bg-rose-50/70 dark:bg-rose-950/20 border-rose-100 dark:border-rose-900/50' 
+                      : 'bg-[#EEA831]/10 border-[#EEA831]/20'
+                  }`}>
+                    <h4 className={`font-bold ${isFemale ? 'text-rose-700 dark:text-rose-300' : 'text-[#022172] dark:text-[#EEA831]'}`}>{currentQuarter?.title || t('academic.no_quarter')}</h4>
+                    <p className={`text-[10px] mt-1 font-medium ${isFemale ? 'text-rose-600/80 dark:text-rose-400' : 'text-[#022172]/60 dark:text-[#EEA831]/70'}`}>
                       {currentQuarter?.start_date && format(parseISO(currentQuarter.start_date), 'MMM d')} - {currentQuarter?.end_date && format(parseISO(currentQuarter.end_date), 'MMM d')}
                     </p>
                   </div>
@@ -318,16 +352,22 @@ export default function StudentDashboardPage() {
         <div className="space-y-6">
           {/* Campus Info Card (Compact) */}
           <Card className="border-none shadow-sm overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-[#022172] to-[#0535B2] text-white py-4 px-6">
+            <CardHeader className={`text-white py-4 px-6 ${
+              isFemale 
+                ? 'bg-gradient-to-r from-[#D946EF] via-[#EC4899] to-[#F43F5E]' 
+                : 'bg-gradient-to-r from-[#022172] to-[#0535B2]'
+            }`}>
               <CardTitle className="text-base flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-[#EEA831]" />
+                <Building2 className={`w-4 h-4 ${isFemale ? 'text-amber-300' : 'text-[#EEA831]'}`} />
                 {t('campus.details')}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <div className="p-6 space-y-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-xl bg-gray-50 dark:bg-slate-800 flex items-center justify-center overflow-hidden border dark:border-slate-700 p-2">
+                  <div className={`w-14 h-14 rounded-xl flex items-center justify-center overflow-hidden border p-2 ${
+                    isFemale ? 'bg-pink-50/80 dark:bg-pink-950/30 border-pink-200 dark:border-pink-800' : 'bg-gray-50 dark:bg-slate-800 dark:border-slate-700'
+                  }`}>
                     <SchoolLogo
                       logoUrl={campus?.logo_url}
                       alt="Campus Logo"
@@ -335,12 +375,16 @@ export default function StudentDashboardPage() {
                       borderWidth={campus?.logo_border_width}
                       borderColor={campus?.logo_border_color}
                       className="w-full h-full"
-                      fallback={<Building2 className="w-8 h-8 text-gray-300 dark:text-slate-600" />}
+                      fallback={<Building2 className={`w-8 h-8 ${isFemale ? 'text-pink-400' : 'text-gray-300 dark:text-slate-600'}`} />}
                     />
                   </div>
                   <div>
                     <h4 className="font-bold text-gray-900 dark:text-slate-100 leading-tight">{campus?.name || studentInfo?.school_name}</h4>
-                    <Badge variant="outline" className="mt-1.5 text-[9px] font-bold py-0 h-4 border-blue-100 dark:border-blue-900/50 text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/20">
+                    <Badge variant="outline" className={`mt-1.5 text-[9px] font-bold py-0 h-4 ${
+                      isFemale
+                        ? 'border-pink-200 text-pink-700 bg-pink-50/80 dark:bg-pink-950/30 dark:text-pink-300'
+                        : 'border-blue-100 dark:border-blue-900/50 text-blue-700 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/20'
+                    }`}>
                       {campus?.short_name || t('campus.active_campus')}
                     </Badge>
                   </div>
@@ -350,8 +394,8 @@ export default function StudentDashboardPage() {
                 
                 <div className="space-y-3">
                   <div className="flex items-start gap-3">
-                    <div className="p-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg shrink-0">
-                      <MapPin className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                    <div className={`p-1.5 rounded-lg shrink-0 ${isFemale ? 'bg-pink-50 dark:bg-pink-950/30' : 'bg-blue-50 dark:bg-blue-900/20'}`}>
+                      <MapPin className={`w-3.5 h-3.5 ${isFemale ? 'text-pink-600 dark:text-pink-400' : 'text-blue-600 dark:text-blue-400'}`} />
                     </div>
                     <div>
                       <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">{t('campus.address')}</p>

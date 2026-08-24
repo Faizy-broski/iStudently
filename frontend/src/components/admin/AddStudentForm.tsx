@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -127,6 +127,13 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
   const [defaultFieldOrders, setDefaultFieldOrders] = useState<DefaultFieldOrder[]>([]);
   const [orderedStandardFields, setOrderedStandardFields] = useState(STANDARD_FIELDS);
 
+  // A grade with zero sections is a single-class grade — the class IS the
+  // grade, so section_id has nothing to point to and must not be required.
+  // Read via ref (kept in sync below, once `sections`/`selectedGradeId` are
+  // declared) rather than a useMemo dependency, since those are declared
+  // further down this component and can't appear in this memo's deps array.
+  const gradeHasNoSectionsRef = useRef(false);
+
   // Base field types stay permissive (optional) — presence is enforced below
   // via superRefine, driven by orderedStandardFields[].required, which a
   // campus admin can toggle per field on the Custom Fields page instead of
@@ -189,8 +196,9 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
         address: z.string(),
       })),
     }).superRefine((data, ctx) => {
+      const gradeHasNoSections = gradeHasNoSectionsRef.current;
       orderedStandardFields.forEach(field => {
-        const isRequired = field.required;
+        const isRequired = field.id === 'section_id' && gradeHasNoSections ? false : field.required;
         if (!isRequired) return;
         if (!(field.id in data)) return;
         const value = (data as Record<string, unknown>)[field.id];
@@ -238,6 +246,11 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
     ),
     [allSections, selectedGradeId]
   );
+
+  // Keep the ref the schema's superRefine reads in sync every render.
+  useEffect(() => {
+    gradeHasNoSectionsRef.current = !!selectedGradeId && !isLoadingSections && sections.length === 0;
+  });
 
   // Services State
   const [services, setServices] = useState<servicesApi.SchoolService[]>([]);
@@ -901,7 +914,7 @@ customFields.forEach((field) => {
         return (
           <div key={field.id} className={wrapperClass}>
             <Label htmlFor={field.id}>
-              {field.label} {field.required && <span className="text-red-500">*</span>}
+              {field.label} {field.required && !gradeHasNoSections && <span className="text-red-500">*</span>}
             </Label>
             <Select
               value={formData.section_id || ""}
@@ -929,7 +942,7 @@ customFields.forEach((field) => {
               </SelectContent>
             </Select>
             {selectedGradeId && sections.length === 0 && !isLoadingSections && (
-              <p className="text-sm text-amber-600">⚠️ {t("no_sections_available_grade")}</p>
+              <p className="text-sm text-muted-foreground">{t("no_sections_available_grade")}</p>
             )}
             {error && <p className="text-sm text-red-500">{error}</p>}
           </div>
@@ -1289,9 +1302,15 @@ customFields.forEach((field) => {
   const isFirstTab = currentTabIndex === 0;
   const isLastTab = currentTabIndex === tabs.length - 1;
 
+  // A grade with zero sections is a single-class grade — the class IS the
+  // grade, so section_id has nothing to point to and must not be required.
+  const gradeHasNoSections = !!selectedGradeId && !isLoadingSections && sections.length === 0;
+
   // Validate required fields for current tab
-  const isStandardFieldRequired = (fieldId: string): boolean =>
-    orderedStandardFields.find(f => f.id === fieldId)?.required ?? true;
+  const isStandardFieldRequired = (fieldId: string): boolean => {
+    if (fieldId === 'section_id' && gradeHasNoSections) return false;
+    return orderedStandardFields.find(f => f.id === fieldId)?.required ?? true;
+  };
 
   const validateCurrentTab = (): boolean => {
     const errors: Record<string, string> = {};

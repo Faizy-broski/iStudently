@@ -20,6 +20,7 @@ import {
   type SidebarConfig,
   type UpdateSidebarConfigDTO,
 } from '@/lib/api/sidebar-config'
+import { useSidebarTheme } from '@/context/SidebarThemeContext'
 
 interface SchoolSidebarConfigButtonProps {
   schoolId: string
@@ -31,6 +32,7 @@ export function SchoolSidebarConfigButton({
   schoolName,
 }: SchoolSidebarConfigButtonProps) {
   const t = useTranslations('sidebarConfig')
+  const { refresh: refreshTheme } = useSidebarTheme()
   const [open, setOpen] = React.useState(false)
   const [config, setConfig] = React.useState<SidebarConfig | null>(null)
   const [loadingConfig, setLoadingConfig] = React.useState(false)
@@ -60,6 +62,7 @@ export function SchoolSidebarConfigButton({
       if (result.success) {
         setConfig(result.data ?? null)
         toast.success(t('saved'))
+        refreshTheme()
       } else {
         toast.error(result.error ?? 'Save failed')
       }
@@ -77,6 +80,7 @@ export function SchoolSidebarConfigButton({
       if (result.success) {
         setConfig(result.data ?? null)
         toast.success(t('saved'))
+        refreshTheme()
       } else {
         toast.error(result.error ?? 'Reset failed')
       }

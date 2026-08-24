@@ -13,11 +13,15 @@ import {
 // Thin handlers over timetable-requirements.service.ts. Validates req.body
 // with Zod, matching the safeParse-free `.parse()` + catch(ZodError) 400
 // pattern used in hostel.controller.ts.
+//
+// Supports two modes:
+//  a) Section-based: section_id provided in request
+//  b) Grade-level:  grade_level_id provided (for grades with no sections)
 // ============================================================================
 
 export const listRequirements = async (req: Request, res: Response) => {
   try {
-    const { academic_year_id, section_id } = req.query
+    const { academic_year_id, section_id, grade_level_id } = req.query
 
     if (!academic_year_id) {
       return res.status(400).json({ success: false, error: 'academic_year_id is required' })
@@ -25,7 +29,8 @@ export const listRequirements = async (req: Request, res: Response) => {
 
     const result = await requirementsService.listRequirements(
       academic_year_id as string,
-      section_id as string | undefined
+      section_id as string | undefined,
+      grade_level_id as string | undefined
     )
 
     if (!result.success) return res.status(400).json(result)
@@ -148,13 +153,20 @@ export const seedFromAssignments = async (req: Request, res: Response) => {
 
 export const getCoverage = async (req: Request, res: Response) => {
   try {
-    const { section_id, academic_year_id } = req.query
+    const { section_id, grade_level_id, academic_year_id } = req.query
 
-    if (!section_id || !academic_year_id) {
-      return res.status(400).json({ success: false, error: 'section_id and academic_year_id are required' })
+    if (!academic_year_id) {
+      return res.status(400).json({ success: false, error: 'academic_year_id is required' })
     }
 
-    const result = await requirementsService.getCoverageSummary(section_id as string, academic_year_id as string)
+    if (!section_id && !grade_level_id) {
+      return res.status(400).json({ success: false, error: 'Either section_id or grade_level_id is required' })
+    }
+
+    const mode = section_id ? 'section' : 'grade'
+    const id = (section_id || grade_level_id) as string
+
+    const result = await requirementsService.getCoverageSummary(id, academic_year_id as string, mode)
     if (!result.success) return res.status(400).json(result)
     res.json(result)
   } catch (error: any) {

@@ -11,6 +11,23 @@ interface AuthRequest extends Request {
   }
 }
 
+function formatAcademicsError(error: any, defaultMessage: string): string {
+  const msg = error?.message || defaultMessage
+  if (msg.includes('unique_grade_per_campus') || msg.includes('unique_grade_per_school')) {
+    return 'A grade level with this name already exists in this school/campus.'
+  }
+  if (msg.includes('unique_order_per_campus') || msg.includes('unique_order_per_school')) {
+    return 'A grade level with this order index already exists in this school/campus.'
+  }
+  if (msg.includes('unique_section_per_grade') || msg.includes('unique_section_per_campus')) {
+    return 'A section with this name already exists in this grade level.'
+  }
+  if (msg.includes('unique_subject_code') || msg.includes('unique_subject_per_campus')) {
+    return 'A subject with this name or code already exists in this grade level.'
+  }
+  return msg
+}
+
 // ============================================================================
 // GRADE LEVELS CONTROLLER
 // ============================================================================
@@ -42,9 +59,9 @@ export const createGradeLevel = async (req: Request, res: Response) => {
     } as ApiResponse)
   } catch (error: any) {
     console.error('Error creating grade level:', error)
-    res.status(500).json({
+    res.status(400).json({
       success: false,
-      error: error.message || 'Failed to create grade level',
+      error: formatAcademicsError(error, 'Failed to create grade level'),
     } as ApiResponse)
   }
 }
@@ -131,9 +148,9 @@ export const updateGradeLevel = async (req: Request, res: Response) => {
     } as ApiResponse)
   } catch (error: any) {
     console.error('Error updating grade level:', error)
-    res.status(500).json({
+    res.status(400).json({
       success: false,
-      error: error.message || 'Failed to update grade level',
+      error: formatAcademicsError(error, 'Failed to update grade level'),
     } as ApiResponse)
   }
 }

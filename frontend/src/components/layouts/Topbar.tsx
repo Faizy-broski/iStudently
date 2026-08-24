@@ -343,12 +343,12 @@ export function Topbar({ className }: TopbarProps) {
                 variant="ghost"
                 className="flex items-center gap-3 px-2 py-1.5 h-auto hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
               >
-                <Avatar className={cn("h-9 w-9", isFemaleStudent && "ring-2 ring-pink-400 ring-offset-2 ring-offset-background")}>
+                <Avatar className={cn("h-9 w-9", isFemaleStudent && "ring-2 ring-pink-400 ring-offset-2 ring-offset-background shadow-sm shadow-pink-200")}>
                   <AvatarImage
                     src={profile?.profile_photo_url || profile?.avatar_url || ''}
                     alt={profile?.first_name || 'User'}
                   />
-                  <AvatarFallback className={cn("text-white text-sm", isFemaleStudent ? "bg-pink-500" : "bg-[#022172]")}>
+                  <AvatarFallback className={cn("text-white text-sm font-semibold", isFemaleStudent ? "bg-gradient-to-r from-pink-500 to-rose-500" : "bg-[#022172]")}>
                     {getInitials()}
                   </AvatarFallback>
                 </Avatar>

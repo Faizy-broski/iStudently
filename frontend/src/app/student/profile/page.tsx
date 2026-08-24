@@ -55,20 +55,21 @@ export default function StudentProfilePage() {
 
   const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Student'
   const initials = [profile?.first_name?.[0], profile?.last_name?.[0]].filter(Boolean).join('').toUpperCase() || 'S'
+  const isFemale = (profile?.gender || '').toLowerCase() === 'female'
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-3xl mx-auto">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">My Profile</h1>
+        <h1 className={`text-2xl md:text-3xl font-bold ${isFemale ? 'text-pink-600 dark:text-pink-400' : 'text-brand-blue dark:text-white'}`}>My Profile</h1>
         <p className="text-muted-foreground mt-1">View and manage your account information</p>
       </div>
 
       {/* Avatar & Name */}
       <Card className="p-6">
         <div className="flex items-center gap-5">
-          <Avatar className="aspect-[3/4] w-20 h-auto rounded-xl border-2 border-blue-200 shrink-0">
+          <Avatar className={`aspect-[3/4] w-20 h-auto rounded-xl border-2 shrink-0 ${isFemale ? 'border-pink-300 ring-2 ring-pink-100 dark:ring-pink-900/50' : 'border-blue-200'}`}>
             <AvatarImage src={profile?.profile_photo_url || ''} alt={fullName} className="aspect-[3/4] h-full w-full object-cover" />
-            <AvatarFallback className="bg-blue-100 text-blue-600 text-2xl font-bold rounded-xl">
+            <AvatarFallback className={`text-2xl font-bold rounded-xl ${isFemale ? 'bg-gradient-to-tr from-pink-500 to-rose-400 text-white' : 'bg-blue-100 text-blue-600'}`}>
               {initials}
             </AvatarFallback>
           </Avatar>
@@ -83,8 +84,8 @@ export default function StudentProfilePage() {
       {/* Contact Info */}
       <Card className="p-6">
         <div className="flex items-center gap-3 mb-6">
-          <div className="p-3 rounded-lg bg-blue-100">
-            <User className="h-5 w-5 text-blue-600" />
+          <div className={`p-3 rounded-lg ${isFemale ? 'bg-pink-100 text-pink-600 dark:bg-pink-950/40 dark:text-pink-400' : 'bg-blue-100 text-blue-600'}`}>
+            <User className="h-5 w-5" />
           </div>
           <div>
             <h2 className="text-lg font-semibold">Contact Information</h2>
@@ -116,8 +117,8 @@ export default function StudentProfilePage() {
           <Button
             onClick={handleSaveProfile}
             disabled={saving}
-            style={{ background: 'var(--gradient-blue)' }}
-            className="text-white"
+            style={!isFemale ? { background: 'var(--gradient-blue)' } : undefined}
+            className={`text-white ${isFemale ? 'bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 shadow-md shadow-pink-200 dark:shadow-none' : ''}`}
           >
             {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
             Save Changes

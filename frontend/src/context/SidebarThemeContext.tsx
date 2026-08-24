@@ -114,29 +114,37 @@ export function SidebarThemeProvider({
         return
       }
 
-      // For all other roles: try campus config first, fall back to school/default
-      const campusId = selectedCampus?.id ?? null
+      // For all other roles: try campus config first (if custom), fall back to main school theme
+      const campusId = selectedCampus?.id ?? profile.campus_id ?? null
       if (campusId) {
         const campusResult = await getCampusSidebarConfig(campusId)
-        if (campusResult.success && campusResult.data) {
+        if (
+          campusResult.success && 
+          campusResult.data && 
+          (campusResult.data.bg_color || campusResult.data.bg_image_url)
+        ) {
           setConfig(campusResult.data)
           return
         }
       }
 
-      // No campus config — fall back to the school-wide config directly.
-      // Using getSchoolSidebarConfig(schoolId) instead of getMySidebarConfig() avoids
-      // a bug where the backend resolves the campus from the user's *profile* (not the
-      // currently selected campus in the UI), which could return a different campus's
-      // theme when the selected campus has no custom config.
-      const schoolId = profile.school_id
+      // No custom campus config — fall back to the main school-wide config directly.
+      const schoolId = profile.school_id ?? selectedCampus?.school_id ?? null
       if (schoolId) {
         const result = await getSchoolSidebarConfig(schoolId)
-        if (result.success) setConfig(result.data ?? null)
-      } else {
-        const result = await getMySidebarConfig()
-        if (result.success) setConfig(result.data ?? null)
+        if (
+          result.success && 
+          result.data && 
+          (result.data.bg_color || result.data.bg_image_url)
+        ) {
+          setConfig(result.data)
+          return
+        }
       }
+
+      // Fall back to getMySidebarConfig()
+      const result = await getMySidebarConfig()
+      if (result.success) setConfig(result.data ?? null)
     } catch {
       // Silent fail — sidebar keeps cached/default gradient
     } finally {

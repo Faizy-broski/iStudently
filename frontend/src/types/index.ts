@@ -223,6 +223,8 @@ export interface AuthContextType {
   signOut: () => Promise<void>
   // Recovery function to clear stuck loading states
   recoverFromError?: () => void
+  // Helper to update profile in memory
+  updateProfileState?: (updates: Partial<Profile>) => void
 }
 
 // Student Types

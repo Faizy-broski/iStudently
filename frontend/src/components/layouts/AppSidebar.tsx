@@ -212,22 +212,27 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
     }
   }
 
+  // Fallback: If no school or campus logo exists, check the user/superadmin profile's avatar photo or logo
+  if (!resolvedLogoUrl) {
+    resolvedLogoUrl = profile?.profile_photo_url || profile?.avatar_url || null
+  }
+
   const displayLogoUrl = resolvedLogoUrl
   const logoShape = resolvedLogoShape as any
   const logoBorderWidth = resolvedBorderWidth
   const logoBorderColor = resolvedBorderColor
 
-  const displayName = selectedCampus?.name || impersonatedSchoolName || profile?.school?.name || 'No Campus'
-  const rawInitialsString = selectedCampus?.short_name || displayName
-  const initials = rawInitialsString !== 'No Campus'
-    ? rawInitialsString.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
-    : '?'
-
   const adminName = profile
     ? profile.role === 'super_admin' && impersonatedSchoolId
       ? 'School Admin'
-      : `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
+      : `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || (profile.role === 'super_admin' ? 'Master Owner' : '')
     : ''
+
+  const displayName = selectedCampus?.name || impersonatedSchoolName || profile?.school?.name || 'No Campus'
+  const rawInitialsString = selectedCampus?.short_name || (displayName !== 'No Campus' ? displayName : adminName) || 'Super Admin'
+  const initials = rawInitialsString
+    ? rawInitialsString.split(' ').filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase()
+    : 'SA'
 
   // Gregorian — always use Western Arabic numerals (0-9), Arabic text only for names
   const bcp = isAr ? 'ar-SA' : 'en-US'
@@ -247,7 +252,8 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
   const hijriStr = `${h.day} ${hijriMonths[h.month - 1]} ${h.year}`
 
   const isLoadingCampuses = campusContext?.loading ?? true
-  const showPulse = !selectedCampus && isLoadingCampuses
+  const isSuperAdminWithoutSchool = profile?.role === 'super_admin' && !impersonatedSchoolId
+  const showPulse = !displayLogoUrl && !isSuperAdminWithoutSchool && !selectedCampus && isLoadingCampuses
 
   if (isCollapsed) {
     return (

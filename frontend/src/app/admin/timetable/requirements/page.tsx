@@ -32,6 +32,7 @@ import {
   PlayCircle,
   BookOpen,
   DoorOpen,
+  Info,
 } from "lucide-react"
 import { useCampus } from "@/context/CampusContext"
 import { useGradeLevels, useSections } from "@/hooks/useAcademics"
@@ -83,6 +84,7 @@ export default function TimetableRequirementsPage() {
   const [newGapDays, setNewGapDays] = useState("0")
   const [adding, setAdding] = useState(false)
 
+  // Sections belonging to the selected grade
   const filteredSections = useMemo(() => {
     if (!selectedGrade || !selectedCampus) return []
     return sections.filter(
@@ -93,8 +95,29 @@ export default function TimetableRequirementsPage() {
     )
   }, [selectedGrade, selectedCampus, sections])
 
+  /**
+   * gradeHasNoSections: true when a grade is selected, sections have loaded,
+   * and the grade genuinely has 0 sections.
+   * In this mode requirements are grade-level (section_id = null).
+   */
+  const gradeHasNoSections =
+    !!selectedGrade && !sectionsLoading && filteredSections.length === 0
+
+  /**
+   * The "active scope" that drives data loading:
+   *   - section mode → selectedSection
+   *   - grade-level mode → selectedGrade (when gradeHasNoSections)
+   */
+  const activeScope: { id: string; mode: "section" | "grade" } | null = useMemo(() => {
+    if (gradeHasNoSections && selectedGrade) return { id: selectedGrade, mode: "grade" }
+    if (selectedSection) return { id: selectedSection, mode: "section" }
+    return null
+  }, [gradeHasNoSections, selectedGrade, selectedSection])
+
   const selectedGradeName = gradeLevels.find((g) => g.id === selectedGrade)?.name
   const selectedSectionName = sections.find((s) => s.id === selectedSection)?.name
+  /** Human-readable display name for the current scope */
+  const scopeDisplayName = activeScope?.mode === "grade" ? selectedGradeName : selectedSectionName
 
   // ── Load initial reference data ────────────────────────────────────────
   useEffect(() => {
@@ -125,12 +148,14 @@ export default function TimetableRequirementsPage() {
   }, [selectedGrade])
 
   const loadRequirements = useCallback(async () => {
-    if (!selectedSection || !selectedAcademicYear) return
+    if (!activeScope || !selectedAcademicYear) return
     setLoading(true)
     try {
       const [reqs, cov] = await Promise.all([
-        reqApi.listRequirements(selectedAcademicYear, selectedSection),
-        reqApi.getCoverage(selectedSection, selectedAcademicYear).catch(() => null),
+        activeScope.mode === "section"
+          ? reqApi.listRequirements(selectedAcademicYear, activeScope.id)
+          : reqApi.listRequirements(selectedAcademicYear, undefined, activeScope.id),
+        reqApi.getCoverage(activeScope.id, selectedAcademicYear, activeScope.mode).catch(() => null),
       ])
       setRequirements(reqs)
       setCoverage(cov)
@@ -139,7 +164,7 @@ export default function TimetableRequirementsPage() {
     } finally {
       setLoading(false)
     }
-  }, [selectedSection, selectedAcademicYear])
+  }, [activeScope, selectedAcademicYear])
 
   useEffect(() => {
     loadRequirements()
@@ -158,9 +183,6 @@ export default function TimetableRequirementsPage() {
 
   const totalRequiredPeriods = requirements.reduce((sum, r) => sum + r.periods_per_week, 0)
 
-  // ── Duplicate detection: same teacher assigned to the same section twice
-  // across different subjects at the same weekly load can be a sign of a
-  // copy/paste mistake — surface as a soft warning, not a hard block.
   const duplicateTeacherWarning = useMemo(() => {
     const byTeacher = new Map<string, TimetableRequirement[]>()
     requirements
@@ -174,11 +196,16 @@ export default function TimetableRequirementsPage() {
     byTeacher.forEach((list, teacherId) => {
       if (list.length > 1) {
         const name = list[0].teacher_name || teacherId
-        flagged.push(`${name} is assigned ${list.length} separate subjects in this section — verify this is intended.`)
+        flagged.push(`${name} is assigned ${list.length} separate subjects in this ${activeScope?.mode === "grade" ? "grade" : "section"} — verify this is intended.`)
       }
     })
     return flagged
-  }, [requirements])
+  }, [requirements, activeScope])
+
+  const refreshCoverage = () => {
+    if (!activeScope || !selectedAcademicYear) return
+    reqApi.getCoverage(activeScope.id, selectedAcademicYear, activeScope.mode).then(setCoverage).catch(() => {})
+  }
 
   const handleAddRequirement = async () => {
     if (!newSubject) {
@@ -190,12 +217,17 @@ export default function TimetableRequirementsPage() {
       toast.error("Periods/week must be at least 1")
       return
     }
+    if (!activeScope) return
 
     setAdding(true)
     try {
       const created = await reqApi.createRequirement({
         academic_year_id: selectedAcademicYear,
-        section_id: selectedSection,
+        // Section mode: pass section_id
+        // Grade-level mode: pass grade_level_id only
+        ...(activeScope.mode === "section"
+          ? { section_id: activeScope.id }
+          : { grade_level_id: activeScope.id }),
         subject_id: newSubject,
         teacher_id: newTeacher === "__any__" ? null : newTeacher,
         periods_per_week: periods,
@@ -211,7 +243,7 @@ export default function TimetableRequirementsPage() {
       setNewRoomType("__none__")
       setNewGapDays("0")
       toast.success("Requirement added")
-      reqApi.getCoverage(selectedSection, selectedAcademicYear).then(setCoverage).catch(() => {})
+      refreshCoverage()
     } catch (error: any) {
       toast.error(error.message || "Failed to add requirement")
     } finally {
@@ -224,7 +256,7 @@ export default function TimetableRequirementsPage() {
     setRequirements((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } as TimetableRequirement : r)))
     try {
       await reqApi.updateRequirement(id, patch)
-      reqApi.getCoverage(selectedSection, selectedAcademicYear).then(setCoverage).catch(() => {})
+      refreshCoverage()
     } catch (error: any) {
       toast.error(error.message || "Failed to update requirement")
       loadRequirements()
@@ -232,12 +264,13 @@ export default function TimetableRequirementsPage() {
   }
 
   const handleDeleteRequirement = async (id: string) => {
-    if (!confirm("Delete this requirement? Sections without a matching requirement will not receive generated periods for this subject.")) return
+    const scopeLabel = activeScope?.mode === "grade" ? "grade" : "section"
+    if (!confirm(`Delete this requirement? ${scopeLabel === "section" ? "Sections" : "Grades"} without a matching requirement will not receive generated periods for this subject.`)) return
     try {
       await reqApi.deleteRequirement(id)
       setRequirements((prev) => prev.filter((r) => r.id !== id))
       toast.success("Requirement removed")
-      reqApi.getCoverage(selectedSection, selectedAcademicYear).then(setCoverage).catch(() => {})
+      refreshCoverage()
     } catch (error: any) {
       toast.error(error.message || "Failed to delete requirement")
     }
@@ -247,7 +280,8 @@ export default function TimetableRequirementsPage() {
     if (!selectedAcademicYear) return
     setSeeding(true)
     try {
-      const seeded = await reqApi.seedRequirementsFromAssignments(selectedAcademicYear, selectedSection || undefined)
+      const sectionArg = activeScope?.mode === "section" ? activeScope.id : undefined
+      const seeded = await reqApi.seedRequirementsFromAssignments(selectedAcademicYear, sectionArg)
       toast.success(`Seeded ${seeded.length} requirement${seeded.length === 1 ? "" : "s"} from teacher assignments`)
       loadRequirements()
     } catch (error: any) {
@@ -289,7 +323,7 @@ export default function TimetableRequirementsPage() {
       toast.success(`Updated periods/week for ${ids.length} requirement${ids.length === 1 ? "" : "s"}`)
       setSelectedIds(new Set())
       setBulkPeriods("")
-      reqApi.getCoverage(selectedSection, selectedAcademicYear).then(setCoverage).catch(() => {})
+      refreshCoverage()
     } catch (error: any) {
       toast.error(error.message || "Bulk update failed")
       loadRequirements()
@@ -298,6 +332,9 @@ export default function TimetableRequirementsPage() {
 
   const coverageUsed = coverage ? coverage.required_periods_per_week : totalRequiredPeriods
   const coverageAvailable = coverage?.available_periods_per_week
+
+  /** Whether the user has made a selection that allows showing the requirements panel */
+  const canShowRequirements = !!activeScope && !!selectedAcademicYear
 
   return (
     <div className="p-6 space-y-6">
@@ -315,7 +352,7 @@ export default function TimetableRequirementsPage() {
             Timetable Requirements
           </h1>
           <p className="text-muted-foreground">
-            Define how many periods/week each subject needs per section — the generator uses these as its input.
+            Define how many periods/week each subject needs — the generator uses these as its input.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -326,7 +363,7 @@ export default function TimetableRequirementsPage() {
           </Link>
           <Link href="/admin/timetable/settings">
             <Button variant="outline" size="sm">
-              <Settings className="h-4 w-4 mr-2" /> Constraints & Settings
+              <Settings className="h-4 w-4 mr-2" /> Constraints &amp; Settings
             </Button>
           </Link>
           <Link href="/admin/timetable/generate">
@@ -376,21 +413,32 @@ export default function TimetableRequirementsPage() {
               </Select>
             </div>
 
-            <div className="space-y-1.5 min-w-[180px]">
-              <Label className="text-sm">Section</Label>
-              <Select value={selectedSection} onValueChange={setSelectedSection} disabled={!selectedGrade}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select section" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredSections.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Section selector — only shown when the grade HAS sections */}
+            {selectedGrade && !sectionsLoading && !gradeHasNoSections && (
+              <div className="space-y-1.5 min-w-[180px]">
+                <Label className="text-sm">Section</Label>
+                <Select value={selectedSection} onValueChange={setSelectedSection}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select section" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredSections.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Grade-level mode badge — shown when grade has no sections */}
+            {gradeHasNoSections && (
+              <div className="flex items-center gap-1.5 text-sm text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-md px-3 py-2">
+                <Info className="h-4 w-4 shrink-0" />
+                <span>Grade-level mode — no sections defined for {selectedGradeName}</span>
+              </div>
+            )}
 
             <Button variant="outline" size="sm" onClick={handleSeed} disabled={seeding || !selectedAcademicYear} className="gap-2">
               {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
@@ -404,13 +452,23 @@ export default function TimetableRequirementsPage() {
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      ) : !selectedSection ? (
+      ) : !selectedGrade ? (
+        <Card>
+          <CardContent className="py-16 text-center">
+            <ListChecks className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
+            <h3 className="text-lg font-medium text-muted-foreground">Select a grade to get started</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              For grades with sections, you'll also pick a section. For grades without sections, requirements are defined at grade level.
+            </p>
+          </CardContent>
+        </Card>
+      ) : !gradeHasNoSections && !selectedSection ? (
         <Card>
           <CardContent className="py-16 text-center">
             <ListChecks className="h-16 w-16 mx-auto mb-4 text-muted-foreground/30" />
             <h3 className="text-lg font-medium text-muted-foreground">Select a section to view its requirements</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Pick a grade and section above, or use "Seed from Assignments" to bootstrap requirements for every section at once.
+              Pick a section above, or use &quot;Seed from Assignments&quot; to bootstrap requirements for every section at once.
             </p>
           </CardContent>
         </Card>
@@ -426,7 +484,8 @@ export default function TimetableRequirementsPage() {
               )}
               <AlertDescription className="flex items-center justify-between w-full flex-wrap gap-2">
                 <span className={coverage.is_over_capacity ? "text-destructive font-medium" : "text-green-700 dark:text-green-400 font-medium"}>
-                  {coverageUsed}/{coverage.available_periods_per_week} periods/week used for {selectedSectionName}
+                  {coverageUsed}/{coverage.available_periods_per_week} periods/week used for{" "}
+                  {scopeDisplayName}
                   {coverage.is_over_capacity && " — over capacity! The generator cannot fit all requirements."}
                 </span>
                 <Badge variant={coverage.is_over_capacity ? "destructive" : "default"} className={!coverage.is_over_capacity ? "bg-green-600" : ""}>
@@ -451,7 +510,13 @@ export default function TimetableRequirementsPage() {
           <Card>
             <CardHeader className="py-3">
               <CardTitle className="text-base">Add Requirement</CardTitle>
-              <CardDescription>Subject + teacher + periods/week for {selectedSectionName}</CardDescription>
+              <CardDescription>
+                Subject + teacher + periods/week for{" "}
+                <strong>{scopeDisplayName}</strong>
+                {gradeHasNoSections && (
+                  <span className="ml-1 text-blue-600 dark:text-blue-400">(grade-level)</span>
+                )}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
@@ -569,10 +634,12 @@ export default function TimetableRequirementsPage() {
               ) : requirements.length === 0 ? (
                 <div className="py-16 text-center px-6">
                   <BookOpen className="h-14 w-14 mx-auto mb-4 text-muted-foreground/30" />
-                  <h3 className="text-lg font-medium text-muted-foreground">No requirements defined yet for {selectedSectionName}</h3>
+                  <h3 className="text-lg font-medium text-muted-foreground">
+                    No requirements defined yet for {scopeDisplayName}
+                  </h3>
                   <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
                     Requirements tell the generator how many periods/week each subject needs. Add one above, or seed
-                    them automatically from this section's existing teacher-subject assignments.
+                    them automatically from this {gradeHasNoSections ? "grade's" : "section's"} existing teacher-subject assignments.
                   </p>
                   <Button onClick={handleSeed} disabled={seeding} className="mt-4 gap-2 bg-[#022172] hover:bg-[#022172]/90 text-white">
                     {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}

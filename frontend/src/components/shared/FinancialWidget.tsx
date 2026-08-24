@@ -66,6 +66,26 @@ export function FinancialWidget({ fees, isLoading, feesPageHref }: FinancialWidg
     )
   }
 
+  if (fees.length === 0) {
+    return (
+      <Card className="border-none shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <CreditCard className="w-4 h-4 text-orange-500" />
+            Financial Status
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-6 text-center">
+            <CheckCircle className="w-10 h-10 text-slate-300 dark:text-slate-600 mb-2" />
+            <p className="text-sm font-semibold text-slate-600 dark:text-slate-400">No fee invoices</p>
+            <p className="text-xs text-muted-foreground mt-1">No outstanding balance</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   if (unpaid.length === 0) {
     return (
       <Card className="border-none shadow-sm">

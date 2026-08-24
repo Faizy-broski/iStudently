@@ -196,7 +196,7 @@ function SelectedChildFeesTab() {
         <Card>
           <CardContent className="p-6">
             <p className="text-sm text-muted-foreground mb-1">Outstanding Balance</p>
-            <p className="text-3xl font-bold text-red-600">{currencySymbol}{totalDue.toFixed(2)}</p>
+            <p className={`text-3xl font-bold ${totalDue > 0 ? 'text-red-600' : 'text-gray-900 dark:text-slate-100'}`}>{currencySymbol}{totalDue.toFixed(2)}</p>
             {overdue.length > 0 && <p className="text-xs text-red-500 mt-1">{overdue.length} overdue</p>}
           </CardContent>
         </Card>

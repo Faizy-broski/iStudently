@@ -274,94 +274,75 @@ export default function SignupPage() {
   }
 
   // ── FORM ─────────────────────────────────────────────────────────────────────
-  const hasPoster = !!linkInfo?.meta?.poster_url
-
   return (
     <div
-      className={cn(
-        "min-h-screen bg-gray-50",
-        hasPoster ? "flex" : "flex items-center justify-center p-4 py-8"
-      )}
+      className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4 sm:p-6 md:p-10 py-10"
       dir={isAr ? 'rtl' : 'ltr'}
     >
       <LanguageToggle />
-      {/* Poster Side */}
-      {hasPoster && (
-        <div className="hidden lg:flex lg:w-1/2 relative bg-gray-900 border-e border-gray-200">
-          <img 
-            src={linkInfo.meta!.poster_url!} 
-            alt="Signup Poster" 
-            className="absolute inset-0 w-full h-full object-cover opacity-90"
+
+      <div className="w-full max-w-4xl md:max-w-5xl bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-700/50 overflow-hidden transition-all duration-300">
+        {/* Header band */}
+        <div className="bg-gradient-to-r from-[#57A3CC] to-[#022172] p-6 sm:p-8 md:p-10 text-center relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 flex flex-col items-end gap-1">
+            {linkInfo?.expires_at && (
+              <div className="bg-white/20 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full backdrop-blur-sm">
+                {t('expires')}: {new Date(linkInfo.expires_at).toLocaleDateString()}
+              </div>
+            )}
+            {linkInfo?.available_seats !== null && linkInfo?.available_seats !== undefined && (
+              <div className="bg-orange-500 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full shadow-sm">
+                {linkInfo.available_seats} {t('seatsLeft', { fallback: 'seats left' })}
+              </div>
+            )}
+          </div>
+
+          <SchoolLogo
+            logoUrl={linkInfo?.school_logo_url || linkInfo?.meta?.poster_url}
+            alt={linkInfo?.school_name ?? 'School'}
+            shape={linkInfo?.logo_shape}
+            borderWidth={linkInfo?.logo_border_width}
+            borderColor={linkInfo?.logo_border_color}
+            size={84}
+            className="mx-auto mb-3 shadow-lg border-2 border-white/20"
+            fallback={
+              <span className="text-3xl font-bold text-[#022172]">
+                {(linkInfo?.school_name ?? 'S').charAt(0)}
+              </span>
+            }
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          <div className="absolute bottom-12 left-12 right-12 text-white">
-            <h2 className="text-4xl font-bold mb-2">{linkInfo.school_name}</h2>
-            {linkInfo.meta?.description && (
-              <p className="text-lg text-white/80 max-w-lg">{linkInfo.meta.description}</p>
+
+          <h1 className="text-2xl md:text-3xl font-bold text-white tracking-wide">{linkInfo?.school_name}</h1>
+          {linkInfo?.label && (
+            <p className="text-white/90 text-base mt-1 font-medium">{linkInfo.label}</p>
+          )}
+
+          <div className="mt-3 flex items-center justify-center gap-2">
+            <span className="text-white/80 text-sm font-medium">{t('invitedAs')}</span>
+            {linkInfo?.role && (
+              <span className={cn('px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm', ROLE_COLORS[linkInfo.role] ?? 'bg-white/20 text-white')}>
+                {linkInfo.role}
+              </span>
             )}
           </div>
+
+          {linkInfo?.meta?.description && (
+            <p className="text-white/80 text-sm max-w-2xl mx-auto mt-3 leading-relaxed">
+              {linkInfo.meta.description}
+            </p>
+          )}
         </div>
-      )}
 
-      {/* Form Side */}
-      <div className={cn(
-        "w-full",
-        hasPoster ? "lg:w-1/2 flex items-center justify-center p-6 sm:p-12" : "max-w-md"
-      )}>
-        <div className={cn(
-          "bg-white overflow-hidden",
-          hasPoster ? "w-full max-w-lg shadow-sm rounded-2xl border border-gray-100" : "rounded-2xl shadow-lg border border-gray-100"
-        )}>
-          {/* Header band */}
-          <div className="bg-gradient-to-r from-[#57A3CC] to-[#022172] p-6 text-center relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 flex flex-col items-end gap-1">
-              {linkInfo?.expires_at && (
-                <div className="bg-white/20 text-white text-[10px] font-semibold px-2 py-0.5 rounded backdrop-blur-sm">
-                  {t('expires')}: {new Date(linkInfo.expires_at).toLocaleDateString()}
-                </div>
-              )}
-              {linkInfo?.available_seats !== null && linkInfo?.available_seats !== undefined && (
-                <div className="bg-orange-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded shadow-sm">
-                  {linkInfo.available_seats} {t('seatsLeft', { fallback: 'seats left' })}
-                </div>
-              )}
-            </div>
-
-            <SchoolLogo
-              logoUrl={linkInfo?.school_logo_url}
-              alt={linkInfo?.school_name ?? 'School'}
-              shape={linkInfo?.logo_shape}
-              borderWidth={linkInfo?.logo_border_width}
-              borderColor={linkInfo?.logo_border_color}
-              size={64}
-              className="mx-auto mb-3"
-              fallback={
-                <span className="text-2xl font-bold text-[#022172]">
-                  {(linkInfo?.school_name ?? 'S').charAt(0)}
-                </span>
-              }
-            />
-            <h1 className="text-xl font-bold text-white">{linkInfo?.school_name}</h1>
-            {linkInfo?.label && (
-              <p className="text-white/70 text-sm mt-0.5">{linkInfo.label}</p>
-            )}
-            <div className="mt-2 flex items-center justify-center gap-2">
-              <span className="text-white/70 text-sm">{t('invitedAs')}</span>
-              {linkInfo?.role && (
-                <span className={cn('px-2 py-0.5 rounded-full text-xs font-semibold', ROLE_COLORS[linkInfo.role] ?? 'bg-white/20 text-white')}>
-                  {linkInfo.role}
-                </span>
-              )}
-            </div>
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-6 sm:p-8 md:p-10 space-y-8">
+          <div className="border-b border-gray-100 dark:border-slate-700 pb-3">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('formTitle')}</h2>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            <h2 className="text-base font-semibold text-gray-900 text-center">{t('formTitle')}</h2>
-
-            {/* Name row */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
+          {/* Responsive multi-column grid: 1 col on mobile, 2 on tablet, 3 on desktop */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {/* First Name */}
+              <div className="space-y-1.5 col-span-1">
                 <label htmlFor="first_name" className="block text-sm font-semibold text-gray-800">
                   {t('firstName')} {firstNameRequired && <span className="text-red-500">*</span>}
                 </label>
@@ -370,12 +351,14 @@ export default function SignupPage() {
                   placeholder="Ahmad"
                   value={form.first_name}
                   onChange={(e) => setForm(f => ({ ...f, first_name: e.target.value }))}
-                  className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900! placeholder:text-gray-400', errors.first_name ? 'border-red-400' : '')}
+                  className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900 placeholder:text-gray-400 h-10', errors.first_name ? 'border-red-400' : '')}
                   disabled={submitting}
                 />
                 {errors.first_name && <p className="text-xs text-red-500">{errors.first_name}</p>}
               </div>
-              <div className="space-y-1.5">
+
+              {/* Last Name */}
+              <div className="space-y-1.5 col-span-1">
                 <label htmlFor="last_name" className="block text-sm font-semibold text-gray-800">
                   {t('lastName')} {lastNameRequired && <span className="text-red-500">*</span>}
                 </label>
@@ -384,246 +367,257 @@ export default function SignupPage() {
                   placeholder="Ali"
                   value={form.last_name}
                   onChange={(e) => setForm(f => ({ ...f, last_name: e.target.value }))}
-                  className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900! placeholder:text-gray-400', errors.last_name ? 'border-red-400' : '')}
+                  className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900 placeholder:text-gray-400 h-10', errors.last_name ? 'border-red-400' : '')}
                   disabled={submitting}
                 />
                 {errors.last_name && <p className="text-xs text-red-500">{errors.last_name}</p>}
               </div>
-            </div>
 
-            {/* Custom Fields */}
-            {linkInfo?.meta?.custom_fields?.map(field => (
-              <div key={field.id} className="space-y-1.5">
-                {field.type !== 'checkbox' && (
-                  <label htmlFor={field.id} className="block text-sm font-semibold text-gray-800">
-                    {field.label} {field.required && <span className="text-red-500">*</span>}
-                  </label>
-                )}
-                {field.type === 'select' ? (
-                  <Select
-                    value={form.extra_fields[field.id] || ''}
-                    onValueChange={(val) => setForm(f => ({ ...f, extra_fields: { ...f.extra_fields, [field.id]: val } }))}
+              {/* Custom Fields */}
+              {linkInfo?.meta?.custom_fields?.map(field => {
+                const isWideField = field.type === 'multi-select' || field.type === 'checkbox'
+                return (
+                  <div
+                    key={field.id}
+                    className={cn(
+                      "space-y-1.5",
+                      isWideField ? "col-span-1 md:col-span-2 lg:col-span-3" : "col-span-1"
+                    )}
                   >
-                    <SelectTrigger className={cn('w-full border-gray-300 focus:ring-[#57A3CC]', (errors as any).extra_fields?.[field.id] ? 'border-red-400' : '')}>
-                      <SelectValue placeholder={field.placeholder || 'Select...'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {field.options?.map(opt => (
-                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : field.type === 'multi-select' ? (
-                  <div className={cn('space-y-1.5 rounded-md border p-2', (errors as any).extra_fields?.[field.id] ? 'border-red-400' : 'border-gray-300')}>
-                    {field.options?.map(opt => {
-                      const selected: string[] = Array.isArray(form.extra_fields[field.id]) ? form.extra_fields[field.id] : []
-                      const checked = selected.includes(opt)
-                      return (
-                        <label key={opt} className="flex items-center gap-2 text-sm text-gray-800">
-                          <Checkbox
-                            checked={checked}
-                            disabled={submitting}
-                            onCheckedChange={(val) => setForm(f => {
-                              const current: string[] = Array.isArray(f.extra_fields[field.id]) ? f.extra_fields[field.id] : []
-                              const next = val ? [...current, opt] : current.filter(o => o !== opt)
-                              return { ...f, extra_fields: { ...f.extra_fields, [field.id]: next } }
-                            })}
-                          />
-                          {opt}
-                        </label>
-                      )
-                    })}
+                    {field.type !== 'checkbox' && (
+                      <label htmlFor={field.id} className="block text-sm font-semibold text-gray-800">
+                        {field.label} {field.required && <span className="text-red-500">*</span>}
+                      </label>
+                    )}
+                    {field.type === 'select' ? (
+                      <Select
+                        value={form.extra_fields[field.id] || ''}
+                        onValueChange={(val) => setForm(f => ({ ...f, extra_fields: { ...f.extra_fields, [field.id]: val } }))}
+                      >
+                        <SelectTrigger className={cn('w-full border-gray-300 focus:ring-[#57A3CC] h-10', (errors as any).extra_fields?.[field.id] ? 'border-red-400' : '')}>
+                          <SelectValue placeholder={field.placeholder || 'Select...'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {field.options?.map(opt => (
+                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : field.type === 'multi-select' ? (
+                      <div className={cn('space-y-1.5 rounded-md border p-2.5', (errors as any).extra_fields?.[field.id] ? 'border-red-400' : 'border-gray-300')}>
+                        {field.options?.map(opt => {
+                          const selected: string[] = Array.isArray(form.extra_fields[field.id]) ? form.extra_fields[field.id] : []
+                          const checked = selected.includes(opt)
+                          return (
+                            <label key={opt} className="flex items-center gap-2 text-sm text-gray-800">
+                              <Checkbox
+                                checked={checked}
+                                disabled={submitting}
+                                onCheckedChange={(val) => setForm(f => {
+                                  const current: string[] = Array.isArray(f.extra_fields[field.id]) ? f.extra_fields[field.id] : []
+                                  const next = val ? [...current, opt] : current.filter(o => o !== opt)
+                                  return { ...f, extra_fields: { ...f.extra_fields, [field.id]: next } }
+                                })}
+                              />
+                              {opt}
+                            </label>
+                          )
+                        })}
+                      </div>
+                    ) : field.type === 'checkbox' ? (
+                      <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 pt-2">
+                        <Checkbox
+                          checked={!!form.extra_fields[field.id]}
+                          disabled={submitting}
+                          onCheckedChange={(val) => setForm(f => ({ ...f, extra_fields: { ...f.extra_fields, [field.id]: !!val } }))}
+                        />
+                        {field.label} {field.required && <span className="text-red-500">*</span>}
+                      </label>
+                    ) : (
+                      <Input
+                        id={field.id}
+                        type={field.type === 'date' ? 'date' : 'text'}
+                        placeholder={field.placeholder}
+                        value={form.extra_fields[field.id] || ''}
+                        onChange={(e) => setForm(f => ({ ...f, extra_fields: { ...f.extra_fields, [field.id]: e.target.value } }))}
+                        className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900 h-10', (errors as any).extra_fields?.[field.id] ? 'border-red-400' : '')}
+                        disabled={submitting}
+                      />
+                    )}
+                    {(errors as any).extra_fields?.[field.id] && <p className="text-xs text-red-500">{(errors as any).extra_fields[field.id]}</p>}
                   </div>
-                ) : field.type === 'checkbox' ? (
-                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-800">
-                    <Checkbox
-                      checked={!!form.extra_fields[field.id]}
-                      disabled={submitting}
-                      onCheckedChange={(val) => setForm(f => ({ ...f, extra_fields: { ...f.extra_fields, [field.id]: !!val } }))}
-                    />
-                    {field.label} {field.required && <span className="text-red-500">*</span>}
+                )
+              })}
+
+              {/* Email */}
+              {emailEnabled && (
+                <div className="space-y-1.5 col-span-1">
+                  <label htmlFor="email" className="block text-sm font-semibold text-gray-800">
+                    {t('email')} <span className="text-gray-400 font-normal">{isAr ? '(اختياري)' : '(optional)'}</span>
                   </label>
-                ) : (
                   <Input
-                    id={field.id}
-                    type={field.type === 'date' ? 'date' : 'text'}
-                    placeholder={field.placeholder}
-                    value={form.extra_fields[field.id] || ''}
-                    onChange={(e) => setForm(f => ({ ...f, extra_fields: { ...f.extra_fields, [field.id]: e.target.value } }))}
-                    className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900!', (errors as any).extra_fields?.[field.id] ? 'border-red-400' : '')}
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={form.email}
+                    onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
+                    className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900 placeholder:text-gray-400 h-10', errors.email ? 'border-red-400' : '')}
                     disabled={submitting}
                   />
-                )}
-                {(errors as any).extra_fields?.[field.id] && <p className="text-xs text-red-500">{(errors as any).extra_fields[field.id]}</p>}
-              </div>
-            ))}
-
-            {/* Email */}
-            {emailEnabled && (
-              <div className="space-y-1.5">
-                <label htmlFor="email" className="block text-sm font-semibold text-gray-800">
-                  {t('email')} <span className="text-gray-400 font-normal">{isAr ? '(اختياري)' : '(optional)'}</span>
-                </label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={form.email}
-                  onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
-                  className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900! placeholder:text-gray-400', errors.email ? 'border-red-400' : '')}
-                  disabled={submitting}
-                />
-                {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
-                {!errors.email && (
-                  <p className="text-xs text-gray-400">{t('emailOrUsernameNote')}</p>
-                )}
-              </div>
-            )}
-
-            {/* Username */}
-            {usernameEnabled && (
-              <div className="space-y-1.5">
-                <label htmlFor="username" className="block text-sm font-semibold text-gray-800">
-                  {t('username')} <span className="text-gray-400 font-normal">{isAr ? '(اختياري)' : '(optional)'}</span>
-                </label>
-                <Input
-                  id="username"
-                  type="text"
-                  placeholder={isAr ? 'مثال: ahmad.ali' : 'e.g. ahmad.ali'}
-                  value={form.username}
-                  onChange={(e) => setForm(f => ({ ...f, username: e.target.value }))}
-                  className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900! placeholder:text-gray-400', errors.username ? 'border-red-400' : '')}
-                  disabled={submitting}
-                />
-                {errors.username && <p className="text-xs text-red-500">{errors.username}</p>}
-                {!errors.username && (
-                  <p className="text-xs text-gray-400">{t('usernameOptionalNote')}</p>
-                )}
-              </div>
-            )}
-
-            {/* Phone */}
-            {phoneEnabled && (
-              <div className="space-y-1.5">
-                <label htmlFor="phone" className="block text-sm font-semibold text-gray-800">
-                  {phoneRequired ? (isAr ? 'رقم الهاتف' : 'Phone Number') : t('phoneOptional')} {phoneRequired && <span className="text-red-500">*</span>}
-                </label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="+966 5xx xxx xxxx"
-                  value={form.phone}
-                  onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))}
-                  className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900! placeholder:text-gray-400', errors.phone ? 'border-red-400' : '')}
-                  disabled={submitting}
-                />
-                {errors.phone && <p className="text-xs text-red-500">{errors.phone}</p>}
-              </div>
-            )}
-
-            {/* Password */}
-            <div className="space-y-1.5">
-              <label htmlFor="password" className="block text-sm font-semibold text-gray-800">
-                {t('password')} <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={form.password}
-                  onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))}
-                  className={cn('pe-10 border-gray-300 focus:border-[#57A3CC] text-gray-900! placeholder:text-gray-400', errors.password ? 'border-red-400' : '')}
-                  disabled={submitting}
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 end-3 flex items-center text-gray-400 hover:text-gray-600"
-                  onClick={() => setShowPassword(s => !s)}
-                  tabIndex={-1}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              {errors.password && <p className="text-xs text-red-500">{errors.password}</p>}
-              {/* Strength indicator */}
-              {form.password && (
-                <div className="space-y-1 pt-0.5">
-                  <div className="flex gap-1">
-                    {[1, 2, 3, 4].map((i) => (
-                      <div
-                        key={i}
-                        className={cn(
-                          'h-1.5 flex-1 rounded-full transition-all duration-300',
-                          i <= strength.score ? strength.color : 'bg-gray-200'
-                        )}
-                      />
-                    ))}
-                  </div>
-                  <p className={cn(
-                    'text-xs font-semibold',
-                    strength.score === 4 ? 'text-green-600' :
-                    strength.score === 3 ? 'text-yellow-600' :
-                    strength.score === 2 ? 'text-orange-500' : 'text-red-500'
-                  )}>
-                    {strength.score === 1 && t('passwordStrengthWeak')}
-                    {strength.score === 2 && t('passwordStrengthFair')}
-                    {strength.score === 3 && t('passwordStrengthGood')}
-                    {strength.score === 4 && t('passwordStrengthStrong')}
-                  </p>
+                  {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
+                  {!errors.email && (
+                    <p className="text-xs text-gray-400">{t('emailOrUsernameNote')}</p>
+                  )}
                 </div>
               )}
-              <p className="text-xs text-gray-400">{t('passwordHint')}</p>
-            </div>
 
-            {/* Confirm Password */}
-            <div className="space-y-1.5">
-              <label htmlFor="confirm_password" className="block text-sm font-semibold text-gray-800">
-                {t('confirmPassword')} <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <Input
-                  id="confirm_password"
-                  type={showConfirm ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={form.confirm_password}
-                  onChange={(e) => setForm(f => ({ ...f, confirm_password: e.target.value }))}
-                  className={cn('pe-10 border-gray-300 focus:border-[#57A3CC] text-gray-900! placeholder:text-gray-400', errors.confirm_password ? 'border-red-400' : '')}
-                  disabled={submitting}
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 end-3 flex items-center text-gray-400 hover:text-gray-600"
-                  onClick={() => setShowConfirm(s => !s)}
-                  tabIndex={-1}
-                >
-                  {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              {errors.confirm_password && (
-                <p className="text-xs text-red-500">{errors.confirm_password}</p>
+              {/* Username */}
+              {usernameEnabled && (
+                <div className="space-y-1.5 col-span-1">
+                  <label htmlFor="username" className="block text-sm font-semibold text-gray-800">
+                    {t('username')} <span className="text-gray-400 font-normal">{isAr ? '(اختياري)' : '(optional)'}</span>
+                  </label>
+                  <Input
+                    id="username"
+                    type="text"
+                    placeholder={isAr ? 'مثال: ahmad.ali' : 'e.g. ahmad.ali'}
+                    value={form.username}
+                    onChange={(e) => setForm(f => ({ ...f, username: e.target.value }))}
+                    className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900 placeholder:text-gray-400 h-10', errors.username ? 'border-red-400' : '')}
+                    disabled={submitting}
+                  />
+                  {errors.username && <p className="text-xs text-red-500">{errors.username}</p>}
+                  {!errors.username && (
+                    <p className="text-xs text-gray-400">{t('usernameOptionalNote')}</p>
+                  )}
+                </div>
               )}
+
+              {/* Phone */}
+              {phoneEnabled && (
+                <div className="space-y-1.5 col-span-1">
+                  <label htmlFor="phone" className="block text-sm font-semibold text-gray-800">
+                    {phoneRequired ? (isAr ? 'رقم الهاتف' : 'Phone Number') : t('phoneOptional')} {phoneRequired && <span className="text-red-500">*</span>}
+                  </label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="+966 5xx xxx xxxx"
+                    value={form.phone}
+                    onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))}
+                    className={cn('border-gray-300 focus:border-[#57A3CC] text-gray-900 placeholder:text-gray-400 h-10', errors.phone ? 'border-red-400' : '')}
+                    disabled={submitting}
+                  />
+                  {errors.phone && <p className="text-xs text-red-500">{errors.phone}</p>}
+                </div>
+              )}
+
+              {/* Password */}
+              <div className="space-y-1.5 col-span-1">
+                <label htmlFor="password" className="block text-sm font-semibold text-gray-800">
+                  {t('password')} <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={form.password}
+                    onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))}
+                    className={cn('pe-10 border-gray-300 focus:border-[#57A3CC] text-gray-900 placeholder:text-gray-400 h-10', errors.password ? 'border-red-400' : '')}
+                    disabled={submitting}
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 end-3 flex items-center text-gray-400 hover:text-gray-600"
+                    onClick={() => setShowPassword(s => !s)}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {errors.password && <p className="text-xs text-red-500">{errors.password}</p>}
+                {/* Strength indicator */}
+                {form.password && (
+                  <div className="space-y-1 pt-0.5">
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div
+                          key={i}
+                          className={cn(
+                            'h-1.5 flex-1 rounded-full transition-all duration-300',
+                            i <= strength.score ? strength.color : 'bg-gray-200'
+                          )}
+                        />
+                      ))}
+                    </div>
+                    <p className={cn(
+                      'text-xs font-semibold',
+                      strength.score === 4 ? 'text-green-600' :
+                      strength.score === 3 ? 'text-yellow-600' :
+                      strength.score === 2 ? 'text-orange-500' : 'text-red-500'
+                    )}>
+                      {strength.score === 1 && t('passwordStrengthWeak')}
+                      {strength.score === 2 && t('passwordStrengthFair')}
+                      {strength.score === 3 && t('passwordStrengthGood')}
+                      {strength.score === 4 && t('passwordStrengthStrong')}
+                    </p>
+                  </div>
+                )}
+                <p className="text-xs text-gray-400">{t('passwordHint')}</p>
+              </div>
+
+              {/* Confirm Password */}
+              <div className="space-y-1.5 col-span-1">
+                <label htmlFor="confirm_password" className="block text-sm font-semibold text-gray-800">
+                  {t('confirmPassword')} <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Input
+                    id="confirm_password"
+                    type={showConfirm ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={form.confirm_password}
+                    onChange={(e) => setForm(f => ({ ...f, confirm_password: e.target.value }))}
+                    className={cn('pe-10 border-gray-300 focus:border-[#57A3CC] text-gray-900 placeholder:text-gray-400 h-10', errors.confirm_password ? 'border-red-400' : '')}
+                    disabled={submitting}
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 end-3 flex items-center text-gray-400 hover:text-gray-600"
+                    onClick={() => setShowConfirm(s => !s)}
+                    tabIndex={-1}
+                  >
+                    {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {errors.confirm_password && (
+                  <p className="text-xs text-red-500">{errors.confirm_password}</p>
+                )}
+              </div>
             </div>
 
-            <Button
-              type="submit"
-              className="w-full bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white border-0 h-10 font-semibold"
-              disabled={submitting}
-            >
-              {submitting ? (
-                <><Loader2 className="h-4 w-4 me-2 animate-spin" />{t('submitting')}</>
-              ) : t('submitBtn')}
-            </Button>
+            {/* Submit & Login Link Footer */}
+            <div className="pt-4 space-y-4 max-w-md mx-auto">
+              <Button
+                type="submit"
+                className="w-full bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white border-0 h-11 font-semibold text-sm shadow-md hover:opacity-95 transition-all"
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <><Loader2 className="h-4 w-4 me-2 animate-spin" />{t('submitting')}</>
+                ) : t('submitBtn')}
+              </Button>
 
-            <p className="text-center text-xs text-muted-foreground">
-              {t('alreadyHaveAccount')}{' '}
-              <a href="/auth/login" className="text-[#57A3CC] font-medium hover:underline">
-                {t('signIn')}
-              </a>
-            </p>
+              <p className="text-center text-xs text-muted-foreground">
+                {t('alreadyHaveAccount')}{' '}
+                <a href="/auth/login" className="text-[#57A3CC] font-medium hover:underline">
+                  {t('signIn')}
+                </a>
+              </p>
+            </div>
           </form>
         </div>
       </div>
-    </div>
-  )
-}
+    )
+  }

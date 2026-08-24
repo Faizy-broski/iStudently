@@ -806,6 +806,19 @@
       "pending": "قيد الانتظار",
       "caught_up": "تم إنجاز كل شيء!",
       "no_assignments": "لا توجد واجبات تستحق قريباً."
+    },
+    "performance": {
+      "title": "مؤشر الأداء",
+      "overall": "التقييم العام",
+      "attendance": "الحضور",
+      "grade_average": "المعدل",
+      "behavior": "السلوك",
+      "assignments": "الواجبات",
+      "distinguished": "متميز",
+      "excellent": "ممتاز",
+      "good": "جيد",
+      "acceptable": "مقبول",
+      "needs_follow_up": "يحتاج متابعة"
     }
   },
   "admin": {

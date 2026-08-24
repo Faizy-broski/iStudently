@@ -1276,6 +1276,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setTwoFASetupRequired(false)
   }
 
+  const updateProfileState = useCallback((updates: Partial<Profile>) => {
+    setProfile((prev) => (prev ? { ...prev, ...updates } : prev))
+    if (profileCache?.profile) {
+      profileCache.profile = { ...profileCache.profile, ...updates }
+    }
+  }, [])
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -1289,7 +1296,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       access_token: accessToken,
       signIn,
       signOut,
-      recoverFromError
+      recoverFromError,
+      updateProfileState
     }}>
       {children}
     </AuthContext.Provider>

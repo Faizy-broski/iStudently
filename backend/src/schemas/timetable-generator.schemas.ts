@@ -15,7 +15,10 @@ export const createTimetableRequirementSchema = z.object({
   school_id: z.string().uuid(),
   campus_id: z.string().uuid().optional(),
   academic_year_id: z.string().uuid(),
-  section_id: z.string().uuid(),
+  /** For section-based grades: provide section_id.
+   *  For section-less grades: omit section_id and provide grade_level_id. */
+  section_id: z.string().uuid().nullable().optional(),
+  grade_level_id: z.string().uuid().nullable().optional(),
   subject_id: z.string().uuid(),
   teacher_id: z.string().uuid().nullable().optional(),
   periods_per_week: z.number().int().min(1).max(40),
@@ -23,7 +26,10 @@ export const createTimetableRequirementSchema = z.object({
   preferred_room_type: roomTypeEnum.nullable().optional(),
   min_gap_days: z.number().int().min(0).optional(),
   created_by: z.string().uuid().optional(),
-})
+}).refine(
+  (v) => !!(v.section_id || v.grade_level_id),
+  { message: 'Either section_id or grade_level_id is required', path: ['section_id'] }
+)
 
 export const updateTimetableRequirementSchema = z.object({
   teacher_id: z.string().uuid().nullable().optional(),

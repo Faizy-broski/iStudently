@@ -11,6 +11,9 @@ interface ProfilePhotoProps {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   /** Additional Tailwind classes applied to the container */
   className?: string
+  /** Whether the user is female for girly theme gradient */
+  isFemale?: boolean
+  gender?: string | null
 }
 
 const SIZE_MAP = {
@@ -35,12 +38,16 @@ function getInitials(name?: string | null): string {
  * Portrait rectangular (3:4) profile photo.
  * Replaces circular avatars for student / user card displays.
  */
-export function ProfilePhoto({ src, name, size = 'md', className = '' }: ProfilePhotoProps) {
+export function ProfilePhoto({ src, name, size = 'md', className = '', isFemale, gender }: ProfilePhotoProps) {
   const { w, h, tw, text } = SIZE_MAP[size]
+  const femaleActive = isFemale || (gender || '').toLowerCase() === 'female'
+  const defaultBg = femaleActive
+    ? 'bg-gradient-to-b from-[#F472B6] to-[#DB2777]'
+    : 'bg-gradient-to-b from-[#57A3CC] to-[#022172]'
 
   return (
     <div
-      className={`${tw} shrink-0 rounded-lg overflow-hidden bg-gradient-to-b from-[#57A3CC] to-[#022172] ${className}`}
+      className={`${tw} shrink-0 rounded-lg overflow-hidden ${defaultBg} ${className}`}
     >
       {src ? (
         <Image

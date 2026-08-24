@@ -30,7 +30,10 @@ export interface TimetableRequirement {
   school_id: string
   campus_id?: string | null
   academic_year_id: string
-  section_id: string
+  /** NULL when the requirement is grade-level (grade has no sections) */
+  section_id: string | null
+  /** Always set — auto-derived from section when section_id is present */
+  grade_level_id: string | null
   subject_id: string
   teacher_id: string | null
   periods_per_week: number
@@ -52,7 +55,10 @@ export interface CreateTimetableRequirementDTO {
   school_id?: string
   campus_id?: string
   academic_year_id: string
-  section_id: string
+  /** Provide section_id for section-based grades */
+  section_id?: string | null
+  /** Provide grade_level_id for section-less grades */
+  grade_level_id?: string | null
   subject_id: string
   teacher_id?: string | null
   periods_per_week: number
@@ -71,7 +77,8 @@ export interface UpdateTimetableRequirementDTO {
 }
 
 export interface RequirementCoverageSummary {
-  section_id: string
+  section_id?: string | null
+  grade_level_id?: string | null
   academic_year_id: string
   required_periods_per_week: number
   available_periods_per_week: number
@@ -149,11 +156,13 @@ async function authHeaders(json = true): Promise<Record<string, string>> {
 
 export async function listRequirements(
   academicYearId: string,
-  sectionId?: string
+  sectionId?: string,
+  gradeLevelId?: string
 ): Promise<TimetableRequirement[]> {
   const headers = await authHeaders(false)
   const params = new URLSearchParams({ academic_year_id: academicYearId })
   if (sectionId) params.append('section_id', sectionId)
+  if (gradeLevelId && !sectionId) params.append('grade_level_id', gradeLevelId)
 
   const response = await fetch(`${API_URL}/timetable/requirements?${params}`, { headers })
   const result: ApiResponse<TimetableRequirement[]> = await response.json()
@@ -228,11 +237,17 @@ export async function seedRequirementsFromAssignments(
 }
 
 export async function getCoverage(
-  sectionId: string,
-  academicYearId: string
+  sectionOrGradeId: string,
+  academicYearId: string,
+  mode: 'section' | 'grade' = 'section'
 ): Promise<RequirementCoverageSummary> {
   const headers = await authHeaders(false)
-  const params = new URLSearchParams({ section_id: sectionId, academic_year_id: academicYearId })
+  const params = new URLSearchParams({ academic_year_id: academicYearId })
+  if (mode === 'section') {
+    params.append('section_id', sectionOrGradeId)
+  } else {
+    params.append('grade_level_id', sectionOrGradeId)
+  }
   const response = await fetch(`${API_URL}/timetable/requirements/coverage?${params}`, { headers })
   const result: ApiResponse<RequirementCoverageSummary> = await response.json()
   if (!result.success || !result.data) throw new Error(result.error || 'Failed to fetch coverage')

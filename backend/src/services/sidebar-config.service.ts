@@ -199,14 +199,19 @@ export async function getMyConfig(
     return getSuperadminConfig()
   }
 
-  // Check campus-level config first (campus overrides school)
+  // Check campus-level config first (campus overrides school if custom theme set)
   if (campusId) {
     const campusConfig = await getCampusConfig(campusId)
-    if (campusConfig) return campusConfig
+    if (campusConfig && (campusConfig.bg_color || campusConfig.bg_image_url)) {
+      return campusConfig
+    }
   }
 
   if (schoolId) {
-    return getSchoolConfig(schoolId)
+    const schoolConfig = await getSchoolConfig(schoolId)
+    if (schoolConfig && (schoolConfig.bg_color || schoolConfig.bg_image_url)) {
+      return schoolConfig
+    }
   }
 
   return null
