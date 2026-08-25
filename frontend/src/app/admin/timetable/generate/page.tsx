@@ -63,9 +63,10 @@ import type { TimetableEntry } from "@/lib/api/timetable"
 
 type WizardStep = "scope" | "generating" | "results" | "review"
 
-interface SectionPreflight {
-  sectionId: string
-  sectionName: string
+interface ScopePreflight {
+  kind: "section" | "grade"
+  id: string
+  name: string
   gradeName?: string
   requirementCount: number
   coverage: reqApi.RequirementCoverageSummary | null
@@ -84,8 +85,9 @@ export default function TimetableGeneratePage() {
   const [step, setStep] = useState<WizardStep>("scope")
   const [scope, setScope] = useState<"all" | "sections">("sections")
   const [selectedSectionIds, setSelectedSectionIds] = useState<Set<string>>(new Set())
+  const [selectedGradeIds, setSelectedGradeIds] = useState<Set<string>>(new Set())
 
-  const [preflight, setPreflight] = useState<SectionPreflight[]>([])
+  const [preflight, setPreflight] = useState<ScopePreflight[]>([])
   const [loadingPreflight, setLoadingPreflight] = useState(false)
 
   const [starting, setStarting] = useState(false)
@@ -94,7 +96,9 @@ export default function TimetableGeneratePage() {
   const [periods, setPeriods] = useState<teachersApi.GlobalPeriod[]>([])
 
   const [sectionEntries, setSectionEntries] = useState<Record<string, TimetableEntry[]>>({})
-  const [reviewSectionId, setReviewSectionId] = useState<string | null>(null)
+  const [gradeEntries, setGradeEntries] = useState<Record<string, TimetableEntry[]>>({})
+  // "section:<id>" or "grade:<id>" — a single control drives both kinds of review target.
+  const [reviewTarget, setReviewTarget] = useState<string | null>(null)
   const [rollingBack, setRollingBack] = useState(false)
   const [exportView, setExportView] = useState<"section" | "teacher" | "room">("section")
   const [exportEntityId, setExportEntityId] = useState<string>("")
@@ -105,6 +109,20 @@ export default function TimetableGeneratePage() {
     if (!selectedCampus) return []
     return sections.filter((s) => s.is_active && (s.campus_id === selectedCampus.id || s.school_id === selectedCampus.id))
   }, [sections, selectedCampus])
+
+  // Grades with zero sections — the grade itself is the class, so it's a
+  // valid generation target in its own right (grade_level_id instead of
+  // section_id throughout).
+  const sectionlessGrades = useMemo(() => {
+    if (!selectedCampus || sectionsLoading) return []
+    const gradesWithSections = new Set(campusSections.map((s) => s.grade_level_id))
+    return gradeLevels.filter(
+      (g) =>
+        g.is_active &&
+        (g.campus_id === selectedCampus.id || g.school_id === selectedCampus.id) &&
+        !gradesWithSections.has(g.id)
+    )
+  }, [selectedCampus, sectionsLoading, campusSections, gradeLevels])
 
   useEffect(() => {
     teachersApi
@@ -130,35 +148,50 @@ export default function TimetableGeneratePage() {
   const runPreflight = useCallback(async () => {
     if (!selectedAcademicYear) return
     const targetSections = scope === "all" ? campusSections : campusSections.filter((s) => selectedSectionIds.has(s.id))
-    if (targetSections.length === 0) {
+    const targetGrades = scope === "all" ? sectionlessGrades : sectionlessGrades.filter((g) => selectedGradeIds.has(g.id))
+    if (targetSections.length === 0 && targetGrades.length === 0) {
       setPreflight([])
       return
     }
     setLoadingPreflight(true)
     try {
-      const results = await Promise.all(
-        targetSections.map(async (s): Promise<SectionPreflight> => {
-          const grade = gradeLevels.find((g) => g.id === s.grade_level_id)
-          const [reqs, coverage] = await Promise.all([
-            reqApi.listRequirements(selectedAcademicYear, s.id).catch(() => []),
-            reqApi.getCoverage(s.id, selectedAcademicYear).catch(() => null),
-          ])
-          return {
-            sectionId: s.id,
-            sectionName: s.name,
-            gradeName: grade?.name,
-            requirementCount: reqs.length,
-            coverage,
-          }
-        })
-      )
+      const sectionResults = targetSections.map(async (s): Promise<ScopePreflight> => {
+        const grade = gradeLevels.find((g) => g.id === s.grade_level_id)
+        const [reqs, coverage] = await Promise.all([
+          reqApi.listRequirements(selectedAcademicYear, s.id).catch(() => []),
+          reqApi.getCoverage(s.id, selectedAcademicYear).catch(() => null),
+        ])
+        return {
+          kind: "section",
+          id: s.id,
+          name: s.name,
+          gradeName: grade?.name,
+          requirementCount: reqs.length,
+          coverage,
+        }
+      })
+      const gradeResults = targetGrades.map(async (g): Promise<ScopePreflight> => {
+        const [reqs, coverage] = await Promise.all([
+          reqApi.listRequirements(selectedAcademicYear, undefined, g.id).catch(() => []),
+          reqApi.getCoverage(g.id, selectedAcademicYear, "grade").catch(() => null),
+        ])
+        return {
+          kind: "grade",
+          id: g.id,
+          name: g.name,
+          gradeName: g.name,
+          requirementCount: reqs.length,
+          coverage,
+        }
+      })
+      const results = await Promise.all([...sectionResults, ...gradeResults])
       setPreflight(results)
     } catch (error: any) {
       toast.error("Failed to run pre-flight checks")
     } finally {
       setLoadingPreflight(false)
     }
-  }, [selectedAcademicYear, scope, campusSections, selectedSectionIds, gradeLevels])
+  }, [selectedAcademicYear, scope, campusSections, selectedSectionIds, sectionlessGrades, selectedGradeIds, gradeLevels])
 
   useEffect(() => {
     if (step === "scope") runPreflight()
@@ -166,13 +199,14 @@ export default function TimetableGeneratePage() {
 
   const sectionsWithNoRequirements = preflight.filter((p) => p.requirementCount === 0)
   const sectionsOverCapacity = preflight.filter((p) => p.coverage?.is_over_capacity)
-  const canGenerate = (scope === "all" || selectedSectionIds.size > 0) && !!selectedAcademicYear
+  const canGenerate =
+    (scope === "all" || selectedSectionIds.size > 0 || selectedGradeIds.size > 0) && !!selectedAcademicYear
 
   // ── Start generation ──────────────────────────────────────────────────
   const handleStart = async (force = false) => {
     if (!force && sectionsWithNoRequirements.length > 0) {
       toast.error(
-        `${sectionsWithNoRequirements.length} section(s) have zero requirements defined — define requirements first or remove them from scope.`
+        `${sectionsWithNoRequirements.length} target(s) have zero requirements defined — define requirements first or remove them from scope.`
       )
       return
     }
@@ -183,6 +217,7 @@ export default function TimetableGeneratePage() {
         academic_year_id: selectedAcademicYear,
         scope,
         section_ids: scope === "sections" ? Array.from(selectedSectionIds) : undefined,
+        grade_level_ids: scope === "sections" ? Array.from(selectedGradeIds) : undefined,
       })
       setJobId(result.job_id)
       startTimeRef.current = Date.now()
@@ -242,28 +277,54 @@ export default function TimetableGeneratePage() {
     }
   }
 
-  // ── Review step: load entries for affected sections ──────────────────
+  // ── Review step: load entries for affected sections + grades ──────────
   const affectedSectionIds = useMemo(() => {
     if (!job) return []
     if (job.scope === "all") return campusSections.map((s) => s.id)
     return job.section_ids || []
   }, [job, campusSections])
 
+  // NOTE: for scope "all", section-less grade targets aren't known
+  // client-side (the backend resolves them from which grades have active
+  // requirements) — only the explicit scope: "sections" case can list them
+  // here without an extra fetch. Entries generated for scope "all" still
+  // persist correctly either way; they just won't appear in this dropdown.
+  const affectedGradeLevelIds = useMemo(() => {
+    if (!job || job.scope !== "sections") return []
+    return job.grade_level_ids || []
+  }, [job])
+
   const loadReviewEntries = useCallback(async () => {
-    if (!selectedAcademicYear || affectedSectionIds.length === 0) return
-    const results = await Promise.all(
-      affectedSectionIds.map((id) =>
-        timetableApi
-          .getTimetableBySection(id, selectedAcademicYear)
-          .then((entries) => ({ id, entries }))
-          .catch(() => ({ id, entries: [] as TimetableEntry[] }))
-      )
-    )
-    const map: Record<string, TimetableEntry[]> = {}
-    results.forEach(({ id, entries }) => (map[id] = entries))
-    setSectionEntries(map)
-    if (!reviewSectionId && affectedSectionIds.length > 0) setReviewSectionId(affectedSectionIds[0])
-  }, [affectedSectionIds, selectedAcademicYear, reviewSectionId])
+    if (!selectedAcademicYear || (affectedSectionIds.length === 0 && affectedGradeLevelIds.length === 0)) return
+    const [sectionResults, gradeResults] = await Promise.all([
+      Promise.all(
+        affectedSectionIds.map((id) =>
+          timetableApi
+            .getTimetableBySection(id, selectedAcademicYear)
+            .then((entries) => ({ id, entries }))
+            .catch(() => ({ id, entries: [] as TimetableEntry[] }))
+        )
+      ),
+      Promise.all(
+        affectedGradeLevelIds.map((id) =>
+          timetableApi
+            .getTimetableByGrade(id, selectedAcademicYear)
+            .then((entries) => ({ id, entries }))
+            .catch(() => ({ id, entries: [] as TimetableEntry[] }))
+        )
+      ),
+    ])
+    const sectionMap: Record<string, TimetableEntry[]> = {}
+    sectionResults.forEach(({ id, entries }) => (sectionMap[id] = entries))
+    setSectionEntries(sectionMap)
+    const gradeMap: Record<string, TimetableEntry[]> = {}
+    gradeResults.forEach(({ id, entries }) => (gradeMap[id] = entries))
+    setGradeEntries(gradeMap)
+    if (!reviewTarget) {
+      if (affectedSectionIds.length > 0) setReviewTarget(`section:${affectedSectionIds[0]}`)
+      else if (affectedGradeLevelIds.length > 0) setReviewTarget(`grade:${affectedGradeLevelIds[0]}`)
+    }
+  }, [affectedSectionIds, affectedGradeLevelIds, selectedAcademicYear, reviewTarget])
 
   useEffect(() => {
     if (step === "review") loadReviewEntries()
@@ -292,6 +353,15 @@ export default function TimetableGeneratePage() {
     })
   }
 
+  const toggleGrade = (id: string) => {
+    setSelectedGradeIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
   const resetWizard = () => {
     setStep("scope")
     setJobId(null)
@@ -299,17 +369,21 @@ export default function TimetableGeneratePage() {
     startTimeRef.current = null
   }
 
+  // reviewTarget is "section:<id>" or "grade:<id>"
+  const reviewSectionId = reviewTarget?.startsWith("section:") ? reviewTarget.slice("section:".length) : null
+  const reviewGradeId = reviewTarget?.startsWith("grade:") ? reviewTarget.slice("grade:".length) : null
   const currentReviewSection = campusSections.find((s) => s.id === reviewSectionId)
+  const currentReviewGrade = gradeLevels.find((g) => g.id === reviewGradeId)
   const gradeOf = (sectionId: string) => {
     const s = campusSections.find((x) => x.id === sectionId)
     return gradeLevels.find((g) => g.id === s?.grade_level_id)
   }
 
-  // Flatten all loaded entries (across affected sections) for the
+  // Flatten all loaded entries (across affected sections + grades) for the
   // per-teacher / per-room export views in the review step.
   const allReviewEntries = useMemo(
-    () => Object.values(sectionEntries).flat(),
-    [sectionEntries]
+    () => [...Object.values(sectionEntries).flat(), ...Object.values(gradeEntries).flat()],
+    [sectionEntries, gradeEntries]
   )
   const teacherOptions = useMemo(() => {
     const map = new Map<string, string>()
@@ -334,6 +408,14 @@ export default function TimetableGeneratePage() {
         periods,
         cellLabel: sectionCellLabel,
         filename: `timetable_${currentReviewSection?.name || "section"}.csv`,
+      })
+    } else if (exportView === "section" && reviewGradeId) {
+      exportTimetableGridCSV({
+        title: `Timetable — ${currentReviewGrade?.name || ""}`,
+        entries: gradeEntries[reviewGradeId] || [],
+        periods,
+        cellLabel: sectionCellLabel,
+        filename: `timetable_${currentReviewGrade?.name || "grade"}.csv`,
       })
     } else if (exportView === "teacher" && exportEntityId) {
       const teacherName = teacherOptions.find((t) => t.id === exportEntityId)?.name || "teacher"
@@ -448,23 +530,41 @@ export default function TimetableGeneratePage() {
               </div>
 
               {scope === "sections" && (
-                <div>
-                  <Label className="text-sm mb-2 block">Select sections ({selectedSectionIds.size} selected)</Label>
-                  {sectionsLoading ? (
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-64 overflow-y-auto border rounded-md p-3">
-                      {campusSections.map((s) => {
-                        const grade = gradeLevels.find((g) => g.id === s.grade_level_id)
-                        return (
-                          <label key={s.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                            <Checkbox checked={selectedSectionIds.has(s.id)} onCheckedChange={() => toggleSection(s.id)} />
-                            <span>
-                              {grade?.name} - {s.name}
-                            </span>
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-sm mb-2 block">Select sections ({selectedSectionIds.size} selected)</Label>
+                    {sectionsLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    ) : (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-64 overflow-y-auto border rounded-md p-3">
+                        {campusSections.map((s) => {
+                          const grade = gradeLevels.find((g) => g.id === s.grade_level_id)
+                          return (
+                            <label key={s.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                              <Checkbox checked={selectedSectionIds.has(s.id)} onCheckedChange={() => toggleSection(s.id)} />
+                              <span>
+                                {grade?.name} - {s.name}
+                              </span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {sectionlessGrades.length > 0 && (
+                    <div>
+                      <Label className="text-sm mb-2 block">
+                        Select grades with no sections ({selectedGradeIds.size} selected)
+                      </Label>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-64 overflow-y-auto border rounded-md p-3">
+                        {sectionlessGrades.map((g) => (
+                          <label key={g.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                            <Checkbox checked={selectedGradeIds.has(g.id)} onCheckedChange={() => toggleGrade(g.id)} />
+                            <span>{g.name} (grade-level)</span>
                           </label>
-                        )
-                      })}
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -484,16 +584,18 @@ export default function TimetableGeneratePage() {
                   <AlertTriangle className="h-4 w-4 text-destructive" />
                   <AlertDescription>
                     <p className="font-medium text-destructive mb-2">
-                      {sectionsWithNoRequirements.length} section{sectionsWithNoRequirements.length === 1 ? "" : "s"} have no
+                      {sectionsWithNoRequirements.length} target{sectionsWithNoRequirements.length === 1 ? "" : "s"} have no
                       requirements defined — the generator has nothing to place for them.
                     </p>
                     <div className="space-y-1">
                       {sectionsWithNoRequirements.map((p) => (
-                        <div key={p.sectionId} className="flex items-center justify-between text-sm">
+                        <div key={`${p.kind}:${p.id}`} className="flex items-center justify-between text-sm">
                           <span>
-                            {p.gradeName} - {p.sectionName}
+                            {p.kind === "section" ? `${p.gradeName} - ${p.name}` : `${p.name} (grade-level)`}
                           </span>
-                          <Link href={`/admin/timetable/requirements?section_id=${p.sectionId}`}>
+                          <Link
+                            href={`/admin/timetable/requirements?${p.kind === "section" ? "section_id" : "grade_level_id"}=${p.id}`}
+                          >
                             <Button variant="link" size="sm" className="h-auto p-0 text-destructive underline">
                               Define requirements →
                             </Button>
@@ -510,17 +612,20 @@ export default function TimetableGeneratePage() {
                   <AlertTriangle className="h-4 w-4 text-amber-600" />
                   <AlertDescription>
                     <p className="font-medium text-amber-800 dark:text-amber-400 mb-2">
-                      {sectionsOverCapacity.length} section{sectionsOverCapacity.length === 1 ? "" : "s"} require more
+                      {sectionsOverCapacity.length} target{sectionsOverCapacity.length === 1 ? "" : "s"} require more
                       periods/week than are available — some activities may be left unplaced.
                     </p>
                     <div className="space-y-1">
                       {sectionsOverCapacity.map((p) => (
-                        <div key={p.sectionId} className="flex items-center justify-between text-sm">
+                        <div key={`${p.kind}:${p.id}`} className="flex items-center justify-between text-sm">
                           <span>
-                            {p.gradeName} - {p.sectionName}: {p.coverage?.required_periods_per_week}/
+                            {p.kind === "section" ? `${p.gradeName} - ${p.name}` : `${p.name} (grade-level)`}:{" "}
+                            {p.coverage?.required_periods_per_week}/
                             {p.coverage?.available_periods_per_week} periods/week
                           </span>
-                          <Link href={`/admin/timetable/requirements?section_id=${p.sectionId}`}>
+                          <Link
+                            href={`/admin/timetable/requirements?${p.kind === "section" ? "section_id" : "grade_level_id"}=${p.id}`}
+                          >
                             <Button variant="link" size="sm" className="h-auto p-0 text-amber-700 underline">
                               Adjust requirements →
                             </Button>
@@ -536,7 +641,7 @@ export default function TimetableGeneratePage() {
                 <Alert className="border-green-500/50 bg-green-50 dark:bg-green-950/20">
                   <CheckCircle2 className="h-4 w-4 text-green-600" />
                   <AlertDescription className="text-green-700 dark:text-green-400">
-                    All {preflight.length} section{preflight.length === 1 ? "" : "s"} in scope have requirements within
+                    All {preflight.length} target{preflight.length === 1 ? "" : "s"} in scope have requirements within
                     capacity. Ready to generate.
                   </AlertDescription>
                 </Alert>
@@ -721,18 +826,26 @@ export default function TimetableGeneratePage() {
           <Card className="no-print">
             <CardContent className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="space-y-1.5 min-w-[220px]">
-                <Label className="text-sm">Reviewing Section</Label>
-                <Select value={reviewSectionId || ""} onValueChange={setReviewSectionId}>
+                <Label className="text-sm">Reviewing</Label>
+                <Select value={reviewTarget || ""} onValueChange={setReviewTarget}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select section" />
+                    <SelectValue placeholder="Select section or grade" />
                   </SelectTrigger>
                   <SelectContent>
                     {affectedSectionIds.map((id) => {
                       const s = campusSections.find((x) => x.id === id)
                       const grade = gradeOf(id)
                       return (
-                        <SelectItem key={id} value={id}>
+                        <SelectItem key={`section:${id}`} value={`section:${id}`}>
                           {grade?.name} - {s?.name || id}
+                        </SelectItem>
+                      )
+                    })}
+                    {affectedGradeLevelIds.map((id) => {
+                      const g = gradeLevels.find((x) => x.id === id)
+                      return (
+                        <SelectItem key={`grade:${id}`} value={`grade:${id}`}>
+                          {g?.name || id} (grade-level)
                         </SelectItem>
                       )
                     })}
@@ -824,7 +937,7 @@ export default function TimetableGeneratePage() {
                 <Download className="h-4 w-4" /> Export CSV
               </Button>
               <Button variant="outline" size="sm" onClick={printCurrentTimetable} className="gap-2">
-                <Printer className="h-4 w-4" /> Print Current Section
+                <Printer className="h-4 w-4" /> Print Current
               </Button>
             </CardContent>
           </Card>
@@ -841,6 +954,23 @@ export default function TimetableGeneratePage() {
                 academicYearId={selectedAcademicYear}
                 onEntriesChange={loadReviewEntries}
               />
+            </div>
+          )}
+
+          {reviewGradeId && currentReviewGrade && (
+            <div className="print-area">
+              <Card>
+                <CardHeader className="py-3">
+                  <CardTitle className="text-base">{currentReviewGrade.name} (grade-level)</CardTitle>
+                  <CardDescription>
+                    Read-only preview — grade-level classes don&apos;t yet support the manual edit/lock grid available
+                    for sections. Use Export CSV above for a printable copy.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-0 overflow-x-auto">
+                  <GradeTimetableGrid entries={gradeEntries[reviewGradeId] || []} periods={periods} />
+                </CardContent>
+              </Card>
             </div>
           )}
 
@@ -868,5 +998,61 @@ function StatTile({ label, value, tone }: { label: string; value: number; tone: 
       <div className="text-2xl font-bold">{value}</div>
       <div className="text-xs">{label}</div>
     </div>
+  )
+}
+
+const GRID_DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri"]
+
+/**
+ * Read-only periods x days grid for a grade-level (section-less) target.
+ * Deliberately simpler than TimetableBuilder — no manual add/edit/lock,
+ * since those flows are built around a real section_id. Used only in the
+ * Review step; Export CSV covers printable/offline needs in the meantime.
+ */
+function GradeTimetableGrid({ entries, periods }: { entries: TimetableEntry[]; periods: teachersApi.GlobalPeriod[] }) {
+  const sortedPeriods = [...periods].sort((a, b) => a.sort_order - b.sort_order)
+
+  if (sortedPeriods.length === 0) {
+    return <div className="p-6 text-center text-sm text-muted-foreground">No periods configured.</div>
+  }
+
+  return (
+    <table className="w-full text-sm border-collapse">
+      <thead>
+        <tr className="border-b bg-muted/30">
+          <th className="p-2 text-left font-medium">Period</th>
+          {GRID_DAY_LABELS.map((d) => (
+            <th key={d} className="p-2 text-left font-medium">{d}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {sortedPeriods.map((period) => (
+          <tr key={period.id} className="border-b">
+            <td className="p-2 font-medium whitespace-nowrap">
+              {period.title || period.short_name || `P${period.sort_order}`}
+            </td>
+            {GRID_DAY_LABELS.map((_, dayIdx) => {
+              const entry = entries.find((e) => e.day_of_week === dayIdx && e.period_id === period.id)
+              return (
+                <td key={dayIdx} className="p-2">
+                  {entry ? (
+                    <div>
+                      <div className="font-medium">{entry.subject_name || "Subject"}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {entry.teacher_name || "Teacher"}
+                        {entry.room_number ? ` · ${entry.room_number}` : ""}
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </td>
+              )
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   )
 }

@@ -998,8 +998,11 @@ export class StudentService {
         const result = await this.createStudent({
           ...student,
           school_id: schoolId,
-          grade_level_id: target?.grade_level_id,
-          section_id: target?.section_id
+          // Per-row grade/section (Whole School import mode, resolved client-side
+          // from the file's own Grade/Section columns) wins if present; otherwise
+          // fall back to the single uniform target (Single Class import mode).
+          grade_level_id: student.grade_level_id || target?.grade_level_id,
+          section_id: student.section_id || target?.section_id
         })
         success_count++
         created.push({

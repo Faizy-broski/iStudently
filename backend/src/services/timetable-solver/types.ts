@@ -37,6 +37,9 @@ export interface SolverTeacherAvailability {
  * occupancy but never revisit/reassign. */
 export interface LockedEntryInfo {
   requirement_id?: string | null;
+  /** Opaque class-group key — see classScopeKey() in buildActivities.ts.
+   * Real section UUID for section-based entries, synthetic `grade:<uuid>`
+   * key for grade-level entries. Never a value to write back to a DB row. */
   section_id: string;
   subject_id: string;
   teacher_id: string;

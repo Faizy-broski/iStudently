@@ -1309,7 +1309,16 @@ class FeesService {
         gradeLevelId?: string | string[],
         sectionId?: string | string[],
         categoryIds?: string[],
-        campusId?: string
+        campusId?: string,
+        // Appended at the end, both default to today's monthly behavior, so
+        // every existing caller (cron job, older frontend builds) keeps
+        // working unchanged.
+        periodType: 'monthly' | 'termly' | 'quarterly' | 'semester' | 'annual' | 'one_time' = 'monthly',
+        // Required when periodType is termly/quarterly/semester (a grade can
+        // have several structures of that period_type — one per term/quarter/
+        // semester — so this picks exactly one). Not used for annual/one_time,
+        // where a grade normally has a single active structure per year.
+        periodNumber?: number
     ): Promise<{
         studentsProcessed: number
         feesCreated: number
@@ -1397,12 +1406,15 @@ class FeesService {
                 }
             }
 
-            // Calculate month and year for fee generation
+            // Calculate month and year for fee generation (only meaningful
+            // when periodType === 'monthly' — still computed unconditionally
+            // since it's cheap and used as the due-date fallback below).
             const now = new Date();
             const targetMonth = month || (now.getMonth() + 2); // Next month
             const targetYear = year || (targetMonth > 12 ? now.getFullYear() + 1 : now.getFullYear());
             const normalizedMonth = targetMonth > 12 ? targetMonth - 12 : targetMonth;
             const feeMonth = `${targetYear}-${normalizedMonth.toString().padStart(2, '0')}`;
+            const isMonthly = periodType === 'monthly';
 
             let studentsProcessed = 0;
             let feesCreated = 0;
@@ -1427,34 +1439,49 @@ class FeesService {
                     continue;
                 }
 
-                // Check if fee already exists for this month
-                const { data: existingFee, error: existingFeeError } = await supabase
-                    .from('student_fees')
-                    .select('id')
-                    .eq('student_id', student.id)
-                    .eq('fee_month', feeMonth)
-                    .eq('school_id', effectiveSchoolId)
-                    .single();
+                if (isMonthly) {
+                    // Monthly de-dup: has this student already been billed for
+                    // this exact calendar month? Checked before fetching fee
+                    // structures — cheap early-out for the common repeat-run case.
+                    const { data: existingFee, error: existingFeeError } = await supabase
+                        .from('student_fees')
+                        .select('id')
+                        .eq('student_id', student.id)
+                        .eq('fee_month', feeMonth)
+                        .eq('school_id', effectiveSchoolId)
+                        .single();
 
-                if (existingFeeError && existingFeeError.code !== 'PGRST116') {
-                    console.error(`Failed to check existing fee for student ${student.id}:`, existingFeeError);
-                    skippedError++;
-                    continue; // Don't silently treat a real error as "not found"
+                    if (existingFeeError && existingFeeError.code !== 'PGRST116') {
+                        console.error(`Failed to check existing fee for student ${student.id}:`, existingFeeError);
+                        skippedError++;
+                        continue; // Don't silently treat a real error as "not found"
+                    }
+
+                    if (existingFee) {
+                        skippedAlreadyExists++;
+                        continue; // Skip if already generated
+                    }
                 }
 
-                if (existingFee) {
-                    skippedAlreadyExists++;
-                    continue; // Skip if already generated
-                }
-
-                // Get fee structures for this grade level and categories
+                // Get fee structures for this grade level, categories, AND
+                // period — period_type is the fix for the core bug: without
+                // it, a run for one period_type would pick up (and sum in)
+                // every OTHER period_type's structures too (e.g. an annual
+                // exam fee getting billed alongside monthly tuition).
+                // periodNumber narrows further to exactly one term/quarter/
+                // semester when a grade has several structures of that type.
                 let feeStructuresQuery = supabase
                     .from('fee_structures')
                     .select('*, fee_categories!inner(name, code)')
                     .eq('school_id', effectiveSchoolId)
                     .eq('grade_level_id', student.grade_level_id)
                     .eq('academic_year', currentAcademicYear)
-                    .eq('is_active', true);
+                    .eq('is_active', true)
+                    .eq('period_type', periodType);
+
+                if (periodNumber !== undefined && periodNumber !== null) {
+                    feeStructuresQuery = feeStructuresQuery.eq('period_number', periodNumber);
+                }
 
                 if (categoryIds && categoryIds.length > 0) {
                     feeStructuresQuery = feeStructuresQuery.in('fee_category_id', categoryIds);
@@ -1465,8 +1492,37 @@ class FeesService {
 
                 if (!feeStructures || feeStructures.length === 0) {
                     skippedNoFeeStructures++;
-                    console.warn(`No matching fee structures for student ${student.id} (grade_level_id=${student.grade_level_id}, academic_year=${currentAcademicYear}, school_id=${effectiveSchoolId})`);
+                    console.warn(`No matching fee structures for student ${student.id} (grade_level_id=${student.grade_level_id}, academic_year=${currentAcademicYear}, school_id=${effectiveSchoolId}, period_type=${periodType})`);
                     continue; // Skip if no fee structures found
+                }
+
+                if (!isMonthly) {
+                    // Non-monthly de-dup: has this student already been billed
+                    // under ANY of these exact structure rows this year? Each
+                    // term/semester is its own fee_structures row (distinct
+                    // period_number), so this naturally lets Term 2 through
+                    // once Term 1 is billed, while blocking a repeat run of
+                    // the same term/semester/annual/one-time structure.
+                    const structureIds = feeStructures.map((s) => s.id);
+                    const { data: existingFees, error: existingFeeError } = await supabase
+                        .from('student_fees')
+                        .select('id')
+                        .eq('student_id', student.id)
+                        .eq('school_id', effectiveSchoolId)
+                        .eq('academic_year', currentAcademicYear)
+                        .in('fee_structure_id', structureIds)
+                        .limit(1);
+
+                    if (existingFeeError) {
+                        console.error(`Failed to check existing fee for student ${student.id}:`, existingFeeError);
+                        skippedError++;
+                        continue;
+                    }
+
+                    if (existingFees && existingFees.length > 0) {
+                        skippedAlreadyExists++;
+                        continue;
+                    }
                 }
 
                 // Fetch any student-specific fee overrides for this academic year
@@ -1519,7 +1575,15 @@ class FeesService {
                 // Create single fee record with breakdown details stored as JSON
                 // Built directly as a string (not via Date + toISOString) to avoid UTC
                 // round-tripping shifting the date by a day depending on server timezone.
-                const dueDate = `${targetYear}-${String(normalizedMonth).padStart(2, '0')}-05`;
+                // Non-monthly: label the record with the structure's own
+                // period_name ("Semester 1") instead of a calendar month, and
+                // default the due date to the structure's own due_date column
+                // (set once at structure-definition time) rather than forcing
+                // a month-based one on a fee that isn't monthly.
+                const effectiveFeeMonth = isMonthly ? feeMonth : (feeStructures[0].period_name || periodType);
+                const dueDate = isMonthly
+                    ? `${targetYear}-${String(normalizedMonth).padStart(2, '0')}-05`
+                    : (feeStructures[0].due_date || `${targetYear}-${String(normalizedMonth).padStart(2, '0')}-05`);
                 const { data: createdFee, error: createError } = await supabase
                     .from('student_fees')
                     .insert({
@@ -1527,7 +1591,7 @@ class FeesService {
                         school_id: effectiveSchoolId,
                         fee_structure_id: feeStructures[0].id, // Primary structure reference
                         academic_year: currentAcademicYear,
-                        fee_month: feeMonth,
+                        fee_month: effectiveFeeMonth,
                         due_date: dueDate,
                         base_amount: totalFeeAmount,
                         sibling_discount: totalSiblingDiscount,
@@ -1561,7 +1625,7 @@ class FeesService {
             if (feesCreated === 0) {
                 console.warn(
                     `generateMonthlyFees produced 0 fees for school_id=${effectiveSchoolId}, ` +
-                    `academic_year=${currentAcademicYear}, fee_month=${feeMonth}: ` +
+                    `academic_year=${currentAcademicYear}, period_type=${periodType}${periodNumber !== undefined ? `, period_number=${periodNumber}` : ''}${isMonthly ? `, fee_month=${feeMonth}` : ''}: ` +
                     `${students.length} student(s) found, ${skippedNoGrade} had no grade assigned, ` +
                     `${skippedAlreadyExists} already had a fee, ` +
                     `${skippedNoFeeStructures} had no matching fee structure, ` +
@@ -1809,13 +1873,28 @@ class FeesService {
         selectedServiceIds: string[],
         options: {
             academicYear: string
-            feeMonth: string // Format: "2026-01"
-            dueDate: string  // ISO date string
+            feeMonth?: string // Format: "2026-01" — required when periodType is 'monthly'
+            dueDate?: string  // ISO date string — required when periodType is 'monthly'
             categoryIds?: string[] | null // Optional: filter by specific categories
+            // Both default to today's monthly behavior — existing callers
+            // (e.g. AddStudentForm's "generate first challan") keep working
+            // unchanged.
+            periodType?: 'monthly' | 'termly' | 'quarterly' | 'semester' | 'annual' | 'one_time'
+            periodNumber?: number
         }
     ): Promise<StudentFee> {
+        const periodType = options.periodType || 'monthly'
+        const isMonthly = periodType === 'monthly'
+
+        if (isMonthly && (!options.feeMonth || !options.dueDate)) {
+            throw new Error('feeMonth and dueDate are required for monthly fee generation')
+        }
+
         // 1. Get fee structures for this grade (there can be multiple categories)
-        // Also include school-wide structures where grade_level_id is null
+        // Also include school-wide structures where grade_level_id is null.
+        // period_type is the same fix as generateMonthlyFees: without it a
+        // "termly" run would also pick up (and sum in) monthly/annual/etc.
+        // structures for the same grade.
         let gradeQuery = supabase
             .from('fee_structures')
             .select('*, fee_categories!inner(*)')
@@ -1823,6 +1902,7 @@ class FeesService {
             .eq('grade_level_id', gradeId)
             .eq('academic_year', options.academicYear)
             .eq('is_active', true)
+            .eq('period_type', periodType)
         let globalQuery = supabase
             .from('fee_structures')
             .select('*, fee_categories!inner(*)')
@@ -1830,6 +1910,11 @@ class FeesService {
             .is('grade_level_id', null)
             .eq('academic_year', options.academicYear)
             .eq('is_active', true)
+            .eq('period_type', periodType)
+        if (options.periodNumber !== undefined && options.periodNumber !== null) {
+            gradeQuery = gradeQuery.eq('period_number', options.periodNumber)
+            globalQuery = globalQuery.eq('period_number', options.periodNumber)
+        }
         // Filter by specific categories if provided
         if (options.categoryIds && options.categoryIds.length > 0) {
             gradeQuery = gradeQuery.in('fee_category_id', options.categoryIds)
@@ -1850,6 +1935,24 @@ class FeesService {
             throw new Error(
                 `No active fee structure found for this grade level. Please configure fee structures in Settings before generating fees.`
             )
+        }
+
+        // De-dup: monthly checks the exact fee_month; non-monthly checks
+        // whether this student already has a fee under any of these exact
+        // structure rows this year (mirrors generateMonthlyFees).
+        let dedupQuery = supabase
+            .from('student_fees')
+            .select('id')
+            .eq('student_id', studentId)
+            .eq('school_id', schoolId)
+            .eq('academic_year', options.academicYear)
+        dedupQuery = isMonthly
+            ? dedupQuery.eq('fee_month', options.feeMonth as string)
+            : dedupQuery.in('fee_structure_id', feeStructures.map((s) => s.id))
+        const { data: existingFees, error: dedupError } = await dedupQuery.limit(1)
+        if (dedupError) throw new Error(`Failed to check existing fee: ${dedupError.message}`)
+        if (existingFees && existingFees.length > 0) {
+            throw new Error('A fee has already been generated for this student for this period.')
         }
 
         // Sum up all category amounts into a single base amount with breakdown,
@@ -1900,6 +2003,12 @@ class FeesService {
 
         const finalAmount = subtotal - siblingDiscount
 
+        // Non-monthly: label with the structure's own period_name and default
+        // the due date to the structure's own due_date column, same as
+        // generateMonthlyFees.
+        const effectiveFeeMonth = isMonthly ? (options.feeMonth as string) : (feeStructures[0].period_name || periodType)
+        const effectiveDueDate = isMonthly ? (options.dueDate as string) : (feeStructures[0].due_date || options.dueDate)
+
         // 4. Create the student fee record
         const { data: newFee, error: insertError } = await supabase
             .from('student_fees')
@@ -1908,7 +2017,7 @@ class FeesService {
                 student_id: studentId,
                 fee_structure_id: feeStructureId,
                 academic_year: options.academicYear,
-                fee_month: options.feeMonth,
+                fee_month: effectiveFeeMonth,
                 base_amount: baseAmount,
                 services_amount: servicesAmount,
                 sibling_discount: siblingDiscount,
@@ -1917,7 +2026,7 @@ class FeesService {
                 final_amount: finalAmount,
                 amount_paid: 0,
                 status: 'pending',
-                due_date: options.dueDate,
+                due_date: effectiveDueDate,
                 fee_breakdown: JSON.stringify(feeBreakdown)
             })
             .select()

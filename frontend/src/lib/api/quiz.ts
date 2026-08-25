@@ -12,7 +12,7 @@ interface ApiResponse<T = unknown> {
 // TYPES
 // ============================================================================
 
-export type QuestionType = 'select' | 'multiple' | 'gap' | 'text' | 'textarea' | 'matching'
+export type QuestionType = 'select' | 'multiple' | 'gap' | 'text' | 'textarea' | 'matching' | 'anatomy_label'
 
 export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   select: 'Select One (Radio)',
@@ -21,6 +21,7 @@ export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   text: 'Short Text',
   textarea: 'Long Text (Essay)',
   matching: 'Drag & Drop Matching',
+  anatomy_label: '3D Anatomy Label',
 }
 
 export type DifficultyLevel = 'easy' | 'medium' | 'hard'
@@ -50,9 +51,14 @@ export interface QuizQuestion {
   category_id?: string | null
   created_by?: string | null
   title: string
+  question_content?: string | null
   type: QuestionType
   description?: string | null
   answer?: string | null
+  allocated_marks?: number
+  image_url?: string | null
+  correct_answer?: any
+  blank_lines_count?: number
   sort_order: number
   grade_level_id?: string | null
   subject_id?: string | null

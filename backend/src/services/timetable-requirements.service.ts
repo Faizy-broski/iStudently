@@ -279,10 +279,15 @@ export const deleteRequirement = async (id: string): Promise<ApiResponse<void>> 
 
 /**
  * Bootstraps timetable_requirements rows from existing
- * teacher_subject_assignments. Works in both modes:
- *  - section-based: seeds per distinct (section_id, subject_id, teacher_id)
- *  - grade-level: seeds per distinct (grade_level_id, subject_id, teacher_id)
- *    when sectionId is not provided and assignments have no section_id
+ * teacher_subject_assignments, seeding per distinct (section_id, subject_id,
+ * teacher_id). Pass sectionId to scope to one section; omit it to seed every
+ * section in the school at once.
+ *
+ * NOTE: teacher_subject_assignments has no grade_level_id column and every
+ * assignment row is always section-scoped (there is no grade-only
+ * assignment flow today) — so this can only ever seed section-based
+ * requirements. Grade-level requirements (for grades with no sections) have
+ * nothing to seed from and must be added manually with an explicit teacher.
  */
 export const seedRequirementsFromAssignments = async (
   schoolId: string,
@@ -295,8 +300,12 @@ export const seedRequirementsFromAssignments = async (
 
     let assignmentQuery = supabase
       .from('teacher_subject_assignments')
-      .select('teacher_id, subject_id, section_id, grade_level_id, school_id')
+      .select('teacher_id, subject_id, section_id, school_id')
       .eq('academic_year_id', academicYearId)
+      // Tenant scoping: without this, omitting sectionId (the school-wide
+      // bulk-seed case) would pull every school's assignments, not just
+      // this caller's.
+      .eq('school_id', schoolId)
 
     if (sectionId) {
       assignmentQuery = assignmentQuery.eq('section_id', sectionId)
@@ -330,22 +339,17 @@ export const seedRequirementsFromAssignments = async (
     const toInsert: any[] = []
 
     for (const a of assignments) {
-      const scopeId = a.section_id ?? a.grade_level_id
-      const key = `${scopeId}|${a.subject_id}|${a.teacher_id}`
+      const key = `${a.section_id}|${a.subject_id}|${a.teacher_id}`
       if (existingKeys.has(key) || seenAssignmentKeys.has(key)) continue
       seenAssignmentKeys.add(key)
 
-      // Resolve grade_level_id if we only have section_id
-      let gradeLevelId = a.grade_level_id ?? null
-      if (a.section_id && !gradeLevelId) {
-        gradeLevelId = await resolveGradeLevelId(a.section_id)
-      }
+      const gradeLevelId = await resolveGradeLevelId(a.section_id)
 
       toInsert.push({
         school_id: mainSchoolId,
         campus_id: a.school_id || schoolId,
         academic_year_id: academicYearId,
-        section_id: a.section_id ?? null,
+        section_id: a.section_id,
         grade_level_id: gradeLevelId,
         subject_id: a.subject_id,
         teacher_id: a.teacher_id,

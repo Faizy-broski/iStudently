@@ -327,6 +327,13 @@ export interface BulkImportRow {
   custom_fields?: Record<string, any>
   /** Original row number in the uploaded file, echoed back on error rows */
   _row?: number
+  /**
+   * Per-row grade/section (Whole School import mode) — resolved client-side by
+   * matching the file's own Grade Level/Section columns against what exists in
+   * the system. Overrides the uniform `target` passed to bulkImportStudents().
+   */
+  grade_level_id?: string
+  section_id?: string
 }
 
 export interface BulkImportError {
@@ -351,7 +358,9 @@ export interface BulkImportResult {
 
 export async function bulkImportStudents(
   students: BulkImportRow[],
-  target: { gradeLevelId: string; sectionId?: string },
+  // Optional in Whole School mode, where every row already carries its own
+  // resolved grade_level_id/section_id — required in Single Class mode.
+  target: { gradeLevelId?: string; sectionId?: string } | undefined,
   campusId?: string
 ) {
   // Each row does a sequential auth-user + profile + student insert on the
@@ -363,8 +372,8 @@ export async function bulkImportStudents(
     method: 'POST',
     body: JSON.stringify({
       students,
-      grade_level_id: target.gradeLevelId,
-      section_id: target.sectionId,
+      grade_level_id: target?.gradeLevelId,
+      section_id: target?.sectionId,
       campus_id: campusId
     }),
     timeout

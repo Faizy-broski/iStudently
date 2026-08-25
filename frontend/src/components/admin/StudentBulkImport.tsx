@@ -34,7 +34,7 @@ import { getFieldOrders } from "@/lib/api/default-field-orders"
 // ─── Field definitions ────────────────────────────────────────────────────────
 
 interface FieldDef {
-  key: keyof BulkImportRow
+  key: string
   labelKey: string
   required: boolean
   hintKey?: string
@@ -53,6 +53,13 @@ const BASE_FIELD_DEFS: FieldDef[] = [
   { key: "gender",            labelKey: "gender",            required: false, hintKey: "gender_hint" },
   { key: "date_of_birth",     labelKey: "date_of_birth",     required: false, hintKey: "date_of_birth_hint" },
   { key: "national_id",       labelKey: "national_id",       required: false },
+]
+
+// Only shown/mappable in "whole_school" import mode — resolved per-row against
+// the system's existing grade levels/sections instead of one uniform target.
+const WHOLE_SCHOOL_FIELD_DEFS: FieldDef[] = [
+  { key: "grade_level", labelKey: "grade_level", required: true },
+  { key: "section",     labelKey: "section",     required: false },
 ]
 
 // ─── Auto-detect column mapping ───────────────────────────────────────────────
@@ -111,9 +118,18 @@ function applyMappingAndValidate(
   mapping: Record<string, string>,   // fieldKey → csvColumn | SKIP
   t: (key: string) => string,
   customFieldDefs: CustomFieldDefinition[],
-  isEmailRequired: boolean
+  isEmailRequired: boolean,
+  wholeSchool?: {
+    gradeLevels: { id: string; name: string }[]
+    sections: { id: string; name: string; grade_level_id: string }[]
+  }
 ): ParsedRow[] {
   const seenEmails = new Set<string>()
+
+  // Case-insensitive, trimmed exact-name lookup — matches how the user
+  // described it: "if the grade levels/sections in the system are identical
+  // to the excel sheet". No fuzzy matching, no auto-creation of missing ones.
+  const normalize = (s: string) => s.trim().toLowerCase()
 
   return rawRows.map((raw, i): ParsedRow => {
     const errors: string[] = []
@@ -162,6 +178,36 @@ function applyMappingAndValidate(
       }
     }
 
+    // Whole School mode: resolve this row's own Grade/Section text against
+    // what actually exists in the system, by exact name match.
+    let gradeLevelId: string | undefined
+    let sectionId: string | undefined
+    if (wholeSchool) {
+      const gradeText = get("grade_level")
+      const sectionText = get("section")
+
+      if (!gradeText) {
+        errors.push(t("error_grade_required"))
+      } else {
+        const matchedGrade = wholeSchool.gradeLevels.find(g => normalize(g.name) === normalize(gradeText))
+        if (!matchedGrade) {
+          errors.push(`${t("error_grade_not_found")}: ${gradeText}`)
+        } else {
+          gradeLevelId = matchedGrade.id
+          if (sectionText) {
+            const matchedSection = wholeSchool.sections.find(
+              s => s.grade_level_id === matchedGrade.id && normalize(s.name) === normalize(sectionText)
+            )
+            if (!matchedSection) {
+              errors.push(`${t("error_section_not_found")}: ${sectionText}`)
+            } else {
+              sectionId = matchedSection.id
+            }
+          }
+        }
+      }
+    }
+
     return {
       _rowIndex: i + 2,
       _clientErrors: errors,
@@ -175,6 +221,8 @@ function applyMappingAndValidate(
       date_of_birth:    dateOfBirth  || undefined,
       national_id:      nationalId   || undefined,
       custom_fields:    Object.keys(customFields).length > 0 ? customFields : undefined,
+      grade_level_id:   gradeLevelId,
+      section_id:       sectionId,
     }
   })
 }
@@ -215,6 +263,10 @@ export function StudentBulkImport() {
   const [isImporting, setIsImporting] = useState(false)
   const [targetGradeId, setTargetGradeId] = useState("")
   const [targetSectionId, setTargetSectionId] = useState("")
+  // "single": everyone in the file goes into one grade+section picked below.
+  // "whole_school": each row carries its own Grade/Section columns, matched
+  // by name against what already exists in the system.
+  const [importMode, setImportMode] = useState<"single" | "whole_school">("single")
   const fileRef = useRef<HTMLInputElement>(null)
 
   const { gradeLevels } = useGradeLevels()
@@ -244,6 +296,7 @@ export function StudentBulkImport() {
   }, [campusId])
 
   const fieldDefs = BASE_FIELD_DEFS.map(f => f.key === 'email' ? { ...f, required: isEmailRequired } : f)
+  const activeFieldDefs = importMode === "whole_school" ? [...fieldDefs, ...WHOLE_SCHOOL_FIELD_DEFS] : fieldDefs
 
   const STEPS = [
     t("step_upload"), 
@@ -305,11 +358,11 @@ export function StudentBulkImport() {
   // ── Proceed from mapping → preview ─────────────────────────────────────────
 
   const applyMapping = () => {
-    if (!targetGradeId) {
+    if (importMode === "single" && !targetGradeId) {
       toast.error(t("msg_target_grade_required"))
       return
     }
-    const requiredMissing = fieldDefs.filter(
+    const requiredMissing = activeFieldDefs.filter(
       f => f.required && (!mapping[f.key] || mapping[f.key] === SKIP)
     )
     if (requiredMissing.length > 0) {
@@ -323,7 +376,10 @@ export function StudentBulkImport() {
       toast.error(`${t("msg_map_required")}: ${requiredCustomMissing.map(f => f.label).join(", ")}`)
       return
     }
-    const rows = applyMappingAndValidate(rawRows, mapping, t, customFieldDefs, isEmailRequired)
+    const rows = applyMappingAndValidate(
+      rawRows, mapping, t, customFieldDefs, isEmailRequired,
+      importMode === "whole_school" ? { gradeLevels, sections } : undefined
+    )
     setParsedRows(rows)
     setStep(3)
   }
@@ -341,7 +397,9 @@ export function StudentBulkImport() {
       const payload = validRows.map(({ _rowIndex, _clientErrors, ...rest }) => ({ ...rest, _row: _rowIndex }))
       const result = await bulkImportStudents(
         payload,
-        { gradeLevelId: targetGradeId, sectionId: targetSectionId || undefined },
+        importMode === "single"
+          ? { gradeLevelId: targetGradeId, sectionId: targetSectionId || undefined }
+          : undefined, // whole_school: each row already carries its own grade_level_id/section_id
         campusId
       )
 
@@ -371,6 +429,7 @@ export function StudentBulkImport() {
     setParsedRows([]); setImportErrors([]); setSuccessCount(0)
     setCsvColumns([]); setRawRows([]); setMapping({}); setFileName("")
     setTargetGradeId(""); setTargetSectionId(""); setCreatedStudents([])
+    setImportMode("single")
     setStep(1)
   }
 
@@ -457,54 +516,91 @@ export function StudentBulkImport() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">{t("target_class_title")}</CardTitle>
-              <CardDescription>{t("target_class_desc")}</CardDescription>
+              <CardTitle className="text-sm">{t("import_mode_title")}</CardTitle>
+              <CardDescription>{t("import_mode_desc")}</CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-sm font-medium flex items-center gap-1.5">
-                  {t("fields.grade_level")} <span className="text-red-500 text-xs">*</span>
-                </label>
-                <Select
-                  value={targetGradeId}
-                  onValueChange={val => { setTargetGradeId(val); setTargetSectionId("") }}
-                >
-                  <SelectTrigger className={!targetGradeId ? "border-red-400" : ""}>
-                    <SelectValue placeholder={t("select_grade_placeholder")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {gradeLevels.map(g => (
-                      <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium flex items-center gap-1.5">
-                  {t("fields.section")} <span className="text-muted-foreground text-xs">({tCommon("optional")})</span>
-                </label>
-                <Select
-                  value={targetSectionId}
-                  onValueChange={setTargetSectionId}
-                  disabled={!targetGradeId}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("select_section_placeholder")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sectionsForGrade.map(s => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setImportMode("single")}
+                className={`text-left rounded-lg border-2 p-3 transition-colors
+                  ${importMode === "single" ? "border-primary bg-primary/5" : "border-muted-foreground/20 hover:border-primary/40"}`}
+              >
+                <p className="font-medium text-sm">{t("mode_single_title")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("mode_single_desc")}</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setImportMode("whole_school")}
+                className={`text-left rounded-lg border-2 p-3 transition-colors
+                  ${importMode === "whole_school" ? "border-primary bg-primary/5" : "border-muted-foreground/20 hover:border-primary/40"}`}
+              >
+                <p className="font-medium text-sm">{t("mode_whole_school_title")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("mode_whole_school_desc")}</p>
+              </button>
             </CardContent>
           </Card>
+
+          {importMode === "single" && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">{t("target_class_title")}</CardTitle>
+                <CardDescription>{t("target_class_desc")}</CardDescription>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium flex items-center gap-1.5">
+                    {t("fields.grade_level")} <span className="text-red-500 text-xs">*</span>
+                  </label>
+                  <Select
+                    value={targetGradeId}
+                    onValueChange={val => { setTargetGradeId(val); setTargetSectionId("") }}
+                  >
+                    <SelectTrigger className={!targetGradeId ? "border-red-400" : ""}>
+                      <SelectValue placeholder={t("select_grade_placeholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {gradeLevels.map(g => (
+                        <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium flex items-center gap-1.5">
+                    {t("fields.section")} <span className="text-muted-foreground text-xs">({tCommon("optional")})</span>
+                  </label>
+                  <Select
+                    value={targetSectionId}
+                    onValueChange={setTargetSectionId}
+                    disabled={!targetGradeId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={t("select_section_placeholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sectionsForGrade.map(s => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {importMode === "whole_school" && (
+            <Card className="border-amber-400/50 bg-amber-50/50 dark:bg-amber-950/10">
+              <CardContent className="pt-5 text-sm text-muted-foreground">
+                {t("mode_whole_school_hint")}
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardContent className="pt-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {fieldDefs.map(field => {
+                {activeFieldDefs.map(field => {
                   const currentVal = mapping[field.key] ?? SKIP
                   return (
                     <div key={field.key} className="space-y-1">
@@ -658,7 +754,11 @@ export function StudentBulkImport() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b">
-                      {[t("th_row"), t("th_first_name"), t("th_last_name"), t("th_email"), t("th_gender"), t("th_dob"), tCommon("status")].map(h => (
+                      {[
+                        t("th_row"), t("th_first_name"), t("th_last_name"), t("th_email"), t("th_gender"), t("th_dob"),
+                        ...(importMode === "whole_school" ? [t("th_grade"), t("th_section")] : []),
+                        tCommon("status"),
+                      ].map(h => (
                         <th key={h} className="text-left py-1 px-2 font-medium text-muted-foreground rtl:text-right">{h}</th>
                       ))}
                     </tr>
@@ -672,6 +772,12 @@ export function StudentBulkImport() {
                         <td className="py-1 px-2">{row.email}</td>
                         <td className="py-1 px-2">{row.gender || "—"}</td>
                         <td className="py-1 px-2">{row.date_of_birth || "—"}</td>
+                        {importMode === "whole_school" && (
+                          <>
+                            <td className="py-1 px-2">{gradeLevels.find(g => g.id === row.grade_level_id)?.name || "—"}</td>
+                            <td className="py-1 px-2">{sections.find(s => s.id === row.section_id)?.name || "—"}</td>
+                          </>
+                        )}
                         <td className="py-1 px-2">
                           {row._clientErrors.length > 0
                             ? <span className="text-destructive flex items-center gap-1"><XCircle className="h-3 w-3" /> {row._clientErrors[0]}</span>

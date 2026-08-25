@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import { IconCash, IconReceipt, IconAlertCircle, IconCheck, IconSettings, IconAdjustments, IconFileText, IconRefresh, IconChevronLeft, IconChevronRight, IconEdit, IconLoader } from '@tabler/icons-react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import FeeAdjustmentModal from '@/components/admin/FeeAdjustmentModal'
 import FeeChallanModal from '@/components/admin/FeeChallanModal'
 import StudentFeeOverrideModal from '@/components/admin/StudentFeeOverrideModal'
@@ -136,7 +137,11 @@ export default function FeesPage() {
             })
             setFeesData(data)
         } catch (error) {
+            // Previously silent — a real failure here rendered identically to
+            // "no fees exist for this filter", which is exactly what made a
+            // genuine bug indistinguishable from an empty fee list.
             console.error('Failed to load fees:', error)
+            toast.error(error instanceof Error ? error.message : t('failedToLoadFees'))
         } finally {
             setFeesLoading(false)
         }

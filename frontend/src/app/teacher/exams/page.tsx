@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -244,19 +245,27 @@ export default function ExamsPage() {
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-brand-blue dark:text-white">{t('pageTitle')}</h1>
           <p className="text-muted-foreground mt-1">{t('pageSubtitle')}</p>
         </div>
-        <Button
-          onClick={() => setIsCreateOpen(true)}
-          style={{ background: 'var(--gradient-blue)' }}
-          className="text-white"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          {t('createExam')}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Link href="/teacher/exams/builder">
+            <Button variant="outline" className="gap-2">
+              <FileText className="h-4 w-4 text-primary" />
+              Exam Builder & Paper Creator
+            </Button>
+          </Link>
+          <Button
+            onClick={() => setIsCreateOpen(true)}
+            style={{ background: 'var(--gradient-blue)' }}
+            className="text-white"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            {t('createExam')}
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}

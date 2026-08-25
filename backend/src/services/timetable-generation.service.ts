@@ -5,7 +5,7 @@ import {
   TimetableRequirement,
   RoomType
 } from '../types/timetable-generator.types'
-import { buildActivities } from './timetable-solver/buildActivities'
+import { buildActivities, classScopeKey } from './timetable-solver/buildActivities'
 import { computeDomains } from './timetable-solver/domains'
 import { solve } from './timetable-solver/solver'
 import {
@@ -67,6 +67,8 @@ export interface StartGenerationParams {
   academic_year_id: string
   scope: 'all' | 'sections'
   section_ids?: string[]
+  /** Section-less grades to target alongside section_ids. */
+  grade_level_ids?: string[]
   created_by?: string
 }
 
@@ -85,7 +87,8 @@ export interface AssignmentLite {
 
 export interface UnresolvedRequirement {
   requirement_id: string
-  section_id: string
+  section_id: string | null
+  grade_level_id: string | null
   subject_id: string
   reason: string
 }
@@ -95,6 +98,13 @@ export interface ResolveTeachersResult {
   unresolved: UnresolvedRequirement[]
 }
 
+// teacher_subject_assignments has no grade_level_id column and every
+// assignment row always carries a real section_id (see courses/teacher
+// service — there is no "grade-only" assignment path today). So a
+// grade-level requirement (section_id NULL) can never be auto-resolved from
+// assignments; it always needs an explicit teacher_id on the requirement
+// itself. That falls out naturally below since bySectionSubject is keyed by
+// real section_id, which a grade-level requirement's scope key never matches.
 export function resolveRequirementTeachers(
   requirements: TimetableRequirement[],
   assignments: AssignmentLite[]
@@ -116,13 +126,16 @@ export function resolveRequirementTeachers(
       continue
     }
 
-    const candidates = bySectionSubject.get(`${req.section_id}|${req.subject_id}`) || []
+    const candidates = req.section_id ? bySectionSubject.get(`${req.section_id}|${req.subject_id}`) || [] : []
     if (candidates.length === 0) {
       unresolved.push({
         requirement_id: req.id,
         section_id: req.section_id,
+        grade_level_id: req.grade_level_id,
         subject_id: req.subject_id,
-        reason: 'No teacher_subject_assignments row exists for this section/subject — cannot resolve a teacher. Assign a teacher or set one explicitly on the requirement.'
+        reason: req.section_id
+          ? 'No teacher_subject_assignments row exists for this section/subject — cannot resolve a teacher. Assign a teacher or set one explicitly on the requirement.'
+          : 'Grade-level requirements cannot auto-resolve a teacher from assignments (assignments are always section-scoped) — set a teacher explicitly on the requirement.'
       })
       continue
     }
@@ -142,8 +155,10 @@ export const startGeneration = async (
   params: StartGenerationParams
 ): Promise<ApiResponse<{ job_id: string }>> => {
   try {
-    if (params.scope === 'sections' && (!params.section_ids || params.section_ids.length === 0)) {
-      return { success: false, error: 'section_ids is required when scope is "sections"' }
+    const hasSections = !!params.section_ids && params.section_ids.length > 0
+    const hasGrades = !!params.grade_level_ids && params.grade_level_ids.length > 0
+    if (params.scope === 'sections' && !hasSections && !hasGrades) {
+      return { success: false, error: 'section_ids and/or grade_level_ids is required when scope is "sections"' }
     }
 
     // Normalize school_id/campus_id the same way createRequirement /
@@ -158,18 +173,20 @@ export const startGeneration = async (
     // ── Concurrency guard ──────────────────────────────────────────────────
     const { data: activeJobs, error: activeJobsError } = await supabase
       .from('timetable_generation_jobs')
-      .select('id, scope, section_ids')
+      .select('id, scope, section_ids, grade_level_ids')
       .eq('academic_year_id', params.academic_year_id)
       .in('status', ['queued', 'running'])
 
     if (activeJobsError) throw activeJobsError
 
     const newSections = new Set(params.section_ids || [])
+    const newGrades = new Set(params.grade_level_ids || [])
     for (const job of activeJobs || []) {
       const overlaps =
         params.scope === 'all' ||
         job.scope === 'all' ||
-        (job.section_ids || []).some((id: string) => newSections.has(id))
+        (job.section_ids || []).some((id: string) => newSections.has(id)) ||
+        (job.grade_level_ids || []).some((id: string) => newGrades.has(id))
       if (overlaps) {
         throw new GenerationConflictError(job.id)
       }
@@ -185,6 +202,7 @@ export const startGeneration = async (
         status: 'queued',
         scope: params.scope,
         section_ids: params.scope === 'sections' ? params.section_ids : null,
+        grade_level_ids: params.scope === 'sections' ? params.grade_level_ids : null,
         created_by: params.created_by || null
       })
       .select('id')
@@ -260,30 +278,50 @@ export const runGeneration = async (jobId: string): Promise<void> => {
     const academicYearId: string = job.academic_year_id
     const scope: 'all' | 'sections' = job.scope
 
-    // ── Resolve target section ids ─────────────────────────────────────────
+    // ── Resolve target section + grade-level ids ───────────────────────────
     let targetSectionIds: string[]
+    let targetGradeLevelIds: string[]
     if (scope === 'sections') {
       targetSectionIds = job.section_ids || []
+      targetGradeLevelIds = job.grade_level_ids || []
     } else {
-      // scope === 'all': target every section that already has at least one
-      // active requirement for this year (sections with none simply have
-      // nothing to generate — not a failure, unlike an explicit scope:
-      // 'sections' request naming a section with zero requirements).
-      const { data: reqSectionRows, error: reqSectionErr } = await supabase
+      // scope === 'all': target every section AND every section-less grade
+      // that already has at least one active requirement for this year
+      // (targets with none simply have nothing to generate — not a failure,
+      // unlike an explicit scope: 'sections' request naming a target with
+      // zero requirements).
+      const { data: reqScopeRows, error: reqScopeErr } = await supabase
         .from('timetable_requirements')
-        .select('section_id')
+        .select('section_id, grade_level_id')
         .eq('academic_year_id', academicYearId)
         .eq('school_id', schoolId)
         .eq('is_active', true)
-      if (reqSectionErr) throw reqSectionErr
-      targetSectionIds = Array.from(new Set((reqSectionRows || []).map((r: any) => r.section_id)))
+      if (reqScopeErr) throw reqScopeErr
+      targetSectionIds = Array.from(new Set((reqScopeRows || []).filter((r: any) => r.section_id).map((r: any) => r.section_id)))
+      targetGradeLevelIds = Array.from(new Set((reqScopeRows || []).filter((r: any) => !r.section_id && r.grade_level_id).map((r: any) => r.grade_level_id)))
     }
 
-    if (targetSectionIds.length === 0) {
+    if (targetSectionIds.length === 0 && targetGradeLevelIds.length === 0) {
       await failJob(jobId, scope === 'all'
-        ? 'No sections with active requirements were found for this academic year — define requirements first.'
-        : 'No target sections resolved for this job.')
+        ? 'No sections or grades with active requirements were found for this academic year — define requirements first.'
+        : 'No target sections or grades resolved for this job.')
       return
+    }
+
+    // Applies an "in section_ids OR in grade_level_ids (with section_id
+    // NULL)" filter to a query — used for the two tables (timetable_
+    // requirements, timetable_entries) that can hold both section-based and
+    // grade-level rows. teacher_subject_assignments is deliberately NOT
+    // filtered this way: it has no grade_level_id column and every row is
+    // always section-scoped (see resolveRequirementTeachers's comment).
+    const applyScopeFilter = (query: any) => {
+      if (targetSectionIds.length > 0 && targetGradeLevelIds.length > 0) {
+        return query.or(`section_id.in.(${targetSectionIds.join(',')}),grade_level_id.in.(${targetGradeLevelIds.join(',')})`)
+      }
+      if (targetGradeLevelIds.length > 0) {
+        return query.is('section_id', null).in('grade_level_id', targetGradeLevelIds)
+      }
+      return query.in('section_id', targetSectionIds)
     }
 
     // ── Fetch all inputs in parallel (batch-fetch pattern, like bulkImportTimetable) ──
@@ -297,12 +335,13 @@ export const runGeneration = async (jobId: string): Promise<void> => {
       { data: entriesRaw, error: entErr },
       settingsResult
     ] = await Promise.all([
-      supabase
-        .from('timetable_requirements')
-        .select('*')
-        .eq('academic_year_id', academicYearId)
-        .eq('is_active', true)
-        .in('section_id', targetSectionIds),
+      applyScopeFilter(
+        supabase
+          .from('timetable_requirements')
+          .select('*')
+          .eq('academic_year_id', academicYearId)
+          .eq('is_active', true)
+      ),
       supabase
         .from('teacher_subject_assignments')
         .select('teacher_id, subject_id, section_id, is_primary')
@@ -327,12 +366,13 @@ export const runGeneration = async (jobId: string): Promise<void> => {
         .from('teacher_scheduling_constraints')
         .select('teacher_id, max_periods_per_day, max_periods_per_week, min_gap_between_periods, max_consecutive_periods')
         .eq('academic_year_id', academicYearId),
-      supabase
-        .from('timetable_entries')
-        .select('id, section_id, subject_id, teacher_id, period_id, day_of_week, room_id, locked')
-        .eq('academic_year_id', academicYearId)
-        .eq('is_active', true)
-        .in('section_id', targetSectionIds),
+      applyScopeFilter(
+        supabase
+          .from('timetable_entries')
+          .select('id, section_id, grade_level_id, subject_id, teacher_id, period_id, day_of_week, room_id, locked')
+          .eq('academic_year_id', academicYearId)
+          .eq('is_active', true)
+      ),
       getSettings(schoolId, campusId, academicYearId)
     ])
 
@@ -348,14 +388,18 @@ export const runGeneration = async (jobId: string): Promise<void> => {
     }
     const settings = settingsResult.data
 
-    // ── Pre-flight: every explicitly-requested section must have >=1 requirement ──
+    // ── Pre-flight: every explicitly-requested target must have >=1 requirement ──
     if (scope === 'sections') {
-      const sectionsWithReq = new Set((requirementsRaw || []).map((r: any) => r.section_id))
-      const missing = targetSectionIds.filter((id) => !sectionsWithReq.has(id))
-      if (missing.length > 0) {
+      const scopesWithReq = new Set((requirementsRaw || []).map((r: any) => classScopeKey(r)))
+      const missingSections = targetSectionIds.filter((id) => !scopesWithReq.has(id))
+      const missingGrades = targetGradeLevelIds.filter((id) => !scopesWithReq.has(`grade:${id}`))
+      if (missingSections.length > 0 || missingGrades.length > 0) {
+        const parts: string[] = []
+        if (missingSections.length > 0) parts.push(`section(s): ${missingSections.join(', ')}`)
+        if (missingGrades.length > 0) parts.push(`grade(s): ${missingGrades.join(', ')}`)
         await failJob(
           jobId,
-          `No requirements defined for section(s): ${missing.join(', ')} — define them on the requirements page before generating.`
+          `No requirements defined for ${parts.join(' and ')} — define them on the requirements page before generating.`
         )
         return
       }
@@ -365,7 +409,7 @@ export const runGeneration = async (jobId: string): Promise<void> => {
     const lockedEntriesRaw = (entriesRaw || []).filter((e: any) => e.locked)
 
     const lockedEntries: LockedEntryInfo[] = lockedEntriesRaw.map((e: any) => ({
-      section_id: e.section_id,
+      section_id: classScopeKey(e),
       subject_id: e.subject_id,
       teacher_id: e.teacher_id,
       day_of_week: e.day_of_week,
@@ -389,14 +433,17 @@ export const runGeneration = async (jobId: string): Promise<void> => {
     const days = await resolveSchoolDays(academicYearId)
     const availableSlotsPerWeek = periods.length * days.length
 
-    const coverageWarnings: Array<{ section_id: string; required: number; available: number }> = []
-    const bySection = new Map<string, number>()
+    const coverageWarnings: Array<{ section_id: string | null; grade_level_id: string | null; required: number; available: number }> = []
+    const byScope = new Map<string, { section_id: string | null; grade_level_id: string | null; total: number }>()
     for (const r of resolvedRequirements) {
-      bySection.set(r.section_id, (bySection.get(r.section_id) || 0) + r.periods_per_week)
+      const key = classScopeKey(r)
+      const entry = byScope.get(key) || { section_id: r.section_id, grade_level_id: r.grade_level_id, total: 0 }
+      entry.total += r.periods_per_week
+      byScope.set(key, entry)
     }
-    for (const [sectionId, required] of bySection.entries()) {
-      if (availableSlotsPerWeek > 0 && required > availableSlotsPerWeek) {
-        coverageWarnings.push({ section_id: sectionId, required, available: availableSlotsPerWeek })
+    for (const { section_id, grade_level_id, total } of byScope.values()) {
+      if (availableSlotsPerWeek > 0 && total > availableSlotsPerWeek) {
+        coverageWarnings.push({ section_id, grade_level_id, required: total, available: availableSlotsPerWeek })
       }
     }
 
@@ -482,14 +529,24 @@ export const runGeneration = async (jobId: string): Promise<void> => {
     }
 
     // ── Map assignments -> timetable_entries rows and apply atomically ─────
+    // Real section_id/grade_level_id always come from the originating
+    // requirement, never from activity.section_id (an opaque scope key that
+    // may be a synthetic `grade:<uuid>` string — see classScopeKey).
     const activityById = new Map(activities.map((a) => [a.id, a]))
+    const requirementById = new Map(resolvedRequirements.map((r) => [r.id, r]))
     const newEntries = result.assignments.map((asg) => {
       const activity = activityById.get(asg.activity_id)!
+      const req = requirementById.get(activity.requirement_id)!
       return {
         school_id: schoolId,
         campus_id: campusId,
         academic_year_id: academicYearId,
-        section_id: activity.section_id,
+        section_id: req.section_id,
+        // Always populated on the requirement (auto-derived from the
+        // section for section-based requirements) — same convention as
+        // timetable_requirements itself, not mutually exclusive with
+        // section_id.
+        grade_level_id: req.grade_level_id,
         subject_id: activity.subject_id,
         teacher_id: activity.teacher_id,
         period_id: asg.period_id,
@@ -510,7 +567,8 @@ export const runGeneration = async (jobId: string): Promise<void> => {
       p_school_id: schoolId,
       p_academic_year_id: academicYearId,
       p_section_ids: targetSectionIds,
-      p_new_entries: newEntries
+      p_new_entries: newEntries,
+      p_grade_level_ids: targetGradeLevelIds
     })
 
     if (applyError) throw applyError

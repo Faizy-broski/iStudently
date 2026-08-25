@@ -25,10 +25,18 @@ export interface Exam {
   exam_name: string
   exam_date?: string
   duration_minutes?: number
+  duration?: string
+  academic_year?: string
+  total_marks?: number
   max_marks: number
   passing_marks: number
   grading_scale?: string
   instructions?: string
+  exam_instructions?: string
+  teacher_name?: string
+  semester?: string
+  education_monitoring?: string
+  classroom_name?: string
   is_published: boolean
   is_completed: boolean
   created_at: string
@@ -38,7 +46,7 @@ export interface Exam {
   exam_type?: ExamType
   section?: any
   subject?: any
-  academic_year?: any
+  academic_year_data?: any
 }
 
 export interface ExamResult {
@@ -70,20 +78,36 @@ export interface CreateExamDTO {
   exam_name: string
   exam_date?: string
   duration_minutes?: number
+  duration?: string
+  academic_year?: string
+  total_marks?: number
   max_marks: number
   passing_marks: number
   grading_scale?: string
   instructions?: string
+  exam_instructions?: string
+  teacher_name?: string
+  semester?: string
+  education_monitoring?: string
+  classroom_name?: string
 }
 
 export interface UpdateExamDTO {
   exam_name?: string
   exam_date?: string
   duration_minutes?: number
+  duration?: string
+  academic_year?: string
+  total_marks?: number
   max_marks?: number
   passing_marks?: number
   grading_scale?: string
   instructions?: string
+  exam_instructions?: string
+  teacher_name?: string
+  semester?: string
+  education_monitoring?: string
+  classroom_name?: string
   is_published?: boolean
   is_completed?: boolean
 }

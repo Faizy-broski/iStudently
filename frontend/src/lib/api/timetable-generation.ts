@@ -33,6 +33,8 @@ export interface TimetableGenerationJob {
   status: TimetableGenerationJobStatus
   scope: TimetableGenerationJobScope
   section_ids: string[] | null
+  /** Section-less grades included as generation targets alongside section_ids. */
+  grade_level_ids: string[] | null
   progress_percent: number
   total_activities: number | null
   placed_activities: number | null
@@ -68,6 +70,8 @@ export interface StartGenerationDTO {
   academic_year_id: string
   scope: TimetableGenerationJobScope
   section_ids?: string[]
+  /** Section-less grades to target alongside section_ids. */
+  grade_level_ids?: string[]
 }
 
 export interface StartGenerationResult {

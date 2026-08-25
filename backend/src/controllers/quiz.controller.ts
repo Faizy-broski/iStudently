@@ -2,6 +2,7 @@ import { Request, Response } from 'express'
 import * as svc from '../services/quiz.service'
 import * as chapterSvc from '../services/chapters.service'
 import * as aiSvc from '../services/ai-question.service'
+import { AuthRequest } from '../middlewares/auth.middleware'
 
 const ok = (res: Response, data: unknown) => res.json({ data, error: null })
 const err = (res: Response, e: unknown, status = 500) =>
@@ -19,8 +20,16 @@ export const getCategories = async (req: Request, res: Response) => {
   } catch (e) { err(res, e) }
 }
 
-export const createCategory = async (req: Request, res: Response) => {
-  try { ok(res, await svc.createCategory(req.body)) }
+export const createCategory = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.body.school_id && req.profile?.school_id) {
+      req.body.school_id = req.profile.school_id
+    }
+    if (!req.body.school_id) {
+      return res.status(400).json({ data: null, error: 'school_id is required to create a category' })
+    }
+    ok(res, await svc.createCategory(req.body))
+  }
   catch (e) { err(res, e) }
 }
 
@@ -38,9 +47,18 @@ export const deleteCategory = async (req: Request, res: Response) => {
 // QUESTIONS
 // ============================================================================
 
-export const getQuestions = async (req: Request, res: Response) => {
+export const getQuestions = async (req: AuthRequest, res: Response) => {
   try {
-    const { school_id, campus_id, category_id, search, created_by, grade_level_id, subject_id, chapter_id, difficulty } = req.query as Record<string, string>
+    const school_id = ((req.query.school_id as string) || req.profile?.school_id || '').trim()
+    const campus_id = ((req.query.campus_id as string) || '').trim() || null
+    const category_id = ((req.query.category_id as string) || '').trim() || null
+    const created_by = ((req.query.created_by as string) || '').trim() || null
+    const grade_level_id = ((req.query.grade_level_id as string) || '').trim() || null
+    const subject_id = ((req.query.subject_id as string) || '').trim() || null
+    const chapter_id = ((req.query.chapter_id as string) || '').trim() || null
+    const difficulty = ((req.query.difficulty as string) || '').trim() || null
+    const search = ((req.query.search as string) || '').trim() || undefined
+
     if (!school_id) return err(res, { message: 'school_id required' }, 400)
     ok(res, await svc.getQuestions(school_id, {
       campusId: campus_id,
@@ -60,8 +78,16 @@ export const getQuestion = async (req: Request, res: Response) => {
   catch (e) { err(res, e) }
 }
 
-export const createQuestion = async (req: Request, res: Response) => {
-  try { ok(res, await svc.createQuestion(req.body)) }
+export const createQuestion = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.body.school_id && req.profile?.school_id) req.body.school_id = req.profile.school_id
+    if (req.body.campus_id === '') req.body.campus_id = null
+    if (req.body.category_id === '') req.body.category_id = null
+    if (req.body.grade_level_id === '') req.body.grade_level_id = null
+    if (req.body.subject_id === '') req.body.subject_id = null
+    if (req.body.chapter_id === '') req.body.chapter_id = null
+    ok(res, await svc.createQuestion(req.body))
+  }
   catch (e) { err(res, e) }
 }
 
@@ -79,12 +105,38 @@ export const deleteQuestion = async (req: Request, res: Response) => {
 // QUIZZES
 // ============================================================================
 
-export const getQuizzes = async (req: Request, res: Response) => {
+export const getQuizzes = async (req: AuthRequest, res: Response) => {
   try {
-    const { school_id, campus_id, course_period_id, academic_year_id, created_by, search } = req.query as Record<string, string>
-    if (!school_id) return err(res, { message: 'school_id required' }, 400)
-    ok(res, await svc.getQuizzes(school_id, { campusId: campus_id, coursePeriodId: course_period_id, academicYearId: academic_year_id, createdBy: created_by, search }))
-  } catch (e) { err(res, e) }
+    let school_id = ((req.query.school_id as string) || req.profile?.school_id || '').trim()
+    const campus_id = ((req.query.campus_id as string) || '').trim() || null
+    const course_period_id = ((req.query.course_period_id as string) || '').trim() || null
+    const academic_year_id = ((req.query.academic_year_id as string) || '').trim() || null
+    const created_by = ((req.query.created_by as string) || '').trim() || null
+    const search = ((req.query.search as string) || '').trim() || undefined
+
+    console.log('[QUIZ_DEBUG] getQuizzes query params:', {
+      school_id,
+      campus_id,
+      course_period_id,
+      academic_year_id,
+      created_by,
+      search,
+    })
+
+    const quizzes = await svc.getQuizzes(school_id, {
+      campusId: campus_id,
+      coursePeriodId: course_period_id,
+      academicYearId: academic_year_id,
+      createdBy: created_by,
+      search
+    })
+
+    console.log(`[QUIZ_DEBUG] getQuizzes returned ${quizzes.length} items`)
+    ok(res, quizzes)
+  } catch (e) {
+    console.error('[QUIZ_DEBUG] getQuizzes error:', e)
+    err(res, e)
+  }
 }
 
 export const getQuiz = async (req: Request, res: Response) => {
@@ -92,9 +144,24 @@ export const getQuiz = async (req: Request, res: Response) => {
   catch (e) { err(res, e) }
 }
 
-export const createQuiz = async (req: Request, res: Response) => {
-  try { ok(res, await svc.createQuiz(req.body)) }
-  catch (e) { err(res, e) }
+export const createQuiz = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.body.school_id && req.profile?.school_id) req.body.school_id = req.profile.school_id
+    if (!req.body.created_by && req.profile?.id) req.body.created_by = req.profile.id
+    if (req.body.campus_id === '') req.body.campus_id = null
+    if (req.body.assignment_id === '') req.body.assignment_id = null
+    if (req.body.course_period_id === '') req.body.course_period_id = null
+    if (req.body.academic_year_id === '') req.body.academic_year_id = null
+    if (req.body.subject_id === '') req.body.subject_id = null
+    if (req.body.grade_level_id === '') req.body.grade_level_id = null
+
+    console.log('[QUIZ_DEBUG] createQuiz payload:', req.body)
+    ok(res, await svc.createQuiz(req.body))
+  }
+  catch (e) {
+    console.error('[QUIZ_DEBUG] createQuiz error:', e)
+    err(res, e)
+  }
 }
 
 export const updateQuiz = async (req: Request, res: Response) => {

@@ -21,6 +21,8 @@ import {
   type DifficultyLevel,
 } from '@/lib/api/quiz'
 import { getGradeLevels, getSubjects } from '@/lib/api/academics'
+import { AnatomyHotspotPicker } from '@/components/anatomy/AnatomyHotspotPicker'
+import type { OrganId } from '@/lib/anatomy/anatomy-data'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -82,6 +84,9 @@ function QuestionDialog({
   const [type, setType] = useState<QuestionType>(question?.type ?? 'select')
   const [description, setDescription] = useState(question?.description ?? '')
   const [answer, setAnswer] = useState(question?.answer ?? '')
+  const [correctAnswer, setCorrectAnswer] = useState<{ organId: OrganId; model: string; hotspotId: string } | null>(
+    question?.correct_answer ?? null
+  )
   const [categoryId, setCategoryId] = useState(question?.category_id ?? defaultCategoryId ?? '')
   const [gradeLevelId, setGradeLevelId] = useState(question?.grade_level_id ?? '')
   const [subjectId, setSubjectId] = useState(question?.subject_id ?? '')
@@ -100,6 +105,7 @@ function QuestionDialog({
     text: t('placeholders.textAnswer'),
     textarea: '',
     matching: t('placeholders.matchingAnswer'),
+    anatomy_label: '', // rendered via AnatomyHotspotPicker instead of this textarea, see below
   }
 
   const handleSave = async () => {
@@ -115,6 +121,7 @@ function QuestionDialog({
         type,
         description: description.trim() || null,
         answer: answer.trim() || null,
+        correct_answer: type === 'anatomy_label' ? correctAnswer : (question?.correct_answer ?? null),
         sort_order: question?.sort_order ?? 0,
         grade_level_id: gradeLevelId || null,
         subject_id: subjectId || null,
@@ -153,7 +160,7 @@ function QuestionDialog({
             </div>
             <div className="space-y-1">
               <Label>{t('type')}</Label>
-              <Select value={type} onValueChange={v => { setType(v as QuestionType); setAnswer('') }}>
+              <Select value={type} onValueChange={v => { setType(v as QuestionType); setAnswer(''); setCorrectAnswer(null) }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {(Object.entries(QUESTION_TYPE_LABELS) as [QuestionType, string][]).map(([k]) => (
@@ -216,7 +223,26 @@ function QuestionDialog({
             <Textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder={t('placeholders.questionDescription')} />
           </div>
 
-          {type !== 'textarea' && (
+          {type === 'anatomy_label' ? (
+            <div className="space-y-1">
+              <Label>{t('answerInput.correctAnswer')}</Label>
+              <AnatomyHotspotPicker
+                mode="author"
+                initialOrganId={correctAnswer?.organId}
+                initialHotspotId={correctAnswer?.hotspotId}
+                onChange={(value) =>
+                  setCorrectAnswer(value ? { organId: value.organId, model: value.model, hotspotId: value.hotspotId } : null)
+                }
+              />
+              {correctAnswer?.hotspotId ? (
+                <Badge variant="secondary" className="bg-green-100 text-green-800 text-[10px] px-1.5">
+                  {correctAnswer.hotspotId}
+                </Badge>
+              ) : (
+                <p className="text-xs text-muted-foreground">Click a marker on the 3D model above to set the correct answer.</p>
+              )}
+            </div>
+          ) : type !== 'textarea' && (
             <div className="space-y-1">
               <Label>
                 {type === 'select' || type === 'multiple' ? t('answerInput.options') : type === 'gap' ? t('answerInput.gapText') : type === 'matching' ? t('answerInput.pairs') : t('answerInput.correctAnswer')}
@@ -312,7 +338,7 @@ export default function QuestionsPage() {
   const t = useTranslations('quiz')
   const { profile } = useAuth()
   const { selectedCampus } = useCampus()
-  const schoolId = profile?.school_id ?? ''
+  const schoolId = profile?.school_id || selectedCampus?.school_id || selectedCampus?.id || ''
   const campusId = selectedCampus?.id ?? null
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)

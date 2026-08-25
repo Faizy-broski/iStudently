@@ -469,7 +469,10 @@ export class StudentController {
         return
       }
 
-      if (!grade_level_id) {
+      // grade_level_id is required either as a single uniform target (Single
+      // Class mode) OR on every individual row (Whole School mode, resolved
+      // client-side from the file's own Grade Level column).
+      if (!grade_level_id && !students.every((s: any) => s.grade_level_id)) {
         res.status(400).json({ success: false, error: 'grade_level_id is required' })
         return
       }

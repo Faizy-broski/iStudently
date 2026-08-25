@@ -45,6 +45,32 @@ export const getTimetableBySection = async (req: Request, res: Response) => {
   }
 }
 
+export const getTimetableByGrade = async (req: Request, res: Response) => {
+  try {
+    const { grade_level_id, academic_year_id } = req.query
+
+    if (!grade_level_id || !academic_year_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'Grade Level ID and Academic Year ID are required'
+      } as ApiResponse)
+    }
+
+    const result = await timetableService.getTimetableByGrade(
+      grade_level_id as string,
+      academic_year_id as string
+    )
+
+    res.json(result)
+  } catch (error: any) {
+    console.error('Error fetching timetable by grade:', error)
+    res.status(500).json({
+      success: false,
+      error: error.message
+    } as ApiResponse)
+  }
+}
+
 export const getTimetableByTeacher = async (req: Request, res: Response) => {
   try {
     const { teacher_id, academic_year_id } = req.query

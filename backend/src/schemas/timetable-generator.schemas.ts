@@ -29,6 +29,9 @@ export const createTimetableRequirementSchema = z.object({
 }).refine(
   (v) => !!(v.section_id || v.grade_level_id),
   { message: 'Either section_id or grade_level_id is required', path: ['section_id'] }
+).refine(
+  (v) => !(v.section_id && v.grade_level_id),
+  { message: 'Provide either section_id or grade_level_id, not both', path: ['grade_level_id'] }
 )
 
 export const updateTimetableRequirementSchema = z.object({
@@ -86,10 +89,15 @@ export const startGenerationSchema = z.object({
   academic_year_id: z.string().uuid(),
   scope: z.enum(['all', 'sections']),
   section_ids: z.array(z.string().uuid()).optional(),
+  /** Section-less grades to include as generation targets alongside section_ids. */
+  grade_level_ids: z.array(z.string().uuid()).optional(),
   created_by: z.string().uuid().optional(),
 }).refine(
-  (v) => v.scope === 'all' || (Array.isArray(v.section_ids) && v.section_ids.length > 0),
-  { message: 'section_ids is required and must be non-empty when scope is "sections"', path: ['section_ids'] }
+  (v) =>
+    v.scope === 'all' ||
+    (Array.isArray(v.section_ids) && v.section_ids.length > 0) ||
+    (Array.isArray(v.grade_level_ids) && v.grade_level_ids.length > 0),
+  { message: 'section_ids and/or grade_level_ids is required and must be non-empty when scope is "sections"', path: ['section_ids'] }
 )
 
 // ----------------------------------------------------------------------------

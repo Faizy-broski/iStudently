@@ -470,7 +470,7 @@ export class FeesController {
      */
     async generateMonthlyFees(req: AuthRequest, res: Response) {
         try {
-            const { month, year, academic_year, grade_level_id, section_id, category_ids, campus_id, school_id } = req.body
+            const { month, year, academic_year, grade_level_id, section_id, category_ids, campus_id, school_id, period_type, period_number } = req.body
 
             // Get admin's school ID
             const adminSchoolId = req.profile?.school_id
@@ -507,13 +507,15 @@ export class FeesController {
 
             const result = await feesService.generateMonthlyFees(
                 adminSchoolId, // Admin's school for validation
-                month, 
+                month,
                 year,
                 effectiveAcademicYear,
                 grade_level_id,
                 section_id,
                 category_ids,
-                effectiveSchoolId // Campus-specific school ID
+                effectiveSchoolId, // Campus-specific school ID
+                period_type || 'monthly',
+                period_number !== undefined && period_number !== null ? Number(period_number) : undefined
             )
 
             // Data problems (missing grade, no matching structure, zero amount,
@@ -778,12 +780,16 @@ export class FeesController {
                 return res.status(403).json({ success: false, error: 'Not authenticated' })
             }
 
-            const { student_id, grade_id, service_ids, category_ids, academic_year, fee_month, due_date, campus_id, school_id } = req.body
+            const { student_id, grade_id, service_ids, category_ids, academic_year, fee_month, due_date, campus_id, school_id, period_type, period_number } = req.body
+            const periodType = period_type || 'monthly'
+            const isMonthly = periodType === 'monthly'
 
-            if (!student_id || !grade_id || !academic_year || !fee_month || !due_date) {
+            if (!student_id || !grade_id || !academic_year || (isMonthly && (!fee_month || !due_date))) {
                 return res.status(400).json({
                     success: false,
-                    error: 'student_id, grade_id, academic_year, fee_month, and due_date are required'
+                    error: isMonthly
+                        ? 'student_id, grade_id, academic_year, fee_month, and due_date are required'
+                        : 'student_id, grade_id, and academic_year are required'
                 })
             }
 
@@ -810,7 +816,14 @@ export class FeesController {
                 schoolId,
                 grade_id,
                 service_ids || [],
-                { academicYear: academic_year, feeMonth: fee_month, dueDate: due_date, categoryIds: category_ids }
+                {
+                    academicYear: academic_year,
+                    feeMonth: fee_month,
+                    dueDate: due_date,
+                    categoryIds: category_ids,
+                    periodType,
+                    periodNumber: period_number !== undefined && period_number !== null ? Number(period_number) : undefined
+                }
             )
 
             return res.status(201).json({ success: true, data: fee })

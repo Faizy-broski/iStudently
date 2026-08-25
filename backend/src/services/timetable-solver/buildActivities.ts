@@ -31,9 +31,10 @@ export function buildActivities(
     if (!req.teacher_id) continue
     if (!req.is_active) continue
 
+    const reqScopeKey = classScopeKey(req)
     const lockedCount = lockedEntries.filter(
       (le) =>
-        le.section_id === req.section_id &&
+        le.section_id === reqScopeKey &&
         le.subject_id === req.subject_id &&
         le.teacher_id === req.teacher_id
     ).length
@@ -63,11 +64,24 @@ export function buildActivities(
   return activities
 }
 
+// The solver (domains.ts/solver.ts) only ever uses Activity.section_id as an
+// opaque string key in Sets/Maps to detect "two activities in the same class
+// at the same time" — it never treats it as a real foreign key. That lets a
+// grade-level requirement (section_id NULL, grade_level_id set) participate
+// correctly without touching any solver internals: it just gets a synthetic
+// key instead of a real section UUID. The real section_id/grade_level_id for
+// a placed activity is always resolved back from its originating
+// TimetableRequirement at write-back time (timetable-generation.service.ts),
+// never read off the Activity.
+export function classScopeKey(scope: { section_id: string | null; grade_level_id?: string | null }): string {
+  return scope.section_id ?? `grade:${scope.grade_level_id}`
+}
+
 function makeActivity(req: TimetableRequirement, index: number, duration: 1 | 2): Activity {
   return {
     id: `${req.id}-${index}`,
     requirement_id: req.id,
-    section_id: req.section_id,
+    section_id: classScopeKey(req),
     subject_id: req.subject_id,
     teacher_id: req.teacher_id as string,
     duration,

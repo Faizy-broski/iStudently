@@ -4,7 +4,7 @@ import { supabase } from '../config/supabase'
 // TYPES
 // ============================================================================
 
-export type QuestionType = 'select' | 'multiple' | 'gap' | 'text' | 'textarea' | 'matching'
+export type QuestionType = 'select' | 'multiple' | 'gap' | 'text' | 'textarea' | 'matching' | 'anatomy_label'
 
 export type DifficultyLevel = 'easy' | 'medium' | 'hard'
 
@@ -27,9 +27,14 @@ export interface QuizQuestion {
   category_id?: string | null
   created_by?: string | null
   title: string
+  question_content?: string | null
   type: QuestionType
   description?: string | null
   answer?: string | null
+  allocated_marks?: number
+  image_url?: string | null
+  correct_answer?: any
+  blank_lines_count?: number
   sort_order: number
   grade_level_id?: string | null
   subject_id?: string | null
@@ -212,14 +217,14 @@ export const getQuestions = async (
     .order('sort_order', { ascending: true })
     .order('title', { ascending: true })
 
-  if (filters?.campusId) q = q.eq('campus_id', filters.campusId)
-  if (filters?.categoryId) q = q.eq('category_id', filters.categoryId)
-  if (filters?.createdBy) q = q.eq('created_by', filters.createdBy)
-  if (filters?.gradeLevelId) q = q.eq('grade_level_id', filters.gradeLevelId)
-  if (filters?.subjectId) q = q.eq('subject_id', filters.subjectId)
-  if (filters?.chapterId) q = q.eq('chapter_id', filters.chapterId)
-  if (filters?.difficulty) q = q.eq('difficulty_level', filters.difficulty)
-  if (filters?.search) q = q.ilike('title', `%${filters.search}%`)
+  if (filters?.campusId && filters.campusId.trim()) q = q.eq('campus_id', filters.campusId.trim())
+  if (filters?.categoryId && filters.categoryId.trim()) q = q.eq('category_id', filters.categoryId.trim())
+  if (filters?.createdBy && filters.createdBy.trim()) q = q.eq('created_by', filters.createdBy.trim())
+  if (filters?.gradeLevelId && filters.gradeLevelId.trim()) q = q.eq('grade_level_id', filters.gradeLevelId.trim())
+  if (filters?.subjectId && filters.subjectId.trim()) q = q.eq('subject_id', filters.subjectId.trim())
+  if (filters?.chapterId && filters.chapterId.trim()) q = q.eq('chapter_id', filters.chapterId.trim())
+  if (filters?.difficulty && filters.difficulty.trim()) q = q.eq('difficulty_level', filters.difficulty.trim())
+  if (filters?.search && filters.search.trim()) q = q.ilike('title', `%${filters.search.trim()}%`)
 
   const { data, error } = await q
   if (error) throw error
@@ -275,9 +280,9 @@ export const getQuizzes = async (
   schoolId: string,
   filters?: {
     campusId?: string | null
-    coursePeriodId?: string
-    academicYearId?: string
-    createdBy?: string
+    coursePeriodId?: string | null
+    academicYearId?: string | null
+    createdBy?: string | null
     search?: string
   }
 ) => {
@@ -290,17 +295,30 @@ export const getQuizzes = async (
       creator:profiles!quizzes_created_by_fkey(first_name, last_name),
       quiz_question_map(id)
     `)
-    .eq('school_id', schoolId)
     .order('created_at', { ascending: false })
 
-  if (filters?.campusId) q = q.eq('campus_id', filters.campusId)
-  if (filters?.coursePeriodId) q = q.eq('course_period_id', filters.coursePeriodId)
-  if (filters?.academicYearId) q = q.eq('academic_year_id', filters.academicYearId)
-  if (filters?.createdBy) q = q.eq('created_by', filters.createdBy)
-  if (filters?.search) q = q.ilike('title', `%${filters.search}%`)
+  if (schoolId && schoolId.trim()) {
+    const sId = schoolId.trim()
+    if (filters?.campusId && filters.campusId.trim()) {
+      const cId = filters.campusId.trim()
+      q = q.or(`school_id.eq.${sId},campus_id.eq.${sId},school_id.eq.${cId},campus_id.eq.${cId}`)
+    } else {
+      q = q.or(`school_id.eq.${sId},campus_id.eq.${sId}`)
+    }
+  } else if (filters?.campusId && filters.campusId.trim()) {
+    const cId = filters.campusId.trim()
+    q = q.or(`school_id.eq.${cId},campus_id.eq.${cId}`)
+  }
+  if (filters?.coursePeriodId && filters.coursePeriodId.trim()) q = q.eq('course_period_id', filters.coursePeriodId.trim())
+  if (filters?.academicYearId && filters.academicYearId.trim()) q = q.eq('academic_year_id', filters.academicYearId.trim())
+  if (filters?.createdBy && filters.createdBy.trim()) q = q.eq('created_by', filters.createdBy.trim())
+  if (filters?.search && filters.search.trim()) q = q.ilike('title', `%${filters.search.trim()}%`)
 
   const { data, error } = await q
-  if (error) throw error
+  if (error) {
+    console.error('[QUIZ_SERVICE_DEBUG] getQuizzes error:', error)
+    throw error
+  }
 
   return (data || []).map((quiz: any) => ({
     ...quiz,
@@ -514,7 +532,7 @@ export const getStudentQuizSubmission = async (quizId: string, studentId: string
     .from('quiz_question_map')
     .select(`
       id, quiz_id, question_id, points, sort_order,
-      question:quiz_questions(id, title, type, description, answer)
+      question:quiz_questions(id, title, type, description, answer, correct_answer)
     `)
     .eq('quiz_id', quizId)
     .order('sort_order', { ascending: true })
@@ -544,7 +562,7 @@ export const submitQuiz = async (
   // Verify maps belong to this quiz
   const { data: validMaps } = await supabase
     .from('quiz_question_map')
-    .select('id, question_id, points, question:quiz_questions(type, answer)')
+    .select('id, question_id, points, question:quiz_questions(type, answer, correct_answer)')
     .eq('quiz_id', quizId)
 
   const validMapIds = new Set((validMaps || []).map(m => m.id))
@@ -601,7 +619,7 @@ export const gradeAnswer = async (answerId: string, points: number) => {
 // ============================================================================
 
 function autoGrade(
-  question: { type: QuestionType; answer: string | null },
+  question: { type: QuestionType; answer: string | null; correct_answer?: unknown },
   studentAnswer: string,
   totalPoints: number
 ): number | null {
@@ -610,6 +628,16 @@ function autoGrade(
   switch (question.type) {
     case 'textarea':
       return null // Manual grading required
+
+    case 'anatomy_label': {
+      // correct_answer: { organId, model, hotspotId } (see AnatomyHotspotPicker /
+      // RichTextQuestionEditor authoring UI). studentAnswer is the picked
+      // hotspot id, or '' if the student never picked one — full credit or
+      // zero, same as 'select'/'text', no partial credit.
+      const correctAnswer = question.correct_answer as { hotspotId?: string } | null
+      if (!correctAnswer?.hotspotId) return null
+      return studentAnswer === correctAnswer.hotspotId ? totalPoints : 0
+    }
 
     case 'text': {
       if (!question.answer) return null
@@ -1023,7 +1051,7 @@ const assignStudentForm = async (quizId: string, studentId: string): Promise<str
 const questionMapSelect = `
   *,
   question:quiz_questions(
-    id, title, type, description, answer, sort_order,
+    id, title, type, description, answer, correct_answer, image_url, sort_order,
     category:quiz_categories(title)
   )
 `

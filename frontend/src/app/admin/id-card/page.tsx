@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { flushSync } from 'react-dom'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -705,6 +706,49 @@ export default function IdCardDesignerPage() {
   const [credentialsMap, setCredentialsMap] = useState<Record<string, { username: string; password: string }>>({})
   const [loadingCredentials, setLoadingCredentials] = useState(false)
 
+  // Core fetch, shared by the explicit "Load Credentials" button and by
+  // ensureCredentialsForOutput's auto-load guard below. Returns the record
+  // IDs it could NOT resolve credentials for (empty = fully successful).
+  const loadCredentialsFor = async (recordIds: string[]): Promise<string[]> => {
+    if (recordIds.length === 0) return []
+
+    // API requires profile_ids, but selectedUsers/recordIds store record IDs (student/teacher ID)
+    const mappings = printUsers
+      .filter((u: any) => recordIds.includes(u.id))
+      .map((u: any) => ({
+        recordId: u.id,
+        profileId: u.profile_id || u.user_id || u.profile?.id || u.id
+      }))
+      .filter(m => m.profileId)
+
+    const profileIds = mappings.map(m => m.profileId)
+    if (profileIds.length === 0) return recordIds
+
+    const res = await bulkGetOrCreateCredentials(profileIds)
+    if (!res.success || !res.data?.credentials) return recordIds
+
+    const loadedRecordIds = new Set<string>()
+    // flushSync forces this update — and the DOM re-render it drives — to
+    // commit synchronously. Callers that auto-load right before
+    // html2canvas/window.print() need the new values in the DOM immediately,
+    // not after React's next scheduled render.
+    flushSync(() => {
+      setCredentialsMap(prev => {
+        const next = { ...prev }
+        for (const c of res.data!.credentials as UserCredentials[]) {
+          const match = mappings.find(m => m.profileId === c.id)
+          if (match) {
+            next[match.recordId] = { username: c.username, password: c.password }
+            loadedRecordIds.add(match.recordId)
+          }
+        }
+        return next
+      })
+    })
+
+    return recordIds.filter(id => !loadedRecordIds.has(id))
+  }
+
   const handleLoadCredentials = async () => {
     if (selectedUsers.size === 0) {
       toast.warning(t('warn_select_users_print'))
@@ -712,37 +756,41 @@ export default function IdCardDesignerPage() {
     }
     setLoadingCredentials(true)
     try {
-      // API requires profile_ids, but selectedUsers stores record IDs (student/teacher ID)
-      const mappings = printUsers
-        .filter((u: any) => selectedUsers.has(u.id))
-        .map((u: any) => ({
-          recordId: u.id,
-          profileId: u.profile_id || u.user_id || u.profile?.id || u.id
-        }))
-        .filter(m => m.profileId)
-
-      const profileIds = mappings.map(m => m.profileId)
-      if (profileIds.length === 0) {
-        toast.error("No linked profiles found for selected users")
-        return
-      }
-
-      const res = await bulkGetOrCreateCredentials(profileIds)
-      if (res.success && res.data?.credentials) {
-        setCredentialsMap(prev => {
-          const next = { ...prev }
-          for (const c of res.data!.credentials as UserCredentials[]) {
-            const match = mappings.find(m => m.profileId === c.id)
-            if (match) {
-              next[match.recordId] = { username: c.username, password: c.password }
-            }
-          }
-          return next
-        })
-        toast.success(`Loaded credentials for ${res.data.credentials.length} user(s)`)
+      const ids = Array.from(selectedUsers)
+      const failed = await loadCredentialsFor(ids)
+      if (failed.length === ids.length) {
+        toast.error('Failed to load credentials — no linked profile found for selected users')
+      } else if (failed.length > 0) {
+        toast.warning(`Loaded credentials for ${ids.length - failed.length} of ${ids.length} user(s) — ${failed.length} had no linked profile`)
       } else {
-        toast.error(res.error || 'Failed to load credentials')
+        toast.success(`Loaded credentials for ${ids.length} user(s)`)
       }
+    } finally {
+      setLoadingCredentials(false)
+    }
+  }
+
+  // Auto-loads any missing password credentials for the currently selected
+  // users, but only when the active design actually uses the {{password}}
+  // token — Export/Print shouldn't silently fetch and cache passwords nobody
+  // asked to see. Returns false (with a toast) if the design needs passwords
+  // but some couldn't be loaded, so the caller can abort instead of
+  // producing a card with a blank password field.
+  const ensureCredentialsForOutput = async (): Promise<boolean> => {
+    const needsPassword = fields.some(f => f.token === '{{password}}')
+    if (!needsPassword) return true
+
+    const missing = Array.from(selectedUsers).filter(id => !credentialsMap[id]?.password)
+    if (missing.length === 0) return true
+
+    setLoadingCredentials(true)
+    try {
+      const failed = await loadCredentialsFor(missing)
+      if (failed.length > 0) {
+        toast.error(`Could not load passwords for ${failed.length} student(s) — check they have a linked login profile`)
+        return false
+      }
+      return true
     } finally {
       setLoadingCredentials(false)
     }
@@ -1193,6 +1241,8 @@ export default function IdCardDesignerPage() {
       return
     }
 
+    if (!(await ensureCredentialsForOutput())) return
+
     const cardEls = printAreaRef.current?.querySelectorAll<HTMLElement>('[data-print-card]')
     if (!cardEls || cardEls.length === 0) {
       toast.error(t('err_no_card_previews'))
@@ -1337,7 +1387,7 @@ export default function IdCardDesignerPage() {
   }
 
   // ── Print — opens browser print dialog targeting only the card area ──
-  const handlePrint = () => {
+  const handlePrint = async () => {
     if (selectedUsers.size === 0) {
       toast.warning(t('warn_select_users_print'))
       setTab('print')
@@ -1348,6 +1398,7 @@ export default function IdCardDesignerPage() {
       toast.info(t('info_switched_print_print'))
       return
     }
+    if (!(await ensureCredentialsForOutput())) return
     window.print()
   }
 

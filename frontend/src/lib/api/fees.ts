@@ -158,34 +158,38 @@ async function apiRequest<T = unknown>(
 
     const url = `${API_URL}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`
 
+    // Only the fetch itself and parsing its body can fail for genuinely
+    // unexpected reasons (network drop, timeout/abort, non-JSON response) —
+    // those get a generic message since there's no structured info to show.
+    // A real backend error below (with the actual `json.error` message) must
+    // reach the caller as-is: previously it was swallowed by a catch-all here
+    // and replaced with the same generic 'Network error', so a genuine
+    // failure (e.g. a broken fee query) looked identical to "no fees exist
+    // yet" to anyone calling this.
+    let res: Response
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- res.json() is untyped, same as the rest of this file's parsed responses
+    let json: any
     try {
-        const res = await simpleFetch(url, {
+        res = await simpleFetch(url, {
             ...options,
             headers,
             timeout: 30000
         })
-
-        const json = await res.json()
-
-        // Handle 401
-        if (res.status === 401) {
-            handleSessionExpiry()
-            throw new Error('Session expired')
-        }
-
-        if (!json.success && !res.ok) {
-            throw new Error(json.error || `Request failed: ${res.statusText}`)
-        } else if (!json.success) {
-            throw new Error(json.error || 'API Error')
-        }
-
-        return json.data as T
+        json = await res.json()
     } catch {
-        // Return a safe fallback or rethrow as a generic error that won't trigger abort toasts
-        // Since this function returns T, we can't easily return { success: false }.
-        // We throw generic errors that the UI should handle gracefully.
         throw new Error('Network error')
     }
+
+    if (res.status === 401) {
+        handleSessionExpiry()
+        throw new Error('Session expired')
+    }
+
+    if (!json.success) {
+        throw new Error(json.error || (res.ok ? 'API Error' : `Request failed: ${res.statusText}`))
+    }
+
+    return json.data as T
 }
 
 // Specific helper for paginated responses which have a specific structure

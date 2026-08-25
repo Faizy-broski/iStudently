@@ -101,17 +101,22 @@ export default function PeriodsPage() {
   }, [fetchPeriods])
 
   const addPeriod = () => {
-    const newSortOrder = periods.length > 0 
-      ? Math.max(...periods.map(p => p.sort_order)) + 1 
+    const newSortOrder = periods.length > 0
+      ? Math.max(...periods.map(p => p.sort_order)) + 1
       : 1
-    
+
+    // Prefill the new period's start time with the previous period's end time,
+    // so the user doesn't have to retype it.
+    const previousPeriod = periods[periods.length - 1]
+    const prefilledStartTime = previousPeriod?.end_time || ''
+
     setPeriods([
       ...periods,
       {
         title: '',
         short_name: '',
         sort_order: newSortOrder,
-        start_time: '',
+        start_time: prefilledStartTime,
         end_time: '',
         length_minutes: 0,
         block: '',

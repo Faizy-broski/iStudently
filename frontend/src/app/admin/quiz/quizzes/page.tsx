@@ -32,7 +32,7 @@ export default function QuizzesPage() {
   const t = useTranslations('quiz')
   const { profile } = useAuth()
   const campusContext = useCampus()
-  const schoolId = profile?.school_id ?? ''
+  const schoolId = profile?.school_id || campusContext?.selectedCampus?.school_id || campusContext?.selectedCampus?.id || ''
   const campusId = campusContext?.selectedCampus?.id ?? null
 
   const [search, setSearch] = useState('')
@@ -42,10 +42,18 @@ export default function QuizzesPage() {
   const [copying, setCopying] = useState<string | null>(null)
   const [manageQuiz, setManageQuiz] = useState<Quiz | null>(null)
 
-  const key = ['quiz-quizzes', schoolId, campusId, search]
-  const { data, isLoading } = useSWR(
-    schoolId ? key : null,
-    () => getQuizzes(schoolId, { campusId, search: search || undefined }).then(r => r.data ?? [])
+  const key = ['quiz-quizzes', schoolId || 'any', campusId || 'any', search]
+  const { data, isLoading, error } = useSWR(
+    key,
+    async () => {
+      console.log('[QUIZ_UI_DEBUG] Fetching quizzes with params:', { schoolId, campusId, search })
+      const r = await getQuizzes(schoolId, { campusId, search: search || undefined })
+      console.log('[QUIZ_UI_DEBUG] getQuizzes API response:', r)
+      if (r.error) {
+        toast.error(r.error)
+      }
+      return r.data ?? []
+    }
   )
 
   const handleDelete = async () => {

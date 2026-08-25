@@ -234,8 +234,17 @@ export interface TimetableEntry {
   id: string
   school_id: string
   campus_id?: string | null
+  // NOTE: for a grade-level entry (a section-less grade), the raw API
+  // payload actually has section_id: null and grade_level_id set instead —
+  // but every existing call site here assumes a real section_id, so this
+  // field is deliberately left typed as non-null to avoid widening it across
+  // the many places that already dereference it. getTimetableByGrade() below
+  // is the only fetch path that can return such rows; its callers should not
+  // read .section_id off the result.
   academic_year_id: string
   section_id: string
+  /** Set only for grade-level entries (section_id is actually null there). */
+  grade_level_id?: string | null
   subject_id: string
   teacher_id: string
   period_id: string

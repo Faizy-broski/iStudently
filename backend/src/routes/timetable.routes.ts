@@ -63,6 +63,7 @@ router.post('/bulk-import', requireAdmin, timetableController.bulkImportTimetabl
 // ============================================================================
 
 router.get('/section', requireTeacher, timetableController.getTimetableBySection)
+router.get('/grade', requireTeacher, timetableController.getTimetableByGrade)
 router.get('/teacher', requireTeacher, timetableController.getTimetableByTeacher)
 router.get('/available-subjects', requireAdmin, timetableController.getAvailableSubjectsForSection)
 router.get('/check-conflict', requireAdmin, timetableController.checkTeacherConflict)

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -15,7 +16,9 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
+import { useAcademic } from '@/context/AcademicContext'
 import { useTranslations } from 'next-intl'
+import { guessAcademicYear } from '@/lib/utils/academic-year'
 import { Combobox, ComboboxOption } from '@/components/ui/combobox'
 import { getStudentFeeById } from '@/lib/api/fees'
 
@@ -50,6 +53,13 @@ interface Student {
     }
 }
 
+interface FeeStructureLite {
+    id: string
+    period_type: string
+    period_name?: string | null
+    period_number?: number | null
+}
+
 const MONTH_KEYS = [
     'january', 'february', 'march', 'april', 'may', 'june',
     'july', 'august', 'september', 'october', 'november', 'december'
@@ -62,18 +72,36 @@ export default function GenerateFeesPage() {
     const campusContext = useCampus()
     const selectedCampus = campusContext?.selectedCampus
     const schoolId = selectedCampus?.id || profile?.school_id || ''
+    const { academicYears, currentAcademicYear } = useAcademic()
+    const searchParams = useSearchParams()
 
     const currentDate = new Date()
     const nextMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
-    
+
     // Shared state
     const [month, setMonth] = useState(nextMonth.getMonth() + 1)
     const [year, setYear] = useState(nextMonth.getFullYear())
     const [selectedCategories, setSelectedCategories] = useState<string[]>([])
     const [generating, setGenerating] = useState(false)
 
-    // Bulk generation state — empty array means "all grades"/"all sections"
-    const [gradeLevelIds, setGradeLevelIds] = useState<string[]>([])
+    // Billing period — 'monthly' keeps the existing month/year picker below;
+    // any other period_type switches to a Period picker (termly/quarterly/
+    // semester) or nothing at all (annual/one_time — a grade normally has a
+    // single active structure per year, so there's nothing to disambiguate).
+    const [billingPeriod, setBillingPeriod] = useState<
+        'monthly' | 'termly' | 'quarterly' | 'semester' | 'annual' | 'one_time'
+    >('monthly')
+    const [periodNumber, setPeriodNumber] = useState<string>('')
+    const isMonthlyBilling = billingPeriod === 'monthly'
+    const isMultiInstancePeriod = billingPeriod === 'termly' || billingPeriod === 'quarterly' || billingPeriod === 'semester'
+
+    // Bulk generation state — empty array means "all grades"/"all sections".
+    // Pre-filled from ?grades=id1,id2 when arriving via the "Generate fees
+    // now" link on /admin/fees/structures right after creating a structure.
+    const [gradeLevelIds, setGradeLevelIds] = useState<string[]>(() => {
+        const param = searchParams.get('grades')
+        return param ? param.split(',').filter(Boolean) : []
+    })
     const [sectionIds, setSectionIds] = useState<string[]>([])
     const [gradePopoverOpen, setGradePopoverOpen] = useState(false)
     const [sectionPopoverOpen, setSectionPopoverOpen] = useState(false)
@@ -84,18 +112,19 @@ export default function GenerateFeesPage() {
     const [dueDate, setDueDate] = useState('')
 
     // Academic year used to match against fee structures. Fee structures are
-    // tagged with an admin-chosen academic year (see /admin/fees/structures)
-    // that's independent of the calendar — so guessing it purely from the
-    // selected fee month breaks right around the rollover (e.g. this
-    // school's new academic year not existing yet while some fee months in
-    // the new year are still being generated). Default to the guess, but
-    // let the admin override it explicitly, same as the Fee Structures page.
-    const guessedAcademicYear = useMemo(() => {
-        if (month >= 8) return `${year}-${year + 1}`
-        return `${year - 1}-${year}`
-    }, [month, year])
+    // tagged with an admin-chosen academic year (see /admin/fees/structures),
+    // so default to the school's actual current academic year — the exact
+    // same `currentAcademicYear.name` that page now defaults its own filter
+    // to — so the two pages can no longer silently disagree on what "this
+    // year" means. Only fall back to a calendar guess if that hasn't loaded
+    // (e.g. the school has no academic_years records yet). Admin can always
+    // override explicitly below.
+    const guessedAcademicYear = useMemo(
+        () => guessAcademicYear(new Date(year, month - 1, 1)),
+        [year, month]
+    )
     const [academicYearOverride, setAcademicYearOverride] = useState<string | null>(null)
-    const academicYear = academicYearOverride ?? guessedAcademicYear
+    const academicYear = academicYearOverride ?? currentAcademicYear?.name ?? guessedAcademicYear
 
     // Generate fee month string in YYYY-MM format for database (e.g., "2026-02")
     const feeMonth = useMemo(() => {
@@ -163,6 +192,50 @@ export default function GenerateFeesPage() {
             return json.success ? json.data : []
         }
     )
+
+    // Fetch fee structures for the selected academic year — reused from the
+    // Structures page's own endpoint (no new backend route needed) purely to
+    // derive which term/quarter/semester numbers actually have a defined
+    // structure, so the Period picker below only offers real choices.
+    const { data: feeStructures } = useSWR<FeeStructureLite[]>(
+        schoolId && academicYear ? `fee-structures-${schoolId}-${academicYear}` : null,
+        async () => {
+            const { createClient } = await import('@/lib/supabase/client')
+            const token = (await createClient().auth.getSession()).data.session?.access_token
+            const res = await fetch(`${API_BASE}/fees/structures?school_id=${schoolId}&academic_year=${encodeURIComponent(academicYear)}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            const json = await res.json()
+            return json.success ? json.data : []
+        }
+    )
+
+    const availablePeriods = useMemo(() => {
+        if (!feeStructures || !isMultiInstancePeriod) return []
+        const byNumber = new Map<number, string>()
+        feeStructures
+            .filter((s) => s.period_type === billingPeriod && s.period_number != null)
+            .forEach((s) => {
+                if (!byNumber.has(s.period_number as number)) {
+                    byNumber.set(s.period_number as number, s.period_name || `${billingPeriod} ${s.period_number}`)
+                }
+            })
+        return Array.from(byNumber.entries())
+            .map(([number, name]) => ({ number, name }))
+            .sort((a, b) => a.number - b.number)
+    }, [feeStructures, billingPeriod, isMultiInstancePeriod])
+
+    // Reset the picked period whenever the billing period type changes, or
+    // once its options load and the current selection is no longer valid.
+    useEffect(() => {
+        if (!isMultiInstancePeriod) {
+            setPeriodNumber('')
+            return
+        }
+        if (periodNumber && !availablePeriods.some((p) => String(p.number) === periodNumber)) {
+            setPeriodNumber('')
+        }
+    }, [billingPeriod, isMultiInstancePeriod, availablePeriods, periodNumber])
 
     // Search students
     const [studentsMap, setStudentsMap] = useState<Record<string, Student>>({})
@@ -235,26 +308,34 @@ export default function GenerateFeesPage() {
             return
         }
 
+        if (isMultiInstancePeriod && !periodNumber) {
+            toast.error(t('selectPeriodFirst'))
+            return
+        }
+
         setGenerating(true)
         try {
             const { createClient } = await import('@/lib/supabase/client')
             const token = (await createClient().auth.getSession()).data.session?.access_token
-            
+
             const allCategoryIds = categories?.map(cat => cat.id) || []
-            const isAllCategoriesSelected = selectedCategories.length > 0 && 
+            const isAllCategoriesSelected = selectedCategories.length > 0 &&
                 allCategoryIds.every(id => selectedCategories.includes(id)) &&
                 selectedCategories.length === allCategoryIds.length
-            
+
             const response = await fetch(`${API_BASE}/fees/generate-monthly`, {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
                     school_id: schoolId,
-                    month,
-                    year,
+                    // Month/year only matter (and are only sent as generation
+                    // inputs) for monthly billing — non-monthly periods are
+                    // identified by period_type/period_number instead.
+                    month: isMonthlyBilling ? month : undefined,
+                    year: isMonthlyBilling ? year : undefined,
                     // Without this the backend falls back to a default computed
                     // from today's server date instead of the month/year picked
                     // above, which silently matches zero fee structures (and thus
@@ -266,7 +347,9 @@ export default function GenerateFeesPage() {
                     // single id or an array for each.
                     grade_level_id: gradeLevelIds.length > 0 ? gradeLevelIds : undefined,
                     section_id: sectionIds.length > 0 ? sectionIds : undefined,
-                    category_ids: isAllCategoriesSelected ? null : selectedCategories
+                    category_ids: isAllCategoriesSelected ? null : selectedCategories,
+                    period_type: billingPeriod,
+                    period_number: isMultiInstancePeriod && periodNumber ? parseInt(periodNumber, 10) : undefined
                 })
             })
 
@@ -510,6 +593,10 @@ export default function GenerateFeesPage() {
             toast.error(t('selectCategoryRequired'))
             return
         }
+        if (isMultiInstancePeriod && !periodNumber) {
+            toast.error(t('selectPeriodFirst'))
+            return
+        }
 
         // Open the print window synchronously, still inside the click handler
         // and before any awaits, so browsers count it as user-initiated and
@@ -542,13 +629,19 @@ export default function GenerateFeesPage() {
                     service_ids: [],
                     category_ids: isAllCategoriesSelected ? null : selectedCategories,
                     academic_year: academicYear,
-                    fee_month: feeMonth,
-                    due_date: dueDate || defaultDueDate,
+                    // fee_month/due_date only apply to monthly billing —
+                    // non-monthly periods are matched by period_type/
+                    // period_number, and get their due date from the fee
+                    // structure itself.
+                    fee_month: isMonthlyBilling ? feeMonth : undefined,
+                    due_date: isMonthlyBilling ? (dueDate || defaultDueDate) : undefined,
                     // Without this the backend used to always use the admin's
                     // own home school, even for a student in a different
                     // campus — causing "no active fee structure" for students
                     // outside the admin's default campus.
-                    school_id: schoolId
+                    school_id: schoolId,
+                    period_type: billingPeriod,
+                    period_number: isMultiInstancePeriod && periodNumber ? parseInt(periodNumber, 10) : undefined
                 })
             })
 
@@ -619,42 +712,94 @@ export default function GenerateFeesPage() {
         </div>
     )
 
-    // Month/Year Selector Component (reusable)
+    // Billing Period + Month/Year Selector Component (reusable across both tabs)
     const MonthYearSelector = () => (
         <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div>
+                <Label>{t('billingPeriod')}</Label>
+                <Select value={billingPeriod} onValueChange={(v) => setBillingPeriod(v as typeof billingPeriod)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="monthly">{t('monthly')}</SelectItem>
+                        <SelectItem value="termly">{t('termly')}</SelectItem>
+                        <SelectItem value="quarterly">{t('quarterly')}</SelectItem>
+                        <SelectItem value="semester">{t('semester')}</SelectItem>
+                        <SelectItem value="annual">{t('annual')}</SelectItem>
+                        <SelectItem value="one_time">{t('oneTime')}</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+
+            {isMonthlyBilling && (
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <Label>{t('month')}</Label>
+                        <Select value={month.toString()} onValueChange={(v) => setMonth(parseInt(v))}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                {MONTH_KEYS.map((m, idx) => (
+                                    <SelectItem key={m} value={(idx + 1).toString()}>{tm(m)}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div>
+                        <Label>{t('yearRequired')}</Label>
+                        <Select value={year.toString()} onValueChange={(v) => setYear(parseInt(v))}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="2024">2024</SelectItem>
+                                <SelectItem value="2025">2025</SelectItem>
+                                <SelectItem value="2026">2026</SelectItem>
+                                <SelectItem value="2027">2027</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+            )}
+
+            {isMultiInstancePeriod && (
                 <div>
-                    <Label>{t('month')}</Label>
-                    <Select value={month.toString()} onValueChange={(v) => setMonth(parseInt(v))}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                    <Label>{t('period')}</Label>
+                    <Select value={periodNumber} onValueChange={setPeriodNumber} disabled={availablePeriods.length === 0}>
+                        <SelectTrigger>
+                            <SelectValue placeholder={availablePeriods.length === 0 ? t('noPeriodsDefined') : t('selectPeriod')} />
+                        </SelectTrigger>
                         <SelectContent>
-                            {MONTH_KEYS.map((m, idx) => (
-                                <SelectItem key={m} value={(idx + 1).toString()}>{tm(m)}</SelectItem>
+                            {availablePeriods.map((p) => (
+                                <SelectItem key={p.number} value={p.number.toString()}>{p.name}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
+                    {availablePeriods.length === 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                            {t('noPeriodsDefinedHint')}
+                        </p>
+                    )}
                 </div>
-                <div>
-                    <Label>{t('yearRequired')}</Label>
-                    <Select value={year.toString()} onValueChange={(v) => setYear(parseInt(v))}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="2024">2024</SelectItem>
-                            <SelectItem value="2025">2025</SelectItem>
-                            <SelectItem value="2026">2026</SelectItem>
-                            <SelectItem value="2027">2027</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-            </div>
+            )}
+
+            {!isMonthlyBilling && !isMultiInstancePeriod && (
+                <p className="text-xs text-muted-foreground">
+                    {t('annualOneTimeHint')}
+                </p>
+            )}
+
             <div>
                 <Label>{t('academicYear')}</Label>
                 <Select value={academicYear} onValueChange={setAcademicYearOverride}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="2024-2025">2024-2025</SelectItem>
-                        <SelectItem value="2025-2026">2025-2026</SelectItem>
-                        <SelectItem value="2026-2027">2026-2027</SelectItem>
+                        {/* Sourced from the school's actual academic_years records —
+                            same list /admin/fees/structures now uses — instead of a
+                            hardcoded set of years that could omit the one a fee
+                            structure was actually saved under. */}
+                        {(academicYears.length > 0
+                            ? Array.from(new Set(academicYears.map((y) => y.name)))
+                            : [academicYear]
+                        ).map((name) => (
+                            <SelectItem key={name} value={name}>{name}</SelectItem>
+                        ))}
                     </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -734,7 +879,7 @@ export default function GenerateFeesPage() {
                             <div className="pt-4 border-t">
                                 <Button
                                     onClick={handleBulkGenerate}
-                                    disabled={generating || selectedCategories.length === 0}
+                                    disabled={generating || selectedCategories.length === 0 || (isMultiInstancePeriod && !periodNumber)}
                                     className="w-full"
                                     size="lg"
                                 >
@@ -802,24 +947,26 @@ export default function GenerateFeesPage() {
 
                             <MonthYearSelector />
 
-                            <div>
-                                <Label>{t('dueDate')}</Label>
-                                <Input
-                                    type="date"
-                                    value={dueDate || defaultDueDate}
-                                    onChange={(e) => setDueDate(e.target.value)}
-                                />
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    {t('dueDateHint')}
-                                </p>
-                            </div>
+                            {isMonthlyBilling && (
+                                <div>
+                                    <Label>{t('dueDate')}</Label>
+                                    <Input
+                                        type="date"
+                                        value={dueDate || defaultDueDate}
+                                        onChange={(e) => setDueDate(e.target.value)}
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        {t('dueDateHint')}
+                                    </p>
+                                </div>
+                            )}
 
                             <FeeCategoriesSelector />
 
                             <div className="pt-4 border-t">
                                 <Button
                                     onClick={handleIndividualGenerate}
-                                    disabled={generating || !selectedStudent || selectedCategories.length === 0}
+                                    disabled={generating || !selectedStudent || selectedCategories.length === 0 || (isMultiInstancePeriod && !periodNumber)}
                                     className="w-full"
                                     size="lg"
                                 >

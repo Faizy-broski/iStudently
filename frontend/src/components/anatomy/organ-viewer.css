@@ -1,0 +1,151 @@
+/*
+ * Adapted from thebuggeddev/anatomy (app/globals.css), trimmed to only the
+ * rules OrganViewer.tsx actually uses (the rest of that stylesheet styled
+ * AnatomyApp.tsx's explorer shell — nav, library, cards, modals — which
+ * studently isn't porting).
+ *
+ * Everything is scoped under .anatomy-organ-viewer so these fairly generic
+ * class names (.tool-button, .switch, .hotspot-index, ...) can never leak
+ * into or collide with the rest of studently's styling. Local custom
+ * properties are defined on the same scope rather than :root for the same
+ * reason. The host element also needs an explicit height — upstream relied
+ * on a parent CSS grid row for that; here the caller is expected to size
+ * .anatomy-organ-viewer's container (a sensible min-height is provided as a
+ * fallback below).
+ */
+
+.anatomy-organ-viewer {
+  --aov-ink: #2f2a27;
+  --aov-muted: #8d847c;
+  --aov-paper: rgba(255, 251, 244, 0.82);
+  --aov-line: rgba(117, 91, 70, 0.18);
+  --aov-coral: #eb7c6b;
+  --aov-lavender: #8d6bcc;
+  --aov-font-serif: Georgia, "Times New Roman", serif;
+
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 420px;
+  height: 100%;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 55% 45%, rgba(255, 255, 255, .92), rgba(255, 250, 242, .72) 45%, rgba(246, 236, 224, .7)),
+    var(--aov-paper);
+  color: var(--aov-ink);
+  font-size: 14px;
+}
+.anatomy-organ-viewer button { font: inherit; color: inherit; }
+.anatomy-organ-viewer:after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 90px rgba(124, 82, 51, .04);
+}
+.anatomy-organ-viewer .viewer-glow {
+  position: absolute; width: 420px; height: 420px; left: 50%; top: 47%;
+  transform: translate(-50%, -50%); border-radius: 50%;
+  background: color-mix(in srgb, var(--organ-accent), transparent 94%);
+  filter: blur(72px); opacity: .55;
+}
+.anatomy-organ-viewer .three-mount { position: absolute; inset: 0; }
+.anatomy-organ-viewer .three-mount canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+
+.anatomy-organ-viewer .viewer-tools {
+  position: absolute; inset-inline-start: 18px; top: 50%; z-index: 3;
+  transform: translateY(-50%); width: 62px; padding: 8px 5px;
+  display: flex; flex-direction: column; gap: 2px;
+  border: 1px solid var(--aov-line); border-radius: 20px;
+  background: rgba(253, 250, 244, .82); backdrop-filter: blur(18px);
+  box-shadow: 0 12px 30px rgba(75, 54, 40, .08);
+}
+.anatomy-organ-viewer .tool-button {
+  height: 60px; border: 0; border-radius: 12px; background: transparent;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 5px; cursor: pointer; font: 500 9px/1 var(--aov-font-serif);
+}
+.anatomy-organ-viewer .tool-button.active { color: var(--aov-coral); background: rgba(238, 124, 106, .08); }
+.anatomy-organ-viewer .tool-button:nth-last-child(1) { border-top: 1px solid var(--aov-line); border-radius: 0 0 12px 12px; }
+
+.anatomy-organ-viewer .tip-note {
+  position: absolute; inset-inline-end: 16px; top: 18px; z-index: 2;
+  width: 155px; min-height: 100px; padding: 14px 17px; transform: rotate(-4deg);
+  background: #fff2c9; box-shadow: 0 7px 13px rgba(93, 69, 43, .13); color: #534a43;
+  border-radius: 4px;
+}
+.anatomy-organ-viewer .tip-note span { display: flex; align-items: center; gap: 4px; color: var(--aov-lavender); font: italic 12px "Comic Sans MS", cursive; }
+.anatomy-organ-viewer .tip-note p { margin: 8px 0 0; font: 500 13px/1.55 var(--aov-font-serif); }
+
+/* Anchor point only — the viewer writes the transform each frame so tracking a
+   spinning model costs no React renders. The dots themselves live in the canvas. */
+.anatomy-organ-viewer .hotspot-callout {
+  position: absolute; left: 0; top: 0; z-index: 5; width: 0; height: 0; will-change: transform;
+}
+.anatomy-organ-viewer .callout-body {
+  position: absolute; top: -30px; width: 168px; padding: 10px 26px 11px 12px;
+  border: 1px solid rgba(116, 89, 67, .14); border-radius: 13px;
+  background: rgba(255, 252, 247, .92); backdrop-filter: blur(10px);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--hotspot-color), transparent 78%), 0 12px 28px rgba(83, 59, 42, .12);
+  animation: anatomy-callout-in .26s cubic-bezier(.2, .85, .3, 1);
+  transition: opacity .2s ease;
+}
+.anatomy-organ-viewer .hotspot-callout[data-side="right"] .callout-body { left: 22px; }
+.anatomy-organ-viewer .hotspot-callout[data-side="left"] .callout-body { right: 22px; }
+.anatomy-organ-viewer .hotspot-callout[data-behind="true"] .callout-body { opacity: .3; }
+.anatomy-organ-viewer .callout-body:before {
+  content: ""; position: absolute; top: 32px; width: 18px; height: 1px;
+  background: var(--hotspot-color); opacity: .55;
+}
+.anatomy-organ-viewer .hotspot-callout[data-side="right"] .callout-body:before { right: 100%; }
+.anatomy-organ-viewer .hotspot-callout[data-side="left"] .callout-body:before { left: 100%; }
+.anatomy-organ-viewer .callout-body b { display: block; padding-inline-start: 13px; font: 500 13px var(--aov-font-serif); position: relative; }
+.anatomy-organ-viewer .callout-body b:before {
+  content: ""; position: absolute; left: 0; top: 4px; width: 7px; height: 7px;
+  border-radius: 50%; background: var(--hotspot-color);
+}
+.anatomy-organ-viewer .callout-body small { display: block; margin-top: 3px; padding-inline-start: 13px; color: var(--aov-muted); font-size: 10px; line-height: 1.35; }
+.anatomy-organ-viewer .callout-close {
+  position: absolute; top: 6px; inset-inline-end: 6px; width: 20px; height: 20px;
+  display: grid; place-items: center; border: 0; border-radius: 50%;
+  background: transparent; color: var(--aov-muted); cursor: pointer;
+}
+.anatomy-organ-viewer .callout-close:hover { background: rgba(116, 89, 67, .09); }
+@keyframes anatomy-callout-in { from { opacity: 0; transform: translateX(-6px) scale(.96); } }
+
+.anatomy-organ-viewer .hotspot-index {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+
+.anatomy-organ-viewer .auto-rotate {
+  position: absolute; inset-inline-end: 17px; bottom: 16px; z-index: 4;
+  display: flex; align-items: center; gap: 8px; border: 1px solid var(--aov-line);
+  border-radius: 13px; padding: 8px 10px 8px 12px; background: rgba(255, 252, 247, .88);
+  box-shadow: 0 5px 14px rgba(65, 45, 32, .08); cursor: pointer; font: 500 10px var(--aov-font-serif);
+}
+.anatomy-organ-viewer .switch { width: 29px; height: 17px; padding: 2px; border-radius: 99px; background: #c8c2bb; }
+.anatomy-organ-viewer .switch i { display: block; width: 13px; height: 13px; border-radius: 50%; background: white; box-shadow: 0 1px 4px rgba(0, 0, 0, .17); }
+.anatomy-organ-viewer .switch.on { background: #70a9cb; }
+.anatomy-organ-viewer .switch.on i { margin-inline-start: 12px; }
+
+.anatomy-organ-viewer .view-caption {
+  position: absolute; inset-inline-start: 98px; bottom: 17px; display: flex;
+  flex-direction: column; gap: 2px; color: var(--aov-muted); font-size: 9px;
+  text-transform: uppercase; letter-spacing: .1em; unicode-bidi: plaintext;
+}
+.anatomy-organ-viewer .view-caption strong {
+  color: var(--aov-ink); font: 500 13px var(--aov-font-serif); text-transform: none; letter-spacing: 0;
+}
+
+.anatomy-organ-viewer .model-loader {
+  position: absolute; inset: 0; z-index: 6; display: grid; place-content: center;
+  justify-items: center; gap: 8px; background: rgba(251, 246, 238, .45); backdrop-filter: blur(4px);
+}
+.anatomy-organ-viewer .model-loader strong { font: 500 18px var(--aov-font-serif); }
+.anatomy-organ-viewer .model-loader span { color: var(--aov-muted); font-size: 10px; }
+.anatomy-organ-viewer .loader-orbit {
+  width: 48px; height: 48px; border: 1px dashed var(--aov-coral); border-radius: 50%;
+  display: grid; place-items: center; color: var(--aov-coral); animation: anatomy-orbit 2.4s linear infinite;
+}
+@keyframes anatomy-orbit { to { transform: rotate(360deg); } }

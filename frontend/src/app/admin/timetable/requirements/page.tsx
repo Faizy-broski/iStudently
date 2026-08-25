@@ -440,7 +440,14 @@ export default function TimetableRequirementsPage() {
               </div>
             )}
 
-            <Button variant="outline" size="sm" onClick={handleSeed} disabled={seeding || !selectedAcademicYear} className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSeed}
+              disabled={seeding || !selectedAcademicYear || !activeScope || gradeHasNoSections}
+              title={gradeHasNoSections ? "Grade-level requirements have no teacher assignments to seed from — add them manually with an explicit teacher." : undefined}
+              className="gap-2"
+            >
               {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
               Seed from Assignments
             </Button>

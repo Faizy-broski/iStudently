@@ -222,6 +222,7 @@ const adminMenuItems: SidebarMenuItem[] = [
     subItems: [
       { title: "quizzes", href: "/admin/quiz/quizzes", icon: HelpCircle },
       { title: "questions", href: "/admin/quiz/questions", icon: BookOpen },
+      { title: "exam_builder", href: "/admin/quiz/exam-builder", icon: FileText },
       { title: "premium", href: "#", icon: BarChart3, isLabel: true },
       { title: "answer_breakdown", href: "/admin/quiz/answer-breakdown", icon: BarChart3 },
       { title: "configuration", href: "/admin/quiz/configuration", icon: Settings },
@@ -617,6 +618,7 @@ const teacherMenuItems: SidebarMenuItem[] = [
       { title: "gradebook", href: "#", icon: BookOpen, isLabel: true },
       { title: "gradebook", href: "/teacher/grades/gradebook", icon: Award },
       { title: "assignments", href: "/teacher/grades/assignments", icon: ClipboardList },
+      { title: "exam_builder", href: "/teacher/exams/builder", icon: FileText },
       { title: "anomalous_grades", href: "/teacher/grades/anomalous-grades", icon: AlertCircle },
       { title: "progress_reports", href: "/teacher/grades/progress-reports", icon: ClipboardList },
       { title: "grade_breakdown", href: "/teacher/grades/gradebook-breakdown", icon: BarChart3 },
@@ -804,6 +806,7 @@ const studentMenuItems: SidebarMenuItem[] = [
     subItems: [
       { title: "gradebook_grades", href: "/student/grades/student-grades", icon: Award },
       { title: "assignments", href: "/student/assignments", icon: ClipboardList },
+      { title: "quizzes", href: "/student/quizzes", icon: HelpCircle },
       { title: "final_grades", href: "/student/grades/final-grades", icon: CheckSquare },
       { title: "report_cards", href: "/student/grades/report-cards", icon: FileText },
       { title: "progress_reports", href: "/student/grades/progress-reports", icon: ClipboardList },

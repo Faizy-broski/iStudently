@@ -158,6 +158,8 @@ export interface TimetableGenerationJob {
   status: TimetableGenerationJobStatus;
   scope: TimetableGenerationJobScope;
   section_ids: string[] | null;
+  /** Section-less grades included as generation targets alongside section_ids. */
+  grade_level_ids: string[] | null;
   progress_percent: number;
   total_activities: number | null;
   placed_activities: number | null;
@@ -186,6 +188,13 @@ export interface TimetableGenerationJob {
 export interface Activity {
   id: string;
   requirement_id: string;
+  /** Opaque "class group" key used only for conflict-detection (no two
+   * activities sharing this key may be placed in the same slot). For a
+   * section-based requirement this is the real section UUID; for a
+   * grade-level requirement (no section) it's a synthetic `grade:<uuid>`
+   * key — see classScopeKey() in buildActivities.ts. Never write this
+   * value directly to a DB row; look up the real section_id/grade_level_id
+   * from the originating requirement instead. */
   section_id: string;
   subject_id: string;
   teacher_id: string;

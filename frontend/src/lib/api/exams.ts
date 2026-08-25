@@ -37,6 +37,14 @@ export interface Exam {
   id: string
   exam_name: string
   exam_date?: string
+  duration?: string
+  academic_year?: string
+  total_marks?: number
+  teacher_name?: string
+  exam_instructions?: string
+  semester?: string
+  education_monitoring?: string
+  classroom_name?: string
   exam_type?: ExamType
   section?: any
   subject?: any

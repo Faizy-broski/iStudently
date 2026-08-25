@@ -60,6 +60,25 @@ export async function getTimetableBySection(
   return result.data
 }
 
+export async function getTimetableByGrade(
+  gradeLevelId: string,
+  academicYearId: string
+): Promise<TimetableEntry[]> {
+  const token = await getAuthToken()
+  const params = new URLSearchParams({ grade_level_id: gradeLevelId, academic_year_id: academicYearId })
+
+  const response = await fetch(`${API_URL}/timetable/grade?${params}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+
+  const result: ApiResponse<TimetableEntry[]> = await response.json()
+  if (!result.success || !result.data) {
+    throw new Error(result.error || 'Failed to fetch timetable')
+  }
+
+  return result.data
+}
+
 export async function getTimetableByTeacher(
   teacherId: string,
   academicYearId: string

@@ -7,6 +7,8 @@ import { useAuth } from '@/context/AuthContext'
 import { getAuthToken } from '@/lib/api/schools'
 import { API_URL } from '@/config/api'
 import { submitQuiz, getStudentSubmission, getStudentQuizForm, getStudentQuizStatus, type QuizQuestionMap } from '@/lib/api/quiz'
+import { AnatomyHotspotPicker } from '@/components/anatomy/AnatomyHotspotPicker'
+import type { OrganId } from '@/lib/anatomy/anatomy-data'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -472,6 +474,31 @@ function QuizTaker({
               )}
             </div>
           )}
+
+          {(q.type === 'anatomy_label') && (() => {
+            const correctAnswer = q.correct_answer as { organId: string; hotspotId: string } | null
+            if (!correctAnswer?.organId || !correctAnswer?.hotspotId) {
+              return <p className="text-sm text-destructive">This question has no answer configured.</p>
+            }
+            const picked = getAnswer(mapId)
+            return (
+              <div className="space-y-2">
+                <AnatomyHotspotPicker
+                  key={mapId}
+                  mode="quiz"
+                  organId={correctAnswer.organId as OrganId}
+                  correctHotspotId={correctAnswer.hotspotId}
+                  disabled={isSubmitted || !!picked}
+                  onAnswered={({ hotspotId }) => handleAnswerChange(mapId, hotspotId)}
+                />
+                {picked && (
+                  <p className="text-xs text-muted-foreground">
+                    You picked: {picked}{isSubmitted && quiz.show_correct_answers ? ` (correct: ${correctAnswer.hotspotId})` : ''}
+                  </p>
+                )}
+              </div>
+            )
+          })()}
 
           {/* Show existing score if submitted */}
           {existingAnswerMap[mapId]?.points !== null && existingAnswerMap[mapId]?.points !== undefined && (

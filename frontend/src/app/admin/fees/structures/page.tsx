@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
+import { useAcademic } from '@/context/AcademicContext'
+import { guessAcademicYear } from '@/lib/utils/academic-year'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,6 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { IconArrowLeft, IconPlus, IconTrash, IconEdit, IconDeviceFloppy } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { useTranslations } from 'next-intl'
 
@@ -37,16 +40,26 @@ interface FeeStructure {
     grade_level_id: string
     fee_category_id: string
     period_type: string
+    period_name?: string | null
+    period_number?: number | null
     amount: number
     due_date: string
     grade_level?: { name: string }
     fee_category?: { name: string }
 }
 
+// period_type values where a grade can have several structures of the same
+// type (Term 1, Term 2, Term 3 …) — these need a period_number to tell them
+// apart when generating fees. annual/one_time normally have a single active
+// structure per grade+year, so no number is needed there.
+const MULTI_INSTANCE_PERIOD_TYPES = ['termly', 'quarterly', 'semester']
+
 export default function FeeStructuresPage() {
     const t = useTranslations('fees.structures')
+    const router = useRouter()
     const { profile } = useAuth()
     const { selectedCampus } = useCampus()
+    const { academicYears, currentAcademicYear } = useAcademic()
     // The backend now allows fee categories/structures to target a campus
     // other than the admin's own home school (as long as it's a real child
     // campus) — it used to hard-reject anything but an exact match to
@@ -57,7 +70,18 @@ export default function FeeStructuresPage() {
     // since it's semantically about grades, even though it's the same value now.
     const gradeScopeId = schoolId
 
-    const [academicYear, setAcademicYear] = useState('2025-2026')
+    // Placeholder until the school's actual current academic year loads below —
+    // never the hardcoded fallback this used to be, which could silently
+    // diverge from what /admin/fees/generate defaults to (the root cause of
+    // "created a fee structure but no fees were generated" reports).
+    const [academicYear, setAcademicYear] = useState(() => guessAcademicYear(new Date()))
+    const didDefaultAcademicYear = useRef(false)
+    useEffect(() => {
+        if (!didDefaultAcademicYear.current && currentAcademicYear?.name) {
+            didDefaultAcademicYear.current = true
+            setAcademicYear(currentAcademicYear.name)
+        }
+    }, [currentAcademicYear])
     const [editingStructure, setEditingStructure] = useState<FeeStructure | null>(null)
     const [isAddingNew, setIsAddingNew] = useState(false)
 
@@ -70,6 +94,8 @@ export default function FeeStructuresPage() {
         grade_level_ids: [] as string[],
         fee_category_id: '',
         period_type: 'monthly',
+        period_name: '',
+        period_number: '',
         amount: '',
         due_date: ''
     })
@@ -126,6 +152,15 @@ export default function FeeStructuresPage() {
             return
         }
 
+        const needsPeriodNumber = MULTI_INSTANCE_PERIOD_TYPES.includes(formData.period_type)
+        if (needsPeriodNumber && !formData.period_number) {
+            // Without this, fee generation can't tell "Term 1" apart from
+            // "Term 2" for the same grade — see generateMonthlyFees's
+            // period_number filter.
+            toast.error(t('periodNumberRequired'))
+            return
+        }
+
         try {
             const { createClient } = await import('@/lib/supabase/client')
             const token = (await createClient().auth.getSession()).data.session?.access_token
@@ -135,6 +170,8 @@ export default function FeeStructuresPage() {
                 academic_year: academicYear,
                 fee_category_id: formData.fee_category_id,
                 period_type: formData.period_type,
+                period_name: formData.period_type === 'monthly' ? null : (formData.period_name || null),
+                period_number: needsPeriodNumber && formData.period_number ? parseInt(formData.period_number, 10) : null,
                 amount: parseFloat(formData.amount),
                 due_date: formData.due_date,
             }
@@ -176,7 +213,23 @@ export default function FeeStructuresPage() {
             const successCount = results.length - failures.length
 
             if (successCount > 0) {
-                toast.success(t('createSuccess'))
+                // Saving a fee structure only creates a template — it does not
+                // bill any student yet. That requires the separate "Generate
+                // Fees" step, which is easy to miss (this is the #1 support
+                // report: "added a fee but nothing shows up"). Surface it
+                // directly instead of a plain success toast, pre-filtered to
+                // the grade(s) just created.
+                toast.success(t('createSuccess'), {
+                    description: t('createSuccessGenerateHint'),
+                    duration: 10000,
+                    action: {
+                        label: t('generateFeesAction'),
+                        onClick: () => {
+                            const gradesParam = selectedGradeIds.join(',')
+                            router.push(`/admin/fees/generate?grades=${encodeURIComponent(gradesParam)}`)
+                        }
+                    }
+                })
                 mutateStructures()
             }
             if (failures.length > 0) {
@@ -222,6 +275,8 @@ export default function FeeStructuresPage() {
             grade_level_ids: [],
             fee_category_id: structure.fee_category_id,
             period_type: structure.period_type,
+            period_name: structure.period_name || '',
+            period_number: structure.period_number != null ? String(structure.period_number) : '',
             amount: structure.amount.toString(),
             due_date: structure.due_date.split('T')[0]
         })
@@ -236,6 +291,8 @@ export default function FeeStructuresPage() {
             grade_level_ids: [],
             fee_category_id: '',
             period_type: 'monthly',
+            period_name: '',
+            period_number: '',
             amount: '',
             due_date: ''
         })
@@ -284,9 +341,16 @@ export default function FeeStructuresPage() {
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="2024-2025">2024-2025</SelectItem>
-                            <SelectItem value="2025-2026">2025-2026</SelectItem>
-                            <SelectItem value="2026-2027">2026-2027</SelectItem>
+                            {/* Sourced from the school's actual academic_years records
+                                (same list /admin/settings/academic-years manages) instead
+                                of a hardcoded set of years, so this never runs out of
+                                options or offers a year the school doesn't really have. */}
+                            {(academicYears.length > 0
+                                ? Array.from(new Set(academicYears.map((y) => y.name)))
+                                : [academicYear]
+                            ).map((name) => (
+                                <SelectItem key={name} value={name}>{name}</SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                 </CardContent>
@@ -382,6 +446,37 @@ export default function FeeStructuresPage() {
                                 </Select>
                             </div>
 
+                            {formData.period_type !== 'monthly' && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    {MULTI_INSTANCE_PERIOD_TYPES.includes(formData.period_type) && (
+                                        <div>
+                                            <Label>{t('periodNumber')} *</Label>
+                                            <Input
+                                                type="number"
+                                                min="1"
+                                                value={formData.period_number}
+                                                onChange={(e) => setFormData({ ...formData, period_number: e.target.value })}
+                                                placeholder="1"
+                                            />
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                {t('periodNumberHint')}
+                                            </p>
+                                        </div>
+                                    )}
+                                    <div>
+                                        <Label>{t('periodName')}</Label>
+                                        <Input
+                                            value={formData.period_name}
+                                            onChange={(e) => setFormData({ ...formData, period_name: e.target.value })}
+                                            placeholder={t('periodNamePlaceholder')}
+                                        />
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            {t('periodNameHint')}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
                             <div>
                                 <Label>{t('amount')} *</Label>
                                 <Input
@@ -459,7 +554,12 @@ export default function FeeStructuresPage() {
                                                     {structure.grade_level?.name || t('notAvailable')}
                                                 </TableCell>
                                                 <TableCell>{structure.fee_category?.name || t('notAvailable')}</TableCell>
-                                                <TableCell className="capitalize">{t(structure.period_type) || structure.period_type}</TableCell>
+                                                <TableCell className="capitalize">
+                                                    {t(structure.period_type) || structure.period_type}
+                                                    {structure.period_name && (
+                                                        <span className="block text-xs text-muted-foreground normal-case">{structure.period_name}</span>
+                                                    )}
+                                                </TableCell>
                                                 <TableCell>{formatCurrency(structure.amount)}</TableCell>
                                                 <TableCell>{new Date(structure.due_date).toLocaleDateString()}</TableCell>
                                                 <TableCell className="text-end">
