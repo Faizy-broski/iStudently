@@ -11,6 +11,7 @@ self.addEventListener('activate', (event) => {
 })
 
 self.addEventListener('push', (event) => {
+  console.log('[sw] push event received', { hasData: !!event.data })
   if (!event.data) return
 
   let payload
@@ -19,6 +20,7 @@ self.addEventListener('push', (event) => {
   } catch {
     payload = { title: 'Studently', body: event.data.text() }
   }
+  console.log('[sw] push payload', payload)
 
   const title = payload.title || 'Studently'
   const options = {
@@ -30,7 +32,11 @@ self.addEventListener('push', (event) => {
     data: { url: payload.url || '/' },
   }
 
-  event.waitUntil(self.registration.showNotification(title, options))
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+      .then(() => console.log('[sw] showNotification resolved OK'))
+      .catch((err) => console.error('[sw] showNotification failed', err))
+  )
 })
 
 self.addEventListener('notificationclick', (event) => {
