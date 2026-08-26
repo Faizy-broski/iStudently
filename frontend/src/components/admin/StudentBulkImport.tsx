@@ -103,6 +103,22 @@ function autoDetectMappings(csvColumns: string[]): Record<keyof BulkImportRow, s
   return mapping as Record<keyof BulkImportRow, string>
 }
 
+// Safety nudge for "Single Class" mode: that mode ignores any grade/section
+// column in the file entirely and force-enrolls every row into the one
+// grade+section picked in the UI. A file that already has its own grade or
+// section column is a strong signal it's a multi-grade roster that actually
+// belongs in "Whole School" mode instead — surfaced as a warning, not a
+// block, since an unrelated column with a matching name is possible.
+const GRADE_LIKE_COLUMN_PATTERNS = [
+  "grade", "class", "section", "standard", "year group", "yeargroup",
+]
+function hasGradeLikeColumn(csvColumns: string[]): boolean {
+  return csvColumns.some(col => {
+    const normalized = col.toLowerCase().trim()
+    return GRADE_LIKE_COLUMN_PATTERNS.some(p => normalized.includes(p))
+  })
+}
+
 // ─── Validation ───────────────────────────────────────────────────────────────
 
 const SKIP = "__skip__"
@@ -272,6 +288,7 @@ export function StudentBulkImport() {
   const { gradeLevels } = useGradeLevels()
   const { sections } = useSections()
   const sectionsForGrade = sections.filter(s => s.grade_level_id === targetGradeId)
+  const fileHasGradeLikeColumn = hasGradeLikeColumn(csvColumns)
 
   const [customFieldDefs, setCustomFieldDefs] = useState<CustomFieldDefinition[]>([])
   useEffect(() => {
@@ -541,6 +558,18 @@ export function StudentBulkImport() {
             </CardContent>
           </Card>
 
+          {importMode === "single" && fileHasGradeLikeColumn && (
+            <Card className="border-amber-400/50 bg-amber-50/50 dark:bg-amber-950/10">
+              <CardContent className="pt-5 flex gap-2 text-sm">
+                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium">{t("warn_single_mode_grade_column_title")}</p>
+                  <p className="text-muted-foreground text-xs mt-0.5">{t("warn_single_mode_grade_column_desc")}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {importMode === "single" && (
             <Card>
               <CardHeader className="pb-2">
@@ -725,6 +754,20 @@ export function StudentBulkImport() {
               </Button>
             </div>
           </div>
+
+          {importMode === "single" && fileHasGradeLikeColumn && (
+            <Card className="border-amber-400/50 bg-amber-50/50 dark:bg-amber-950/10">
+              <CardContent className="pt-5 flex gap-2 text-sm">
+                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                <p>
+                  {t("warn_single_mode_confirm", {
+                    count: validCount,
+                    grade: gradeLevels.find(g => g.id === targetGradeId)?.name || "—"
+                  })}
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           {invalidCount > 0 && (
             <Card className="border-destructive/50">

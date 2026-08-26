@@ -84,6 +84,19 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSavePaymentMethod = async () => {
+    setPaymentMethodSaving(true);
+    try {
+      const res = await updateSchoolSettings({ default_payment_method: defaultPaymentMethod }, campusId);
+      if (!res.success) throw new Error(res.error || "Failed to save payment method");
+      toast.success(campusId ? "Campus default payment method saved" : "Default payment method saved");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to save payment method");
+    } finally {
+      setPaymentMethodSaving(false);
+    }
+  };
+
   const handleSaveCurrency = async () => {
     setCurrencySaving(true);
     try {
