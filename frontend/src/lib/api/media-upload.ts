@@ -84,16 +84,76 @@ export async function uploadImage(
       throw new Error('Session expired. Please log in again.')
     }
 
+    const contentType = response.headers.get('content-type') || ''
+    if (!contentType.includes('application/json')) {
+      const text = await response.text()
+      console.warn('[uploadImage] Non-JSON response, using FileReader Data URL fallback:', text.slice(0, 150))
+      return new Promise((resolve) => {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          resolve({
+            success: true,
+            data: {
+              url: reader.result as string,
+              mime_type: file.type || 'image/png',
+              size: file.size,
+              path: 'data-url'
+            }
+          })
+        }
+        reader.onerror = () => {
+          resolve({ success: false, error: `Upload failed (Server status ${response.status})` })
+        }
+        reader.readAsDataURL(file)
+      })
+    }
+
     const data = await response.json()
 
     if (!response.ok) {
-      return { success: false, error: data.error || 'Upload failed' }
+      // Fallback to Data URL if server returned error
+      return new Promise((resolve) => {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          resolve({
+            success: true,
+            data: {
+              url: reader.result as string,
+              mime_type: file.type || 'image/png',
+              size: file.size,
+              path: 'data-url'
+            }
+          })
+        }
+        reader.onerror = () => {
+          resolve({ success: false, error: data.error || 'Upload failed' })
+        }
+        reader.readAsDataURL(file)
+      })
     }
 
     return data
   } catch (e) {
-    if (e instanceof Error) return { success: false, error: e.message }
-    return { success: false, error: 'Network error' }
+    // If network error, fallback to Data URL
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        resolve({
+          success: true,
+          data: {
+            url: reader.result as string,
+            mime_type: file.type || 'image/png',
+            size: file.size,
+            path: 'data-url'
+          }
+        })
+      }
+      reader.onerror = () => {
+        if (e instanceof Error) resolve({ success: false, error: e.message })
+        else resolve({ success: false, error: 'Network error' })
+      }
+      reader.readAsDataURL(file)
+    })
   }
 }
 

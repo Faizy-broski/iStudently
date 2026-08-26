@@ -110,6 +110,15 @@ router.post('/bulk-delete', requireSuperAdmin, (req, res) =>
 )
 
 /**
+ * POST /api/students/bulk-status
+ * Bulk activate or deactivate students by IDs, grade level, or whole school
+ * Admin only
+ */
+router.post('/bulk-status', requireRole('admin'), (req, res) =>
+  studentController.bulkUpdateStudentStatus(req, res)
+)
+
+/**
  * POST /api/students
  * Create a new student
  * Admin only

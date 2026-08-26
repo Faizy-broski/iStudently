@@ -178,14 +178,19 @@ export class UserAgreementService {
   // ── User: accept ──────────────────────────────────────────────────────────
 
   /**
-   * Record acceptance. If the role agreement uses annual mode, also stores
-   * the current academic year ID so annual reset works correctly.
+   * Record acceptance. Stores audit log (timestamp, IP, User-Agent, contract_version)
+   * and updates user profile status.
    */
   async acceptAgreement(
     profileId: string,
     schoolId: string,
     role: string,
-    campusId?: string | null
+    campusId?: string | null,
+    context?: {
+      ip_address?: string
+      user_agent?: string
+      contract_version?: string
+    }
   ): Promise<void> {
     const config = await this._getConfigForRole(schoolId, campusId ?? null, role as AgreementRole)
     const isAnnual = config?.reset_mode === 'annual'
@@ -195,32 +200,86 @@ export class UserAgreementService {
       academicYearId = await this._getCurrentAcademicYearId(schoolId)
     }
 
+    const acceptedAt = new Date().toISOString()
+    const contractVersion = context?.contract_version || 'v1.0'
+    const ipAddress = context?.ip_address || 'unknown'
+    const userAgent = context?.user_agent || 'unknown'
+
     const { error } = await supabase
       .from('profiles')
       .update({
         agreement_status: 'accepted',
         agreement_accepted_academic_year_id: academicYearId,
-        updated_at: new Date().toISOString(),
+        updated_at: acceptedAt,
       })
       .eq('id', profileId)
 
     if (error) throw error
+
+    // Write audit log entry for legal compliance and dispute handling
+    try {
+      await supabase.from('user_agreement_logs').insert({
+        profile_id: profileId,
+        school_id: schoolId,
+        role: role,
+        action: 'accepted',
+        contract_version: contractVersion,
+        accepted_at: acceptedAt,
+        ip_address: ipAddress,
+        user_agent: userAgent,
+        academic_year_id: academicYearId,
+        metadata: {
+          campus_id: campusId ?? null,
+          agreements_count: config?.agreements?.length ?? 0,
+        },
+      })
+    } catch (logErr: any) {
+      console.warn('Agreement audit log insert deferred:', logErr?.message || logErr)
+    }
   }
 
   // ── User: reject ──────────────────────────────────────────────────────────
 
-  /** Reject agreement — sets is_active=false and agreement_status='rejected'. */
-  async rejectAgreement(profileId: string): Promise<void> {
+  /** Reject agreement — sets is_active=false and agreement_status='rejected', and records audit log. */
+  async rejectAgreement(
+    profileId: string,
+    schoolId?: string,
+    role?: string,
+    context?: {
+      ip_address?: string
+      user_agent?: string
+      contract_version?: string
+    }
+  ): Promise<void> {
+    const rejectedAt = new Date().toISOString()
+
     const { error } = await supabase
       .from('profiles')
       .update({
         agreement_status: 'rejected',
         is_active: false,
-        updated_at: new Date().toISOString(),
+        updated_at: rejectedAt,
       })
       .eq('id', profileId)
 
     if (error) throw error
+
+    if (schoolId && role) {
+      try {
+        await supabase.from('user_agreement_logs').insert({
+          profile_id: profileId,
+          school_id: schoolId,
+          role: role,
+          action: 'rejected',
+          contract_version: context?.contract_version || 'v1.0',
+          accepted_at: rejectedAt,
+          ip_address: context?.ip_address || 'unknown',
+          user_agent: context?.user_agent || 'unknown',
+        })
+      } catch (logErr: any) {
+        console.warn('Agreement rejection audit log insert deferred:', logErr?.message || logErr)
+      }
+    }
   }
 
   // ── Public: re-accept request ─────────────────────────────────────────────

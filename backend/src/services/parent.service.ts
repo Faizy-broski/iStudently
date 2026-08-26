@@ -7,7 +7,7 @@ import {
   StudentWithRelationship
 } from '../types'
 import { generatePlaceholderEmail, redactPlaceholderEmail, withRedactedEmail } from '../utils/email.util'
-import { applyCredentialUpdate } from './username.service'
+import { applyCredentialUpdate, generateCredentials } from './username.service'
 
 // Loosely typed (matches this file's existing `any` casts around nested
 // `profile` joins) since Supabase's generated types sometimes infer a
@@ -608,6 +608,103 @@ export class ParentService {
       }
       throw new Error(`Failed to link parent to student: ${error.message}`)
     }
+  }
+
+  /**
+   * Bulk import parents and link each to their child/children — modeled on
+   * bulkImportStudents/bulkImportTeachers/bulkImportStaff (validate-then-create
+   * loop, per-row error isolation, never aborts the whole batch on one bad
+   * row). There was previously no bulk path for parents at all; this backs
+   * the "Parents" sheet of the consolidated school-data-import feature but is
+   * a standalone method other callers can use too.
+   *
+   * Each row's `student_external_ids` is resolved by the caller into real
+   * student UUIDs (via `resolveStudentId`) BEFORE calling this — parents have
+   * no natural key of their own in the source system, so the row is only
+   * useful once we know which student(s) it links to.
+   */
+  async bulkImportParents(
+    rows: Array<{
+      _row: number
+      first_name?: string
+      last_name?: string
+      email?: string
+      phone?: string
+      relationship: string
+      relation_type: 'father' | 'mother' | 'guardian' | 'other'
+      is_emergency_contact?: boolean
+      student_ids: string[] // already resolved from student_external_ids
+    }>,
+    schoolId: string
+  ): Promise<{
+    success_count: number
+    error_count: number
+    errors: Array<{ row: number; error: string }>
+    created: Array<{ row: number; id: string; username?: string; password?: string }>
+  }> {
+    const results = {
+      success_count: 0,
+      error_count: 0,
+      errors: [] as Array<{ row: number; error: string }>,
+      created: [] as Array<{ row: number; id: string; username?: string; password?: string }>
+    }
+
+    const seenEmails = new Set<string>()
+
+    for (const row of rows) {
+      try {
+        if (!row.first_name?.trim() || !row.last_name?.trim()) {
+          throw new Error('Missing required fields: first_name, last_name')
+        }
+        if (row.student_ids.length === 0) {
+          throw new Error('No matching student found for this row\'s student_external_id(s)')
+        }
+
+        const email = row.email?.trim().toLowerCase()
+        if (email) {
+          if (seenEmails.has(email)) throw new Error('Duplicate email within this file')
+          seenEmails.add(email)
+        }
+
+        // The import sheet carries no password column, so every new parent
+        // account gets one auto-generated here — same convention as
+        // createTeacher/createStudent, using the shared generator (unique
+        // numeric username + curated-charset password) rather than
+        // createParent's own weaker name-based-username/random-string fallback.
+        const credentials = await generateCredentials()
+
+        const parent = await this.createParent({
+          school_id: schoolId,
+          first_name: row.first_name.trim(),
+          last_name: row.last_name.trim(),
+          email,
+          phone: row.phone?.trim(),
+          username: credentials.username,
+          password: credentials.plainPassword
+        } as CreateParentDTO)
+
+        for (const studentId of row.student_ids) {
+          await this.linkParentToStudent(
+            {
+              parent_id: parent.id,
+              student_id: studentId,
+              relationship: row.relationship,
+              relation_type: row.relation_type,
+              is_emergency_contact: row.is_emergency_contact ?? false
+            },
+            schoolId
+          )
+        }
+
+        results.success_count++
+        results.created.push({ row: row._row, id: parent.id, username: credentials.username, password: credentials.plainPassword })
+      } catch (err: any) {
+        results.error_count++
+        results.errors.push({ row: row._row, error: err.message || String(err) })
+      }
+    }
+
+    return results
   }
 
   /**

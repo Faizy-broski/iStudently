@@ -16,12 +16,14 @@ import { useAuth } from "@/context/AuthContext";
 import { useCampus } from "@/context/CampusContext";
 import { EditCredentialsModal } from "@/components/admin/EditCredentialsModal";
 import { EditStudentForm } from "@/components/admin";
-import { type Student, getStudentById, bulkDeleteStudents } from "@/lib/api/students";
+import { type Student, getStudentById, bulkDeleteStudents, bulkUpdateStudentStatus } from "@/lib/api/students";
 import { useStudents } from "@/hooks/useStudents";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { UniversalFilter, type FilterState } from "@/components/filters/UniversalFilter";
 import { getSchoolSettings, type StudentListAppendConfig } from "@/lib/api/school-settings";
 import { useTranslations, useLocale } from "next-intl";
+import { useGradeLevels } from "@/hooks/useAcademics";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ProfilePhoto } from "@/components/shared/ProfilePhoto";
 import {
   DropdownMenu,
@@ -113,6 +115,64 @@ export default function StudentInfoPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmDeleteMode, setConfirmDeleteMode] = useState<"selected" | "class" | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Bulk Status Modal States (Deactivate / Activate by List, Grade, or School)
+  const { gradeLevels = [], isLoading: loadingGradeLevels } = useGradeLevels();
+  const [showBulkStatusModal, setShowBulkStatusModal] = useState(false);
+  const [bulkStatusAction, setBulkStatusAction] = useState<'deactivate' | 'activate'>('deactivate');
+  const [bulkStatusMode, setBulkStatusMode] = useState<'selected' | 'grade' | 'school'>('selected');
+  const [bulkTargetGradeId, setBulkTargetGradeId] = useState<string>('');
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+  useEffect(() => {
+    if (showBulkStatusModal && !bulkTargetGradeId) {
+      if (studentFilters.gradeId) {
+        setBulkTargetGradeId(studentFilters.gradeId);
+      } else if (gradeLevels && gradeLevels.length > 0) {
+        setBulkTargetGradeId(gradeLevels[0].id);
+      }
+    }
+  }, [showBulkStatusModal, studentFilters.gradeId, gradeLevels, bulkTargetGradeId]);
+
+  const handleBulkStatusChange = async () => {
+    const is_active = bulkStatusAction === 'activate';
+    const gradeId = bulkStatusMode === 'grade' ? (bulkTargetGradeId || studentFilters.gradeId) : undefined;
+
+    if (bulkStatusMode === 'grade' && !gradeId) {
+      toast.error("Please select a target grade level");
+      return;
+    }
+
+    setIsUpdatingStatus(true);
+    try {
+      const result = await bulkUpdateStudentStatus({
+        mode: bulkStatusMode,
+        is_active,
+        studentIds: bulkStatusMode === 'selected' ? Array.from(selectedIds) : undefined,
+        gradeLevelId: gradeId,
+        sectionId: bulkStatusMode === 'grade' ? studentFilters.sectionId : undefined,
+        campusId: campusContext?.selectedCampus?.id || undefined,
+      });
+
+      if (!result.success || result.data === undefined) {
+        toast.error(result.error || t("msg_update_failed"));
+        return;
+      }
+
+      toast.success(
+        is_active
+          ? `${result.data.updated} student(s) activated successfully`
+          : `${result.data.updated} student(s) deactivated successfully`
+      );
+      setShowBulkStatusModal(false);
+      setSelectedIds(new Set());
+      refresh();
+    } catch {
+      toast.error(t("msg_update_failed"));
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
 
   // Load the "Append Custom Field to Grade Level" campus setting once on mount
   useEffect(() => {
@@ -315,35 +375,64 @@ export default function StudentInfoPage() {
             </CardContent>
           </Card>
 
-          {isSuperAdmin && (
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="text-sm text-muted-foreground">
-                {selectedIds.size > 0 && t("selected_count", { count: selectedIds.size })}
-              </div>
-              <div className="flex gap-2">
-                {selectedIds.size > 0 && (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="gap-2"
-                    onClick={() => setConfirmDeleteMode("selected")}
-                  >
-                    <Trash2 className="h-4 w-4" /> {t("btn_delete_selected")}
-                  </Button>
-                )}
-                {studentFilters.gradeId && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2 text-destructive border-destructive/50 hover:bg-destructive/10"
-                    onClick={() => setConfirmDeleteMode("class")}
-                  >
-                    <Trash2 className="h-4 w-4" /> {t("btn_delete_by_class")}
-                  </Button>
-                )}
-              </div>
+          {/* Bulk Operations Toolbar */}
+          <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-muted/30 rounded-lg border border-border">
+            <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              {selectedIds.size > 0 ? (
+                <span className="text-foreground font-semibold">
+                  {selectedIds.size} student(s) selected
+                </span>
+              ) : (
+                <span>Bulk Options</span>
+              )}
             </div>
-          )}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 border-amber-500/30 hover:bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                onClick={() => {
+                  setBulkStatusAction("deactivate");
+                  setBulkStatusMode(selectedIds.size > 0 ? "selected" : "grade");
+                  setShowBulkStatusModal(true);
+                }}
+              >
+                <UserX className="h-4 w-4 text-amber-600 dark:text-amber-400" /> Bulk Deactivate
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                onClick={() => {
+                  setBulkStatusAction("activate");
+                  setBulkStatusMode(selectedIds.size > 0 ? "selected" : "grade");
+                  setShowBulkStatusModal(true);
+                }}
+              >
+                <UserCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /> Bulk Activate
+              </Button>
+              {isSuperAdmin && selectedIds.size > 0 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => setConfirmDeleteMode("selected")}
+                >
+                  <Trash2 className="h-4 w-4" /> {t("btn_delete_selected")}
+                </Button>
+              )}
+              {isSuperAdmin && studentFilters.gradeId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 text-destructive border-destructive/50 hover:bg-destructive/10"
+                  onClick={() => setConfirmDeleteMode("class")}
+                >
+                  <Trash2 className="h-4 w-4" /> {t("btn_delete_by_class")}
+                </Button>
+              )}
+            </div>
+          </div>
 
           <div className="text-sm text-muted-foreground">
             {loading ? (
@@ -370,17 +459,15 @@ export default function StudentInfoPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10">
-                      {isSuperAdmin && (
-                        <TableHead className="w-10">
-                          <input
-                            type="checkbox"
-                            aria-label={t("th_select")}
-                            checked={filteredStudents.length > 0 && selectedIds.size === filteredStudents.length}
-                            onChange={(e) => toggleSelectAll(e.target.checked)}
-                            className="rounded border-gray-300"
-                          />
-                        </TableHead>
-                      )}
+                      <TableHead className="w-10">
+                        <input
+                          type="checkbox"
+                          aria-label={t("th_select")}
+                          checked={filteredStudents.length > 0 && selectedIds.size === filteredStudents.length}
+                          onChange={(e) => toggleSelectAll(e.target.checked)}
+                          className="rounded border-gray-300"
+                        />
+                      </TableHead>
                       <TableHead className="text-left rtl:text-right">{t("th_student_id")}</TableHead>
                       <TableHead className="text-left rtl:text-right">{tCommon("name")}</TableHead>
                       <TableHead className="text-left rtl:text-right">{tCommon("grade")}</TableHead>
@@ -392,7 +479,7 @@ export default function StudentInfoPage() {
                   <TableBody>
                     {filteredStudents.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={isSuperAdmin ? 7 : 6} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                           {t("no_students_found")}
                         </TableCell>
                       </TableRow>
@@ -406,17 +493,15 @@ export default function StudentInfoPage() {
                             className="hover:bg-muted/50 cursor-pointer"
                             onClick={() => handleViewDetails(student)}
                           >
-                            {isSuperAdmin && (
-                              <TableCell onClick={(e) => e.stopPropagation()}>
-                                <input
-                                  type="checkbox"
-                                  aria-label={t("th_select")}
-                                  checked={selectedIds.has(student.id)}
-                                  onChange={(e) => toggleSelectOne(student.id, e.target.checked)}
-                                  className="rounded border-gray-300"
-                                />
-                              </TableCell>
-                            )}
+                            <TableCell onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                aria-label={t("th_select")}
+                                checked={selectedIds.has(student.id)}
+                                onChange={(e) => toggleSelectOne(student.id, e.target.checked)}
+                                className="rounded border-gray-300"
+                              />
+                            </TableCell>
                             <TableCell className="font-medium">{student.student_number}</TableCell>
                             <TableCell className="max-w-sm">
                               <div className="flex items-center gap-3">
@@ -653,6 +738,184 @@ export default function StudentInfoPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* Bulk Status Update Dialog (Deactivate / Activate by List, Grade, or School) */}
+      <Dialog open={showBulkStatusModal} onOpenChange={setShowBulkStatusModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+              {bulkStatusAction === 'deactivate' ? (
+                <>
+                  <UserX className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                  Bulk Deactivate Students
+                </>
+              ) : (
+                <>
+                  <UserCheck className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                  Bulk Activate Students
+                </>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-5 py-2">
+            {/* Action Choice */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Action</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  type="button"
+                  variant={bulkStatusAction === 'deactivate' ? 'default' : 'outline'}
+                  className={bulkStatusAction === 'deactivate' ? 'bg-amber-600 hover:bg-amber-700 text-white' : ''}
+                  onClick={() => setBulkStatusAction('deactivate')}
+                >
+                  <UserX className="h-4 w-4 mr-2" /> Deactivate
+                </Button>
+                <Button
+                  type="button"
+                  variant={bulkStatusAction === 'activate' ? 'default' : 'outline'}
+                  className={bulkStatusAction === 'activate' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}
+                  onClick={() => setBulkStatusAction('activate')}
+                >
+                  <UserCheck className="h-4 w-4 mr-2" /> Activate
+                </Button>
+              </div>
+            </div>
+
+            {/* Scope Selection */}
+            <div className="space-y-3 border-t pt-4">
+              <Label className="text-sm font-semibold">Target Scope</Label>
+              <div className="space-y-2">
+                <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                  bulkStatusMode === 'selected' ? 'border-[#022172] bg-blue-50/50 dark:bg-blue-950/40' : 'border-border'
+                } ${selectedIds.size === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  <input
+                    type="radio"
+                    name="bulkStatusMode"
+                    value="selected"
+                    disabled={selectedIds.size === 0}
+                    checked={bulkStatusMode === 'selected'}
+                    onChange={() => setBulkStatusMode('selected')}
+                    className="h-4 w-4 text-[#022172]"
+                  />
+                  <div>
+                    <div className="font-medium text-sm">Selected Students List</div>
+                    <div className="text-xs text-muted-foreground">
+                      {selectedIds.size > 0
+                        ? `Apply to the ${selectedIds.size} checked student(s)`
+                        : 'Select checkboxes in the table to use this option'}
+                    </div>
+                  </div>
+                </label>
+
+                <div className={`p-3 rounded-lg border transition-colors ${
+                  bulkStatusMode === 'grade' ? 'border-[#003dd6] bg-blue-50/50 dark:bg-blue-950/40' : 'border-border'
+                }`}>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="bulkStatusMode"
+                      value="grade"
+                      checked={bulkStatusMode === 'grade'}
+                      onChange={() => setBulkStatusMode('grade')}
+                      className="h-4 w-4 text-[#003dd6]"
+                    />
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">By Grade / Class</div>
+                      <div className="text-xs text-muted-foreground">
+                        Apply to all students enrolled in a specific grade level
+                      </div>
+                    </div>
+                  </label>
+
+                  {bulkStatusMode === 'grade' && (
+                    <div className="mt-3 pt-3 border-t border-border/60 space-y-1.5 pl-7" onClick={(e) => e.stopPropagation()}>
+                      <Label className="text-xs font-semibold text-foreground">Select Grade Level:</Label>
+                      <Select value={bulkTargetGradeId} onValueChange={setBulkTargetGradeId}>
+                        <SelectTrigger className="w-full bg-background">
+                          <SelectValue placeholder={loadingGradeLevels ? "Loading grade levels..." : "-- Select Grade Level --"} />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                          {gradeLevels.map((gl) => (
+                            <SelectItem key={gl.id} value={gl.id}>
+                              {gl.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+
+                <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                  bulkStatusMode === 'school' ? 'border-[#003dd6] bg-blue-50/50 dark:bg-blue-950/40' : 'border-border'
+                }`}>
+                  <input
+                    type="radio"
+                    name="bulkStatusMode"
+                    value="school"
+                    checked={bulkStatusMode === 'school'}
+                    onChange={() => setBulkStatusMode('school')}
+                    className="h-4 w-4 text-[#003dd6]"
+                  />
+                  <div>
+                    <div className="font-medium text-sm">Whole School / Campus</div>
+                    <div className="text-xs text-muted-foreground">
+                      Apply to ALL students across the entire school or campus
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Notice / Summary box */}
+            <div className="p-3 bg-muted/60 rounded-md border border-border text-xs text-muted-foreground space-y-1">
+              <p className="font-medium text-foreground">Summary:</p>
+              {bulkStatusMode === 'selected' && (
+                <p>Will {bulkStatusAction} <strong>{selectedIds.size}</strong> student(s) currently selected.</p>
+              )}
+              {bulkStatusMode === 'grade' && (
+                <p>
+                  Will {bulkStatusAction} all students enrolled in{' '}
+                  <strong>
+                    {gradeLevels.find(g => g.id === (bulkTargetGradeId || studentFilters.gradeId))?.name || 'the selected grade level'}
+                  </strong>.
+                </p>
+              )}
+              {bulkStatusMode === 'school' && (
+                <p>Will {bulkStatusAction} <strong>ALL</strong> students in the school / campus.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t">
+            <Button
+              variant="outline"
+              disabled={isUpdatingStatus}
+              onClick={() => setShowBulkStatusModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={isUpdatingStatus || (bulkStatusMode === 'selected' && selectedIds.size === 0)}
+              className={bulkStatusAction === 'deactivate' ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}
+              onClick={handleBulkStatusChange}
+            >
+              {isUpdatingStatus ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : bulkStatusAction === 'deactivate' ? (
+                <UserX className="h-4 w-4 mr-2" />
+              ) : (
+                <UserCheck className="h-4 w-4 mr-2" />
+              )}
+              {isUpdatingStatus
+                ? 'Processing...'
+                : bulkStatusAction === 'deactivate'
+                ? 'Deactivate Now'
+                : 'Activate Now'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

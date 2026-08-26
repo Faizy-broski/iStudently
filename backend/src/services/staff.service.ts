@@ -7,7 +7,7 @@ import {
     UserRole
 } from '../types'
 import { generatePlaceholderEmail, withRedactedEmail } from '../utils/email.util'
-import { applyCredentialUpdate } from './username.service'
+import { applyCredentialUpdate, generateCredentials } from './username.service'
 
 // Redacts profile.email on nested { profile: { email } } shapes (staff records
 // joined with their profile) before returning to the API layer.
@@ -584,6 +584,11 @@ export interface BulkImportStaffResult {
     error_count: number
     errors: Array<{ row: number; email?: string; error: string }>
     created_staff: Staff[]
+    // Credentials generated per row, keyed the same order as created_staff —
+    // previously discarded entirely (unlike student bulk import). Consumers
+    // (e.g. the consolidated school-data-import job) need this to tag rows
+    // with an import_job_id and to show a username/password results table.
+    created: Array<{ row: number; id: string; email?: string; username: string; password?: string }>
 }
 
 const VALID_STAFF_ROLES: UserRole[] = ['teacher', 'librarian', 'staff', 'admin', 'counselor']
@@ -611,7 +616,8 @@ export const bulkImportStaff = async (
         success_count: 0,
         error_count: 0,
         errors: [],
-        created_staff: []
+        created_staff: [],
+        created: []
     }
 
     const validRows: Array<{
@@ -745,17 +751,32 @@ export const bulkImportStaff = async (
                 // Determine final role before creating auth user
                 const finalRole = roleOverride || determineRoleFromTitle(data.title)
 
+                // Only auto-generate (and surface) credentials when the row
+                // didn't supply its own username/password — same convention
+                // as createTeacher/createStudent. Uses the shared generator
+                // (unique numeric username + curated-charset password)
+                // instead of a weak ad-hoc password.
+                let generatedUsername: string | undefined
+                let generatedPassword: string | undefined
+                if (!data.password) {
+                    const creds = await generateCredentials()
+                    generatedUsername = data.username || creds.username
+                    generatedPassword = creds.plainPassword
+                }
+                const finalUsername = data.username || generatedUsername
+                const finalPassword = data.password || generatedPassword!
+
                 // Create Supabase auth user (dashboard credentials)
                 const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
                     email: data.email!,
-                    // Use provided password or generate a strong one
-                    password: data.password || `Staff@${Math.random().toString(36).slice(-8)}1!`,
+                    password: finalPassword,
                     email_confirm: true,
                     user_metadata: {
                         first_name: data.first_name,
                         last_name: data.last_name,
                         school_id: schoolId,
-                        role: finalRole
+                        role: finalRole,
+                        username: finalUsername
                     }
                 })
 
@@ -764,7 +785,11 @@ export const bulkImportStaff = async (
                 }
 
                 // Create staff record (profile + staff table entry + optional salary)
-                return createStaffRecord(schoolId, authUser.user.id, data, creatorId, finalRole)
+                const staff = await createStaffRecord(schoolId, authUser.user.id, { ...data, username: finalUsername }, creatorId, finalRole)
+                return {
+                    staff,
+                    credentials: !data.password ? { username: finalUsername!, password: generatedPassword } : undefined
+                }
             })
         )
 
@@ -772,7 +797,14 @@ export const bulkImportStaff = async (
             const { row, data } = batch[idx]
             if (result.status === 'fulfilled') {
                 results.success_count++
-                results.created_staff.push(result.value)
+                results.created_staff.push(result.value.staff)
+                results.created.push({
+                    row,
+                    id: result.value.staff.id,
+                    email: data.email,
+                    username: result.value.credentials?.username || data.username || '',
+                    password: result.value.credentials?.password
+                })
             } else {
                 results.error_count++
                 results.errors.push({

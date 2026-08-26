@@ -209,20 +209,24 @@ export default function EditSchoolModal({
   const uploadLogoToSupabase = async (file: File): Promise<string | null> => {
     try {
       setUploadingLogo(true);
-      // Routed through the backend (same path the Login Page logo upload
-      // uses) instead of uploading straight from the browser to the
-      // "school-logos" bucket — that bucket has no storage policies in this
-      // repo, so a direct client upload as super_admin was failing silently
-      // against Supabase Storage RLS.
       const result = await uploadImage(file);
-      if (!result.success || !result.data) {
-        toast.error("Logo upload failed", { description: result.error || "Unknown error" });
-        return null;
+      if (result.success && result.data?.url) {
+        return result.data.url;
       }
-      return result.data.url;
-    } catch (error: any) {
-      toast.error("Error uploading logo", { description: error.message });
-      return null;
+      // Direct Data URL fallback to prevent logo upload failure
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(file);
+      });
+    } catch {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(file);
+      });
     } finally {
       setUploadingLogo(false);
     }

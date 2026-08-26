@@ -931,7 +931,11 @@ class FeesService {
      * Mirrors the logic of the DB trigger `update_fee_after_payment`, which only fires
      * on INSERT — this keeps balances correct after payment edits/deletes too.
      */
-    private async recomputeFeeBalance(studentFeeId: string, schoolId: string): Promise<void> {
+    // Was `private` — widened so callers that insert fee_payments rows
+    // directly (e.g. the historical-payment phase of school-data-import.service.ts)
+    // can re-derive amount_paid/status/balance through the same single
+    // arithmetic path instead of duplicating it.
+    async recomputeFeeBalance(studentFeeId: string, schoolId: string): Promise<void> {
         const { data: payments, error: paymentsError } = await supabase
             .from('fee_payments')
             .select('amount')

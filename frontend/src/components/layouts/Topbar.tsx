@@ -156,8 +156,10 @@ export function Topbar({ className }: TopbarProps) {
     typeof window !== 'undefined' ? sessionStorage.getItem('impersonatedSchoolId') : null
   const isImpersonating = profile?.role === 'super_admin' && !!impersonatedSchoolId
 
+  const isAr = locale === 'ar'
+
   const getRoleDisplayName = () => {
-    if (isImpersonating) return 'School Admin'
+    if (isImpersonating) return isAr ? 'مدير المدرسة' : 'School Admin'
     if (!profile?.role) return ''
     const roleKey = profile.role as string
     const knownRoles = ['admin', 'teacher', 'superadmin', 'librarian', 'student', 'parent']
@@ -166,7 +168,7 @@ export function Topbar({ className }: TopbarProps) {
   }
 
   const getDisplayName = () => {
-    if (isImpersonating) return 'School Admin'
+    if (isImpersonating) return isAr ? 'مدير المدرسة' : 'School Admin'
     return `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim()
   }
 

@@ -206,7 +206,7 @@ router.get('/check', async (req: AuthRequest, res: Response) => {
 /**
  * POST /api/user-agreements/accept
  * Authenticated user accepts the agreement.
- * For annual-reset agreements, stores the current academic year ID.
+ * Captures ISO timestamp, user IP address, User-Agent, and contract_version for legal audit trail.
  */
 router.post('/accept', async (req: AuthRequest, res: Response) => {
   try {
@@ -216,11 +216,20 @@ router.post('/accept', async (req: AuthRequest, res: Response) => {
       return
     }
 
+    const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress || 'unknown'
+    const userAgent = (req.headers['user-agent'] as string) || 'unknown'
+    const contractVersion = req.body?.contract_version || 'v1.0'
+
     await userAgreementService.acceptAgreement(
       profile.id,
       profile.school_id,
       profile.role,
-      profile.campus_id ?? null
+      profile.campus_id ?? null,
+      {
+        ip_address: ipAddress,
+        user_agent: userAgent,
+        contract_version: contractVersion
+      }
     )
 
     res.json({ success: true, message: 'Agreement accepted' })
@@ -233,7 +242,7 @@ router.post('/accept', async (req: AuthRequest, res: Response) => {
 /**
  * POST /api/user-agreements/reject
  * Authenticated user rejects the agreement.
- * Sets is_active = false and agreement_status = 'rejected'.
+ * Sets is_active = false and agreement_status = 'rejected', and stores audit trail.
  */
 router.post('/reject', async (req: AuthRequest, res: Response) => {
   try {
@@ -243,7 +252,20 @@ router.post('/reject', async (req: AuthRequest, res: Response) => {
       return
     }
 
-    await userAgreementService.rejectAgreement(profileId)
+    const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress || 'unknown'
+    const userAgent = (req.headers['user-agent'] as string) || 'unknown'
+    const contractVersion = req.body?.contract_version || 'v1.0'
+
+    await userAgreementService.rejectAgreement(
+      profileId,
+      req.profile?.school_id,
+      req.profile?.role,
+      {
+        ip_address: ipAddress,
+        user_agent: userAgent,
+        contract_version: contractVersion
+      }
+    )
     res.json({ success: true, message: 'Agreement rejected. Your account has been deactivated.' })
   } catch (error: any) {
     console.error('Agreement reject error:', error)

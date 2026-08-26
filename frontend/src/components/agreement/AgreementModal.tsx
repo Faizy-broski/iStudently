@@ -53,8 +53,8 @@ export function AgreementModal({
   const multiple = agreements.length > 1
 
   const headerTitle = multiple
-    ? `Review Agreements (${agreements.length})`
-    : (agreements[0]?.title || 'School Agreement')
+    ? `Review Agreements (${agreements.length}) / مراجعة الاتفاقيات (${agreements.length})`
+    : (agreements[0]?.title || 'School Agreement / اتفاقية المدرسة')
 
   return (
     <>
@@ -71,8 +71,8 @@ export function AgreementModal({
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{headerTitle}</h2>
               <p className="text-xs text-muted-foreground">
                 {multiple
-                  ? 'Please read all agreements carefully before proceeding'
-                  : 'Please read the agreement before proceeding'}
+                  ? 'Please read all agreements carefully before proceeding / يرجى قراءة جميع الاتفاقيات بعناية قبل المتابعة'
+                  : 'Please read the agreement before proceeding / يرجى قراءة الاتفاقية بعناية قبل المتابعة'}
               </p>
             </div>
           </div>
@@ -84,7 +84,7 @@ export function AgreementModal({
                 <Users className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                    {multiple ? 'These agreements apply' : 'This agreement applies'} to {studentsNeedingAcceptance!.length === 1 ? 'your child' : 'your children'}:
+                    {multiple ? 'These agreements apply' : 'This agreement applies'} to {studentsNeedingAcceptance!.length === 1 ? 'your child' : 'your children'} / تسري هذه الاتفاقية على الأبناء:
                   </p>
                   <ul className="mt-1 space-y-0.5">
                     {studentsNeedingAcceptance!.map(s => (
@@ -94,7 +94,7 @@ export function AgreementModal({
                     ))}
                   </ul>
                   <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                    Accepting will grant {studentsNeedingAcceptance!.length === 1 ? 'them' : 'all of them'} access to the student portal.
+                    Accepting will grant {studentsNeedingAcceptance!.length === 1 ? 'them' : 'all of them'} access to the student portal. / القبول سيمنحهم إمكانية الوصول لبوابة الطالب.
                   </p>
                 </div>
               </div>
@@ -142,14 +142,15 @@ export function AgreementModal({
                 className="mt-0.5"
               />
               <span className="text-sm text-gray-700 dark:text-gray-300">
-                {multiple
-                  ? 'I have read and understand all the agreements above'
-                  : 'I have read and understand the agreement above'}
+                I hereby confirm that I have fully read, understood, and agreed to all the terms and conditions outlined above.
+                <span className="block text-xs text-muted-foreground mt-0.5 dir-rtl text-right">
+                  أؤكد بموجبه أنني قرأت وفهمت ووافقت تماماً على جميع الشروط والأحكام المبينة أعلاه.
+                </span>
               </span>
             </label>
             {showCheckHint && (
               <p className="text-sm text-red-600 dark:text-red-400 -mt-2">
-                Please check the box above to confirm you've read {multiple ? 'the agreements' : 'the agreement'} before continuing.
+                Please check the box above to confirm / يرجى تحديد المربع أعلاه لتأكيد القراءة قبل المتابعة.
               </p>
             )}
 
@@ -162,7 +163,7 @@ export function AgreementModal({
                 className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
               >
                 {rejecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Reject
+                Reject / رفض
               </Button>
               <Button
                 onClick={handleAccept}
@@ -170,47 +171,64 @@ export function AgreementModal({
                 className="bg-green-600 hover:bg-green-700 text-white"
               >
                 {accepting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {hasStudents ? 'Accept for All Children' : 'Accept Agreement'}
+                {hasStudents ? 'Accept for All Children / قبول لجميع الأبناء' : 'Accept Agreement / قبول الاتفاقية'}
               </Button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Reject confirmation dialog */}
+      {/* Reject confirmation dialog (Translated Arabic & English) */}
       <AlertDialog open={showRejectConfirm} onOpenChange={setShowRejectConfirm}>
-        <AlertDialogContent className="z-[10000]">
+        <AlertDialogContent className="z-[10000] max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <X className="h-5 w-5 text-red-500" />
-              Reject Agreement?
+            <AlertDialogTitle className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                <X className="h-5 w-5 text-red-500" />
+                Reject Agreement? / هل ترغب في رفض الاتفاقية؟
+              </span>
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <p>
-                  If you reject {multiple ? 'these agreements' : 'this agreement'}, your account will be{' '}
-                  <strong className="text-foreground">immediately deactivated</strong> and you will be signed out.
-                </p>
-                {hasStudents && (
-                  <p className="text-amber-700 dark:text-amber-400">
-                    Your {studentsNeedingAcceptance!.length === 1 ? 'child' : 'children'} will also lose access to the student portal until you accept.
+              <div className="space-y-3 text-sm text-muted-foreground pt-2">
+                {/* Arabic Translation of Image */}
+                <div className="dir-rtl text-right p-3 bg-red-50 dark:bg-red-950/40 rounded-lg border border-red-200 dark:border-red-800 text-slate-800 dark:text-slate-200 space-y-1">
+                  <p className="font-semibold text-red-700 dark:text-red-300">
+                    إذا قمت برفض هذه الاتفاقية، سيتم <strong className="underline font-bold">إلغاء تفعيل حسابك فوراً</strong> وتسجيل خروجك.
                   </p>
-                )}
-                <p>
-                  To regain access later, visit the reactivation page, enter your email, and accept the agreement on your next login.
-                </p>
+                  <p className="text-xs text-slate-600 dark:text-slate-300">
+                    في حال رغبت في استعادة الوصول لاحقاً، يرجى زيارة صفحة إعادة التفعيل، وإدخال بريدك الإلكتروني، وقبول الاتفاقية عند تسجيل الدخول القادم.
+                  </p>
+                </div>
+
+                {/* English Text */}
+                <div className="dir-ltr text-left space-y-1">
+                  <p>
+                    If you reject {multiple ? 'these agreements' : 'this agreement'}, your account will be{' '}
+                    <strong className="text-foreground font-semibold">immediately deactivated</strong> and you will be signed out.
+                  </p>
+                  {hasStudents && (
+                    <p className="text-amber-700 dark:text-amber-400 font-medium">
+                      Your {studentsNeedingAcceptance!.length === 1 ? 'child' : 'children'} will also lose access to the student portal until you accept.
+                    </p>
+                  )}
+                  <p className="text-xs">
+                    To regain access later, visit the reactivation page, enter your email, and accept the agreement on your next login.
+                  </p>
+                </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={rejecting}>Go Back</AlertDialogCancel>
+          <AlertDialogFooter className="flex-row gap-2 justify-end">
+            <AlertDialogCancel disabled={rejecting} className="mt-0">
+              Go Back / الرجوع
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleRejectConfirmed}
               disabled={rejecting}
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600 text-white"
             >
               {rejecting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Yes, Reject & Deactivate
+              Yes, Reject & Deactivate / نعم، رفض وإلغاء التفعيل
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

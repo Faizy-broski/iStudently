@@ -1062,4 +1062,52 @@ export class StudentService {
 
     return { deleted, errors }
   }
+
+  /**
+   * Bulk activate or deactivate students across selected IDs, grade level, or whole school.
+   */
+  async bulkUpdateStudentStatus(
+    schoolId: string,
+    params: {
+      mode: 'selected' | 'grade' | 'school'
+      is_active: boolean
+      student_ids?: string[]
+      grade_level_id?: string
+      section_id?: string
+    }
+  ): Promise<{ updated: number }> {
+    let studentQuery = supabase
+      .from('students')
+      .select('profile_id')
+      .eq('school_id', schoolId)
+
+    if (params.mode === 'selected' && params.student_ids && params.student_ids.length > 0) {
+      studentQuery = studentQuery.in('id', params.student_ids)
+    } else if (params.mode === 'grade' && params.grade_level_id) {
+      studentQuery = studentQuery.eq('grade_level_id', params.grade_level_id)
+      if (params.section_id) {
+        studentQuery = studentQuery.eq('section_id', params.section_id)
+      }
+    } else if (params.mode === 'school') {
+      // Whole school
+    } else {
+      throw new Error('Invalid bulk status mode or parameters')
+    }
+
+    const { data: studentRows, error: fetchErr } = await studentQuery
+    if (fetchErr) throw new Error(`Failed to resolve students for status update: ${fetchErr.message}`)
+
+    const profileIds = (studentRows || []).map((s: any) => s.profile_id).filter(Boolean)
+    if (profileIds.length === 0) return { updated: 0 }
+
+    // Batch update profiles.is_active
+    const { error: updateErr } = await supabase
+      .from('profiles')
+      .update({ is_active: params.is_active })
+      .in('id', profileIds)
+
+    if (updateErr) throw new Error(`Failed to update student active status: ${updateErr.message}`)
+
+    return { updated: profileIds.length }
+  }
 }

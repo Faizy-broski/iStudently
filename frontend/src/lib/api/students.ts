@@ -434,3 +434,28 @@ export async function bulkDeleteStudents(params: {
     })
   })
 }
+
+// BULK STATUS (Activate / Deactivate)
+export interface BulkStatusParams {
+  mode: 'selected' | 'grade' | 'school'
+  is_active: boolean
+  studentIds?: string[]
+  gradeLevelId?: string
+  sectionId?: string
+  campusId?: string
+}
+
+export async function bulkUpdateStudentStatus(params: BulkStatusParams) {
+  const qs = params.campusId ? `?campus_id=${encodeURIComponent(params.campusId)}` : ''
+  return apiRequest<{ updated: number }>(`/students/bulk-status${qs}`, {
+    method: 'POST',
+    body: JSON.stringify({
+      mode: params.mode,
+      is_active: params.is_active,
+      student_ids: params.studentIds,
+      grade_level_id: params.gradeLevelId,
+      section_id: params.sectionId,
+      campus_id: params.campusId
+    })
+  })
+}

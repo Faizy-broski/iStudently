@@ -86,6 +86,7 @@ export class DiaryReminderService {
     }
     default_payment_method?: string
     default_currency?: string
+    preferred_date_format?: string
     hijri_offset?: number
     auto_attendance_enabled?: boolean
     auto_attendance_hour?: string
@@ -95,6 +96,8 @@ export class DiaryReminderService {
     assignment_max_points?: number | null
     active_plugins?: Record<string, boolean>
     social_login_config?: Record<string, unknown> | null
+    enable_payment_reminder?: boolean
+    auto_dismiss_seconds?: number
   }, campusId?: string | null) {
     const VALID_PAYMENT_METHODS = ['cash', 'online', 'bank_deposit', 'cheque']
     const now = new Date().toISOString()
@@ -113,6 +116,9 @@ export class DiaryReminderService {
     if (settings.default_currency !== undefined) {
       updates.default_currency = settings.default_currency.toUpperCase().slice(0, 10)
     }
+    if (settings.preferred_date_format !== undefined) {
+      updates.preferred_date_format = settings.preferred_date_format
+    }
     if (settings.hijri_offset !== undefined) {
       const offset = Math.round(Number(settings.hijri_offset))
       updates.hijri_offset = isNaN(offset) ? 0 : Math.max(-30, Math.min(30, offset))
@@ -128,6 +134,8 @@ export class DiaryReminderService {
       updates.active_plugins = settings.active_plugins
     }
     if (settings.social_login_config !== undefined) updates.social_login_config = settings.social_login_config
+    if (settings.enable_payment_reminder !== undefined) updates.enable_payment_reminder = settings.enable_payment_reminder
+    if (settings.auto_dismiss_seconds !== undefined) updates.auto_dismiss_seconds = Math.max(1, Math.min(60, Number(settings.auto_dismiss_seconds)))
 
     // Check if a row already exists for this school + campus combination
     const existingQuery = supabase

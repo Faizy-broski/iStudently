@@ -26,6 +26,7 @@ import { PermissionsProvider, usePermissions } from '@/context/PermissionsContex
 import { MessagingNotificationProvider } from '@/context/MessagingNotificationContext'
 import { GrievanceNotificationProvider } from '@/context/GrievanceNotificationContext'
 import { PushNotificationPrompt } from '@/components/notifications/PushNotificationPrompt'
+import { PaymentReminderToast } from '@/components/notifications/PaymentReminderToast'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -338,6 +339,9 @@ function DashboardContent({ children, className, role: overrideRole }: Dashboard
 
       {/* Web push permission prompt — fixed overlay, persists across all pages (hidden for super admin) */}
       {effectiveRole !== 'super_admin' && <PushNotificationPrompt />}
+
+      {/* Conditional Overdue Payment Reminder Toast — auto-dismissing non-modal toast */}
+      <PaymentReminderToast />
     </div>
   )
 }

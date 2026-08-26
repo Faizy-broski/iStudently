@@ -83,6 +83,10 @@ export function SidebarThemeProvider({
     setConfigState(cfg)
     if (profile) {
       writeCache(configCacheKey(profile.id, selectedCampus?.id ?? null), cfg)
+      // Campus-agnostic "last known good" entry for this exact account — lets
+      // the useLayoutEffect below show a real (if possibly stale) color on
+      // cold start instead of the default gradient, before campus resolves.
+      if (cfg) writeCache(`sidebar_config:${profile.id}:last`, cfg)
     }
   }, [profile?.id, selectedCampus?.id])
 
@@ -114,35 +118,34 @@ export function SidebarThemeProvider({
         return
       }
 
-      // For all other roles: try campus config first (if custom), fall back to main school theme
+      // For all other roles: campus config wins if it has a custom theme,
+      // else the main school-wide theme, else personal fallback. The campus
+      // and school lookups don't depend on each other's result (schoolId is
+      // already known from `profile`/`selectedCampus`), so fire them together
+      // instead of awaiting one before starting the next.
       const campusId = selectedCampus?.id ?? profile.campus_id ?? null
-      if (campusId) {
-        const campusResult = await getCampusSidebarConfig(campusId)
-        if (
-          campusResult.success && 
-          campusResult.data && 
-          (campusResult.data.bg_color || campusResult.data.bg_image_url)
-        ) {
-          setConfig(campusResult.data)
-          return
-        }
-      }
-
-      // No custom campus config — fall back to the main school-wide config directly.
       const schoolId = profile.school_id ?? selectedCampus?.school_id ?? null
-      if (schoolId) {
-        const result = await getSchoolSidebarConfig(schoolId)
-        if (
-          result.success && 
-          result.data && 
-          (result.data.bg_color || result.data.bg_image_url)
-        ) {
-          setConfig(result.data)
-          return
-        }
-      }
 
-      // Fall back to getMySidebarConfig()
+      const [campusResult, schoolResult] = await Promise.allSettled([
+        campusId ? getCampusSidebarConfig(campusId) : Promise.resolve(null),
+        schoolId ? getSchoolSidebarConfig(schoolId) : Promise.resolve(null),
+      ])
+
+      const campusData =
+        campusResult.status === 'fulfilled' && campusResult.value?.success && campusResult.value.data &&
+        (campusResult.value.data.bg_color || campusResult.value.data.bg_image_url)
+          ? campusResult.value.data
+          : null
+      if (campusData) { setConfig(campusData); return }
+
+      const schoolData =
+        schoolResult.status === 'fulfilled' && schoolResult.value?.success && schoolResult.value.data &&
+        (schoolResult.value.data.bg_color || schoolResult.value.data.bg_image_url)
+          ? schoolResult.value.data
+          : null
+      if (schoolData) { setConfig(schoolData); return }
+
+      // Neither campus nor school has a custom theme — fall back to getMySidebarConfig()
       const result = await getMySidebarConfig()
       if (result.success) setConfig(result.data ?? null)
     } catch {
@@ -157,19 +160,28 @@ export function SidebarThemeProvider({
   useLayoutEffect(() => {
     if (!profile?.id) return
     const campusId = selectedCampus?.id ?? null
+    // Exact per-campus match first; if that's not cached yet (e.g. campus
+    // hasn't resolved on cold start), fall back to this account's last-known
+    // color rather than nulling out to the default gradient. Both lookups are
+    // keyed strictly off the live profile.id (never off the LAST_USER/
+    // LAST_CAMPUS pointers used by readCachedConfigSync), so a genuine
+    // account switch still correctly falls through to null below — no
+    // cross-account theme leak.
     const cached = readCache(configCacheKey(profile.id, campusId))
-    // Always overwrite, even with null — the initial synchronous state may hold
-    // a stale theme cached under a *different* account's LAST_USER/LAST_CAMPUS
-    // pointers (e.g. first time this account is opened on this browser), and
-    // leaving it in place would leak that other account's sidebar theme until
-    // the async fetchConfig() call resolves.
+      ?? readCache(`sidebar_config:${profile.id}:last`)
     setConfigState(cached)
   }, [profile?.id, selectedCampus?.id])
 
   useEffect(() => {
     if (authLoading || !profile) return
+    // Wait for CampusContext to finish resolving selectedCampus before firing
+    // the fetch, so it runs once with the final campusId instead of once with
+    // null and again after campus resolves (which produced a second visible
+    // color swap). Superadmin's own theme never depends on campus, so don't
+    // make that role wait unnecessarily.
+    if (campusCtx?.loading && profile.role !== 'super_admin') return
     fetchConfig()
-  }, [authLoading, profile, fetchConfig])
+  }, [authLoading, profile, campusCtx?.loading, fetchConfig])
 
   const refresh = useCallback(async () => {
     await fetchConfig()

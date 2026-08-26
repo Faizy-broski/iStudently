@@ -19,6 +19,14 @@ router.get('/', (req, res) =>
 )
 
 /**
+ * GET /api/school-settings/payment-reminder-status
+ * Get payment reminder check status for logged-in user
+ */
+router.get('/payment-reminder-status', (req, res) =>
+  controller.getPaymentReminderStatus(req, res)
+)
+
+/**
  * PUT /api/school-settings
  * Update school settings (diary reminder config, etc.)
  * Admin only

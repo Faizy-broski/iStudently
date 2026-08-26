@@ -224,8 +224,8 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
 
   const adminName = profile
     ? profile.role === 'super_admin' && impersonatedSchoolId
-      ? 'School Admin'
-      : `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || (profile.role === 'super_admin' ? 'Master Owner' : '')
+      ? (isAr ? 'مدير المدرسة' : 'School Admin')
+      : `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || (profile.role === 'super_admin' ? (isAr ? 'المالك الرئيسي' : 'Master Owner') : '')
     : ''
 
   const displayName = selectedCampus?.name || impersonatedSchoolName || profile?.school?.name || 'No Campus'
@@ -271,7 +271,7 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
               size={40}
               className="ring-2 ring-white/20 shadow-md"
               fallback={
-                <span className="text-[#022172] font-bold text-xs">{initials}</span>
+                <span className="text-[#003dd6] font-bold text-xs">{initials}</span>
               }
             />
           )}
@@ -296,15 +296,15 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
             size={90}
             className="ring-2 ring-white/30 shadow-lg"
             fallback={
-              <span className="text-[#022172] font-bold text-2xl tracking-wider">{initials}</span>
+              <span className="text-[#003dd6] font-bold text-2xl tracking-wider">{initials}</span>
             }
           />
         )}
       </div>
 
-      {/* Admin name */}
-      <p className="text-white font-semibold text-sm leading-tight truncate w-full">{adminName}</p>
-      <p className="text-white/50 text-xs mt-0.5 truncate w-full">{displayName}</p>
+      {/* Admin name & School name */}
+      <p className="text-white/80 text-xs font-medium tracking-wide truncate w-full">{adminName}</p>
+      <p className="text-white font-bold text-lg sm:text-xl leading-snug truncate w-full mt-1">{displayName}</p>
 
       {/* Date / time */}
       <div className="mt-3 w-full bg-white/10 rounded-lg px-3 py-2.5 space-y-1.5 text-center rtl:text-center">
@@ -1050,7 +1050,7 @@ function SidebarItem({
           <Icon
             className={cn(
               'h-5 w-5 shrink-0 transition-colors z-20 relative',
-              isActive || hasActiveSubItem ? 'text-[#022172]' : 'text-white/80 group-hover:text-white'
+              isActive || hasActiveSubItem ? 'text-[#003dd6]' : 'text-white/80 group-hover:text-white'
             )}
           />
           <span className="text-sm truncate z-20 relative font-medium flex-1">
@@ -1059,7 +1059,7 @@ function SidebarItem({
           <ChevronDown
             className={cn(
               'h-4 w-4 shrink-0 transition-transform z-20 relative',
-              isActive || hasActiveSubItem ? 'text-[#022172]' : 'text-white/80',
+              isActive || hasActiveSubItem ? 'text-[#003dd6]' : 'text-white/80',
               isExpanded ? 'rotate-180' : ''
             )}
           />
@@ -1129,7 +1129,7 @@ function SidebarItem({
       <Icon
         className={cn(
           'h-5 w-5 shrink-0 transition-colors z-20 relative',
-          isActive ? 'text-[#022172]' : 'text-white/80 group-hover:text-white'
+          isActive ? 'text-[#003dd6]' : 'text-white/80 group-hover:text-white'
         )}
       />
 
@@ -1193,7 +1193,7 @@ function DesktopSidebar({ menuItems, className }: AppSidebarProps) {
   className={cn(
     "absolute z-50 flex items-center justify-center h-6 w-6 rounded-full",
     "bg-white dark:bg-[#1e2a3a] shadow-md",
-    "text-[#022172] dark:text-white",
+    "text-[#003dd6] dark:text-white",
     "border border-gray-200 dark:border-white/30",
     "hover:bg-gray-100 dark:hover:bg-white/20",
     "transition-all duration-300",

@@ -267,6 +267,8 @@ export interface SocialLoginConfig {
   microsoft_client_secret?: string | null
 }
 
+export { DATE_FORMAT_OPTIONS, type DateFormatOption } from '@/lib/utils/dateFormat'
+
 export interface SchoolSettings {
   id: string
   school_id: string
@@ -277,6 +279,7 @@ export interface SchoolSettings {
   hostel?: HostelSettings
   default_payment_method?: PaymentMethodOption
   default_currency?: string
+  preferred_date_format?: string
   hijri_offset?: number
   // Automatic Attendance
   auto_attendance_enabled: boolean
@@ -289,6 +292,9 @@ export interface SchoolSettings {
   student_list_append_config?: StudentListAppendConfig | null
   // Assignment Max Points (mirrors RosarioSIS plugin) — null = disabled
   assignment_max_points?: number | null
+  // Overdue Payment Reminder Toast
+  enable_payment_reminder?: boolean
+  auto_dismiss_seconds?: number
   active_plugins: Record<string, boolean>
   // Social Login
   social_login_config?: SocialLoginConfig | null
@@ -309,6 +315,7 @@ export interface UpdateSchoolSettings {
   hostel?: HostelSettings
   default_payment_method?: PaymentMethodOption
   default_currency?: string
+  preferred_date_format?: string
   hijri_offset?: number
   // Automatic Attendance
   auto_attendance_enabled?: boolean
@@ -320,6 +327,9 @@ export interface UpdateSchoolSettings {
   student_list_append_config?: StudentListAppendConfig | null
   // Assignment Max Points (mirrors RosarioSIS plugin) — null = disabled
   assignment_max_points?: number | null
+  // Overdue Payment Reminder Toast
+  enable_payment_reminder?: boolean
+  auto_dismiss_seconds?: number
   // Plugin activation
   active_plugins?: Record<string, boolean>
   // Social Login
@@ -328,6 +338,20 @@ export interface UpdateSchoolSettings {
   custom_menu_order?: Record<string, string[]> | null
   // Setup Assistant
   setup_assistant_config?: Record<string, boolean> | null
+}
+
+export interface PaymentReminderStatus {
+  enable_payment_reminder: boolean
+  auto_dismiss_seconds: number
+  has_overdue_balance: boolean
+  balance: number
+  currency: string
+  student_name?: string
+}
+
+export async function getPaymentReminderStatus(campusId?: string | null) {
+  const qs = campusId ? `?campus_id=${encodeURIComponent(campusId)}` : ''
+  return apiRequest<PaymentReminderStatus>(`/school-settings/payment-reminder-status${qs}`)
 }
 
 // ─── SMTP Settings ────────────────────────────────────────────────────────────

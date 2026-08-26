@@ -208,6 +208,11 @@ export const createTeacher = async (dto: CreateStaffDTO): Promise<ApiResponse<St
     let profileId = dto.profile_id
     let finalPassword: string
     let finalUsername: string
+    // Only populated when we generated the password ourselves (never echoes
+    // back an admin-supplied password) — surfaced on the response so bulk
+    // import result tables can show credentials the same way createStudent
+    // already does.
+    let newAccountCredentials: { username: string; password: string } | undefined
 
     // If no profile_id provided, create a new user
     if (!profileId && dto.first_name && dto.last_name) {
@@ -241,6 +246,10 @@ export const createTeacher = async (dto: CreateStaffDTO): Promise<ApiResponse<St
 
       // Use provided password, or the one generated alongside the username, or generate one
       finalPassword = dto.password || generatedPassword || generateSecurePassword()
+
+      if (!dto.password) {
+        newAccountCredentials = { username: finalUsername, password: finalPassword }
+      }
 
       const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
         email: emailForAuth,
@@ -345,7 +354,7 @@ export const createTeacher = async (dto: CreateStaffDTO): Promise<ApiResponse<St
 
     return {
       success: true,
-      data: redactProfileEmail(data) as Staff,
+      data: { ...(redactProfileEmail(data) as Staff), credentials: newAccountCredentials },
       message: 'Teacher created successfully'
     }
   } catch (error: any) {
@@ -951,6 +960,11 @@ export interface BulkImportTeachersResult {
   success_count: number
   error_count: number
   errors: Array<{ row: number; email?: string; error: string }>
+  // Populated alongside success_count so callers (e.g. the consolidated
+  // school-data-import job) can tag created rows with an import_job_id and
+  // show a username/password table exactly like student bulk import already
+  // does — previously this was discarded entirely.
+  created: Array<{ row: number; id: string; email?: string; username?: string; password?: string }>
 }
 
 const VALID_EMPLOYMENT_TYPES_TEACHER = ['full_time', 'part_time', 'contract'] as const
@@ -969,7 +983,8 @@ export const bulkImportTeachers = async (
   const results: BulkImportTeachersResult = {
     success_count: 0,
     error_count: 0,
-    errors: []
+    errors: [],
+    created: []
   }
 
   const seenEmails = new Set<string>()
@@ -1080,6 +1095,13 @@ export const bulkImportTeachers = async (
       if (result.status === 'fulfilled') {
         if (result.value.success) {
           results.success_count++
+          results.created.push({
+            row,
+            id: (result.value.data as any)?.id,
+            email: data.email,
+            username: result.value.data?.credentials?.username,
+            password: result.value.data?.credentials?.password
+          })
         } else {
           results.error_count++
           results.errors.push({ row, email: data.email, error: result.value.error || 'Failed to create teacher' })

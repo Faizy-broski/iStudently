@@ -203,9 +203,16 @@ const ALLOWED_IMAGE_TYPES: Record<string, string> = {
   'image/png': 'png',
   'image/webp': 'webp',
   'image/gif': 'gif',
+  'image/svg+xml': 'svg',
+  'image/svg': 'svg',
+  'image/x-icon': 'ico',
+  'image/vnd.microsoft.icon': 'ico',
+  'image/bmp': 'bmp',
+  'image/tiff': 'tiff',
+  'image/avif': 'avif',
 }
 
-const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024 // 10 MB
+const MAX_IMAGE_SIZE_BYTES = 25 * 1024 * 1024 // 25 MB
 
 /**
  * POST /api/media/upload-image
@@ -238,15 +245,16 @@ export const uploadImageAsset = async (
     }
 
     if (file.size > MAX_IMAGE_SIZE_BYTES) {
-      res.status(413).json({ success: false, error: 'File too large (max 10 MB)' })
+      res.status(413).json({ success: false, error: 'File too large (max 25 MB)' })
       return
     }
 
-    const mimeBase = file.mimetype.split(';')[0].trim().toLowerCase()
-    const ext = ALLOWED_IMAGE_TYPES[mimeBase]
+    const mimeBase = (file.mimetype || 'image/png').split(';')[0].trim().toLowerCase()
+    let ext = ALLOWED_IMAGE_TYPES[mimeBase]
     if (!ext) {
-      res.status(415).json({ success: false, error: `Unsupported image type: ${file.mimetype}. Use JPG, PNG, WebP, or GIF.` })
-      return
+      // Fallback extension from original filename or default to png
+      const origExt = file.originalname ? file.originalname.split('.').pop()?.toLowerCase() : ''
+      ext = origExt && origExt.length <= 4 ? origExt : 'png'
     }
 
     const fileName = `${adminSchoolId}/public-pages/${randomUUID()}.${ext}`

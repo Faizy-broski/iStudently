@@ -4,6 +4,7 @@ import path from "path";
 import { config } from "./config/env";
 import { cronService } from "./services/cron.service";
 import { reconcileOrphanedJobs } from "./services/timetable-generation.service";
+import { reconcileOrphanedImportJobs } from "./services/school-data-import.service";
 import schoolRoutes from "./routes/school.routes";
 import dashboardRoutes from "./routes/dashboard.routes";
 import loginPageConfigRoutes from "./routes/login-page-config.routes";
@@ -98,6 +99,7 @@ import trainingRoutes, { trainingPublicRouter } from "./routes/training.routes";
 import messagingRoutes from "./routes/messaging.routes";
 import grievanceRoutes from "./routes/grievance.routes";
 import pushNotificationsRoutes from "./routes/push-notifications.routes";
+import schoolDataImportRoutes from "./routes/school-data-import.routes";
 
 const app = express();
 
@@ -324,6 +326,7 @@ registerRoutes("/grievances", grievanceRoutes);
 registerRoutes("/push", pushNotificationsRoutes);
 registerRoutes("/attendance-calendars", attendanceCalendarsRoutes);
 registerRoutes("/advanced-report", advancedReportRoutes);
+registerRoutes("/school-data-import", schoolDataImportRoutes);
 
 // Grades module routes
 registerRoutes("/grading-scales", gradingScalesRoutes);
@@ -410,6 +413,12 @@ app.listen(PORT, () => {
   // Fire-and-forget, non-blocking.
   reconcileOrphanedJobs().catch((err) =>
     console.error("Error reconciling orphaned timetable generation jobs:", err)
+  );
+
+  // Same crash-safety pattern for school-data-import jobs — see
+  // reconcileOrphanedImportJobs' doc comment.
+  reconcileOrphanedImportJobs().catch((err) =>
+    console.error("Error reconciling orphaned school-data-import jobs:", err)
   );
 
   console.log("=================================\n");

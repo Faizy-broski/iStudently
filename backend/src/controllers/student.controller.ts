@@ -582,4 +582,46 @@ export class StudentController {
       res.status(500).json({ success: false, error: error.message || 'Bulk delete failed' })
     }
   }
+
+  /**
+   * Bulk activate or deactivate students across selected IDs, grade level, or whole school
+   * POST /api/students/bulk-status
+   * Requires: admin role
+   * Body: { mode: 'selected' | 'grade' | 'school', is_active: boolean, student_ids?: string[], grade_level_id?: string, section_id?: string, campus_id?: string }
+   */
+  async bulkUpdateStudentStatus(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const adminSchoolId = req.profile?.school_id
+
+      if (!adminSchoolId) {
+        res.status(403).json({ success: false, error: 'No school associated with your account' })
+        return
+      }
+
+      const { mode, is_active, student_ids, grade_level_id, section_id, campus_id } = req.body
+
+      if (is_active === undefined || !mode) {
+        res.status(400).json({ success: false, error: 'mode and is_active parameters are required' })
+        return
+      }
+
+      const effectiveSchoolId = await getEffectiveSchoolId(adminSchoolId, campus_id)
+      const result = await studentService.bulkUpdateStudentStatus(effectiveSchoolId, {
+        mode,
+        is_active: Boolean(is_active),
+        student_ids,
+        grade_level_id,
+        section_id
+      })
+
+      res.json({
+        success: true,
+        data: result,
+        message: `${result.updated} student(s) ${is_active ? 'activated' : 'deactivated'} successfully`
+      })
+    } catch (error: any) {
+      console.error('Bulk update student status error:', error)
+      res.status(500).json({ success: false, error: error.message || 'Bulk update status failed' })
+    }
+  }
 }

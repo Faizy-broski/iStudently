@@ -46,13 +46,26 @@ export class TrainingService {
         school_id: schoolId,
         title: dto.title,
         description: dto.description ?? null,
+        category: dto.category ?? null,
+        skill_level: dto.skill_level ?? 'beginner',
         start_date: dto.start_date,
         end_date: dto.end_date,
+        weekly_days: dto.weekly_days ?? null,
+        daily_time_range: dto.daily_time_range ?? null,
+        total_duration_hours: dto.total_duration_hours ?? null,
+        delivery_mode: dto.delivery_mode ?? 'in_person',
+        location_venue_link: dto.location_venue_link ?? null,
+        instructor_id: dto.instructor_id ?? null,
+        instructor_name: dto.instructor_name ?? null,
         total_seats: dto.total_seats,
         course_fee: dto.course_fee ?? 0,
+        registration_deadline: dto.registration_deadline ?? null,
         holding_timeout_hours: dto.holding_timeout_hours ?? 24,
         status: dto.status ?? 'open',
         target_audience: dto.target_audience ?? 'both',
+        cover_image_url: dto.cover_image_url ?? null,
+        syllabus_pdf_url: dto.syllabus_pdf_url ?? null,
+        certificate_settings: dto.certificate_settings ?? null,
       })
       .select()
       .single()
@@ -109,6 +122,30 @@ export class TrainingService {
   ): Promise<TrainingSession> {
     const ids = parentSchoolId ? [schoolId, parentSchoolId] : [schoolId]
 
+    const updatePayload: Record<string, any> = {}
+    if (dto.title !== undefined) updatePayload.title = dto.title
+    if (dto.description !== undefined) updatePayload.description = dto.description
+    if (dto.category !== undefined) updatePayload.category = dto.category
+    if (dto.skill_level !== undefined) updatePayload.skill_level = dto.skill_level
+    if (dto.start_date !== undefined) updatePayload.start_date = dto.start_date
+    if (dto.end_date !== undefined) updatePayload.end_date = dto.end_date
+    if (dto.weekly_days !== undefined) updatePayload.weekly_days = dto.weekly_days
+    if (dto.daily_time_range !== undefined) updatePayload.daily_time_range = dto.daily_time_range
+    if (dto.total_duration_hours !== undefined) updatePayload.total_duration_hours = dto.total_duration_hours
+    if (dto.delivery_mode !== undefined) updatePayload.delivery_mode = dto.delivery_mode
+    if (dto.location_venue_link !== undefined) updatePayload.location_venue_link = dto.location_venue_link
+    if (dto.instructor_id !== undefined) updatePayload.instructor_id = dto.instructor_id
+    if (dto.instructor_name !== undefined) updatePayload.instructor_name = dto.instructor_name
+    if (dto.total_seats !== undefined) updatePayload.total_seats = dto.total_seats
+    if (dto.course_fee !== undefined) updatePayload.course_fee = dto.course_fee
+    if (dto.registration_deadline !== undefined) updatePayload.registration_deadline = dto.registration_deadline
+    if (dto.holding_timeout_hours !== undefined) updatePayload.holding_timeout_hours = dto.holding_timeout_hours
+    if (dto.status !== undefined) updatePayload.status = dto.status
+    if (dto.target_audience !== undefined) updatePayload.target_audience = dto.target_audience
+    if (dto.cover_image_url !== undefined) updatePayload.cover_image_url = dto.cover_image_url
+    if (dto.syllabus_pdf_url !== undefined) updatePayload.syllabus_pdf_url = dto.syllabus_pdf_url
+    if (dto.certificate_settings !== undefined) updatePayload.certificate_settings = dto.certificate_settings
+
     // Validate seat reduction doesn't undercut current registrations
     if (dto.total_seats !== undefined) {
       const { data: current } = await supabase
@@ -125,9 +162,11 @@ export class TrainingService {
       }
     }
 
+    updatePayload.updated_at = new Date().toISOString()
+
     const { data, error } = await supabase
       .from('training_sessions')
-      .update({ ...dto, updated_at: new Date().toISOString() })
+      .update(updatePayload)
       .eq('id', sessionId)
       .in('school_id', ids)
       .select()

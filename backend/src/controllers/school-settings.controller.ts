@@ -40,25 +40,35 @@ export class SchoolSettingsController {
 
       const settings = await this.reminderService.getSettings(schoolId, campusId || null)
 
+      const formattedSettings = settings ? {
+        ...settings,
+        enable_payment_reminder: settings.enable_payment_reminder ?? true,
+        auto_dismiss_seconds: settings.auto_dismiss_seconds ?? 5,
+        preferred_date_format: settings.preferred_date_format || 'MMMM d yyyy',
+      } : {
+        school_id: schoolId,
+        campus_id: campusId || null,
+        diary_reminder_enabled: false,
+        diary_reminder_time: '07:00',
+        diary_reminder_days: [1, 2, 3, 4, 5],
+        auto_remove_inactive: false,
+        default_payment_method: 'cash',
+        preferred_date_format: 'MMMM d yyyy',
+        auto_attendance_enabled: true,
+        auto_attendance_hour: '18:00',
+        auto_attendance_days: [1, 2, 3, 4, 5],
+        absent_on_first_absence: false,
+        student_list_append_config: null,
+        assignment_max_points: null,
+        hijri_offset: 0,
+        allowed_modules: null,
+        enable_payment_reminder: true,
+        auto_dismiss_seconds: 5,
+      }
+
       res.json({
         success: true,
-        data: settings || {
-          school_id: schoolId,
-          campus_id: campusId || null,
-          diary_reminder_enabled: false,
-          diary_reminder_time: '07:00',
-          diary_reminder_days: [1, 2, 3, 4, 5],
-          auto_remove_inactive: false,
-          default_payment_method: 'cash',
-          auto_attendance_enabled: true,
-          auto_attendance_hour: '18:00',
-          auto_attendance_days: [1, 2, 3, 4, 5],
-          absent_on_first_absence: false,
-          student_list_append_config: null,
-          assignment_max_points: null,
-          hijri_offset: 0,
-          allowed_modules: null,
-        },
+        data: formattedSettings,
       })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
@@ -142,6 +152,8 @@ export class SchoolSettingsController {
         assignment_max_points,
         active_plugins,
         social_login_config,
+        enable_payment_reminder,
+        auto_dismiss_seconds,
         campus_id: bodyCampusId,
       } = req.body
 
@@ -183,6 +195,14 @@ export class SchoolSettingsController {
         }
       }
 
+      if (auto_dismiss_seconds !== undefined) {
+        const secs = Number(auto_dismiss_seconds)
+        if (isNaN(secs) || secs < 1 || secs > 60) {
+          res.status(400).json({ success: false, error: 'auto_dismiss_seconds must be a number between 1 and 60' })
+          return
+        }
+      }
+
       const settings = await this.reminderService.updateSettings(schoolId, {
         diary_reminder_enabled,
         diary_reminder_time,
@@ -201,9 +221,153 @@ export class SchoolSettingsController {
         assignment_max_points: assignment_max_points != null ? Number(assignment_max_points) : null,
         active_plugins,
         social_login_config,
+        enable_payment_reminder,
+        auto_dismiss_seconds: auto_dismiss_seconds !== undefined ? Number(auto_dismiss_seconds) : undefined,
       }, campusId)
 
       res.json({ success: true, data: settings })
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message })
+    }
+  }
+
+  /**
+   * GET /api/school-settings/payment-reminder-status
+   * Check if current logged-in user has an overdue payment reminder to display
+   */
+  async getPaymentReminderStatus(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const schoolId = req.profile?.school_id
+      if (!schoolId) {
+        res.json({
+          success: true,
+          data: {
+            enable_payment_reminder: false,
+            auto_dismiss_seconds: 5,
+            has_overdue_balance: false,
+            balance: 0,
+            currency: 'LYD'
+          }
+        })
+        return
+      }
+
+      const campusId = req.query.campus_id as string | undefined
+      const settings = await this.reminderService.getSettings(schoolId, campusId || null)
+
+      const enableReminder = settings?.enable_payment_reminder ?? true
+      const autoDismissSeconds = settings?.auto_dismiss_seconds ?? 5
+      const currency = settings?.default_currency || 'LYD'
+
+      if (!enableReminder) {
+        res.json({
+          success: true,
+          data: {
+            enable_payment_reminder: false,
+            auto_dismiss_seconds: autoDismissSeconds,
+            has_overdue_balance: false,
+            balance: 0,
+            currency
+          }
+        })
+        return
+      }
+
+      const role = (req.profile?.role || '').toLowerCase()
+      const profileId = req.profile?.id
+
+      let hasOverdueBalance = false
+      let totalBalance = 0
+      let studentName = ''
+
+      const today = new Date().toISOString().split('T')[0]
+
+      if (role === 'parent' && profileId) {
+        const { data: parent } = await supabase
+          .from('parents')
+          .select('id')
+          .eq('profile_id', profileId)
+          .maybeSingle()
+
+        if (parent?.id) {
+          const { data: children } = await supabase
+            .from('parent_student_links')
+            .select(`
+              student:students!inner(
+                id,
+                profile:profiles!students_profile_id_fkey(first_name, last_name)
+              )
+            `)
+            .eq('parent_id', parent.id)
+
+          if (children && children.length > 0) {
+            const studentIds = children.map((c: any) => c.student.id)
+            const { data: fees } = await supabase
+              .from('student_fees')
+              .select('final_amount, amount_paid, balance, due_date, status')
+              .in('student_id', studentIds)
+              .in('status', ['pending', 'partial', 'overdue'])
+
+            if (fees && fees.length > 0) {
+              const overdueFees = fees.filter(f => f.status === 'overdue' || (f.due_date && f.due_date < today))
+              if (overdueFees.length > 0) {
+                hasOverdueBalance = true
+                totalBalance = fees.reduce((sum, f) => {
+                  const b = parseFloat(f.balance)
+                  if (!isNaN(b) && b > 0) return sum + b
+                  const rem = (parseFloat(f.final_amount) || 0) - (parseFloat(f.amount_paid) || 0)
+                  return sum + Math.max(0, rem)
+                }, 0)
+                const firstChild = (children[0] as any)?.student?.profile
+                if (firstChild) {
+                  studentName = `${firstChild.first_name || ''} ${firstChild.last_name || ''}`.trim()
+                }
+              }
+            }
+          }
+        }
+      } else if (role === 'student' && profileId) {
+        const { data: student } = await supabase
+          .from('students')
+          .select('id')
+          .eq('profile_id', profileId)
+          .maybeSingle()
+
+        const studentId = student?.id || (req.profile as any)?.student_id
+
+        if (studentId) {
+          const { data: fees } = await supabase
+            .from('student_fees')
+            .select('final_amount, amount_paid, balance, due_date, status')
+            .eq('student_id', studentId)
+            .in('status', ['pending', 'partial', 'overdue'])
+
+          if (fees && fees.length > 0) {
+            const overdueFees = fees.filter(f => f.status === 'overdue' || (f.due_date && f.due_date < today))
+            if (overdueFees.length > 0) {
+              hasOverdueBalance = true
+              totalBalance = fees.reduce((sum, f) => {
+                const b = parseFloat(f.balance)
+                if (!isNaN(b) && b > 0) return sum + b
+                const rem = (parseFloat(f.final_amount) || 0) - (parseFloat(f.amount_paid) || 0)
+                return sum + Math.max(0, rem)
+              }, 0)
+            }
+          }
+        }
+      }
+
+      res.json({
+        success: true,
+        data: {
+          enable_payment_reminder: enableReminder,
+          auto_dismiss_seconds: autoDismissSeconds,
+          has_overdue_balance: hasOverdueBalance,
+          balance: totalBalance,
+          currency,
+          student_name: studentName
+        }
+      })
     } catch (error: any) {
       res.status(500).json({ success: false, error: error.message })
     }

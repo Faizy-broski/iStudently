@@ -7,13 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Settings, Save, AlertTriangle, Clock, DollarSign, Palette, Loader2, Camera, KeyRound, MailX } from "lucide-react";
+import { Settings, Save, AlertTriangle, Clock, DollarSign, Palette, Loader2, Camera, KeyRound, MailX, Calendar } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { UserQRCode } from "@/components/shared/UserQRCode";
 import { ProfilePhoto } from "@/components/shared/ProfilePhoto";
 import { usePlatformSettings } from "@/hooks/usePlatformSettings";
 import { CURRENCY_OPTIONS } from "@/lib/api/school-settings";
+import { DATE_FORMAT_OPTIONS, getPreferredDateFormat, setPreferredDateFormat, formatDateWithPreference } from "@/lib/utils/dateFormat";
 import { messagingApi } from "@/lib/api/messaging";
 import { updateProfile as updateOwnProfile, changePassword as changeOwnPassword } from "@/lib/api/auth";
 import { uploadImage } from "@/lib/api/media-upload";
@@ -28,6 +29,9 @@ export default function SuperAdminSettingsPage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
+  const [preferredDateFormat, setPreferredDateFormatState] = useState<string>("MMMM d yyyy");
+  const [dateFormatSaving, setDateFormatSaving] = useState(false);
+
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -36,7 +40,19 @@ export default function SuperAdminSettingsPage() {
     if (profile) {
       setAvatarUrl(profile.avatar_url || profile.profile_photo_url || null);
     }
+    const saved = getPreferredDateFormat();
+    if (saved) setPreferredDateFormatState(saved);
   }, [profile]);
+
+  const handleSaveDateFormat = async () => {
+    setDateFormatSaving(true);
+    try {
+      setPreferredDateFormat(preferredDateFormat);
+      toast.success("Date format preference saved successfully");
+    } finally {
+      setDateFormatSaving(false);
+    }
+  };
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -276,6 +292,45 @@ export default function SuperAdminSettingsPage() {
             <Save className="h-4 w-4 mr-2" />
             {isSaving ? "Saving..." : "Save Currency"}
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Preferred Date Format */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Preferred Date Format
+          </CardTitle>
+          <CardDescription>
+            Configure default date formatting for super admin dashboards, activity logs, system reports, and audit trails.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Date Format</Label>
+            <Select value={preferredDateFormat} onValueChange={setPreferredDateFormatState}>
+              <SelectTrigger className="w-full sm:w-80">
+                <SelectValue placeholder="Select date format" />
+              </SelectTrigger>
+              <SelectContent className="max-h-80">
+                {DATE_FORMAT_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.example}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">
+              Preview: <strong>{formatDateWithPreference(new Date(), preferredDateFormat)}</strong>
+            </p>
+          </div>
+          <div className="pt-2">
+            <Button onClick={handleSaveDateFormat} disabled={dateFormatSaving}>
+              <Save className="h-4 w-4 mr-2" />
+              {dateFormatSaving ? "Saving..." : "Save Date Format"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

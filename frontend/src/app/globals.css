@@ -52,14 +52,14 @@
 
   /* Custom project colors */
   --primary-bg: #ffffff;
-  --sidebar-start: #57A3CC;
-  --sidebar-end: #022172;
+  --sidebar-start: #003dd6;
+  --sidebar-end: #002db3;
   
   /* Sidebar gradient */
-  --sidebar-gradient: linear-gradient(90deg, #57A3CC 0%, #022172 100%);
+  --sidebar-gradient: linear-gradient(135deg, #003dd6 0%, #002db3 100%);
 
   /* Card colors */
-  --card-blue: #022172;
+  --card-blue: #003dd6;
   --card-green: #21C97B;
   --card-teal: #39D2BE;
   --card-orange: #EEA831;
@@ -275,13 +275,13 @@ body {
 
 /* Sidebar gradient class */
 .sidebar-gradient {
-  background: linear-gradient(90deg, #57A3CC 0%, #022172 100%);
+  background: #003dd6;
 }
 
 /* Sidebar hover effect */
 .sidebar-item-active {
   background: white;
-  color: #022172;
+  color: #003dd6;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 

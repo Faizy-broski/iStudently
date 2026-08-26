@@ -68,23 +68,21 @@ export default function TeacherPayslipsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-2 mb-4 text-brand-teal">
-        <div className="h-8 w-8 rounded bg-teal-100 flex items-center justify-center flex-shrink-0">
-          <FileText className="h-5 w-5 text-teal-600" />
-        </div>
-        <h1 className="text-3xl font-light">My Pay Stubs</h1>
+    <div className="p-4 md:p-6 space-y-6">
+      <div>
+        <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent dark:text-white dark:bg-gradient-to-r dark:from-[#57A3CC] dark:to-white">
+          My Pay Stubs
+        </h1>
+        <p className="text-sm md:text-base text-muted-foreground mt-1">
+          View and print your official monthly payslips. Each pay stub includes a full itemized breakdown of earnings and deductions.
+        </p>
       </div>
 
-      <p className="text-sm text-muted-foreground -mt-4">
-        View and print your official monthly payslips. Each pay stub includes a full itemized breakdown of earnings and deductions.
-      </p>
-
-      <Card>
+      <Card className="shadow-sm border-border overflow-hidden">
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : records.length === 0 ? (
             <div className="py-16 text-center text-muted-foreground text-sm">
@@ -92,14 +90,14 @@ export default function TeacherPayslipsPage() {
             </div>
           ) : (
             <Table>
-              <TableHeader>
+              <TableHeader className="bg-gradient-to-r from-[#57A3CC]/10 to-[#022172]/10">
                 <TableRow>
-                  <TableHead>Period</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Base Salary</TableHead>
-                  <TableHead className="text-right">Deductions</TableHead>
-                  <TableHead className="text-right font-bold">Net Payable</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="font-semibold text-foreground">Period</TableHead>
+                  <TableHead className="font-semibold text-foreground">Status</TableHead>
+                  <TableHead className="font-semibold text-foreground text-right">Base Salary</TableHead>
+                  <TableHead className="font-semibold text-foreground text-right">Deductions</TableHead>
+                  <TableHead className="font-bold text-foreground text-right">Net Payable</TableHead>
+                  <TableHead className="font-semibold text-foreground text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

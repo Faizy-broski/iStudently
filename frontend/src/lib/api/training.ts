@@ -10,20 +10,52 @@ export type TrainingTargetAudience = 'internal' | 'external' | 'both'
 export type TrainingPaymentStatus = 'unpaid' | 'pending_verification' | 'paid' | 'expired'
 export type TrainingRegistrationStatus = 'confirmed' | 'waiting_list' | 'cancelled'
 
+export type TrainingSkillLevel = 'beginner' | 'intermediate' | 'advanced'
+export type TrainingDeliveryMode = 'in_person' | 'online' | 'hybrid'
+export type TrainingCertificateTemplate = 'standard_attendance' | 'completion_excellence' | 'custom_professional'
+
+export interface CertificateSettings {
+  enable_auto_issuance: boolean
+  certificate_template: TrainingCertificateTemplate
+  min_attendance_rate: number
+  min_passing_grade: number
+  require_payment_cleared: boolean
+  authorized_signatory: string
+  digital_signature_url?: string | null
+  enable_verification_qr: boolean
+  distribution_methods: {
+    dashboard: boolean
+    email: boolean
+  }
+}
+
 export interface TrainingSession {
   id: string
   school_id: string
   title: string
   description: string | null
+  category?: string | null
+  skill_level?: TrainingSkillLevel | null
   start_date: string
   end_date: string
+  weekly_days?: string[] | null
+  daily_time_range?: string | null
+  total_duration_hours?: number | null
+  delivery_mode?: TrainingDeliveryMode | null
+  location_venue_link?: string | null
+  instructor_id?: string | null
+  instructor_name?: string | null
   total_seats: number
   registered_seats: number
   available_seats: number
   course_fee: number
+  registration_deadline?: string | null
   holding_timeout_hours: number
   status: TrainingSessionStatus
   target_audience: TrainingTargetAudience
+  cover_image_url?: string | null
+  syllabus_pdf_url?: string | null
+  certificate_settings?: CertificateSettings | null
   public_token: string
   created_at: string
   updated_at: string
@@ -39,14 +71,24 @@ export interface PublicTrainingSession {
   id: string
   title: string
   description: string | null
+  category?: string | null
+  skill_level?: TrainingSkillLevel | null
   start_date: string
   end_date: string
+  weekly_days?: string[] | null
+  daily_time_range?: string | null
+  total_duration_hours?: number | null
+  delivery_mode?: TrainingDeliveryMode | null
+  location_venue_link?: string | null
+  instructor_name?: string | null
   total_seats: number
   registered_seats: number
   available_seats: number
   course_fee: number
   status: TrainingSessionStatus
   target_audience: TrainingTargetAudience
+  cover_image_url?: string | null
+  syllabus_pdf_url?: string | null
   public_token: string
 }
 
@@ -70,13 +112,26 @@ export interface CourseRegistration {
 export interface CreateTrainingSessionDTO {
   title: string
   description?: string
+  category?: string
+  skill_level?: TrainingSkillLevel
   start_date: string
   end_date: string
+  weekly_days?: string[]
+  daily_time_range?: string
+  total_duration_hours?: number
+  delivery_mode?: TrainingDeliveryMode
+  location_venue_link?: string
+  instructor_id?: string
+  instructor_name?: string
   total_seats: number
   course_fee?: number
+  registration_deadline?: string
   holding_timeout_hours?: number
   status?: TrainingSessionStatus
   target_audience?: TrainingTargetAudience
+  cover_image_url?: string
+  syllabus_pdf_url?: string
+  certificate_settings?: CertificateSettings
 }
 
 export interface RegisterDTO {
