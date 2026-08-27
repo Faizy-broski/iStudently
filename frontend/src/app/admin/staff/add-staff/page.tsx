@@ -56,6 +56,8 @@ export default function AddStaffPage() {
     const campusContext = useCampus()
     const selectedCampus = campusContext?.selectedCampus
     const { profile } = useAuth()
+    const impersonatedSchoolId = typeof window !== 'undefined' ? sessionStorage.getItem('impersonatedSchoolId') : null
+    const activeSchoolId = selectedCampus?.id || impersonatedSchoolId || profile?.school_id || ''
     const { currencySymbol } = useSchoolSettings()
 
     const [loading, setLoading] = useState(false)
@@ -207,7 +209,8 @@ export default function AddStaffPage() {
             await createStaff({
                 ...formData,
                 custom_fields: customFieldValues,
-                campus_id: selectedCampus?.id
+                campus_id: activeSchoolId || undefined,
+                school_id: activeSchoolId || undefined
             })
 
             toast.success(t('toasts.added'))

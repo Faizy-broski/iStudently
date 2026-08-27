@@ -61,7 +61,8 @@ export function RoleGuard({ children, allowedRoles, redirectTo }: RoleGuardProps
             student: '/student/dashboard',
             parent: '/parent/dashboard',
             staff: '/staff/dashboard',
-            librarian: '/librarian/dashboard'
+            librarian: '/librarian/dashboard',
+            inspector: '/inspector/dashboard'
           }
           router.replace(roleRedirects[profile.role] || '/')
         }

@@ -7,6 +7,8 @@ export interface AgreementItem {
   id: string
   title: string
   content: string
+  title_en?: string
+  content_en?: string
   enabled: boolean
 }
 

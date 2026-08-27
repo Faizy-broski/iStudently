@@ -58,6 +58,8 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
   const { profile } = useAuth();
+  const impersonatedSchoolId = typeof window !== 'undefined' ? sessionStorage.getItem('impersonatedSchoolId') : null;
+  const activeSchoolId = selectedCampus?.id || impersonatedSchoolId || profile?.school_id || '';
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string>('');
   const { currencySymbol } = useSchoolSettings();
 
@@ -618,7 +620,8 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
         ...formData,
         profile_photo_url: profilePhotoUrl || undefined,
         custom_fields: customFieldValues,
-        school_id: selectedCampus?.id
+        school_id: activeSchoolId || undefined,
+        campus_id: activeSchoolId || undefined
       };
 
       console.log('💰 Submitting teacher data:', {
@@ -709,7 +712,7 @@ export function AddTeacherForm({ onSuccess, editingTeacher }: AddTeacherFormProp
                 <StudentPhotoUpload
                   value={profilePhotoUrl}
                   onChange={setProfilePhotoUrl}
-                  schoolId={selectedCampus?.id || profile?.school_id || ''}
+                  schoolId={activeSchoolId}
                   role="teacher"
                   label="Upload Photo"
                   className="max-w-xs"

@@ -58,6 +58,7 @@ import {
   Globe,
   FlaskConical,
   Table2,
+  Dna,
   Gauge,
   Mic,
   MessageSquareWarning,
@@ -238,6 +239,12 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "my_rooms", href: "/admin/jitsi-meet/rooms", icon: Settings },
       { title: "configuration", href: "/admin/jitsi-meet/configuration", icon: Settings },
     ],
+  },
+  {
+    title: "online_classes",
+    href: "/admin/online-classes",
+    icon: Globe,
+    pluginRequired: "online_classes",
   },
   {
     title: "speed_reading",
@@ -514,6 +521,7 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "chemistry_virtual_labs", href: "/admin/resources/chemistry-virtual-labs", icon: FlaskConical },
       { title: "virtual_labs", href: "/admin/resources/virtual-labs", icon: FlaskConical },
       { title: "periodic_table", href: "/admin/resources/jperiod", icon: Table2 },
+      { title: "anatomy_3d", href: "/admin/resources/anatomy-3d", icon: Dna },
     ],
   },
   {
@@ -547,6 +555,18 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "reports", href: "/admin/grievances/reports", icon: BarChart3 },
       { title: "categories", href: "/admin/grievances/categories", icon: FolderOpen },
       { title: "settings", href: "/admin/grievances/settings", icon: Settings },
+    ],
+  },
+  {
+    // Educational Inspection & Quality Assurance module — Phase 0 (role/access
+    // foundation) only exposes campus assignment management so far; visit
+    // scheduling, observations, reports, appeals and the community hub get
+    // their own subItems here as each later phase ships.
+    title: "inspections",
+    href: "/admin/inspections/assignments",
+    icon: ClipboardCheck,
+    subItems: [
+      { title: "assignments", href: "/admin/inspections/assignments", icon: UserPlus },
     ],
   },
   {
@@ -693,6 +713,7 @@ const teacherMenuItems: SidebarMenuItem[] = [
       { title: "chemistry_virtual_labs", href: "/teacher/resources/chemistry-virtual-labs", icon: FlaskConical },
       { title: "virtual_labs", href: "/teacher/resources/virtual-labs", icon: FlaskConical },
       { title: "periodic_table", href: "/teacher/resources/jperiod", icon: Table2 },
+      { title: "anatomy_3d", href: "/teacher/resources/anatomy-3d", icon: Dna },
     ],
   },
   {
@@ -736,6 +757,12 @@ const teacherMenuItems: SidebarMenuItem[] = [
       { title: "meet", href: "/teacher/jitsi-meet", icon: Video },
       { title: "my_rooms", href: "/teacher/jitsi-meet/rooms", icon: Settings },
     ],
+  },
+  {
+    title: "online_classes",
+    href: "/teacher/online-classes",
+    icon: Globe,
+    pluginRequired: "online_classes",
   },
   {
     title: "messaging",
@@ -877,6 +904,17 @@ const studentMenuItems: SidebarMenuItem[] = [
       { title: "physics_labs", href: "/student/resources/physics-labs", icon: FlaskConical },
       { title: "virtual_labs", href: "/student/resources/virtual-labs", icon: FlaskConical },
       { title: "periodic_table", href: "/student/resources/jperiod", icon: Table2 },
+      { title: "anatomy_3d", href: "/student/resources/anatomy-3d", icon: Dna },
+    ],
+  },
+  {
+    title: "online_classes",
+    href: "/student/online-classes",
+    icon: Globe,
+    pluginRequired: "online_classes",
+    subItems: [
+      { title: "browse_open_courses", href: "/student/online-classes", icon: Globe },
+      { title: "my_enrolled_classes", href: "/student/online-classes/enrolled", icon: Video },
     ],
   },
   {
@@ -1027,6 +1065,7 @@ const parentMenuItems: SidebarMenuItem[] = [
       { title: "chemistry_virtual_labs", href: "/parent/resources/chemistry-virtual-labs", icon: FlaskConical },
       { title: "virtual_labs", href: "/parent/resources/virtual-labs", icon: FlaskConical },
       { title: "periodic_table", href: "/parent/resources/jperiod", icon: Table2 },
+      { title: "anatomy_3d", href: "/parent/resources/anatomy-3d", icon: Dna },
     ],
   },
   { title: "settings", href: "/parent/settings", icon: Settings },
@@ -1064,6 +1103,13 @@ const librarianMenuItems: SidebarMenuItem[] = [
   { title: "my_profile", href: "/profile", icon: UserCheck },
 ];
 
+// Inspector Menu Items — shell only for now (Phase 0 of the Educational
+// Inspection module); grows with visits/observations/reports/community
+// items in later phases.
+const inspectorMenuItems: SidebarMenuItem[] = [
+  { title: "dashboard", href: "/inspector/dashboard", icon: LayoutDashboard },
+];
+
 // Get menu items based on user role
 export const getSidebarConfig = (role: UserRole): SidebarMenuItem[] => {
   switch (role) {
@@ -1079,6 +1125,8 @@ export const getSidebarConfig = (role: UserRole): SidebarMenuItem[] => {
       return parentMenuItems;
     case "librarian":
       return librarianMenuItems;
+    case "inspector":
+      return inspectorMenuItems;
     case "staff":
       // Staff accounts have no dedicated /staff/* routes — they log into the
       // admin app shell and are scoped down entirely by their User Profile
@@ -1119,6 +1167,12 @@ export function getDashboardPathByRole(role: UserRole): string {
       return "/student/dashboard";
     case "parent":
       return "/parent/dashboard";
+    case "librarian":
+      return "/librarian/dashboard";
+    case "staff":
+      return "/staff/dashboard";
+    case "inspector":
+      return "/inspector/dashboard";
     default:
       return "/";
   }

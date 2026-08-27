@@ -76,6 +76,7 @@ export default function ChangePasswordPage() {
               parent: '/parent/dashboard',
               librarian: '/librarian/dashboard',
               staff: '/staff/dashboard',
+              inspector: '/inspector/dashboard',
             }[profile.role] ?? '/admin/dashboard')
           : '/auth/login'
     } catch {

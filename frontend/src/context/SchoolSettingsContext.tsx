@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
 import { getSchoolSettings } from '@/lib/api/school-settings'
 import type { SchoolSettings } from '@/lib/api/school-settings'
+import { setPreferredDateFormat } from '@/lib/utils/dateFormat'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Context type
@@ -85,6 +86,9 @@ export function SchoolSettingsProvider({ children }: { children: React.ReactNode
       if (result.success && result.data) {
         setSettings(result.data)
         setSettingsCache(result.data, cId)
+        if (result.data.preferred_date_format) {
+          setPreferredDateFormat(result.data.preferred_date_format)
+        }
       }
     } catch {
       // Silently fail — sidebar falls back to base items
@@ -107,6 +111,9 @@ export function SchoolSettingsProvider({ children }: { children: React.ReactNode
     if (cached) {
       setSettings(cached)
       setLoading(false)
+      if (cached.preferred_date_format) {
+        setPreferredDateFormat(cached.preferred_date_format)
+      }
       return
     }
 

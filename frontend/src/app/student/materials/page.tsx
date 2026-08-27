@@ -13,10 +13,14 @@ import {
 } from '@/components/ui/select'
 import {
   FolderOpen, Loader2, AlertCircle, ExternalLink, FileText,
-  Video, BookOpen, Link2, AlignLeft, Search
+  Video, BookOpen, Link2, AlignLeft, Search, Dna
 } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { toast } from 'sonner'
+import { useLocale } from 'next-intl'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { AnatomyExplorer } from '@/components/anatomy/AnatomyExplorer'
+import type { OrganId } from '@/lib/anatomy/anatomy-data'
 
 const TYPE_ICONS: Record<ResourceType, any> = {
   link: Link2,
@@ -24,6 +28,7 @@ const TYPE_ICONS: Record<ResourceType, any> = {
   post: AlignLeft,
   file: FileText,
   video: Video,
+  anatomy: Dna,
 }
 
 const TYPE_LABELS: Record<ResourceType, string> = {
@@ -32,6 +37,7 @@ const TYPE_LABELS: Record<ResourceType, string> = {
   post: 'Post',
   file: 'File',
   video: 'Video',
+  anatomy: '3D Anatomy Model',
 }
 
 const TYPE_COLORS: Record<ResourceType, string> = {
@@ -40,15 +46,18 @@ const TYPE_COLORS: Record<ResourceType, string> = {
   post: 'bg-purple-100 text-purple-700',
   file: 'bg-green-100 text-green-700',
   video: 'bg-red-100 text-red-700',
+  anatomy: 'bg-teal-100 text-teal-700',
 }
 
 export default function StudentMaterialsPage() {
   const { profile } = useAuth()
+  const locale = useLocale()
   const sectionId = profile?.section_id
   const studentId = profile?.student_id
 
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('all')
+  const [viewingAnatomy, setViewingAnatomy] = useState<LearningResource | null>(null)
 
   const { data, isLoading, error } = useSWR(
     sectionId ? ['student-materials', sectionId] : null,
@@ -69,6 +78,10 @@ export default function StudentMaterialsPage() {
   const handleOpen = async (resource: LearningResource) => {
     if (studentId) {
       recordResourceView(resource.id, studentId).catch(() => {})
+    }
+    if (resource.resource_type === 'anatomy' && resource.content) {
+      setViewingAnatomy(resource)
+      return
     }
     const url = resource.url || resource.file_urls?.[0]
     if (url) {
@@ -179,7 +192,7 @@ export default function StudentMaterialsPage() {
                       onClick={() => handleOpen(resource)}
                     >
                       <ExternalLink className="h-3 w-3" />
-                      {resource.resource_type === 'video' ? 'Watch' : hasLink ? 'Open' : 'View'}
+                      {resource.resource_type === 'video' ? 'Watch' : resource.resource_type === 'anatomy' ? 'Explore' : hasLink ? 'Open' : 'View'}
                     </Button>
                   </div>
                 </CardContent>
@@ -194,6 +207,24 @@ export default function StudentMaterialsPage() {
           Showing {filtered.length} of {allResources.length} material{allResources.length !== 1 ? 's' : ''}
         </p>
       )}
+
+      <Dialog open={!!viewingAnatomy} onOpenChange={(open) => !open && setViewingAnatomy(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          {viewingAnatomy && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{viewingAnatomy.title}</DialogTitle>
+              </DialogHeader>
+              <AnatomyExplorer
+                organId={viewingAnatomy.content as OrganId}
+                locale={locale}
+                height={520}
+                className="rounded-lg overflow-hidden border"
+              />
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

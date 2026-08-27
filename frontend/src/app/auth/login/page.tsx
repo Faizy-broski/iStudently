@@ -210,6 +210,7 @@ function LoginForm() {
         'parent': '/parent/dashboard',
         'librarian': '/librarian/dashboard',
         'staff': '/staff/dashboard',
+        'inspector': '/inspector/dashboard',
       }
       router.replace(dashboardMap[profile.role] || '/admin/dashboard')
     }
@@ -277,6 +278,7 @@ function LoginForm() {
         'parent': '/parent/dashboard',
         'librarian': '/librarian/dashboard',
         'staff': '/staff/dashboard',
+        'inspector': '/inspector/dashboard',
       }
 
       const dashboardUrl = dashboardMap[profile.role] || '/auth/login?error=role_not_supported'

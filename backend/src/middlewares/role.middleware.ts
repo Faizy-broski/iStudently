@@ -44,6 +44,11 @@ export const requireTeacher = requireRole('super_admin', 'admin', 'teacher')
 export const requireStudent = requireRole('super_admin', 'admin', 'teacher', 'student')
 // For routes that staff/librarians can also read (like academic years)
 export const requireStaff = requireRole('super_admin', 'admin', 'teacher', 'librarian', 'staff')
+// Inspectors are a standalone role, not part of the admin hierarchy — their
+// actual campus access is further scoped per-request by inspector-access.ts,
+// not by this role check alone (super_admin still bypasses via requireRole's
+// built-in super_admin shortcut above, for support/troubleshooting access).
+export const requireInspector = requireRole('inspector')
 
 /**
  * Check if user belongs to specific school (for school-level admins)

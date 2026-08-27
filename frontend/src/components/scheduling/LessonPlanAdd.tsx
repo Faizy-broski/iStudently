@@ -34,6 +34,7 @@ import {
   ArrowUp,
   ArrowDown,
   Download,
+  Clock,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -150,19 +151,20 @@ export default function LessonPlanAdd() {
   const [uploadingFile, setUploadingFile] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Fetch course periods for this teacher
+  const isAdmin = profile?.role === "admin" || profile?.role === "super_admin"
+
+  // Fetch course periods for this teacher or all course periods if admin
   const { data: coursePeriods, isLoading: cpLoading } = useSWR<CoursePeriod[]>(
-    user && teacherId
-      ? ["teacher-course-periods", user.id, campusId]
+    user
+      ? ["course-periods-list", user.id, campusId, isAdmin ? "admin" : teacherId]
       : null,
     async () => {
       const res = await getCoursePeriods(campusId)
       if (!res.success) throw new Error(res.error || "Failed to fetch")
-      // Filter to teacher's course periods only
       const all = (res.data || []) as Array<CoursePeriod & { teacher_id?: string }>
-      return teacherId
-        ? all.filter((cp) => cp.teacher_id === teacherId)
-        : all
+      return (isAdmin || !teacherId)
+        ? all
+        : all.filter((cp) => cp.teacher_id === teacherId)
     },
     { revalidateOnFocus: false, dedupingInterval: 10000 }
   )
@@ -263,7 +265,10 @@ export default function LessonPlanAdd() {
 
   // Save lesson
   async function handleSave() {
-    if (!selectedCpId || !selectedAcademicYear || !teacherId) {
+    const selectedCp = coursePeriods?.find((cp) => cp.id === selectedCpId) as (CoursePeriod & { teacher_id?: string }) | undefined
+    const effectiveTeacherId = selectedCp?.teacher_id || teacherId || user?.id
+
+    if (!selectedCpId || !selectedAcademicYear || !effectiveTeacherId) {
       toast.error(t("msg_cp_required"))
       return
     }
@@ -320,7 +325,7 @@ export default function LessonPlanAdd() {
         // Create new lesson
         const res = await createLessonPlan({
           course_period_id: selectedCpId,
-          teacher_id: teacherId,
+          teacher_id: effectiveTeacherId,
           academic_year_id: selectedAcademicYear,
           title: lessonForm.title,
           on_date: lessonForm.on_date,
@@ -580,19 +585,42 @@ export default function LessonPlanAdd() {
               </div>
               <div className="space-y-4">
                 {itemsForm.map((item, idx) => (
-                  <Card key={idx} className="p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Badge variant="secondary" className="text-xs">
-                        {t("part_label", { num: idx + 1 })}
-                      </Badge>
-                      <div className="flex items-center gap-1 ml-auto rtl:mr-auto rtl:ml-0">
+                  <Card key={idx} className="p-5 space-y-4 shadow-sm border border-gray-200 dark:border-gray-800">
+                    {/* Header Row: Badge, Duration (min), and Reordering/Delete Actions */}
+                    <div className="flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-gray-100 dark:border-gray-800">
+                      <div className="flex items-center gap-3">
+                        <Badge variant="secondary" className="text-xs font-semibold px-2.5 py-1 bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                          {t("part_label", { num: idx + 1 })}
+                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                          <Label className="text-xs font-medium text-muted-foreground whitespace-nowrap">{t("time_min")}:</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={item.time_minutes}
+                            onChange={(e) =>
+                              updateItem(
+                                idx,
+                                "time_minutes",
+                                e.target.value ? parseInt(e.target.value) : ""
+                              )
+                            }
+                            placeholder="e.g. 10"
+                            className="w-24 h-8 text-xs font-semibold"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1">
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="h-7 w-7 p-0"
+                          className="h-8 w-8 p-0"
                           onClick={() => moveItemRow(idx, -1)}
                           disabled={idx === 0}
+                          title="Move Up"
                         >
                           <ArrowUp className="h-3.5 w-3.5" />
                         </Button>
@@ -600,9 +628,10 @@ export default function LessonPlanAdd() {
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="h-7 w-7 p-0"
+                          className="h-8 w-8 p-0"
                           onClick={() => moveItemRow(idx, 1)}
                           disabled={idx === itemsForm.length - 1}
+                          title="Move Down"
                         >
                           <ArrowDown className="h-3.5 w-3.5" />
                         </Button>
@@ -610,33 +639,19 @@ export default function LessonPlanAdd() {
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-red-50 dark:hover:bg-red-950/40"
                           onClick={() => removeItemRow(idx)}
+                          title="Delete Part"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
-                      <div>
-                        <Label className="text-xs">{t("time_min")}</Label>
-                        <Input
-                          type="number"
-                          min={1}
-                          value={item.time_minutes}
-                          onChange={(e) =>
-                            updateItem(
-                              idx,
-                              "time_minutes",
-                              e.target.value ? parseInt(e.target.value) : ""
-                            )
-                          }
-                          placeholder="e.g. 10"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs">
+                    {/* 2-Column Spacious Grid for Activities & Assessment */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
                           {t("teacher_activity")}
                         </Label>
                         <RichTextEditor
@@ -645,42 +660,49 @@ export default function LessonPlanAdd() {
                             updateItem(idx, "teacher_activity", html)
                           }
                           placeholder={t("teacher_activity") + "..."}
-                          minHeight="80px"
+                          minHeight="110px"
                           campusId={campusId}
                           showEditorPlugins
                           showMediaRecorder
                         />
                       </div>
-                      <div>
-                        <Label className="text-xs">{t("learner_activity")}</Label>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                          {t("learner_activity")}
+                        </Label>
                         <RichTextEditor
                           value={item.learner_activity}
                           onChange={(html) =>
                             updateItem(idx, "learner_activity", html)
                           }
                           placeholder={t("learner_activity") + "..."}
-                          minHeight="80px"
+                          minHeight="110px"
                           campusId={campusId}
                           showEditorPlugins
                           showMediaRecorder
                         />
                       </div>
-                      <div>
-                        <Label className="text-xs">{t("formative_assessment")}</Label>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                          {t("formative_assessment")}
+                        </Label>
                         <RichTextEditor
                           value={item.formative_assessment}
                           onChange={(html) =>
                             updateItem(idx, "formative_assessment", html)
                           }
                           placeholder={t("formative_assessment") + "..."}
-                          minHeight="80px"
+                          minHeight="110px"
                           campusId={campusId}
                           showEditorPlugins
                           showMediaRecorder
                         />
                       </div>
-                      <div>
-                        <Label className="text-xs">
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
                           {t("learning_materials")}
                         </Label>
                         <RichTextEditor
@@ -689,7 +711,7 @@ export default function LessonPlanAdd() {
                             updateItem(idx, "learning_materials", html)
                           }
                           placeholder={t("learning_materials") + "..."}
-                          minHeight="80px"
+                          minHeight="110px"
                           campusId={campusId}
                           showEditorPlugins
                           showMediaRecorder

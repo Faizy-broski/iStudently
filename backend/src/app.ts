@@ -72,6 +72,8 @@ import performanceRoutes from "./routes/performance.routes";
 import quizRoutes from "./routes/quiz.routes";
 import jitsiRoomRoutes from "./routes/jitsi-room.routes";
 import jitsiRoomPollRoutes from "./routes/jitsi-room-poll.routes";
+import onlineClassRoutes from "./routes/online-class.routes";
+import inspectorDirectoryRoutes from "./routes/inspector-directory.routes";
 import icalRoutes from "./routes/ical.routes";
 import publicPagesRoutes from "./routes/public-pages.routes";
 import socialAuthRoutes from "./routes/social-auth.routes";
@@ -354,6 +356,8 @@ registerRoutes("/quiz", quizRoutes);
 registerRoutes("/speed-reading", speedReadingRoutes);
 registerRoutes("/jitsi/rooms", jitsiRoomRoutes);
 registerRoutes("/jitsi/polls", jitsiRoomPollRoutes);
+registerRoutes("/online-classes", onlineClassRoutes);
+registerRoutes("/inspectors", inspectorDirectoryRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

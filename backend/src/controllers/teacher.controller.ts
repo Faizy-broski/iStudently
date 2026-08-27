@@ -82,8 +82,11 @@ export const bulkImportTeachers = async (req: Request, res: Response): Promise<v
 
 export const getAllTeachers = async (req: Request, res: Response) => {
   try {
-    const schoolId = (req as AuthRequest).profile?.school_id
-    if (!schoolId) {
+    const isSuperAdmin = (req as AuthRequest).profile?.role === 'super_admin'
+    const headerSchoolId = (req.headers['x-school-id'] as string) || (req.headers['school_id'] as string)
+    const schoolId = (req as AuthRequest).profile?.school_id || (req as AuthRequest).profile?.impersonating_school_id || headerSchoolId || (req.query.school_id as string) || (req.query.campus_id as string)
+
+    if (!schoolId && !isSuperAdmin) {
       return res.status(400).json({
         success: false,
         error: 'School ID is required'
@@ -94,7 +97,7 @@ export const getAllTeachers = async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1
     const limit = parseInt(req.query.limit as string) || 10
     const search = req.query.search as string
-    const campus_id = req.query.campus_id as string
+    const campus_id = req.query.campus_id as string || (isSuperAdmin ? schoolId : undefined)
 
     const result = await teacherService.getAllTeachers(schoolId, { page, limit, search, campus_id })
     res.json(result)
@@ -110,6 +113,7 @@ export const getAllTeachers = async (req: Request, res: Response) => {
 export const getTeacherById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
+    const isSuperAdmin = (req as AuthRequest).profile?.role === 'super_admin'
     const adminSchoolId = (req as AuthRequest).profile?.school_id
     
     // Get teacher without school filter first
@@ -119,8 +123,8 @@ export const getTeacherById = async (req: Request, res: Response) => {
       return res.status(404).json(result)
     }
     
-    // SECURITY: Validate admin has access to this teacher's campus
-    if (adminSchoolId && result.data?.school_id) {
+    // SECURITY: Validate admin has access to this teacher's campus (skip for Super Admin)
+    if (!isSuperAdmin && adminSchoolId && result.data?.school_id) {
       const hasAccess = await validateCampusAccess(adminSchoolId, result.data.school_id)
       if (!hasAccess) {
         return res.status(403).json({
@@ -142,21 +146,26 @@ export const getTeacherById = async (req: Request, res: Response) => {
 
 export const createTeacher = async (req: Request, res: Response) => {
   try {
-    const adminSchoolId = (req as AuthRequest).profile?.school_id
+    const isSuperAdmin = (req as AuthRequest).profile?.role === 'super_admin'
+    const headerSchoolId = (req.headers['x-school-id'] as string) || (req.headers['school_id'] as string)
+    const adminSchoolId = (req as AuthRequest).profile?.school_id || (req as AuthRequest).profile?.impersonating_school_id || headerSchoolId || req.body.school_id || req.body.campus_id
     const userId = (req as AuthRequest).profile?.id
 
-    if (!adminSchoolId) {
+    let effectiveSchoolId = req.body.campus_id || req.body.school_id || headerSchoolId || adminSchoolId
+
+    if (!isSuperAdmin && adminSchoolId) {
+      effectiveSchoolId = await getEffectiveSchoolId(
+        adminSchoolId,
+        req.body.campus_id || req.body.school_id
+      )
+    }
+
+    if (!effectiveSchoolId) {
       return res.status(400).json({
         success: false,
         error: 'School ID is required'
       } as ApiResponse)
     }
-
-    // Get the effective school ID (campus) to use
-    const effectiveSchoolId = await getEffectiveSchoolId(
-      adminSchoolId,
-      req.body.campus_id || req.body.school_id
-    )
 
     const result = await teacherService.createTeacher({
       ...req.body,

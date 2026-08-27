@@ -987,35 +987,41 @@ export class StudentService {
     const errors: any[] = []
     const created: any[] = []
 
-    for (const student of students) {
-      try {
-        if (await this.findDuplicateStudent(student, schoolId)) {
-          error_count++
-          errors.push({ row: student._row, error: 'Skipped: a student with this name already exists in this school (likely a repeat import)' })
-          continue
-        }
+    const BATCH_SIZE = 10
+    for (let i = 0; i < students.length; i += BATCH_SIZE) {
+      const batch = students.slice(i, i + BATCH_SIZE)
+      await Promise.all(
+        batch.map(async (student) => {
+          try {
+            if (await this.findDuplicateStudent(student, schoolId)) {
+              error_count++
+              errors.push({ row: student._row, error: 'Skipped: a student with this name already exists in this school (likely a repeat import)' })
+              return
+            }
 
-        const result = await this.createStudent({
-          ...student,
-          school_id: schoolId,
-          // Per-row grade/section (Whole School import mode, resolved client-side
-          // from the file's own Grade/Section columns) wins if present; otherwise
-          // fall back to the single uniform target (Single Class import mode).
-          grade_level_id: student.grade_level_id || target?.grade_level_id,
-          section_id: student.section_id || target?.section_id
+            const result = await this.createStudent({
+              ...student,
+              school_id: schoolId,
+              // Per-row grade/section (Whole School import mode, resolved client-side
+              // from the file's own Grade/Section columns) wins if present; otherwise
+              // fall back to the single uniform target (Single Class import mode).
+              grade_level_id: student.grade_level_id || target?.grade_level_id,
+              section_id: student.section_id || target?.section_id
+            })
+            success_count++
+            created.push({
+              student_number: result.student_number,
+              first_name: result.profile?.first_name,
+              last_name: result.profile?.last_name,
+              username: (result as any).generated_username,
+              password: (result as any).generated_password
+            })
+          } catch (err: any) {
+            error_count++
+            errors.push({ row: student._row, error: err.message || String(err) })
+          }
         })
-        success_count++
-        created.push({
-          student_number: result.student_number,
-          first_name: result.profile?.first_name,
-          last_name: result.profile?.last_name,
-          username: (result as any).generated_username,
-          password: (result as any).generated_password
-        })
-      } catch (err: any) {
-        error_count++
-        errors.push({ row: student._row, error: err.message || String(err) })
-      }
+      )
     }
 
     return { success_count, error_count, errors, created }

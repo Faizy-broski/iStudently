@@ -46,6 +46,8 @@ import {
   User,
   Sparkles,
   Layers,
+  Plus,
+  Trash2,
 } from 'lucide-react'
 import {
   trainingApi,
@@ -154,6 +156,13 @@ export function TrainingSessionFormModal({
   const [uploadingSyllabus, setUploadingSyllabus] = useState(false)
   const [uploadingSignature, setUploadingSignature] = useState(false)
 
+  const [categoriesList, setCategoriesList] = useState<string[]>(COURSE_CATEGORIES)
+  const [isAddingCategory, setIsAddingCategory] = useState(false)
+  const [customCategoryInput, setCustomCategoryInput] = useState('')
+
+  const [scheduleTimeMode, setScheduleTimeMode] = useState<'uniform' | 'per_day'>('uniform')
+  const [perDayTimes, setPerDayTimes] = useState<Record<string, string>>({})
+
   const certSettings = sessionToEdit?.certificate_settings
 
   const {
@@ -206,6 +215,17 @@ export function TrainingSessionFormModal({
   useEffect(() => {
     if (sessionToEdit) {
       const s = sessionToEdit
+
+      if (s.category && !COURSE_CATEGORIES.includes(s.category)) {
+        setCategoriesList((prev) => Array.from(new Set([...prev, s.category!])))
+      }
+      if (s.daily_times && Object.keys(s.daily_times).length > 0) {
+        setScheduleTimeMode('per_day')
+        setPerDayTimes(s.daily_times)
+      } else if (s.daily_time_range && s.daily_time_range.includes(':') && s.daily_time_range.includes('|')) {
+        setScheduleTimeMode('per_day')
+      }
+
       reset({
         title: s.title || '',
         description: s.description || '',
@@ -242,6 +262,23 @@ export function TrainingSessionFormModal({
       })
     }
   }, [sessionToEdit, reset])
+
+  const selectedWeeklyDays = watch('weekly_days') || []
+
+  const handleAddCustomCategory = () => {
+    const trimmed = customCategoryInput.trim()
+    if (!trimmed) {
+      toast.error('Category name cannot be empty')
+      return
+    }
+    if (!categoriesList.includes(trimmed)) {
+      setCategoriesList((prev) => [...prev, trimmed])
+    }
+    setValue('category', trimmed)
+    setCustomCategoryInput('')
+    setIsAddingCategory(false)
+    toast.success(`Category "${trimmed}" added!`)
+  }
 
   const deliveryMode = watch('delivery_mode')
   const enableAutoIssuance = watch('enable_auto_issuance')
@@ -321,6 +358,24 @@ export function TrainingSessionFormModal({
       },
     }
 
+    let dailyTimeRange = data.daily_time_range
+    let dailyTimes: Record<string, string> | undefined = undefined
+
+    if (scheduleTimeMode === 'per_day' && selectedWeeklyDays.length > 0) {
+      const activeTimes: Record<string, string> = {}
+      const summaryParts: string[] = []
+      selectedWeeklyDays.forEach((dayId) => {
+        if (perDayTimes[dayId]?.trim()) {
+          activeTimes[dayId] = perDayTimes[dayId].trim()
+          summaryParts.push(`${dayId}: ${perDayTimes[dayId].trim()}`)
+        }
+      })
+      if (Object.keys(activeTimes).length > 0) {
+        dailyTimes = activeTimes
+        dailyTimeRange = summaryParts.join(' | ')
+      }
+    }
+
     const dto: CreateTrainingSessionDTO = {
       title: data.title,
       description: data.description || undefined,
@@ -329,7 +384,8 @@ export function TrainingSessionFormModal({
       start_date: new Date(data.start_date).toISOString(),
       end_date: new Date(data.end_date).toISOString(),
       weekly_days: data.weekly_days,
-      daily_time_range: data.daily_time_range || undefined,
+      daily_time_range: dailyTimeRange || undefined,
+      daily_times: dailyTimes,
       total_duration_hours: data.total_duration_hours || undefined,
       delivery_mode: data.delivery_mode,
       location_venue_link: data.location_venue_link || undefined,
@@ -374,11 +430,11 @@ export function TrainingSessionFormModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden bg-background">
-        <DialogHeader className="p-6 pb-4 border-b border-border bg-gradient-to-r from-[#57A3CC]/10 to-[#022172]/10">
+      <DialogContent className="w-[95vw] sm:max-w-4xl max-h-[92vh] sm:max-h-[90vh] flex flex-col p-0 overflow-hidden bg-background">
+        <DialogHeader className="p-4 sm:p-6 pb-3 sm:pb-4 border-b border-border bg-gradient-to-r from-[#57A3CC]/10 to-[#022172]/10 pr-10">
           <div className="flex items-center gap-2 text-[#022172] dark:text-[#57A3CC]">
-            <Sparkles className="h-5 w-5" />
-            <DialogTitle className="text-xl font-bold bg-gradient-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent dark:text-white">
+            <Sparkles className="h-5 w-5 shrink-0" />
+            <DialogTitle className="text-lg sm:text-xl font-bold bg-gradient-to-r from-[#57A3CC] to-[#022172] bg-clip-text text-transparent dark:text-white leading-tight">
               {sessionToEdit ? 'Edit Training Session & Certificate Spec' : 'Complete Training Session & Certificate Builder'}
             </DialogTitle>
           </div>
@@ -387,30 +443,32 @@ export function TrainingSessionFormModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto p-6 space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid grid-cols-5 w-full bg-muted/60 p-1 mb-6">
-              <TabsTrigger value="basic" className="text-xs font-semibold gap-1.5">
-                <BookOpen className="h-3.5 w-3.5" />
-                1. Basic Info
-              </TabsTrigger>
-              <TabsTrigger value="schedule" className="text-xs font-semibold gap-1.5">
-                <Calendar className="h-3.5 w-3.5" />
-                2. Schedule & Delivery
-              </TabsTrigger>
-              <TabsTrigger value="access" className="text-xs font-semibold gap-1.5">
-                <Users className="h-3.5 w-3.5" />
-                3. Access & Pricing
-              </TabsTrigger>
-              <TabsTrigger value="media" className="text-xs font-semibold gap-1.5">
-                <UploadCloud className="h-3.5 w-3.5" />
-                4. Media & Syllabus
-              </TabsTrigger>
-              <TabsTrigger value="certificate" className="text-xs font-semibold gap-1.5">
-                <Award className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-                5. Certificates
-              </TabsTrigger>
-            </TabsList>
+            <div className="overflow-x-auto pb-1 mb-6 -mx-1 px-1 scrollbar-thin">
+              <TabsList className="flex w-max min-w-full md:grid md:grid-cols-5 bg-muted/60 p-1 h-auto min-h-[42px] gap-1">
+                <TabsTrigger value="basic" className="text-xs font-semibold gap-1.5 whitespace-nowrap py-2 px-3 flex-1 md:flex-initial">
+                  <BookOpen className="h-3.5 w-3.5 shrink-0" />
+                  <span>1. Basic Info</span>
+                </TabsTrigger>
+                <TabsTrigger value="schedule" className="text-xs font-semibold gap-1.5 whitespace-nowrap py-2 px-3 flex-1 md:flex-initial">
+                  <Calendar className="h-3.5 w-3.5 shrink-0" />
+                  <span>2. Schedule & Delivery</span>
+                </TabsTrigger>
+                <TabsTrigger value="access" className="text-xs font-semibold gap-1.5 whitespace-nowrap py-2 px-3 flex-1 md:flex-initial">
+                  <Users className="h-3.5 w-3.5 shrink-0" />
+                  <span>3. Access & Pricing</span>
+                </TabsTrigger>
+                <TabsTrigger value="media" className="text-xs font-semibold gap-1.5 whitespace-nowrap py-2 px-3 flex-1 md:flex-initial">
+                  <UploadCloud className="h-3.5 w-3.5 shrink-0" />
+                  <span>4. Media & Syllabus</span>
+                </TabsTrigger>
+                <TabsTrigger value="certificate" className="text-xs font-semibold gap-1.5 whitespace-nowrap py-2 px-3 flex-1 md:flex-initial">
+                  <Award className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
+                  <span>5. Certificates</span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
             {/* TAB 1: BASIC INFORMATION */}
             <TabsContent value="basic" className="space-y-4">
@@ -442,25 +500,85 @@ export function TrainingSessionFormModal({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                 <div className="space-y-1.5">
-                  <Label className="font-semibold text-sm">Course Category</Label>
-                  <Controller
-                    name="category"
-                    control={control}
-                    render={({ field }) => (
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger className="bg-background">
-                          <SelectValue placeholder="Select Category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {COURSE_CATEGORIES.map((cat) => (
-                            <SelectItem key={cat} value={cat}>
-                              {cat}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                  <div className="flex items-center justify-between">
+                    <Label className="font-semibold text-sm">Course Category</Label>
+                    {!isAddingCategory && (
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingCategory(true)}
+                        className="text-xs font-semibold text-[#022172] dark:text-[#57A3CC] hover:underline flex items-center gap-1 transition-colors"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Add New Category
+                      </button>
                     )}
-                  />
+                  </div>
+
+                  {isAddingCategory ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        placeholder="Enter custom category name..."
+                        value={customCategoryInput}
+                        onChange={(e) => setCustomCategoryInput(e.target.value)}
+                        className="bg-background text-xs"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            handleAddCustomCategory()
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleAddCustomCategory}
+                        className="bg-[#022172] text-white text-xs shrink-0"
+                      >
+                        Add
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsAddingCategory(false)}
+                        className="text-xs shrink-0"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  ) : (
+                    <Controller
+                      name="category"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={(val) => {
+                            if (val === '__ADD_NEW__') {
+                              setIsAddingCategory(true)
+                            } else {
+                              field.onChange(val)
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="bg-background">
+                            <SelectValue placeholder="Select Category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categoriesList.map((cat) => (
+                              <SelectItem key={cat} value={cat}>
+                                {cat}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="__ADD_NEW__" className="text-purple-600 dark:text-purple-400 font-semibold border-t mt-1">
+                              + Add Custom Category...
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
@@ -559,32 +677,115 @@ export function TrainingSessionFormModal({
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                <div className="space-y-1.5">
-                  <Label htmlFor="daily_time_range" className="font-semibold text-sm">
-                    Daily Session Time
-                  </Label>
-                  <Input
-                    id="daily_time_range"
-                    placeholder='e.g., "04:00 PM – 06:00 PM"'
-                    {...register('daily_time_range')}
-                    className="bg-background"
-                  />
+              {/* Daily Session Times & Mode */}
+              <div className="space-y-3 pt-2 border-t border-border">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <Label className="font-semibold text-sm">Daily Session Times</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Set uniform times for all days or specify different times per day
+                    </p>
+                  </div>
+                  <div className="inline-flex rounded-lg border border-border p-1 bg-muted/40 gap-1 self-start sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => setScheduleTimeMode('uniform')}
+                      className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors ${
+                        scheduleTimeMode === 'uniform'
+                          ? 'bg-background text-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Uniform Time
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setScheduleTimeMode('per_day')}
+                      className={`px-2.5 py-1 rounded text-xs font-semibold transition-colors ${
+                        scheduleTimeMode === 'per_day'
+                          ? 'bg-[#022172] text-white dark:bg-[#57A3CC] shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Different Time Per Day
+                    </button>
+                  </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="total_duration_hours" className="font-semibold text-sm">
-                    Total Duration (Hours)
-                  </Label>
-                  <Input
-                    id="total_duration_hours"
-                    type="number"
-                    min="0"
-                    placeholder="e.g., 20"
-                    {...register('total_duration_hours')}
-                    className="bg-background"
-                  />
-                </div>
+                {scheduleTimeMode === 'uniform' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="daily_time_range" className="font-semibold text-xs text-muted-foreground">
+                        Session Time Range
+                      </Label>
+                      <Input
+                        id="daily_time_range"
+                        placeholder='e.g., "04:00 PM – 06:00 PM"'
+                        {...register('daily_time_range')}
+                        className="bg-background"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="total_duration_hours" className="font-semibold text-xs text-muted-foreground">
+                        Total Duration (Hours)
+                      </Label>
+                      <Input
+                        id="total_duration_hours"
+                        type="number"
+                        min="0"
+                        placeholder="e.g., 20"
+                        {...register('total_duration_hours')}
+                        className="bg-background"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3 bg-muted/20 p-4 rounded-xl border border-border">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <span className="text-xs font-bold text-foreground">
+                        Per-Day Schedule Breakdown ({selectedWeeklyDays.length} Days Selected)
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="total_duration_hours" className="text-xs text-muted-foreground whitespace-nowrap">
+                          Total Hours:
+                        </Label>
+                        <Input
+                          id="total_duration_hours"
+                          type="number"
+                          min="0"
+                          placeholder="e.g., 20"
+                          {...register('total_duration_hours')}
+                          className="bg-background text-xs h-8 w-28"
+                        />
+                      </div>
+                    </div>
+
+                    {selectedWeeklyDays.length === 0 ? (
+                      <p className="text-xs text-muted-foreground italic p-3 bg-background rounded-md border border-dashed">
+                        Please select at least one day in &quot;Weekly Days&quot; above to set per-day session times.
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {selectedWeeklyDays.map((dayId) => (
+                          <div key={dayId} className="flex items-center gap-2 bg-background p-2 rounded-lg border border-border">
+                            <Badge className="w-12 justify-center bg-[#022172] text-white dark:bg-[#57A3CC] font-bold text-xs py-1 shrink-0">
+                              {dayId}
+                            </Badge>
+                            <Input
+                              placeholder='e.g., "02:00 PM – 04:00 PM"'
+                              value={perDayTimes[dayId] || ''}
+                              onChange={(e) =>
+                                setPerDayTimes((prev) => ({ ...prev, [dayId]: e.target.value }))
+                              }
+                              className="bg-background text-xs h-8 flex-1"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
@@ -738,7 +939,7 @@ export function TrainingSessionFormModal({
                   name="target_audience"
                   control={control}
                   render={({ field }) => (
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {[
                         { id: 'both', label: 'Both (Internal & External)', desc: 'Open to enrolled students & public' },
                         { id: 'internal', label: 'Internal Only', desc: 'Strictly for registered school students' },
@@ -1174,14 +1375,14 @@ export function TrainingSessionFormModal({
             </TabsContent>
           </Tabs>
 
-          <DialogFooter className="border-t border-border pt-4 mt-6">
-            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+          <DialogFooter className="border-t border-border pt-4 mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting} className="w-full sm:w-auto">
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white gap-2"
+              className="bg-gradient-to-r from-[#57A3CC] to-[#022172] text-white gap-2 w-full sm:w-auto"
             >
               {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
               {sessionToEdit ? 'Update Training Session' : 'Save & Publish Session'}

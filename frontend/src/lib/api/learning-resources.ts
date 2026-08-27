@@ -12,7 +12,7 @@ interface ApiResponse<T = unknown> {
 // TYPES
 // ============================================================================
 
-export type ResourceType = 'link' | 'book' | 'post' | 'file' | 'video'
+export type ResourceType = 'link' | 'book' | 'post' | 'file' | 'video' | 'anatomy'
 
 export interface LearningResource {
   id: string

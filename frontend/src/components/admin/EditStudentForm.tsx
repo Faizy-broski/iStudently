@@ -397,14 +397,16 @@ studentPhoto: student.profile?.profile_photo_url || student.custom_fields?.perso
 
       {/* Tab Navigation */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className={`grid w-full ${tabs.length === 5 ? 'grid-cols-5' : 'grid-cols-4'}`}>
-          {tabs.map(tab => (
-            <TabsTrigger key={tab.id} value={tab.id} className="gap-2">
-              <tab.icon className="h-4 w-4 hidden sm:inline" />
-              {tab.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        <div className="overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin">
+          <TabsList className={`flex w-max min-w-full sm:w-full sm:grid ${tabs.length === 5 ? 'sm:grid-cols-5' : 'sm:grid-cols-4'} bg-muted/60 p-1 h-auto min-h-[40px] gap-1`}>
+            {tabs.map(tab => (
+              <TabsTrigger key={tab.id} value={tab.id} className="gap-2 whitespace-nowrap px-3 py-1.5 flex-1 sm:flex-initial">
+                <tab.icon className="h-4 w-4 shrink-0" />
+                <span>{tab.label}</span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
         {/* Personal Information Tab */}
         <TabsContent value="personal" className="space-y-4 mt-6">

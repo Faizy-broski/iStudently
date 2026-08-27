@@ -21,6 +21,7 @@ import { SchoolLogo } from '@/components/shared/SchoolLogo'
 import { useSchoolSettings } from '@/context/SchoolSettingsContext'
 import { ProfileViewContext } from '@/context/ProfileViewContext'
 import { useParentDashboardSafe } from '@/context/ParentDashboardContext'
+import { getPreferredDateFormat, formatDateWithPreference } from '@/lib/utils/dateFormat'
 import {
   Select,
   SelectContent,
@@ -167,6 +168,26 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
     return () => window.removeEventListener('hijri-offset-changed', handler)
   }, [])
 
+  const [preferredDateFormat, setPreferredDateFormatState] = React.useState<string>(() => {
+    return getPreferredDateFormat()
+  })
+  React.useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<string>).detail
+      if (typeof detail === 'string') {
+        setPreferredDateFormatState(detail)
+      } else {
+        setPreferredDateFormatState(getPreferredDateFormat())
+      }
+    }
+    window.addEventListener('preferred-date-format-changed', handler)
+    window.addEventListener('storage', handler)
+    return () => {
+      window.removeEventListener('preferred-date-format-changed', handler)
+      window.removeEventListener('storage', handler)
+    }
+  }, [])
+
   // When super_admin is impersonating a school, show that school's name even if no campus is loaded
   const impersonatedSchoolId =
     typeof window !== 'undefined' ? sessionStorage.getItem('impersonatedSchoolId') : null
@@ -234,12 +255,10 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
     ? rawInitialsString.split(' ').filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase()
     : 'SA'
 
-  // Gregorian — always use Western Arabic numerals (0-9), Arabic text only for names
+  // Gregorian — using system preferred date format
   const bcp = isAr ? 'ar-SA' : 'en-US'
   const dayName = now.toLocaleDateString(bcp, { weekday: 'long' })
-  const dayNum = now.getDate()
-  const monthShort = now.toLocaleDateString(bcp, { month: 'short' })
-  const year = now.getFullYear()
+  const formattedDate = formatDateWithPreference(now, preferredDateFormat)
   const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
   const weekNum = getAcademicWeek(now, schoolYearStartDate ?? currentAcademicYear?.start_date)
 
@@ -309,7 +328,7 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
       {/* Date / time */}
       <div className="mt-3 w-full bg-white/10 rounded-lg px-3 py-2.5 space-y-1.5 text-center rtl:text-center">
         <p className="text-white font-semibold text-sm">
-          {dayName}, {dayNum} {monthShort} {year}
+          {dayName}, {formattedDate}
         </p>
         <p className="text-white/65 text-xs">{hijriStr}</p>
         <div className="flex items-center rtl:flex-row-reverse justify-center gap-2 text-xs text-white/65">

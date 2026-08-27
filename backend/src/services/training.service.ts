@@ -40,35 +40,55 @@ export class TrainingService {
     schoolId: string,
     dto: CreateTrainingSessionDTO
   ): Promise<TrainingSession> {
-    const { data, error } = await supabase
+    const payload: Record<string, any> = {
+      school_id: schoolId,
+      title: dto.title,
+      description: dto.description ?? null,
+      category: dto.category ?? null,
+      skill_level: dto.skill_level ?? 'beginner',
+      start_date: dto.start_date,
+      end_date: dto.end_date,
+      weekly_days: dto.weekly_days ?? null,
+      daily_time_range: dto.daily_time_range ?? null,
+      daily_times: dto.daily_times ?? null,
+      total_duration_hours: dto.total_duration_hours ?? null,
+      delivery_mode: dto.delivery_mode ?? 'in_person',
+      location_venue_link: dto.location_venue_link ?? null,
+      instructor_id: dto.instructor_id ?? null,
+      instructor_name: dto.instructor_name ?? null,
+      total_seats: dto.total_seats,
+      course_fee: dto.course_fee ?? 0,
+      registration_deadline: dto.registration_deadline ?? null,
+      holding_timeout_hours: dto.holding_timeout_hours ?? 24,
+      status: dto.status ?? 'open',
+      target_audience: dto.target_audience ?? 'both',
+      cover_image_url: dto.cover_image_url ?? null,
+      syllabus_pdf_url: dto.syllabus_pdf_url ?? null,
+      certificate_settings: dto.certificate_settings ?? null,
+    }
+
+    let { data, error } = await supabase
       .from('training_sessions')
-      .insert({
-        school_id: schoolId,
-        title: dto.title,
-        description: dto.description ?? null,
-        category: dto.category ?? null,
-        skill_level: dto.skill_level ?? 'beginner',
-        start_date: dto.start_date,
-        end_date: dto.end_date,
-        weekly_days: dto.weekly_days ?? null,
-        daily_time_range: dto.daily_time_range ?? null,
-        total_duration_hours: dto.total_duration_hours ?? null,
-        delivery_mode: dto.delivery_mode ?? 'in_person',
-        location_venue_link: dto.location_venue_link ?? null,
-        instructor_id: dto.instructor_id ?? null,
-        instructor_name: dto.instructor_name ?? null,
-        total_seats: dto.total_seats,
-        course_fee: dto.course_fee ?? 0,
-        registration_deadline: dto.registration_deadline ?? null,
-        holding_timeout_hours: dto.holding_timeout_hours ?? 24,
-        status: dto.status ?? 'open',
-        target_audience: dto.target_audience ?? 'both',
-        cover_image_url: dto.cover_image_url ?? null,
-        syllabus_pdf_url: dto.syllabus_pdf_url ?? null,
-        certificate_settings: dto.certificate_settings ?? null,
-      })
+      .insert(payload)
       .select()
       .single()
+
+    // Resilient fallback: If DB schema cache is missing optional new columns, strip unaccepted columns & retry
+    while (error) {
+      const match = error.message?.match(/Could not find the '([^']+)' column/)
+      if (match && match[1] && match[1] in payload) {
+        delete payload[match[1]]
+        const retry = await supabase
+          .from('training_sessions')
+          .insert(payload)
+          .select()
+          .single()
+        data = retry.data
+        error = retry.error
+      } else {
+        break
+      }
+    }
 
     if (error) throw error
     return { ...data, available_seats: data.total_seats - data.registered_seats }
@@ -131,6 +151,7 @@ export class TrainingService {
     if (dto.end_date !== undefined) updatePayload.end_date = dto.end_date
     if (dto.weekly_days !== undefined) updatePayload.weekly_days = dto.weekly_days
     if (dto.daily_time_range !== undefined) updatePayload.daily_time_range = dto.daily_time_range
+    if (dto.daily_times !== undefined) updatePayload.daily_times = dto.daily_times
     if (dto.total_duration_hours !== undefined) updatePayload.total_duration_hours = dto.total_duration_hours
     if (dto.delivery_mode !== undefined) updatePayload.delivery_mode = dto.delivery_mode
     if (dto.location_venue_link !== undefined) updatePayload.location_venue_link = dto.location_venue_link
@@ -164,13 +185,32 @@ export class TrainingService {
 
     updatePayload.updated_at = new Date().toISOString()
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('training_sessions')
       .update(updatePayload)
       .eq('id', sessionId)
       .in('school_id', ids)
       .select()
       .single()
+
+    // Resilient fallback: If DB schema cache is missing optional new columns, strip unaccepted columns & retry
+    while (error) {
+      const match = error.message?.match(/Could not find the '([^']+)' column/)
+      if (match && match[1] && match[1] in updatePayload) {
+        delete updatePayload[match[1]]
+        const retry = await supabase
+          .from('training_sessions')
+          .update(updatePayload)
+          .eq('id', sessionId)
+          .in('school_id', ids)
+          .select()
+          .single()
+        data = retry.data
+        error = retry.error
+      } else {
+        break
+      }
+    }
 
     if (error) throw error
     return { ...data, available_seats: data.total_seats - data.registered_seats }

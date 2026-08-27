@@ -9,7 +9,8 @@ import {
   getLessonPlanSummary,
   type LessonPlanSummaryItem,
 } from "@/lib/api/lesson-plans"
-import { BookOpen, Eye, Loader2 } from "lucide-react"
+import { BookOpen, Eye, Loader2, Plus, ArrowLeft } from "lucide-react"
+import LessonPlanAdd from "./LessonPlanAdd"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -53,7 +54,7 @@ export default function LessonPlansList({ readBasePath = "/admin/scheduling/less
   const { user } = useAuth()
   const { selectedAcademicYear } = useAcademic()
   const campusContext = useCampus()
-  const [_, setNavTo] = useState("")
+  const [showCreate, setShowCreate] = useState(false)
 
   const t = useTranslations("school.scheduling.lesson_plans")
   const tCommon = useTranslations("common")
@@ -99,26 +100,61 @@ export default function LessonPlansList({ readBasePath = "/admin/scheduling/less
 
   const items = summaryItems || []
 
+  if (showCreate) {
+    return (
+      <div className="space-y-4 p-6">
+        <div className="flex items-center justify-between border-b pb-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowCreate(false)}
+            className="gap-2"
+          >
+            <ArrowLeft className="h-4 w-4 rtl:rotate-180" />
+            {tCommon("back") || "Back to Overview"}
+          </Button>
+        </div>
+        <LessonPlanAdd />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 p-6">
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5" />
-            {t("title")}
-          </CardTitle>
-          <CardDescription>
-            {t("description")}
-          </CardDescription>
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5" />
+              {t("title")}
+            </CardTitle>
+            <CardDescription>
+              {t("description")}
+            </CardDescription>
+          </div>
+          <Button
+            onClick={() => setShowCreate(true)}
+            className="gap-2 bg-[#022172] text-white hover:bg-[#022172]/90 dark:bg-[#57A3CC] dark:text-gray-950 font-semibold shrink-0"
+          >
+            <Plus className="h-4 w-4" />
+            + Create Lesson Plan
+          </Button>
         </CardHeader>
         <CardContent>
           {items.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-30" />
               <p className="text-lg font-medium">{t("no_plans_title")}</p>
-              <p className="text-sm mt-1">
+              <p className="text-sm mt-1 mb-5">
                 {t("no_plans_desc")}
               </p>
+              <Button
+                onClick={() => setShowCreate(true)}
+                className="gap-2 bg-[#022172] text-white hover:bg-[#022172]/90 dark:bg-[#57A3CC] dark:text-gray-950 font-semibold"
+              >
+                <Plus className="h-4 w-4" />
+                + Create Lesson Plan
+              </Button>
             </div>
           ) : (
             <div className="border rounded-md overflow-hidden">

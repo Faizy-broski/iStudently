@@ -169,23 +169,30 @@ export class ParentController {
    */
   async createParent(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const adminSchoolId = req.profile?.school_id
+      const isSuperAdmin = req.profile?.role === 'super_admin'
+      const headerSchoolId = (req.headers['x-school-id'] as string) || (req.headers['school_id'] as string)
+      const adminSchoolId = req.profile?.school_id || req.profile?.impersonating_school_id || headerSchoolId || req.body.school_id || req.body.campus_id
 
-      if (!adminSchoolId) {
-        res.status(403).json({
-          success: false,
-          error: 'No school associated with your account'
-        })
+      let effectiveSchoolId = req.body.school_id || req.body.campus_id || headerSchoolId || adminSchoolId
+
+      if (!isSuperAdmin && adminSchoolId) {
+        effectiveSchoolId = await getEffectiveSchoolId(
+          adminSchoolId,
+          req.body.campus_id || req.body.school_id
+        )
       }
 
-      // Get the effective school ID (campus) to use
-      // For parents, always use the admin's base school_id
-      // Parents are school-wide, not campus-specific
-      const effectiveSchoolId = adminSchoolId
+      if (!effectiveSchoolId) {
+        res.status(400).json({
+          success: false,
+          error: 'School ID is required'
+        })
+        return
+      }
 
       const parentData: CreateParentDTO = {
         ...req.body,
-        school_id: effectiveSchoolId // Always use admin's base school_id for parents
+        school_id: effectiveSchoolId
       }
 
       const parent = await parentService.createParent(parentData)

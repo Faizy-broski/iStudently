@@ -8,7 +8,8 @@ export type UserRole =
   | "parent"
   | "staff"
   | "librarian"
-  | "counselor";
+  | "counselor"
+  | "inspector";
 export type SchoolStatus = "active" | "suspended";
 export type ParentRelationType = "father" | "mother" | "guardian" | "other"; // Removed 'both'
 export type EventCategory =
@@ -2013,6 +2014,7 @@ export interface TrainingSession {
   end_date: string
   weekly_days?: string[] | null
   daily_time_range?: string | null
+  daily_times?: Record<string, string> | null
   total_duration_hours?: number | null
   delivery_mode?: TrainingDeliveryMode | null
   location_venue_link?: string | null
@@ -2066,6 +2068,7 @@ export interface CreateTrainingSessionDTO {
   end_date: string
   weekly_days?: string[]
   daily_time_range?: string
+  daily_times?: Record<string, string>
   total_duration_hours?: number
   delivery_mode?: TrainingDeliveryMode
   location_venue_link?: string

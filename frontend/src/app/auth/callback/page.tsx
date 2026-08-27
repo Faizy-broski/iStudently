@@ -57,6 +57,7 @@ export default function AuthCallbackPage() {
         'parent': '/parent/dashboard',
         'librarian': '/librarian/dashboard',
         'staff': '/staff/dashboard',
+        'inspector': '/inspector/dashboard',
       }
       const dashboardUrl = dashboardMap[profile.role] || '/admin/dashboard'
       router.replace(dashboardUrl)

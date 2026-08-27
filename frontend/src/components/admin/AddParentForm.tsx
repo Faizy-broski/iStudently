@@ -92,9 +92,8 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
   const [loadingFields, setLoadingFields] = useState(true);
   const [defaultFieldOrders, setDefaultFieldOrders] = useState<DefaultFieldOrder[]>([]);
   const [orderedStandardFields, setOrderedStandardFields] = useState(STANDARD_FIELDS);
-  const [activeTab, setActiveTab] = useState("relationship");
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const impersonatedSchoolId = typeof window !== 'undefined' ? sessionStorage.getItem('impersonatedSchoolId') : null;
+  const activeSchoolId = campusContext?.selectedCampus?.id || impersonatedSchoolId || user?.school_id || '';
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string>('');
   const [uniqueUserNum] = useState(() => Math.floor(1000 + Math.random() * 9000));
 
@@ -260,7 +259,8 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
       setIsSubmitting(true);
 
       const response = await createParent({
-        school_id: user?.school_id,
+        school_id: activeSchoolId || undefined,
+        campus_id: activeSchoolId || undefined,
         profile_photo_url: profilePhotoUrl || undefined,
         first_name: validatedData.primaryFirstName,
         last_name: validatedData.primaryLastName,
@@ -621,7 +621,7 @@ export function AddParentForm({ onSuccess }: AddParentFormProps) {
                 <StudentPhotoUpload
                   value={profilePhotoUrl}
                   onChange={setProfilePhotoUrl}
-                  schoolId={campusContext?.selectedCampus?.id || user?.school_id || ''}
+                  schoolId={activeSchoolId}
                   role="parent"
                   label="Upload Photo"
                   className="max-w-xs"

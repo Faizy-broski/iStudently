@@ -113,6 +113,22 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     sidebarInjections: [],
   },
 
+  // ── Online Classes (request + admin approval) ────────────────────────────
+  // Standalone module with its own top-level sidebar entry per role (added
+  // directly in sidebar.ts, gated by pluginRequired: 'online_classes'), so no
+  // sidebarInjections are needed here. Builds on the 'live_class' (Jitsi)
+  // module for the actual video room — this adds scheduling, capacity, and
+  // a campus-admin approval step in front of it.
+  {
+    id: 'online_classes',
+    name: 'Online Classes',
+    description:
+      'Teachers request an online class — either an existing course held online, or a new open-enrollment course reaching students across campuses/regions — subject to their campus admin\'s approval before it goes live.',
+    icon: Globe,
+    category: 'Classes',
+    sidebarInjections: [],
+  },
+
   // ── Automatic Attendance ─────────────────────────────────────────────────
   {
     id: 'automatic_attendance',

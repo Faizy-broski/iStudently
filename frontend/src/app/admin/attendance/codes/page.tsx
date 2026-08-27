@@ -81,7 +81,18 @@ export default function AttendanceCodesPage() {
 
   // Update a field in an existing row
   const updateRow = (idx: number, field: keyof CodeRow, value: any) => {
-    setRows(prev => prev.map((r, i) => i === idx ? { ...r, [field]: value, _dirty: true } : r))
+    setRows(prev => prev.map((r, i) => {
+      if (i === idx) {
+        return { ...r, [field]: value, _dirty: true }
+      }
+      if (field === 'is_default' && value === true) {
+        return { ...r, is_default: false, _dirty: true }
+      }
+      return r
+    }))
+    if (field === 'is_default' && value === true) {
+      setNewIsDefault(false)
+    }
   }
 
   // Mark row for deletion
@@ -131,10 +142,41 @@ export default function AttendanceCodesPage() {
 
     setSaving(true)
     try {
+      let currentRows = [...rows]
+
+      // Automatically commit pending new row if title or short_name is entered
+      if (newTitle.trim() || newShortName.trim()) {
+        if (!newTitle.trim() || !newShortName.trim()) {
+          toast.error(t('codes_required'))
+          setSaving(false)
+          return
+        }
+
+        const pendingRow: CodeRow = {
+          title: newTitle.trim(),
+          short_name: newShortName.trim(),
+          sort_order: newSortOrder ? parseInt(newSortOrder) : (currentRows.length + 1) * 10,
+          type: newType,
+          is_default: newIsDefault,
+          state_code: newStateCode,
+          _isNew: true,
+          _dirty: true
+        }
+        currentRows.push(pendingRow)
+
+        // Clear new row inputs
+        setNewTitle('')
+        setNewShortName('')
+        setNewSortOrder('')
+        setNewType('both')
+        setNewIsDefault(false)
+        setNewStateCode('P')
+      }
+
       let errors = 0
 
       // 1. Delete marked rows
-      for (const row of rows.filter(r => r._deleted && r.id)) {
+      for (const row of currentRows.filter(r => r._deleted && r.id)) {
         const result = await attendanceApi.deleteAttendanceCode(row.id!)
         if (!result.data) {
           toast.error(`Failed to delete "${row.title}": ${result.error}`)
@@ -143,7 +185,7 @@ export default function AttendanceCodesPage() {
       }
 
       // 2. Create new rows
-      for (const row of rows.filter(r => r._isNew && !r._deleted)) {
+      for (const row of currentRows.filter(r => r._isNew && !r._deleted)) {
         const result = await attendanceApi.createAttendanceCode({
           school_id: schoolId,
           campus_id: selectedCampus?.id || null,
@@ -161,7 +203,7 @@ export default function AttendanceCodesPage() {
       }
 
       // 3. Update dirty existing rows (not new, not deleted)
-      for (const row of rows.filter(r => r._dirty && !r._isNew && !r._deleted && r.id)) {
+      for (const row of currentRows.filter(r => r._dirty && !r._isNew && !r._deleted && r.id)) {
         const result = await attendanceApi.updateAttendanceCode(row.id!, {
           title: row.title,
           short_name: row.short_name,
@@ -187,9 +229,11 @@ export default function AttendanceCodesPage() {
     } finally {
       setSaving(false)
     }
-  }, [schoolId, selectedCampus?.id, rows, loadCodes])
+  }, [schoolId, selectedCampus?.id, rows, newTitle, newShortName, newSortOrder, newType, newIsDefault, newStateCode, loadCodes, t])
 
+  const hasPendingNew = newTitle.trim().length > 0 || newShortName.trim().length > 0
   const hasDirty = rows.some(r => r._dirty || r._deleted || r._isNew)
+  const canSave = hasDirty || hasPendingNew
   const visibleRows = rows.filter(r => !r._deleted)
 
   return (
@@ -198,7 +242,7 @@ export default function AttendanceCodesPage() {
         <h1 className="text-2xl font-bold">{t('codes_title')}</h1>
         <Button
           onClick={handleSave}
-          disabled={saving || !hasDirty}
+          disabled={saving || !canSave}
           className="gap-2"
         >
           {saving ? (
@@ -334,6 +378,7 @@ export default function AttendanceCodesPage() {
                       <Input
                         value={newTitle}
                         onChange={(e) => setNewTitle(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleSave() }}
                         placeholder={t('codes_titlePlaceholder')}
                         className="h-8 text-sm"
                       />
@@ -342,6 +387,7 @@ export default function AttendanceCodesPage() {
                       <Input
                         value={newShortName}
                         onChange={(e) => setNewShortName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleSave() }}
                         placeholder={t('codes_codePlaceholder')}
                         className="h-8 text-sm w-20"
                       />
@@ -351,6 +397,7 @@ export default function AttendanceCodesPage() {
                         type="number"
                         value={newSortOrder}
                         onChange={(e) => setNewSortOrder(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleSave() }}
                         className="h-8 text-sm w-20"
                       />
                     </td>
@@ -369,7 +416,13 @@ export default function AttendanceCodesPage() {
                     <td className="py-2 px-2">
                       <Checkbox
                         checked={newIsDefault}
-                        onCheckedChange={(c) => setNewIsDefault(!!c)}
+                        onCheckedChange={(c) => {
+                          const val = !!c
+                          setNewIsDefault(val)
+                          if (val) {
+                            setRows(prev => prev.map(r => ({ ...r, is_default: false, _dirty: true })))
+                          }
+                        }}
                       />
                     </td>
                     <td className="py-2 px-2">
@@ -395,7 +448,7 @@ export default function AttendanceCodesPage() {
             <div className="flex justify-center pt-6">
               <Button
                 onClick={handleSave}
-                disabled={saving || !hasDirty}
+                disabled={saving || !canSave}
                 className="gap-2"
               >
                 {saving ? (

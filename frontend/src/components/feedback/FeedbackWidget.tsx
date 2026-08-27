@@ -44,7 +44,7 @@ export function FeedbackWidget() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 left-6 z-[9999] flex items-center gap-2 rounded-full bg-[#022172] text-white shadow-lg px-4 py-3 hover:bg-[#01154d] transition-colors"
+        className="fixed bottom-4 left-4 sm:bottom-6 sm:left-6 z-40 flex items-center gap-2 rounded-full bg-[#022172] text-white shadow-lg px-3 py-2.5 sm:px-4 sm:py-3 hover:bg-[#01154d] transition-colors"
         title="Report a bug or suggest a feature"
       >
         <MessageSquarePlus className="h-5 w-5" />

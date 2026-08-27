@@ -1,4 +1,4 @@
-export type UserRole = 'super_admin' | 'admin' | 'teacher' | 'student' | 'parent' | 'staff' | 'librarian'
+export type UserRole = 'super_admin' | 'admin' | 'teacher' | 'student' | 'parent' | 'staff' | 'librarian' | 'inspector'
 export type SchoolStatus = 'active' | 'suspended'
 
 // Library Types

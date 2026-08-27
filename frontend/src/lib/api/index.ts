@@ -11,7 +11,7 @@ export interface ApiResponse<T = unknown> {
 
 export async function apiRequest<T = unknown>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit & { timeout?: number } = {}
 ): Promise<ApiResponse<T>> {
   const token = await getAuthToken();
   if (!token) return { success: false, error: "Authentication required" };
@@ -22,15 +22,16 @@ export async function apiRequest<T = unknown>(
       : null
 
   try {
+    const { timeout = 30000, ...fetchOptions } = options;
     const response = await simpleFetch(`${API_URL}${endpoint}`, {
-      ...options,
+      ...fetchOptions,
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
         ...(impersonatedSchoolId ? { "X-School-Id": impersonatedSchoolId } : {}),
         ...(options.headers as Record<string, string> | undefined),
       },
-      timeout: 30000,
+      timeout,
     });
 
     if (response.status === 401) {

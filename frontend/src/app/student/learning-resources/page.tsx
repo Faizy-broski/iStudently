@@ -19,16 +19,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
-import { 
-  Link2, BookOpen, FileText, Video, 
+import {
+  Link2, BookOpen, FileText, Video, Dna,
   Loader2, Paperclip, Pin,
   Eye, ExternalLink, Download, Search, Calendar, User,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from "lucide-react"
+import { useLocale } from "next-intl"
 import { useAuth } from "@/context/AuthContext"
 import * as learningResourcesApi from "@/lib/api/learning-resources"
+import { AnatomyExplorer } from "@/components/anatomy/AnatomyExplorer"
+import type { OrganId } from "@/lib/anatomy/anatomy-data"
 
-type ResourceType = 'link' | 'book' | 'post' | 'file' | 'video'
+type ResourceType = 'link' | 'book' | 'post' | 'file' | 'video' | 'anatomy'
 
 const resourceTypeConfig = {
   link: { icon: Link2, label: 'Link', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
@@ -36,11 +39,13 @@ const resourceTypeConfig = {
   post: { icon: FileText, label: 'Post', color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
   file: { icon: Paperclip, label: 'File', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' },
   video: { icon: Video, label: 'Video', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
+  anatomy: { icon: Dna, label: '3D Anatomy Model', color: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200' },
 }
 
 export default function StudentLearningResourcesPage() {
   const { profile } = useAuth()
-  
+  const locale = useLocale()
+
   const [resources, setResources] = useState<learningResourcesApi.LearningResource[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedResource, setSelectedResource] = useState<learningResourcesApi.LearningResource | null>(null)
@@ -139,8 +144,8 @@ export default function StudentLearningResourcesPage() {
       learningResourcesApi.recordResourceView(resource.id, profile.student_id)
     }
 
-    // For posts, show in dialog
-    if (resource.resource_type === 'post') {
+    // For posts and 3D anatomy models, show in dialog
+    if (resource.resource_type === 'post' || resource.resource_type === 'anatomy') {
       setSelectedResource(resource)
       return
     }
@@ -444,6 +449,15 @@ export default function StudentLearningResourcesPage() {
                     className="prose prose-sm max-w-none p-4 bg-muted/50 rounded-lg"
                     dangerouslySetInnerHTML={{ __html: selectedResource.content }}
                     dir="auto"
+                  />
+                )}
+
+                {/* 3D anatomy model */}
+                {selectedResource.resource_type === 'anatomy' && selectedResource.content && (
+                  <AnatomyExplorer
+                    organId={selectedResource.content as OrganId}
+                    locale={locale}
+                    className="rounded-lg overflow-hidden border"
                   />
                 )}
 

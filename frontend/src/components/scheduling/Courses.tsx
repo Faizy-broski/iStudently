@@ -306,6 +306,7 @@ export function Courses() {
           name: subjectForm.name.trim(),
           code: subjectForm.code.trim(),
           grade_level_id: subjectForm.grade_level_id,
+          campus_id: campusId,
         })
         if (!res.success) throw new Error(res.error)
         toast.success(t("msg_subject_created"))

@@ -780,7 +780,7 @@ export function StudentBulkImport() {
                 <div className="max-h-40 overflow-y-auto space-y-1">
                   {parsedRows.filter(r => r._clientErrors.length > 0).map(r => (
                     <div key={r._rowIndex} className="text-xs text-destructive">
-                      {tCommon("row")} {r._rowIndex}{r.email ? ` (${r.email})` : ""}: {r._clientErrors.join("; ")}
+                      {t("th_row")} {r._rowIndex}{r.email ? ` (${r.email})` : ""}: {r._clientErrors.join("; ")}
                     </div>
                   ))}
                 </div>

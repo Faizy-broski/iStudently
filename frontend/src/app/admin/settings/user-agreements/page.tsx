@@ -346,26 +346,52 @@ export default function UserAgreementsSettingsPage() {
                             </div>
                           </div>
 
-                          {/* Title + Content — dimmed when item is disabled */}
+                          {/* Title + Content (Arabic & English tabs) */}
                           <div className={`space-y-4 ${!item.enabled ? 'opacity-50 pointer-events-none' : ''}`}>
-                            <div className="space-y-1.5">
-                              <Label htmlFor={`title-${r.id}-${item.id}`}>{t('title_label')}</Label>
-                              <Input
-                                id={`title-${r.id}-${item.id}`}
-                                value={item.title}
-                                onChange={e => updateAgreement(r.id, item.id, { title: e.target.value })}
-                                placeholder={t('title_placeholder')}
-                              />
-                            </div>
-
-                            <div className="space-y-1.5">
-                              <Label>{t('content_label')}</Label>
-                              <RichTextEditor
-                                value={item.content}
-                                onChange={v => updateAgreement(r.id, item.id, { content: v })}
-                                campusId={campusId || undefined}
-                              />
-                            </div>
+                            <Tabs defaultValue="ar" className="w-full">
+                              <TabsList className="grid w-full grid-cols-2 h-8">
+                                <TabsTrigger value="ar" className="text-xs">العربية (Arabic)</TabsTrigger>
+                                <TabsTrigger value="en" className="text-xs">English (الإنجليزية)</TabsTrigger>
+                              </TabsList>
+                              <TabsContent value="ar" className="space-y-4 mt-3">
+                                <div className="space-y-1.5">
+                                  <Label htmlFor={`title-${r.id}-${item.id}`}>العنوان (بالعربية) / Arabic Title</Label>
+                                  <Input
+                                    id={`title-${r.id}-${item.id}`}
+                                    value={item.title}
+                                    onChange={e => updateAgreement(r.id, item.id, { title: e.target.value })}
+                                    placeholder="مثال: عقد العمل والتعيين"
+                                  />
+                                </div>
+                                <div className="space-y-1.5">
+                                  <Label>نص الاتفاقية (بالعربية) / Arabic Content</Label>
+                                  <RichTextEditor
+                                    value={item.content}
+                                    onChange={v => updateAgreement(r.id, item.id, { content: v })}
+                                    campusId={campusId || undefined}
+                                  />
+                                </div>
+                              </TabsContent>
+                              <TabsContent value="en" className="space-y-4 mt-3">
+                                <div className="space-y-1.5">
+                                  <Label htmlFor={`title-en-${r.id}-${item.id}`}>English Title / العنوان بالإنجليزية</Label>
+                                  <Input
+                                    id={`title-en-${r.id}-${item.id}`}
+                                    value={item.title_en || ''}
+                                    onChange={e => updateAgreement(r.id, item.id, { title_en: e.target.value })}
+                                    placeholder="e.g. Employment Contract & Agreement"
+                                  />
+                                </div>
+                                <div className="space-y-1.5">
+                                  <Label>English Content / نص الاتفاقية بالإنجليزية</Label>
+                                  <RichTextEditor
+                                    value={item.content_en || ''}
+                                    onChange={v => updateAgreement(r.id, item.id, { content_en: v })}
+                                    campusId={campusId || undefined}
+                                  />
+                                </div>
+                              </TabsContent>
+                            </Tabs>
                           </div>
                         </div>
                       ))}

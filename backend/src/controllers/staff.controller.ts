@@ -74,15 +74,24 @@ export const getStaffById = async (req: Request, res: Response) => {
 
 export const createStaff = async (req: Request, res: Response) => {
     try {
-        const adminSchoolId = (req as any).profile!.school_id
-        const creatorId = (req as any).profile!.id  // Fixed: use profile.id instead of user.id
+        const isSuperAdmin = (req as any).profile?.role === 'super_admin'
+        const headerSchoolId = (req.headers['x-school-id'] as string) || (req.headers['school_id'] as string)
+        const adminSchoolId = (req as any).profile?.school_id || (req as any).profile?.impersonating_school_id || headerSchoolId || req.body.school_id || req.body.campus_id
+        const creatorId = (req as any).profile?.id
         const data: CreateStaffDTO = req.body
 
-        // Get the effective school ID (campus) to use
-        const effectiveSchoolId = await getEffectiveSchoolId(
-            adminSchoolId,
-            req.body.campus_id || req.body.school_id
-        )
+        let effectiveSchoolId = req.body.campus_id || req.body.school_id || headerSchoolId || adminSchoolId
+
+        if (!isSuperAdmin && adminSchoolId) {
+            effectiveSchoolId = await getEffectiveSchoolId(
+                adminSchoolId,
+                req.body.campus_id || req.body.school_id
+            )
+        }
+
+        if (!effectiveSchoolId) {
+            return res.status(400).json({ success: false, error: 'School ID is required' })
+        }
 
         // 1. Determine Role
         // If title is 'Librarian' (case insensitive), role is 'librarian', else 'staff'

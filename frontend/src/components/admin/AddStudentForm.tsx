@@ -120,6 +120,8 @@ export function AddStudentForm({ onSuccess }: AddStudentFormProps) {
   const { profile } = useAuth();
   const campusContext = useCampus();
   const selectedCampus = campusContext?.selectedCampus;
+  const impersonatedSchoolId = typeof window !== 'undefined' ? sessionStorage.getItem('impersonatedSchoolId') : null;
+  const activeSchoolId = selectedCampus?.id || impersonatedSchoolId || profile?.school_id || '';
 
   // API-based custom fields (replacing localStorage approach)
   const [customFields, setCustomFields] = useState<CustomFieldDefinition[]>([]);
@@ -661,7 +663,8 @@ customFields.forEach((field) => {
         grade_level: grades.find(g => g.id === validatedData.grade_level_id)?.name || validatedData.gradeLevel || undefined,
         grade_level_id: validatedData.grade_level_id || undefined,
         section_id: validatedData.section_id || undefined,
-        campus_id: selectedCampus?.id, // Assign to selected campus
+        campus_id: activeSchoolId || undefined, // Assign to selected campus
+        school_id: activeSchoolId || undefined,
         profile_photo_url: formData.studentPhoto || undefined, // NEW: Supabase storage URL
         gender: formData.gender || undefined,
         date_of_birth: formData.dateOfBirth?.toISOString(),
@@ -869,7 +872,7 @@ customFields.forEach((field) => {
             <StudentPhotoUpload
               value={formData.studentPhoto || ''}
               onChange={(url) => updateFormData("studentPhoto", url)}
-              schoolId={profile?.school_id || ''}
+              schoolId={activeSchoolId}
               label={tCommon("click_to_upload")}
             />
             {error && <p className="text-sm text-red-500">{error}</p>}
@@ -2115,7 +2118,7 @@ customFields.forEach((field) => {
             }
           }}
           feeId={generatedFeeId}
-          schoolId={profile?.school_id || ''}
+          schoolId={activeSchoolId}
         />
       )}
 

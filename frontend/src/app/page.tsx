@@ -28,8 +28,11 @@ export default function Page() {
         'teacher': '/teacher/dashboard',
         'student': '/student/dashboard',
         'parent': '/parent/dashboard',
+        'librarian': '/librarian/dashboard',
+        'staff': '/staff/dashboard',
+        'inspector': '/inspector/dashboard',
       }
-      
+
       const url = dashboardMap[profile.role] || '/auth/login?error=role_not_supported'
       router.replace(url)
     }

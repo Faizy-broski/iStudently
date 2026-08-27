@@ -457,6 +457,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    const fetchSchoolBranding = async (schoolId: string) => {
+      try {
+        const { data: schoolData } = await supabase
+          .from('schools')
+          .select('id, name, parent_school_id, logo_url')
+          .eq('id', schoolId)
+          .single()
+
+        if (!schoolData) return null
+
+        // If campus has no logo, inherit from parent network school
+        if (!schoolData.logo_url && schoolData.parent_school_id) {
+          const { data: parentSchool } = await supabase
+            .from('schools')
+            .select('logo_url')
+            .eq('id', schoolData.parent_school_id)
+            .single()
+
+          if (parentSchool?.logo_url) {
+            schoolData.logo_url = parentSchool.logo_url
+          }
+        }
+
+        return schoolData
+      } catch (err) {
+        console.error('Error fetching school branding:', err)
+        return null
+      }
+    }
+
     const getUser = async () => {
       try {
         // First try to get the session
@@ -632,11 +662,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               }
 
               if (retryProfile.school_id) {
-                const { data: schoolData } = await supabase
-                  .from('schools')
-                  .select('name, logo_url, logo_shape, logo_border_width, logo_border_color')
-                  .eq('id', retryProfile.school_id)
-                  .single()
+                const schoolData = await fetchSchoolBranding(retryProfile.school_id)
                 if (schoolData) retryProfile.school = schoolData
               }
 
@@ -701,11 +727,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             if (profile.school_id) {
-              const { data: schoolData } = await supabase
-                .from('schools')
-                .select('name, logo_url, logo_shape, logo_border_width, logo_border_color')
-                .eq('id', profile.school_id)
-                .single()
+              const schoolData = await fetchSchoolBranding(profile.school_id)
               if (schoolData) profile.school = schoolData
             }
 

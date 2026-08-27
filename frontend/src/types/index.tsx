@@ -5,7 +5,8 @@ export type UserRole =
   | "student"
   | "parent"
   | "staff"
-  | "librarian";
+  | "librarian"
+  | "inspector";
 export type SchoolStatus = "active" | "suspended";
 
 // Library Types

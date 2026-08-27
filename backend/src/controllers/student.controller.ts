@@ -200,27 +200,30 @@ export class StudentController {
    */
   async createStudent(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const adminSchoolId = req.profile?.school_id
+      const isSuperAdmin = req.profile?.role === 'super_admin'
+      const headerSchoolId = (req.headers['x-school-id'] as string) || (req.headers['school_id'] as string)
+      const adminSchoolId = req.profile?.school_id || req.profile?.impersonating_school_id || headerSchoolId || req.body.school_id || req.body.campus_id
 
-      if (!adminSchoolId) {
-        res.status(403).json({
+      let effectiveSchoolId = req.body.campus_id || req.body.school_id || headerSchoolId || adminSchoolId
+
+      if (!isSuperAdmin && adminSchoolId) {
+        effectiveSchoolId = await getEffectiveSchoolId(
+          adminSchoolId,
+          req.body.campus_id || req.body.school_id
+        )
+      }
+
+      if (!effectiveSchoolId) {
+        res.status(400).json({
           success: false,
-          error: 'No school associated with your account'
+          error: 'School ID is required'
         })
         return
       }
 
-      // Get the effective school ID (campus) to use
-      // If campus_id is provided in request body and admin has access, use it
-      // Otherwise, fall back to admin's school_id
-      const effectiveSchoolId = await getEffectiveSchoolId(
-        adminSchoolId,
-        req.body.campus_id || req.body.school_id
-      )
-
       const studentData: CreateStudentDTO = {
         ...req.body,
-        school_id: effectiveSchoolId // Use campus ID if provided and valid
+        school_id: effectiveSchoolId
       }
 
       const student = await studentService.createStudent(studentData)

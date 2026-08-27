@@ -39,6 +39,24 @@ export const getAttendanceCodes = async (
 
     if (error) throw error
 
+    if ((!data || data.length === 0) && schoolId) {
+      // Auto-seed default RosarioSIS attendance codes if table is empty for school
+      const defaultCodes = [
+        { school_id: schoolId, campus_id: campusId || null, title: 'Present', short_name: 'P', sort_order: 10, type: 'both', is_default: true, state_code: 'P' },
+        { school_id: schoolId, campus_id: campusId || null, title: 'Absent', short_name: 'A', sort_order: 20, type: 'both', is_default: false, state_code: 'A' },
+        { school_id: schoolId, campus_id: campusId || null, title: 'Excused Absence', short_name: 'E', sort_order: 30, type: 'official', is_default: false, state_code: 'A' },
+        { school_id: schoolId, campus_id: campusId || null, title: 'Tardy', short_name: 'T', sort_order: 40, type: 'both', is_default: false, state_code: 'P' },
+      ]
+      const { data: seeded } = await supabase
+        .from('attendance_codes')
+        .insert(defaultCodes)
+        .select()
+
+      if (seeded && seeded.length > 0) {
+        return { success: true, data: seeded, error: null }
+      }
+    }
+
     return { success: true, data: data || [], error: null }
   } catch (error: any) {
     console.error('Error fetching attendance codes:', error)

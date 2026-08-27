@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -37,19 +37,22 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
-import { 
+import {
   Plus, Link2, BookOpen, FileText, Video, Edit,
   Loader2, Paperclip, X, Upload, Trash2, Pin, PinOff,
-  Eye, ExternalLink, Download, Search, Filter,
+  Eye, ExternalLink, Download, Search, Filter, Dna,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from "lucide-react"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { useAuth } from "@/context/AuthContext"
 import * as learningResourcesApi from "@/lib/api/learning-resources"
 import * as teachersApi from "@/lib/api/teachers"
 import { createClient } from "@/lib/supabase/client"
+import { organStructures, type OrganId } from "@/lib/anatomy/anatomy-data"
+import { getOrganDictionary } from "@/lib/anatomy/i18n/organs"
+import { AnatomyExplorer } from "@/components/anatomy/AnatomyExplorer"
 
-type ResourceType = 'link' | 'book' | 'post' | 'file' | 'video'
+type ResourceType = 'link' | 'book' | 'post' | 'file' | 'video' | 'anatomy'
 
 const resourceTypeIcons: Record<ResourceType, typeof Link2> = {
   link: Link2,
@@ -57,6 +60,7 @@ const resourceTypeIcons: Record<ResourceType, typeof Link2> = {
   post: FileText,
   file: Paperclip,
   video: Video,
+  anatomy: Dna,
 }
 
 const resourceTypeColors: Record<ResourceType, string> = {
@@ -65,6 +69,7 @@ const resourceTypeColors: Record<ResourceType, string> = {
   post: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
   file: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
   video: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  anatomy: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200',
 }
 
 export default function LearningResourcesPage() {
@@ -77,7 +82,13 @@ export default function LearningResourcesPage() {
     post: t('typePost'),
     file: t('typeFile'),
     video: t('typeVideo'),
+    anatomy: t('typeAnatomy'),
   }
+  const locale = useLocale()
+  const anatomyOrgans = useMemo(() => {
+    const dict = getOrganDictionary(locale)
+    return organStructures.map(s => ({ id: s.id, name: dict[s.id]?.name ?? s.id }))
+  }, [locale])
   
   const [resources, setResources] = useState<learningResourcesApi.LearningResource[]>([])
   const [loading, setLoading] = useState(true)
@@ -85,6 +96,7 @@ export default function LearningResourcesPage() {
   const [submitting, setSubmitting] = useState(false)
   const [uploadingFiles, setUploadingFiles] = useState(false)
   const [editingResource, setEditingResource] = useState<learningResourcesApi.LearningResource | null>(null)
+  const [viewingAnatomy, setViewingAnatomy] = useState<learningResourcesApi.LearningResource | null>(null)
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
@@ -243,6 +255,11 @@ export default function LearningResourcesPage() {
       return
     }
 
+    if (formData.resource_type === 'anatomy' && !formData.content) {
+      toast.error(t('selectAnatomyOrganError'))
+      return
+    }
+
     try {
       setSubmitting(true)
 
@@ -276,7 +293,11 @@ export default function LearningResourcesPage() {
         description: formData.description.trim() || undefined,
         resource_type: formData.resource_type,
         url: formData.url.trim() || undefined,
-        content: formData.resource_type === 'post' ? (contentRef.current?.innerHTML || formData.content) : undefined,
+        content: formData.resource_type === 'post'
+          ? (contentRef.current?.innerHTML || formData.content)
+          : formData.resource_type === 'anatomy'
+            ? formData.content // holds the selected organ id (see the anatomy field below)
+            : undefined,
         file_urls: allFileUrls.length > 0 ? allFileUrls : undefined,
         book_title: formData.book_title.trim() || undefined,
         book_author: formData.book_author.trim() || undefined,
@@ -784,6 +805,26 @@ export default function LearningResourcesPage() {
                 </div>
               )}
 
+              {formData.resource_type === 'anatomy' && (
+                <div>
+                  <Label>{t('anatomyOrganField')}</Label>
+                  <Select
+                    value={formData.content}
+                    onValueChange={(val) => setFormData({ ...formData, content: val })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={t('selectAnatomyOrganPlaceholder')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {anatomyOrgans.map(o => (
+                        <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">{t('anatomyOrganHint')}</p>
+                </div>
+              )}
+
               {/* Tags */}
               <div>
                 <Label htmlFor="tags">{t('tagsField')}</Label>
@@ -984,6 +1025,17 @@ export default function LearningResourcesPage() {
                         </a>
                       </Button>
                     )}
+                    {resource.resource_type === 'anatomy' && resource.content && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => setViewingAnatomy(resource)}
+                      >
+                        <Dna className="h-4 w-4 mr-1" />
+                        {t('explore')}
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="ghost"
@@ -1134,6 +1186,25 @@ export default function LearningResourcesPage() {
           </Button>
         </div>
       )}
+
+      {/* 3D Anatomy Viewer */}
+      <Dialog open={!!viewingAnatomy} onOpenChange={(open) => !open && setViewingAnatomy(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          {viewingAnatomy && (
+            <>
+              <DialogHeader>
+                <DialogTitle dir="auto">{viewingAnatomy.title}</DialogTitle>
+              </DialogHeader>
+              <AnatomyExplorer
+                organId={viewingAnatomy.content as OrganId}
+                locale={locale}
+                height={520}
+                className="rounded-lg overflow-hidden border"
+              />
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

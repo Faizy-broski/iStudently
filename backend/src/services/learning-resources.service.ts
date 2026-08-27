@@ -16,7 +16,7 @@ export interface LearningResource {
   grade_level_id?: string
   title: string
   description?: string
-  resource_type: 'link' | 'book' | 'post' | 'file' | 'video'
+  resource_type: 'link' | 'book' | 'post' | 'file' | 'video' | 'anatomy'
   url?: string
   content?: string
   file_urls?: string[]
@@ -62,7 +62,7 @@ export interface CreateResourceDTO {
   grade_level_id?: string
   title: string
   description?: string
-  resource_type: 'link' | 'book' | 'post' | 'file' | 'video'
+  resource_type: 'link' | 'book' | 'post' | 'file' | 'video' | 'anatomy'
   url?: string
   content?: string
   file_urls?: string[]

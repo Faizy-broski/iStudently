@@ -68,6 +68,7 @@ export default function TwoFASetupPage() {
       super_admin: '/superadmin/dashboard', admin: '/admin/dashboard',
       teacher: '/teacher/dashboard', student: '/student/dashboard',
       parent: '/parent/dashboard', staff: '/staff/dashboard', librarian: '/librarian/dashboard',
+      inspector: '/inspector/dashboard',
     }
     return map[profile?.role ?? ''] ?? '/admin/dashboard'
   }
