@@ -116,6 +116,26 @@ export class DashboardController {
     }
   }
 
+  async getBranding(req: AuthRequest, res: Response) {
+    try {
+      const branding = await dashboardService.getBrandingConfig()
+      res.json({ success: true, data: branding })
+    } catch (error: any) {
+      console.error('Get branding config error:', error)
+      res.status(500).json({ success: false, error: error.message || 'Failed to fetch branding config' })
+    }
+  }
+
+  async updateBranding(req: AuthRequest, res: Response) {
+    try {
+      const branding = await dashboardService.updateBrandingConfig(req.body)
+      res.json({ success: true, data: branding, message: 'Branding updated' })
+    } catch (error: any) {
+      console.error('Update branding config error:', error)
+      res.status(500).json({ success: false, error: error.message || 'Failed to update branding config' })
+    }
+  }
+
   // Public — read by the unauthenticated /auth/login page
   async getLoginPageConfig(req: Request, res: Response) {
     try {

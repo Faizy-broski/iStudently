@@ -77,6 +77,8 @@ export default function ChangePasswordPage() {
               librarian: '/librarian/dashboard',
               staff: '/staff/dashboard',
               inspector: '/inspector/dashboard',
+              media_officer: '/media-officer/fina/review',
+              fina_supervisor: '/fina-supervisor/dashboard',
             }[profile.role] ?? '/admin/dashboard')
           : '/auth/login'
     } catch {

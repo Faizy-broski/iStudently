@@ -84,7 +84,7 @@ export const getAllTeachers = async (req: Request, res: Response) => {
   try {
     const isSuperAdmin = (req as AuthRequest).profile?.role === 'super_admin'
     const headerSchoolId = (req.headers['x-school-id'] as string) || (req.headers['school_id'] as string)
-    const schoolId = (req as AuthRequest).profile?.school_id || (req as AuthRequest).profile?.impersonating_school_id || headerSchoolId || (req.query.school_id as string) || (req.query.campus_id as string)
+    const schoolId = (req as AuthRequest).profile?.school_id || (req as any).profile?.impersonating_school_id || headerSchoolId || (req.query.school_id as string) || (req.query.campus_id as string)
 
     if (!schoolId && !isSuperAdmin) {
       return res.status(400).json({
@@ -148,7 +148,7 @@ export const createTeacher = async (req: Request, res: Response) => {
   try {
     const isSuperAdmin = (req as AuthRequest).profile?.role === 'super_admin'
     const headerSchoolId = (req.headers['x-school-id'] as string) || (req.headers['school_id'] as string)
-    const adminSchoolId = (req as AuthRequest).profile?.school_id || (req as AuthRequest).profile?.impersonating_school_id || headerSchoolId || req.body.school_id || req.body.campus_id
+    const adminSchoolId = (req as AuthRequest).profile?.school_id || (req as any).profile?.impersonating_school_id || headerSchoolId || req.body.school_id || req.body.campus_id
     const userId = (req as AuthRequest).profile?.id
 
     let effectiveSchoolId = req.body.campus_id || req.body.school_id || headerSchoolId || adminSchoolId

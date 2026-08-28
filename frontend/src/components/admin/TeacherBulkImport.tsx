@@ -27,6 +27,7 @@ import {
 import { useCampus } from "@/context/CampusContext"
 import { useTranslations } from "next-intl"
 import { getFieldDefinitions, type CustomFieldDefinition } from "@/lib/api/custom-fields"
+import { normalizeSpreadsheetDate } from "@/lib/utils/spreadsheetDate"
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -154,7 +155,9 @@ function applyMappingAndValidate(
     const department    = get("department")
     const qualifications = get("qualifications")
     const specialization = get("specialization")
-    const dateOfJoining = get("date_of_joining")
+    const dojCol         = mapping["date_of_joining"]
+    const dojRaw          = dojCol && dojCol !== SKIP ? raw[dojCol] : undefined
+    const dateOfJoining  = normalizeSpreadsheetDate(dojRaw)
     const empType       = get("employment_type").toLowerCase()
     const payType       = get("payment_type").toLowerCase()
     const rawSalary     = get("base_salary")
@@ -176,6 +179,9 @@ function applyMappingAndValidate(
     }
     if (empNum && seenEmpNums.has(empNum)) {
       errors.push(`Duplicate employee_number "${empNum}" in file`)
+    }
+    if (!dateOfJoining && dojRaw !== undefined && String(dojRaw).trim() !== "") {
+      errors.push(`Invalid date_of_joining "${dojRaw}"`)
     }
 
     if (EMAIL_RE.test(email)) seenEmails.add(email)
@@ -206,7 +212,7 @@ function applyMappingAndValidate(
       department:     department     || undefined,
       qualifications: qualifications || undefined,
       specialization: specialization || undefined,
-      date_of_joining: dateOfJoining || undefined,
+      date_of_joining: dateOfJoining,
       employment_type: (empType as any) || undefined,
       payment_type:   (payType as any) || undefined,
       base_salary:    rawSalary ? Number(rawSalary) : undefined,
@@ -288,7 +294,7 @@ export function TeacherBulkImport() {
       const reader = new FileReader()
       reader.onload = (e) => {
         try {
-          const wb = XLSX.read(e.target?.result, { type: "binary" })
+          const wb = XLSX.read(e.target?.result, { type: "binary", cellDates: true })
           const ws = wb.Sheets[wb.SheetNames[0]]
           handleRows(XLSX.utils.sheet_to_json(ws, { defval: "" }) as Record<string, any>[])
         } catch { toast.error(bi('errors.parseExcelFailed')) }

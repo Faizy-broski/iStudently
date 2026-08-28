@@ -519,9 +519,10 @@ export class MessagingService {
     }
 
     // 'teachers' -> role='teacher'; 'staff' -> everyone else in the staff table
-    // (librarian/admin/counselor/generic staff), matching the same split already
-    // used by staff.service.ts's role filter ('teacher' vs 'all').
-    const staffRoles = type === 'teachers' ? ['teacher'] : ['staff', 'librarian', 'admin', 'counselor']
+    // (librarian/admin/counselor/generic staff/media_officer/fina_supervisor),
+    // matching the same split already used by staff.service.ts's role filter
+    // ('teacher' vs 'all').
+    const staffRoles = type === 'teachers' ? ['teacher'] : ['staff', 'librarian', 'admin', 'counselor', 'media_officer', 'fina_supervisor']
 
     const { data, error } = await supabase
       .from('staff')

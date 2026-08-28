@@ -35,7 +35,7 @@ interface ModuleGroup {
 
 // Union every assignable role's sidebar so the allow-list covers whatever an
 // admin could pick from when building a User Profile for any staff/student/parent.
-const ROLES_FOR_UNION: UserRole[] = ['admin', 'teacher', 'staff', 'librarian', 'student', 'parent']
+const ROLES_FOR_UNION: UserRole[] = ['admin', 'teacher', 'staff', 'librarian', 'student', 'parent', 'media_officer', 'fina_supervisor']
 
 function getAllModuleGroups(): ModuleGroup[] {
   const groups: ModuleGroup[] = []

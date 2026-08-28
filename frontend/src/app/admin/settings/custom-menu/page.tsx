@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslations, useMessages } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -90,6 +91,11 @@ function SortableSection({ id, title, icon: Icon }: { id: string; title: string;
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function CustomMenuPage() {
+  const t = useTranslations('sidebar')
+  const messages = useMessages()
+  const sidebarMessages = (messages?.sidebar ?? {}) as Record<string, string>
+  const label = (key: string): string => (key in sidebarMessages ? t(key as any) : key)
+
   const campusCtx = useCampus()
   const selectedCampus = campusCtx?.selectedCampus ?? null
   const campusId = selectedCampus?.id ?? null
@@ -274,7 +280,7 @@ export default function CustomMenuPage() {
                             <SortableSection
                               key={title}
                               id={title}
-                              title={title}
+                              title={label(title)}
                               icon={item?.icon ?? GripVertical}
                             />
                           )

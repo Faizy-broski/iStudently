@@ -50,6 +50,15 @@ export const requireStaff = requireRole('super_admin', 'admin', 'teacher', 'libr
 // built-in super_admin shortcut above, for support/troubleshooting access).
 export const requireInspector = requireRole('inspector')
 
+// Al-Fina' module roles — standalone, not part of the admin hierarchy.
+// MEDIA_OFFICER performs first-review moderation before a post reaches the
+// principal's (admin's) approval queue. FINA_SUPERVISOR is municipal-level
+// and cross-school by design; its actual school scope is further resolved
+// per-request by fina/supervisor-access.service.ts, not by this role check
+// alone (super_admin still bypasses via requireRole's built-in shortcut).
+export const requireMediaOfficer = requireRole('media_officer')
+export const requireFinaSupervisor = requireRole('fina_supervisor')
+
 /**
  * Check if user belongs to specific school (for school-level admins)
  */

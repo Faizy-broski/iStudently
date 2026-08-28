@@ -563,6 +563,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const now = Date.now()
         if (profileCache &&
           profileCache.userId === user.id &&
+          profileCache.profile?.school?.logo_url &&
           now - profileCache.timestamp < PROFILE_CACHE_TTL) {
 
           if (isMounted) {

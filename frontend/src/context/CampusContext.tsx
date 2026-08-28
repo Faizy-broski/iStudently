@@ -17,7 +17,7 @@ const CampusContext = createContext<CampusContextType | undefined>(undefined)
 
 // Cache duration - 10 minutes
 const CACHE_DURATION = 10 * 60 * 1000
-const CACHE_KEY = 'studently_campus_cache'
+const CACHE_KEY = 'studently_campus_cache_v2'
 const SELECTED_CAMPUS_KEY = 'selectedCampusId'
 
 // Helper to get cached data from sessionStorage

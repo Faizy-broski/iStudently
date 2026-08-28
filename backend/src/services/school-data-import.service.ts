@@ -539,7 +539,7 @@ export async function validateImport(schoolId: string, buffer: Buffer): Promise<
     const valid: ParsedRow[] = []
     const errors: { row: number; error: string }[] = []
     const seenEmails = new Set<string>()
-    const VALID_ROLES = ['teacher', 'librarian', 'staff', 'admin', 'counselor']
+    const VALID_ROLES = ['teacher', 'librarian', 'staff', 'admin', 'counselor', 'media_officer', 'fina_supervisor']
     for (const row of rows) {
       if (!String(row.first_name || '').trim() || !String(row.last_name || '').trim()) {
         errors.push({ row: row._row, error: 'first_name and last_name are required' }); continue

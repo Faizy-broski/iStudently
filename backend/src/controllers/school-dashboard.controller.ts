@@ -13,6 +13,7 @@ export class SchoolDashboardController {
     try {
       const schoolId = req.profile?.school_id
       const campus_id = req.query.campus_id as string
+      const academic_year_id = req.query.academic_year_id as string
 
       if (!schoolId) {
         return res.status(400).json({
@@ -21,7 +22,7 @@ export class SchoolDashboardController {
         })
       }
 
-      const stats = await schoolDashboardService.getSchoolStats(schoolId, campus_id || undefined)
+      const stats = await schoolDashboardService.getSchoolStats(schoolId, campus_id || undefined, academic_year_id || undefined)
 
       return res.json({
         success: true,
@@ -143,6 +144,7 @@ export class SchoolDashboardController {
     try {
       const schoolId = req.profile?.school_id
       const campus_id = req.query.campus_id as string
+      const academic_year_id = req.query.academic_year_id as string
 
       if (!schoolId) {
         return res.status(400).json({
@@ -151,7 +153,7 @@ export class SchoolDashboardController {
         })
       }
 
-      const data = await schoolDashboardService.getClassBreakdown(schoolId, campus_id || undefined)
+      const data = await schoolDashboardService.getClassBreakdown(schoolId, campus_id || undefined, academic_year_id || undefined)
 
       return res.json({
         success: true,

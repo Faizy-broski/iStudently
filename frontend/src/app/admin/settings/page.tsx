@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -15,6 +16,7 @@ import { useCampus } from "@/context/CampusContext";
 const HIJRI_OFFSET_KEY = "studently_global_hijri_offset";
 
 export default function SettingsPage() {
+  const t = useTranslations("admin.settings");
   const { selectedCampus } = useCampus();
   const campusId = selectedCampus?.id ?? null;
 
@@ -75,10 +77,10 @@ export default function SettingsPage() {
       // Sync localStorage + dispatch event so all open CalendarGrids update instantly
       localStorage.setItem(HIJRI_OFFSET_KEY, hijriOffset.toString());
       window.dispatchEvent(new CustomEvent('hijri-offset-changed', { detail: hijriOffset }));
-      toast.success("Hijri offset saved successfully");
+      toast.success(t("hijri.toast_success"));
     } catch (error) {
       console.error("Error saving settings:", error);
-      toast.error("Failed to save settings");
+      toast.error(t("hijri.toast_error"));
     } finally {
       setIsSaving(false);
     }
@@ -89,9 +91,9 @@ export default function SettingsPage() {
     try {
       const res = await updateSchoolSettings({ default_payment_method: defaultPaymentMethod }, campusId);
       if (!res.success) throw new Error(res.error || "Failed to save payment method");
-      toast.success(campusId ? "Campus default payment method saved" : "Default payment method saved");
+      toast.success(campusId ? t("paymentMethod.toast_success_campus") : t("paymentMethod.toast_success"));
     } catch (error: any) {
-      toast.error(error.message || "Failed to save payment method");
+      toast.error(error.message || t("paymentMethod.toast_error"));
     } finally {
       setPaymentMethodSaving(false);
     }
@@ -102,9 +104,9 @@ export default function SettingsPage() {
     try {
       const res = await updateSchoolSettings({ default_currency: defaultCurrency }, campusId);
       if (!res.success) throw new Error(res.error || "Failed to save");
-      toast.success(campusId ? "Campus default currency saved" : "Default currency saved");
+      toast.success(campusId ? t("currency.toast_success_campus") : t("currency.toast_success"));
     } catch (error: any) {
-      toast.error(error.message || "Failed to save currency");
+      toast.error(error.message || t("currency.toast_error"));
     } finally {
       setCurrencySaving(false);
     }
@@ -118,9 +120,9 @@ export default function SettingsPage() {
         auto_dismiss_seconds: autoDismissSeconds
       }, campusId);
       if (!res.success) throw new Error(res.error || "Failed to save payment reminder settings");
-      toast.success("Payment reminder settings saved successfully");
+      toast.success(t("paymentReminder.toast_success"));
     } catch (error: any) {
-      toast.error(error.message || "Failed to save payment reminder settings");
+      toast.error(error.message || t("paymentReminder.toast_error"));
     } finally {
       setReminderSaving(false);
     }
@@ -132,9 +134,9 @@ export default function SettingsPage() {
       const res = await updateSchoolSettings({ preferred_date_format: preferredDateFormat }, campusId);
       if (!res.success) throw new Error(res.error || "Failed to save date format");
       setPreferredDateFormat(preferredDateFormat);
-      toast.success("Preferred date format saved successfully");
+      toast.success(t("dateFormat.toast_success"));
     } catch (error: any) {
-      toast.error(error.message || "Failed to save date format");
+      toast.error(error.message || t("dateFormat.toast_error"));
     } finally {
       setDateFormatSaving(false);
     }
@@ -145,10 +147,10 @@ export default function SettingsPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-[#57A3CC] to-[#003dd6] bg-clip-text text-transparent">
-          System Settings
+          {t("title")}
         </h1>
         <p className="text-sm md:text-base text-muted-foreground mt-2">
-          Configure global system preferences
+          {t("subtitle")}
         </p>
       </div>
 
@@ -157,21 +159,21 @@ export default function SettingsPage() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-[#003dd6]" />
-            <CardTitle>Preferred Date Format</CardTitle>
+            <CardTitle>{t("dateFormat.title")}</CardTitle>
           </div>
           <CardDescription>
-            Select how dates should be displayed across system reports, gradebooks, certificates, and portals.
+            {t("dateFormat.description")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-3">
-            <Label className="text-base font-semibold">Date Format</Label>
+            <Label className="text-base font-semibold">{t("dateFormat.label")}</Label>
             {paymentMethodLoading ? (
-              <p className="text-sm text-muted-foreground">Loading…</p>
+              <p className="text-sm text-muted-foreground">{t("loading")}</p>
             ) : (
               <Select value={preferredDateFormat} onValueChange={setPreferredDateFormatState}>
                 <SelectTrigger className="w-72">
-                  <SelectValue placeholder="Select date format" />
+                  <SelectValue placeholder={t("dateFormat.placeholder")} />
                 </SelectTrigger>
                 <SelectContent className="max-h-80">
                   {DATE_FORMAT_OPTIONS.map((opt) => (
@@ -184,12 +186,12 @@ export default function SettingsPage() {
             )}
             {!paymentMethodLoading && (
               <p className="text-sm text-muted-foreground">
-                Preview: <strong>{formatDateWithPreference(new Date(), preferredDateFormat)}</strong>
+                {t("dateFormat.preview")} <strong>{formatDateWithPreference(new Date(), preferredDateFormat)}</strong>
               </p>
             )}
             <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
               <p className="text-sm text-blue-900 dark:text-blue-100">
-                <strong>Note:</strong> This preference applies system-wide to all date displays for school admins, teachers, parents, and students.
+                <strong>{t("note")}</strong> {t("dateFormat.note")}
               </p>
             </div>
           </div>
@@ -200,7 +202,7 @@ export default function SettingsPage() {
               className="bg-gradient-to-r from-[#57A3CC] to-[#003dd6] text-white"
             >
               <Save className="h-4 w-4 mr-2" />
-              {dateFormatSaving ? "Saving..." : "Save Date Format"}
+              {dateFormatSaving ? t("saving") : t("dateFormat.save")}
             </Button>
           </div>
         </CardContent>
@@ -211,28 +213,28 @@ export default function SettingsPage() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-[#003dd6]" />
-            <CardTitle>Global Hijri Calendar Adjustment</CardTitle>
+            <CardTitle>{t("hijri.title")}</CardTitle>
           </div>
           <CardDescription>
-            Adjust the Hijri calendar display for the entire system. This affects all events and calendar views.
+            {t("hijri.description")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-4">
-            <Label className="text-base font-semibold">Hijri Date Offset</Label>
+            <Label className="text-base font-semibold">{t("hijri.label")}</Label>
             <Select
               value={hijriOffset.toString()}
               onValueChange={(value) => setHijriOffset(parseInt(value))}
             >
               <SelectTrigger className="w-72">
-                <SelectValue placeholder="Select offset" />
+                <SelectValue placeholder={t("hijri.placeholder")} />
               </SelectTrigger>
               <SelectContent>
                 {Array.from({ length: 11 }, (_, i) => i - 5).map((offset) => (
                   <SelectItem key={offset} value={offset.toString()}>
                     {offset === 0
-                      ? 'No Adjustment (0)'
-                      : `${offset > 0 ? '+' : ''}${offset} Day${Math.abs(offset) > 1 ? 's' : ''}`}
+                      ? t("hijri.noAdjustment")
+                      : `${offset > 0 ? '+' : ''}${offset} ${Math.abs(offset) > 1 ? t("hijri.days") : t("hijri.day")}`}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -240,8 +242,7 @@ export default function SettingsPage() {
 
             <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
               <p className="text-sm text-blue-900 dark:text-blue-100">
-                <strong>Note:</strong> This adjustment is useful for aligning with local moon sighting announcements.
-                The offset will be applied to all Hijri dates shown throughout the system, including the calendar grid and event details.
+                <strong>{t("note")}</strong> {t("hijri.note")}
               </p>
             </div>
           </div>
@@ -253,7 +254,7 @@ export default function SettingsPage() {
               className="bg-gradient-to-r from-[#57A3CC] to-[#003dd6] text-white"
             >
               <Save className="h-4 w-4 mr-2" />
-              {isSaving ? "Saving..." : "Save Settings"}
+              {isSaving ? t("saving") : t("hijri.save")}
             </Button>
           </div>
         </CardContent>
@@ -264,18 +265,18 @@ export default function SettingsPage() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Bell className="h-5 w-5 text-[#003dd6]" />
-            <CardTitle>Overdue Payment Reminder Pop-up / Toast</CardTitle>
+            <CardTitle>{t("paymentReminder.title")}</CardTitle>
           </div>
           <CardDescription>
-            Configure conditional overdue payment reminder toast shown to parents and students upon login or dashboard load.
+            {t("paymentReminder.description")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex items-center justify-between p-4 border rounded-lg bg-gray-50/50 dark:bg-slate-900/50">
             <div className="space-y-0.5">
-              <Label className="text-base font-semibold">Enable Payment Reminder</Label>
+              <Label className="text-base font-semibold">{t("paymentReminder.enableLabel")}</Label>
               <p className="text-sm text-muted-foreground">
-                Trigger toast alert automatically on dashboard load if user has overdue tuition balance.
+                {t("paymentReminder.enableDescription")}
               </p>
             </div>
             <Switch
@@ -285,25 +286,25 @@ export default function SettingsPage() {
           </div>
 
           <div className="space-y-3">
-            <Label className="text-base font-semibold">Auto-dismiss Duration (seconds)</Label>
+            <Label className="text-base font-semibold">{t("paymentReminder.durationLabel")}</Label>
             <Select
               value={autoDismissSeconds.toString()}
               onValueChange={(val) => setAutoDismissSeconds(parseInt(val))}
               disabled={!enablePaymentReminder}
             >
               <SelectTrigger className="w-60">
-                <SelectValue placeholder="Select duration" />
+                <SelectValue placeholder={t("paymentReminder.durationPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
                 {[3, 4, 5, 6, 7, 8, 10, 15].map((sec) => (
                   <SelectItem key={sec} value={sec.toString()}>
-                    {sec} seconds {sec === 5 ? "(Default)" : ""}
+                    {sec} {t("paymentReminder.seconds")} {sec === 5 ? t("paymentReminder.default") : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Number of seconds before the toast automatically dismisses itself. Includes manual close button.
+              {t("paymentReminder.durationHint")}
             </p>
           </div>
 
@@ -314,7 +315,7 @@ export default function SettingsPage() {
               className="bg-gradient-to-r from-[#57A3CC] to-[#003dd6] text-white"
             >
               <Save className="h-4 w-4 mr-2" />
-              {reminderSaving ? "Saving..." : "Save Reminder Settings"}
+              {reminderSaving ? t("saving") : t("paymentReminder.save")}
             </Button>
           </div>
         </CardContent>
@@ -325,23 +326,21 @@ export default function SettingsPage() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-[#003dd6]" />
-            <CardTitle>Default Currency</CardTitle>
+            <CardTitle>{t("currency.title")}</CardTitle>
           </div>
           <CardDescription>
-            Set the default currency for{" "}
-            {selectedCampus ? <strong>{selectedCampus.name}</strong> : "your school"}
-            {". "}This will be used across fees, invoices, billing elements, and financial reports.
+            {t("currency.description", { campus: selectedCampus ? selectedCampus.name : t("currency.yourSchool") })}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-3">
-            <Label className="text-base font-semibold">Currency</Label>
+            <Label className="text-base font-semibold">{t("currency.label")}</Label>
             {paymentMethodLoading ? (
-              <p className="text-sm text-muted-foreground">Loading…</p>
+              <p className="text-sm text-muted-foreground">{t("loading")}</p>
             ) : (
               <Select value={defaultCurrency} onValueChange={setDefaultCurrency}>
                 <SelectTrigger className="w-72">
-                  <SelectValue placeholder="Select currency" />
+                  <SelectValue placeholder={t("currency.placeholder")} />
                 </SelectTrigger>
                 <SelectContent className="max-h-80">
                   {CURRENCY_OPTIONS.map((opt) => (
@@ -355,7 +354,7 @@ export default function SettingsPage() {
             )}
             {!paymentMethodLoading && (
               <p className="text-sm text-muted-foreground">
-                Selected:{" "}
+                {t("currency.selected")}{" "}
                 <strong>
                   {(() => {
                     const c = CURRENCY_OPTIONS.find(o => o.value === defaultCurrency);
@@ -366,8 +365,7 @@ export default function SettingsPage() {
             )}
             <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
               <p className="text-sm text-blue-900 dark:text-blue-100">
-                <strong>Note:</strong> This setting is campus-specific. Changing the currency does not
-                convert existing monetary values — it only affects the symbol displayed on new records.
+                <strong>{t("note")}</strong> {t("currency.note")}
               </p>
             </div>
           </div>
@@ -378,7 +376,7 @@ export default function SettingsPage() {
               className="bg-gradient-to-r from-[#57A3CC] to-[#003dd6] text-white"
             >
               <Save className="h-4 w-4 mr-2" />
-              {currencySaving ? "Saving..." : "Save Currency"}
+              {currencySaving ? t("saving") : t("currency.save")}
             </Button>
           </div>
         </CardContent>
@@ -389,32 +387,24 @@ export default function SettingsPage() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-[#003dd6]" />
-            <CardTitle>Default Payment Method</CardTitle>
+            <CardTitle>{t("paymentMethod.title")}</CardTitle>
           </div>
           <CardDescription>
-            Set the default payment method for{" "}
-            {selectedCampus ? (
-              <strong>{selectedCampus.name}</strong>
-            ) : (
-              "your school"
-            )}
-            {". "}This will be pre-selected on all new invoices, fee payments, billing elements,
-            accounting expenses and staff salary payments for this campus. Switch campuses using the
-            campus selector to configure other campuses.
+            {t("paymentMethod.description", { campus: selectedCampus ? selectedCampus.name : t("paymentMethod.yourSchool") })}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-3">
-            <Label className="text-base font-semibold">Payment Method</Label>
+            <Label className="text-base font-semibold">{t("paymentMethod.label")}</Label>
             {paymentMethodLoading ? (
-              <p className="text-sm text-muted-foreground">Loading…</p>
+              <p className="text-sm text-muted-foreground">{t("loading")}</p>
             ) : (
               <Select
                 value={defaultPaymentMethod}
                 onValueChange={(v) => setDefaultPaymentMethod(v as PaymentMethodOption)}
               >
                 <SelectTrigger className="w-60">
-                  <SelectValue placeholder="Select payment method" />
+                  <SelectValue placeholder={t("paymentMethod.placeholder")} />
                 </SelectTrigger>
                 <SelectContent className="max-h-80">
                   {PAYMENT_METHOD_OPTIONS.map((opt) => (
@@ -427,9 +417,7 @@ export default function SettingsPage() {
             )}
             <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
               <p className="text-sm text-blue-900 dark:text-blue-100">
-                <strong>Note:</strong> This setting is campus-specific. Each campus can have its own
-                default payment method. Individual payment entries can still override the method at the
-                time of recording. Changing this setting does not affect historical records.
+                <strong>{t("note")}</strong> {t("paymentMethod.note")}
               </p>
             </div>
           </div>
@@ -441,7 +429,7 @@ export default function SettingsPage() {
               className="bg-gradient-to-r from-[#57A3CC] to-[#003dd6] text-white"
             >
               <Save className="h-4 w-4 mr-2" />
-              {paymentMethodSaving ? "Saving..." : "Save Payment Method"}
+              {paymentMethodSaving ? t("saving") : t("paymentMethod.save")}
             </Button>
           </div>
         </CardContent>

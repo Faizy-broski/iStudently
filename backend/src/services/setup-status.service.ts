@@ -108,6 +108,12 @@ class SetupStatusService {
      * Get all campuses for a school
      */
     async getCampuses(schoolId: string): Promise<any[]> {
+        const { data: parentSchool } = await supabase
+            .from('schools')
+            .select('logo_url')
+            .eq('id', schoolId)
+            .maybeSingle()
+
         const { data, error } = await supabase
             .from('schools')
             .select('*')
@@ -121,7 +127,12 @@ class SetupStatusService {
             throw new Error('Failed to fetch campuses')
         }
 
-        return attachLogoAppearance(data || [])
+        const campusesWithParentLogo = (data || []).map(c => ({
+            ...c,
+            logo_url: c.logo_url || parentSchool?.logo_url || null
+        }))
+
+        return attachLogoAppearance(campusesWithParentLogo)
     }
 
     /**
@@ -183,6 +194,18 @@ class SetupStatusService {
         if (error) {
             console.error('Error fetching campus:', error)
             throw new Error('Failed to fetch campus')
+        }
+
+        if (!data.logo_url && data.parent_school_id) {
+            const { data: parentSchool } = await supabase
+                .from('schools')
+                .select('logo_url')
+                .eq('id', data.parent_school_id)
+                .maybeSingle()
+
+            if (parentSchool?.logo_url) {
+                data.logo_url = parentSchool.logo_url
+            }
         }
 
         const appearance = await getLogoAppearance(campusId)

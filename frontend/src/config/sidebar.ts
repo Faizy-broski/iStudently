@@ -566,7 +566,33 @@ const adminMenuItems: SidebarMenuItem[] = [
     href: "/admin/inspections/assignments",
     icon: ClipboardCheck,
     subItems: [
+      { title: "dashboard", href: "/admin/inspections/dashboard", icon: Gauge },
       { title: "assignments", href: "/admin/inspections/assignments", icon: UserPlus },
+      { title: "visits", href: "/admin/inspections/visits", icon: CalendarPlus },
+      { title: "rubrics", href: "/admin/inspections/rubrics", icon: ClipboardList },
+      { title: "training", href: "/admin/inspections/training-prescriptions", icon: GraduationCap },
+      { title: "reports", href: "/admin/inspections/reports", icon: FileText },
+      { title: "appeals", href: "/admin/inspections/appeals", icon: MessageSquareWarning },
+    ],
+  },
+  {
+    // Al-Fina' module — reports, appeals, and the dashboard get their own
+    // subItems here as each later phase ships.
+    title: "fina",
+    href: "/admin/fina/wall",
+    icon: Camera,
+    subItems: [
+      { title: "fina_wall", href: "/admin/fina/wall", icon: Camera },
+      { title: "fina_compose", href: "/admin/fina/compose", icon: Megaphone },
+      { title: "media", href: "/admin/fina/media", icon: Camera },
+      { title: "fina_albums", href: "/admin/fina/albums", icon: FolderOpen },
+      { title: "fina_approvals", href: "/admin/fina/approvals", icon: ClipboardCheck },
+      { title: "fina_groups", href: "/admin/fina/groups", icon: Users },
+      { title: "fina_events", href: "/admin/fina/events", icon: Calendar },
+      { title: "fina_threads", href: "/admin/fina/threads", icon: MessageSquare },
+      { title: "fina_notifications", href: "/admin/fina/notifications", icon: Bell },
+      { title: "fina_audit", href: "/admin/fina/audit", icon: ClipboardCheck },
+      { title: "fina_reports", href: "/admin/fina/reports", icon: FileText },
     ],
   },
   {
@@ -765,6 +791,34 @@ const teacherMenuItems: SidebarMenuItem[] = [
     pluginRequired: "online_classes",
   },
   {
+    title: "inspections",
+    href: "/teacher/inspections",
+    icon: ClipboardCheck,
+    subItems: [
+      { title: "visits", href: "/teacher/inspections", icon: CalendarPlus },
+      { title: "training", href: "/teacher/inspections/training", icon: GraduationCap },
+      { title: "reports", href: "/teacher/inspections/reports", icon: FileText },
+      { title: "appeals", href: "/teacher/inspections/appeals", icon: MessageSquareWarning },
+      { title: "community", href: "/teacher/inspections/community", icon: MessageSquare },
+    ],
+  },
+  {
+    // Al-Fina' module — see the matching comment on adminMenuItems's "fina" entry.
+    title: "fina",
+    href: "/teacher/fina/wall",
+    icon: Camera,
+    subItems: [
+      { title: "fina_wall", href: "/teacher/fina/wall", icon: Camera },
+      { title: "fina_compose", href: "/teacher/fina/compose", icon: Megaphone },
+      { title: "fina_my_posts", href: "/teacher/fina/my-posts", icon: ClipboardList },
+      { title: "media", href: "/teacher/fina/media", icon: Camera },
+      { title: "fina_albums", href: "/teacher/fina/albums", icon: FolderOpen },
+      { title: "fina_groups", href: "/teacher/fina/groups", icon: Users },
+      { title: "fina_events", href: "/teacher/fina/events", icon: Calendar },
+      { title: "fina_threads", href: "/teacher/fina/threads", icon: MessageSquare },
+    ],
+  },
+  {
     title: "messaging",
     href: "/teacher/messaging",
     icon: Send,
@@ -791,6 +845,9 @@ const teacherMenuItems: SidebarMenuItem[] = [
 // Student Menu Items
 const studentMenuItems: SidebarMenuItem[] = [
   { title: "dashboard", href: "/student/dashboard", icon: LayoutDashboard },
+  { title: "fina_wall", href: "/student/fina/wall", icon: Camera },
+  { title: "fina_groups", href: "/student/fina/groups", icon: Users },
+  { title: "fina_events", href: "/student/fina/events", icon: Calendar },
   {
     title: "school",
     href: "/student/school-information",
@@ -952,6 +1009,21 @@ const studentMenuItems: SidebarMenuItem[] = [
 // Parent Menu Items
 const parentMenuItems: SidebarMenuItem[] = [
   { title: "dashboard", href: "/parent/dashboard", icon: LayoutDashboard },
+  // Al-Fina' module — grows with appeals/community as each later phase ships.
+  {
+    title: "fina",
+    href: "/parent/fina/consent",
+    icon: ShieldCheck,
+    subItems: [
+      { title: "fina_consent", href: "/parent/fina/consent", icon: ShieldCheck },
+      { title: "fina_wall", href: "/parent/fina/wall", icon: Camera },
+      { title: "fina_albums", href: "/parent/fina/albums", icon: FolderOpen },
+      { title: "fina_groups", href: "/parent/fina/groups", icon: Users },
+      { title: "fina_events", href: "/parent/fina/events", icon: Calendar },
+      { title: "fina_threads", href: "/parent/fina/threads", icon: MessageSquare },
+      { title: "fina_notifications", href: "/parent/fina/notifications", icon: Bell },
+    ],
+  },
   {
     title: "school",
     href: "/parent/school-information",
@@ -1108,6 +1180,27 @@ const librarianMenuItems: SidebarMenuItem[] = [
 // items in later phases.
 const inspectorMenuItems: SidebarMenuItem[] = [
   { title: "dashboard", href: "/inspector/dashboard", icon: LayoutDashboard },
+  { title: "visits", href: "/inspector/visits", icon: CalendarPlus },
+  { title: "reports", href: "/inspector/reports", icon: FileText },
+  { title: "community", href: "/inspector/community", icon: MessageSquare },
+];
+
+// Media Officer Menu Items — Al-Fina' module's first-review moderator role.
+// Single-purpose for now (Phase 2 only ships the review queue); grows if a
+// later phase gives this role more surface area.
+const mediaOfficerMenuItems: SidebarMenuItem[] = [
+  { title: "fina_review", href: "/media-officer/fina/review", icon: ClipboardCheck },
+  { title: "fina_notifications", href: "/media-officer/fina/notifications", icon: Bell },
+];
+
+// Fina Supervisor Menu Items — Al-Fina' module's cross-school municipal
+// oversight role (Phase 5). Aggregate dashboard + searchable audit log +
+// compliance reports only — never post/media content (see
+// supervisor-dashboard.service.ts's structural "numbers, never content" rule).
+const finaSupervisorMenuItems: SidebarMenuItem[] = [
+  { title: "fina_supervisor_dashboard", href: "/fina-supervisor/dashboard", icon: LayoutDashboard },
+  { title: "fina_supervisor_audit", href: "/fina-supervisor/audit", icon: ClipboardCheck },
+  { title: "fina_supervisor_reports", href: "/fina-supervisor/reports", icon: FileText },
 ];
 
 // Get menu items based on user role
@@ -1127,6 +1220,10 @@ export const getSidebarConfig = (role: UserRole): SidebarMenuItem[] => {
       return librarianMenuItems;
     case "inspector":
       return inspectorMenuItems;
+    case "media_officer":
+      return mediaOfficerMenuItems;
+    case "fina_supervisor":
+      return finaSupervisorMenuItems;
     case "staff":
       // Staff accounts have no dedicated /staff/* routes — they log into the
       // admin app shell and are scoped down entirely by their User Profile
@@ -1173,6 +1270,10 @@ export function getDashboardPathByRole(role: UserRole): string {
       return "/staff/dashboard";
     case "inspector":
       return "/inspector/dashboard";
+    case "media_officer":
+      return "/media-officer/fina/review";
+    case "fina_supervisor":
+      return "/fina-supervisor/dashboard";
     default:
       return "/";
   }

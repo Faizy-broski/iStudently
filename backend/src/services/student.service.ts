@@ -4,6 +4,7 @@ import { Student, CreateStudentDTO, UpdateStudentDTO } from '../types'
 import { generateCredentials, applyCredentialUpdate } from './username.service'
 import { encryptSecret } from '../utils/crypto'
 import { generatePlaceholderEmail, redactPlaceholderEmail, withRedactedEmail } from '../utils/email.util'
+import { getCurrentAcademicYear } from './academics.service'
 
 /**
  * Redacts a placeholder email on a profile object nested under `.profile`,
@@ -458,6 +459,12 @@ export class StudentService {
       throw new Error(`Failed to create student: ${error.message}`)
     }
 
+    // Create the current-year enrollment record so this student is picked up
+    // by year-scoped reporting (dashboard counts, class rosters) and by
+    // year-end rollover, both of which read student_enrollment rather than
+    // the legacy students.grade_level_id/section_id snapshot.
+    await this.enrollInCurrentYear(data.id, studentData)
+
     // Link parent if provided in custom_fields
     const linkedParentId = studentData.custom_fields?.family?.linked_parent_id
     const parentRelationType = studentData.custom_fields?.family?.parent_relation_type || 'other'
@@ -492,6 +499,49 @@ export class StudentService {
     return generatedUsername
       ? { ...redactedData, generated_username: generatedUsername, generated_password: generatedPassword }
       : redactedData
+  }
+
+  /**
+   * Create the student_enrollment row for the school's current academic year.
+   * Best-effort: a school with no academic year configured yet (or between
+   * year setups) should not block student creation, so failures are logged
+   * and swallowed rather than thrown - same convention as parent linking
+   * above. studentData.school_id is the campus id; getCurrentAcademicYear
+   * resolves that up to the parent school where academic_years live.
+   */
+  private async enrollInCurrentYear(studentId: string, studentData: CreateStudentDTO): Promise<void> {
+    try {
+      const currentYear = await getCurrentAcademicYear(studentData.school_id)
+      if (!currentYear.success || !currentYear.data) {
+        return
+      }
+
+      const { data: admissionCode } = await supabase
+        .from('enrollment_codes')
+        .select('id')
+        .eq('code', 'ADMISSION')
+        .single()
+
+      const { error: enrollmentError } = await supabase
+        .from('student_enrollment')
+        .insert({
+          student_id: studentId,
+          academic_year_id: currentYear.data.id,
+          school_id: currentYear.data.school_id,
+          campus_id: studentData.school_id,
+          grade_level_id: studentData.grade_level_id || null,
+          section_id: studentData.section_id || null,
+          enrollment_code_id: admissionCode?.id || null,
+          start_date: new Date().toISOString().split('T')[0],
+          rollover_status: 'pending'
+        })
+
+      if (enrollmentError) {
+        console.error('Failed to create student_enrollment record:', enrollmentError)
+      }
+    } catch (error) {
+      console.error('Failed to create student_enrollment record:', error)
+    }
   }
 
   /**
@@ -635,6 +685,13 @@ export class StudentService {
       throw new Error('Student not found or does not belong to this school')
     }
 
+    // Al-Fina' module: fina_face_tags.student_id is ON DELETE SET NULL, so
+    // any face tag naming this student is about to become unidentified —
+    // capture which media that affects BEFORE the delete fires, since the
+    // by-studentId lookup the reprocessing job would otherwise use finds
+    // nothing once this row (and therefore the tag's student_id) is gone.
+    const finaMediaIds = await this.collectFinaTaggedMediaIds(studentId)
+
     const { error } = await supabase
       .from('students')
       .delete()
@@ -643,6 +700,31 @@ export class StudentService {
 
     if (error) {
       throw new Error(`Failed to delete student: ${error.message}`)
+    }
+
+    if (finaMediaIds.length > 0) {
+      try {
+        const { enqueueFinaJob } = await import('../utils/fina-jobs')
+        await enqueueFinaJob('reprocess_student_archive', { studentId, mediaIds: finaMediaIds }, 1)
+      } catch (finaError) {
+        // Never let an Al-Fina' bookkeeping failure block student deletion —
+        // the tag is already unidentified via the FK regardless, so the
+        // student-facing safety guarantee (blur/deny) holds either way.
+        console.error('Failed to enqueue fina reprocess_student_archive after student deletion:', finaError)
+      }
+    }
+  }
+
+  /** Best-effort, schema-tolerant: returns [] (never throws) on any school
+   * that doesn't have the Al-Fina' tables, so this stays safe to call
+   * unconditionally from deleteStudent() regardless of module enablement. */
+  private async collectFinaTaggedMediaIds(studentId: string): Promise<string[]> {
+    try {
+      const { data, error } = await supabase.from('fina_face_tags').select('media_id').eq('student_id', studentId)
+      if (error) return []
+      return [...new Set((data || []).map((row: any) => row.media_id as string))]
+    } catch {
+      return []
     }
   }
 

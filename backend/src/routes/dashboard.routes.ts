@@ -20,4 +20,8 @@ router.get('/recent-schools', (req, res) => dashboardController.getRecentSchools
 router.get('/platform-settings', (req, res) => dashboardController.getPlatformSettings(req, res))
 router.put('/platform-settings', (req, res) => dashboardController.updatePlatformSettings(req, res))
 
+// Super admin sidebar logo appearance (shape/border)
+router.get('/branding', (req, res) => dashboardController.getBranding(req, res))
+router.put('/branding', (req, res) => dashboardController.updateBranding(req, res))
+
 export default router

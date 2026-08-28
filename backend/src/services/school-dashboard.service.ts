@@ -33,19 +33,35 @@ export class SchoolDashboardService {
   /**
    * Get dashboard statistics for a specific school
    */
-  async getSchoolStats(schoolId: string, campusId?: string): Promise<SchoolDashboardStats> {
+  async getSchoolStats(schoolId: string, campusId?: string, academicYearId?: string): Promise<SchoolDashboardStats> {
     // Campus-scoped tables use campusId when provided; school-wide tables always use schoolId
     const effectiveId = campusId || schoolId
 
     try {
       // Get student count — active only, so this matches the roster shown on
       // the student list page (which defaults to active students) instead of
-      // also counting withdrawn/inactive students.
-      const { count: totalStudents, error: studentsError } = await supabase
+      // also counting withdrawn/inactive students. When an academic year is
+      // selected, further restrict to students who actually have an
+      // enrollment record for that year (student_enrollment), so switching
+      // years reflects real per-year enrollment instead of the school's
+      // all-time active student count.
+      const studentSelect = academicYearId
+        ? '*, profile:profiles!inner(is_active), enrollment:student_enrollment!inner(academic_year_id, end_date)'
+        : '*, profile:profiles!inner(is_active)'
+
+      let studentsQuery = supabase
         .from('students')
-        .select('*, profile:profiles!inner(is_active)', { count: 'exact', head: true })
+        .select(studentSelect, { count: 'exact', head: true })
         .eq('school_id', effectiveId)
         .eq('profile.is_active', true)
+
+      if (academicYearId) {
+        studentsQuery = studentsQuery
+          .eq('enrollment.academic_year_id', academicYearId)
+          .is('enrollment.end_date', null)
+      }
+
+      const { count: totalStudents, error: studentsError } = await studentsQuery
 
       if (studentsError) {
         console.error('Students query error:', studentsError)
@@ -143,11 +159,23 @@ export class SchoolDashboardService {
       ).length || 0
 
       // Get student gender breakdown — active only, to match totalStudents above
-      const { data: studentCustomFields, error: studentGenderError } = await supabase
+      const genderSelect = academicYearId
+        ? 'custom_fields, profile:profiles!inner(is_active), enrollment:student_enrollment!inner(academic_year_id, end_date)'
+        : 'custom_fields, profile:profiles!inner(is_active)'
+
+      let genderQuery = supabase
         .from('students')
-        .select('custom_fields, profile:profiles!inner(is_active)')
+        .select(genderSelect)
         .eq('school_id', effectiveId)
         .eq('profile.is_active', true)
+
+      if (academicYearId) {
+        genderQuery = genderQuery
+          .eq('enrollment.academic_year_id', academicYearId)
+          .is('enrollment.end_date', null)
+      }
+
+      const { data: studentCustomFields, error: studentGenderError } = await genderQuery
 
       if (studentGenderError) {
         console.error('Student gender query error:', studentGenderError)
@@ -347,14 +375,37 @@ export class SchoolDashboardService {
    * than trusting sections.current_strength, to stay consistent with the
    * other dashboard counts above.
    */
-  async getClassBreakdown(schoolId: string, campusId?: string) {
+  async getClassBreakdown(schoolId: string, campusId?: string, academicYearId?: string) {
     const effectiveId = campusId || schoolId
 
-    const { data: students, error } = await supabase
-      .from('students')
-      .select('grade:grade_levels(name, order_index), section:sections(name), profile:profiles!inner(is_active)')
-      .eq('school_id', effectiveId)
-      .eq('profile.is_active', true)
+    // When a specific academic year is selected, read grade/section off that
+    // year's student_enrollment record rather than the students table's
+    // grade_level_id/section_id snapshot - the latter is kept in sync with
+    // the *current* year only (see sync_student_current_enrollment trigger),
+    // so it would show today's placement even while looking at a past or
+    // future year.
+    let rows: { grade: any; section: any }[] | null = null
+    let error: any = null
+
+    if (academicYearId) {
+      const result = await supabase
+        .from('student_enrollment')
+        .select('grade:grade_levels!student_enrollment_grade_level_id_fkey(name, order_index), section:sections(name), student:students!inner(school_id, profile:profiles!inner(is_active))')
+        .eq('academic_year_id', academicYearId)
+        .is('end_date', null)
+        .eq('student.school_id', effectiveId)
+        .eq('student.profile.is_active', true)
+      rows = result.data as any
+      error = result.error
+    } else {
+      const result = await supabase
+        .from('students')
+        .select('grade:grade_levels(name, order_index), section:sections(name), profile:profiles!inner(is_active)')
+        .eq('school_id', effectiveId)
+        .eq('profile.is_active', true)
+      rows = result.data as any
+      error = result.error
+    }
 
     if (error) {
       console.error('Class breakdown query error:', error)
@@ -365,10 +416,10 @@ export class SchoolDashboardService {
       { grade: string; gradeOrder: number; total: number; sections: Map<string, number> }
     >()
 
-    students?.forEach((student: any) => {
-      const grade = student.grade?.name || 'Unassigned'
-      const gradeOrder = student.grade?.order_index ?? Number.MAX_SAFE_INTEGER
-      const section = student.section?.name || 'Unassigned'
+    rows?.forEach((row: any) => {
+      const grade = row.grade?.name || 'Unassigned'
+      const gradeOrder = row.grade?.order_index ?? Number.MAX_SAFE_INTEGER
+      const section = row.section?.name || 'Unassigned'
 
       let bucket = grades.get(grade)
       if (!bucket) {

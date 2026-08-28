@@ -77,12 +77,12 @@ export const getAllStaff = async (
         // We filter based on staff.role column (must be synced from profile.role)
         if (roleFilter === 'employees') {
             // Fetch ALL employees including teachers (for payroll/payments)
-            query = query.in('role', ['staff', 'librarian', 'admin', 'counselor', 'teacher'])
+            query = query.in('role', ['staff', 'librarian', 'admin', 'counselor', 'teacher', 'media_officer', 'fina_supervisor'])
         } else if (roleFilter !== 'all') {
             query = query.eq('role', roleFilter)
         } else {
-            // 'all' = staff, librarian, admin, and counselor roles (exclude teacher for staff management)
-            query = query.in('role', ['staff', 'librarian', 'admin', 'counselor'])
+            // 'all' = staff, librarian, admin, counselor, media_officer, fina_supervisor roles (exclude teacher for staff management)
+            query = query.in('role', ['staff', 'librarian', 'admin', 'counselor', 'media_officer', 'fina_supervisor'])
         }
 
         query = query.order('created_at', { ascending: false })
@@ -591,7 +591,7 @@ export interface BulkImportStaffResult {
     created: Array<{ row: number; id: string; email?: string; username: string; password?: string }>
 }
 
-const VALID_STAFF_ROLES: UserRole[] = ['teacher', 'librarian', 'staff', 'admin', 'counselor']
+const VALID_STAFF_ROLES: UserRole[] = ['teacher', 'librarian', 'staff', 'admin', 'counselor', 'media_officer', 'fina_supervisor']
 const VALID_EMPLOYMENT_TYPES = ['full_time', 'part_time', 'contract'] as const
 
 /**

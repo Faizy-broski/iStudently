@@ -1,4 +1,4 @@
-export type UserRole = 'super_admin' | 'admin' | 'teacher' | 'student' | 'parent' | 'staff' | 'librarian' | 'inspector'
+export type UserRole = 'super_admin' | 'admin' | 'teacher' | 'student' | 'parent' | 'staff' | 'librarian' | 'inspector' | 'media_officer' | 'fina_supervisor'
 export type SchoolStatus = 'active' | 'suspended'
 
 // Library Types
@@ -135,6 +135,9 @@ export interface Profile {
   username: string | null
   avatar_url?: string | null
   profile_photo_url?: string | null
+  logo_shape?: 'circle' | 'square' | 'rounded' | 'rectangle' | null
+  logo_border_width?: number | null
+  logo_border_color?: string | null
   gender?: 'male' | 'female' | string | null
   is_active: boolean
   force_password_change: boolean

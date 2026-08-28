@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase'
 import { AuthRequest } from '../middlewares/auth.middleware'
+import { validateCampusAccess } from './campus-validation'
 
 /**
  * Authorization helper for the Educational Inspection module.
@@ -116,4 +117,28 @@ export async function requireInspectorSchoolAccess(
   }
 
   return next()
+}
+
+/**
+ * Cross-role check for "can this caller see content targeted at schoolId" —
+ * used by the Subject Community Hub (broadcasts/forum threads), where a
+ * teacher, admin, or inspector might all be reading the same campus-scoped
+ * feed. Deliberately separate from the assignment-specific helpers above:
+ * this one DOES lean on campus-validation.ts for the admin/teacher branches
+ * (their campus-hierarchy assumptions are correct for THIS check), only
+ * using the inspector-assignment list for the inspector branch.
+ */
+export async function assertCanAccessSchoolFeed(
+  caller: { profileId: string; role: string; schoolId: string },
+  schoolId: string
+): Promise<boolean> {
+  if (caller.role === 'super_admin') return true
+  if (caller.role === 'admin') {
+    return validateCampusAccess(caller.schoolId, schoolId)
+  }
+  if (caller.role === 'inspector') {
+    return assertInspectorCanAccessSchool(caller.profileId, schoolId, caller.role)
+  }
+  // Teachers (and any other campus-scoped role) can only see their own campus's feed.
+  return caller.schoolId === schoolId
 }

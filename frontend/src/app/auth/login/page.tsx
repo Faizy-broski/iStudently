@@ -211,6 +211,8 @@ function LoginForm() {
         'librarian': '/librarian/dashboard',
         'staff': '/staff/dashboard',
         'inspector': '/inspector/dashboard',
+        'media_officer': '/media-officer/fina/review',
+        'fina_supervisor': '/fina-supervisor/dashboard',
       }
       router.replace(dashboardMap[profile.role] || '/admin/dashboard')
     }
@@ -279,6 +281,8 @@ function LoginForm() {
         'librarian': '/librarian/dashboard',
         'staff': '/staff/dashboard',
         'inspector': '/inspector/dashboard',
+        'media_officer': '/media-officer/fina/review',
+        'fina_supervisor': '/fina-supervisor/dashboard',
       }
 
       const dashboardUrl = dashboardMap[profile.role] || '/auth/login?error=role_not_supported'

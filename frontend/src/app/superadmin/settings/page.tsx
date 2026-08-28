@@ -18,16 +18,37 @@ import { DATE_FORMAT_OPTIONS, getPreferredDateFormat, setPreferredDateFormat, fo
 import { messagingApi } from "@/lib/api/messaging";
 import { updateProfile as updateOwnProfile, changePassword as changeOwnPassword } from "@/lib/api/auth";
 import { uploadImage } from "@/lib/api/media-upload";
+import { usePlatformBranding } from "@/hooks/usePlatformBranding";
+import { SchoolLogo } from "@/components/shared/SchoolLogo";
 
 const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp", "image/svg+xml"];
 const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 
+const LOGO_SHAPE_OPTIONS: { value: "circle" | "rounded" | "square" | "rectangle"; label: string }[] = [
+  { value: "circle", label: "Circle" },
+  { value: "rounded", label: "Rounded" },
+  { value: "square", label: "Square" },
+  { value: "rectangle", label: "Rectangle" },
+];
+
 export default function SuperAdminSettingsPage() {
   const { profile, user, updateProfileState } = useAuth();
   const { settings, updateSettings, loading: settingsLoading } = usePlatformSettings();
+  const { branding, updateBranding } = usePlatformBranding();
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
+  const [logoShape, setLogoShape] = useState<"circle" | "rounded" | "square" | "rectangle">("circle");
+  const [logoBorderWidth, setLogoBorderWidth] = useState(0);
+  const [logoBorderColor, setLogoBorderColor] = useState("#000000");
+  const [isSavingShape, setIsSavingShape] = useState(false);
+
+  useEffect(() => {
+    setLogoShape(branding.logo_shape);
+    setLogoBorderWidth(branding.logo_border_width);
+    setLogoBorderColor(branding.logo_border_color);
+  }, [branding]);
 
   const [preferredDateFormat, setPreferredDateFormatState] = useState<string>("MMMM d yyyy");
   const [dateFormatSaving, setDateFormatSaving] = useState(false);
@@ -94,6 +115,36 @@ export default function SuperAdminSettingsPage() {
     } finally {
       setIsUploadingAvatar(false);
       e.target.value = "";
+    }
+  };
+
+  const handleSaveLogoShape = async () => {
+    setIsSavingShape(true);
+    try {
+      const result = await updateBranding({
+        logo_shape: logoShape,
+        logo_border_width: logoBorderWidth,
+        logo_border_color: logoBorderColor,
+      });
+      await updateOwnProfile({
+        logo_shape: logoShape,
+        logo_border_width: logoBorderWidth,
+        logo_border_color: logoBorderColor,
+      });
+      if (updateProfileState) {
+        updateProfileState({
+          logo_shape: logoShape,
+          logo_border_width: logoBorderWidth,
+          logo_border_color: logoBorderColor,
+        });
+      }
+      if (!result.success) {
+        toast.error(result.error || "Failed to save logo shape");
+        return;
+      }
+      toast.success("Logo shape and appearance updated successfully");
+    } finally {
+      setIsSavingShape(false);
     }
   };
 
@@ -442,6 +493,73 @@ export default function SuperAdminSettingsPage() {
               />
               <p className="text-xs text-muted-foreground mt-1">JPG, PNG, WebP or SVG. Max 5MB</p>
             </div>
+          </div>
+
+          <div className="space-y-3 pt-2 border-t">
+            <Label className="text-gray-700">Logo Shape</Label>
+            <div className="flex items-center gap-4">
+              <SchoolLogo
+                logoUrl={avatarUrl}
+                alt="Logo preview"
+                shape={logoShape}
+                borderWidth={logoBorderWidth}
+                borderColor={logoBorderColor}
+                size={64}
+                fallback={<span className="text-[#003dd6] font-bold text-lg">SA</span>}
+              />
+              <div className="flex-1 grid grid-cols-2 gap-2">
+                {LOGO_SHAPE_OPTIONS.map((opt) => (
+                  <Button
+                    key={opt.value}
+                    type="button"
+                    variant={logoShape === opt.value ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setLogoShape(opt.value)}
+                    disabled={isSavingShape}
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs text-gray-500">Border Width (px)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={10}
+                  value={logoBorderWidth}
+                  onChange={(e) => setLogoBorderWidth(Math.max(0, Math.min(10, Number(e.target.value) || 0)))}
+                  disabled={isSavingShape}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-gray-500">Border Color</Label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={logoBorderColor}
+                    onChange={(e) => setLogoBorderColor(e.target.value)}
+                    className="h-9 w-10 rounded-md cursor-pointer border border-gray-300 p-0.5 bg-white"
+                    disabled={isSavingShape}
+                  />
+                  <Input
+                    value={logoBorderColor}
+                    onChange={(e) => setLogoBorderColor(e.target.value)}
+                    className="flex-1 font-mono text-sm"
+                    disabled={isSavingShape}
+                  />
+                </div>
+              </div>
+            </div>
+            <Button type="button" size="sm" onClick={handleSaveLogoShape} disabled={isSavingShape}>
+              {isSavingShape ? (
+                <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />Saving...</>
+              ) : (
+                <><Save className="h-3.5 w-3.5 mr-1.5" />Save Shape</>
+              )}
+            </Button>
           </div>
 
           <div className="flex justify-between py-1">

@@ -31,14 +31,26 @@ class AuthService {
    */
   async updateProfile(
     userId: string,
-    data: { first_name?: string; last_name?: string; phone?: string; avatar_url?: string; profile_photo_url?: string }
+    data: {
+      first_name?: string
+      last_name?: string
+      phone?: string
+      avatar_url?: string
+      profile_photo_url?: string
+      logo_shape?: string
+      logo_border_width?: number
+      logo_border_color?: string
+    }
   ): Promise<void> {
-    const update: Record<string, string> = {}
+    const update: Record<string, any> = {}
     if (data.first_name !== undefined) update.first_name = data.first_name.trim()
     if (data.last_name !== undefined) update.last_name = data.last_name.trim()
     if (data.phone !== undefined) update.phone = data.phone.trim()
     if (data.avatar_url !== undefined) update.avatar_url = data.avatar_url.trim()
     if (data.profile_photo_url !== undefined) update.profile_photo_url = data.profile_photo_url.trim()
+    if (data.logo_shape !== undefined) update.logo_shape = data.logo_shape
+    if (data.logo_border_width !== undefined) update.logo_border_width = data.logo_border_width
+    if (data.logo_border_color !== undefined) update.logo_border_color = data.logo_border_color
 
     if (Object.keys(update).length === 0) return
 

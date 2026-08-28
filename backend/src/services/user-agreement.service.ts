@@ -1,6 +1,6 @@
 import { supabase } from '../config/supabase'
 
-export const AGREEMENT_ROLES = ['teacher', 'student', 'parent', 'staff', 'librarian', 'counselor'] as const
+export const AGREEMENT_ROLES = ['teacher', 'student', 'parent', 'staff', 'librarian', 'counselor', 'media_officer', 'fina_supervisor'] as const
 export type AgreementRole = typeof AGREEMENT_ROLES[number]
 
 export interface AgreementItem {

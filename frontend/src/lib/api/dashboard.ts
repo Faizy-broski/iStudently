@@ -74,6 +74,12 @@ export interface MonthlyRevenue {
   subscriptions: number
 }
 
+export interface PlatformBranding {
+  logo_shape: 'circle' | 'rounded' | 'square' | 'rectangle'
+  logo_border_width: number
+  logo_border_color: string
+}
+
 export const dashboardApi = {
   /**
    * Get dashboard statistics
@@ -113,6 +119,17 @@ export const dashboardApi = {
     return apiRequest<Record<string, any>>('/dashboard/platform-settings', {
       method: 'PUT',
       body: JSON.stringify(settings),
+    })
+  },
+
+  getBranding: async () => {
+    return apiRequest<PlatformBranding>('/dashboard/branding')
+  },
+
+  updateBranding: async (updates: Partial<PlatformBranding>) => {
+    return apiRequest<PlatformBranding>('/dashboard/branding', {
+      method: 'PUT',
+      body: JSON.stringify(updates),
     })
   },
 }

@@ -22,7 +22,7 @@ import {
 import { useCampus } from '@/context/CampusContext'
 import { useTranslations } from 'next-intl'
 
-const ALL_ROLES = ['admin', 'teacher', 'student', 'parent', 'staff', 'librarian']
+const ALL_ROLES = ['admin', 'teacher', 'student', 'parent', 'staff', 'librarian', 'media_officer', 'fina_supervisor']
 
 export default function TwoFactorAuthSettingsPage() {
   const campusContext = useCampus()

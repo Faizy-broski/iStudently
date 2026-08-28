@@ -477,7 +477,7 @@ export const getStaffList = async (
       .select('profile_id, role, profile:profiles!staff_profile_id_fkey(first_name, last_name)')
       .eq('school_id', effectiveId)
       .eq('is_active', true)
-      .in('role', ['admin', 'teacher', 'staff', 'librarian'])
+      .in('role', ['admin', 'teacher', 'staff', 'librarian', 'media_officer', 'fina_supervisor'])
       .order('role', { ascending: true })
 
     if (error) return { data: null, error: error.message }

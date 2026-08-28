@@ -106,9 +106,12 @@ export const schoolDashboardApi = {
   /**
    * Get school dashboard statistics
    */
-  getStats: async (campus_id?: string) => {
-    const params = campus_id ? `?campus_id=${campus_id}` : ''
-    return apiRequest<SchoolDashboardStats>(`/school-dashboard/stats${params}`)
+  getStats: async (campus_id?: string, academic_year_id?: string) => {
+    const params = new URLSearchParams()
+    if (campus_id) params.append('campus_id', campus_id)
+    if (academic_year_id) params.append('academic_year_id', academic_year_id)
+    const query = params.toString()
+    return apiRequest<SchoolDashboardStats>(`/school-dashboard/stats${query ? `?${query}` : ''}`)
   },
 
   /**
@@ -141,8 +144,11 @@ export const schoolDashboardApi = {
   /**
    * Get student counts per class (grade + section)
    */
-  getClassBreakdown: async (campus_id?: string) => {
-    const params = campus_id ? `?campus_id=${campus_id}` : ''
-    return apiRequest<ClassBreakdown[]>(`/school-dashboard/class-breakdown${params}`)
+  getClassBreakdown: async (campus_id?: string, academic_year_id?: string) => {
+    const params = new URLSearchParams()
+    if (campus_id) params.append('campus_id', campus_id)
+    if (academic_year_id) params.append('academic_year_id', academic_year_id)
+    const query = params.toString()
+    return apiRequest<ClassBreakdown[]>(`/school-dashboard/class-breakdown${query ? `?${query}` : ''}`)
   }
 }

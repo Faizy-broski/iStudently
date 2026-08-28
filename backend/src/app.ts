@@ -3,6 +3,7 @@ import path from "path";
 
 import { config } from "./config/env";
 import { cronService } from "./services/cron.service";
+import { startFinaJobsRunner } from "./services/fina/jobs-runner.service";
 import { reconcileOrphanedJobs } from "./services/timetable-generation.service";
 import { reconcileOrphanedImportJobs } from "./services/school-data-import.service";
 import schoolRoutes from "./routes/school.routes";
@@ -74,6 +75,40 @@ import jitsiRoomRoutes from "./routes/jitsi-room.routes";
 import jitsiRoomPollRoutes from "./routes/jitsi-room-poll.routes";
 import onlineClassRoutes from "./routes/online-class.routes";
 import inspectorDirectoryRoutes from "./routes/inspector-directory.routes";
+import inspectionVisitRoutes from "./routes/inspection-visit.routes";
+import inspectorTeacherProfileRoutes from "./routes/inspector-teacher-profile.routes";
+import inspectionRubricRoutes from "./routes/inspection-rubric.routes";
+import inspectionEvaluationRoutes from "./routes/inspection-evaluation.routes";
+import inspectionMediaRoutes from "./routes/inspection-media.routes";
+import inspectionCoachingRoutes from "./routes/inspection-coaching.routes";
+import trainingPrescriptionRoutes from "./routes/training-prescription.routes";
+import inspectionReportRoutes from "./routes/inspection-report.routes";
+import inspectionSignatureRoutes from "./routes/inspection-signature.routes";
+import inspectionAppealRoutes from "./routes/inspection-appeal.routes";
+import inspectorBroadcastRoutes from "./routes/inspector-broadcast.routes";
+import inspectionForumRoutes from "./routes/inspection-forum.routes";
+import inspectionAnalyticsRoutes from "./routes/inspection-analytics.routes";
+import finaConsentRoutes from "./routes/fina/consent.routes";
+import finaMediaRoutes from "./routes/fina/media.routes";
+import finaPostRoutes from "./routes/fina/post.routes";
+import finaAlbumRoutes from "./routes/fina/album.routes";
+import finaNotificationRoutes from "./routes/fina/notification.routes";
+import finaStoryRoutes from "./routes/fina/story.routes";
+import finaGroupRoutes from "./routes/fina/group.routes";
+import finaEventRoutes from "./routes/fina/event.routes";
+import finaThreadRoutes from "./routes/fina/thread.routes";
+import finaSupervisorRoutes from "./routes/fina/supervisor.routes";
+import finaAuditRoutes from "./routes/fina/audit.routes";
+import finaReportRoutes from "./routes/fina/report.routes";
+import "./services/fina/stories.service"; // side effect: registers the 'expire_stories' fina_jobs handler
+// The next two imports also register their fina_jobs handlers as a side
+// effect of being loaded — named imports here (not bare side-effect
+// imports) since this module also needs their cron-starter functions.
+import { startAuditChainVerifyCron } from "./services/fina/audit-chain-verify.service";
+import { startMonthlyReportCron } from "./services/fina/monthly-report.service";
+import { startRetentionPurgeCron } from "./services/fina/retention.service";
+import "./services/fina/media-variants.service"; // side effect: registers the 'generate_media_variants' fina_jobs handler
+import "./services/fina/consent-withdrawal.service"; // side effect: registers the 'reprocess_student_archive' fina_jobs handler
 import icalRoutes from "./routes/ical.routes";
 import publicPagesRoutes from "./routes/public-pages.routes";
 import socialAuthRoutes from "./routes/social-auth.routes";
@@ -358,6 +393,31 @@ registerRoutes("/jitsi/rooms", jitsiRoomRoutes);
 registerRoutes("/jitsi/polls", jitsiRoomPollRoutes);
 registerRoutes("/online-classes", onlineClassRoutes);
 registerRoutes("/inspectors", inspectorDirectoryRoutes);
+registerRoutes("/inspection-visits", inspectionVisitRoutes);
+registerRoutes("/inspector-teachers", inspectorTeacherProfileRoutes);
+registerRoutes("/inspection-rubrics", inspectionRubricRoutes);
+registerRoutes("/inspection-evaluations", inspectionEvaluationRoutes);
+registerRoutes("/inspection-media", inspectionMediaRoutes);
+registerRoutes("/inspection-coaching", inspectionCoachingRoutes);
+registerRoutes("/training-prescriptions", trainingPrescriptionRoutes);
+registerRoutes("/inspection-reports", inspectionReportRoutes);
+registerRoutes("/inspection-signatures", inspectionSignatureRoutes);
+registerRoutes("/inspection-appeals", inspectionAppealRoutes);
+registerRoutes("/inspector-broadcasts", inspectorBroadcastRoutes);
+registerRoutes("/inspection-forum", inspectionForumRoutes);
+registerRoutes("/inspection-analytics", inspectionAnalyticsRoutes);
+registerRoutes("/fina/consents", finaConsentRoutes);
+registerRoutes("/fina/media", finaMediaRoutes);
+registerRoutes("/fina/posts", finaPostRoutes);
+registerRoutes("/fina/albums", finaAlbumRoutes);
+registerRoutes("/fina/notifications", finaNotificationRoutes);
+registerRoutes("/fina/stories", finaStoryRoutes);
+registerRoutes("/fina/groups", finaGroupRoutes);
+registerRoutes("/fina/events", finaEventRoutes);
+registerRoutes("/fina/threads", finaThreadRoutes);
+registerRoutes("/fina/supervisor", finaSupervisorRoutes);
+registerRoutes("/fina/audit", finaAuditRoutes);
+registerRoutes("/fina/reports", finaReportRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
@@ -411,6 +471,10 @@ app.listen(PORT, () => {
   // Initialize automated cron jobs for payroll
   console.log("\n⏰ Starting automated services...");
   cronService.init();
+  startFinaJobsRunner();
+  startAuditChainVerifyCron();
+  startMonthlyReportCron();
+  startRetentionPurgeCron();
 
   // Reconcile any timetable generation jobs left 'running'/'queued' from
   // before a restart (crash-safety — see timetable-generation.service.ts).

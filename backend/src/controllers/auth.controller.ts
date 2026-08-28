@@ -46,8 +46,27 @@ export const updateProfile = async (req: Request, res: Response) => {
     const userId = (req as AuthRequest).user?.id
     if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' })
 
-    const { first_name, last_name, phone, avatar_url, profile_photo_url } = req.body
-    await authService.updateProfile(userId, { first_name, last_name, phone, avatar_url, profile_photo_url })
+    const {
+      first_name,
+      last_name,
+      phone,
+      avatar_url,
+      profile_photo_url,
+      logo_shape,
+      logo_border_width,
+      logo_border_color,
+    } = req.body
+
+    await authService.updateProfile(userId, {
+      first_name,
+      last_name,
+      phone,
+      avatar_url,
+      profile_photo_url,
+      logo_shape,
+      logo_border_width,
+      logo_border_color,
+    })
     res.json({ success: true, message: 'Profile updated successfully' })
   } catch (error: any) {
     console.error('Error in updateProfile:', error)

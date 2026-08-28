@@ -9,7 +9,9 @@ export type UserRole =
   | "staff"
   | "librarian"
   | "counselor"
-  | "inspector";
+  | "inspector"
+  | "media_officer"
+  | "fina_supervisor";
 export type SchoolStatus = "active" | "suspended";
 export type ParentRelationType = "father" | "mother" | "guardian" | "other"; // Removed 'both'
 export type EventCategory =

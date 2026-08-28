@@ -56,7 +56,7 @@ export async function getEnrollmentHistory(req: Request, res: Response): Promise
       .select(`
         *,
         academic_year:academic_years!inner(id, name, start_date, end_date, is_current),
-        grade_level:grade_levels(id, name, order_index),
+        grade_level:grade_levels!student_enrollment_grade_level_id_fkey(id, name, order_index),
         section:sections(id, name),
         enrollment_code:enrollment_codes(id, code, title)
       `)
@@ -272,7 +272,7 @@ export async function getStatistics(req: Request, res: Response): Promise<void> 
       .from('student_enrollment')
       .select(`
         grade_level_id,
-        grade_level:grade_levels(id, name, order_index)
+        grade_level:grade_levels!student_enrollment_grade_level_id_fkey(id, name, order_index)
       `)
       .eq('academic_year_id', academic_year_id as string)
       .eq('school_id', school_id as string)
@@ -368,7 +368,7 @@ export async function getStudentsByStatus(req: Request, res: Response): Promise<
         student_id,
         rollover_status,
         student:students!inner(id, student_number),
-        grade_level:grade_levels(name),
+        grade_level:grade_levels!student_enrollment_grade_level_id_fkey(name),
         section:sections(name)
       `)
       .eq('academic_year_id', academic_year_id as string)

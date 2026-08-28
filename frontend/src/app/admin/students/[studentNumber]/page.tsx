@@ -157,7 +157,7 @@ export default function StudentDetailsPage() {
             }).catch(() => {});
           }
 
-          const studentFullName = `${student.profile?.first_name || ""} ${student.profile?.father_name || ""}`.trim() || student.student_number;
+          const studentFullName = `${student.profile?.first_name || ""} ${student.profile?.last_name || ""}`.trim() || student.student_number;
           setViewedProfile({
             id: student.student_number,
             name: studentFullName,

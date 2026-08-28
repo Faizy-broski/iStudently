@@ -8,6 +8,7 @@ import {
   AttendanceStatus,
   ApiResponse
 } from '../types'
+import { onStudentMarkedAbsent } from '../listeners/fina-attendance-absence.listener'
 
 // ============================================================================
 // STEP 3: AUTO-GENERATE DAILY ATTENDANCE
@@ -277,6 +278,14 @@ export const updateAttendanceRecord = async (
 
     if (error) throw error
 
+    // Al-Fina' module: event-driven absence notification (spec §14's
+    // ≤15min SLA — this fires at the moment of marking, not on the
+    // platform's own attendance cron). Fire-and-forget, self-contained
+    // error handling — must never affect this endpoint's own response.
+    if (dto.status === 'absent' && data?.school_id && data?.student_id) {
+      onStudentMarkedAbsent(data.campus_id || data.school_id, data.student_id, data.attendance_date)
+    }
+
     return {
       success: true,
       data: data as AttendanceRecord,
@@ -301,7 +310,7 @@ export const bulkUpdateAttendance = async (
     let updatedCount = 0
 
     for (const update of updates) {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('attendance_records')
         .update({
           status: update.status,
@@ -313,8 +322,17 @@ export const bulkUpdateAttendance = async (
         .eq('timetable_entry_id', timetableEntryId)
         .eq('attendance_date', attendanceDate)
         .eq('student_id', update.student_id)
+        .select('school_id, campus_id')
+        .maybeSingle()
 
-      if (!error) updatedCount++
+      if (!error) {
+        updatedCount++
+        // Al-Fina' module: event-driven absence notification — see the
+        // matching comment in updateAttendanceRecord above.
+        if (update.status === 'absent' && data?.school_id) {
+          onStudentMarkedAbsent(data.campus_id || data.school_id, update.student_id, attendanceDate)
+        }
+      }
     }
 
     return {

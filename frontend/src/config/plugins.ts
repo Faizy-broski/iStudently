@@ -106,7 +106,7 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     id: 'live_class',
     name: 'Online Learning',
     description:
-      'Video class sessions (Jitsi Meet) bound to a course period, with a co-editable Excalidraw whiteboard and live in-class polls. Teachers start/host sessions from their course periods; enrolled students join from their Online Learning menu.',
+      'Video class sessions bound to a course period, with a co-editable Excalidraw whiteboard and live in-class polls. Teachers start/host sessions from their course periods; enrolled students join from their Online Learning menu.',
     icon: Video,
     category: 'Classes',
     settingsHref: '/admin/jitsi-meet/configuration',

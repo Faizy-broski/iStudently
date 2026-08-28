@@ -105,7 +105,7 @@ export const createProfile = async (req: AuthRequest, res: Response): Promise<Re
       return res.status(400).json({ success: false, error: 'name and base_role are required' })
     }
 
-    const validRoles: UserRole[] = ['admin', 'teacher', 'student', 'parent', 'staff', 'librarian']
+    const validRoles: UserRole[] = ['admin', 'teacher', 'student', 'parent', 'staff', 'librarian', 'media_officer', 'fina_supervisor']
     if (!validRoles.includes(base_role)) {
       return res.status(400).json({ success: false, error: 'Invalid base_role' })
     }

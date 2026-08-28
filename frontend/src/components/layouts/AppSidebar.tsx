@@ -19,6 +19,7 @@ import { getMyCoursePeriods, type CoursePeriod } from '@/lib/api/courses'
 import { useCampus } from '@/context/CampusContext'
 import { SchoolLogo } from '@/components/shared/SchoolLogo'
 import { useSchoolSettings } from '@/context/SchoolSettingsContext'
+import { usePlatformBranding } from '@/hooks/usePlatformBranding'
 import { ProfileViewContext } from '@/context/ProfileViewContext'
 import { useParentDashboardSafe } from '@/context/ParentDashboardContext'
 import { getPreferredDateFormat, formatDateWithPreference } from '@/lib/utils/dateFormat'
@@ -113,6 +114,7 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
   const { currentAcademicYear } = useAcademic()
+  const { branding } = usePlatformBranding()
   const locale = useLocale()
   const isAr = locale === 'ar'
 
@@ -225,17 +227,33 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
       resolvedLogoShape = selectedCampus.logo_shape ?? resolvedLogoShape
       resolvedBorderWidth = selectedCampus.logo_border_width ?? resolvedBorderWidth
       resolvedBorderColor = selectedCampus.logo_border_color ?? resolvedBorderColor
-    } else if (!resolvedLogoUrl) {
-      // Only if NO ONE has a logo do we use the campus's default shape for the initials fallback
+    } else {
+      if (profile?.school?.logo_url) {
+        resolvedLogoUrl = profile.school.logo_url
+      }
       resolvedLogoShape = selectedCampus.logo_shape ?? resolvedLogoShape
       resolvedBorderWidth = selectedCampus.logo_border_width ?? resolvedBorderWidth
       resolvedBorderColor = selectedCampus.logo_border_color ?? resolvedBorderColor
     }
   }
 
+  // Super admin's own sidebar (not impersonating a school) - shape/border come
+  // from the platform-wide branding setting instead of the hardcoded default,
+  // so the shape picked in Super Admin Settings actually shows up here.
+  if (profile?.role === 'super_admin' && !impersonatedSchoolId) {
+    resolvedLogoShape = branding?.logo_shape ?? profile?.logo_shape ?? resolvedLogoShape
+    resolvedBorderWidth = branding?.logo_border_width ?? profile?.logo_border_width ?? resolvedBorderWidth
+    resolvedBorderColor = branding?.logo_border_color ?? profile?.logo_border_color ?? resolvedBorderColor
+  }
+
   // Fallback: If no school or campus logo exists, check the user/superadmin profile's avatar photo or logo
   if (!resolvedLogoUrl) {
     resolvedLogoUrl = profile?.profile_photo_url || profile?.avatar_url || null
+    if (profile?.role === 'super_admin') {
+      if (branding?.logo_shape || profile?.logo_shape) resolvedLogoShape = branding?.logo_shape ?? profile?.logo_shape ?? resolvedLogoShape
+      if (branding?.logo_border_width !== undefined || profile?.logo_border_width !== undefined) resolvedBorderWidth = branding?.logo_border_width ?? profile?.logo_border_width ?? resolvedBorderWidth
+      if (branding?.logo_border_color || profile?.logo_border_color) resolvedBorderColor = branding?.logo_border_color ?? profile?.logo_border_color ?? resolvedBorderColor
+    }
   }
 
   const displayLogoUrl = resolvedLogoUrl

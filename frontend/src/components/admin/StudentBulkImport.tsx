@@ -30,6 +30,7 @@ import { useGradeLevels, useSections } from "@/hooks/useAcademics"
 import { useTranslations } from "next-intl"
 import { getFieldDefinitions, type CustomFieldDefinition } from "@/lib/api/custom-fields"
 import { getFieldOrders } from "@/lib/api/default-field-orders"
+import { normalizeSpreadsheetDate } from "@/lib/utils/spreadsheetDate"
 
 // ─── Field definitions ────────────────────────────────────────────────────────
 
@@ -163,7 +164,9 @@ function applyMappingAndValidate(
     const grandfatherName = get("grandfather_name")
     const phone          = get("phone")
     const genderRaw       = get("gender").toLowerCase()
-    const dateOfBirth    = get("date_of_birth")
+    const dobCol          = mapping["date_of_birth"]
+    const dobRaw          = dobCol && dobCol !== SKIP ? raw[dobCol] : undefined
+    const dateOfBirth    = normalizeSpreadsheetDate(dobRaw)
     const nationalId     = get("national_id")
 
     const gender = genderRaw === "male" || genderRaw === "m" ? "male"
@@ -171,6 +174,9 @@ function applyMappingAndValidate(
       : genderRaw ? "other" : undefined
 
     if (!firstName)      errors.push(t("error_first_name_req"))
+    if (!dateOfBirth && dobRaw !== undefined && String(dobRaw).trim() !== "") {
+      errors.push(`${t("error_invalid_date_of_birth")}: ${dobRaw}`)
+    }
     if (!lastName)       errors.push(t("error_last_name_req"))
     if (!email) {
       if (isEmailRequired) errors.push(t("error_email_req"))
@@ -234,7 +240,7 @@ function applyMappingAndValidate(
       grandfather_name: grandfatherName || undefined,
       phone:            phone        || undefined,
       gender,
-      date_of_birth:    dateOfBirth  || undefined,
+      date_of_birth:    dateOfBirth,
       national_id:      nationalId   || undefined,
       custom_fields:    Object.keys(customFields).length > 0 ? customFields : undefined,
       grade_level_id:   gradeLevelId,
@@ -348,7 +354,7 @@ export function StudentBulkImport() {
       const reader = new FileReader()
       reader.onload = (e) => {
         try {
-          const wb = XLSX.read(e.target?.result, { type: "binary" })
+          const wb = XLSX.read(e.target?.result, { type: "binary", cellDates: true })
           const ws = wb.Sheets[wb.SheetNames[0]]
           const data = XLSX.utils.sheet_to_json(ws, { defval: "" })
           handleRows(data as Record<string, any>[])

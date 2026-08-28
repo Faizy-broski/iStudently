@@ -193,6 +193,54 @@ export class DashboardService {
   }
 
   /**
+   * Default appearance for the super admin's own sidebar logo (platform-level,
+   * shared across all super admin users — mirrors how a school's logo_shape/
+   * border live on school_settings rather than per-admin-user).
+   */
+  private readonly defaultBrandingConfig: Record<string, any> = {
+    logo_shape: 'circle', // 'circle' | 'rounded' | 'square' | 'rectangle'
+    logo_border_width: 0,
+    logo_border_color: '#000000',
+  }
+
+  /**
+   * Get the super admin sidebar logo appearance (shape/border).
+   */
+  async getBrandingConfig(): Promise<Record<string, any>> {
+    const { data, error } = await supabase
+      .from('platform_settings')
+      .select('value')
+      .eq('key', 'branding')
+      .single()
+
+    if (error || !data) {
+      return this.defaultBrandingConfig
+    }
+
+    return { ...this.defaultBrandingConfig, ...(data.value as Record<string, any>) }
+  }
+
+  /**
+   * Update the super admin sidebar logo appearance (shape/border).
+   */
+  async updateBrandingConfig(updates: Record<string, any>): Promise<Record<string, any>> {
+    const current = await this.getBrandingConfig()
+    const merged = { ...current, ...updates }
+
+    const { data, error } = await supabase
+      .from('platform_settings')
+      .upsert({ key: 'branding', value: merged, updated_at: new Date().toISOString() })
+      .select('value')
+      .single()
+
+    if (error) {
+      throw new Error(`Failed to update branding config: ${error.message}`)
+    }
+
+    return data?.value as Record<string, any>
+  }
+
+  /**
    * Default login page appearance — matches the page's current hardcoded look.
    */
   private readonly defaultLoginPageConfig: Record<string, any> = {
