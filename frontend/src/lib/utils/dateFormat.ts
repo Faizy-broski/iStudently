@@ -1,4 +1,4 @@
-import { format, parseISO } from 'date-fns'
+import { format, parseISO, type Locale } from 'date-fns'
 
 export const PREFERRED_DATE_FORMAT_KEY = 'studently_preferred_date_format'
 export const DEFAULT_DATE_FORMAT = 'MMMM d yyyy'
@@ -35,7 +35,8 @@ export function setPreferredDateFormat(pattern: string): void {
 
 export function formatDateWithPreference(
   dateInput?: Date | string | number | null,
-  overridePattern?: string
+  overridePattern?: string,
+  locale?: Locale
 ): string {
   if (!dateInput) return ''
   try {
@@ -52,7 +53,7 @@ export function formatDateWithPreference(
     if (isNaN(dateObj.getTime())) return ''
 
     const pattern = overridePattern || getPreferredDateFormat()
-    return format(dateObj, pattern)
+    return format(dateObj, pattern, locale ? { locale } : undefined)
   } catch {
     return ''
   }

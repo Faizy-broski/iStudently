@@ -6,6 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
+import { useTableSort } from "@/hooks/useTableSort";
 import { Badge } from "@/components/ui/badge";
 import { Search, Eye, Edit, MoreHorizontal, ChevronLeft, ChevronRight, Loader2, RefreshCw } from "lucide-react";
 import { ProfilePhoto } from "@/components/shared/ProfilePhoto";
@@ -112,10 +114,25 @@ export default function ParentInfoPage() {
   };
 
   // Filter by active/inactive status (client-side)
-  const filteredParents = useMemo(() => {
+  const activeFilteredParents = useMemo(() => {
     if (showInactive) return parents;
     return parents.filter(p => p.profile?.is_active !== false);
   }, [parents, showInactive]);
+
+  type ParentSortKey = "name" | "contact" | "occupation" | "children" | "status";
+  const getParentSortValue = (parent: Parent, key: ParentSortKey): string | number => {
+    switch (key) {
+      case "name": return `${parent.profile?.first_name || ""} ${parent.profile?.last_name || ""}`.trim();
+      case "contact": return parent.profile?.email || "";
+      case "occupation": return parent.occupation || "";
+      case "children": return parent.children?.length || 0;
+      case "status": return parent.profile?.is_active ? "active" : "inactive";
+      default: return "";
+    }
+  };
+  const { sorted: filteredParents, sortKey, sortDir, toggleSort } = useTableSort<Parent, ParentSortKey>(
+    activeFilteredParents, getParentSortValue, "name", "asc"
+  );
 
   const renderChildren = (parent: Parent) => {
     const children = parent.children || [];
@@ -227,11 +244,11 @@ export default function ParentInfoPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10">
-                    <TableHead>{t("table.parentName")}</TableHead>
-                    <TableHead>{t("table.contact")}</TableHead>
-                    <TableHead>{t("table.occupation")}</TableHead>
-                    <TableHead>{t("table.children")}</TableHead>
-                    <TableHead>{t("table.status")}</TableHead>
+                    <SortableTableHead label={t("table.parentName")} sortKey="name" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                    <SortableTableHead label={t("table.contact")} sortKey="contact" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                    <SortableTableHead label={t("table.occupation")} sortKey="occupation" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                    <SortableTableHead label={t("table.children")} sortKey="children" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                    <SortableTableHead label={t("table.status")} sortKey="status" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
                     <TableHead className="text-right">{t("table.actions")}</TableHead>
                   </TableRow>
                 </TableHeader>

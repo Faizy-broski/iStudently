@@ -27,11 +27,14 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import jsPDF from 'jspdf'
+import { usePreferredDateFormat } from '@/hooks/usePreferredDateFormat'
+import { formatDateWithPreference } from '@/lib/utils/dateFormat'
 
 export function ReportCard() {
   const { reportCard, isLoading, error, refresh } = useReportCard()
   const [isDownloading, setIsDownloading] = useState(false)
   const reportRef = useRef<HTMLDivElement>(null)
+  const preferredDateFormat = usePreferredDateFormat()
 
   const handleDownloadPDF = async () => {
     if (!reportCard) return
@@ -107,7 +110,7 @@ export function ReportCard() {
       pdf.setFontSize(9)
       pdf.setFont('helvetica', 'italic')
       pdf.text(
-        `Generated on: ${format(new Date(reportCard.generated_at), 'PPpp')}`,
+        `Generated on: ${formatDateWithPreference(reportCard.generated_at, preferredDateFormat)} ${format(new Date(reportCard.generated_at), 'p')}`,
         pdf.internal.pageSize.width / 2,
         pdf.internal.pageSize.height - 10,
         { align: 'center' }
@@ -346,7 +349,7 @@ export function ReportCard() {
 
         {/* Footer */}
         <div className="mt-6 text-center text-xs text-muted-foreground print:mt-12">
-          <p>Generated on {format(new Date(reportCard.generated_at), 'PPpp')}</p>
+          <p>Generated on {formatDateWithPreference(reportCard.generated_at, preferredDateFormat)} {format(new Date(reportCard.generated_at), 'p')}</p>
           <p className="mt-1">{reportCard.student.school_name}</p>
         </div>
       </CardContent>

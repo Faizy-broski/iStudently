@@ -17,6 +17,8 @@ import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { openPrintPreview } from '@/lib/utils/printLayout'
 import { useTranslations } from 'next-intl'
+import { usePreferredDateFormat } from '@/hooks/usePreferredDateFormat'
+import { formatDateWithPreference } from '@/lib/utils/dateFormat'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
@@ -144,6 +146,7 @@ export default function PrintReceiptsPage() {
     const tp = useTranslations('fees.payments')
     const { selectedCampus, loading: campusLoading } = useCampus() || {}
     const { isPluginActive } = useSchoolSettings()
+    const preferredDateFormat = usePreferredDateFormat()
     const { formatCurrency } = useSchoolSettingsHook()
     const schoolId = selectedCampus?.id
 
@@ -248,9 +251,7 @@ export default function PrintReceiptsPage() {
 
     // Format date
     const formatDate = (dateStr: string) => {
-        return new Date(dateStr).toLocaleDateString('en-US', {
-            month: 'short', day: 'numeric', year: 'numeric'
-        })
+        return formatDateWithPreference(dateStr, preferredDateFormat)
     }
 
     // Format student name
@@ -419,7 +420,7 @@ export default function PrintReceiptsPage() {
 
     const renderReceiptHeader = (isFamily: boolean) => (
         <div className="header">
-            <p className="receipt-date">{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+            <p className="receipt-date">{formatDateWithPreference(new Date(), preferredDateFormat)}</p>
             <div className="logo-wrap">
                 {selectedCampus?.logo_url
                     ? <img src={selectedCampus.logo_url} alt="" />
@@ -434,7 +435,7 @@ export default function PrintReceiptsPage() {
     const renderReceiptFooter = () => (
         <div className="footer">
             <div className="date">
-                <p>{t('generatedOn')}: {new Date().toLocaleDateString()}</p>
+                <p>{t('generatedOn')}: {formatDateWithPreference(new Date(), preferredDateFormat)}</p>
             </div>
             <div className="signature">
                 <div className="signature-line">

@@ -8,7 +8,7 @@
 // grading, no hotspot answers — same read-only mode as AnatomyExplorer.
 
 import { useMemo, useState } from "react"
-import { useLocale } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { ArrowLeft, Dna } from "lucide-react"
 import { AnatomyExplorer } from "./AnatomyExplorer"
 import { buildOrgans } from "@/lib/anatomy/i18n/merge"
@@ -19,8 +19,10 @@ type Props = {
   title?: string
 }
 
-export function Anatomy3DCatalog({ title = "3D Anatomy Models" }: Props) {
+export function Anatomy3DCatalog({ title }: Props) {
   const locale = useLocale()
+  const tSidebar = useTranslations("sidebar")
+  const resolvedTitle = title ?? tSidebar("anatomy_3d")
   const organs = useMemo(() => buildOrgans(getOrganDictionary(locale)), [locale])
   const [selectedId, setSelectedId] = useState<OrganId | null>(null)
   const selectedOrgan = organs.find((o) => o.id === selectedId)
@@ -34,12 +36,12 @@ export function Anatomy3DCatalog({ title = "3D Anatomy Models" }: Props) {
             className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-gray-900"
           >
             <ArrowLeft className="h-4 w-4" />
-            {title}
+            {resolvedTitle}
           </button>
         ) : (
           <>
             <Dna className="h-4 w-4 text-[#022172]" />
-            <span className="font-semibold text-sm text-gray-800">{title}</span>
+            <span className="font-semibold text-sm text-gray-800">{resolvedTitle}</span>
           </>
         )}
       </div>

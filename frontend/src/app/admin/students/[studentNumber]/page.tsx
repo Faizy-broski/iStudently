@@ -40,6 +40,8 @@ import { useStudents } from "@/hooks/useStudents";
 import { getParentById, type Parent } from "@/lib/api/parents";
 import { getLastLogin } from "@/lib/api/auth";
 import { format } from "date-fns";
+import { usePreferredDateFormat } from "@/hooks/usePreferredDateFormat";
+import { formatDateWithPreference } from "@/lib/utils/dateFormat";
 import { ar, enUS } from "date-fns/locale";
 import DisciplineScoreTab from "@/components/admin/DisciplineScoreTab";
 import RelativesTab from "@/components/admin/RelativesTab";
@@ -64,6 +66,7 @@ export default function StudentDetailsPage() {
   const tCommon = useTranslations("common");
   const locale = useLocale();
   const dateLocale = locale === 'ar' ? ar : enUS;
+  const preferredDateFormat = usePreferredDateFormat();
   const params = useParams();
   const router = useRouter();
   const campusContext = useCampus();
@@ -94,7 +97,7 @@ export default function StudentDetailsPage() {
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return t("not_provided");
     try {
-      return format(new Date(dateString), "MMMM d, yyyy", { locale: dateLocale });
+      return formatDateWithPreference(dateString, preferredDateFormat, dateLocale);
     } catch {
       return dateString;
     }
@@ -103,7 +106,9 @@ export default function StudentDetailsPage() {
   const formatDateTime = (dateString: string | null | undefined) => {
     if (!dateString) return t("not_provided");
     try {
-      return format(new Date(dateString), "MMMM d, yyyy h:mm a", { locale: dateLocale });
+      const datePart = formatDateWithPreference(dateString, preferredDateFormat, dateLocale);
+      const timePart = format(new Date(dateString), "h:mm a", { locale: dateLocale });
+      return `${datePart} ${timePart}`;
     } catch {
       return dateString;
     }
@@ -268,7 +273,7 @@ export default function StudentDetailsPage() {
   const campusName = currentStudent.custom_fields?.academic?.campus_name || campusContext?.selectedCampus?.name;
   const academicYearName = currentStudent.custom_fields?.academic?.academic_year_name;
 
-  const fullName = `${currentStudent.profile?.first_name || ""} ${currentStudent.profile?.father_name || ""} ${currentStudent.profile?.grandfather_name || ""} ${currentStudent.profile?.last_name || ""}`.trim().replace(/\s+/g, " ");
+  const fullName = `${currentStudent.profile?.first_name || ""} ${currentStudent.profile?.father_name || ""} ${currentStudent.profile?.last_name || ""}`.trim().replace(/\s+/g, " ");
 
   return (
     <div className="p-6 space-y-6">

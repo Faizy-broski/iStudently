@@ -218,23 +218,20 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
     if (impersonatedSchoolLogoBorderColor) resolvedBorderColor = impersonatedSchoolLogoBorderColor
   }
 
-  // Selected campus - overrides root school IF it has its own logo
-  // If a campus doesn't have its own logo URL, we want it to inherit not just the parent's
-  // image, but also the parent's frame shape and border, instead of defaulting to a circle.
+  // Selected campus - overrides root school IF it has its own logo or custom appearance
+  // If a campus doesn't have its own logo URL or border width, inherit from parent school settings.
   if (selectedCampus) {
     if (selectedCampus.logo_url) {
       resolvedLogoUrl = selectedCampus.logo_url
-      resolvedLogoShape = selectedCampus.logo_shape ?? resolvedLogoShape
-      resolvedBorderWidth = selectedCampus.logo_border_width ?? resolvedBorderWidth
-      resolvedBorderColor = selectedCampus.logo_border_color ?? resolvedBorderColor
-    } else {
-      if (profile?.school?.logo_url) {
-        resolvedLogoUrl = profile.school.logo_url
-      }
-      resolvedLogoShape = selectedCampus.logo_shape ?? resolvedLogoShape
-      resolvedBorderWidth = selectedCampus.logo_border_width ?? resolvedBorderWidth
-      resolvedBorderColor = selectedCampus.logo_border_color ?? resolvedBorderColor
+    } else if (profile?.school?.logo_url) {
+      resolvedLogoUrl = profile.school.logo_url
     }
+
+    if (selectedCampus.logo_shape) resolvedLogoShape = selectedCampus.logo_shape
+    if (selectedCampus.logo_border_width != null && selectedCampus.logo_border_width > 0) {
+      resolvedBorderWidth = selectedCampus.logo_border_width
+    }
+    if (selectedCampus.logo_border_color) resolvedBorderColor = selectedCampus.logo_border_color
   }
 
   // Super admin's own sidebar (not impersonating a school) - shape/border come
@@ -306,7 +303,7 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
               borderWidth={logoBorderWidth}
               borderColor={logoBorderColor}
               size={40}
-              className="ring-2 ring-white/20 shadow-md"
+              className={logoBorderWidth > 0 ? "shadow-md" : "ring-2 ring-white/20 shadow-md"}
               fallback={
                 <span className="text-[#003dd6] font-bold text-xs">{initials}</span>
               }
@@ -331,7 +328,7 @@ function SidebarHeader({ isCollapsed }: { isCollapsed: boolean }) {
             borderWidth={logoBorderWidth}
             borderColor={logoBorderColor}
             size={90}
-            className="ring-2 ring-white/30 shadow-lg"
+            className={logoBorderWidth > 0 ? "shadow-lg" : "ring-2 ring-white/30 shadow-lg"}
             fallback={
               <span className="text-[#003dd6] font-bold text-2xl tracking-wider">{initials}</span>
             }

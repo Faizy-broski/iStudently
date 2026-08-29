@@ -25,6 +25,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { SortableTableHead } from '@/components/ui/sortable-table-head'
+import { useTableSort } from '@/hooks/useTableSort'
 import {
     Table,
     TableBody,
@@ -82,10 +84,25 @@ export default function StaffPage() {
     const { profile } = useAuth()
 
     // Filter by active/inactive status (client-side)
-    const filteredStaff = useMemo(() => {
+    const activeFilteredStaff = useMemo(() => {
         if (showInactive) return staff
         return staff.filter(s => s.is_active !== false)
     }, [staff, showInactive])
+
+    type StaffSortKey = "name" | "designation" | "contact" | "department" | "status"
+    const getStaffSortValue = (member: Staff, key: StaffSortKey): string | number => {
+        switch (key) {
+            case "name": return `${member.profile?.first_name || ""} ${member.profile?.last_name || ""}`.trim()
+            case "designation": return member.title || ""
+            case "contact": return member.profile?.email || ""
+            case "department": return member.department || ""
+            case "status": return member.is_active ? "active" : "inactive"
+            default: return ""
+        }
+    }
+    const { sorted: filteredStaff, sortKey, sortDir, toggleSort } = useTableSort<Staff, StaffSortKey>(
+        activeFilteredStaff, getStaffSortValue, "name", "asc"
+    )
 
     // User Role state for edit modal
     const [availableRoles, setAvailableRoles] = useState<UserProfile[]>([])
@@ -277,11 +294,11 @@ export default function StaffPage() {
                 <Table>
                     <TableHeader>
                         <TableRow className="bg-gray-50/50 dark:bg-gray-900/50">
-                            <TableHead>{t('table.staffMember')}</TableHead>
-                            <TableHead>{t('table.roleDesignation')}</TableHead>
-                            <TableHead>{t('table.contact')}</TableHead>
-                            <TableHead>{t('table.department')}</TableHead>
-                            <TableHead>{t('table.status')}</TableHead>
+                            <SortableTableHead label={t('table.staffMember')} sortKey="name" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                            <SortableTableHead label={t('table.roleDesignation')} sortKey="designation" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                            <SortableTableHead label={t('table.contact')} sortKey="contact" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                            <SortableTableHead label={t('table.department')} sortKey="department" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                            <SortableTableHead label={t('table.status')} sortKey="status" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
                             <TableHead className="text-right">{t('table.actions')}</TableHead>
                         </TableRow>
                     </TableHeader>

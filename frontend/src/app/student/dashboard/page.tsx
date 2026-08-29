@@ -31,12 +31,15 @@ import {
   CheckCircle2
 } from 'lucide-react'
 import { format, formatDistance, isToday, isTomorrow, parseISO } from 'date-fns'
+import { usePreferredDateFormat } from '@/hooks/usePreferredDateFormat'
+import { formatDateWithPreference } from '@/lib/utils/dateFormat'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 
 export default function StudentDashboardPage() {
   const t = useTranslations('dashboard')
+  const preferredDateFormat = usePreferredDateFormat()
   const { profile } = useAuth()
   const { overview, isLoading: isDashboardLoading, error: dashboardError } = useStudentDashboard()
   const { studentInfo, isLoading: isInfoLoading } = useStudentInfo()
@@ -190,7 +193,7 @@ export default function StudentDashboardPage() {
                 </div>
                 <div>
                   <CardTitle className="text-lg">{t('schedule.title')}</CardTitle>
-                  <p className="text-xs text-gray-500 dark:text-slate-400 font-medium">{format(new Date(), 'EEEE, MMMM d')}</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 font-medium">{format(new Date(), 'EEEE')}, {formatDateWithPreference(new Date(), preferredDateFormat)}</p>
                 </div>
               </div>
               <Badge variant="outline" className={

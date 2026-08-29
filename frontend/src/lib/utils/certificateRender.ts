@@ -1,6 +1,7 @@
 import type { CertificateTemplateConfig } from '@/lib/api/certificate-template'
 import { substituteTokens } from '@/components/shared/CertificateCanvasRenderer'
 import type { Student } from '@/lib/api/students'
+import { formatDateWithPreference } from '@/lib/utils/dateFormat'
 
 export { substituteTokens }
 
@@ -43,7 +44,7 @@ export function buildStudentCertificateData(student: Student, campus?: CampusLik
     email: profile.email || '',
     phone: profile.phone || '',
     photo_url: profile.profile_photo_url || profile.avatar_url || '',
-    date_of_birth: dateOfBirth ? new Date(dateOfBirth).toLocaleDateString() : '',
+    date_of_birth: dateOfBirth ? formatDateWithPreference(dateOfBirth) : '',
     blood_group: s.blood_group || student.custom_fields?.personal?.blood_group || '',
     student_id: student.student_number || '',
     student_number: student.student_number || '',
@@ -51,7 +52,7 @@ export function buildStudentCertificateData(student: Student, campus?: CampusLik
     roll_number: student.student_number || '',
     grade_level: s.grade_level_name || s.grade?.name || student.grade_level || '',
     section: s.section_name || s.section?.name || '',
-    admission_date: admissionDate ? new Date(admissionDate).toLocaleDateString() : (s.created_at ? new Date(s.created_at).toLocaleDateString() : ''),
+    admission_date: admissionDate ? formatDateWithPreference(admissionDate) : (s.created_at ? formatDateWithPreference(s.created_at) : ''),
     parent_name: parentName,
     parent_phone: parentInfo?.phone || '',
     academic_year: currentAcademicYear(),
@@ -61,9 +62,9 @@ export function buildStudentCertificateData(student: Student, campus?: CampusLik
     school_name: campus?.name || '',
     school_logo: campus?.logo_url || '',
     school_principal: (campus as any)?.principal_name || (campus as any)?.principal || '',
-    current_date: new Date().toLocaleDateString(),
-    issue_date: new Date().toLocaleDateString(),
-    valid_until: new Date(new Date().getFullYear() + 1, 7, 31).toLocaleDateString(),
+    current_date: formatDateWithPreference(new Date()),
+    issue_date: formatDateWithPreference(new Date()),
+    valid_until: formatDateWithPreference(new Date(new Date().getFullYear() + 1, 7, 31)),
   }
 }
 
@@ -83,7 +84,7 @@ export function buildStaffCertificateData(member: any, campus?: CampusLike | nul
     department: member.department || '',
     qualification: member.qualifications || '',
     specialization: member.specialization || '',
-    joining_date: member.date_of_joining ? new Date(member.date_of_joining).toLocaleDateString() : '',
+    joining_date: member.date_of_joining ? formatDateWithPreference(member.date_of_joining) : '',
     academic_year: currentAcademicYear(),
     campus_name: campus?.name || '',
     campus_address: campus?.address || '',
@@ -91,8 +92,8 @@ export function buildStaffCertificateData(member: any, campus?: CampusLike | nul
     school_name: campus?.name || '',
     school_logo: campus?.logo_url || '',
     school_principal: (campus as any)?.principal_name || (campus as any)?.principal || '',
-    current_date: new Date().toLocaleDateString(),
-    issue_date: new Date().toLocaleDateString(),
+    current_date: formatDateWithPreference(new Date()),
+    issue_date: formatDateWithPreference(new Date()),
   }
 }
 

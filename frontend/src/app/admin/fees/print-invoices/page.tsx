@@ -17,6 +17,8 @@ import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { openPrintPreview } from '@/lib/utils/printLayout'
 import { useTranslations } from 'next-intl'
+import { usePreferredDateFormat } from '@/hooks/usePreferredDateFormat'
+import { formatDateWithPreference } from '@/lib/utils/dateFormat'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
@@ -107,6 +109,7 @@ export default function PrintInvoicesPage() {
     const { selectedCampus, loading: campusLoading } = useCampus() || {}
     const { isPluginActive } = useSchoolSettings()
     const { formatCurrency: formatDynamicCurrency } = useSchoolSettingsHook()
+    const preferredDateFormat = usePreferredDateFormat()
     const schoolId = selectedCampus?.id
 
     const [pdfSettings, setPdfSettings] = useState<PdfHeaderFooterSettings | null>(null)
@@ -192,9 +195,7 @@ export default function PrintInvoicesPage() {
     const formatCurrency = (amount: number) => formatDynamicCurrency(amount)
 
     const formatDate = (dateStr: string) => {
-        return new Date(dateStr).toLocaleDateString('en-US', {
-            month: 'short', day: 'numeric', year: 'numeric'
-        })
+        return formatDateWithPreference(dateStr, preferredDateFormat)
     }
 
     const formatStudentName = (student: StudentFee['students']) => {
@@ -474,7 +475,7 @@ export default function PrintInvoicesPage() {
                     {feesToPrint.map((fee) => (
                         <div key={fee.id} className="invoice">
                             <div className="header">
-                                <p className="invoice-date">{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+                                <p className="invoice-date">{formatDateWithPreference(new Date(), preferredDateFormat)}</p>
                                 <div className="logo-wrap">
                                     {selectedCampus?.logo_url
                                         ? <img src={selectedCampus.logo_url} alt="" />
@@ -536,7 +537,7 @@ export default function PrintInvoicesPage() {
 
                             <div className="footer">
                                 <p>{t('pleasePayBy')}</p>
-                                <p>{t('generatedOn')}: {new Date().toLocaleDateString()}</p>
+                                <p>{t('generatedOn')}: {formatDateWithPreference(new Date(), preferredDateFormat)}</p>
                             </div>
                         </div>
                     ))}

@@ -155,7 +155,7 @@ function renderReportHtml(m: ReportMetrics): string {
 </style>
 </head>
 <body>
-  <h1>Al-Fina' — Monthly Compliance Report</h1>
+  <h1>The School Wall — Monthly Compliance Report</h1>
   <div class="meta">${escapeHtml(m.schoolName)} · ${escapeHtml(m.period)}</div>
 
   <h2>Posts</h2>

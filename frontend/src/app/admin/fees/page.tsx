@@ -22,6 +22,8 @@ import StudentFeeOverrideModal from '@/components/admin/StudentFeeOverrideModal'
 import { FeeDueDateBadge } from '@/components/shared/FeeDueDateBadge'
 import useSWR from 'swr'
 import { useTranslations } from 'next-intl'
+import { usePreferredDateFormat } from '@/hooks/usePreferredDateFormat'
+import { formatDateWithPreference } from '@/lib/utils/dateFormat'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
 
@@ -40,6 +42,7 @@ interface Section {
 export default function FeesPage() {
     const t = useTranslations('admin.fees.page')
     const tCommon = useTranslations('common')
+    const preferredDateFormat = usePreferredDateFormat()
     const { profile } = useAuth()
     const { selectedCampus } = useCampus()
     const { formatCurrency, isLoading: settingsLoading } = useSchoolSettings()
@@ -437,7 +440,7 @@ export default function FeesPage() {
                                                     <TableCell className={balance.color}>{formatCurrency(parseFloat(balance.value))}</TableCell>
                                                     <TableCell>
                                                         <div className="flex flex-col gap-1">
-                                                            <span>{new Date(fee.due_date).toLocaleDateString()}</span>
+                                                            <span>{formatDateWithPreference(fee.due_date, preferredDateFormat)}</span>
                                                             <FeeDueDateBadge dueDate={fee.due_date} status={fee.status} />
                                                         </div>
                                                     </TableCell>

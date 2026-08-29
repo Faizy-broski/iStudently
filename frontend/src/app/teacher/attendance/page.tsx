@@ -29,6 +29,8 @@ import { TeacherSchedule } from "@/lib/api/teachers"
 import { useSearchParams, useRouter } from "next/navigation"
 import useSWR from "swr"
 import { useTranslations } from "next-intl"
+import { usePreferredDateFormat } from "@/hooks/usePreferredDateFormat"
+import { formatDateWithPreference } from "@/lib/utils/dateFormat"
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused"
 
@@ -55,6 +57,7 @@ interface ClassInfo {
 
 export default function AttendancePage() {
   const t = useTranslations('teacherPages.attendance')
+  const preferredDateFormat = usePreferredDateFormat()
   const router = useRouter()
   const searchParams = useSearchParams()
   const { profile } = useAuth()
@@ -278,7 +281,7 @@ export default function AttendancePage() {
               <Calendar className="h-6 w-6 text-blue-600" />
               <div>
                 <p className="font-semibold text-blue-900">
-                  {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                  {new Date().toLocaleDateString('en-US', { weekday: 'long' })}, {formatDateWithPreference(new Date(), preferredDateFormat)}
                 </p>
                 <p className="text-sm text-blue-700">
                   {t('classesScheduledCount', { count: todayClasses.length })}

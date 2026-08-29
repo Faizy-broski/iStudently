@@ -467,6 +467,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (!schoolData) return null
 
+        // Fetch logo display appearance settings from school_settings
+        const { data: appearance } = await supabase
+          .from('school_settings')
+          .select('logo_shape, logo_border_width, logo_border_color')
+          .eq('school_id', schoolId)
+          .is('campus_id', null)
+          .maybeSingle()
+
+        if (appearance) {
+          (schoolData as any).logo_shape = appearance.logo_shape
+          (schoolData as any).logo_border_width = appearance.logo_border_width
+          (schoolData as any).logo_border_color = appearance.logo_border_color
+        }
+
         // If campus has no logo, inherit from parent network school
         if (!schoolData.logo_url && schoolData.parent_school_id) {
           const { data: parentSchool } = await supabase
@@ -477,6 +491,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (parentSchool?.logo_url) {
             schoolData.logo_url = parentSchool.logo_url
+          }
+          if (!appearance) {
+            const { data: parentAppearance } = await supabase
+              .from('school_settings')
+              .select('logo_shape, logo_border_width, logo_border_color')
+              .eq('school_id', schoolData.parent_school_id)
+              .is('campus_id', null)
+              .maybeSingle()
+            if (parentAppearance) {
+              (schoolData as any).logo_shape = parentAppearance.logo_shape
+              (schoolData as any).logo_border_width = parentAppearance.logo_border_width
+              (schoolData as any).logo_border_color = parentAppearance.logo_border_color
+            }
           }
         }
 

@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
+import { useTableSort } from "@/hooks/useTableSort";
 import { Badge } from "@/components/ui/badge";
 import { Eye, Edit, Download, MoreHorizontal, ChevronLeft, ChevronRight, Loader2, Users, UserCheck, UserX, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -90,6 +92,8 @@ function buildGradeDisplay(student: Student, grade: string, cfg: StudentListAppe
   }
   return parts.join(sep)
 }
+
+type StudentSortKey = "student_number" | "name" | "grade" | "status" | "contact";
 
 export default function StudentInfoPage() {
   const t = useTranslations("school.students.student_info");
@@ -331,7 +335,20 @@ export default function StudentInfoPage() {
   };
 
   // Active/inactive filtering is applied server-side via the is_active param
-  const filteredStudents = students;
+  const getStudentSortValue = (student: Student, key: StudentSortKey): string | number => {
+    switch (key) {
+      case "student_number": return student.student_number || "";
+      case "name": return `${student.profile?.first_name || ""} ${student.profile?.last_name || ""}`.trim();
+      case "grade": return student.grade?.name || student.grade_level || "";
+      case "status": return student.profile?.is_active ? "active" : "inactive";
+      case "contact": return student.profile?.phone || "";
+      default: return "";
+    }
+  };
+  const { sorted: sortedStudents, sortKey, sortDir, toggleSort } = useTableSort<Student, StudentSortKey>(
+    students, getStudentSortValue, "name", "asc"
+  );
+  const filteredStudents = sortedStudents;
 
   return (
     <div className="p-6 space-y-6">
@@ -468,11 +485,11 @@ export default function StudentInfoPage() {
                           className="rounded border-gray-300"
                         />
                       </TableHead>
-                      <TableHead className="text-left rtl:text-right">{t("th_student_id")}</TableHead>
-                      <TableHead className="text-left rtl:text-right">{tCommon("name")}</TableHead>
-                      <TableHead className="text-left rtl:text-right">{tCommon("grade")}</TableHead>
-                      <TableHead className="text-left rtl:text-right">{tCommon("status")}</TableHead>
-                      <TableHead className="text-left rtl:text-right">{t("th_contact")}</TableHead>
+                      <SortableTableHead className="text-left rtl:text-right" label={t("th_student_id")} sortKey="student_number" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                      <SortableTableHead className="text-left rtl:text-right" label={tCommon("name")} sortKey="name" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                      <SortableTableHead className="text-left rtl:text-right" label={tCommon("grade")} sortKey="grade" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                      <SortableTableHead className="text-left rtl:text-right" label={tCommon("status")} sortKey="status" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                      <SortableTableHead className="text-left rtl:text-right" label={t("th_contact")} sortKey="contact" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
                       <TableHead className="text-right rtl:text-left">{tCommon("actions")}</TableHead>
                     </TableRow>
                   </TableHeader>

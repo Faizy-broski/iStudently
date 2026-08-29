@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { X, Printer, Download, Clock, CreditCard, History, FileText } from 'lucide-react'
 import { getStudentFeeById, getFeeAdjustments, FeeAdjustment, StudentFee, FeePayment } from '@/lib/api/fees'
+import { usePreferredDateFormat } from '@/hooks/usePreferredDateFormat'
+import { formatDateWithPreference } from '@/lib/utils/dateFormat'
 
 interface FeeChallanModalProps {
     isOpen: boolean
@@ -17,6 +19,7 @@ export default function FeeChallanModal({ isOpen, onClose, feeId, schoolId }: Fe
     const [loading, setLoading] = useState(true)
     const [activeTab, setActiveTab] = useState<'details' | 'payments' | 'adjustments'>('details')
     const printRef = useRef<HTMLDivElement>(null)
+    const preferredDateFormat = usePreferredDateFormat()
 
     useEffect(() => {
         if (isOpen && feeId) {
@@ -83,7 +86,7 @@ export default function FeeChallanModal({ isOpen, onClose, feeId, schoolId }: Fe
                 </div>
                 ${printContent.innerHTML}
                 <div class="footer">
-                    <p>Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
+                    <p>Generated on ${formatDateWithPreference(new Date(), preferredDateFormat)} at ${new Date().toLocaleTimeString()}</p>
                     <p>This is a computer-generated document.</p>
                 </div>
             </body>
@@ -208,7 +211,7 @@ export default function FeeChallanModal({ isOpen, onClose, feeId, schoolId }: Fe
                                         </div>
                                         <div className="text-right">
                                             <p className="text-xs text-gray-500 dark:text-gray-400">Due Date</p>
-                                            <p className="font-semibold dark:text-gray-100">{new Date(fee.due_date).toLocaleDateString()}</p>
+                                            <p className="font-semibold dark:text-gray-100">{formatDateWithPreference(fee.due_date, preferredDateFormat)}</p>
                                             <span className={`text-xs px-2 py-1 rounded ${getStatusClass(fee.status)}`}>
                                                 {fee.status.toUpperCase()}
                                             </span>
@@ -281,7 +284,7 @@ export default function FeeChallanModal({ isOpen, onClose, feeId, schoolId }: Fe
                                                         {(fee as any).late_fee_applied_at && (
                                                             <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
                                                                 <Clock size={12} />
-                                                                {new Date((fee as any).late_fee_applied_at).toLocaleDateString()}
+                                                                {formatDateWithPreference((fee as any).late_fee_applied_at, preferredDateFormat)}
                                                             </span>
                                                         )}
                                                     </td>
@@ -340,7 +343,7 @@ export default function FeeChallanModal({ isOpen, onClose, feeId, schoolId }: Fe
                                                         </div>
                                                         <div className="text-right">
                                                             <p className="text-sm text-gray-600 dark:text-gray-300">
-                                                                {new Date(payment.payment_date).toLocaleDateString()}
+                                                                {formatDateWithPreference(payment.payment_date, preferredDateFormat)}
                                                             </p>
                                                             <p className="text-xs text-gray-400 dark:text-gray-500">
                                                                 {new Date(payment.payment_date).toLocaleTimeString()}
@@ -381,7 +384,7 @@ export default function FeeChallanModal({ isOpen, onClose, feeId, schoolId }: Fe
                                                                 {adj.adjustment_amount < 0 ? '-' : '+'}{Math.abs(adj.adjustment_amount).toLocaleString()}
                                                             </p>
                                                             <p className="text-xs text-gray-400 dark:text-gray-500">
-                                                                {new Date(adj.created_at).toLocaleDateString()}
+                                                                {formatDateWithPreference(adj.created_at, preferredDateFormat)}
                                                             </p>
                                                         </div>
                                                     </div>

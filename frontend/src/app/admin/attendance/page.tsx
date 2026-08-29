@@ -18,6 +18,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { IconCalendar, IconLoader, IconEye, IconSearch } from '@tabler/icons-react'
 import { toast } from 'sonner'
 import useSWR from 'swr'
+import { ar, enUS } from 'date-fns/locale'
+import { usePreferredDateFormat } from '@/hooks/usePreferredDateFormat'
+import { formatDateWithPreference } from '@/lib/utils/dateFormat'
 
 // Types for the inline grid data
 interface PeriodInfo {
@@ -74,6 +77,8 @@ function hasStudentChange(
 export default function AdministrationPage() {
   const t = useTranslations('attendance')
   const locale = useLocale()
+  const dateFnsLocale = locale === 'ar' ? ar : enUS
+  const preferredDateFormat = usePreferredDateFormat()
   const { profile } = useAuth()
   const campusContext = useCampus()
   const selectedCampus = campusContext?.selectedCampus
@@ -620,9 +625,7 @@ export default function AdministrationPage() {
             <DialogTitle>{selectedStudent?.student_name}</DialogTitle>
             <DialogDescription>
               {t('periodLevelAttendance', {
-                date: new Date(dateStr + 'T00:00:00').toLocaleDateString(locale, {
-                  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-                })
+                date: `${new Date(dateStr + 'T00:00:00').toLocaleDateString(locale, { weekday: 'long' })}, ${formatDateWithPreference(dateStr, preferredDateFormat, dateFnsLocale)}`
               })}
             </DialogDescription>
           </DialogHeader>

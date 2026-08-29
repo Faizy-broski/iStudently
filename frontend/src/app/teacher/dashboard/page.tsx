@@ -33,6 +33,8 @@ import * as timetableApi from "@/lib/api/timetable"
 import * as coursesApi from "@/lib/api/courses"
 import useSWR from "swr"
 import { getMyScore, type PerformanceScore } from "@/lib/api/performance"
+import { usePreferredDateFormat } from "@/hooks/usePreferredDateFormat"
+import { formatDateWithPreference } from "@/lib/utils/dateFormat"
 
 // ─── local types ─────────────────────────────────────────────────────────────
 
@@ -87,6 +89,7 @@ export default function TeacherDashboard() {
   const { selectedCoursePeriod } = useAcademic()
   const [currentTime, setCurrentTime] = useState(new Date())
   const todayDate = new Date().toISOString().split("T")[0]
+  const preferredDateFormat = usePreferredDateFormat()
   const [staffIdGracePeriod, setStaffIdGracePeriod] = useState(true)
 
   // ── Grace period for staff_id ──
@@ -257,11 +260,7 @@ export default function TeacherDashboard() {
             {currentTime.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
           </div>
           <p className="text-xs text-muted-foreground">
-            {currentTime.toLocaleDateString("en-US", {
-              weekday: "long",
-              month: "short",
-              day: "numeric",
-            })}
+            {currentTime.toLocaleDateString("en-US", { weekday: "long" })}, {formatDateWithPreference(currentTime, preferredDateFormat)}
           </p>
         </div>
       </div>

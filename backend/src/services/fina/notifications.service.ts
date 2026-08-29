@@ -59,7 +59,7 @@ export async function notifyAbsence(schoolId: string, studentId: string, student
     schoolId,
     type: 'absence',
     payload: { studentId, studentName, date },
-    pushTitle: 'Al-Fina\'',
+    pushTitle: 'The School Wall',
     pushBody: `${studentName} was not present today (${date}). If there is an excuse, please contact the school.`,
   })
 }
@@ -77,7 +77,7 @@ export async function notifyConsentWithdrawnToPrincipal(schoolId: string): Promi
     {
       schoolId,
       type: 'consent_withdrawn',
-      pushTitle: 'Al-Fina\'',
+      pushTitle: 'The School Wall',
       pushBody: 'A guardian withdrew consent for a student\'s photos. The archive is being updated.',
     }
   )
@@ -107,7 +107,7 @@ export async function notifyNewPost(schoolId: string, recipientProfileIds: strin
     schoolId,
     type: 'new_post',
     payload: { postType },
-    pushTitle: 'Al-Fina\'',
+    pushTitle: 'The School Wall',
     pushBody: 'A new post was published for your child\'s class.',
   })
 }

@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { SortableTableHead } from "@/components/ui/sortable-table-head"
+import { useTableSort } from "@/hooks/useTableSort"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { UserPlus, Edit, Trash2, Users, GraduationCap, Loader2, RefreshCw, ChevronLeft, ChevronRight, Lock, Eye } from "lucide-react"
@@ -50,10 +52,27 @@ export default function TeachersPage() {
   }, [dataError])
 
   // Filter by active/inactive status (client-side for now)
-  const filteredTeachers = useMemo(() => {
+  const activeFilteredTeachers = useMemo(() => {
     if (showInactive) return teachers
     return teachers.filter(t => t.is_active !== false)
   }, [teachers, showInactive])
+
+  type TeacherSortKey = "employee_number" | "name" | "department" | "specialization" | "employment_type" | "status" | "contact"
+  const getTeacherSortValue = (teacher: (typeof teachers)[number], key: TeacherSortKey): string | number => {
+    switch (key) {
+      case "employee_number": return teacher.employee_number || ""
+      case "name": return `${teacher.profile?.first_name || ""} ${teacher.profile?.last_name || ""}`.trim()
+      case "department": return teacher.department || ""
+      case "specialization": return teacher.specialization || ""
+      case "employment_type": return teacher.employment_type || ""
+      case "status": return teacher.is_active ? "active" : "inactive"
+      case "contact": return teacher.profile?.email || ""
+      default: return ""
+    }
+  }
+  const { sorted: filteredTeachers, sortKey, sortDir, toggleSort } = useTableSort<(typeof teachers)[number], TeacherSortKey>(
+    activeFilteredTeachers, getTeacherSortValue, "name", "asc"
+  )
 
   // State for Edit Credentials Modal
   const [showEditCredentialsModal, setShowEditCredentialsModal] = useState(false)
@@ -219,13 +238,13 @@ export default function TeachersPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-linear-to-r from-[#57A3CC]/10 to-[#022172]/10">
-                    <TableHead>{t("table.employeeNumber")}</TableHead>
-                    <TableHead>{t("table.name")}</TableHead>
-                    <TableHead>{t("table.department")}</TableHead>
-                    <TableHead>{t("table.specialization")}</TableHead>
-                    <TableHead>{t("table.type")}</TableHead>
-                    <TableHead>{t("table.status")}</TableHead>
-                    <TableHead>{t("table.contact")}</TableHead>
+                    <SortableTableHead label={t("table.employeeNumber")} sortKey="employee_number" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                    <SortableTableHead label={t("table.name")} sortKey="name" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                    <SortableTableHead label={t("table.department")} sortKey="department" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                    <SortableTableHead label={t("table.specialization")} sortKey="specialization" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                    <SortableTableHead label={t("table.type")} sortKey="employment_type" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                    <SortableTableHead label={t("table.status")} sortKey="status" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
+                    <SortableTableHead label={t("table.contact")} sortKey="contact" activeKey={sortKey} direction={sortDir} onSort={toggleSort} />
                     <TableHead className="text-right">{t("table.actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
