@@ -13,8 +13,8 @@ const callerFromProfile = (profile: any) => ({
 })
 
 export const listPollsForRoom = async (req: AuthRequest, res: Response) => {
-  try { ok(res, await svc.listPollsForRoom(req.params.roomId)) }
-  catch (e) { err(res, e) }
+  try { ok(res, await svc.listPollsForRoom(req.params.roomId, callerFromProfile(req.profile))) }
+  catch (e) { err(res, e, 403) }
 }
 
 export const launchPoll = async (req: AuthRequest, res: Response) => {
@@ -54,6 +54,6 @@ export const submitPollResponse = async (req: AuthRequest, res: Response) => {
 }
 
 export const getPollResults = async (req: AuthRequest, res: Response) => {
-  try { ok(res, await svc.getPollResults(req.params.pollId)) }
-  catch (e) { err(res, e) }
+  try { ok(res, await svc.getPollResults(req.params.pollId, callerFromProfile(req.profile))) }
+  catch (e) { err(res, e, 403) }
 }

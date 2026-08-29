@@ -1,5 +1,5 @@
 import { supabase } from '../config/supabase'
-import { assertOwner, assertSameSchool, getRoomOrThrow } from './jitsi-room.service'
+import { assertOwner, assertCanAccessRoom, getRoomOrThrow } from './jitsi-room.service'
 
 // ============================================================================
 // TYPES
@@ -109,7 +109,7 @@ export const submitResponse = async (
   if (poll.status !== 'open') throw new Error('This poll is not accepting responses')
 
   const room = await getRoomOrThrow(poll.room_id)
-  assertSameSchool(room, caller)
+  await assertCanAccessRoom(room, caller)
 
   const { error } = await supabase
     .from('jitsi_room_poll_responses')
@@ -143,7 +143,15 @@ async function getPollOrThrow(pollId: string): Promise<JitsiRoomPoll> {
   return data as JitsiRoomPoll
 }
 
-export const listPollsForRoom = async (roomId: string) => {
+/**
+ * SECURITY: this previously had no authorization check at all — any
+ * authenticated user on the entire platform, any school, could list any
+ * room's poll questions by room ID. assertCanAccessRoom below closes that.
+ */
+export const listPollsForRoom = async (roomId: string, caller: CallerContext) => {
+  const room = await getRoomOrThrow(roomId)
+  await assertCanAccessRoom(room, caller)
+
   const { data, error } = await supabase
     .from('jitsi_room_polls')
     .select('*')
@@ -153,9 +161,16 @@ export const listPollsForRoom = async (roomId: string) => {
   return data || []
 }
 
-/** Server-side tally so clients never need to read raw response rows. */
-export const getPollResults = async (pollId: string): Promise<PollResult> => {
+/**
+ * Server-side tally so clients never need to read raw response rows.
+ * SECURITY: this previously had no authorization check at all — any
+ * authenticated user on the entire platform, any school, could read any
+ * poll's tallied results by poll ID. assertCanAccessRoom below closes that.
+ */
+export const getPollResults = async (pollId: string, caller: CallerContext): Promise<PollResult> => {
   const poll = await getPollOrThrow(pollId)
+  const room = await getRoomOrThrow(poll.room_id)
+  await assertCanAccessRoom(room, caller)
 
   const { data: responses, error } = await supabase
     .from('jitsi_room_poll_responses')

@@ -61,6 +61,18 @@ export const startSession = async (req: AuthRequest, res: Response) => {
   catch (e) { err(res, e, 400) }
 }
 
+/** Course-period-direct start — no admin approval, see online-class.service.ts. */
+export const startCourseSession = async (req: AuthRequest, res: Response) => {
+  try { ok(res, await svc.startCourseSession(req.params.coursePeriodId, callerFromProfile(req.profile))) }
+  catch (e) { err(res, e, 400) }
+}
+
+/** Teacher (owner) or admin — service layer's assertOwnerOrAdmin covers both. */
+export const endSession = async (req: AuthRequest, res: Response) => {
+  try { ok(res, await svc.endSession(req.params.id, callerFromProfile(req.profile))) }
+  catch (e) { err(res, e, 400) }
+}
+
 // ============================================================================
 // ADMIN
 // ============================================================================
@@ -90,6 +102,22 @@ export const rejectRequest = async (req: AuthRequest, res: Response) => {
   try {
     ok(res, await svc.rejectRequest(req.params.id, callerFromProfile(req.profile), req.body.note))
   } catch (e) { err(res, e, 400) }
+}
+
+/** Admin visibility into currently-live sessions — mirrors listPendingForReview. */
+export const listActiveSessions = async (req: AuthRequest, res: Response) => {
+  try {
+    const { schoolId, error, status } = await resolveSchoolId(req, req.query.school_id as string | undefined)
+    if (error || !schoolId) return err(res, new Error(error || 'Unable to resolve school'), status || 403)
+
+    const campusId = req.query.campus_id as string | undefined
+    if (campusId && req.profile?.role !== 'super_admin') {
+      const hasAccess = await validateCampusAccess(req.profile!.school_id!, campusId)
+      if (!hasAccess) return err(res, new Error('Forbidden: campus_id does not match your account'), 403)
+    }
+
+    ok(res, await svc.listActiveSessions(schoolId, campusId))
+  } catch (e) { err(res, e) }
 }
 
 // ============================================================================

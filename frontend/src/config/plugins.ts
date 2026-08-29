@@ -44,6 +44,7 @@ import {
   ShieldCheck,
   MessageSquareWarning,
   Video,
+  Languages,
   type LucideIcon,
 } from 'lucide-react'
 import type { SidebarMenuItem } from './sidebar'
@@ -97,35 +98,25 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
     sidebarInjections: [],
   },
 
-  // ── Live Class ────────────────────────────────────────────────────────────
-  // Standalone module with its own top-level sidebar entry per role (added
-  // directly in sidebar.ts, gated by pluginRequired: 'live_class'), so no
-  // sidebarInjections are needed here — this entry exists so it shows up in
-  // the Plugins settings page and carries the settings deep-link.
+  // ── Online Learning ───────────────────────────────────────────────────────
+  // Single merged module (previously two: 'live_class' for ad-hoc Jitsi
+  // rooms + 'online_classes' for course-bound request/approval sessions —
+  // collapsed into one plugin/toggle/sidebar entry since users experienced
+  // them as one feature anyway). Standalone top-level sidebar entry per role
+  // (sidebar.ts, gated by pluginRequired: 'online_classes'), so no
+  // sidebarInjections needed here — this entry just surfaces the toggle and
+  // settings deep-link in the Plugins page. Covers: course-period sessions
+  // (with approval for open-enrollment ones), ad-hoc "My Rooms" meetings
+  // with optional campus/grade/section audience targeting, a co-editable
+  // Excalidraw whiteboard, and live in-class polls.
   {
-    id: 'live_class',
+    id: 'online_classes',
     name: 'Online Learning',
     description:
-      'Video class sessions bound to a course period, with a co-editable Excalidraw whiteboard and live in-class polls. Teachers start/host sessions from their course periods; enrolled students join from their Online Learning menu.',
+      'Video class sessions — either bound to a course period (teachers start directly, or request approval for a new open-enrollment course) or ad-hoc meetings targeted to a campus/grade/section or the whole school — each with a co-editable Excalidraw whiteboard and live in-class polls.',
     icon: Video,
     category: 'Classes',
     settingsHref: '/admin/jitsi-meet/configuration',
-    sidebarInjections: [],
-  },
-
-  // ── Online Classes (request + admin approval) ────────────────────────────
-  // Standalone module with its own top-level sidebar entry per role (added
-  // directly in sidebar.ts, gated by pluginRequired: 'online_classes'), so no
-  // sidebarInjections are needed here. Builds on the 'live_class' (Jitsi)
-  // module for the actual video room — this adds scheduling, capacity, and
-  // a campus-admin approval step in front of it.
-  {
-    id: 'online_classes',
-    name: 'Online Classes',
-    description:
-      'Teachers request an online class — either an existing course held online, or a new open-enrollment course reaching students across campuses/regions — subject to their campus admin\'s approval before it goes live.',
-    icon: Globe,
-    category: 'Classes',
     sidebarInjections: [],
   },
 
@@ -614,6 +605,51 @@ export const PLUGIN_REGISTRY: PluginDefinition[] = [
         items: [
           { title: 'premium_resources', href: '#', icon: FlaskConical, isLabel: true },
           { title: 'periodic_table', href: '/parent/resources/jperiod', icon: FlaskConical }
+        ],
+        roles: ['parent'],
+      },
+    ],
+  },
+
+  // ── Arabic Fluency طلاقة الفصحى ──────────────────────────────────────────
+  {
+    id: 'arabic_fluency',
+    name: 'Arabic Fluency طلاقة الفصحى',
+    description:
+      'Self-contained Arabic reading fluency drills with audio pronunciation practice across 18 lesson sets — no login required.',
+    icon: Languages,
+    category: 'Resources',
+    settingsHref: '/admin/resources/arabic-fluency',
+    sidebarInjections: [
+      {
+        parentTitle: 'resources',
+        items: [
+          { title: 'premium_resources', href: '#', icon: Languages, isLabel: true },
+          { title: 'arabic_fluency', href: '/admin/resources/arabic-fluency', icon: Languages }
+        ],
+        roles: ['admin'],
+      },
+      {
+        parentTitle: 'resources',
+        items: [
+          { title: 'premium_resources', href: '#', icon: Languages, isLabel: true },
+          { title: 'arabic_fluency', href: '/teacher/resources/arabic-fluency', icon: Languages }
+        ],
+        roles: ['teacher'],
+      },
+      {
+        parentTitle: 'resources',
+        items: [
+          { title: 'premium_resources', href: '#', icon: Languages, isLabel: true },
+          { title: 'arabic_fluency', href: '/student/resources/arabic-fluency', icon: Languages }
+        ],
+        roles: ['student'],
+      },
+      {
+        parentTitle: 'resources',
+        items: [
+          { title: 'premium_resources', href: '#', icon: Languages, isLabel: true },
+          { title: 'arabic_fluency', href: '/parent/resources/arabic-fluency', icon: Languages }
         ],
         roles: ['parent'],
       },

@@ -7,6 +7,7 @@ router.use(authenticate)
 
 router.post('/', ctrl.createRoom)
 router.get('/mine', ctrl.listMyRooms)
+router.get('/school', ctrl.listSchoolRooms)
 router.get('/:id', ctrl.getRoom)
 router.put('/:id', ctrl.updateRoom)
 router.delete('/:id', ctrl.deleteRoom)

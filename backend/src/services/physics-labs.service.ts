@@ -34,6 +34,8 @@ export const createPhysicsLab = async (dto: CreatePhysicsLabDTO): Promise<Physic
       sim_key:     dto.sim_key,
       subject_id:  dto.subject_id  || null,
       grade_id:    dto.grade_id    || null,
+      // A section only makes sense scoped to its grade — never persist one without the other.
+      section_id:  dto.grade_id ? (dto.section_id || null) : null,
       custom_note: dto.custom_note || null,
       is_active:   dto.is_active   ?? true,
       created_by:  dto.created_by  || null,
@@ -53,8 +55,12 @@ export const updatePhysicsLab = async (
   const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (dto.subject_id  !== undefined) payload.subject_id  = dto.subject_id  || null
   if (dto.grade_id    !== undefined) payload.grade_id    = dto.grade_id    || null
+  if (dto.section_id  !== undefined) payload.section_id  = dto.section_id || null
   if (dto.custom_note !== undefined) payload.custom_note = dto.custom_note || null
   if (dto.is_active   !== undefined) payload.is_active   = dto.is_active
+  // A section only makes sense scoped to its grade — clearing the grade in
+  // this same update always clears any section too, regardless of dto.section_id.
+  if (dto.grade_id !== undefined && !dto.grade_id) payload.section_id = null
 
   const { data, error } = await supabase
     .from('physics_labs')
@@ -79,13 +85,18 @@ export const deletePhysicsLab = async (id: string, schoolId: string): Promise<vo
   if (error) throw error
 }
 
-// ── Student-facing: active labs filtered by grade ─────────────────────────────
+// ── Student-facing: active labs filtered by grade + section ──────────────────
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export const getStudentPhysicsLabs = async (
   schoolId: string,
-  gradeId?: string | null
+  gradeId?: string | null,
+  sectionId?: string | null
 ): Promise<PhysicsLab[]> => {
   const schoolIds = await resolveSchoolIds(schoolId)
+  const safeGradeId = gradeId && UUID_RE.test(gradeId) ? gradeId : null
+  const safeSectionId = sectionId && UUID_RE.test(sectionId) ? sectionId : null
 
   let query = supabase
     .from('physics_labs')
@@ -93,9 +104,12 @@ export const getStudentPhysicsLabs = async (
     .in('school_id', schoolIds)
     .eq('is_active', true)
 
-  if (gradeId) {
-    // Student has a grade: show their grade's labs + ungraded (all-grades) labs
-    query = query.or(`grade_id.eq.${gradeId},grade_id.is.null`)
+  if (safeGradeId) {
+    // Student has a grade: show ungraded (all-grades) labs, whole-grade labs
+    // for their grade, and — if they have a section — labs narrowed to it.
+    const branches = [`grade_id.is.null`, `and(grade_id.eq.${safeGradeId},section_id.is.null)`]
+    if (safeSectionId) branches.push(`and(grade_id.eq.${safeGradeId},section_id.eq.${safeSectionId})`)
+    query = query.or(branches.join(','))
   }
   // No grade set → return all active labs; set the student's grade in their profile to narrow this
 
@@ -103,14 +117,13 @@ export const getStudentPhysicsLabs = async (
   if (error) throw error
 
   // Deduplicate by sim_key — one entry per simulation per student regardless of
-  // how many grade assignments exist; prefer the grade-specific record over null-grade
+  // how many grade/section assignments exist; prefer the most specific match:
+  // section-specific > whole-grade > all-grades.
+  const specificity = (lab: PhysicsLab) => (lab.section_id ? 2 : lab.grade_id ? 1 : 0)
   const bySimKey = new Map<string, PhysicsLab>()
   for (const lab of (data || [])) {
     const existing = bySimKey.get(lab.sim_key)
-    if (!existing) {
-      bySimKey.set(lab.sim_key, lab)
-    } else if (lab.grade_id !== null && existing.grade_id === null) {
-      // prefer grade-specific over all-grades
+    if (!existing || specificity(lab) > specificity(existing)) {
       bySimKey.set(lab.sim_key, lab)
     }
   }

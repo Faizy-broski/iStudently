@@ -71,7 +71,12 @@ export default function ELibraryReaderPage() {
             </Button>
           </div>
         ) : book?.file_url ? (
-          <FlipbookReader fileUrl={book.file_url} title={book.title ?? 'Book'} />
+          <FlipbookReader
+            fileUrl={book.file_url}
+            title={book.title ?? 'Book'}
+            bookId={bookId}
+            token={user?.access_token}
+          />
         ) : null}
       </div>
     </div>

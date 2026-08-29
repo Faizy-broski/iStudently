@@ -1883,6 +1883,7 @@ export interface PhysicsLab {
   sim_key: string
   subject_id: string | null
   grade_id: string | null
+  section_id: string | null
   custom_note: string | null
   is_active: boolean
   created_by: string | null
@@ -1895,6 +1896,7 @@ export interface CreatePhysicsLabDTO {
   sim_key: string
   subject_id?: string | null
   grade_id?: string | null
+  section_id?: string | null
   custom_note?: string | null
   is_active?: boolean
   created_by?: string | null
@@ -1903,6 +1905,7 @@ export interface CreatePhysicsLabDTO {
 export interface UpdatePhysicsLabDTO {
   subject_id?: string | null
   grade_id?: string | null
+  section_id?: string | null
   custom_note?: string | null
   is_active?: boolean
 }

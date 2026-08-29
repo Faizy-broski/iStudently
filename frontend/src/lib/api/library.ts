@@ -85,6 +85,77 @@ export async function getELibraryBooks(token: string): Promise<ApiResponse<Parti
   return res.json();
 }
 
+// ==================== E-LIBRARY READER STATE (progress + bookmarks) ====================
+
+export interface ReadingProgress {
+  bookId: string;
+  lastPageIndex: number;
+  totalPages: number | null;
+  updatedAt: string;
+}
+
+export interface Bookmark {
+  id: string;
+  bookId: string;
+  pageIndex: number;
+  label: string | null;
+  createdAt: string;
+}
+
+export async function getReadingProgress(bookId: string, token: string): Promise<ApiResponse<ReadingProgress | null>> {
+  const res = await fetch(`${API_URL}/library/e-library/${bookId}/progress`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.json();
+}
+
+export async function updateReadingProgress(
+  bookId: string,
+  data: { lastPageIndex: number; totalPages?: number },
+  token: string
+): Promise<ApiResponse<ReadingProgress>> {
+  const res = await fetch(`${API_URL}/library/e-library/${bookId}/progress`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function getBookmarks(bookId: string, token: string): Promise<ApiResponse<Bookmark[]>> {
+  const res = await fetch(`${API_URL}/library/e-library/${bookId}/bookmarks`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.json();
+}
+
+export async function createBookmark(
+  bookId: string,
+  data: { pageIndex: number; label?: string },
+  token: string
+): Promise<ApiResponse<Bookmark>> {
+  const res = await fetch(`${API_URL}/library/e-library/${bookId}/bookmarks`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function deleteBookmark(bookmarkId: string, token: string): Promise<ApiResponse> {
+  const res = await fetch(`${API_URL}/library/e-library/bookmarks/${bookmarkId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.json();
+}
+
 // ==================== BOOK COPY API ====================
 
 export async function getBookCopies(bookId: string, token: string): Promise<ApiResponse<BookCopy[]>> {

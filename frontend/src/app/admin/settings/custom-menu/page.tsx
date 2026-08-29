@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { GripVertical, Save, RotateCcw, Info } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCampus } from '@/context/CampusContext'
+import { useSchoolSettings } from '@/context/SchoolSettingsContext'
 import { getCustomMenuOrder, updateCustomMenuOrder } from '@/lib/api/custom-menu'
 import { getSidebarConfig } from '@/config/sidebar'
 import type { SidebarMenuItem } from '@/config/sidebar'
@@ -99,6 +100,7 @@ export default function CustomMenuPage() {
   const campusCtx = useCampus()
   const selectedCampus = campusCtx?.selectedCampus ?? null
   const campusId = selectedCampus?.id ?? null
+  const { refreshSettings } = useSchoolSettings()
 
   const [activeRole, setActiveRole] = useState<EditableRole>('admin')
   const [savedOrder, setSavedOrder] = useState<Record<string, string[]>>({})
@@ -175,6 +177,11 @@ export default function CustomMenuPage() {
       const res = await updateCustomMenuOrder(activeRole, currentOrder, campusId)
       if (res.success) {
         setSavedOrder(res.data ?? { ...savedOrder, [activeRole]: currentOrder })
+        // The sidebar reads its order from SchoolSettingsContext, which caches
+        // school_settings for up to 5 minutes (see SchoolSettingsContext.tsx) —
+        // without this, a saved reorder wouldn't show up in the sidebar until
+        // that cache naturally expired.
+        await refreshSettings()
         toast.success('Menu order saved')
       } else {
         toast.error(res.error || 'Failed to save')

@@ -71,6 +71,8 @@ export default function AdminELibraryReaderPage() {
             fileUrl={book.file_url}
             title={book.title ?? 'Book'}
             allowDownload={profile?.role === 'admin' || profile?.role === 'super_admin'}
+            bookId={bookId}
+            token={user?.access_token}
           />
         ) : null}
       </div>

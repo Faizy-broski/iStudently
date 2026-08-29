@@ -9,6 +9,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { cookies } from "next/headers";
 import enMessages from "../../messages/en.json";
 import arMessages from "../../messages/ar.json";
+import { BodyPointerEventsGuard } from "@/components/BodyPointerEventsGuard";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -80,6 +81,7 @@ export default async function RootLayout({
         />
       </head>
       <body className="font-sans antialiased">
+        <BodyPointerEventsGuard />
         <NextIntlClientProvider messages={messages} locale={locale}>
           <ThemeProvider>
             <AuthProvider>

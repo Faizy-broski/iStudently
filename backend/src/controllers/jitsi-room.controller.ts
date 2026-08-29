@@ -26,6 +26,9 @@ export const createRoom = async (req: AuthRequest, res: Response) => {
       description: req.body.description,
       password: req.body.password,
       start_audio_only: req.body.start_audio_only,
+      target_campus_id: req.body.target_campus_id,
+      target_grade_level_id: req.body.target_grade_level_id,
+      target_section_id: req.body.target_section_id,
     }))
   } catch (e) { err(res, e, 400) }
 }
@@ -37,6 +40,9 @@ export const updateRoom = async (req: AuthRequest, res: Response) => {
       description: req.body.description,
       password: req.body.password,
       start_audio_only: req.body.start_audio_only,
+      target_campus_id: req.body.target_campus_id,
+      target_grade_level_id: req.body.target_grade_level_id,
+      target_section_id: req.body.target_section_id,
     }, callerFromProfile(req.profile)))
   } catch (e) { err(res, e, 400) }
 }
@@ -55,6 +61,12 @@ export const getRoom = async (req: AuthRequest, res: Response) => {
 
 export const listMyRooms = async (req: AuthRequest, res: Response) => {
   try { ok(res, await svc.listMyRooms(req.profile.id)) }
+  catch (e) { err(res, e) }
+}
+
+/** Discoverability list for non-owners (students/parents/other staff) — see listSchoolRooms(). */
+export const listSchoolRooms = async (req: AuthRequest, res: Response) => {
+  try { ok(res, await svc.listSchoolRooms(callerFromProfile(req.profile))) }
   catch (e) { err(res, e) }
 }
 

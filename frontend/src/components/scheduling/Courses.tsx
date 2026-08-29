@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import useSWR, { mutate as globalMutate } from "swr"
 import { useAuth } from "@/context/AuthContext"
 import { useAcademic } from "@/context/AcademicContext"
@@ -32,7 +33,7 @@ import {
 import { getMarkingPeriods, type MarkingPeriod } from "@/lib/api/marking-periods"
 import { getClassList, type ClassListResponse } from "@/lib/api/scheduling"
 import { getAllTeachers, type Staff } from "@/lib/api/teachers"
-import { CalendarDays, Plus, Pencil, Trash2, Loader2, Info, GripVertical } from "lucide-react"
+import { CalendarDays, Plus, Pencil, Trash2, Loader2, Info, GripVertical, Video } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -74,7 +75,8 @@ interface CoursePeriodWithSeats extends CoursePeriod {
 }
 
 export function Courses() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
+  const router = useRouter()
   const { selectedAcademicYear } = useAcademic()
   const campusContext = useCampus()
   const campusId = campusContext?.selectedCampus?.id
@@ -872,6 +874,15 @@ export function Courses() {
                         </td>
                         <td className="px-1 py-2 text-right">
                           <div className="flex gap-0.5 justify-end">
+                            {profile?.role === "teacher" && profile.staff_id && cp.teacher_id === profile.staff_id && (
+                              <button
+                                className="p-1 text-muted-foreground hover:text-green-600"
+                                onClick={(e) => { e.stopPropagation(); router.push(`/teacher/online-classes?course_period_id=${cp.id}&autostart=1`) }}
+                                title={t("btn_start_online_session")}
+                              >
+                                <Video className="h-3.5 w-3.5" />
+                              </button>
+                            )}
                             <button className="p-1 text-muted-foreground hover:text-primary" onClick={() => openEditCP(cp)} title={t("btn_edit")}>
                               <Pencil className="h-3.5 w-3.5" />
                             </button>

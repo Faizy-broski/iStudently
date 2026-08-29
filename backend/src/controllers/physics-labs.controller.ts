@@ -8,6 +8,7 @@ interface AuthRequest extends Request {
     school_id: string
     role: string
     grade_id?: string
+    section_id?: string
     campus_id?: string
     student_id?: string
   }
@@ -41,7 +42,7 @@ export const create = async (req: Request, res: Response) => {
     const profile = (req as AuthRequest).profile
     if (!profile) return res.status(400).json({ success: false, error: 'Profile required' } as ApiResponse)
 
-    const { sim_key, subject_id, grade_id, custom_note, is_active } = req.body
+    const { sim_key, subject_id, grade_id, section_id, custom_note, is_active } = req.body
     if (!sim_key) return res.status(400).json({ success: false, error: 'sim_key is required' } as ApiResponse)
 
     const schoolId = resolveSchoolId(req, 'body')
@@ -52,6 +53,7 @@ export const create = async (req: Request, res: Response) => {
       sim_key,
       subject_id:  subject_id  || null,
       grade_id:    grade_id    || null,
+      section_id:  section_id  || null,
       custom_note: custom_note || null,
       is_active:   is_active   ?? true,
       created_by:  profile.id,
@@ -97,10 +99,11 @@ export const getForStudent = async (req: Request, res: Response) => {
     const profile = (req as AuthRequest).profile
     if (!profile) return res.status(400).json({ success: false, error: 'Profile required' } as ApiResponse)
 
-    const schoolId = profile.campus_id || profile.school_id
-    const gradeId  = (req.query.grade_id as string | undefined) || profile.grade_id || null
+    const schoolId  = profile.campus_id || profile.school_id
+    const gradeId   = (req.query.grade_id as string | undefined) || profile.grade_id || null
+    const sectionId = (req.query.section_id as string | undefined) || profile.section_id || null
 
-    const labs = await service.getStudentPhysicsLabs(schoolId, gradeId)
+    const labs = await service.getStudentPhysicsLabs(schoolId, gradeId, sectionId)
     res.json({ success: true, data: labs } as ApiResponse)
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message || 'Failed to fetch physics labs' } as ApiResponse)

@@ -122,8 +122,13 @@ export default function SignupPage() {
   const phoneRequired = phoneEnabled && (sf.phone?.required ?? false)
   const emailEnabled = sf.email?.enabled ?? true
   const usernameEnabled = sf.username?.enabled ?? true
-  // Neither email nor username is individually required — the applicant just needs
-  // to provide at least one of them (enforced in validate() below).
+  const emailRequired = emailEnabled && (sf.email?.required ?? false)
+  const usernameRequired = usernameEnabled && (sf.username?.required ?? false)
+  // The "at least one of email/username" fallback (enforced in validate() below)
+  // only kicks in when neither was explicitly marked required — if the admin
+  // required one of them, that field's own check already covers it, and if the
+  // admin left both optional, the backend auto-generates a username on signup
+  // (see pending-signups.service.ts), so nothing here needs to be mandatory.
 
   // Load link info on mount
   React.useEffect(() => {
@@ -144,17 +149,19 @@ export default function SignupPage() {
     const errs: Partial<typeof form> & { extra_fields?: Record<string, string> } = {}
     if (firstNameRequired && (!form.first_name.trim() || form.first_name.trim().length < 2)) errs.first_name = t('firstName') + ' is required'
     if (lastNameRequired && (!form.last_name.trim() || form.last_name.trim().length < 2)) errs.last_name = t('lastName') + ' is required'
+    if (emailRequired && !form.email.trim()) errs.email = t('email') + ' is required'
     if (form.email.trim()) {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = t('email') + ' is invalid'
     }
+    if (usernameRequired && !form.username.trim()) errs.username = t('username') + ' is required'
     if (form.username.trim()) {
       if (!/^[a-zA-Z0-9._-]{3,}$/.test(form.username.trim())) errs.username = t('usernameInvalid')
     }
-    // At least one of email or username must be provided so the user has something to log in with.
-    if ((emailEnabled || usernameEnabled) && !form.email.trim() && !form.username.trim()) {
-      if (emailEnabled) errs.email = t('emailOrUsernameRequired')
-      if (usernameEnabled) errs.username = t('emailOrUsernameRequired')
-    }
+    // No combined "at least one of email/username" fallback beyond each field's own
+    // required flag above — if the admin left both optional, that's a deliberate
+    // choice, and the backend safely auto-generates a username on signup when
+    // neither is supplied (see pending-signups.service.ts), so nothing forces the
+    // applicant's hand here.
     if (phoneRequired && !form.phone.trim()) errs.phone = t('phoneOptional') + ' is required'
     if (!form.password || form.password.length < 8) errs.password = t('passwordHint')
     if (form.password !== form.confirm_password) errs.confirm_password = t('passwordMismatch')
@@ -453,7 +460,7 @@ export default function SignupPage() {
               {emailEnabled && (
                 <div className="space-y-1.5 col-span-1">
                   <label htmlFor="email" className="block text-sm font-semibold text-gray-800">
-                    {t('email')} <span className="text-gray-400 font-normal">{isAr ? '(اختياري)' : '(optional)'}</span>
+                    {t('email')} {emailRequired ? <span className="text-red-500">*</span> : <span className="text-gray-400 font-normal">{isAr ? '(اختياري)' : '(optional)'}</span>}
                   </label>
                   <Input
                     id="email"
@@ -475,7 +482,7 @@ export default function SignupPage() {
               {usernameEnabled && (
                 <div className="space-y-1.5 col-span-1">
                   <label htmlFor="username" className="block text-sm font-semibold text-gray-800">
-                    {t('username')} <span className="text-gray-400 font-normal">{isAr ? '(اختياري)' : '(optional)'}</span>
+                    {t('username')} {usernameRequired ? <span className="text-red-500">*</span> : <span className="text-gray-400 font-normal">{isAr ? '(اختياري)' : '(optional)'}</span>}
                   </label>
                   <Input
                     id="username"

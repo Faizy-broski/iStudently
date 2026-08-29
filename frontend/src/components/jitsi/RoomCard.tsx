@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Lock, Mic } from 'lucide-react'
+import { Lock, Mic, Users } from 'lucide-react'
 import type { JitsiRoom } from '@/lib/api/jitsi'
 
 interface RoomCardProps {
@@ -12,6 +12,16 @@ interface RoomCardProps {
   href: string
   onEdit?: () => void
   onDelete?: () => void
+}
+
+/** "Whole School" / "{Campus}" / "{Grade}" / "{Grade} – {Section}", per the narrowest set target. */
+function audienceLabel(room: JitsiRoom, t: ReturnType<typeof useTranslations>): string {
+  if (room.target_section?.name) {
+    return `${room.target_grade_level?.name || ''} – ${room.target_section.name}`.trim()
+  }
+  if (room.target_grade_level?.name) return room.target_grade_level.name
+  if (room.target_campus?.name) return room.target_campus.name
+  return t('audience_whole_school')
 }
 
 export function RoomCard({ room, href, onEdit, onDelete }: RoomCardProps) {
@@ -27,6 +37,9 @@ export function RoomCard({ room, href, onEdit, onDelete }: RoomCardProps) {
             {room.start_audio_only && <Mic className="h-3.5 w-3.5 text-muted-foreground" />}
           </CardTitle>
           {room.description && <p className="text-xs text-muted-foreground mt-0.5">{room.description}</p>}
+          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+            <Users className="h-3 w-3" /> {audienceLabel(room, t)}
+          </p>
         </div>
       </CardHeader>
       <CardContent className="flex items-center justify-between gap-2">

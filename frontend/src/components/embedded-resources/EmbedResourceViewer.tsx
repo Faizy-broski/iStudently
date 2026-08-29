@@ -57,6 +57,17 @@ export default function EmbedResourceViewer({ id }: Props) {
       {/* Thin header bar */}
       <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b shrink-0">
         <h2 className="font-semibold text-gray-800 text-sm">{resource.title}</h2>
+        {/* Always available, not just on the cannotBeEmbedded fallback below — some sites
+            embed fine themselves but block specific in-page links/downloads (e.g. a PDF
+            with its own frame-ancestors restriction) once clicked from inside the iframe.
+            That failure is invisible to us (iframe onError doesn't fire for it), so users
+            need a standing way to escape to a real tab where every link on the site works. */}
+        <Button asChild variant="outline" size="sm">
+          <a href={resource.url} target="_blank" rel="noopener noreferrer">
+            <ExternalLink className="h-4 w-4 mr-1.5" />
+            {t('openInNewTab')}
+          </a>
+        </Button>
       </div>
 
       {iframeError ? (

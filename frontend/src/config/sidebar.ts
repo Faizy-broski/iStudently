@@ -58,6 +58,7 @@ import {
   Globe,
   FlaskConical,
   Table2,
+  Languages,
   Dna,
   Gauge,
   Mic,
@@ -230,21 +231,17 @@ const adminMenuItems: SidebarMenuItem[] = [
     ],
   },
   {
-    title: "jitsi_meet",
-    href: "/admin/jitsi-meet",
-    icon: Video,
-    pluginRequired: "live_class",
-    subItems: [
-      { title: "meet", href: "/admin/jitsi-meet", icon: Video },
-      { title: "my_rooms", href: "/admin/jitsi-meet/rooms", icon: Settings },
-      { title: "configuration", href: "/admin/jitsi-meet/configuration", icon: Settings },
-    ],
-  },
-  {
     title: "online_classes",
     href: "/admin/online-classes",
     icon: Globe,
     pluginRequired: "online_classes",
+    subItems: [
+      { title: "review_queue", href: "/admin/online-classes", icon: Globe },
+      { title: "active_sessions", href: "/admin/online-classes/active", icon: Video },
+      { title: "meet", href: "/admin/jitsi-meet", icon: Video },
+      { title: "my_rooms", href: "/admin/jitsi-meet/rooms", icon: Settings },
+      { title: "configuration", href: "/admin/jitsi-meet/configuration", icon: Settings },
+    ],
   },
   {
     title: "speed_reading",
@@ -521,6 +518,7 @@ const adminMenuItems: SidebarMenuItem[] = [
       { title: "chemistry_virtual_labs", href: "/admin/resources/chemistry-virtual-labs", icon: FlaskConical },
       { title: "virtual_labs", href: "/admin/resources/virtual-labs", icon: FlaskConical },
       { title: "periodic_table", href: "/admin/resources/jperiod", icon: Table2 },
+      { title: "arabic_fluency", href: "/admin/resources/arabic-fluency", icon: Languages },
       { title: "anatomy_3d", href: "/admin/resources/anatomy-3d", icon: Dna },
     ],
   },
@@ -739,6 +737,7 @@ const teacherMenuItems: SidebarMenuItem[] = [
       { title: "chemistry_virtual_labs", href: "/teacher/resources/chemistry-virtual-labs", icon: FlaskConical },
       { title: "virtual_labs", href: "/teacher/resources/virtual-labs", icon: FlaskConical },
       { title: "periodic_table", href: "/teacher/resources/jperiod", icon: Table2 },
+      { title: "arabic_fluency", href: "/teacher/resources/arabic-fluency", icon: Languages },
       { title: "anatomy_3d", href: "/teacher/resources/anatomy-3d", icon: Dna },
     ],
   },
@@ -775,20 +774,14 @@ const teacherMenuItems: SidebarMenuItem[] = [
     ],
   },
   {
-    title: "jitsi_meet",
-    href: "/teacher/jitsi-meet",
-    icon: Video,
-    pluginRequired: "live_class",
-    subItems: [
-      { title: "meet", href: "/teacher/jitsi-meet", icon: Video },
-      { title: "my_rooms", href: "/teacher/jitsi-meet/rooms", icon: Settings },
-    ],
-  },
-  {
     title: "online_classes",
     href: "/teacher/online-classes",
     icon: Globe,
     pluginRequired: "online_classes",
+    subItems: [
+      { title: "meet", href: "/teacher/jitsi-meet", icon: Video },
+      { title: "my_rooms", href: "/teacher/jitsi-meet/rooms", icon: Settings },
+    ],
   },
   {
     title: "inspections",
@@ -961,6 +954,7 @@ const studentMenuItems: SidebarMenuItem[] = [
       { title: "physics_labs", href: "/student/resources/physics-labs", icon: FlaskConical },
       { title: "virtual_labs", href: "/student/resources/virtual-labs", icon: FlaskConical },
       { title: "periodic_table", href: "/student/resources/jperiod", icon: Table2 },
+      { title: "arabic_fluency", href: "/student/resources/arabic-fluency", icon: Languages },
       { title: "anatomy_3d", href: "/student/resources/anatomy-3d", icon: Dna },
     ],
   },
@@ -972,6 +966,11 @@ const studentMenuItems: SidebarMenuItem[] = [
     subItems: [
       { title: "browse_open_courses", href: "/student/online-classes", icon: Globe },
       { title: "my_enrolled_classes", href: "/student/online-classes/enrolled", icon: Video },
+      // Ad-hoc rooms created via "My Rooms" (teacher/admin) have no
+      // course-period roster to auto-enroll from — this is the join-only
+      // discovery list for those (see SchoolRoomsList.tsx). Previously
+      // there was no student-facing path to these at all.
+      { title: "meet", href: "/student/jitsi-meet", icon: Video },
     ],
   },
   {
@@ -1044,6 +1043,10 @@ const parentMenuItems: SidebarMenuItem[] = [
     ],
   },
   { title: "students", href: "/parent/students", icon: GraduationCap },
+  // Join-only discovery list for ad-hoc rooms created via "My Rooms"
+  // (teacher/admin) — see SchoolRoomsList.tsx. The [roomId] join page has
+  // existed for this role all along; there was just never a way to find one.
+  { title: "jitsi_meet", href: "/parent/jitsi-meet", icon: Video, pluginRequired: "online_classes" },
   {
     title: "scheduling",
     href: "/parent/scheduling/schedule",
@@ -1137,6 +1140,7 @@ const parentMenuItems: SidebarMenuItem[] = [
       { title: "chemistry_virtual_labs", href: "/parent/resources/chemistry-virtual-labs", icon: FlaskConical },
       { title: "virtual_labs", href: "/parent/resources/virtual-labs", icon: FlaskConical },
       { title: "periodic_table", href: "/parent/resources/jperiod", icon: Table2 },
+      { title: "arabic_fluency", href: "/parent/resources/arabic-fluency", icon: Languages },
       { title: "anatomy_3d", href: "/parent/resources/anatomy-3d", icon: Dna },
     ],
   },

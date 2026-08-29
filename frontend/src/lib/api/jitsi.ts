@@ -26,6 +26,17 @@ export interface JitsiRoom {
   updated_at: string
   /** Only present on getRoom() — resolved school-wide Jitsi domain, null = meet.jit.si */
   jitsi_domain?: string | null
+  /** Only present on getRoom() — the online_classes row this room belongs to, if any (null for an ad-hoc "My Rooms" room). */
+  online_class_id?: string | null
+  // Audience targeting — all null means same-school-wide (applies to
+  // student/parent access only; teachers/admins always see every room).
+  target_campus_id?: string | null
+  target_grade_level_id?: string | null
+  target_section_id?: string | null
+  /** Joined display names — present on getRoom()/listMyRooms()/listSchoolRooms(). */
+  target_campus?: { name: string } | null
+  target_grade_level?: { name: string } | null
+  target_section?: { name: string } | null
 }
 
 export interface CreateRoomInput {
@@ -35,6 +46,9 @@ export interface CreateRoomInput {
   start_audio_only?: boolean
   /** Required for admin (not auto-resolved server-side); optional for teacher. */
   campus_id?: string | null
+  target_campus_id?: string | null
+  target_grade_level_id?: string | null
+  target_section_id?: string | null
 }
 
 export type UpdateRoomInput = Partial<CreateRoomInput>
@@ -111,6 +125,9 @@ export const deleteRoom = (id: string) =>
 export const getRoom = (id: string) => apiFetch<JitsiRoom>(`/jitsi/rooms/${id}`)
 
 export const listMyRooms = () => apiFetch<JitsiRoom[]>('/jitsi/rooms/mine')
+
+/** Ad-hoc rooms any same-school user can join — for roles with no "My Rooms" of their own (students, parents). */
+export const listSchoolRooms = () => apiFetch<JitsiRoom[]>('/jitsi/rooms/school')
 
 // ============================================================================
 // WHITEBOARD

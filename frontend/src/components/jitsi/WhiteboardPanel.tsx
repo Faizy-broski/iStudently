@@ -49,6 +49,7 @@ export function WhiteboardPanel({ roomId, isOwner }: WhiteboardPanelProps) {
   const isApplyingRemote = useRef(false)
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [ready, setReady] = useState(false)
+  const [connectionError, setConnectionError] = useState(false)
 
   // Hydrate initial scene from the last persisted snapshot.
   useEffect(() => {
@@ -69,8 +70,15 @@ export function WhiteboardPanel({ roomId, isOwner }: WhiteboardPanelProps) {
   // channel instance is reused for sending (see handleChange) — broadcast
   // sends require a joined/subscribed channel.
   useEffect(() => {
+    setConnectionError(false)
+
+    // private: true routes this channel through Supabase Realtime
+    // Authorization (RLS on realtime.messages, see
+    // fix_live_class_authorization.sql) instead of the default public
+    // broadcast — without this flag the client silently connects to the
+    // plain public channel and the RLS policies are never consulted at all.
     const channel = supabase
-      .channel(`whiteboard-${roomId}`)
+      .channel(`whiteboard-${roomId}`, { config: { private: true } })
       .on('broadcast', { event: 'scene-update' }, (payload) => {
         if (!excalidrawApiRef.current) return
         const { elements, appState } = payload.payload as any
@@ -78,7 +86,12 @@ export function WhiteboardPanel({ roomId, isOwner }: WhiteboardPanelProps) {
         excalidrawApiRef.current.updateScene({ elements, appState: sanitizeAppState(appState) })
         isApplyingRemote.current = false
       })
-      .subscribe()
+      .subscribe((status) => {
+        // Only a real possibility now that the channel is private — a public
+        // channel could never be rejected. CHANNEL_ERROR here means the RLS
+        // policy denied this user (not enrolled / different school).
+        setConnectionError(status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
+      })
 
     channelRef.current = channel
 
@@ -119,7 +132,12 @@ export function WhiteboardPanel({ roomId, isOwner }: WhiteboardPanelProps) {
   }, [persistSnapshot])
 
   return (
-    <div className="h-full w-full overflow-hidden rounded-lg border">
+    <div className="relative h-full w-full overflow-hidden rounded-lg border">
+      {connectionError && (
+        <div className="absolute inset-x-0 top-0 z-10 bg-amber-100 px-3 py-1.5 text-xs text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+          Couldn't connect to the live whiteboard — your edits won't sync with other participants.
+        </div>
+      )}
       <Excalidraw
         excalidrawAPI={(api) => {
           excalidrawApiRef.current = api

@@ -7,7 +7,7 @@ import { toast } from "sonner"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Video, Loader2, Users, CalendarClock, ListChecks } from "lucide-react"
+import { Video, Loader2, Users, CalendarClock, ListChecks, AlertTriangle, RefreshCw } from "lucide-react"
 import { listOpenOnlineClasses, enrollInOnlineClass, type OpenOnlineClass } from "@/lib/api/online-classes"
 
 export default function StudentBrowseOnlineClassesPage() {
@@ -15,11 +15,17 @@ export default function StudentBrowseOnlineClassesPage() {
   const [courses, setCourses] = useState<OpenOnlineClass[]>([])
   const [loading, setLoading] = useState(true)
   const [enrolling, setEnrolling] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const load = async () => {
     setLoading(true)
     const res = await listOpenOnlineClasses()
-    if (res.data) setCourses(res.data)
+    if (res.data) {
+      setCourses(res.data)
+      setLoadError(null)
+    } else {
+      setLoadError(res.error || t("network_error"))
+    }
     setLoading(false)
   }
 
@@ -48,6 +54,14 @@ export default function StudentBrowseOnlineClassesPage() {
 
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+      ) : loadError ? (
+        <Card><CardContent className="py-12 text-center">
+          <AlertTriangle className="h-10 w-10 mx-auto mb-3 text-destructive" />
+          <p className="text-destructive font-medium">{loadError}</p>
+          <Button variant="outline" size="sm" className="mt-4 gap-1.5" onClick={load}>
+            <RefreshCw className="h-3.5 w-3.5" /> {t("retry")}
+          </Button>
+        </CardContent></Card>
       ) : courses.length === 0 ? (
         <Card><CardContent className="py-12 text-center">
           <Video className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />

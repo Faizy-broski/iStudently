@@ -6,6 +6,7 @@ export interface PhysicsLab {
   sim_key: string
   subject_id: string | null
   grade_id: string | null
+  section_id: string | null
   custom_note: string | null
   is_active: boolean
   created_by: string | null
@@ -18,6 +19,7 @@ export interface CreatePhysicsLabDto {
   school_id?: string
   subject_id?: string | null
   grade_id?: string | null
+  section_id?: string | null
   custom_note?: string | null
   is_active?: boolean
 }
@@ -25,6 +27,7 @@ export interface CreatePhysicsLabDto {
 export interface UpdatePhysicsLabDto {
   subject_id?: string | null
   grade_id?: string | null
+  section_id?: string | null
   custom_note?: string | null
   is_active?: boolean
 }
@@ -73,9 +76,12 @@ export async function getLabSubmissions(labId: string, schoolId?: string) {
 
 // ── Student-facing ────────────────────────────────────────────────────────────
 
-export async function getStudentLabs(params?: { grade_id?: string }) {
-  const qs = params?.grade_id ? `?grade_id=${params.grade_id}` : ''
-  return apiRequest<PhysicsLab[]>(`/physics-labs/for-student${qs}`)
+export async function getStudentLabs(params?: { grade_id?: string; section_id?: string }) {
+  const qs = new URLSearchParams()
+  if (params?.grade_id) qs.set('grade_id', params.grade_id)
+  if (params?.section_id) qs.set('section_id', params.section_id)
+  const query = qs.toString()
+  return apiRequest<PhysicsLab[]>(`/physics-labs/for-student${query ? `?${query}` : ''}`)
 }
 
 export async function submitFindings(dto: {

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { libraryController } from '../controllers/library.controller';
+import { elibraryReadingController } from '../controllers/elibrary-reading.controller';
 import { authenticate } from '../middlewares/auth.middleware';
 import { requireRole } from '../middlewares/role.middleware';
 
@@ -11,6 +12,15 @@ router.use(authenticate);
 // ==================== E-LIBRARY (STUDENT-ACCESSIBLE) ====================
 // Returns only books with a file_url — safe for students to browse
 router.get('/e-library', requireRole('admin', 'teacher', 'librarian', 'student'), libraryController.getELibraryBooks);
+
+// Reader's own per-user state (resume progress + bookmarks) — every role
+// that can read /e-library can read/write their own state here.
+const readerRoles = ['admin', 'teacher', 'librarian', 'student'] as const;
+router.get('/e-library/:bookId/progress', requireRole(...readerRoles), elibraryReadingController.getProgress);
+router.put('/e-library/:bookId/progress', requireRole(...readerRoles), elibraryReadingController.putProgress);
+router.get('/e-library/:bookId/bookmarks', requireRole(...readerRoles), elibraryReadingController.listBookmarks);
+router.post('/e-library/:bookId/bookmarks', requireRole(...readerRoles), elibraryReadingController.createBookmark);
+router.delete('/e-library/bookmarks/:bookmarkId', requireRole(...readerRoles), elibraryReadingController.deleteBookmark);
 
 // ==================== BOOK ROUTES ====================
 router.get('/books', requireRole('admin', 'teacher', 'librarian'), libraryController.getBooks);

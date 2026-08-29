@@ -36,6 +36,8 @@ export interface OnlineClass {
   review_note: string | null
   reviewed_at: string | null
   jitsi_room_id: string | null
+  started_at: string | null
+  ended_at: string | null
   created_at: string
   updated_at: string
 }
@@ -104,6 +106,20 @@ export const cancelOnlineClassRequest = (id: string) =>
 export const startOnlineClassSession = (id: string) =>
   apiFetch<{ id: string; room_name: string; jitsi_domain?: string | null }>(`/online-classes/${id}/start-session`, { method: 'POST' })
 
+/**
+ * Course-period-direct start — no admin approval. Idempotent: calling this
+ * again for a period that already has a live session just rejoins it.
+ */
+export const startCourseSession = (coursePeriodId: string) =>
+  apiFetch<{ id: string; room_name: string; jitsi_domain?: string | null }>(
+    `/online-classes/course-periods/${coursePeriodId}/start`,
+    { method: 'POST' }
+  )
+
+/** Owning teacher or a same-school admin. Idempotent — ending twice is a no-op. */
+export const endOnlineClassSession = (id: string) =>
+  apiFetch<OnlineClass>(`/online-classes/${id}/end-session`, { method: 'POST' })
+
 // ============================================================================
 // ADMIN
 // ============================================================================
@@ -116,6 +132,10 @@ export const approveOnlineClass = (id: string, note?: string) =>
 
 export const rejectOnlineClass = (id: string, note?: string) =>
   apiFetch<OnlineClass>(`/online-classes/${id}/reject`, { method: 'POST', body: JSON.stringify({ note }) })
+
+/** Admin visibility into currently-live sessions (previously only the pending_review queue existed). */
+export const listActiveOnlineClasses = (campusId?: string) =>
+  apiFetch<OnlineClass[]>(`/online-classes/active-sessions${campusId ? `?campus_id=${campusId}` : ''}`)
 
 // ============================================================================
 // STUDENT

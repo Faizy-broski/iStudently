@@ -45,6 +45,31 @@ export class StudentService {
   ) {
     const offset = (page - 1) * limit
 
+    // Resolve grade level name(s) to id(s) up front. Filtering must go through
+    // grade_level_id — the legacy students.grade_level text column is written
+    // once at creation and goes stale on transfer/promotion (see the same
+    // note in school-dashboard.service.ts), so students can have a correct
+    // grade_level_id while grade_level no longer matches the grade's live name.
+    let gradeLevelIds: string[] | undefined
+    if (gradeLevel) {
+      const names = Array.isArray(gradeLevel) ? gradeLevel : [gradeLevel]
+      const { data: grades, error: gradesError } = await supabase
+        .from('grade_levels')
+        .select('id')
+        .eq('school_id', schoolId)
+        .in('name', names)
+
+      if (gradesError) {
+        throw new Error(`Failed to resolve grade level filter: ${gradesError.message}`)
+      }
+      gradeLevelIds = (grades || []).map((g: any) => g.id)
+      // No matching grade levels — short-circuit to an empty result instead
+      // of falling through to an unfiltered query.
+      if (gradeLevelIds.length === 0) {
+        return { students: [], pagination: { total: 0, page, limit, totalPages: 0 } }
+      }
+    }
+
     // Use optimized database search function for library operations when searching
     if (search && search.trim()) {
       try {
@@ -61,15 +86,12 @@ export class StudentService {
           console.error('Optimized search error, falling back:', searchError);
           // Fall through to standard query
         } else {
-          // Apply grade filter client-side if needed
+          // Apply grade filter client-side if needed (by resolved grade_level_id,
+          // not the stale grade_level text column — see note above)
           let filtered = searchResults || [];
-          if (gradeLevel) {
-            if (Array.isArray(gradeLevel)) {
-              const gradeSet = new Set(gradeLevel);
-              filtered = filtered.filter((s: any) => gradeSet.has(s.grade_level));
-            } else {
-              filtered = filtered.filter((s: any) => s.grade_level === gradeLevel);
-            }
+          if (gradeLevelIds) {
+            const gradeIdSet = new Set(gradeLevelIds);
+            filtered = filtered.filter((s: any) => gradeIdSet.has(s.grade_level_id));
           }
           if (isActive !== undefined) {
             filtered = filtered.filter((s: any) => !!s.is_active === isActive);
@@ -192,13 +214,10 @@ export class StudentService {
       // code below instead, which also sorts correctly for Arabic and mixed
       // Arabic/English rosters via Intl-aware localeCompare.
 
-    // Apply grade filter
-    if (gradeLevel) {
-      if (Array.isArray(gradeLevel)) {
-        query = query.in('grade_level', gradeLevel)
-      } else {
-        query = query.eq('grade_level', gradeLevel)
-      }
+    // Apply grade filter (by resolved grade_level_id, not the stale
+    // grade_level text column — see note above)
+    if (gradeLevelIds) {
+      query = query.in('grade_level_id', gradeLevelIds)
     }
 
     // Apply section filter

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -15,12 +15,13 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
-import { Plus, Video, Loader2, Users, CalendarClock, XCircle } from "lucide-react"
+import { Plus, Video, Loader2, Users, CalendarClock, XCircle, StopCircle, AlertTriangle, RefreshCw } from "lucide-react"
 import { useCampus } from "@/context/CampusContext"
 import { getMyCoursePeriods, type CoursePeriod } from "@/lib/api/courses"
 import {
   submitOnlineClassRequest, listMyOnlineClassRequests, cancelOnlineClassRequest,
-  startOnlineClassSession, type OnlineClass, type OnlineClassType, type OnlineClassStatus,
+  startOnlineClassSession, startCourseSession, endOnlineClassSession,
+  type OnlineClass, type OnlineClassType, type OnlineClassStatus,
 } from "@/lib/api/online-classes"
 
 const STATUS_COLORS: Record<OnlineClassStatus, string> = {
@@ -42,13 +43,17 @@ const DAY_CODES: { code: string; labelKey: string }[] = [
 export default function TeacherOnlineClassesPage() {
   const t = useTranslations("online_classes")
   const router = useRouter()
+  const searchParams = useSearchParams()
   const campusCtx = useCampus()
 
   const [requests, setRequests] = useState<OnlineClass[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [starting, setStarting] = useState<string | null>(null)
+  const [ending, setEnding] = useState<string | null>(null)
+  const [autostarting, setAutostarting] = useState(false)
 
   const [coursePeriods, setCoursePeriods] = useState<CoursePeriod[]>([])
 
@@ -66,11 +71,37 @@ export default function TeacherOnlineClassesPage() {
   const loadRequests = async () => {
     setLoading(true)
     const res = await listMyOnlineClassRequests()
-    if (res.data) setRequests(res.data)
+    if (res.data) {
+      setRequests(res.data)
+      setLoadError(null)
+    } else {
+      setLoadError(res.error || t("network_error"))
+    }
     setLoading(false)
   }
 
   useEffect(() => { loadRequests() }, [])
+
+  // Quick-launch from the course period screen (Courses.tsx): arriving with
+  // ?course_period_id=X&autostart=1 skips the dialog entirely and starts
+  // (or rejoins) that period's session immediately.
+  useEffect(() => {
+    const cpId = searchParams.get("course_period_id")
+    if (!cpId || searchParams.get("autostart") !== "1") return
+
+    setAutostarting(true)
+    startCourseSession(cpId).then((res) => {
+      if (res.error || !res.data) {
+        toast.error(res.error || t("msg_start_failed"))
+        setAutostarting(false)
+        return
+      }
+      router.replace(`/teacher/jitsi-meet/rooms/${res.data.id}`)
+    })
+    // Intentionally run once on mount only — re-firing on every searchParams
+    // identity change would re-trigger the start call.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (isDialogOpen) {
@@ -103,12 +134,26 @@ export default function TeacherOnlineClassesPage() {
     }
 
     setSubmitting(true)
+
+    // existing_course starts immediately — assertOwnsCoursePeriod is the
+    // whole gate server-side, no admin approval to wait on (see
+    // online-class.service.ts startCourseSession). external_open still goes
+    // through the request/approve flow below, unchanged.
+    if (classType === "existing_course") {
+      const res = await startCourseSession(coursePeriodId)
+      setSubmitting(false)
+      if (res.error || !res.data) { toast.error(res.error || t("msg_start_failed")); return }
+      setIsDialogOpen(false)
+      resetForm()
+      router.push(`/teacher/jitsi-meet/rooms/${res.data.id}`)
+      return
+    }
+
     const res = await submitOnlineClassRequest({
       class_type: classType,
-      course_period_id: classType === "existing_course" ? coursePeriodId : undefined,
       title: title.trim(),
       description: description.trim() || undefined,
-      student_capacity: classType === "external_open" ? Number(capacity) : undefined,
+      student_capacity: Number(capacity),
       scheduled_days: selectedDays.length > 0 ? selectedDays.join("") : undefined,
       session_start_time: startTime || undefined,
       session_end_time: endTime || undefined,
@@ -144,6 +189,15 @@ export default function TeacherOnlineClassesPage() {
     router.push(`/teacher/jitsi-meet/rooms/${res.data.id}`)
   }
 
+  const handleEndSession = async (id: string) => {
+    setEnding(id)
+    const res = await endOnlineClassSession(id)
+    setEnding(null)
+    if (res.error) { toast.error(res.error || t("msg_end_failed")); return }
+    toast.success(t("msg_ended"))
+    loadRequests()
+  }
+
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -153,12 +207,14 @@ export default function TeacherOnlineClassesPage() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm() }}>
           <Button onClick={() => setIsDialogOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" /> {t("request_class")}
+            <Plus className="h-4 w-4" /> {t("new_online_class")}
           </Button>
           <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{t("request_class")}</DialogTitle>
-              <DialogDescription>{t("request_dialog_desc")}</DialogDescription>
+              <DialogTitle>{t("new_online_class")}</DialogTitle>
+              <DialogDescription>
+                {classType === "existing_course" ? t("start_dialog_desc") : t("request_dialog_desc")}
+              </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-2">
@@ -218,58 +274,77 @@ export default function TeacherOnlineClassesPage() {
                 </div>
               )}
 
-              <div className="space-y-1">
-                <Label>{t("days_label")}</Label>
-                <div className="flex flex-wrap gap-1.5">
-                  {DAY_CODES.map(d => (
-                    <button
-                      key={d.code}
-                      type="button"
-                      onClick={() => toggleDay(d.code)}
-                      className={`h-8 w-8 rounded-full text-xs font-medium border-2 transition-colors ${selectedDays.includes(d.code) ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/20 text-muted-foreground hover:border-primary/40"}`}
-                    >
-                      {t(d.labelKey).slice(0, 1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {classType === "external_open" && (
+                <>
+                  <div className="space-y-1">
+                    <Label>{t("days_label")}</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {DAY_CODES.map(d => (
+                        <button
+                          key={d.code}
+                          type="button"
+                          onClick={() => toggleDay(d.code)}
+                          className={`h-8 w-8 rounded-full text-xs font-medium border-2 transition-colors ${selectedDays.includes(d.code) ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/20 text-muted-foreground hover:border-primary/40"}`}
+                        >
+                          {t(d.labelKey).slice(0, 1)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label htmlFor="oc-start-time">{t("start_time_label")}</Label>
-                  <Input id="oc-start-time" type="time" value={startTime} onChange={e => setStartTime(e.target.value)} />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="oc-end-time">{t("end_time_label")}</Label>
-                  <Input id="oc-end-time" type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
-                </div>
-              </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="oc-start-time">{t("start_time_label")}</Label>
+                      <Input id="oc-start-time" type="time" value={startTime} onChange={e => setStartTime(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="oc-end-time">{t("end_time_label")}</Label>
+                      <Input id="oc-end-time" type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label htmlFor="oc-start-date">{t("start_date_label")}</Label>
-                  <Input id="oc-start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="oc-end-date">{t("end_date_label")}</Label>
-                  <Input id="oc-end-date" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
-                </div>
-              </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="oc-start-date">{t("start_date_label")}</Label>
+                      <Input id="oc-start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="oc-end-date">{t("end_date_label")}</Label>
+                      <Input id="oc-end-date" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>{t("cancel_action")}</Button>
               <Button onClick={handleSubmit} disabled={submitting} className="gap-2">
                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                {t("submit_request")}
+                {classType === "existing_course" ? t("start_now") : t("submit_request")}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
+      {autostarting && (
+        <Card><CardContent className="py-12 text-center">
+          <Loader2 className="h-8 w-8 mx-auto mb-3 animate-spin text-primary" />
+          <p className="text-muted-foreground">{t("start_now")}…</p>
+        </CardContent></Card>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+      ) : loadError ? (
+        <Card><CardContent className="py-12 text-center">
+          <AlertTriangle className="h-10 w-10 mx-auto mb-3 text-destructive" />
+          <p className="text-destructive font-medium">{loadError}</p>
+          <Button variant="outline" size="sm" className="mt-4 gap-1.5" onClick={loadRequests}>
+            <RefreshCw className="h-3.5 w-3.5" /> {t("retry")}
+          </Button>
+        </CardContent></Card>
       ) : requests.length === 0 ? (
         <Card><CardContent className="py-12 text-center">
           <Video className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
@@ -306,12 +381,21 @@ export default function TeacherOnlineClassesPage() {
                 )}
                 <div className="flex gap-2">
                   {r.status === "active" && (
-                    <Button size="sm" onClick={() => handleStart(r.id)} disabled={starting === r.id} className="gap-1.5">
-                      {starting === r.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Video className="h-4 w-4" />}
-                      {t("start_session")}
-                    </Button>
+                    <>
+                      <Button size="sm" onClick={() => handleStart(r.id)} disabled={starting === r.id} className="gap-1.5">
+                        {starting === r.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Video className="h-4 w-4" />}
+                        {t("start_session")}
+                      </Button>
+                      <Button
+                        size="sm" variant="ghost" className="text-destructive gap-1.5"
+                        disabled={ending === r.id} onClick={() => handleEndSession(r.id)}
+                      >
+                        {ending === r.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <StopCircle className="h-4 w-4" />}
+                        {t("end_session")}
+                      </Button>
+                    </>
                   )}
-                  {["pending_review", "approved", "active"].includes(r.status) && (
+                  {["pending_review", "approved"].includes(r.status) && (
                     <Button size="sm" variant="ghost" className="text-destructive gap-1.5" onClick={() => handleCancel(r.id)}>
                       <XCircle className="h-4 w-4" /> {t("cancel_request")}
                     </Button>

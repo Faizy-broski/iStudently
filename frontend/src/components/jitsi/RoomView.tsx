@@ -1,9 +1,13 @@
 'use client'
 
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
+import { toast } from 'sonner'
 import useSWR from 'swr'
 import { useAuth } from '@/context/AuthContext'
 import { getRoom } from '@/lib/api/jitsi'
+import { endOnlineClassSession } from '@/lib/api/online-classes'
 import { JitsiRoomEmbed } from '@/components/jitsi/JitsiRoomEmbed'
 import { WhiteboardPanel } from '@/components/jitsi/WhiteboardPanel'
 import { PollLauncher } from '@/components/jitsi/PollLauncher'
@@ -25,6 +29,8 @@ interface RoomViewProps {
 export function RoomView({ roomId }: RoomViewProps) {
   const t = useTranslations('live_class')
   const { profile } = useAuth()
+  const router = useRouter()
+  const [ending, setEnding] = useState(false)
 
   const { data: roomRes, isLoading } = useSWR(
     roomId ? ['jitsi-room', roomId] : null,
@@ -36,13 +42,41 @@ export function RoomView({ roomId }: RoomViewProps) {
   const isPrivileged = profile?.role === 'admin' || profile?.role === 'super_admin'
   const isOwner = !!room && (isPrivileged || room.owner_profile_id === profile?.id)
 
+  // No fixed per-role "back to" route is assumed here — browser history
+  // covers every entry point (the enrolled-classes list, the course-period
+  // quick-launch, a notification link, direct navigation) without needing a
+  // role/route lookup table. Falls back to the app root only when there's
+  // truly no history (e.g. opened in a new tab).
+  const handleLeave = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back()
+    } else {
+      router.push('/')
+    }
+  }
+
+  const handleEndSession = async () => {
+    if (!room?.online_class_id) return
+    setEnding(true)
+    const res = await endOnlineClassSession(room.online_class_id)
+    setEnding(false)
+    if (res.error) { toast.error(res.error); return }
+    toast.success(t('session_ended'))
+    handleLeave()
+  }
+
   if (isLoading) return <div className="p-6">{t('loading')}</div>
   if (roomRes?.error) return <div className="p-6 text-destructive">{roomRes.error}</div>
   if (!room) return <div className="p-6 text-muted-foreground">{t('room_not_found')}</div>
 
   return (
     <div className="p-6 space-y-4 h-[calc(100vh-2rem)] flex flex-col">
-      <RoomHeader room={room} />
+      <RoomHeader
+        room={room}
+        onLeave={handleLeave}
+        onEndSession={isOwner && room.online_class_id ? handleEndSession : undefined}
+        ending={ending}
+      />
 
       <Tabs defaultValue="video" className="flex-1 flex flex-col min-h-0">
         <TabsList>
@@ -59,6 +93,7 @@ export function RoomView({ roomId }: RoomViewProps) {
             password={room.password}
             startAudioOnly={room.start_audio_only}
             isOwner={isOwner}
+            onReadyToClose={handleLeave}
           />
         </TabsContent>
         <TabsContent value="whiteboard" className="flex-1 min-h-0">

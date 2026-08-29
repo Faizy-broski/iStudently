@@ -31,6 +31,8 @@ export interface OnlineClass {
   review_note: string | null
   reviewed_at: string | null
   jitsi_room_id: string | null
+  started_at: string | null
+  ended_at: string | null
   created_at: string
   updated_at: string
 }

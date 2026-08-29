@@ -39,7 +39,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { useAuth } from '@/context/AuthContext'
 import { useCampus } from '@/context/CampusContext'
-import { getGradeLevels, getSubjects, type GradeLevel, type Subject } from '@/lib/api/academics'
+import { getGradeLevels, getSubjects, getSections, type GradeLevel, type Subject, type Section } from '@/lib/api/academics'
 import {
   getPhysicsLabs,
   assignLab,
@@ -79,6 +79,7 @@ export default function PhysicsLabsAdminPage() {
 
   const [assignedLabs, setAssignedLabs] = useState<PhysicsLab[]>([])
   const [grades, setGrades] = useState<GradeLevel[]>([])
+  const [sections, setSections] = useState<Section[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -89,6 +90,7 @@ export default function PhysicsLabsAdminPage() {
   // Assign dialog
   const [assignTarget, setAssignTarget] = useState<SimulationMeta | null>(null)
   const [assignGrades, setAssignGrades] = useState<string[]>([])
+  const [assignSection, setAssignSection] = useState<string>('none')
   const [assignSubject, setAssignSubject] = useState<string>('none')
   const [assignNote, setAssignNote] = useState('')
   const [assigning, setAssigning] = useState(false)
@@ -96,6 +98,7 @@ export default function PhysicsLabsAdminPage() {
   // Edit dialog
   const [editLab, setEditLab] = useState<PhysicsLab | null>(null)
   const [editGrade, setEditGrade] = useState<string>('none')
+  const [editSection, setEditSection] = useState<string>('none')
   const [editSubject, setEditSubject] = useState<string>('none')
   const [editNote, setEditNote] = useState('')
   const [editActive, setEditActive] = useState(true)
@@ -120,13 +123,15 @@ export default function PhysicsLabsAdminPage() {
     const load = async () => {
       setLoading(true)
       const gradeSchoolId = campusId || schoolId
-      const [labsRes, gradesRes, subjectsRes] = await Promise.all([
+      const [labsRes, gradesRes, sectionsRes, subjectsRes] = await Promise.all([
         getPhysicsLabs({ school_id: gradeSchoolId }),
         getGradeLevels(gradeSchoolId),
+        getSections(undefined, gradeSchoolId),
         getSubjects(undefined, gradeSchoolId),
       ])
       if (labsRes.success && labsRes.data)         setAssignedLabs(labsRes.data)
       if (gradesRes.success && gradesRes.data)     setGrades(gradesRes.data)
+      if (sectionsRes.success && sectionsRes.data) setSections(sectionsRes.data)
       if (subjectsRes.success && subjectsRes.data) setSubjects(subjectsRes.data)
       setLoading(false)
     }
@@ -160,16 +165,29 @@ export default function PhysicsLabsAdminPage() {
 
   // ── Assign ──────────────────────────────────────────────────────────────────
 
+  // Section only makes sense scoped to one grade — the picker only shows up
+  // once exactly one grade is checked, same cascade as UniversalFilter's
+  // grade/section filter.
+  const singleAssignGrade = assignGrades.length === 1 ? assignGrades[0] : null
+  const assignSectionOptions = useMemo(
+    () => (singleAssignGrade ? sections.filter(s => s.grade_level_id === singleAssignGrade) : []),
+    [sections, singleAssignGrade]
+  )
+
   function openAssign(sim: SimulationMeta) {
     setAssignTarget(sim)
     const existing = assignedLabs.filter(l => l.sim_key === sim.key)
-    setAssignGrades(existing.filter(l => l.grade_id).map(l => l.grade_id!))
+    const gradeIds = [...new Set(existing.filter(l => l.grade_id).map(l => l.grade_id!))]
+    setAssignGrades(gradeIds)
+    setAssignSection(gradeIds.length === 1 ? existing.find(l => l.grade_id === gradeIds[0])?.section_id || 'none' : 'none')
     setAssignSubject(existing[0]?.subject_id || 'none')
     setAssignNote(existing[0]?.custom_note || '')
   }
 
   function toggleAssignGrade(gradeId: string, checked: boolean) {
     setAssignGrades(prev => checked ? [...prev, gradeId] : prev.filter(id => id !== gradeId))
+    // The valid section list is about to change (or section no longer applies) — reset it.
+    setAssignSection('none')
   }
 
   async function handleAssign() {
@@ -177,22 +195,27 @@ export default function PhysicsLabsAdminPage() {
     setAssigning(true)
     const effectiveSchoolId = campusId || schoolId
     const gradesToAssign = assignGrades.length > 0 ? assignGrades : [null]
+    // A section is only attached when there's exactly one grade selected.
+    const effectiveSection = assignGrades.length === 1 && assignSection !== 'none' ? assignSection : null
     const subjectId = assignSubject !== 'none' ? assignSubject : null
     const note = assignNote.trim() || null
 
-    // Remove grades that were previously assigned but are now unchecked
+    // Remove grade(+section) combos that were previously assigned but are no longer desired
+    const key = (gradeId: string | null, sectionId: string | null) => `${gradeId}|${sectionId}`
     const prevAssigned = assignedLabs.filter(l => l.sim_key === assignTarget.key && l.grade_id)
-    const toRemove = prevAssigned.filter(l => !assignGrades.includes(l.grade_id!))
+    const desiredKeys = new Set(gradesToAssign.map(gId => key(gId, effectiveSection)))
+    const toRemove = prevAssigned.filter(l => !desiredKeys.has(key(l.grade_id, l.section_id)))
     await Promise.allSettled(toRemove.map(l => unassignLab(l.id, effectiveSchoolId)))
 
-    // Create new records for grades not yet assigned
-    const prevGradeIds = new Set(prevAssigned.map(l => l.grade_id))
-    const toAdd = gradesToAssign.filter(gId => gId === null || !prevGradeIds.has(gId))
+    // Create new records for grade(+section) combos not yet assigned
+    const prevKeys = new Set(prevAssigned.map(l => key(l.grade_id, l.section_id)))
+    const toAdd = gradesToAssign.filter(gId => gId === null || !prevKeys.has(key(gId, effectiveSection)))
     const results = await Promise.allSettled(
       toAdd.map(gradeId => assignLab({
         sim_key:     assignTarget.key,
         school_id:   effectiveSchoolId,
         grade_id:    gradeId,
+        section_id:  gradeId === null ? null : effectiveSection,
         subject_id:  subjectId,
         custom_note: note,
       }))
@@ -214,12 +237,24 @@ export default function PhysicsLabsAdminPage() {
 
   // ── Edit ────────────────────────────────────────────────────────────────────
 
+  const editSectionOptions = useMemo(
+    () => (editGrade !== 'none' ? sections.filter(s => s.grade_level_id === editGrade) : []),
+    [sections, editGrade]
+  )
+
   function openEdit(lab: PhysicsLab) {
     setEditLab(lab)
     setEditGrade(lab.grade_id    || 'none')
+    setEditSection(lab.section_id || 'none')
     setEditSubject(lab.subject_id || 'none')
     setEditNote(lab.custom_note  || '')
     setEditActive(lab.is_active)
+  }
+
+  function handleEditGradeChange(gradeId: string) {
+    setEditGrade(gradeId)
+    // The valid section list is about to change (or section no longer applies) — reset it.
+    setEditSection('none')
   }
 
   async function handleSaveEdit() {
@@ -228,6 +263,7 @@ export default function PhysicsLabsAdminPage() {
     const effectiveSchoolId = campusId || schoolId
     const res = await updateLab(editLab.id, {
       grade_id:    editGrade   !== 'none' ? editGrade   : null,
+      section_id:  editGrade   !== 'none' && editSection !== 'none' ? editSection : null,
       subject_id:  editSubject !== 'none' ? editSubject : null,
       custom_note: editNote.trim() || null,
       is_active:   editActive,
@@ -342,7 +378,12 @@ export default function PhysicsLabsAdminPage() {
               const isAssigned = assignedKeys.has(sim.key)
               const simAssignments = assignedLabs.filter(l => l.sim_key === sim.key)
               const assignedGradeNames = simAssignments
-                .map(l => l.grade_id ? grades.find(g => g.id === l.grade_id)?.name : t('allGrades'))
+                .map(l => {
+                  if (!l.grade_id) return t('allGrades')
+                  const gradeName = grades.find(g => g.id === l.grade_id)?.name
+                  const sectionName = l.section_id ? sections.find(s => s.id === l.section_id)?.name : null
+                  return sectionName ? `${gradeName} — ${sectionName}` : gradeName
+                })
                 .filter(Boolean) as string[]
               return (
                 <Card key={sim.key} className={`flex flex-col ${isAssigned ? 'border-green-300 bg-green-50/40' : ''}`}>
@@ -404,7 +445,9 @@ export default function PhysicsLabsAdminPage() {
             <div className="space-y-3">
               {assignedLabs.map(lab => {
                 const sim         = getCatalogEntry(lab.sim_key)
-                const gradeLabel  = grades.find(g => g.id === lab.grade_id)?.name
+                const gradeName   = grades.find(g => g.id === lab.grade_id)?.name
+                const sectionName = lab.section_id ? sections.find(s => s.id === lab.section_id)?.name : null
+                const gradeLabel  = gradeName && sectionName ? `${gradeName} — ${sectionName}` : gradeName
                 const subjectLabel = subjects.find(s => s.id === lab.subject_id)?.name
                 return (
                   <Card key={lab.id} className="flex flex-col sm:flex-row sm:items-center gap-4 p-4">
@@ -484,6 +527,19 @@ export default function PhysicsLabsAdminPage() {
                 </div>
               )}
             </div>
+            {singleAssignGrade && (
+              <div className="space-y-1.5">
+                <Label>{t('assignDialog.sectionLabel')}</Label>
+                <Select value={assignSection} onValueChange={setAssignSection}>
+                  <SelectTrigger><SelectValue placeholder={t('assignDialog.allSections')} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t('assignDialog.allSections')}</SelectItem>
+                    {assignSectionOptions.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">{t('assignDialog.sectionHint')}</p>
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label>{t('assignDialog.subjectLabel')}</Label>
               <Select value={assignSubject} onValueChange={setAssignSubject}>
@@ -522,7 +578,7 @@ export default function PhysicsLabsAdminPage() {
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
               <Label>{t('editDialog.gradeLabel')}</Label>
-              <Select value={editGrade} onValueChange={setEditGrade}>
+              <Select value={editGrade} onValueChange={handleEditGradeChange}>
                 <SelectTrigger><SelectValue placeholder={t('allGrades')} /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">{t('allGrades')}</SelectItem>
@@ -530,6 +586,18 @@ export default function PhysicsLabsAdminPage() {
                 </SelectContent>
               </Select>
             </div>
+            {editGrade !== 'none' && (
+              <div className="space-y-1.5">
+                <Label>{t('editDialog.sectionLabel')}</Label>
+                <Select value={editSection} onValueChange={setEditSection}>
+                  <SelectTrigger><SelectValue placeholder={t('editDialog.allSections')} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t('editDialog.allSections')}</SelectItem>
+                    {editSectionOptions.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label>{t('editDialog.subjectLabel')}</Label>
               <Select value={editSubject} onValueChange={setEditSubject}>
